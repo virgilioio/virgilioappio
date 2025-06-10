@@ -1,294 +1,215 @@
 
-import { Shield, Database, Code, Users, LogOut, UserPlus, DollarSign, Briefcase } from "lucide-react";
-import { AppContainer } from "@/components/layout/AppContainer";
-import { Section } from "@/components/layout/Section";
-import { StatusCard } from "@/components/StatusCard";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Building2, Users, Briefcase, Settings, CreditCard, Shield } from "lucide-react";
 import { AuthGate } from "@/components/auth/AuthGate";
 import { PermissionGate } from "@/components/auth/PermissionGate";
-import { useAuth } from "@/contexts/AuthContext";
+import { usePermissions } from "@/hooks/usePermissions";
 
-const Index = () => {
-  const { user, logout } = useAuth();
+export default function Index() {
+  const permissions = usePermissions();
 
   return (
     <AuthGate>
       <div className="min-h-screen bg-background">
-        {/* Header */}
-        <header className="border-b bg-surface-primary">
-          <AppContainer>
-            <div className="flex h-16 items-center justify-between">
-              <div className="flex items-center gap-token-md">
-                <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center">
-                  <span className="text-primary-foreground font-bold text-sm">V</span>
-                </div>
-                <span className="font-semibold text-lg">Virgilio.io</span>
-              </div>
-              <div className="flex items-center gap-token-md">
-                <span className="text-sm text-muted-foreground">
-                  {user?.email}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={logout}
-                  className="gap-token-sm"
-                >
-                  <LogOut className="h-4 w-4" />
-                  Logout
-                </Button>
-                <ThemeToggle />
-              </div>
-            </div>
-          </AppContainer>
-        </header>
+        <div className="container mx-auto py-token-xl px-token-lg">
+          {/* Header */}
+          <div className="mb-token-xl">
+            <h1 className="text-4xl font-bold tracking-tight mb-token-md">
+              Welcome to the Dashboard
+            </h1>
+            <p className="text-xl text-muted-foreground">
+              Manage your workspace with role-based access controls
+            </p>
+          </div>
 
-        {/* Hero Section */}
-        <Section className="py-layout-xl">
-          <AppContainer>
-            <div className="text-center space-y-token-xl animate-fade-in">
-              <div className="space-y-token-lg">
-                <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight">
-                  Welcome to{" "}
-                  <span className="bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
-                    Virgilio.io
-                  </span>
-                </h1>
-                <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-                  Multi-tenant hiring platform MVP - You're now authenticated!
-                </p>
-              </div>
-              
-              <div className="flex flex-col sm:flex-row gap-token-md justify-center">
-                <Button size="lg" className="gap-token-sm">
-                  <Users className="h-5 w-5" />
-                  Get Started
-                </Button>
-                <Button variant="outline" size="lg" className="gap-token-sm">
-                  <Code className="h-5 w-5" />
-                  View Documentation
-                </Button>
-              </div>
-            </div>
-          </AppContainer>
-        </Section>
-
-        {/* Permission Demo Section */}
-        <Section variant="muted">
-          <AppContainer>
-            <div className="space-y-token-xl">
-              <div className="text-center space-y-token-md">
-                <h2 className="text-3xl font-bold">Permission-Based Actions</h2>
-                <p className="text-muted-foreground max-w-xl mx-auto">
-                  These actions are conditionally rendered based on your current permissions
-                </p>
-              </div>
-
-              <div className="grid gap-token-lg md:grid-cols-2 lg:grid-cols-3">
-                <PermissionGate permission="canCreateJobs">
-                  <div className="p-token-lg rounded-token border bg-card text-card-foreground hover:shadow-md transition-all duration-200">
-                    <div className="space-y-token-md">
-                      <Briefcase className="h-8 w-8 text-primary" />
-                      <div>
-                        <h3 className="font-semibold">Create Job</h3>
-                        <p className="text-sm text-muted-foreground mt-token-xs">
-                          Post new job openings for your organization
-                        </p>
-                      </div>
-                      <Button className="w-full gap-token-sm">
-                        <Briefcase className="h-4 w-4" />
-                        Create Job
-                      </Button>
+          {/* Permission-based Navigation Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-token-lg mb-token-xl">
+            
+            {/* Organizations Management */}
+            <PermissionGate permission="canManageOrganization">
+              <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+                <CardHeader>
+                  <div className="flex items-center gap-token-md">
+                    <Building2 className="h-8 w-8 text-primary" />
+                    <div>
+                      <CardTitle>Organizations</CardTitle>
+                      <CardDescription>Manage organizations and settings</CardDescription>
                     </div>
                   </div>
-                </PermissionGate>
+                </CardHeader>
+                <CardContent>
+                  <Link to="/admin/organizations">
+                    <Button className="w-full">Manage Organizations</Button>
+                  </Link>
+                </CardContent>
+              </Card>
+            </PermissionGate>
 
-                <PermissionGate permission="canManageMembers">
-                  <div className="p-token-lg rounded-token border bg-card text-card-foreground hover:shadow-md transition-all duration-200">
-                    <div className="space-y-token-md">
-                      <UserPlus className="h-8 w-8 text-primary" />
-                      <div>
-                        <h3 className="font-semibold">Invite Member</h3>
-                        <p className="text-sm text-muted-foreground mt-token-xs">
-                          Add new team members to your workspace
-                        </p>
-                      </div>
-                      <Button className="w-full gap-token-sm">
-                        <UserPlus className="h-4 w-4" />
-                        Invite Member
-                      </Button>
+            {/* Members Management */}
+            <PermissionGate permission="canManageMembers">
+              <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+                <CardHeader>
+                  <div className="flex items-center gap-token-md">
+                    <Users className="h-8 w-8 text-primary" />
+                    <div>
+                      <CardTitle>Team Members</CardTitle>
+                      <CardDescription>Invite and manage team members</CardDescription>
                     </div>
                   </div>
-                </PermissionGate>
+                </CardHeader>
+                <CardContent>
+                  <Button className="w-full" disabled>
+                    Manage Members
+                    <Badge variant="secondary" className="ml-token-sm">Coming Soon</Badge>
+                  </Button>
+                </CardContent>
+              </Card>
+            </PermissionGate>
 
-                <PermissionGate permission="canViewBilling">
-                  <div className="p-token-lg rounded-token border bg-card text-card-foreground hover:shadow-md transition-all duration-200">
-                    <div className="space-y-token-md">
-                      <DollarSign className="h-8 w-8 text-primary" />
-                      <div>
-                        <h3 className="font-semibold">View Billing</h3>
-                        <p className="text-sm text-muted-foreground mt-token-xs">
-                          Access billing information and invoices
-                        </p>
-                      </div>
-                      <Button className="w-full gap-token-sm">
-                        <DollarSign className="h-4 w-4" />
-                        View Billing
-                      </Button>
+            {/* Job Management */}
+            <PermissionGate permission="canCreateJobs">
+              <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+                <CardHeader>
+                  <div className="flex items-center gap-token-md">
+                    <Briefcase className="h-8 w-8 text-primary" />
+                    <div>
+                      <CardTitle>Job Postings</CardTitle>
+                      <CardDescription>Create and manage job listings</CardDescription>
                     </div>
                   </div>
-                </PermissionGate>
+                </CardHeader>
+                <CardContent>
+                  <Button className="w-full" disabled>
+                    Manage Jobs
+                    <Badge variant="secondary" className="ml-token-sm">Coming Soon</Badge>
+                  </Button>
+                </CardContent>
+              </Card>
+            </PermissionGate>
 
-                {/* Always visible fallback for guests */}
-                <PermissionGate 
-                  permission="isGuest"
-                  fallback={
-                    <div className="p-token-lg rounded-token border bg-muted/50 text-muted-foreground">
-                      <div className="space-y-token-md">
-                        <Shield className="h-8 w-8" />
-                        <div>
-                          <h3 className="font-semibold">Access Restricted</h3>
-                          <p className="text-sm mt-token-xs">
-                            Contact your administrator for additional permissions
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  }
-                >
-                  <div className="p-token-lg rounded-token border bg-card text-card-foreground">
-                    <div className="space-y-token-md">
-                      <Users className="h-8 w-8 text-muted-foreground" />
-                      <div>
-                        <h3 className="font-semibold text-muted-foreground">Limited Access</h3>
-                        <p className="text-sm text-muted-foreground mt-token-xs">
-                          You have guest-level permissions
-                        </p>
-                      </div>
+            {/* Settings */}
+            <PermissionGate permission="canManageOrganization">
+              <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+                <CardHeader>
+                  <div className="flex items-center gap-token-md">
+                    <Settings className="h-8 w-8 text-primary" />
+                    <div>
+                      <CardTitle>Settings</CardTitle>
+                      <CardDescription>Configure workspace settings</CardDescription>
                     </div>
                   </div>
-                </PermissionGate>
-              </div>
-            </div>
-          </AppContainer>
-        </Section>
+                </CardHeader>
+                <CardContent>
+                  <Button className="w-full" disabled>
+                    Workspace Settings
+                    <Badge variant="secondary" className="ml-token-sm">Coming Soon</Badge>
+                  </Button>
+                </CardContent>
+              </Card>
+            </PermissionGate>
 
-        {/* Status Section */}
-        <Section>
-          <AppContainer>
-            <div className="space-y-token-xl">
-              <div className="text-center space-y-token-md">
-                <h2 className="text-3xl font-bold">Platform Status</h2>
-                <p className="text-muted-foreground max-w-xl mx-auto">
-                  Current system status and configuration overview for the Virgilio.io platform
-                </p>
-              </div>
+            {/* Billing */}
+            <PermissionGate permission="canViewBilling">
+              <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+                <CardHeader>
+                  <div className="flex items-center gap-token-md">
+                    <CreditCard className="h-8 w-8 text-primary" />
+                    <div>
+                      <CardTitle>Billing</CardTitle>
+                      <CardDescription>View billing and subscription details</CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <Button className="w-full" disabled>
+                    View Billing
+                    <Badge variant="secondary" className="ml-token-sm">Coming Soon</Badge>
+                  </Button>
+                </CardContent>
+              </Card>
+            </PermissionGate>
 
-              <div className="grid gap-token-lg md:grid-cols-2 lg:grid-cols-3">
-                <StatusCard
-                  title="Authentication"
-                  icon={Shield}
-                  status="connected"
-                  description="User authentication system"
-                  details="Supabase Auth active"
-                />
+            {/* Admin Panel */}
+            <PermissionGate permission="isPlatformAdmin">
+              <Card className="hover:shadow-lg transition-shadow cursor-pointer border-primary/20">
+                <CardHeader>
+                  <div className="flex items-center gap-token-md">
+                    <Shield className="h-8 w-8 text-primary" />
+                    <div>
+                      <CardTitle className="flex items-center gap-token-sm">
+                        Admin Panel
+                        <Badge variant="destructive">Admin</Badge>
+                      </CardTitle>
+                      <CardDescription>Platform administration tools</CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <Button className="w-full" disabled>
+                    Admin Tools
+                    <Badge variant="secondary" className="ml-token-sm">Coming Soon</Badge>
+                  </Button>
+                </CardContent>
+              </Card>
+            </PermissionGate>
+          </div>
+
+          {/* User Role Information */}
+          <Card className="bg-muted/50">
+            <CardHeader>
+              <CardTitle className="text-lg">Your Access Level</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-token-sm">
+                {permissions.isPlatformAdmin && (
+                  <Badge variant="destructive">Platform Admin</Badge>
+                )}
+                {permissions.isWorkspaceOwner && (
+                  <Badge variant="default">Workspace Owner</Badge>
+                )}
+                {permissions.isMember && !permissions.isWorkspaceOwner && (
+                  <Badge variant="secondary">Member</Badge>
+                )}
+                {permissions.isGuest && (
+                  <Badge variant="outline">Guest</Badge>
+                )}
                 
-                <StatusCard
-                  title="Database"
-                  icon={Database}
-                  status="connected"
-                  description="Supabase database connection"
-                  details="Ready for data operations"
-                />
-                
-                <StatusCard
-                  title="Build Environment"
-                  icon={Code}
-                  status="development"
-                  description="Current build mode"
-                  details={`Mode: ${import.meta.env.MODE}`}
-                />
+                {/* Sub-roles */}
+                {permissions.isRecruiter && (
+                  <Badge variant="outline">Recruiter</Badge>
+                )}
+                {permissions.isCustomerSuccess && (
+                  <Badge variant="outline">Customer Success</Badge>
+                )}
+                {permissions.isBilling && (
+                  <Badge variant="outline">Billing</Badge>
+                )}
+                {permissions.isSales && (
+                  <Badge variant="outline">Sales</Badge>
+                )}
+                {permissions.isAdmin && (
+                  <Badge variant="outline">Admin</Badge>
+                )}
               </div>
-            </div>
-          </AppContainer>
-        </Section>
+            </CardContent>
+          </Card>
 
-        {/* Features Preview */}
-        <Section variant="muted">
-          <AppContainer>
-            <div className="space-y-token-xl">
-              <div className="text-center space-y-token-md">
-                <h2 className="text-3xl font-bold">Coming Soon</h2>
-                <p className="text-muted-foreground max-w-xl mx-auto">
-                  Core features in development for the multi-tenant hiring platform
-                </p>
-              </div>
-
-              <div className="grid gap-token-lg md:grid-cols-2 lg:grid-cols-3">
-                {[
-                  {
-                    title: "Multi-tenant Architecture",
-                    description: "Secure, scalable tenant isolation",
-                    icon: "🏢"
-                  },
-                  {
-                    title: "Candidate Management",
-                    description: "Complete applicant tracking system",
-                    icon: "👥"
-                  },
-                  {
-                    title: "Interview Scheduling",
-                    description: "Automated scheduling and coordination",
-                    icon: "📅"
-                  },
-                  {
-                    title: "Assessment Tools",
-                    description: "Customizable evaluation workflows",
-                    icon: "📊"
-                  },
-                  {
-                    title: "Collaboration Suite",
-                    description: "Team-based hiring decisions",
-                    icon: "🤝"
-                  },
-                  {
-                    title: "Analytics Dashboard",
-                    description: "Hiring metrics and insights",
-                    icon: "📈"
-                  }
-                ].map((feature, index) => (
-                  <div
-                    key={index}
-                    className="p-token-lg rounded-token border bg-card text-card-foreground hover:shadow-md transition-all duration-200"
-                  >
-                    <div className="space-y-token-md">
-                      <div className="text-2xl">{feature.icon}</div>
-                      <div>
-                        <h3 className="font-semibold">{feature.title}</h3>
-                        <p className="text-sm text-muted-foreground mt-token-xs">
-                          {feature.description}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </AppContainer>
-        </Section>
-
-        {/* Footer */}
-        <footer className="border-t bg-surface-secondary">
-          <AppContainer>
-            <div className="py-layout-md text-center text-sm text-muted-foreground">
-              <p>© 2024 Virgilio.io - Multi-tenant Hiring Platform MVP</p>
-            </div>
-          </AppContainer>
-        </footer>
+          {/* Guest Message */}
+          <PermissionGate permission="isGuest">
+            <Card className="mt-token-lg border-amber-200 bg-amber-50">
+              <CardHeader>
+                <CardTitle className="text-amber-800">Guest Access</CardTitle>
+                <CardDescription className="text-amber-700">
+                  You have limited access. Contact your administrator to get proper permissions.
+                </CardDescription>
+              </CardHeader>
+            </Card>
+          </PermissionGate>
+        </div>
       </div>
     </AuthGate>
   );
-};
-
-export default Index;
+}

@@ -53,6 +53,11 @@ export function DebugPanel() {
     canManageOrganization: permissions.canManageOrganization,
   };
 
+  // Organization access scope
+  const organizationScope = permissions.isPlatformAdmin ? 'All Organizations' : 
+                           permissions.isWorkspaceOwner ? 'Own Organization' : 
+                           'No Organization Access';
+
   const PermissionBadge = ({ label, hasPermission }: { label: string, hasPermission: boolean }) => (
     <div className="flex items-center justify-between text-xs">
       <span>{label}:</span>
@@ -119,6 +124,19 @@ export function DebugPanel() {
                   )}
                 </div>
               </div>
+
+              {/* Organization Access */}
+              {isAuthenticated && (
+                <div className="space-y-token-xs">
+                  <div className="flex items-center gap-token-sm text-xs font-medium text-muted-foreground">
+                    <Building2 className="h-3 w-3" />
+                    Organization Access
+                  </div>
+                  <Badge variant="outline" className="text-xs">
+                    {organizationScope}
+                  </Badge>
+                </div>
+              )}
 
               {/* Permissions */}
               {isAuthenticated && (
