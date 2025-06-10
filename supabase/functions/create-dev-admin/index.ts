@@ -28,7 +28,12 @@ Deno.serve(async (req) => {
       .select('*')
       .eq('name', 'Virgilio')
       .eq('organization_type', 'platform')
-      .single()
+      .maybeSingle()
+
+    if (orgCheckError) {
+      console.error('Error checking for existing organization:', orgCheckError)
+      throw new Error(`Failed to check for existing organization: ${orgCheckError.message}`)
+    }
 
     let virgilioOrg
     if (existingOrg) {
@@ -69,12 +74,40 @@ Deno.serve(async (req) => {
 
     if (adminUser) {
       console.log('Platform admin user already exists:', adminUser.id)
+      
+      // Update user metadata if needed
+      const needsMetadataUpdate = 
+        !adminUser.user_metadata?.user_type || 
+        adminUser.user_metadata.user_type !== 'platform_admin'
+
+      if (needsMetadataUpdate) {
+        console.log('Updating user metadata for platform admin...')
+        const { data: updatedUser, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+          adminUser.id,
+          {
+            user_metadata: {
+              ...adminUser.user_metadata,
+              first_name: 'Allan',
+              last_name: 'Admin',
+              user_type: 'platform_admin'
+            }
+          }
+        )
+
+        if (updateError) {
+          console.error('Error updating user metadata:', updateError)
+          throw new Error(`Failed to update user metadata: ${updateError.message}`)
+        }
+
+        console.log('User metadata updated successfully')
+        adminUser = updatedUser.user
+      }
     } else {
       console.log('Creating platform admin user...')
       const { data: newAdminUser, error: userError } = await supabaseAdmin.auth.admin.createUser({
         email: 'allan@virgilio.tech',
         password: 'test1234',
-        email_confirm: true, // Skip email confirmation
+        email_confirm: true,
         user_metadata: {
           first_name: 'Allan',
           last_name: 'Admin',
@@ -102,12 +135,40 @@ Deno.serve(async (req) => {
       .select('*')
       .eq('user_id', adminUser.id)
       .eq('organization_id', virgilioOrg.id)
-      .single()
+      .maybeSingle()
+
+    if (memberCheckError) {
+      console.error('Error checking for existing member:', memberCheckError)
+      throw new Error(`Failed to check for existing member: ${memberCheckError.message}`)
+    }
 
     let adminMember
     if (existingMember) {
       console.log('Platform admin member record already exists:', existingMember)
-      adminMember = existingMember
+      
+      // Update member role if needed
+      if (existingMember.member_role !== 'platform_admin') {
+        console.log('Updating member role to platform_admin...')
+        const { data: updatedMember, error: updateMemberError } = await supabaseAdmin
+          .from('members')
+          .update({ 
+            member_role: 'platform_admin',
+            user_status: 'active'
+          })
+          .eq('id', existingMember.id)
+          .select()
+          .single()
+
+        if (updateMemberError) {
+          console.error('Error updating member role:', updateMemberError)
+          throw new Error(`Failed to update member role: ${updateMemberError.message}`)
+        }
+
+        console.log('Member role updated successfully')
+        adminMember = updatedMember
+      } else {
+        adminMember = existingMember
+      }
     } else {
       console.log('Creating platform admin member record...')
       const { data: newAdminMember, error: memberError } = await supabaseAdmin
@@ -131,7 +192,7 @@ Deno.serve(async (req) => {
     }
 
     // Step 4: Update organization with owner_id if not set
-    if (!virgilioOrg.owner_id) {
+    if (!virgilioOrg.owner_id || virgilioOrg.owner_id !== adminUser.id) {
       console.log('Setting organization owner...')
       const { error: updateOrgError } = await supabaseAdmin
         .from('organizations')
@@ -142,8 +203,10 @@ Deno.serve(async (req) => {
         console.error('Error updating organization owner:', updateOrgError)
         throw new Error(`Failed to set organization owner: ${updateOrgError.message}`)
       }
+      
+      console.log('Organization owner set successfully')
     } else {
-      console.log('Organization owner already set')
+      console.log('Organization owner already set correctly')
     }
 
     const response = {
