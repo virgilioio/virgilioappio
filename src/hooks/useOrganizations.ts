@@ -58,17 +58,22 @@ export function useOrganizations() {
       // Get owner emails for organizations that have owners
       const organizationsWithOwners = await Promise.all(
         (data || []).map(async (org) => {
+          const typedOrg: Organization = {
+            ...org,
+            status: org.status as 'active' | 'inactive' // Type assertion for database string
+          }
+          
           if (org.owner_id) {
             try {
               const { data: userData, error: userError } = await supabase.auth.admin.getUserById(org.owner_id)
               if (!userError && userData.user) {
-                return { ...org, owner_email: userData.user.email }
+                return { ...typedOrg, owner_email: userData.user.email }
               }
             } catch (e) {
               console.warn('Could not fetch owner email for organization:', org.id)
             }
           }
-          return org
+          return typedOrg
         })
       )
 
