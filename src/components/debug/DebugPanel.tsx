@@ -6,10 +6,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { useAuth } from "@/contexts/AuthContext";
 
 export function DebugPanel() {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
+  const { user, isAuthenticated, isLoading } = useAuth();
   
   // Only show in development
   if (import.meta.env.PROD) {
@@ -18,11 +20,12 @@ export function DebugPanel() {
 
   const debugInfo = {
     currentRoute: location.pathname,
-    user: null, // Placeholder for future auth
+    user: user?.email || null,
+    authStatus: isLoading ? 'loading' : (isAuthenticated ? 'authenticated' : 'unauthenticated'),
     environment: import.meta.env.MODE,
     version: "1.0.0-alpha",
     buildTime: new Date().toLocaleString(),
-    supabaseConnected: false // Placeholder for future Supabase integration
+    supabaseConnected: true
   };
 
   return (
@@ -65,11 +68,22 @@ export function DebugPanel() {
               <div className="space-y-token-xs">
                 <div className="flex items-center gap-token-sm text-xs font-medium text-muted-foreground">
                   <User className="h-3 w-3" />
-                  User Status
+                  Authentication
                 </div>
-                <Badge variant="outline" className="text-xs">
-                  {debugInfo.user ? "Authenticated" : "Not authenticated"}
-                </Badge>
+                <div className="space-y-1">
+                  <Badge 
+                    variant={debugInfo.authStatus === 'authenticated' ? 'default' : 
+                            debugInfo.authStatus === 'loading' ? 'secondary' : 'destructive'}
+                    className="text-xs"
+                  >
+                    {debugInfo.authStatus}
+                  </Badge>
+                  {debugInfo.user && (
+                    <div className="text-xs bg-muted px-token-sm py-token-xs rounded font-mono">
+                      {debugInfo.user}
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Environment Info */}
