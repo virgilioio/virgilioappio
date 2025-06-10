@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -61,12 +62,31 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				// Virgilio.io custom surface colors
+				surface: {
+					primary: 'hsl(var(--surface-primary))',
+					secondary: 'hsl(var(--surface-secondary))',
+					tertiary: 'hsl(var(--surface-tertiary))'
 				}
 			},
 			borderRadius: {
 				lg: 'var(--radius)',
 				md: 'calc(var(--radius) - 2px)',
-				sm: 'calc(var(--radius) - 4px)'
+				sm: 'calc(var(--radius) - 4px)',
+				token: 'var(--radius)'
+			},
+			spacing: {
+				'layout-sm': 'var(--layout-sm)',
+				'layout-md': 'var(--layout-md)', 
+				'layout-lg': 'var(--layout-lg)',
+				'layout-xl': 'var(--layout-xl)',
+				'token-xs': 'var(--token-xs)',
+				'token-sm': 'var(--token-sm)',
+				'token-md': 'var(--token-md)',
+				'token-lg': 'var(--token-lg)',
+				'token-xl': 'var(--token-xl)',
+				'token-2xl': 'var(--token-2xl)'
 			},
 			keyframes: {
 				'accordion-down': {
@@ -84,11 +104,22 @@ export default {
 					to: {
 						height: '0'
 					}
+				},
+				'fade-in': {
+					from: {
+						opacity: '0',
+						transform: 'translateY(10px)'
+					},
+					to: {
+						opacity: '1',
+						transform: 'translateY(0)'
+					}
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'fade-in': 'fade-in 0.5s ease-out'
 			}
 		}
 	},

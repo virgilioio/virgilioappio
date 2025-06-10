@@ -1,8 +1,9 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. */
+/* Virgilio.io Design System - Custom tokens and spacing standards */
 
 @layer base {
   :root {
@@ -15,8 +16,8 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 239 84% 67%;
+    --primary-foreground: 0 0% 98%;
 
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222.2 47.4% 11.2%;
@@ -32,24 +33,35 @@
 
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --ring: 239 84% 67%;
 
     --radius: 0.5rem;
 
+    /* Virgilio.io Custom Surface Colors */
+    --surface-primary: 0 0% 100%;
+    --surface-secondary: 210 40% 98%;
+    --surface-tertiary: 210 40% 96.1%;
+
+    /* Custom Spacing Tokens */
+    --layout-sm: 1rem;
+    --layout-md: 1.5rem;
+    --layout-lg: 2rem;
+    --layout-xl: 3rem;
+    
+    --token-xs: 0.25rem;
+    --token-sm: 0.5rem;
+    --token-md: 0.75rem;
+    --token-lg: 1rem;
+    --token-xl: 1.25rem;
+    --token-2xl: 1.5rem;
+
     --sidebar-background: 0 0% 98%;
-
     --sidebar-foreground: 240 5.3% 26.1%;
-
     --sidebar-primary: 240 5.9% 10%;
-
     --sidebar-primary-foreground: 0 0% 98%;
-
     --sidebar-accent: 240 4.8% 95.9%;
-
     --sidebar-accent-foreground: 240 5.9% 10%;
-
     --sidebar-border: 220 13% 91%;
-
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
 
@@ -63,7 +75,7 @@
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 210 40% 98%;
+    --primary: 239 84% 67%;
     --primary-foreground: 222.2 47.4% 11.2%;
 
     --secondary: 217.2 32.6% 17.5%;
@@ -80,7 +92,13 @@
 
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    --ring: 239 84% 67%;
+
+    /* Dark mode surface colors */
+    --surface-primary: 222.2 84% 4.9%;
+    --surface-secondary: 217.2 32.6% 17.5%;
+    --surface-tertiary: 217.2 32.6% 12.5%;
+
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;
@@ -100,4 +118,45 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+@layer utilities {
+  /* Custom Virgilio.io spacing utilities */
+  .px-layout-sm { padding-left: var(--layout-sm); padding-right: var(--layout-sm); }
+  .px-layout-md { padding-left: var(--layout-md); padding-right: var(--layout-md); }
+  .px-layout-lg { padding-left: var(--layout-lg); padding-right: var(--layout-lg); }
+  .px-layout-xl { padding-left: var(--layout-xl); padding-right: var(--layout-xl); }
+  
+  .py-layout-sm { padding-top: var(--layout-sm); padding-bottom: var(--layout-sm); }
+  .py-layout-md { padding-top: var(--layout-md); padding-bottom: var(--layout-md); }
+  .py-layout-lg { padding-top: var(--layout-lg); padding-bottom: var(--layout-lg); }
+  .py-layout-xl { padding-top: var(--layout-xl); padding-bottom: var(--layout-xl); }
+
+  .gap-token-xs { gap: var(--token-xs); }
+  .gap-token-sm { gap: var(--token-sm); }
+  .gap-token-md { gap: var(--token-md); }
+  .gap-token-lg { gap: var(--token-lg); }
+  .gap-token-xl { gap: var(--token-xl); }
+  .gap-token-2xl { gap: var(--token-2xl); }
+
+  .py-token-xs { padding-top: var(--token-xs); padding-bottom: var(--token-xs); }
+  .py-token-sm { padding-top: var(--token-sm); padding-bottom: var(--token-sm); }
+  .py-token-md { padding-top: var(--token-md); padding-bottom: var(--token-md); }
+  .py-token-lg { padding-top: var(--token-lg); padding-bottom: var(--token-lg); }
+  .py-token-xl { padding-top: var(--token-xl); padding-bottom: var(--token-xl); }
+  .py-token-2xl { padding-top: var(--token-2xl); padding-bottom: var(--token-2xl); }
+
+  .px-token-xs { padding-left: var(--token-xs); padding-right: var(--token-xs); }
+  .px-token-sm { padding-left: var(--token-sm); padding-right: var(--token-sm); }
+  .px-token-md { padding-left: var(--token-md); padding-right: var(--token-md); }
+  .px-token-lg { padding-left: var(--token-lg); padding-right: var(--token-lg); }
+  .px-token-xl { padding-left: var(--token-xl); padding-right: var(--token-xl); }
+  .px-token-2xl { padding-left: var(--token-2xl); padding-right: var(--token-2xl); }
+
+  .rounded-token { border-radius: var(--radius); }
+
+  /* Surface color utilities */
+  .bg-surface-primary { background-color: hsl(var(--surface-primary)); }
+  .bg-surface-secondary { background-color: hsl(var(--surface-secondary)); }
+  .bg-surface-tertiary { background-color: hsl(var(--surface-tertiary)); }
 }
