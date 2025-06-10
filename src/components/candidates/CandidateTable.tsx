@@ -47,7 +47,7 @@ export function CandidateTable({ candidates, isLoading, onEdit, onDelete, onAddN
           Candidates
           <Badge variant="secondary">{candidates.length}</Badge>
         </CardTitle>
-        <PermissionGate permission="canManageMembers">
+        <PermissionGate permission="canManageCandidates">
           <Button onClick={onAddNew} size="sm">
             <UserPlus className="h-4 w-4 mr-2" />
             Add Candidate
@@ -116,7 +116,7 @@ export function CandidateTable({ candidates, isLoading, onEdit, onDelete, onAddN
                       {new Date(candidate.created_at).toLocaleDateString()}
                     </TableCell>
                     <TableCell>
-                      <PermissionGate permission="canManageMembers">
+                      <PermissionGate permission="canManageCandidates">
                         <div className="flex items-center gap-1">
                           <Button
                             variant="ghost"

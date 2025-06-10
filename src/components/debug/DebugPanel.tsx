@@ -1,5 +1,6 @@
 
 import { useState } from 'react'
+import { useLocation } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -10,15 +11,21 @@ import { usePermissions } from '@/hooks/usePermissions'
 import { useMembers } from '@/hooks/useMembers'
 import { useOrganizations } from '@/hooks/useOrganizations'
 import { useJobs } from '@/hooks/useJobs'
+import { useCandidates } from '@/hooks/useCandidates'
 
 export function DebugPanel() {
   const [isOpen, setIsOpen] = useState(false)
   const [isMinimized, setIsMinimized] = useState(false)
+  const location = useLocation()
   const { user } = useAuth()
   const permissions = usePermissions()
   const { members } = useMembers()
   const { organizations } = useOrganizations()
   const { jobs } = useJobs()
+  
+  // Extract job ID from current route if on job detail page
+  const jobId = location.pathname.startsWith('/jobs/') ? location.pathname.split('/')[2] : undefined
+  const { candidates } = useCandidates(jobId)
 
   if (!isOpen) {
     return (
@@ -76,6 +83,9 @@ export function DebugPanel() {
             <p>Organizations: {organizations.length}</p>
             <p>Members: {members.length}</p>
             <p>Jobs: {jobs.length}</p>
+            {jobId && (
+              <p>Candidates: {candidates.length}</p>
+            )}
           </div>
 
           <Separator />
@@ -128,6 +138,20 @@ export function DebugPanel() {
               </Badge>
               <Badge variant={permissions.canManageMembers ? "default" : "secondary"}>
                 Manage Members
+              </Badge>
+            </div>
+          </div>
+
+          <Separator />
+
+          <div>
+            <h4 className="font-semibold mb-1">Candidate Permissions</h4>
+            <div className="flex flex-wrap gap-1">
+              <Badge variant={permissions.canViewCandidates ? "default" : "secondary"}>
+                View Candidates
+              </Badge>
+              <Badge variant={permissions.canManageCandidates ? "default" : "secondary"}>
+                Manage Candidates
               </Badge>
             </div>
           </div>
