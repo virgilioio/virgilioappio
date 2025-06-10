@@ -43,7 +43,8 @@ export function useInvoices() {
       }
 
       console.log('Fetched invoices:', data)
-      setInvoices(data || [])
+      // Type assertion to ensure the data matches our interface
+      setInvoices((data || []) as Invoice[])
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch invoices'
       console.error('Invoices fetch error:', err)
