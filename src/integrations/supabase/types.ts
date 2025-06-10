@@ -431,6 +431,18 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      test_get_user_organization_id: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          test_case: string
+          user_email: string
+          user_type: string
+          returned_org_id: string
+          expected_org_id: string
+          members_table_org_id: string
+          test_result: string
+        }[]
+      }
     }
     Enums: {
       job_level:
