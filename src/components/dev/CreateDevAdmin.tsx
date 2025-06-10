@@ -18,25 +18,32 @@ export function CreateDevAdmin() {
         },
       })
 
-      const result = await response.json()
+      console.log('Response status:', response.status)
+      console.log('Response headers:', response.headers)
 
-      if (response.ok) {
-        toast({
-          title: 'Success',
-          description: result.message,
-        })
-      } else {
-        toast({
-          title: 'Error',
-          description: result.error || 'Failed to create admin user',
-          variant: 'destructive',
-        })
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
       }
+
+      const contentType = response.headers.get('content-type')
+      if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text()
+        console.error('Non-JSON response:', text)
+        throw new Error('Server returned non-JSON response')
+      }
+
+      const result = await response.json()
+      console.log('Function result:', result)
+
+      toast({
+        title: 'Success',
+        description: result.message,
+      })
     } catch (error) {
       console.error('Error calling edge function:', error)
       toast({
         title: 'Error',
-        description: 'Failed to create admin user',
+        description: error instanceof Error ? error.message : 'Failed to create admin user',
         variant: 'destructive',
       })
     } finally {

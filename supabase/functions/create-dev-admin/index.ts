@@ -13,6 +13,8 @@ Deno.serve(async (req) => {
   }
 
   try {
+    console.log('Starting create-dev-admin function')
+
     // Create admin client
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -25,10 +27,17 @@ Deno.serve(async (req) => {
       }
     )
 
+    console.log('Supabase admin client created')
+
     // Check if user already exists
-    const { data: existingUser } = await supabaseAdmin.auth.admin.getUserByEmail('allan@virgilio.tech')
+    const { data: existingUser, error: getUserError } = await supabaseAdmin.auth.admin.getUserByEmail('allan@virgilio.tech')
     
-    if (existingUser.user) {
+    if (getUserError) {
+      console.error('Error checking existing user:', getUserError)
+    }
+    
+    if (existingUser?.user) {
+      console.log('User already exists:', existingUser.user.id)
       return new Response(
         JSON.stringify({ 
           message: 'Platform admin user already exists',
@@ -40,6 +49,8 @@ Deno.serve(async (req) => {
         }
       )
     }
+
+    console.log('Creating new user...')
 
     // Create the platform admin user
     const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
