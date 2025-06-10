@@ -9,6 +9,44 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      members: {
+        Row: {
+          created_at: string | null
+          id: string
+          member_role: Database["public"]["Enums"]["member_role"]
+          organization_id: string | null
+          updated_at: string | null
+          user_id: string | null
+          user_status: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          member_role: Database["public"]["Enums"]["member_role"]
+          organization_id?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+          user_status?: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          member_role?: Database["public"]["Enums"]["member_role"]
+          organization_id?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+          user_status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "members_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organizations: {
         Row: {
           country: string
@@ -50,7 +88,12 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      member_role:
+        | "recruiter"
+        | "customer_success"
+        | "billing"
+        | "sales"
+        | "admin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -165,6 +208,14 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      member_role: [
+        "recruiter",
+        "customer_success",
+        "billing",
+        "sales",
+        "admin",
+      ],
+    },
   },
 } as const

@@ -1,4 +1,3 @@
-
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -61,10 +60,9 @@ export default function Index() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <Button className="w-full" disabled>
-                    Manage Members
-                    <Badge variant="secondary" className="ml-token-sm">Coming Soon</Badge>
-                  </Button>
+                  <Link to="/admin/members">
+                    <Button className="w-full">Manage Members</Button>
+                  </Link>
                 </CardContent>
               </Card>
             </PermissionGate>

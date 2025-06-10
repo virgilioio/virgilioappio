@@ -12,6 +12,7 @@ import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 
 const Organizations = lazy(() => import("./pages/Organizations"));
+const Members = lazy(() => import("./pages/Members"));
 
 const queryClient = new QueryClient();
 
@@ -30,6 +31,14 @@ const App = () => (
               element={
                 <Suspense fallback={<div>Loading...</div>}>
                   <Organizations />
+                </Suspense>
+              } 
+            />
+            <Route 
+              path="/admin/members" 
+              element={
+                <Suspense fallback={<div>Loading...</div>}>
+                  <Members />
                 </Suspense>
               } 
             />

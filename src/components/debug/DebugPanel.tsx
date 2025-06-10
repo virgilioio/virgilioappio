@@ -1,18 +1,20 @@
 import { useState } from "react";
 import { useLocation } from "react-router-dom";
-import { ChevronDown, ChevronUp, Code2, Monitor, User, Globe, Shield, Building2 } from "lucide-react";
+import { ChevronDown, ChevronUp, Code2, Monitor, User, Globe, Shield, Building2, Users } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePermissions } from "@/hooks/usePermissions";
+import { useMembers } from "@/hooks/useMembers";
 
 export function DebugPanel() {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
   const { user, isAuthenticated, isLoading } = useAuth();
   const permissions = usePermissions();
+  const { members } = useMembers();
   
   // Only show in development
   if (import.meta.env.PROD) {
@@ -56,6 +58,9 @@ export function DebugPanel() {
   const organizationScope = permissions.isPlatformAdmin ? 'All Organizations' : 
                            permissions.isWorkspaceOwner ? 'Own Organization' : 
                            'No Organization Access';
+
+  // Current user's member info
+  const currentUserMember = members.find(member => member.user_id === user?.id);
 
   const PermissionBadge = ({ label, hasPermission }: { label: string, hasPermission: boolean }) => (
     <div className="flex items-center justify-between text-xs">
@@ -124,6 +129,34 @@ export function DebugPanel() {
                 </div>
               </div>
 
+              {/* Member Information */}
+              {isAuthenticated && currentUserMember && (
+                <div className="space-y-token-xs">
+                  <div className="flex items-center gap-token-sm text-xs font-medium text-muted-foreground">
+                    <Users className="h-3 w-3" />
+                    Member Info
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-xs">
+                      <span>Role:</span>
+                      <Badge variant="outline" className="text-xs">
+                        {currentUserMember.member_role.replace('_', ' ')}
+                      </Badge>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span>Status:</span>
+                      <Badge variant={currentUserMember.user_status === 'active' ? 'default' : 'secondary'} className="text-xs">
+                        {currentUserMember.user_status}
+                      </Badge>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span>Organization:</span>
+                      <span className="text-xs bg-muted px-1 rounded">{currentUserMember.organization_name}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Organization Access */}
               {isAuthenticated && (
                 <div className="space-y-token-xs">
@@ -134,6 +167,22 @@ export function DebugPanel() {
                   <Badge variant="outline" className="text-xs">
                     {organizationScope}
                   </Badge>
+                </div>
+              )}
+
+              {/* Accessible Members Count */}
+              {isAuthenticated && (
+                <div className="space-y-token-xs">
+                  <div className="flex items-center gap-token-sm text-xs font-medium text-muted-foreground">
+                    <Users className="h-3 w-3" />
+                    Members Access
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span>Visible Members:</span>
+                    <Badge variant="outline" className="text-xs">
+                      {members.length}
+                    </Badge>
+                  </div>
                 </div>
               )}
 
