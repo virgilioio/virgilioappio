@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
@@ -40,15 +39,22 @@ export function useJobRequests() {
   const getMyRequests = async () => {
     if (!user) return
 
+    const organizationId = user.user_metadata?.organization_id
+    if (!organizationId) {
+      console.log('No organization_id found in user metadata, skipping job requests fetch')
+      setJobRequests([])
+      return
+    }
+
     setIsLoading(true)
     setError(null)
 
     try {
-      console.log('Fetching my job requests for user:', user.id)
+      console.log('Fetching my job requests for user:', user.id, 'organization:', organizationId)
       const { data, error: fetchError } = await supabase
         .from('job_requests')
         .select('*')
-        .eq('organization_id', user.user_metadata?.organization_id || '')
+        .eq('organization_id', organizationId)
         .order('created_at', { ascending: false })
 
       if (fetchError) {
@@ -147,13 +153,18 @@ export function useJobRequests() {
   const createJobRequest = async (requestData: Omit<JobRequest, 'id' | 'submitted_by' | 'organization_id' | 'status' | 'approved_by' | 'created_at' | 'updated_at' | 'job_id'>) => {
     if (!user) throw new Error('User not authenticated')
 
+    const organizationId = user.user_metadata?.organization_id
+    if (!organizationId) {
+      throw new Error('No organization found for user')
+    }
+
     try {
       const { data, error: insertError } = await supabase
         .from('job_requests')
         .insert({
           ...requestData,
           submitted_by: user.id,
-          organization_id: user.user_metadata?.organization_id || '',
+          organization_id: organizationId,
         })
         .select()
         .single()

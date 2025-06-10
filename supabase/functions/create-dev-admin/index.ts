@@ -78,7 +78,8 @@ Deno.serve(async (req) => {
       // Update user metadata if needed
       const needsMetadataUpdate = 
         !adminUser.user_metadata?.user_type || 
-        adminUser.user_metadata.user_type !== 'platform_admin'
+        adminUser.user_metadata.user_type !== 'platform_admin' ||
+        !adminUser.user_metadata?.organization_id
 
       if (needsMetadataUpdate) {
         console.log('Updating user metadata for platform admin...')
@@ -89,7 +90,8 @@ Deno.serve(async (req) => {
               ...adminUser.user_metadata,
               first_name: 'Allan',
               last_name: 'Admin',
-              user_type: 'platform_admin'
+              user_type: 'platform_admin',
+              organization_id: virgilioOrg.id
             }
           }
         )
@@ -111,7 +113,8 @@ Deno.serve(async (req) => {
         user_metadata: {
           first_name: 'Allan',
           last_name: 'Admin',
-          user_type: 'platform_admin'
+          user_type: 'platform_admin',
+          organization_id: virgilioOrg.id
         }
       })
 
