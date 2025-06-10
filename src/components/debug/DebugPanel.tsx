@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Bug, X, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -14,6 +15,7 @@ import { useJobs } from '@/hooks/useJobs'
 import { useCandidates } from '@/hooks/useCandidates'
 import { useJobRequests } from '@/hooks/useJobRequests'
 import { useCandidateComments } from '@/hooks/useCandidateComments'
+import { useUserProfile } from '@/hooks/useUserProfile'
 
 export function DebugPanel() {
   const [isOpen, setIsOpen] = useState(false)
@@ -25,6 +27,7 @@ export function DebugPanel() {
   const { organizations } = useOrganizations()
   const { jobs } = useJobs()
   const { jobRequests } = useJobRequests()
+  const { profile } = useUserProfile()
   
   // Extract job ID from current route if on job detail page
   const jobId = location.pathname.startsWith('/jobs/') ? location.pathname.split('/')[2] : undefined
@@ -35,6 +38,12 @@ export function DebugPanel() {
   // Get comments for the first candidate if we're on a job detail page
   const firstCandidateId = candidates.length > 0 ? candidates[0].id : undefined
   const { comments } = useCandidateComments(firstCandidateId)
+
+  const getInitials = (firstName: string | null, lastName: string | null) => {
+    const first = firstName?.charAt(0) || ''
+    const last = lastName?.charAt(0) || ''
+    return (first + last).toUpperCase() || user?.email?.charAt(0).toUpperCase() || 'U'
+  }
 
   if (!isOpen) {
     return (
@@ -79,10 +88,30 @@ export function DebugPanel() {
         <CardContent className="pt-0 text-xs space-y-3 max-h-80 overflow-y-auto">
           <div>
             <h4 className="font-semibold mb-1">User Info</h4>
+            <div className="flex items-center gap-2 mb-2">
+              <Avatar className="h-6 w-6">
+                <AvatarImage src={profile?.avatar_url || ''} />
+                <AvatarFallback className="text-xs">
+                  {getInitials(profile?.first_name, profile?.last_name)}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <p className="font-medium">
+                  {profile?.first_name && profile?.last_name 
+                    ? `${profile.first_name} ${profile.last_name}`
+                    : user?.email
+                  }
+                </p>
+                {profile?.title && (
+                  <p className="text-muted-foreground">{profile.title}</p>
+                )}
+              </div>
+            </div>
             <p>Email: {user?.email}</p>
             <p>ID: {user?.id}</p>
             <p>Type: {user?.user_metadata?.user_type || 'guest'}</p>
             <p>Role: {user?.user_metadata?.member_role || 'member'}</p>
+            {profile?.timezone && <p>Timezone: {profile.timezone}</p>}
           </div>
 
           <Separator />
