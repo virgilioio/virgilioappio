@@ -14,7 +14,7 @@ export interface Job {
   salary_min: number | null
   salary_max: number | null
   currency: string | null
-  hiring_team: any[] | null
+  hiring_team: string[] | null
   organization_id: string
   created_by: string | null
   status: 'draft' | 'open' | 'closed' | 'archived'
@@ -32,7 +32,7 @@ export interface CreateJobData {
   salary_min?: number | null
   salary_max?: number | null
   currency?: string | null
-  hiring_team?: any[]
+  hiring_team?: string[]
   organization_id: string
   status?: 'draft' | 'open' | 'closed' | 'archived'
 }
@@ -46,7 +46,7 @@ export interface UpdateJobData {
   salary_min?: number | null
   salary_max?: number | null
   currency?: string | null
-  hiring_team?: any[]
+  hiring_team?: string[]
   status?: 'draft' | 'open' | 'closed' | 'archived'
 }
 
@@ -85,6 +85,7 @@ export function useJobs() {
         ...job,
         level: job.level as 'L1 - Specialists' | 'L2 - Managers' | 'L3 - Directors / VPs / Executive Search' | 'L4 - C-Level',
         status: job.status as 'draft' | 'open' | 'closed' | 'archived',
+        hiring_team: Array.isArray(job.hiring_team) ? job.hiring_team as string[] : [],
         organization_name: job.organizations?.name
       }))
 
@@ -130,6 +131,7 @@ export function useJobs() {
         ...data,
         level: data.level as 'L1 - Specialists' | 'L2 - Managers' | 'L3 - Directors / VPs / Executive Search' | 'L4 - C-Level',
         status: data.status as 'draft' | 'open' | 'closed' | 'archived',
+        hiring_team: Array.isArray(data.hiring_team) ? data.hiring_team as string[] : [],
         organization_name: data.organizations?.name
       }
     } catch (err) {

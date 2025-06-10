@@ -18,17 +18,20 @@ interface JobFormProps {
   isLoading: boolean
 }
 
+type JobLevel = 'L1 - Specialists' | 'L2 - Managers' | 'L3 - Directors / VPs / Executive Search' | 'L4 - C-Level'
+type JobStatus = 'draft' | 'open' | 'closed' | 'archived'
+
 export function JobForm({ isOpen, onClose, onSubmit, job, isLoading }: JobFormProps) {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     department: '',
-    level: 'L1 - Specialists' as const,
+    level: 'L1 - Specialists' as JobLevel,
     location: '',
     salary_min: '',
     salary_max: '',
     currency: 'USD',
-    status: 'draft' as const,
+    status: 'draft' as JobStatus,
     organization_id: '',
     hiring_team: [] as string[]
   })
@@ -129,7 +132,7 @@ export function JobForm({ isOpen, onClose, onSubmit, job, isLoading }: JobFormPr
 
             <div>
               <Label htmlFor="level">Level *</Label>
-              <Select value={formData.level} onValueChange={(value) => setFormData(prev => ({ ...prev, level: value as any }))}>
+              <Select value={formData.level} onValueChange={(value) => setFormData(prev => ({ ...prev, level: value as JobLevel }))}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -144,7 +147,7 @@ export function JobForm({ isOpen, onClose, onSubmit, job, isLoading }: JobFormPr
 
             <div>
               <Label htmlFor="status">Status</Label>
-              <Select value={formData.status} onValueChange={(value) => setFormData(prev => ({ ...prev, status: value as any }))}>
+              <Select value={formData.status} onValueChange={(value) => setFormData(prev => ({ ...prev, status: value as JobStatus }))}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
