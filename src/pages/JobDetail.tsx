@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -11,13 +10,26 @@ import { PermissionGate } from '@/components/auth/PermissionGate'
 import { useJobs, Job } from '@/hooks/useJobs'
 import { usePermissions } from '@/hooks/usePermissions'
 import { JobForm } from '@/components/jobs/JobForm'
+import { useCandidates } from '@/hooks/useCandidates'
+import { CandidateTable } from '@/components/candidates/CandidateTable'
+import { CandidateForm } from '@/components/candidates/CandidateForm'
+import type { Candidate } from '@/hooks/useCandidates'
 
 export default function JobDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [job, setJob] = useState<Job | null>(null)
   const [isFormOpen, setIsFormOpen] = useState(false)
+  const [isCandidateFormOpen, setIsCandidateFormOpen] = useState(false)
+  const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null)
   const { getJob, updateJob, archiveJob, isLoading } = useJobs()
+  const { 
+    candidates, 
+    isLoading: candidatesLoading, 
+    addCandidate, 
+    updateCandidate, 
+    deleteCandidate 
+  } = useCandidates(id)
   const permissions = usePermissions()
 
   useEffect(() => {
@@ -59,6 +71,30 @@ export default function JobDetail() {
     if (!job) return
     await updateJob(job.id, data)
     await loadJob() // Refresh job data
+  }
+
+  const handleAddCandidate = () => {
+    setSelectedCandidate(null)
+    setIsCandidateFormOpen(true)
+  }
+
+  const handleEditCandidate = (candidate: Candidate) => {
+    setSelectedCandidate(candidate)
+    setIsCandidateFormOpen(true)
+  }
+
+  const handleCandidateFormSubmit = async (data: any) => {
+    if (selectedCandidate) {
+      await updateCandidate(selectedCandidate.id, data)
+    } else {
+      await addCandidate(data)
+    }
+    setIsCandidateFormOpen(false)
+    setSelectedCandidate(null)
+  }
+
+  const handleDeleteCandidate = async (candidateId: string) => {
+    await deleteCandidate(candidateId)
   }
 
   const getStatusBadgeVariant = (status: string) => {
@@ -165,9 +201,21 @@ export default function JobDetail() {
                     )}
                   </CardContent>
                 </Card>
+
+                {/* Candidates Section */}
+                <PermissionGate permission="canViewCandidates">
+                  <CandidateTable
+                    candidates={candidates}
+                    isLoading={candidatesLoading}
+                    onEdit={handleEditCandidate}
+                    onDelete={handleDeleteCandidate}
+                    onAddNew={handleAddCandidate}
+                  />
+                </PermissionGate>
               </div>
 
               <div className="space-y-6">
+                
                 <Card>
                   <CardHeader>
                     <CardTitle>Job Details</CardTitle>
@@ -253,6 +301,20 @@ export default function JobDetail() {
               job={job}
               isLoading={isLoading}
             />
+
+            {job && (
+              <CandidateForm
+                isOpen={isCandidateFormOpen}
+                onClose={() => {
+                  setIsCandidateFormOpen(false)
+                  setSelectedCandidate(null)
+                }}
+                onSubmit={handleCandidateFormSubmit}
+                candidate={selectedCandidate}
+                jobId={job.id}
+                isLoading={candidatesLoading}
+              />
+            )}
           </div>
         </div>
       </PermissionGate>

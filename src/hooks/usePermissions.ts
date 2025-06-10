@@ -27,6 +27,10 @@ export interface PermissionsState {
   canManageOrganization: boolean
   canInviteMembers: boolean
   canDeleteMembers: boolean
+  
+  // Candidate permissions
+  canViewCandidates: boolean
+  canManageCandidates: boolean
 }
 
 export function usePermissions(): PermissionsState {
@@ -62,6 +66,10 @@ export function usePermissions(): PermissionsState {
   const canInviteMembers = canManageMembers
   const canDeleteMembers = isWorkspaceOwner || isPlatformAdmin
   
+  // Candidate permissions
+  const canViewCandidates = isMember || isGuest
+  const canManageCandidates = isRecruiter || isWorkspaceOwner || isPlatformAdmin
+  
   return {
     // Role-based
     isPlatformAdmin,
@@ -88,5 +96,9 @@ export function usePermissions(): PermissionsState {
     canManageOrganization,
     canInviteMembers,
     canDeleteMembers,
+    
+    // Candidate permissions
+    canViewCandidates,
+    canManageCandidates,
   }
 }
