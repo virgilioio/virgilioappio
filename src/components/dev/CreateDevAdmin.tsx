@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from '@/hooks/use-toast'
+import { supabase } from '@/integrations/supabase/client'
 
 export function CreateDevAdmin() {
   const [isCreating, setIsCreating] = useState(false)
@@ -11,33 +12,28 @@ export function CreateDevAdmin() {
     setIsCreating(true)
     
     try {
-      const response = await fetch('/functions/v1/create-dev-admin', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+      console.log('Calling create-dev-admin edge function...')
+      
+      const { data, error } = await supabase.functions.invoke('create-dev-admin', {
+        body: {}
       })
 
-      console.log('Response status:', response.status)
-      console.log('Response headers:', response.headers)
+      console.log('Function response:', { data, error })
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
+      if (error) {
+        console.error('Edge function error:', error)
+        throw new Error(error.message || 'Failed to call edge function')
       }
 
-      const contentType = response.headers.get('content-type')
-      if (!contentType || !contentType.includes('application/json')) {
-        const text = await response.text()
-        console.error('Non-JSON response:', text)
-        throw new Error('Server returned non-JSON response')
+      if (!data) {
+        throw new Error('No response data from edge function')
       }
 
-      const result = await response.json()
-      console.log('Function result:', result)
+      console.log('Function result:', data)
 
       toast({
         title: 'Success',
-        description: result.message,
+        description: data.message || 'Platform setup completed successfully',
       })
     } catch (error) {
       console.error('Error calling edge function:', error)
