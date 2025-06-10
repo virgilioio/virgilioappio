@@ -155,12 +155,12 @@ export function useUserProfile() {
         throw uploadError
       }
 
-      // Get public URL
+      // Get public URL with cache-busting timestamp
       const { data: urlData } = supabase.storage
         .from('avatars')
         .getPublicUrl(fileName)
 
-      const avatarUrl = urlData.publicUrl
+      const avatarUrl = `${urlData.publicUrl}?t=${Date.now()}`
 
       // Update profile with new avatar URL
       await updateMyProfile({ avatar_url: avatarUrl })
