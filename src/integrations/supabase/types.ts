@@ -110,12 +110,17 @@ export type Database = {
         Row: {
           approved_by: string | null
           created_at: string
+          currency: string | null
           department: string | null
           description: string | null
           id: string
+          job_id: string | null
           level: Database["public"]["Enums"]["job_request_level"]
           location: string | null
+          notes: string | null
           organization_id: string
+          salary_max: number | null
+          salary_min: number | null
           status: Database["public"]["Enums"]["job_request_status"]
           submitted_by: string
           title: string
@@ -124,12 +129,17 @@ export type Database = {
         Insert: {
           approved_by?: string | null
           created_at?: string
+          currency?: string | null
           department?: string | null
           description?: string | null
           id?: string
+          job_id?: string | null
           level: Database["public"]["Enums"]["job_request_level"]
           location?: string | null
+          notes?: string | null
           organization_id: string
+          salary_max?: number | null
+          salary_min?: number | null
           status?: Database["public"]["Enums"]["job_request_status"]
           submitted_by: string
           title: string
@@ -138,18 +148,30 @@ export type Database = {
         Update: {
           approved_by?: string | null
           created_at?: string
+          currency?: string | null
           department?: string | null
           description?: string | null
           id?: string
+          job_id?: string | null
           level?: Database["public"]["Enums"]["job_request_level"]
           location?: string | null
+          notes?: string | null
           organization_id?: string
+          salary_max?: number | null
+          salary_min?: number | null
           status?: Database["public"]["Enums"]["job_request_status"]
           submitted_by?: string
           title?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "job_requests_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "job_requests_organization_id_fkey"
             columns: ["organization_id"]

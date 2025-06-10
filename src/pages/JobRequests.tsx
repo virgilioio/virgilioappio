@@ -7,6 +7,7 @@ import { JobRequestForm } from '@/components/job-requests/JobRequestForm'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { PermissionGate } from '@/components/auth/PermissionGate'
 import { Card, CardContent } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 
 export default function JobRequests() {
   const {
@@ -46,6 +47,17 @@ export default function JobRequests() {
     if (confirm('Are you sure you want to delete this job request?')) {
       await deleteJobRequest(id)
     }
+  }
+
+  const formatSalary = (min?: number, max?: number, currency?: string) => {
+    if (!min && !max) return 'Not specified'
+    const curr = currency || 'USD'
+    if (min && max) {
+      return `${curr} ${min.toLocaleString()} - ${max.toLocaleString()}`
+    }
+    if (min) return `${curr} ${min.toLocaleString()}+`
+    if (max) return `Up to ${curr} ${max.toLocaleString()}`
+    return 'Not specified'
   }
 
   return (
@@ -99,16 +111,23 @@ export default function JobRequests() {
               <DialogTitle>Job Request Details</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
-              <div>
-                <h3 className="font-semibold">{selectedRequest.title}</h3>
-                <p className="text-sm text-muted-foreground">Level: {selectedRequest.level}</p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-semibold text-lg">{selectedRequest.title}</h3>
+                  <p className="text-sm text-muted-foreground">Level: {selectedRequest.level}</p>
+                </div>
+                <Badge variant={selectedRequest.status === 'pending' ? 'secondary' : selectedRequest.status === 'approved' ? 'default' : 'destructive'}>
+                  {selectedRequest.status}
+                </Badge>
               </div>
+              
               {selectedRequest.description && (
                 <div>
                   <h4 className="font-medium">Description</h4>
                   <p className="text-sm">{selectedRequest.description}</p>
                 </div>
               )}
+              
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
                   <span className="font-medium">Department:</span> {selectedRequest.department || 'Not specified'}
@@ -117,12 +136,27 @@ export default function JobRequests() {
                   <span className="font-medium">Location:</span> {selectedRequest.location || 'Not specified'}
                 </div>
                 <div>
-                  <span className="font-medium">Status:</span> {selectedRequest.status}
+                  <span className="font-medium">Salary Range:</span> {formatSalary(selectedRequest.salary_min, selectedRequest.salary_max, selectedRequest.currency)}
                 </div>
                 <div>
                   <span className="font-medium">Created:</span> {new Date(selectedRequest.created_at).toLocaleDateString()}
                 </div>
               </div>
+
+              {selectedRequest.notes && (
+                <div>
+                  <h4 className="font-medium">Notes</h4>
+                  <p className="text-sm">{selectedRequest.notes}</p>
+                </div>
+              )}
+
+              {selectedRequest.job_id && (
+                <div className="bg-green-50 p-3 rounded-lg">
+                  <p className="text-sm text-green-800">
+                    ✅ This request has been approved and converted to a job (ID: {selectedRequest.job_id})
+                  </p>
+                </div>
+              )}
             </div>
           </DialogContent>
         </Dialog>

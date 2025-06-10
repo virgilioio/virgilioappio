@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { JobRequest } from '@/hooks/useJobRequests'
 
 interface JobRequestFormProps {
-  onSubmit: (data: Omit<JobRequest, 'id' | 'submitted_by' | 'organization_id' | 'status' | 'approved_by' | 'created_at' | 'updated_at'>) => Promise<void>
+  onSubmit: (data: Omit<JobRequest, 'id' | 'submitted_by' | 'organization_id' | 'status' | 'approved_by' | 'created_at' | 'updated_at' | 'job_id'>) => Promise<void>
   onCancel: () => void
   isLoading?: boolean
 }
@@ -19,8 +19,12 @@ export function JobRequestForm({ onSubmit, onCancel, isLoading = false }: JobReq
     title: '',
     description: '',
     department: '',
-    level: '' as 'L1' | 'L2' | 'L3' | '',
-    location: ''
+    level: null as 'L1' | 'L2' | 'L3' | null,
+    location: '',
+    salary_min: '',
+    salary_max: '',
+    currency: 'USD',
+    notes: ''
   })
 
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -34,6 +38,14 @@ export function JobRequestForm({ onSubmit, onCancel, isLoading = false }: JobReq
 
     if (!formData.level) {
       newErrors.level = 'Level is required'
+    }
+
+    if (formData.salary_min && formData.salary_max) {
+      const minSalary = parseInt(formData.salary_min)
+      const maxSalary = parseInt(formData.salary_max)
+      if (minSalary > maxSalary) {
+        newErrors.salary_max = 'Maximum salary must be greater than minimum salary'
+      }
     }
 
     setErrors(newErrors)
@@ -50,8 +62,12 @@ export function JobRequestForm({ onSubmit, onCancel, isLoading = false }: JobReq
         title: formData.title.trim(),
         description: formData.description.trim() || undefined,
         department: formData.department.trim() || undefined,
-        level: formData.level,
-        location: formData.location.trim() || undefined
+        level: formData.level!,
+        location: formData.location.trim() || undefined,
+        salary_min: formData.salary_min ? parseInt(formData.salary_min) : undefined,
+        salary_max: formData.salary_max ? parseInt(formData.salary_max) : undefined,
+        currency: formData.currency || undefined,
+        notes: formData.notes.trim() || undefined
       })
       
       // Reset form on success
@@ -59,15 +75,19 @@ export function JobRequestForm({ onSubmit, onCancel, isLoading = false }: JobReq
         title: '',
         description: '',
         department: '',
-        level: '',
-        location: ''
+        level: null,
+        location: '',
+        salary_min: '',
+        salary_max: '',
+        currency: 'USD',
+        notes: ''
       })
     } catch (error) {
       // Error handling is done in the hook
     }
   }
 
-  const handleChange = (field: string, value: string) => {
+  const handleChange = (field: string, value: string | null) => {
     setFormData(prev => ({ ...prev, [field]: value }))
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }))
@@ -119,7 +139,7 @@ export function JobRequestForm({ onSubmit, onCancel, isLoading = false }: JobReq
 
             <div className="space-y-2">
               <Label htmlFor="level">Level *</Label>
-              <Select value={formData.level} onValueChange={(value) => handleChange('level', value)}>
+              <Select value={formData.level || ''} onValueChange={(value) => handleChange('level', value as 'L1' | 'L2' | 'L3')}>
                 <SelectTrigger className={errors.level ? 'border-destructive' : ''}>
                   <SelectValue placeholder="Select level" />
                 </SelectTrigger>
@@ -142,6 +162,59 @@ export function JobRequestForm({ onSubmit, onCancel, isLoading = false }: JobReq
               value={formData.location}
               onChange={(e) => handleChange('location', e.target.value)}
               placeholder="e.g. Remote, New York, London"
+            />
+          </div>
+
+          <div className="grid grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="salary_min">Min Salary</Label>
+              <Input
+                id="salary_min"
+                type="number"
+                value={formData.salary_min}
+                onChange={(e) => handleChange('salary_min', e.target.value)}
+                placeholder="50000"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="salary_max">Max Salary</Label>
+              <Input
+                id="salary_max"
+                type="number"
+                value={formData.salary_max}
+                onChange={(e) => handleChange('salary_max', e.target.value)}
+                placeholder="80000"
+                className={errors.salary_max ? 'border-destructive' : ''}
+              />
+              {errors.salary_max && (
+                <p className="text-sm text-destructive">{errors.salary_max}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="currency">Currency</Label>
+              <Select value={formData.currency} onValueChange={(value) => handleChange('currency', value)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="USD">USD</SelectItem>
+                  <SelectItem value="EUR">EUR</SelectItem>
+                  <SelectItem value="GBP">GBP</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="notes">Notes</Label>
+            <Textarea
+              id="notes"
+              value={formData.notes}
+              onChange={(e) => handleChange('notes', e.target.value)}
+              placeholder="Additional notes or requirements..."
+              rows={3}
             />
           </div>
 

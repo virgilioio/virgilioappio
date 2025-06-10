@@ -45,6 +45,17 @@ export function JobRequestTable({
     }
   }
 
+  const formatSalary = (min?: number, max?: number, currency?: string) => {
+    if (!min && !max) return '-'
+    const curr = currency || 'USD'
+    if (min && max) {
+      return `${curr} ${min.toLocaleString()} - ${max.toLocaleString()}`
+    }
+    if (min) return `${curr} ${min.toLocaleString()}+`
+    if (max) return `Up to ${curr} ${max.toLocaleString()}`
+    return '-'
+  }
+
   const filteredJobRequests = jobRequests.filter(request => {
     const matchesSearch = request.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          request.department?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -71,7 +82,7 @@ export function JobRequestTable({
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle>Job Requests</CardTitle>
-          {permissions.canManageJobRequests && (
+          {permissions.canRequestJobs && (
             <Button onClick={onCreateNew}>
               <Plus className="h-4 w-4 mr-2" />
               Request Job
@@ -128,6 +139,7 @@ export function JobRequestTable({
                 <TableHead>Title</TableHead>
                 <TableHead>Level</TableHead>
                 <TableHead>Department</TableHead>
+                <TableHead>Salary</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Created</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -139,6 +151,7 @@ export function JobRequestTable({
                   <TableCell className="font-medium">{request.title}</TableCell>
                   <TableCell>{request.level}</TableCell>
                   <TableCell>{request.department || '-'}</TableCell>
+                  <TableCell>{formatSalary(request.salary_min, request.salary_max, request.currency)}</TableCell>
                   <TableCell>
                     <Badge variant={getStatusBadgeVariant(request.status)}>
                       {request.status}

@@ -11,13 +11,25 @@ export interface JobRequest {
   department?: string
   level: 'L1' | 'L2' | 'L3'
   location?: string
+  salary_min?: number
+  salary_max?: number
+  currency?: string
+  notes?: string
   submitted_by: string
   organization_id: string
   status: 'pending' | 'approved' | 'rejected'
   approved_by?: string
+  job_id?: string
   created_at: string
   updated_at: string
 }
+
+// Level mapping from job request to job table
+const LEVEL_MAPPING = {
+  'L1': 'L1 - Specialists',
+  'L2': 'L2 - Managers',
+  'L3': 'L3 - Directors / VPs / Executive Search'
+} as const
 
 export function useJobRequests() {
   const [jobRequests, setJobRequests] = useState<JobRequest[]>([])
@@ -25,29 +37,30 @@ export function useJobRequests() {
   const [error, setError] = useState<string | null>(null)
   const { user } = useAuth()
 
-  const getJobRequests = async () => {
+  const getMyRequests = async () => {
     if (!user) return
 
     setIsLoading(true)
     setError(null)
 
     try {
-      console.log('Fetching job requests for user:', user.id)
+      console.log('Fetching my job requests for user:', user.id)
       const { data, error: fetchError } = await supabase
         .from('job_requests')
         .select('*')
+        .eq('organization_id', user.user_metadata?.organization_id || '')
         .order('created_at', { ascending: false })
 
       if (fetchError) {
-        console.error('Error fetching job requests:', fetchError)
+        console.error('Error fetching my job requests:', fetchError)
         throw fetchError
       }
 
-      console.log('Fetched job requests:', data)
+      console.log('Fetched my job requests:', data)
       setJobRequests((data || []) as JobRequest[])
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch job requests'
-      console.error('Job requests fetch error:', err)
+      console.error('My job requests fetch error:', err)
       setError(errorMessage)
       toast({
         title: 'Error',
@@ -56,6 +69,56 @@ export function useJobRequests() {
       })
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const getAllRequests = async () => {
+    if (!user) return
+
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      console.log('Fetching all job requests for admin/CS user:', user.id)
+      const { data, error: fetchError } = await supabase
+        .from('job_requests')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (fetchError) {
+        console.error('Error fetching all job requests:', fetchError)
+        throw fetchError
+      }
+
+      console.log('Fetched all job requests:', data)
+      setJobRequests((data || []) as JobRequest[])
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch job requests'
+      console.error('All job requests fetch error:', err)
+      setError(errorMessage)
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive'
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const getJobRequests = async () => {
+    if (!user) return
+
+    // Check if user is admin/CS to decide which method to use
+    const userType = user?.user_metadata?.user_type || 'guest'
+    const memberRole = user?.user_metadata?.member_role || 'member'
+    
+    const isAdmin = userType === 'platform_admin' || memberRole === 'customer_success'
+    
+    if (isAdmin) {
+      await getAllRequests()
+    } else {
+      await getMyRequests()
     }
   }
 
@@ -81,7 +144,7 @@ export function useJobRequests() {
     }
   }
 
-  const createJobRequest = async (requestData: Omit<JobRequest, 'id' | 'submitted_by' | 'organization_id' | 'status' | 'approved_by' | 'created_at' | 'updated_at'>) => {
+  const createJobRequest = async (requestData: Omit<JobRequest, 'id' | 'submitted_by' | 'organization_id' | 'status' | 'approved_by' | 'created_at' | 'updated_at' | 'job_id'>) => {
     if (!user) throw new Error('User not authenticated')
 
     try {
@@ -153,27 +216,38 @@ export function useJobRequests() {
       // First get the job request details
       const jobRequest = await getJobRequest(id)
       
-      // Update the job request status
-      await updateJobRequest(id, {
-        status: 'approved',
-        approved_by: user.id
-      })
+      // Check if already approved (duplicate prevention)
+      if (jobRequest.status === 'approved' || jobRequest.job_id) {
+        throw new Error('Job request has already been approved')
+      }
 
       // Create a new job from the approved request
-      const { error: jobInsertError } = await supabase
+      const { data: newJob, error: jobInsertError } = await supabase
         .from('jobs')
         .insert({
           title: jobRequest.title,
           description: jobRequest.description,
           department: jobRequest.department,
-          level: `${jobRequest.level} - ${jobRequest.level === 'L1' ? 'Specialists' : jobRequest.level === 'L2' ? 'Managers' : 'Directors / VPs / Executive Search'}`,
+          level: LEVEL_MAPPING[jobRequest.level],
           location: jobRequest.location,
+          salary_min: jobRequest.salary_min,
+          salary_max: jobRequest.salary_max,
+          currency: jobRequest.currency,
           organization_id: jobRequest.organization_id,
           created_by: user.id,
           status: 'draft'
         })
+        .select()
+        .single()
 
       if (jobInsertError) throw jobInsertError
+
+      // Update the job request status and link to the created job
+      await updateJobRequest(id, {
+        status: 'approved',
+        approved_by: user.id,
+        job_id: newJob.id
+      })
 
       toast({
         title: 'Success',
@@ -235,6 +309,8 @@ export function useJobRequests() {
     isLoading,
     error,
     getJobRequests,
+    getMyRequests,
+    getAllRequests,
     getJobRequest,
     createJobRequest,
     updateJobRequest,
