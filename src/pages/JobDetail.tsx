@@ -159,7 +159,7 @@ export default function JobDetail() {
                 <div>
                   <h1 className="text-3xl font-bold tracking-tight">{job.title}</h1>
                   <p className="text-muted-foreground mt-token-sm">
-                    {job.organization_name} • {job.level}
+                    {job.organization_name || 'Organization'} • {job.level}
                   </p>
                 </div>
                 

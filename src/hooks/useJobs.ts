@@ -17,6 +17,7 @@ export interface Job {
   status: 'draft' | 'open' | 'closed' | 'archived'
   hiring_team: any[] | null
   organization_id: string
+  organization_name?: string
   created_by: string | null
   created_at: string
   updated_at: string
@@ -66,7 +67,10 @@ export function useJobs() {
       // With RLS enabled, the query will automatically filter by organization
       const { data, error: fetchError } = await supabase
         .from('jobs')
-        .select('*')
+        .select(`
+          *,
+          organizations!inner(name)
+        `)
         .order('created_at', { ascending: false })
 
       if (fetchError) {
@@ -81,7 +85,15 @@ export function useJobs() {
       }
 
       console.log('Fetched jobs:', data)
-      setJobs(data || [])
+      
+      // Transform the data to match our Job interface
+      const transformedJobs = data?.map(job => ({
+        ...job,
+        hiring_team: Array.isArray(job.hiring_team) ? job.hiring_team : [],
+        organization_name: job.organizations?.name || ''
+      })) || []
+      
+      setJobs(transformedJobs)
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch jobs'
       console.error('Jobs fetch error:', err)
@@ -91,6 +103,52 @@ export function useJobs() {
         description: errorMessage,
         variant: 'destructive'
       })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const getJob = async (id: string): Promise<Job> => {
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      console.log('Fetching job:', id)
+      
+      const { data, error: fetchError } = await supabase
+        .from('jobs')
+        .select(`
+          *,
+          organizations!inner(name)
+        `)
+        .eq('id', id)
+        .single()
+
+      if (fetchError) {
+        console.error('Error fetching job:', fetchError)
+        throw fetchError
+      }
+
+      console.log('Fetched job:', data)
+      
+      // Transform the data to match our Job interface
+      const transformedJob = {
+        ...data,
+        hiring_team: Array.isArray(data.hiring_team) ? data.hiring_team : [],
+        organization_name: data.organizations?.name || ''
+      }
+      
+      return transformedJob
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch job'
+      console.error('Job fetch error:', err)
+      setError(errorMessage)
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive'
+      })
+      throw err
     } finally {
       setIsLoading(false)
     }
@@ -188,6 +246,47 @@ export function useJobs() {
     }
   }
 
+  const archiveJob = async (id: string) => {
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      console.log('Archiving job:', id)
+      const { data: archivedJob, error: archiveError } = await supabase
+        .from('jobs')
+        .update({ status: 'archived' })
+        .eq('id', id)
+        .select()
+        .single()
+
+      if (archiveError) {
+        console.error('Error archiving job:', archiveError)
+        throw archiveError
+      }
+
+      console.log('Archived job:', archivedJob)
+      toast({
+        title: 'Success',
+        description: 'Job archived successfully'
+      })
+
+      await getJobs() // Refresh the list
+      return archivedJob
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to archive job'
+      console.error('Job archive error:', err)
+      setError(errorMessage)
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive'
+      })
+      throw err
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   const deleteJob = async (id: string) => {
     setIsLoading(true)
     setError(null)
@@ -237,8 +336,10 @@ export function useJobs() {
     isLoading,
     error,
     getJobs,
+    getJob,
     createJob,
     updateJob,
+    archiveJob,
     deleteJob
   }
 }
