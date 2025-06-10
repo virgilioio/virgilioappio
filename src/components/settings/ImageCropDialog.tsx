@@ -26,7 +26,7 @@ export function ImageCropDialog({ isOpen, onClose, imageUrl, onCropComplete, fil
       makeAspectCrop(
         {
           unit: '%',
-          width: 90,
+          width: 80,
         },
         1, // 1:1 aspect ratio for square
         width,
@@ -94,12 +94,12 @@ export function ImageCropDialog({ isOpen, onClose, imageUrl, onCropComplete, fil
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-hidden">
         <DialogHeader>
           <DialogTitle>Crop Profile Picture</DialogTitle>
         </DialogHeader>
         
-        <div className="flex justify-center">
+        <div className="flex justify-center overflow-hidden">
           <ReactCrop
             crop={crop}
             onChange={(_, percentCrop) => setCrop(percentCrop)}
@@ -112,12 +112,12 @@ export function ImageCropDialog({ isOpen, onClose, imageUrl, onCropComplete, fil
               alt="Crop preview"
               src={imageUrl}
               onLoad={onImageLoad}
-              className="max-w-full max-h-96"
+              className="max-w-full max-h-[50vh] object-contain"
             />
           </ReactCrop>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="gap-2">
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
