@@ -9,6 +9,61 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      candidate_comments: {
+        Row: {
+          author_id: string
+          candidate_id: string
+          content: string
+          created_at: string | null
+          id: string
+          job_id: string
+          organization_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          author_id: string
+          candidate_id: string
+          content: string
+          created_at?: string | null
+          id?: string
+          job_id: string
+          organization_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          author_id?: string
+          candidate_id?: string
+          content?: string
+          created_at?: string | null
+          id?: string
+          job_id?: string
+          organization_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidate_comments_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "job_candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "candidate_comments_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "candidate_comments_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoices: {
         Row: {
           amount: number
