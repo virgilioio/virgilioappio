@@ -20,12 +20,13 @@ export interface PermissionsState {
   canManageMembers: boolean
   canCreateJobs: boolean
   canRequestJobs: boolean
+  canViewJobs: boolean
+  canEditJobs: boolean
+  canArchiveJobs: boolean
   canViewBilling: boolean
   canManageOrganization: boolean
   canInviteMembers: boolean
   canDeleteMembers: boolean
-  canEditJobs: boolean
-  canArchiveJobs: boolean
 }
 
 export function usePermissions(): PermissionsState {
@@ -53,12 +54,13 @@ export function usePermissions(): PermissionsState {
   const canManageMembers = isWorkspaceOwner || isAdmin
   const canCreateJobs = isRecruiter || isWorkspaceOwner || isPlatformAdmin
   const canRequestJobs = isMember
+  const canViewJobs = isMember || isGuest
+  const canEditJobs = isRecruiter || isWorkspaceOwner || isPlatformAdmin
+  const canArchiveJobs = canEditJobs
   const canViewBilling = isBilling || isWorkspaceOwner || isPlatformAdmin
   const canManageOrganization = isWorkspaceOwner || isPlatformAdmin
   const canInviteMembers = canManageMembers
   const canDeleteMembers = isWorkspaceOwner || isPlatformAdmin
-  const canEditJobs = isRecruiter || isWorkspaceOwner || isPlatformAdmin
-  const canArchiveJobs = canEditJobs
   
   return {
     // Role-based
@@ -79,11 +81,12 @@ export function usePermissions(): PermissionsState {
     canManageMembers,
     canCreateJobs,
     canRequestJobs,
+    canViewJobs,
+    canEditJobs,
+    canArchiveJobs,
     canViewBilling,
     canManageOrganization,
     canInviteMembers,
     canDeleteMembers,
-    canEditJobs,
-    canArchiveJobs,
   }
 }

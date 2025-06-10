@@ -13,6 +13,8 @@ import NotFound from "./pages/NotFound";
 
 const Organizations = lazy(() => import("./pages/Organizations"));
 const Members = lazy(() => import("./pages/Members"));
+const Jobs = lazy(() => import("./pages/Jobs"));
+const JobDetail = lazy(() => import("./pages/JobDetail"));
 
 const queryClient = new QueryClient();
 
@@ -39,6 +41,22 @@ const App = () => (
               element={
                 <Suspense fallback={<div>Loading...</div>}>
                   <Members />
+                </Suspense>
+              } 
+            />
+            <Route 
+              path="/jobs" 
+              element={
+                <Suspense fallback={<div>Loading...</div>}>
+                  <Jobs />
+                </Suspense>
+              } 
+            />
+            <Route 
+              path="/jobs/:id" 
+              element={
+                <Suspense fallback={<div>Loading...</div>}>
+                  <JobDetail />
                 </Suspense>
               } 
             />

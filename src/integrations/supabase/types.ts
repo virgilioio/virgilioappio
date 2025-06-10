@@ -9,6 +9,68 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      jobs: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          currency: string | null
+          department: string | null
+          description: string | null
+          hiring_team: Json | null
+          id: string
+          level: Database["public"]["Enums"]["job_level"]
+          location: string | null
+          organization_id: string
+          salary_max: number | null
+          salary_min: number | null
+          status: Database["public"]["Enums"]["job_status"]
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          currency?: string | null
+          department?: string | null
+          description?: string | null
+          hiring_team?: Json | null
+          id?: string
+          level: Database["public"]["Enums"]["job_level"]
+          location?: string | null
+          organization_id: string
+          salary_max?: number | null
+          salary_min?: number | null
+          status?: Database["public"]["Enums"]["job_status"]
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          currency?: string | null
+          department?: string | null
+          description?: string | null
+          hiring_team?: Json | null
+          id?: string
+          level?: Database["public"]["Enums"]["job_level"]
+          location?: string | null
+          organization_id?: string
+          salary_max?: number | null
+          salary_min?: number | null
+          status?: Database["public"]["Enums"]["job_status"]
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jobs_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       members: {
         Row: {
           created_at: string | null
@@ -88,6 +150,12 @@ export type Database = {
       }
     }
     Enums: {
+      job_level:
+        | "L1 - Specialists"
+        | "L2 - Managers"
+        | "L3 - Directors / VPs / Executive Search"
+        | "L4 - C-Level"
+      job_status: "draft" | "open" | "closed" | "archived"
       member_role:
         | "recruiter"
         | "customer_success"
@@ -209,6 +277,13 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      job_level: [
+        "L1 - Specialists",
+        "L2 - Managers",
+        "L3 - Directors / VPs / Executive Search",
+        "L4 - C-Level",
+      ],
+      job_status: ["draft", "open", "closed", "archived"],
       member_role: [
         "recruiter",
         "customer_success",

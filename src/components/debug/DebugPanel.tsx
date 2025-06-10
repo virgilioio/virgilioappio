@@ -1,282 +1,138 @@
-import { useState } from "react";
-import { useLocation } from "react-router-dom";
-import { ChevronDown, ChevronUp, Code2, Monitor, User, Globe, Shield, Building2, Users } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { useAuth } from "@/contexts/AuthContext";
-import { usePermissions } from "@/hooks/usePermissions";
-import { useMembers } from "@/hooks/useMembers";
+
+import { useState } from 'react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Separator } from '@/components/ui/separator'
+import { Bug, X, Eye, EyeOff } from 'lucide-react'
+import { useAuth } from '@/contexts/AuthContext'
+import { usePermissions } from '@/hooks/usePermissions'
+import { useMembers } from '@/hooks/useMembers'
+import { useOrganizations } from '@/hooks/useOrganizations'
+import { useJobs } from '@/hooks/useJobs'
 
 export function DebugPanel() {
-  const [isOpen, setIsOpen] = useState(false);
-  const location = useLocation();
-  const { user, isAuthenticated, isLoading } = useAuth();
-  const permissions = usePermissions();
-  const { members } = useMembers();
-  
-  // Only show in development
-  if (import.meta.env.PROD) {
-    return null;
+  const [isOpen, setIsOpen] = useState(false)
+  const [isMinimized, setIsMinimized] = useState(false)
+  const { user } = useAuth()
+  const permissions = usePermissions()
+  const { members } = useMembers()
+  const { organizations } = useOrganizations()
+  const { jobs } = useJobs()
+
+  if (!isOpen) {
+    return (
+      <Button
+        onClick={() => setIsOpen(true)}
+        className="fixed bottom-4 right-4 z-50"
+        size="icon"
+        variant="outline"
+      >
+        <Bug className="h-4 w-4" />
+      </Button>
+    )
   }
 
-  const debugInfo = {
-    currentRoute: location.pathname,
-    user: user?.email || null,
-    authStatus: isLoading ? 'loading' : (isAuthenticated ? 'authenticated' : 'unauthenticated'),
-    environment: import.meta.env.MODE,
-    version: "1.0.0-alpha",
-    buildTime: new Date().toLocaleString(),
-    supabaseConnected: true
-  };
-
-  const rolePermissions = {
-    isPlatformAdmin: permissions.isPlatformAdmin,
-    isWorkspaceOwner: permissions.isWorkspaceOwner,
-    isMember: permissions.isMember,
-    isGuest: permissions.isGuest,
-  };
-
-  const subRolePermissions = {
-    isRecruiter: permissions.isRecruiter,
-    isCustomerSuccess: permissions.isCustomerSuccess,
-    isBilling: permissions.isBilling,
-    isSales: permissions.isSales,
-    isAdmin: permissions.isAdmin,
-  };
-
-  const actionPermissions = {
-    canViewMembers: permissions.canViewMembers,
-    canManageMembers: permissions.canManageMembers,
-    canCreateJobs: permissions.canCreateJobs,
-    canViewBilling: permissions.canViewBilling,
-    canManageOrganization: permissions.canManageOrganization,
-  };
-
-  // Organization access scope
-  const organizationScope = permissions.isPlatformAdmin ? 'All Organizations' : 
-                           permissions.isWorkspaceOwner ? 'Own Organization' : 
-                           'No Organization Access';
-
-  // Current user's member info
-  const currentUserMember = members.find(member => member.user_id === user?.id);
-
-  const PermissionBadge = ({ label, hasPermission }: { label: string, hasPermission: boolean }) => (
-    <div className="flex items-center justify-between text-xs">
-      <span>{label}:</span>
-      <Badge variant={hasPermission ? 'default' : 'secondary'} className="text-xs">
-        {hasPermission ? '✓' : '✗'}
-      </Badge>
-    </div>
-  );
-
   return (
-    <div className="fixed top-4 right-4 z-50">
-      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-        <CollapsibleTrigger asChild>
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-token-sm bg-surface-primary border-2 shadow-lg"
-          >
-            <Code2 className="h-4 w-4" />
-            Debug
-            {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-          </Button>
-        </CollapsibleTrigger>
-        
-        <CollapsibleContent className="mt-2">
-          <Card className="w-80 bg-surface-primary border-2 shadow-xl">
-            <CardHeader className="py-token-md">
-              <CardTitle className="text-sm flex items-center gap-token-sm">
-                <Monitor className="h-4 w-4" />
-                Development Debug Panel
-              </CardTitle>
-            </CardHeader>
-            
-            <CardContent className="space-y-token-md py-token-md">
-              {/* Current Route */}
-              <div className="space-y-token-xs">
-                <div className="flex items-center gap-token-sm text-xs font-medium text-muted-foreground">
-                  <Globe className="h-3 w-3" />
-                  Current Route
-                </div>
-                <Badge variant="secondary" className="font-mono text-xs">
-                  {debugInfo.currentRoute}
-                </Badge>
-              </div>
+    <Card className="fixed bottom-4 right-4 z-50 w-80 max-h-96 overflow-hidden">
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm">Debug Panel</CardTitle>
+          <div className="flex gap-1">
+            <Button
+              onClick={() => setIsMinimized(!isMinimized)}
+              size="icon"
+              variant="ghost"
+              className="h-6 w-6"
+            >
+              {isMinimized ? <Eye className="h-3 w-3" /> : <EyeOff className="h-3 w-3" />}
+            </Button>
+            <Button
+              onClick={() => setIsOpen(false)}
+              size="icon"
+              variant="ghost"
+              className="h-6 w-6"
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+      
+      {!isMinimized && (
+        <CardContent className="pt-0 text-xs space-y-3 max-h-80 overflow-y-auto">
+          <div>
+            <h4 className="font-semibold mb-1">User Info</h4>
+            <p>Email: {user?.email}</p>
+            <p>ID: {user?.id}</p>
+            <p>Type: {user?.user_metadata?.user_type || 'guest'}</p>
+            <p>Role: {user?.user_metadata?.member_role || 'member'}</p>
+          </div>
 
-              {/* User Status */}
-              <div className="space-y-token-xs">
-                <div className="flex items-center gap-token-sm text-xs font-medium text-muted-foreground">
-                  <User className="h-3 w-3" />
-                  Authentication
-                </div>
-                <div className="space-y-1">
-                  <Badge 
-                    variant={debugInfo.authStatus === 'authenticated' ? 'default' : 
-                            debugInfo.authStatus === 'loading' ? 'secondary' : 'destructive'}
-                    className="text-xs"
-                  >
-                    {debugInfo.authStatus}
-                  </Badge>
-                  {debugInfo.user && (
-                    <div className="text-xs bg-muted px-token-sm py-token-xs rounded font-mono">
-                      {debugInfo.user}
-                    </div>
-                  )}
-                </div>
-              </div>
+          <Separator />
 
-              {/* Member Information */}
-              {isAuthenticated && currentUserMember && (
-                <div className="space-y-token-xs">
-                  <div className="flex items-center gap-token-sm text-xs font-medium text-muted-foreground">
-                    <Users className="h-3 w-3" />
-                    Member Info
-                  </div>
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-xs">
-                      <span>Role:</span>
-                      <Badge variant="outline" className="text-xs">
-                        {currentUserMember.member_role.replace('_', ' ')}
-                      </Badge>
-                    </div>
-                    <div className="flex justify-between text-xs">
-                      <span>Status:</span>
-                      <Badge variant={currentUserMember.user_status === 'active' ? 'default' : 'secondary'} className="text-xs">
-                        {currentUserMember.user_status}
-                      </Badge>
-                    </div>
-                    <div className="flex justify-between text-xs">
-                      <span>Organization:</span>
-                      <span className="text-xs bg-muted px-1 rounded">{currentUserMember.organization_name}</span>
-                    </div>
-                  </div>
-                </div>
-              )}
+          <div>
+            <h4 className="font-semibold mb-1">Data Counts</h4>
+            <p>Organizations: {organizations.length}</p>
+            <p>Members: {members.length}</p>
+            <p>Jobs: {jobs.length}</p>
+          </div>
 
-              {/* Organization Access */}
-              {isAuthenticated && (
-                <div className="space-y-token-xs">
-                  <div className="flex items-center gap-token-sm text-xs font-medium text-muted-foreground">
-                    <Building2 className="h-3 w-3" />
-                    Organization Access
-                  </div>
-                  <Badge variant="outline" className="text-xs">
-                    {organizationScope}
-                  </Badge>
-                </div>
-              )}
+          <Separator />
 
-              {/* Accessible Members Count */}
-              {isAuthenticated && (
-                <div className="space-y-token-xs">
-                  <div className="flex items-center gap-token-sm text-xs font-medium text-muted-foreground">
-                    <Users className="h-3 w-3" />
-                    Members Access
-                  </div>
-                  <div className="flex justify-between text-xs">
-                    <span>Visible Members:</span>
-                    <Badge variant="outline" className="text-xs">
-                      {members.length}
-                    </Badge>
-                  </div>
-                </div>
-              )}
+          <div>
+            <h4 className="font-semibold mb-1">Core Permissions</h4>
+            <div className="flex flex-wrap gap-1">
+              <Badge variant={permissions.isPlatformAdmin ? "default" : "secondary"}>
+                Platform Admin
+              </Badge>
+              <Badge variant={permissions.isWorkspaceOwner ? "default" : "secondary"}>
+                Workspace Owner
+              </Badge>
+              <Badge variant={permissions.isMember ? "default" : "secondary"}>
+                Member
+              </Badge>
+              <Badge variant={permissions.isGuest ? "default" : "secondary"}>
+                Guest
+              </Badge>
+            </div>
+          </div>
 
-              {/* Permissions */}
-              {isAuthenticated && (
-                <div className="space-y-token-xs">
-                  <div className="flex items-center gap-token-sm text-xs font-medium text-muted-foreground">
-                    <Shield className="h-3 w-3" />
-                    Permissions
-                  </div>
-                  
-                  {/* Role Permissions */}
-                  <div className="space-y-1">
-                    <div className="text-xs font-medium text-muted-foreground">Roles</div>
-                    <div className="space-y-1 bg-muted/50 p-token-sm rounded">
-                      {Object.entries(rolePermissions).map(([key, value]) => (
-                        <PermissionBadge 
-                          key={key} 
-                          label={key.replace('is', '')} 
-                          hasPermission={value} 
-                        />
-                      ))}
-                    </div>
-                  </div>
+          <Separator />
 
-                  {/* Sub-role Permissions */}
-                  <div className="space-y-1">
-                    <div className="text-xs font-medium text-muted-foreground">Sub-roles</div>
-                    <div className="space-y-1 bg-muted/50 p-token-sm rounded">
-                      {Object.entries(subRolePermissions).map(([key, value]) => (
-                        <PermissionBadge 
-                          key={key} 
-                          label={key.replace('is', '')} 
-                          hasPermission={value} 
-                        />
-                      ))}
-                    </div>
-                  </div>
+          <div>
+            <h4 className="font-semibold mb-1">Job Permissions</h4>
+            <div className="flex flex-wrap gap-1">
+              <Badge variant={permissions.canViewJobs ? "default" : "secondary"}>
+                View Jobs
+              </Badge>
+              <Badge variant={permissions.canCreateJobs ? "default" : "secondary"}>
+                Create Jobs
+              </Badge>
+              <Badge variant={permissions.canEditJobs ? "default" : "secondary"}>
+                Edit Jobs
+              </Badge>
+              <Badge variant={permissions.canArchiveJobs ? "default" : "secondary"}>
+                Archive Jobs
+              </Badge>
+            </div>
+          </div>
 
-                  {/* Action Permissions */}
-                  <div className="space-y-1">
-                    <div className="text-xs font-medium text-muted-foreground">Actions</div>
-                    <div className="space-y-1 bg-muted/50 p-token-sm rounded">
-                      {Object.entries(actionPermissions).map(([key, value]) => (
-                        <PermissionBadge 
-                          key={key} 
-                          label={key.replace('can', '')} 
-                          hasPermission={value} 
-                        />
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
+          <Separator />
 
-              {/* Environment Info */}
-              <div className="space-y-token-xs">
-                <div className="text-xs font-medium text-muted-foreground">Environment</div>
-                <div className="space-y-1">
-                  <div className="flex justify-between text-xs">
-                    <span>Mode:</span>
-                    <Badge variant={debugInfo.environment === 'development' ? 'default' : 'secondary'}>
-                      {debugInfo.environment}
-                    </Badge>
-                  </div>
-                  <div className="flex justify-between text-xs">
-                    <span>Version:</span>
-                    <code className="text-xs bg-muted px-1 rounded">{debugInfo.version}</code>
-                  </div>
-                  <div className="flex justify-between text-xs">
-                    <span>Supabase:</span>
-                    <Badge variant={debugInfo.supabaseConnected ? 'default' : 'destructive'}>
-                      {debugInfo.supabaseConnected ? 'Connected' : 'Not configured'}
-                    </Badge>
-                  </div>
-                </div>
-              </div>
-
-              {/* Quick Actions */}
-              <div className="space-y-token-xs pt-token-sm border-t">
-                <div className="text-xs font-medium text-muted-foreground">Quick Actions</div>
-                <div className="grid grid-cols-2 gap-token-sm">
-                  <Button variant="outline" size="sm" className="text-xs h-8">
-                    Clear Cache
-                  </Button>
-                  <Button variant="outline" size="sm" className="text-xs h-8">
-                    View Logs
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </CollapsibleContent>
-      </Collapsible>
-    </div>
-  );
+          <div>
+            <h4 className="font-semibold mb-1">Member Permissions</h4>
+            <div className="flex flex-wrap gap-1">
+              <Badge variant={permissions.canViewMembers ? "default" : "secondary"}>
+                View Members
+              </Badge>
+              <Badge variant={permissions.canManageMembers ? "default" : "secondary"}>
+                Manage Members
+              </Badge>
+            </div>
+          </div>
+        </CardContent>
+      )}
+    </Card>
+  )
 }
