@@ -15,6 +15,7 @@ export type Database = {
           created_at: string
           currency: string
           due_date: string | null
+          file_name: string | null
           id: string
           invoice_url: string | null
           issued_at: string
@@ -28,6 +29,7 @@ export type Database = {
           created_at?: string
           currency?: string
           due_date?: string | null
+          file_name?: string | null
           id?: string
           invoice_url?: string | null
           issued_at?: string
@@ -41,6 +43,7 @@ export type Database = {
           created_at?: string
           currency?: string
           due_date?: string | null
+          file_name?: string | null
           id?: string
           invoice_url?: string | null
           issued_at?: string

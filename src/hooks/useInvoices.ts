@@ -16,6 +16,7 @@ export interface Invoice {
   due_date?: string
   created_at: string
   updated_at: string
+  file_name?: string
 }
 
 export function useInvoices() {
@@ -59,6 +60,10 @@ export function useInvoices() {
     }
   }
 
+  const refreshInvoices = () => {
+    getInvoices()
+  }
+
   useEffect(() => {
     if (user) {
       getInvoices()
@@ -69,6 +74,7 @@ export function useInvoices() {
     invoices,
     isLoading,
     error,
-    getInvoices
+    getInvoices,
+    refreshInvoices
   }
 }
