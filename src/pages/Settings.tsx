@@ -1,13 +1,8 @@
 
-import { useState, useEffect } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { AuthGate } from '@/components/auth/AuthGate'
 import { PermissionGate } from '@/components/auth/PermissionGate'
 import { useAuth } from '@/contexts/AuthContext'
-import { useOrganizations } from '@/hooks/useOrganizations'
-import { useUserProfile } from '@/hooks/useUserProfile'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { User, Building, Receipt, Users, ArrowLeft, LogOut } from 'lucide-react'
@@ -18,23 +13,20 @@ import { ProfileTab } from '@/components/settings/ProfileTab'
 import { OrganizationTab } from '@/components/settings/OrganizationTab'
 import { BillingTab } from '@/components/settings/BillingTab'
 import { MembersTab } from '@/components/settings/MembersTab'
+import { usePermissions } from '@/hooks/usePermissions'
 
 const VALID_TABS = ['profile', 'organization', 'billing', 'members'] as const
 type ValidTab = typeof VALID_TABS[number]
 
 export default function Settings() {
   const { user, logout } = useAuth()
-  const { organizations, isLoading } = useOrganizations()
-  const { profile, isLoading: profileLoading } = useUserProfile()
+  const permissions = usePermissions()
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
   
   // Get tab from URL or default to 'profile'
   const urlTab = searchParams.get('tab')
   const currentTab = VALID_TABS.includes(urlTab as ValidTab) ? (urlTab as ValidTab) : 'profile'
-  
-  // Get the first organization for demo purposes - in a real app this would be based on user's organization
-  const userOrganization = organizations?.[0]
 
   const handleTabChange = (tab: string) => {
     setSearchParams({ tab })
@@ -59,6 +51,32 @@ export default function Settings() {
   const handleBackToDashboard = () => {
     navigate('/')
   }
+
+  // Filter available tabs based on permissions
+  const availableTabs = [
+    { id: 'profile', label: 'My Profile', icon: User, component: ProfileTab, show: true },
+    { 
+      id: 'organization', 
+      label: 'Organization', 
+      icon: Building, 
+      component: OrganizationTab, 
+      show: permissions.canManageOrganization 
+    },
+    { 
+      id: 'billing', 
+      label: 'Billing', 
+      icon: Receipt, 
+      component: BillingTab, 
+      show: permissions.canViewBilling 
+    },
+    { 
+      id: 'members', 
+      label: 'Members', 
+      icon: Users, 
+      component: MembersTab, 
+      show: permissions.canViewMembers 
+    },
+  ].filter(tab => tab.show)
 
   return (
     <AuthGate>
@@ -97,57 +115,42 @@ export default function Settings() {
             </div>
           </div>
 
-          <Tabs value={currentTab} onValueChange={handleTabChange} className="space-y-layout-md">
-            <TabsList className="grid w-full max-w-2xl grid-cols-4">
-              <TabsTrigger value="profile" className="flex items-center gap-2">
-                <User className="h-4 w-4" />
-                <span className="hidden sm:inline">My Profile</span>
-              </TabsTrigger>
-              
-              <PermissionGate permission="canManageOrganization">
-                <TabsTrigger value="organization" className="flex items-center gap-2">
-                  <Building className="h-4 w-4" />
-                  <span className="hidden sm:inline">Organization</span>
-                </TabsTrigger>
-              </PermissionGate>
-              
-              <PermissionGate permission="canViewBilling">
-                <TabsTrigger value="billing" className="flex items-center gap-2">
-                  <Receipt className="h-4 w-4" />
-                  <span className="hidden sm:inline">Billing</span>
-                </TabsTrigger>
-              </PermissionGate>
-              
-              <PermissionGate permission="canViewMembers">
-                <TabsTrigger value="members" className="flex items-center gap-2">
-                  <Users className="h-4 w-4" />
-                  <span className="hidden sm:inline">Members</span>
-                </TabsTrigger>
-              </PermissionGate>
-            </TabsList>
+          {/* Sticky Tab Navigation */}
+          <div className="sticky top-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-10 pb-4 mb-layout-md">
+            <Tabs value={currentTab} onValueChange={handleTabChange}>
+              <TabsList className={`grid w-full max-w-2xl grid-cols-${availableTabs.length}`}>
+                {availableTabs.map((tab) => (
+                  <TabsTrigger 
+                    key={tab.id} 
+                    value={tab.id} 
+                    className="flex items-center gap-2 transition-all"
+                  >
+                    <tab.icon className="h-4 w-4" />
+                    <span className="hidden sm:inline">{tab.label}</span>
+                  </TabsTrigger>
+                ))}
+              </TabsList>
 
-            <TabsContent value="profile" className="space-y-layout-md">
-              <ProfileTab />
-            </TabsContent>
+              {/* Tab Content */}
+              <div className="mt-layout-md">
+                <TabsContent value="profile" className="m-0">
+                  <ProfileTab />
+                </TabsContent>
 
-            <PermissionGate permission="canManageOrganization">
-              <TabsContent value="organization" className="space-y-layout-md">
-                <OrganizationTab />
-              </TabsContent>
-            </PermissionGate>
+                <TabsContent value="organization" className="m-0">
+                  <OrganizationTab />
+                </TabsContent>
 
-            <PermissionGate permission="canViewBilling">
-              <TabsContent value="billing" className="space-y-layout-md">
-                <BillingTab />
-              </TabsContent>
-            </PermissionGate>
+                <TabsContent value="billing" className="m-0">
+                  <BillingTab />
+                </TabsContent>
 
-            <PermissionGate permission="canViewMembers">
-              <TabsContent value="members" className="space-y-layout-md">
-                <MembersTab />
-              </TabsContent>
-            </PermissionGate>
-          </Tabs>
+                <TabsContent value="members" className="m-0">
+                  <MembersTab />
+                </TabsContent>
+              </div>
+            </Tabs>
+          </div>
         </AppContainer>
       </Section>
     </AuthGate>
