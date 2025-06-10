@@ -352,6 +352,7 @@ export type Database = {
           created_at: string
           id: string
           name: string
+          organization_type: string
           owner_id: string | null
           status: string
           updated_at: string
@@ -361,6 +362,7 @@ export type Database = {
           created_at?: string
           id?: string
           name: string
+          organization_type?: string
           owner_id?: string | null
           status?: string
           updated_at?: string
@@ -370,6 +372,7 @@ export type Database = {
           created_at?: string
           id?: string
           name?: string
+          organization_type?: string
           owner_id?: string | null
           status?: string
           updated_at?: string
@@ -444,6 +447,7 @@ export type Database = {
         | "billing"
         | "sales"
         | "admin"
+        | "platform_admin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -574,6 +578,7 @@ export const Constants = {
         "billing",
         "sales",
         "admin",
+        "platform_admin",
       ],
     },
   },

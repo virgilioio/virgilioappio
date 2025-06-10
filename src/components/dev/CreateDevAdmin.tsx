@@ -7,7 +7,7 @@ import { toast } from '@/hooks/use-toast'
 export function CreateDevAdmin() {
   const [isCreating, setIsCreating] = useState(false)
 
-  const createDevAdmin = async () => {
+  const createPlatformSetup = async () => {
     setIsCreating(true)
     
     try {
@@ -43,7 +43,7 @@ export function CreateDevAdmin() {
       console.error('Error calling edge function:', error)
       toast({
         title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to create admin user',
+        description: error instanceof Error ? error.message : 'Failed to set up platform',
         variant: 'destructive',
       })
     } finally {
@@ -54,16 +54,19 @@ export function CreateDevAdmin() {
   return (
     <Card className="w-full max-w-md">
       <CardHeader>
-        <CardTitle>Development Setup</CardTitle>
+        <CardTitle>Virgilio Platform Setup</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Create a Platform Admin user for development and testing purposes.
+            Set up Virgilio as the platform organization and create the Platform Admin user.
           </p>
           <div className="space-y-2">
             <p className="text-xs text-muted-foreground">
-              <strong>Email:</strong> allan@virgilio.tech
+              <strong>Organization:</strong> Virgilio (Platform)
+            </p>
+            <p className="text-xs text-muted-foreground">
+              <strong>Admin Email:</strong> allan@virgilio.tech
             </p>
             <p className="text-xs text-muted-foreground">
               <strong>Password:</strong> test1234
@@ -73,11 +76,11 @@ export function CreateDevAdmin() {
             </p>
           </div>
           <Button 
-            onClick={createDevAdmin} 
+            onClick={createPlatformSetup} 
             disabled={isCreating}
             className="w-full"
           >
-            {isCreating ? 'Creating...' : 'Create Dev Admin User'}
+            {isCreating ? 'Setting up...' : 'Set Up Virgilio Platform'}
           </Button>
         </div>
       </CardContent>

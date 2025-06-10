@@ -42,7 +42,7 @@ export interface PermissionsState {
 export function usePermissions(): PermissionsState {
   const { user } = useAuth()
   
-  // Mock user metadata - in real app this would come from Supabase user metadata or database
+  // Get user metadata - in real app this would come from Supabase user metadata or database
   const userType = user?.user_metadata?.user_type || 'guest'
   const memberRole = user?.user_metadata?.member_role || 'member'
   
@@ -50,7 +50,7 @@ export function usePermissions(): PermissionsState {
   const isPlatformAdmin = userType === 'platform_admin'
   const isWorkspaceOwner = userType === 'workspace_owner' || isPlatformAdmin
   const isMember = userType === 'member' || isWorkspaceOwner
-  const isGuest = userType === 'guest'
+  const isGuest = userType === 'guest' && !isPlatformAdmin
   
   // Sub-role permissions
   const isRecruiter = memberRole === 'recruiter'
@@ -59,12 +59,12 @@ export function usePermissions(): PermissionsState {
   const isSales = memberRole === 'sales'
   const isAdmin = memberRole === 'admin' || isPlatformAdmin
   
-  // Action-based permissions (derived from roles)
-  const canViewMembers = isMember
-  const canManageMembers = isWorkspaceOwner || isAdmin
+  // Action-based permissions (platform admin has all permissions)
+  const canViewMembers = isMember || isPlatformAdmin
+  const canManageMembers = isWorkspaceOwner || isAdmin || isPlatformAdmin
   const canCreateJobs = isRecruiter || isWorkspaceOwner || isPlatformAdmin
-  const canRequestJobs = isMember
-  const canViewJobs = isMember || isGuest
+  const canRequestJobs = isMember || isPlatformAdmin
+  const canViewJobs = isMember || isGuest || isPlatformAdmin
   const canEditJobs = isRecruiter || isWorkspaceOwner || isPlatformAdmin
   const canArchiveJobs = canEditJobs
   const canViewBilling = isBilling || isWorkspaceOwner || isPlatformAdmin
@@ -74,7 +74,7 @@ export function usePermissions(): PermissionsState {
   const canDeleteMembers = isWorkspaceOwner || isPlatformAdmin
   
   // Candidate permissions
-  const canViewCandidates = isMember || isGuest
+  const canViewCandidates = isMember || isGuest || isPlatformAdmin
   const canManageCandidates = isRecruiter || isWorkspaceOwner || isPlatformAdmin
   
   // Job Request permissions
