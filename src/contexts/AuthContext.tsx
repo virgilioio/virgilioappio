@@ -7,6 +7,8 @@ interface AuthContextType {
   user: User | null
   isAuthenticated: boolean
   isLoading: boolean
+  organizationId: string | null
+  hasOrganizationContext: boolean
   login: (email: string, password: string) => Promise<{ error?: AuthError }>
   logout: () => Promise<void>
 }
@@ -16,6 +18,10 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+
+  // Derived organization context
+  const organizationId = user?.user_metadata?.organization_id || null
+  const hasOrganizationContext = !!organizationId
 
   useEffect(() => {
     // Get initial session
@@ -51,6 +57,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     user,
     isAuthenticated: !!user,
     isLoading,
+    organizationId,
+    hasOrganizationContext,
     login,
     logout,
   }

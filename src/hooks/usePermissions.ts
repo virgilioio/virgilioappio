@@ -40,7 +40,7 @@ export interface PermissionsState {
 }
 
 export function usePermissions(): PermissionsState {
-  const { user } = useAuth()
+  const { user, hasOrganizationContext } = useAuth()
   
   // Get user metadata - in real app this would come from Supabase user metadata or database
   const userType = user?.user_metadata?.user_type || 'guest'
@@ -59,28 +59,30 @@ export function usePermissions(): PermissionsState {
   const isSales = memberRole === 'sales'
   const isAdmin = memberRole === 'admin' || isPlatformAdmin
   
-  // Action-based permissions (platform admin has all permissions)
-  const canViewMembers = isMember || isPlatformAdmin
-  const canManageMembers = isWorkspaceOwner || isAdmin || isPlatformAdmin
-  const canCreateJobs = isRecruiter || isWorkspaceOwner || isPlatformAdmin
-  const canRequestJobs = isMember || isPlatformAdmin
-  const canViewJobs = isMember || isGuest || isPlatformAdmin
-  const canEditJobs = isRecruiter || isWorkspaceOwner || isPlatformAdmin
+  // Action-based permissions (all require organization context unless platform admin)
+  const hasOrgAccess = hasOrganizationContext || isPlatformAdmin
+  
+  const canViewMembers = hasOrgAccess && (isMember || isPlatformAdmin)
+  const canManageMembers = hasOrgAccess && (isWorkspaceOwner || isAdmin || isPlatformAdmin)
+  const canCreateJobs = hasOrgAccess && (isRecruiter || isWorkspaceOwner || isPlatformAdmin)
+  const canRequestJobs = hasOrgAccess && (isMember || isPlatformAdmin)
+  const canViewJobs = hasOrgAccess && (isMember || isGuest || isPlatformAdmin)
+  const canEditJobs = hasOrgAccess && (isRecruiter || isWorkspaceOwner || isPlatformAdmin)
   const canArchiveJobs = canEditJobs
-  const canViewBilling = isBilling || isWorkspaceOwner || isPlatformAdmin
-  const canManageBilling = isWorkspaceOwner || isPlatformAdmin
-  const canManageOrganization = isWorkspaceOwner || isPlatformAdmin
+  const canViewBilling = hasOrgAccess && (isBilling || isWorkspaceOwner || isPlatformAdmin)
+  const canManageBilling = hasOrgAccess && (isWorkspaceOwner || isPlatformAdmin)
+  const canManageOrganization = hasOrgAccess && (isWorkspaceOwner || isPlatformAdmin)
   const canInviteMembers = canManageMembers
-  const canDeleteMembers = isWorkspaceOwner || isPlatformAdmin
+  const canDeleteMembers = hasOrgAccess && (isWorkspaceOwner || isPlatformAdmin)
   
   // Candidate permissions
-  const canViewCandidates = isMember || isGuest || isPlatformAdmin
-  const canManageCandidates = isRecruiter || isWorkspaceOwner || isPlatformAdmin
+  const canViewCandidates = hasOrgAccess && (isMember || isGuest || isPlatformAdmin)
+  const canManageCandidates = hasOrgAccess && (isRecruiter || isWorkspaceOwner || isPlatformAdmin)
   
   // Job Request permissions
-  const canViewJobRequests = isWorkspaceOwner || isPlatformAdmin
-  const canManageJobRequests = isWorkspaceOwner || isPlatformAdmin
-  const canApproveJobRequests = isPlatformAdmin || isCustomerSuccess
+  const canViewJobRequests = hasOrgAccess && (isWorkspaceOwner || isPlatformAdmin)
+  const canManageJobRequests = hasOrgAccess && (isWorkspaceOwner || isPlatformAdmin)
+  const canApproveJobRequests = hasOrgAccess && (isPlatformAdmin || isCustomerSuccess)
   
   return {
     // Role-based

@@ -1,4 +1,3 @@
-
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -6,7 +5,10 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { AlertTriangle } from 'lucide-react'
 import { JobRequest } from '@/hooks/useJobRequests'
+import { useAuth } from '@/contexts/AuthContext'
 
 interface JobRequestFormProps {
   onSubmit: (data: Omit<JobRequest, 'id' | 'submitted_by' | 'organization_id' | 'status' | 'approved_by' | 'created_at' | 'updated_at' | 'job_id'>) => Promise<void>
@@ -15,6 +17,7 @@ interface JobRequestFormProps {
 }
 
 export function JobRequestForm({ onSubmit, onCancel, isLoading = false }: JobRequestFormProps) {
+  const { hasOrganizationContext, organizationId } = useAuth()
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -55,6 +58,12 @@ export function JobRequestForm({ onSubmit, onCancel, isLoading = false }: JobReq
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
+    // Validate organization context
+    if (!hasOrganizationContext) {
+      setErrors({ form: 'Organization context is required to submit job requests' })
+      return
+    }
+
     if (!validateForm()) return
 
     try {
@@ -94,13 +103,43 @@ export function JobRequestForm({ onSubmit, onCancel, isLoading = false }: JobReq
     }
   }
 
+  // Show organization context warning
+  if (!hasOrganizationContext) {
+    return (
+      <Card className="w-full max-w-2xl mx-auto">
+        <CardHeader>
+          <CardTitle>Request New Job</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Alert variant="destructive">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              Organization context is required to submit job requests. Please contact your administrator.
+            </AlertDescription>
+          </Alert>
+        </CardContent>
+      </Card>
+    )
+  }
+
   return (
     <Card className="w-full max-w-2xl mx-auto">
       <CardHeader>
         <CardTitle>Request New Job</CardTitle>
+        <p className="text-sm text-muted-foreground">
+          Organization: {organizationId}
+        </p>
       </CardHeader>
       <CardContent>
+        {errors.form && (
+          <Alert variant="destructive" className="mb-6">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>{errors.form}</AlertDescription>
+          </Alert>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-6">
+          
           <div className="space-y-2">
             <Label htmlFor="title">Job Title *</Label>
             <Input
@@ -219,7 +258,11 @@ export function JobRequestForm({ onSubmit, onCancel, isLoading = false }: JobReq
           </div>
 
           <div className="flex gap-4 pt-4">
-            <Button type="submit" disabled={isLoading} className="flex-1">
+            <Button 
+              type="submit" 
+              disabled={isLoading || !hasOrganizationContext} 
+              className="flex-1"
+            >
               {isLoading ? 'Submitting...' : 'Submit Request'}
             </Button>
             <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>
