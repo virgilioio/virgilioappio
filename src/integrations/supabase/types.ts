@@ -317,6 +317,7 @@ export type Database = {
           updated_at: string | null
           user_id: string | null
           user_status: string
+          user_type: Database["public"]["Enums"]["user_type_enum"] | null
         }
         Insert: {
           created_at?: string | null
@@ -326,6 +327,7 @@ export type Database = {
           updated_at?: string | null
           user_id?: string | null
           user_status?: string
+          user_type?: Database["public"]["Enums"]["user_type_enum"] | null
         }
         Update: {
           created_at?: string | null
@@ -335,6 +337,7 @@ export type Database = {
           updated_at?: string | null
           user_id?: string | null
           user_status?: string
+          user_type?: Database["public"]["Enums"]["user_type_enum"] | null
         }
         Relationships: [
           {
@@ -423,6 +426,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_user_member_data: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          user_type: string
+          member_role: string
+          organization_id: string
+        }[]
+      }
       get_user_organization_id: {
         Args: Record<PropertyKey, never>
         Returns: string
@@ -460,6 +471,7 @@ export type Database = {
         | "sales"
         | "admin"
         | "platform_admin"
+      user_type_enum: "platform_admin" | "workspace_owner" | "member" | "guest"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -592,6 +604,7 @@ export const Constants = {
         "admin",
         "platform_admin",
       ],
+      user_type_enum: ["platform_admin", "workspace_owner", "member", "guest"],
     },
   },
 } as const

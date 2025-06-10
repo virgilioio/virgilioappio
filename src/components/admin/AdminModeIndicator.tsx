@@ -4,9 +4,8 @@ import { Shield, Building2 } from "lucide-react"
 import { useAuth } from "@/contexts/AuthContext"
 
 export function AdminModeIndicator() {
-  const { user } = useAuth()
+  const { userType } = useAuth()
   
-  const userType = user?.user_metadata?.user_type
   const isPlatformAdmin = userType === 'platform_admin'
   
   if (!isPlatformAdmin) {

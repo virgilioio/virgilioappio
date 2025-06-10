@@ -40,19 +40,15 @@ export interface PermissionsState {
 }
 
 export function usePermissions(): PermissionsState {
-  const { user, hasOrganizationContext } = useAuth()
+  const { userType, memberRole, hasOrganizationContext } = useAuth()
   
-  // Get user metadata - in real app this would come from Supabase user metadata or database
-  const userType = user?.user_metadata?.user_type || 'guest'
-  const memberRole = user?.user_metadata?.member_role || 'member'
-  
-  // Role-based permissions
+  // Role-based permissions (from user_type)
   const isPlatformAdmin = userType === 'platform_admin'
   const isWorkspaceOwner = userType === 'workspace_owner' || isPlatformAdmin
   const isMember = userType === 'member' || isWorkspaceOwner
   const isGuest = userType === 'guest' && !isPlatformAdmin
   
-  // Sub-role permissions
+  // Sub-role permissions (from member_role)
   const isRecruiter = memberRole === 'recruiter'
   const isCustomerSuccess = memberRole === 'customer_success'
   const isBilling = memberRole === 'billing'

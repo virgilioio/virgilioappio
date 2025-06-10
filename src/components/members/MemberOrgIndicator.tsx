@@ -9,8 +9,8 @@ interface MemberOrgIndicatorProps {
 }
 
 export function MemberOrgIndicator({ organizationName, currentUserOrgId }: MemberOrgIndicatorProps) {
-  const { user, organizationId } = useAuth()
-  const isPlatformAdmin = user?.user_metadata?.user_type === 'platform_admin'
+  const { userType, organizationId } = useAuth()
+  const isPlatformAdmin = userType === 'platform_admin'
   
   // Don't show indicator for platform admins in their own org context
   if (!isPlatformAdmin) {
