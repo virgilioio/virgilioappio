@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { Menu, X, LogOut, User } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useAuth } from '@/contexts/AuthContext'
+import { useUserProfile } from '@/hooks/useUserProfile'
 import { usePermissions } from '@/hooks/usePermissions'
 import { PermissionGate } from '@/components/auth/PermissionGate'
 import { cn } from '@/lib/utils'
@@ -25,6 +26,7 @@ interface NavItem {
 export function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const { user, logout } = useAuth()
+  const { profile } = useUserProfile()
   const permissions = usePermissions()
   const location = useLocation()
 
@@ -41,6 +43,12 @@ export function Header() {
   }
 
   const getUserInitials = () => {
+    if (profile?.first_name && profile?.last_name) {
+      return `${profile.first_name.charAt(0)}${profile.last_name.charAt(0)}`.toUpperCase()
+    }
+    if (profile?.first_name) {
+      return profile.first_name.substring(0, 2).toUpperCase()
+    }
     if (!user?.email) return 'U'
     return user.email.substring(0, 2).toUpperCase()
   }
@@ -108,6 +116,7 @@ export function Header() {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                   <Avatar className="h-10 w-10">
+                    <AvatarImage src={profile?.avatar_url || ''} />
                     <AvatarFallback className="bg-accent text-accent-foreground font-medium">
                       {getUserInitials()}
                     </AvatarFallback>
