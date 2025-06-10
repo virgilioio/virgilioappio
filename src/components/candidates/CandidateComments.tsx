@@ -115,7 +115,7 @@ export function CandidateComments({ candidateId, jobId, organizationId }: Candid
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <span className="font-medium">User</span>
+                      <span className="font-medium">{comment.author_email}</span>
                       <span>•</span>
                       <span>{formatDate(comment.created_at)}</span>
                     </div>

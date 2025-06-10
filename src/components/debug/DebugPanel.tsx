@@ -13,6 +13,7 @@ import { useOrganizations } from '@/hooks/useOrganizations'
 import { useJobs } from '@/hooks/useJobs'
 import { useCandidates } from '@/hooks/useCandidates'
 import { useJobRequests } from '@/hooks/useJobRequests'
+import { useCandidateComments } from '@/hooks/useCandidateComments'
 
 export function DebugPanel() {
   const [isOpen, setIsOpen] = useState(false)
@@ -30,6 +31,10 @@ export function DebugPanel() {
   
   // Only call useCandidates when we have a valid jobId
   const { candidates } = useCandidates(jobId || '')
+  
+  // Get comments for the first candidate if we're on a job detail page
+  const firstCandidateId = candidates.length > 0 ? candidates[0].id : undefined
+  const { comments } = useCandidateComments(firstCandidateId)
 
   if (!isOpen) {
     return (
@@ -89,7 +94,13 @@ export function DebugPanel() {
             <p>Jobs: {jobs.length}</p>
             <p>Job Requests: {jobRequests.length}</p>
             {jobId && (
-              <p>Candidates: {candidates.length}</p>
+              <>
+                <p>Candidates: {candidates.length}</p>
+                <p>Comments: {comments.length}</p>
+                {firstCandidateId && (
+                  <p>Candidate ID: {firstCandidateId.slice(0, 8)}...</p>
+                )}
+              </>
             )}
           </div>
 

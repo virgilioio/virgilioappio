@@ -10,6 +10,7 @@ export interface CandidateComment {
   job_id: string
   organization_id: string
   author_id: string
+  author_email: string
   content: string
   created_at: string
   updated_at: string
@@ -72,7 +73,8 @@ export function useCandidateComments(candidateId?: string) {
       console.log('Adding comment:', data)
       const commentData = {
         ...data,
-        author_id: user?.id
+        author_id: user?.id,
+        author_email: user?.email || 'unknown@example.com'
       }
 
       const { data: newComment, error: createError } = await supabase

@@ -11,6 +11,7 @@ export type Database = {
     Tables: {
       candidate_comments: {
         Row: {
+          author_email: string
           author_id: string
           candidate_id: string
           content: string
@@ -21,6 +22,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          author_email?: string
           author_id: string
           candidate_id: string
           content: string
@@ -31,6 +33,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          author_email?: string
           author_id?: string
           candidate_id?: string
           content?: string
@@ -60,6 +63,13 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fk_candidate_comments_candidate_id"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "job_candidates"
             referencedColumns: ["id"]
           },
         ]
