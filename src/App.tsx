@@ -17,6 +17,7 @@ const Organizations = lazy(() => import("./pages/Organizations"));
 const Members = lazy(() => import("./pages/Members"));
 const Jobs = lazy(() => import("./pages/Jobs"));
 const JobDetail = lazy(() => import("./pages/JobDetail"));
+const JobRequests = lazy(() => import("./pages/JobRequests"));
 
 const queryClient = new QueryClient();
 
@@ -84,6 +85,16 @@ const App = () => (
                 <Layout>
                   <Suspense fallback={<div>Loading...</div>}>
                     <JobDetail />
+                  </Suspense>
+                </Layout>
+              } 
+            />
+            <Route 
+              path="/job-requests" 
+              element={
+                <Layout>
+                  <Suspense fallback={<div>Loading...</div>}>
+                    <JobRequests />
                   </Suspense>
                 </Layout>
               } 

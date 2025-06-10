@@ -12,6 +12,7 @@ import { useMembers } from '@/hooks/useMembers'
 import { useOrganizations } from '@/hooks/useOrganizations'
 import { useJobs } from '@/hooks/useJobs'
 import { useCandidates } from '@/hooks/useCandidates'
+import { useJobRequests } from '@/hooks/useJobRequests'
 
 export function DebugPanel() {
   const [isOpen, setIsOpen] = useState(false)
@@ -22,6 +23,7 @@ export function DebugPanel() {
   const { members } = useMembers()
   const { organizations } = useOrganizations()
   const { jobs } = useJobs()
+  const { jobRequests } = useJobRequests()
   
   // Extract job ID from current route if on job detail page
   const jobId = location.pathname.startsWith('/jobs/') ? location.pathname.split('/')[2] : undefined
@@ -85,6 +87,7 @@ export function DebugPanel() {
             <p>Organizations: {organizations.length}</p>
             <p>Members: {members.length}</p>
             <p>Jobs: {jobs.length}</p>
+            <p>Job Requests: {jobRequests.length}</p>
             {jobId && (
               <p>Candidates: {candidates.length}</p>
             )}
@@ -126,6 +129,23 @@ export function DebugPanel() {
               </Badge>
               <Badge variant={permissions.canArchiveJobs ? "default" : "secondary"}>
                 Archive Jobs
+              </Badge>
+            </div>
+          </div>
+
+          <Separator />
+
+          <div>
+            <h4 className="font-semibold mb-1">Job Request Permissions</h4>
+            <div className="flex flex-wrap gap-1">
+              <Badge variant={permissions.canViewJobRequests ? "default" : "secondary"}>
+                View Job Requests
+              </Badge>
+              <Badge variant={permissions.canManageJobRequests ? "default" : "secondary"}>
+                Manage Job Requests
+              </Badge>
+              <Badge variant={permissions.canApproveJobRequests ? "default" : "secondary"}>
+                Approve Job Requests
               </Badge>
             </div>
           </div>

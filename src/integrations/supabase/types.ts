@@ -106,6 +106,59 @@ export type Database = {
           },
         ]
       }
+      job_requests: {
+        Row: {
+          approved_by: string | null
+          created_at: string
+          department: string | null
+          description: string | null
+          id: string
+          level: Database["public"]["Enums"]["job_request_level"]
+          location: string | null
+          organization_id: string
+          status: Database["public"]["Enums"]["job_request_status"]
+          submitted_by: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          approved_by?: string | null
+          created_at?: string
+          department?: string | null
+          description?: string | null
+          id?: string
+          level: Database["public"]["Enums"]["job_request_level"]
+          location?: string | null
+          organization_id: string
+          status?: Database["public"]["Enums"]["job_request_status"]
+          submitted_by: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          approved_by?: string | null
+          created_at?: string
+          department?: string | null
+          description?: string | null
+          id?: string
+          level?: Database["public"]["Enums"]["job_request_level"]
+          location?: string | null
+          organization_id?: string
+          status?: Database["public"]["Enums"]["job_request_status"]
+          submitted_by?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_requests_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       jobs: {
         Row: {
           created_at: string | null
@@ -256,6 +309,8 @@ export type Database = {
         | "L2 - Managers"
         | "L3 - Directors / VPs / Executive Search"
         | "L4 - C-Level"
+      job_request_level: "L1" | "L2" | "L3"
+      job_request_status: "pending" | "approved" | "rejected"
       job_status: "draft" | "open" | "closed" | "archived"
       member_role:
         | "recruiter"
@@ -384,6 +439,8 @@ export const Constants = {
         "L3 - Directors / VPs / Executive Search",
         "L4 - C-Level",
       ],
+      job_request_level: ["L1", "L2", "L3"],
+      job_request_status: ["pending", "approved", "rejected"],
       job_status: ["draft", "open", "closed", "archived"],
       member_role: [
         "recruiter",

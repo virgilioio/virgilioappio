@@ -32,6 +32,11 @@ export interface PermissionsState {
   // Candidate permissions
   canViewCandidates: boolean
   canManageCandidates: boolean
+  
+  // Job Request permissions
+  canViewJobRequests: boolean
+  canManageJobRequests: boolean
+  canApproveJobRequests: boolean
 }
 
 export function usePermissions(): PermissionsState {
@@ -72,6 +77,11 @@ export function usePermissions(): PermissionsState {
   const canViewCandidates = isMember || isGuest
   const canManageCandidates = isRecruiter || isWorkspaceOwner || isPlatformAdmin
   
+  // Job Request permissions
+  const canViewJobRequests = isWorkspaceOwner || isPlatformAdmin
+  const canManageJobRequests = isWorkspaceOwner || isPlatformAdmin
+  const canApproveJobRequests = isPlatformAdmin || isCustomerSuccess
+  
   return {
     // Role-based
     isPlatformAdmin,
@@ -103,5 +113,10 @@ export function usePermissions(): PermissionsState {
     // Candidate permissions
     canViewCandidates,
     canManageCandidates,
+    
+    // Job Request permissions
+    canViewJobRequests,
+    canManageJobRequests,
+    canApproveJobRequests,
   }
 }
