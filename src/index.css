@@ -1,59 +1,99 @@
 
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Virgilio.io Design System - Custom tokens and spacing standards */
+/* Virgilio.io Design System - Complete Brand Configuration */
 
 @layer base {
   :root {
+    /* Light Mode Colors */
     --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    --foreground: 0 0% 20%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 0 0% 20%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 0 0% 20%;
 
-    --primary: 239 84% 67%;
-    --primary-foreground: 0 0% 98%;
+    /* Virgilio.io Primary Colors */
+    --primary: 60 100% 4%; /* citron-noir #0d0d09 */
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 0 0% 97%; /* #f8f9fa */
+    --secondary-foreground: 0 0% 20%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 210 17% 93%; /* #e9ecef */
+    --muted-foreground: 0 0% 60%; /* #999999 */
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    /* Virgilio.io Brand Colors */
+    --accent: 60 100% 85%; /* #fffead */
+    --accent-foreground: 60 100% 4%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --success: 120 100% 88%; /* #d2ffc2 */
+    --success-foreground: 120 100% 15%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 239 84% 67%;
+    --destructive: 0 100% 88%; /* #ffc2c2 */
+    --destructive-foreground: 0 100% 30%;
 
-    --radius: 0.5rem;
+    --warning: 48 100% 60%; /* #ffd93d */
+    --warning-foreground: 48 100% 15%;
 
-    /* Virgilio.io Custom Surface Colors */
+    --info: 180 100% 88%; /* #c5f5fb */
+    --info-foreground: 180 100% 20%;
+
+    --border: 0 0% 91%;
+    --input: 0 0% 91%;
+    --ring: 60 100% 85%;
+
+    --radius: 12px;
+
+    /* Virgilio.io Surface Colors */
     --surface-primary: 0 0% 100%;
-    --surface-secondary: 210 40% 98%;
-    --surface-tertiary: 210 40% 96.1%;
+    --surface-secondary: 0 0% 97%; /* #f8f9fa */
+    --surface-tertiary: 210 17% 93%; /* #e9ecef */
+    --surface-overlay: 0 0% 0% / 0.5;
 
-    /* Custom Spacing Tokens */
-    --layout-sm: 1rem;
-    --layout-md: 1.5rem;
-    --layout-lg: 2rem;
-    --layout-xl: 3rem;
-    
-    --token-xs: 0.25rem;
-    --token-sm: 0.5rem;
-    --token-md: 0.75rem;
-    --token-lg: 1rem;
-    --token-xl: 1.25rem;
-    --token-2xl: 1.5rem;
+    /* Typography Hierarchy */
+    --text-primary: 0 0% 20%; /* #333333 */
+    --text-secondary: 0 0% 40%; /* #666666 */
+    --text-tertiary: 0 0% 60%; /* #999999 */
+    --text-muted: 0 0% 80%; /* #cccccc */
+
+    /* Spacing Tokens */
+    --spacing-xs: 0.25rem; /* 4px */
+    --spacing-sm: 0.5rem; /* 8px */
+    --spacing-md: 0.75rem; /* 12px */
+    --spacing-lg: 1rem; /* 16px */
+    --spacing-xl: 1.25rem; /* 20px */
+    --spacing-2xl: 1.5rem; /* 24px */
+    --spacing-3xl: 2rem; /* 32px */
+    --spacing-4xl: 2.5rem; /* 40px */
+    --spacing-5xl: 3rem; /* 48px */
+    --spacing-6xl: 4rem; /* 64px */
+
+    /* Layout Tokens */
+    --layout-gutter: 1.5rem; /* 24px */
+    --layout-padding-sm: 1rem; /* 16px */
+    --layout-padding-md: 1.5rem; /* 24px */
+    --layout-padding-lg: 2rem; /* 32px */
+
+    /* Animation Timings */
+    --transition-fast: 150ms;
+    --transition-default: 200ms;
+    --transition-slow: 300ms;
+
+    /* Neumorphic Shadows */
+    --shadow-neumorphic-base: -4px 4px 0px hsl(var(--primary));
+    --shadow-neumorphic-hover: -2px 2px 0px hsl(var(--primary));
+    --shadow-neumorphic-active: 0px 0px 0px hsl(var(--primary));
+
+    /* Component Heights */
+    --button-height-sm: 36px;
+    --button-height-default: 40px;
+    --button-height-lg: 44px;
 
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
@@ -66,7 +106,7 @@
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
+    --background: 222.2 84% 4.9%; /* #0f172a */
     --foreground: 210 40% 98%;
 
     --card: 222.2 84% 4.9%;
@@ -75,29 +115,50 @@
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 239 84% 67%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 60 100% 85%; /* accent yellow in dark mode */
+    --primary-foreground: 60 100% 4%;
 
-    --secondary: 217.2 32.6% 17.5%;
+    --secondary: 217.2 32.6% 17.5%; /* #1e293b */
     --secondary-foreground: 210 40% 98%;
 
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 60 100% 85%;
+    --accent-foreground: 60 100% 4%;
+
+    --success: 120 100% 88%;
+    --success-foreground: 120 100% 15%;
 
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
 
+    --warning: 48 100% 60%;
+    --warning-foreground: 48 100% 15%;
+
+    --info: 180 100% 88%;
+    --info-foreground: 180 100% 20%;
+
     --border: 217.2 32.6% 17.5%;
     --input: 217.2 32.6% 17.5%;
-    --ring: 239 84% 67%;
+    --ring: 60 100% 85%;
 
     /* Dark mode surface colors */
-    --surface-primary: 222.2 84% 4.9%;
-    --surface-secondary: 217.2 32.6% 17.5%;
-    --surface-tertiary: 217.2 32.6% 12.5%;
+    --surface-primary: 222.2 84% 4.9%; /* #0f172a */
+    --surface-secondary: 217.2 32.6% 17.5%; /* #1e293b */
+    --surface-tertiary: 215.4 16.3% 26.1%; /* #334155 */
+    --surface-overlay: 0 0% 0% / 0.8;
+
+    /* Dark mode text */
+    --text-primary: 210 40% 98%; /* #ffffff */
+    --text-secondary: 215 20.2% 65.1%;
+    --text-tertiary: 215.4 16.3% 46.9%;
+    --text-muted: 217.2 32.6% 17.5%;
+
+    /* Dark mode neumorphic shadows */
+    --shadow-neumorphic-base: -4px 4px 0px hsl(var(--accent));
+    --shadow-neumorphic-hover: -2px 2px 0px hsl(var(--accent));
+    --shadow-neumorphic-active: 0px 0px 0px hsl(var(--accent));
 
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
@@ -116,47 +177,141 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground font-inter;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-poppins;
+  }
+
+  h1 {
+    @apply text-3xl font-bold leading-tight;
+  }
+
+  h2 {
+    @apply text-2xl font-semibold leading-tight;
+  }
+
+  h3 {
+    @apply text-xl font-medium leading-snug;
+  }
+
+  h4 {
+    @apply text-lg font-medium leading-snug;
+  }
+
+  .font-button {
+    @apply text-sm font-bold tracking-tight;
+  }
+
+  /* Reduced motion support */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+      animation-delay: -1ms !important;
+      animation-duration: 1ms !important;
+      animation-iteration-count: 1 !important;
+      background-attachment: initial !important;
+      scroll-behavior: auto !important;
+      transition-duration: 0s !important;
+      transition-delay: 0s !important;
+    }
   }
 }
 
 @layer utilities {
-  /* Custom Virgilio.io spacing utilities */
-  .px-layout-sm { padding-left: var(--layout-sm); padding-right: var(--layout-sm); }
-  .px-layout-md { padding-left: var(--layout-md); padding-right: var(--layout-md); }
-  .px-layout-lg { padding-left: var(--layout-lg); padding-right: var(--layout-lg); }
-  .px-layout-xl { padding-left: var(--layout-xl); padding-right: var(--layout-xl); }
-  
-  .py-layout-sm { padding-top: var(--layout-sm); padding-bottom: var(--layout-sm); }
-  .py-layout-md { padding-top: var(--layout-md); padding-bottom: var(--layout-md); }
-  .py-layout-lg { padding-top: var(--layout-lg); padding-bottom: var(--layout-lg); }
-  .py-layout-xl { padding-top: var(--layout-xl); padding-bottom: var(--layout-xl); }
+  /* Virgilio.io Brand Spacing Utilities */
+  .spacing-xs { margin: var(--spacing-xs); }
+  .spacing-sm { margin: var(--spacing-sm); }
+  .spacing-md { margin: var(--spacing-md); }
+  .spacing-lg { margin: var(--spacing-lg); }
+  .spacing-xl { margin: var(--spacing-xl); }
+  .spacing-2xl { margin: var(--spacing-2xl); }
+  .spacing-3xl { margin: var(--spacing-3xl); }
+  .spacing-4xl { margin: var(--spacing-4xl); }
+  .spacing-5xl { margin: var(--spacing-5xl); }
+  .spacing-6xl { margin: var(--spacing-6xl); }
 
-  .gap-token-xs { gap: var(--token-xs); }
-  .gap-token-sm { gap: var(--token-sm); }
-  .gap-token-md { gap: var(--token-md); }
-  .gap-token-lg { gap: var(--token-lg); }
-  .gap-token-xl { gap: var(--token-xl); }
-  .gap-token-2xl { gap: var(--token-2xl); }
+  .p-layout-sm { padding: var(--layout-padding-sm); }
+  .p-layout-md { padding: var(--layout-padding-md); }
+  .p-layout-lg { padding: var(--layout-padding-lg); }
 
-  .py-token-xs { padding-top: var(--token-xs); padding-bottom: var(--token-xs); }
-  .py-token-sm { padding-top: var(--token-sm); padding-bottom: var(--token-sm); }
-  .py-token-md { padding-top: var(--token-md); padding-bottom: var(--token-md); }
-  .py-token-lg { padding-top: var(--token-lg); padding-bottom: var(--token-lg); }
-  .py-token-xl { padding-top: var(--token-xl); padding-bottom: var(--token-xl); }
-  .py-token-2xl { padding-top: var(--token-2xl); padding-bottom: var(--token-2xl); }
+  .px-layout-sm { padding-left: var(--layout-padding-sm); padding-right: var(--layout-padding-sm); }
+  .px-layout-md { padding-left: var(--layout-padding-md); padding-right: var(--layout-padding-md); }
+  .px-layout-lg { padding-left: var(--layout-padding-lg); padding-right: var(--layout-padding-lg); }
 
-  .px-token-xs { padding-left: var(--token-xs); padding-right: var(--token-xs); }
-  .px-token-sm { padding-left: var(--token-sm); padding-right: var(--token-sm); }
-  .px-token-md { padding-left: var(--token-md); padding-right: var(--token-md); }
-  .px-token-lg { padding-left: var(--token-lg); padding-right: var(--token-lg); }
-  .px-token-xl { padding-left: var(--token-xl); padding-right: var(--token-xl); }
-  .px-token-2xl { padding-left: var(--token-2xl); padding-right: var(--token-2xl); }
+  .py-layout-sm { padding-top: var(--layout-padding-sm); padding-bottom: var(--layout-padding-sm); }
+  .py-layout-md { padding-top: var(--layout-padding-md); padding-bottom: var(--layout-padding-md); }
+  .py-layout-lg { padding-top: var(--layout-padding-lg); padding-bottom: var(--layout-padding-lg); }
 
-  .rounded-token { border-radius: var(--radius); }
+  .gap-gutter { gap: var(--layout-gutter); }
 
-  /* Surface color utilities */
+  /* Brand Color Utilities */
   .bg-surface-primary { background-color: hsl(var(--surface-primary)); }
   .bg-surface-secondary { background-color: hsl(var(--surface-secondary)); }
   .bg-surface-tertiary { background-color: hsl(var(--surface-tertiary)); }
+
+  .text-primary { color: hsl(var(--text-primary)); }
+  .text-secondary { color: hsl(var(--text-secondary)); }
+  .text-tertiary { color: hsl(var(--text-tertiary)); }
+  .text-brand-muted { color: hsl(var(--text-muted)); }
+
+  .border-brand { border-color: hsl(var(--border)); }
+  .rounded-brand { border-radius: var(--radius); }
+
+  /* Neumorphic Shadows */
+  .shadow-neumorphic { box-shadow: var(--shadow-neumorphic-base); }
+  .shadow-neumorphic-hover { box-shadow: var(--shadow-neumorphic-hover); }
+  .shadow-neumorphic-active { box-shadow: var(--shadow-neumorphic-active); }
+
+  /* Animation Utilities */
+  .transition-brand { transition-duration: var(--transition-default); transition-timing-function: ease-out; }
+  .transition-fast { transition-duration: var(--transition-fast); }
+  .transition-slow { transition-duration: var(--transition-slow); }
+
+  /* Interactive Effects */
+  .hover-scale { @apply transition-transform duration-200 hover:scale-105; }
+  .hover-lift { @apply transition-all duration-200 hover:-translate-y-1 hover:shadow-lg; }
+
+  /* Focus Rings */
+  .focus-brand { @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2; }
+}
+
+@layer components {
+  /* Brand Button Styles */
+  .btn-neumorphic {
+    @apply inline-flex items-center justify-center rounded-brand px-4 py-2 font-button;
+    @apply bg-accent text-accent-foreground shadow-neumorphic;
+    @apply transition-all duration-200 ease-out;
+    @apply hover:shadow-neumorphic-hover hover:-translate-y-0.5;
+    @apply active:shadow-neumorphic-active active:translate-y-0 active:scale-95;
+    @apply focus-brand disabled:pointer-events-none disabled:opacity-50;
+    height: var(--button-height-default);
+  }
+
+  .btn-neumorphic-sm {
+    @apply btn-neumorphic px-3 text-xs;
+    height: var(--button-height-sm);
+  }
+
+  .btn-neumorphic-lg {
+    @apply btn-neumorphic px-6 text-base;
+    height: var(--button-height-lg);
+  }
+
+  /* Brand Card Styles */
+  .card-brand {
+    @apply bg-surface-primary border border-brand rounded-brand p-layout-md shadow-sm;
+    @apply transition-all duration-200 hover:shadow-md hover:-translate-y-0.5;
+  }
+
+  /* Typography Classes */
+  .heading-1 { @apply text-3xl font-bold leading-tight font-poppins; }
+  .heading-2 { @apply text-2xl font-semibold leading-tight font-poppins; }
+  .heading-3 { @apply text-xl font-medium leading-snug font-poppins; }
+  .heading-4 { @apply text-lg font-medium leading-snug font-poppins; }
+  .body-text { @apply text-base leading-relaxed font-inter; }
+  .caption-text { @apply text-sm text-secondary leading-normal font-inter; }
 }
