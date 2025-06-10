@@ -1,17 +1,19 @@
 
 import { useState } from "react";
 import { useLocation } from "react-router-dom";
-import { ChevronDown, ChevronUp, Code2, Monitor, User, Globe } from "lucide-react";
+import { ChevronDown, ChevronUp, Code2, Monitor, User, Globe, Shield } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePermissions } from "@/hooks/usePermissions";
 
 export function DebugPanel() {
   const [isOpen, setIsOpen] = useState(false);
   const location = useLocation();
   const { user, isAuthenticated, isLoading } = useAuth();
+  const permissions = usePermissions();
   
   // Only show in development
   if (import.meta.env.PROD) {
@@ -27,6 +29,38 @@ export function DebugPanel() {
     buildTime: new Date().toLocaleString(),
     supabaseConnected: true
   };
+
+  const rolePermissions = {
+    isPlatformAdmin: permissions.isPlatformAdmin,
+    isWorkspaceOwner: permissions.isWorkspaceOwner,
+    isMember: permissions.isMember,
+    isGuest: permissions.isGuest,
+  };
+
+  const subRolePermissions = {
+    isRecruiter: permissions.isRecruiter,
+    isCustomerSuccess: permissions.isCustomerSuccess,
+    isBilling: permissions.isBilling,
+    isSales: permissions.isSales,
+    isAdmin: permissions.isAdmin,
+  };
+
+  const actionPermissions = {
+    canViewMembers: permissions.canViewMembers,
+    canManageMembers: permissions.canManageMembers,
+    canCreateJobs: permissions.canCreateJobs,
+    canViewBilling: permissions.canViewBilling,
+    canManageOrganization: permissions.canManageOrganization,
+  };
+
+  const PermissionBadge = ({ label, hasPermission }: { label: string, hasPermission: boolean }) => (
+    <div className="flex items-center justify-between text-xs">
+      <span>{label}:</span>
+      <Badge variant={hasPermission ? 'default' : 'secondary'} className="text-xs">
+        {hasPermission ? '✓' : '✗'}
+      </Badge>
+    </div>
+  );
 
   return (
     <div className="fixed top-4 right-4 z-50">
@@ -85,6 +119,58 @@ export function DebugPanel() {
                   )}
                 </div>
               </div>
+
+              {/* Permissions */}
+              {isAuthenticated && (
+                <div className="space-y-token-xs">
+                  <div className="flex items-center gap-token-sm text-xs font-medium text-muted-foreground">
+                    <Shield className="h-3 w-3" />
+                    Permissions
+                  </div>
+                  
+                  {/* Role Permissions */}
+                  <div className="space-y-1">
+                    <div className="text-xs font-medium text-muted-foreground">Roles</div>
+                    <div className="space-y-1 bg-muted/50 p-token-sm rounded">
+                      {Object.entries(rolePermissions).map(([key, value]) => (
+                        <PermissionBadge 
+                          key={key} 
+                          label={key.replace('is', '')} 
+                          hasPermission={value} 
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Sub-role Permissions */}
+                  <div className="space-y-1">
+                    <div className="text-xs font-medium text-muted-foreground">Sub-roles</div>
+                    <div className="space-y-1 bg-muted/50 p-token-sm rounded">
+                      {Object.entries(subRolePermissions).map(([key, value]) => (
+                        <PermissionBadge 
+                          key={key} 
+                          label={key.replace('is', '')} 
+                          hasPermission={value} 
+                        />
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Action Permissions */}
+                  <div className="space-y-1">
+                    <div className="text-xs font-medium text-muted-foreground">Actions</div>
+                    <div className="space-y-1 bg-muted/50 p-token-sm rounded">
+                      {Object.entries(actionPermissions).map(([key, value]) => (
+                        <PermissionBadge 
+                          key={key} 
+                          label={key.replace('can', '')} 
+                          hasPermission={value} 
+                        />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Environment Info */}
               <div className="space-y-token-xs">

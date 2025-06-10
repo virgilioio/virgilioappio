@@ -1,11 +1,12 @@
 
-import { Shield, Database, Code, Users, LogOut } from "lucide-react";
+import { Shield, Database, Code, Users, LogOut, UserPlus, DollarSign, Briefcase } from "lucide-react";
 import { AppContainer } from "@/components/layout/AppContainer";
 import { Section } from "@/components/layout/Section";
 import { StatusCard } from "@/components/StatusCard";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { AuthGate } from "@/components/auth/AuthGate";
+import { PermissionGate } from "@/components/auth/PermissionGate";
 import { useAuth } from "@/contexts/AuthContext";
 
 const Index = () => {
@@ -73,8 +74,108 @@ const Index = () => {
           </AppContainer>
         </Section>
 
-        {/* Status Section */}
+        {/* Permission Demo Section */}
         <Section variant="muted">
+          <AppContainer>
+            <div className="space-y-token-xl">
+              <div className="text-center space-y-token-md">
+                <h2 className="text-3xl font-bold">Permission-Based Actions</h2>
+                <p className="text-muted-foreground max-w-xl mx-auto">
+                  These actions are conditionally rendered based on your current permissions
+                </p>
+              </div>
+
+              <div className="grid gap-token-lg md:grid-cols-2 lg:grid-cols-3">
+                <PermissionGate permission="canCreateJobs">
+                  <div className="p-token-lg rounded-token border bg-card text-card-foreground hover:shadow-md transition-all duration-200">
+                    <div className="space-y-token-md">
+                      <Briefcase className="h-8 w-8 text-primary" />
+                      <div>
+                        <h3 className="font-semibold">Create Job</h3>
+                        <p className="text-sm text-muted-foreground mt-token-xs">
+                          Post new job openings for your organization
+                        </p>
+                      </div>
+                      <Button className="w-full gap-token-sm">
+                        <Briefcase className="h-4 w-4" />
+                        Create Job
+                      </Button>
+                    </div>
+                  </div>
+                </PermissionGate>
+
+                <PermissionGate permission="canManageMembers">
+                  <div className="p-token-lg rounded-token border bg-card text-card-foreground hover:shadow-md transition-all duration-200">
+                    <div className="space-y-token-md">
+                      <UserPlus className="h-8 w-8 text-primary" />
+                      <div>
+                        <h3 className="font-semibold">Invite Member</h3>
+                        <p className="text-sm text-muted-foreground mt-token-xs">
+                          Add new team members to your workspace
+                        </p>
+                      </div>
+                      <Button className="w-full gap-token-sm">
+                        <UserPlus className="h-4 w-4" />
+                        Invite Member
+                      </Button>
+                    </div>
+                  </div>
+                </PermissionGate>
+
+                <PermissionGate permission="canViewBilling">
+                  <div className="p-token-lg rounded-token border bg-card text-card-foreground hover:shadow-md transition-all duration-200">
+                    <div className="space-y-token-md">
+                      <DollarSign className="h-8 w-8 text-primary" />
+                      <div>
+                        <h3 className="font-semibold">View Billing</h3>
+                        <p className="text-sm text-muted-foreground mt-token-xs">
+                          Access billing information and invoices
+                        </p>
+                      </div>
+                      <Button className="w-full gap-token-sm">
+                        <DollarSign className="h-4 w-4" />
+                        View Billing
+                      </Button>
+                    </div>
+                  </div>
+                </PermissionGate>
+
+                {/* Always visible fallback for guests */}
+                <PermissionGate 
+                  permission="isGuest"
+                  fallback={
+                    <div className="p-token-lg rounded-token border bg-muted/50 text-muted-foreground">
+                      <div className="space-y-token-md">
+                        <Shield className="h-8 w-8" />
+                        <div>
+                          <h3 className="font-semibold">Access Restricted</h3>
+                          <p className="text-sm mt-token-xs">
+                            Contact your administrator for additional permissions
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  }
+                >
+                  <div className="p-token-lg rounded-token border bg-card text-card-foreground">
+                    <div className="space-y-token-md">
+                      <Users className="h-8 w-8 text-muted-foreground" />
+                      <div>
+                        <h3 className="font-semibold text-muted-foreground">Limited Access</h3>
+                        <p className="text-sm text-muted-foreground mt-token-xs">
+                          You have guest-level permissions
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </PermissionGate>
+              </div>
+            </div>
+          </AppContainer>
+        </Section>
+
+        {/* Status Section */}
+        <Section>
           <AppContainer>
             <div className="space-y-token-xl">
               <div className="text-center space-y-token-md">
@@ -114,7 +215,7 @@ const Index = () => {
         </Section>
 
         {/* Features Preview */}
-        <Section>
+        <Section variant="muted">
           <AppContainer>
             <div className="space-y-token-xl">
               <div className="text-center space-y-token-md">
