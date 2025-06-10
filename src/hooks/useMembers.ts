@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
@@ -43,6 +42,9 @@ export function useMembers() {
 
     try {
       console.log('Fetching members for user:', user.id)
+      
+      // With RLS enabled, the query will automatically filter by organization
+      // No need to manually filter by organization_id since RLS handles it
       const { data, error: fetchError } = await supabase
         .from('members')
         .select(`
@@ -55,6 +57,12 @@ export function useMembers() {
 
       if (fetchError) {
         console.error('Error fetching members:', fetchError)
+        // Handle RLS-related errors gracefully
+        if (fetchError.message.includes('row-level security')) {
+          console.warn('RLS policy blocked access - user may not have permission to view members')
+          setMembers([])
+          return
+        }
         throw fetchError
       }
 
@@ -72,9 +80,13 @@ export function useMembers() {
           
           if (member.user_id) {
             try {
-              const { data: userData, error: userError } = await supabase.auth.admin.getUserById(member.user_id)
-              if (!userError && userData.user) {
-                return { ...typedMember, user_email: userData.user.email }
+              // Note: This admin API call won't work for regular users due to RLS
+              // For now, we'll skip email lookup for non-admin users
+              if (user.user_metadata?.user_type === 'platform_admin') {
+                const { data: userData, error: userError } = await supabase.auth.admin.getUserById(member.user_id)
+                if (!userError && userData.user) {
+                  return { ...typedMember, user_email: userData.user.email }
+                }
               }
             } catch (e) {
               console.warn('Could not fetch user email for member:', member.id)
@@ -100,14 +112,22 @@ export function useMembers() {
   }
 
   const createMember = async (data: CreateMemberData) => {
+    if (!user) throw new Error('User not authenticated')
+    
+    // Ensure organization_id is set if not provided
+    const organizationId = data.organization_id || user.user_metadata?.organization_id
+    if (!organizationId) {
+      throw new Error('No organization found for user')
+    }
+
     setIsLoading(true)
     setError(null)
 
     try {
-      console.log('Creating member:', data)
+      console.log('Creating member:', { ...data, organization_id: organizationId })
       const { data: newMember, error: createError } = await supabase
         .from('members')
-        .insert([data])
+        .insert([{ ...data, organization_id: organizationId }])
         .select()
         .single()
 

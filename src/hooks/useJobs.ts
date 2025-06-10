@@ -8,46 +8,44 @@ export interface Job {
   id: string
   title: string
   description: string | null
-  department: string | null
   level: 'L1 - Specialists' | 'L2 - Managers' | 'L3 - Directors / VPs / Executive Search' | 'L4 - C-Level'
   location: string | null
+  department: string | null
   salary_min: number | null
   salary_max: number | null
   currency: string | null
-  hiring_team: string[] | null
+  status: 'draft' | 'open' | 'closed' | 'archived'
+  hiring_team: any[] | null
   organization_id: string
   created_by: string | null
-  status: 'draft' | 'open' | 'closed' | 'archived'
   created_at: string
   updated_at: string
-  organization_name?: string
 }
 
 export interface CreateJobData {
   title: string
-  description?: string | null
-  department?: string | null
+  description?: string
   level: 'L1 - Specialists' | 'L2 - Managers' | 'L3 - Directors / VPs / Executive Search' | 'L4 - C-Level'
-  location?: string | null
-  salary_min?: number | null
-  salary_max?: number | null
-  currency?: string | null
-  hiring_team?: string[]
-  organization_id: string
+  location?: string
+  department?: string
+  salary_min?: number
+  salary_max?: number
+  currency?: string
   status?: 'draft' | 'open' | 'closed' | 'archived'
+  hiring_team?: any[]
 }
 
 export interface UpdateJobData {
   title?: string
-  description?: string | null
-  department?: string | null
+  description?: string
   level?: 'L1 - Specialists' | 'L2 - Managers' | 'L3 - Directors / VPs / Executive Search' | 'L4 - C-Level'
-  location?: string | null
-  salary_min?: number | null
-  salary_max?: number | null
-  currency?: string | null
-  hiring_team?: string[]
+  location?: string
+  department?: string
+  salary_min?: number
+  salary_max?: number
+  currency?: string
   status?: 'draft' | 'open' | 'closed' | 'archived'
+  hiring_team?: any[]
 }
 
 export function useJobs() {
@@ -64,32 +62,26 @@ export function useJobs() {
 
     try {
       console.log('Fetching jobs for user:', user.id)
+      
+      // With RLS enabled, the query will automatically filter by organization
       const { data, error: fetchError } = await supabase
         .from('jobs')
-        .select(`
-          *,
-          organizations!inner (
-            name
-          )
-        `)
+        .select('*')
         .order('created_at', { ascending: false })
 
       if (fetchError) {
         console.error('Error fetching jobs:', fetchError)
+        // Handle RLS-related errors gracefully
+        if (fetchError.message.includes('row-level security')) {
+          console.warn('RLS policy blocked access - user may not have permission to view jobs')
+          setJobs([])
+          return
+        }
         throw fetchError
       }
 
       console.log('Fetched jobs:', data)
-      
-      const jobsWithDetails = (data || []).map((job) => ({
-        ...job,
-        level: job.level as 'L1 - Specialists' | 'L2 - Managers' | 'L3 - Directors / VPs / Executive Search' | 'L4 - C-Level',
-        status: job.status as 'draft' | 'open' | 'closed' | 'archived',
-        hiring_team: Array.isArray(job.hiring_team) ? job.hiring_team as string[] : [],
-        organization_name: job.organizations?.name
-      }))
-
-      setJobs(jobsWithDetails)
+      setJobs(data || [])
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch jobs'
       console.error('Jobs fetch error:', err)
@@ -104,65 +96,26 @@ export function useJobs() {
     }
   }
 
-  const getJob = async (id: string) => {
-    setIsLoading(true)
-    setError(null)
-
-    try {
-      console.log('Fetching job:', id)
-      const { data, error: fetchError } = await supabase
-        .from('jobs')
-        .select(`
-          *,
-          organizations!inner (
-            name
-          )
-        `)
-        .eq('id', id)
-        .single()
-
-      if (fetchError) {
-        console.error('Error fetching job:', fetchError)
-        throw fetchError
-      }
-
-      console.log('Fetched job:', data)
-      return {
-        ...data,
-        level: data.level as 'L1 - Specialists' | 'L2 - Managers' | 'L3 - Directors / VPs / Executive Search' | 'L4 - C-Level',
-        status: data.status as 'draft' | 'open' | 'closed' | 'archived',
-        hiring_team: Array.isArray(data.hiring_team) ? data.hiring_team as string[] : [],
-        organization_name: data.organizations?.name
-      }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch job'
-      console.error('Job fetch error:', err)
-      setError(errorMessage)
-      toast({
-        title: 'Error',
-        description: errorMessage,
-        variant: 'destructive'
-      })
-      throw err
-    } finally {
-      setIsLoading(false)
+  const createJob = async (jobData: CreateJobData) => {
+    if (!user) throw new Error('User not authenticated')
+    
+    const organizationId = user.user_metadata?.organization_id
+    if (!organizationId) {
+      throw new Error('No organization found for user')
     }
-  }
 
-  const createJob = async (data: CreateJobData) => {
     setIsLoading(true)
     setError(null)
 
     try {
-      console.log('Creating job:', data)
-      const jobData = {
-        ...data,
-        created_by: user?.id
-      }
-
+      console.log('Creating job:', jobData)
       const { data: newJob, error: createError } = await supabase
         .from('jobs')
-        .insert([jobData])
+        .insert([{
+          ...jobData,
+          organization_id: organizationId,
+          created_by: user.id,
+        }])
         .select()
         .single()
 
@@ -194,15 +147,15 @@ export function useJobs() {
     }
   }
 
-  const updateJob = async (id: string, data: UpdateJobData) => {
+  const updateJob = async (id: string, jobData: UpdateJobData) => {
     setIsLoading(true)
     setError(null)
 
     try {
-      console.log('Updating job:', id, data)
+      console.log('Updating job:', id, jobData)
       const { data: updatedJob, error: updateError } = await supabase
         .from('jobs')
-        .update(data)
+        .update(jobData)
         .eq('id', id)
         .select()
         .single()
@@ -235,32 +188,32 @@ export function useJobs() {
     }
   }
 
-  const archiveJob = async (id: string) => {
+  const deleteJob = async (id: string) => {
     setIsLoading(true)
     setError(null)
 
     try {
-      console.log('Archiving job:', id)
-      const { error: updateError } = await supabase
+      console.log('Deleting job:', id)
+      const { error: deleteError } = await supabase
         .from('jobs')
-        .update({ status: 'archived' })
+        .delete()
         .eq('id', id)
 
-      if (updateError) {
-        console.error('Error archiving job:', updateError)
-        throw updateError
+      if (deleteError) {
+        console.error('Error deleting job:', deleteError)
+        throw deleteError
       }
 
-      console.log('Archived job:', id)
+      console.log('Deleted job:', id)
       toast({
         title: 'Success',
-        description: 'Job archived successfully'
+        description: 'Job deleted successfully'
       })
 
       await getJobs() // Refresh the list
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to archive job'
-      console.error('Job archiving error:', err)
+      const errorMessage = err instanceof Error ? err.message : 'Failed to delete job'
+      console.error('Job deletion error:', err)
       setError(errorMessage)
       toast({
         title: 'Error',
@@ -284,9 +237,8 @@ export function useJobs() {
     isLoading,
     error,
     getJobs,
-    getJob,
     createJob,
     updateJob,
-    archiveJob
+    deleteJob
   }
 }

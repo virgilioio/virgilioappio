@@ -9,51 +9,50 @@ export interface Candidate {
   job_id: string
   candidate_name: string
   candidate_email: string
-  notes: string | null
   resume_url: string | null
+  notes: string | null
   added_by: string | null
   created_at: string
   updated_at: string
 }
 
 export interface CreateCandidateData {
-  job_id: string
   candidate_name: string
   candidate_email: string
-  notes?: string | null
   resume_url?: string | null
+  notes?: string | null
 }
 
-export interface UpdateCandidateData {
-  candidate_name?: string
-  candidate_email?: string
-  notes?: string | null
-  resume_url?: string | null
-}
-
-export function useCandidates(jobId?: string) {
+export function useCandidates(jobId: string) {
   const [candidates, setCandidates] = useState<Candidate[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const { user } = useAuth()
 
-  const getCandidates = async (targetJobId?: string) => {
-    const queryJobId = targetJobId || jobId
-    if (!user || !queryJobId) return
+  const getCandidates = async () => {
+    if (!user || !jobId) return
 
     setIsLoading(true)
     setError(null)
 
     try {
-      console.log('Fetching candidates for job:', queryJobId)
+      console.log('Fetching candidates for job:', jobId)
+      
+      // With RLS enabled, the query will automatically filter by organization through job relationship
       const { data, error: fetchError } = await supabase
         .from('job_candidates')
         .select('*')
-        .eq('job_id', queryJobId)
+        .eq('job_id', jobId)
         .order('created_at', { ascending: false })
 
       if (fetchError) {
         console.error('Error fetching candidates:', fetchError)
+        // Handle RLS-related errors gracefully
+        if (fetchError.message.includes('row-level security')) {
+          console.warn('RLS policy blocked access - user may not have permission to view candidates')
+          setCandidates([])
+          return
+        }
         throw fetchError
       }
 
@@ -73,35 +72,36 @@ export function useCandidates(jobId?: string) {
     }
   }
 
-  const addCandidate = async (data: CreateCandidateData) => {
+  const addCandidate = async (candidateData: CreateCandidateData) => {
+    if (!user || !jobId) throw new Error('User not authenticated or job ID missing')
+
     setIsLoading(true)
     setError(null)
 
     try {
-      console.log('Adding candidate:', data)
-      const candidateData = {
-        ...data,
-        added_by: user?.id
-      }
-
+      console.log('Adding candidate to job:', jobId, candidateData)
       const { data: newCandidate, error: createError } = await supabase
         .from('job_candidates')
-        .insert([candidateData])
+        .insert([{
+          ...candidateData,
+          job_id: jobId,
+          added_by: user.id,
+        }])
         .select()
         .single()
 
       if (createError) {
-        console.error('Error creating candidate:', createError)
+        console.error('Error adding candidate:', createError)
         throw createError
       }
 
-      console.log('Created candidate:', newCandidate)
+      console.log('Added candidate:', newCandidate)
       toast({
         title: 'Success',
         description: 'Candidate added successfully'
       })
 
-      await getCandidates(data.job_id)
+      await getCandidates() // Refresh the list
       return newCandidate
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to add candidate'
@@ -118,16 +118,16 @@ export function useCandidates(jobId?: string) {
     }
   }
 
-  const updateCandidate = async (candidateId: string, data: UpdateCandidateData) => {
+  const updateCandidate = async (id: string, candidateData: Partial<CreateCandidateData>) => {
     setIsLoading(true)
     setError(null)
 
     try {
-      console.log('Updating candidate:', candidateId, data)
+      console.log('Updating candidate:', id, candidateData)
       const { data: updatedCandidate, error: updateError } = await supabase
         .from('job_candidates')
-        .update(data)
-        .eq('id', candidateId)
+        .update(candidateData)
+        .eq('id', id)
         .select()
         .single()
 
@@ -142,7 +142,7 @@ export function useCandidates(jobId?: string) {
         description: 'Candidate updated successfully'
       })
 
-      await getCandidates()
+      await getCandidates() // Refresh the list
       return updatedCandidate
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to update candidate'
@@ -159,29 +159,29 @@ export function useCandidates(jobId?: string) {
     }
   }
 
-  const deleteCandidate = async (candidateId: string) => {
+  const deleteCandidate = async (id: string) => {
     setIsLoading(true)
     setError(null)
 
     try {
-      console.log('Deleting candidate:', candidateId)
+      console.log('Deleting candidate:', id)
       const { error: deleteError } = await supabase
         .from('job_candidates')
         .delete()
-        .eq('id', candidateId)
+        .eq('id', id)
 
       if (deleteError) {
         console.error('Error deleting candidate:', deleteError)
         throw deleteError
       }
 
-      console.log('Deleted candidate:', candidateId)
+      console.log('Deleted candidate:', id)
       toast({
         title: 'Success',
         description: 'Candidate deleted successfully'
       })
 
-      await getCandidates()
+      await getCandidates() // Refresh the list
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to delete candidate'
       console.error('Candidate deletion error:', err)
