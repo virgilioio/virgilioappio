@@ -25,7 +25,9 @@ export function DebugPanel() {
   
   // Extract job ID from current route if on job detail page
   const jobId = location.pathname.startsWith('/jobs/') ? location.pathname.split('/')[2] : undefined
-  const { candidates } = useCandidates(jobId)
+  
+  // Only call useCandidates when we have a valid jobId
+  const { candidates } = useCandidates(jobId || '')
 
   if (!isOpen) {
     return (
