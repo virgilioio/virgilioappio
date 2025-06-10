@@ -24,6 +24,7 @@ export interface PermissionsState {
   canEditJobs: boolean
   canArchiveJobs: boolean
   canViewBilling: boolean
+  canManageBilling: boolean
   canManageOrganization: boolean
   canInviteMembers: boolean
   canDeleteMembers: boolean
@@ -62,6 +63,7 @@ export function usePermissions(): PermissionsState {
   const canEditJobs = isRecruiter || isWorkspaceOwner || isPlatformAdmin
   const canArchiveJobs = canEditJobs
   const canViewBilling = isBilling || isWorkspaceOwner || isPlatformAdmin
+  const canManageBilling = isWorkspaceOwner || isPlatformAdmin
   const canManageOrganization = isWorkspaceOwner || isPlatformAdmin
   const canInviteMembers = canManageMembers
   const canDeleteMembers = isWorkspaceOwner || isPlatformAdmin
@@ -93,6 +95,7 @@ export function usePermissions(): PermissionsState {
     canEditJobs,
     canArchiveJobs,
     canViewBilling,
+    canManageBilling,
     canManageOrganization,
     canInviteMembers,
     canDeleteMembers,

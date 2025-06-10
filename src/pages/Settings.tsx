@@ -11,10 +11,11 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { User, Mail, Shield, Building, LogOut, Save } from 'lucide-react'
+import { User, Mail, Shield, Building, LogOut, Save, Receipt } from 'lucide-react'
 import { Section } from '@/components/layout/Section'
 import { AppContainer } from '@/components/layout/AppContainer'
 import { toast } from '@/hooks/use-toast'
+import { InvoicesTable } from '@/components/invoices/InvoicesTable'
 
 export default function Settings() {
   const { user, logout } = useAuth()
@@ -87,10 +88,13 @@ export default function Settings() {
           </div>
 
           <Tabs defaultValue="profile" className="space-y-layout-md">
-            <TabsList className="grid w-full grid-cols-2 max-w-md">
+            <TabsList className="grid w-full grid-cols-3 max-w-lg">
               <TabsTrigger value="profile">My Profile</TabsTrigger>
               <PermissionGate permission="canManageOrganization">
                 <TabsTrigger value="organization">Organization</TabsTrigger>
+              </PermissionGate>
+              <PermissionGate permission="canViewBilling">
+                <TabsTrigger value="billing">Billing</TabsTrigger>
               </PermissionGate>
             </TabsList>
 
@@ -250,6 +254,12 @@ export default function Settings() {
                     )}
                   </CardContent>
                 </Card>
+              </TabsContent>
+            </PermissionGate>
+
+            <PermissionGate permission="canViewBilling">
+              <TabsContent value="billing" className="space-y-layout-md">
+                <InvoicesTable />
               </TabsContent>
             </PermissionGate>
           </Tabs>
