@@ -40,12 +40,20 @@ const handler = async (req: Request): Promise<Response> => {
       }
     };
 
+    console.log("Email action type:", email_action_type);
+    console.log("Original redirect_to:", redirect_to);
+
     // Only handle signup confirmation emails
     if (email_action_type !== 'signup') {
       return new Response('Not a signup confirmation', { status: 400 });
     }
 
-    const confirmUrl = `${Deno.env.get('SUPABASE_URL')}/auth/v1/verify?token=${token_hash}&type=${email_action_type}&redirect_to=https://app.virgilio.io/`;
+    // Force the redirect URL to our production app
+    const finalRedirectUrl = 'https://app.virgilio.io/';
+    console.log("Using redirect URL:", finalRedirectUrl);
+
+    const confirmUrl = `${Deno.env.get('SUPABASE_URL')}/auth/v1/verify?token=${token_hash}&type=${email_action_type}&redirect_to=${encodeURIComponent(finalRedirectUrl)}`;
+    console.log("Generated confirm URL:", confirmUrl);
 
     const emailResponse = await resend.emails.send({
       from: "Virgilio <noreply@app.virgilio.io>",
@@ -69,15 +77,11 @@ const handler = async (req: Request): Promise<Response> => {
               <!-- Virgilio Logo -->
               <div style="display: inline-flex; align-items: center; justify-content: center; margin-bottom: 24px;">
                 <svg width="48" height="48" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" style="margin-right: 16px;">
-                  <circle cx="100" cy="100" r="90" fill="#22c55e" stroke="#ffffff" stroke-width="4"/>
-                  <circle cx="70" cy="70" r="15" fill="#ef4444"/>
-                  <circle cx="130" cy="70" r="15" fill="#3b82f6"/>
-                  <circle cx="70" cy="130" r="15" fill="#fffead"/>
-                  <circle cx="130" cy="130" r="15" fill="#f97316"/>
-                  <polygon points="100,60 120,100 100,140 80,100" fill="#ffffff"/>
+                  <polygon points="60,50 100,130 140,50 160,50 110,160 90,160 40,50" fill="#22c55e"/>
+                  <circle cx="170" cy="90" r="12" fill="#ef4444"/>
                 </svg>
                 <div>
-                  <h1 style="margin: 0; font-family: 'Poppins', sans-serif; font-size: 32px; font-weight: 700; color: #0d0d09; letter-spacing: -0.025em;">virgilio</h1>
+                  <h1 style="margin: 0; font-family: 'Poppins', sans-serif; font-size: 32px; font-weight: 700; color: #0d0d09; letter-spacing: -0.025em;">Virgilio</h1>
                   <p style="margin: 8px 0 0 0; font-size: 14px; color: #64748b; font-weight: 500;">Connecting talent with opportunity</p>
                 </div>
               </div>
@@ -86,8 +90,8 @@ const handler = async (req: Request): Promise<Response> => {
 
           <div style="background: #ffffff; padding: 40px; border-radius: 12px; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1); border: 1px solid #e9ecef;">
             <div style="text-align: center; margin-bottom: 30px;">
-              <div style="display: inline-flex; align-items: center; justify-content: center; width: 64px; height: 64px; background: #fffead; border-radius: 50%; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#0d0d09" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <div style="display: inline-flex; align-items: center; justify-content: center; width: 64px; height: 64px; background: #22c55e; border-radius: 50%; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M20 6 9 17l-5-5"></path>
                 </svg>
               </div>
@@ -95,7 +99,7 @@ const handler = async (req: Request): Promise<Response> => {
               <p style="color: #64748b; font-size: 16px; margin: 10px 0 0 0;">Welcome to Virgilio! Let's verify your email address.</p>
             </div>
             
-            <div style="background: #f8f9fa; padding: 24px; border-radius: 8px; border-left: 4px solid #fffead; margin-bottom: 30px;">
+            <div style="background: #f8f9fa; padding: 24px; border-radius: 8px; border-left: 4px solid #22c55e; margin-bottom: 30px;">
               <p style="font-size: 16px; margin: 0 0 15px 0; color: #0d0d09;">
                 <strong style="color: #0d0d09;">Almost there!</strong> Please confirm your email address to complete your account setup and start using Virgilio.
               </p>
@@ -108,32 +112,32 @@ const handler = async (req: Request): Promise<Response> => {
               <h3 style="color: #0d0d09; margin: 0 0 16px 0; font-size: 18px; font-weight: 600; font-family: 'Poppins', sans-serif;">What's waiting for you:</h3>
               <div style="space-y: 12px;">
                 <div style="display: flex; align-items: center; margin-bottom: 12px;">
-                  <div style="width: 20px; height: 20px; background: #fffead; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 12px; flex-shrink: 0; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0d0d09" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                  <div style="width: 20px; height: 20px; background: #22c55e; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 12px; flex-shrink: 0; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
                       <polyline points="20,6 9,17 4,12"></polyline>
                     </svg>
                   </div>
                   <span style="color: #0d0d09; font-size: 15px;">Advanced recruitment tools and candidate management</span>
                 </div>
                 <div style="display: flex; align-items: center; margin-bottom: 12px;">
-                  <div style="width: 20px; height: 20px; background: #fffead; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 12px; flex-shrink: 0; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0d0d09" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                  <div style="width: 20px; height: 20px; background: #22c55e; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 12px; flex-shrink: 0; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
                       <polyline points="20,6 9,17 4,12"></polyline>
                     </svg>
                   </div>
                   <span style="color: #0d0d09; font-size: 15px;">Team collaboration and communication features</span>
                 </div>
                 <div style="display: flex; align-items: center; margin-bottom: 12px;">
-                  <div style="width: 20px; height: 20px; background: #fffead; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 12px; flex-shrink: 0; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0d0d09" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                  <div style="width: 20px; height: 20px; background: #22c55e; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 12px; flex-shrink: 0; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
                       <polyline points="20,6 9,17 4,12"></polyline>
                     </svg>
                   </div>
                   <span style="color: #0d0d09; font-size: 15px;">Real-time notifications and progress tracking</span>
                 </div>
                 <div style="display: flex; align-items: center;">
-                  <div style="width: 20px; height: 20px; background: #fffead; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 12px; flex-shrink: 0; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0d0d09" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                  <div style="width: 20px; height: 20px; background: #22c55e; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 12px; flex-shrink: 0; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
                       <polyline points="20,6 9,17 4,12"></polyline>
                     </svg>
                   </div>
@@ -144,18 +148,19 @@ const handler = async (req: Request): Promise<Response> => {
 
             <div style="text-align: center; margin: 35px 0;">
               <a href="${confirmUrl}" 
-                 style="background: #fffead; 
-                        color: #0d0d09; 
+                 style="background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); 
+                        color: #ffffff; 
                         text-decoration: none; 
                         padding: 16px 32px; 
-                        border-radius: 8px; 
+                        border-radius: 12px; 
                         font-weight: 600; 
                         font-size: 16px; 
                         display: inline-block; 
-                        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), inset 0 2px 4px rgba(255, 255, 255, 0.6);
-                        border: 1px solid #e9ecef;
+                        box-shadow: 0 8px 16px rgba(34, 197, 94, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+                        border: 1px solid rgba(255, 255, 255, 0.1);
                         transition: all 0.2s ease;
-                        font-family: 'Poppins', sans-serif;">
+                        font-family: 'Poppins', sans-serif;
+                        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);">
                 Confirm Email & Start Using Virgilio
               </a>
             </div>
