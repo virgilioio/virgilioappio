@@ -65,51 +65,56 @@ export function usePermissions(): PermissionsState {
   const isPlatformAdmin = userType === 'platform_admin'
   const isWorkspaceOwner = userType === 'workspace_owner'
   const isBillingMember = memberRole === 'billing'
-  const isMember = ['recruiter', 'admin', 'billing'].includes(memberRole)
-  const isGuest = memberRole === 'guest' && !isPlatformAdmin && !isWorkspaceOwner
+  
+  // Update member check to include 'client' role for workspace owners and guests
+  const isMember = ['recruiter', 'admin', 'billing', 'client'].includes(memberRole)
+  
+  // Guests are users who either have 'guest' member_role OR 'client' member_role 
+  // (since clients are technically guests from an access perspective)
+  const isGuest = (memberRole === 'guest' || memberRole === 'client') && !isPlatformAdmin && !isWorkspaceOwner
   
   return {
-    // Job permissions
+    // Job permissions - clients/workspace owners can view but not create/edit/delete
     canViewJobs: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin'].includes(memberRole),
     canCreateJobs: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin',
     canEditJobs: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin',
     canDeleteJobs: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin',
     canArchiveJobs: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin',
     
-    // Member permissions  
+    // Member permissions - clients can view their org members but not manage them
     canViewMembers: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin',
     canCreateMembers: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin',
     canEditMembers: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin',
     canDeleteMembers: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin',
     canManageMembers: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin',
     
-    // Organization permissions
+    // Organization permissions - workspace owners and platform admins only
     canViewOrganizations: isPlatformAdmin,
     canCreateOrganizations: isPlatformAdmin,
     canEditOrganizations: isPlatformAdmin || isWorkspaceOwner,
     canDeleteOrganizations: isPlatformAdmin,
     canManageOrganization: isPlatformAdmin || isWorkspaceOwner,
     
-    // Job request permissions
-    canViewJobRequests: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin'].includes(memberRole),
-    canCreateJobRequests: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin'].includes(memberRole),
+    // Job request permissions - clients can view and create requests for their org
+    canViewJobRequests: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin', 'client'].includes(memberRole),
+    canCreateJobRequests: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin', 'client'].includes(memberRole),
     canApproveJobRequests: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin',
     canManageJobRequests: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin',
-    canRequestJobs: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin'].includes(memberRole),
+    canRequestJobs: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin', 'client'].includes(memberRole),
     
-    // Candidate permissions
-    canViewCandidates: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin'].includes(memberRole),
+    // Candidate permissions - clients can view candidates for their jobs
+    canViewCandidates: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin', 'client'].includes(memberRole),
     canCreateCandidates: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin'].includes(memberRole),
     canEditCandidates: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin'].includes(memberRole),
     canDeleteCandidates: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin',
     canManageCandidates: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin'].includes(memberRole),
     
-    // Billing & Invoice permissions
-    canViewInvoices: isPlatformAdmin || isWorkspaceOwner || isBillingMember,
+    // Billing & Invoice permissions - clients can view their own billing
+    canViewInvoices: isPlatformAdmin || isWorkspaceOwner || isBillingMember || memberRole === 'client',
     canCreateInvoices: isPlatformAdmin || isBillingMember,
     canManageInvoices: isPlatformAdmin || isBillingMember,
     canUploadInvoicePDFs: isPlatformAdmin || isBillingMember,
-    canViewBilling: isPlatformAdmin || isWorkspaceOwner || isBillingMember,
+    canViewBilling: isPlatformAdmin || isWorkspaceOwner || isBillingMember || memberRole === 'client',
     
     // Admin flags
     isWorkspaceOwner,

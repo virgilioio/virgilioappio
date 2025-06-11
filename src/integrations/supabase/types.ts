@@ -477,6 +477,7 @@ export type Database = {
         | "sales"
         | "admin"
         | "platform_admin"
+        | "client"
       user_type_enum: "platform_admin" | "workspace_owner" | "member" | "guest"
     }
     CompositeTypes: {
@@ -609,6 +610,7 @@ export const Constants = {
         "sales",
         "admin",
         "platform_admin",
+        "client",
       ],
       user_type_enum: ["platform_admin", "workspace_owner", "member", "guest"],
     },

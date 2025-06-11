@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
@@ -7,7 +8,7 @@ export interface Member {
   id: string
   user_id: string | null
   organization_id: string
-  member_role: 'recruiter' | 'customer_success' | 'billing' | 'sales' | 'admin'
+  member_role: 'recruiter' | 'customer_success' | 'billing' | 'sales' | 'admin' | 'client'
   user_status: 'active' | 'inactive' | 'invited'
   created_at: string
   updated_at: string
@@ -18,12 +19,12 @@ export interface Member {
 export interface CreateMemberData {
   user_id?: string | null
   organization_id: string
-  member_role: 'recruiter' | 'customer_success' | 'billing' | 'sales' | 'admin'
+  member_role: 'recruiter' | 'customer_success' | 'billing' | 'sales' | 'admin' | 'client'
   user_status?: 'active' | 'inactive' | 'invited'
 }
 
 export interface UpdateMemberData {
-  member_role?: 'recruiter' | 'customer_success' | 'billing' | 'sales' | 'admin'
+  member_role?: 'recruiter' | 'customer_success' | 'billing' | 'sales' | 'admin' | 'client'
   user_status?: 'active' | 'inactive' | 'invited'
   organization_id?: string
 }
