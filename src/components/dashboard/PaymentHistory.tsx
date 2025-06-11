@@ -56,7 +56,7 @@ export function PaymentHistory() {
               <div key={invoice.id} className="flex items-center justify-between">
                 <div className="space-y-1">
                   <div className="text-sm font-medium">
-                    Invoice #{invoice.invoice_number}
+                    {invoice.title}
                   </div>
                   <div className="text-xs text-text-secondary">
                     {new Date(invoice.created_at).toLocaleDateString()}
