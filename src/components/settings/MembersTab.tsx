@@ -36,10 +36,10 @@ export function MembersTab() {
   }
 
   return (
-    <>
+    <div className="space-y-6">
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+        <CardHeader className="pb-4">
+          <CardTitle className="flex items-center gap-3">
             <Users className="h-5 w-5" />
             Team Members
           </CardTitle>
@@ -74,6 +74,6 @@ export function MembersTab() {
           isLoading={isLoading}
         />
       )}
-    </>
+    </div>
   )
 }

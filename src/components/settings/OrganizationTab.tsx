@@ -46,25 +46,27 @@ export function OrganizationTab() {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Building className="h-5 w-5" />
-          Organization Settings
-        </CardTitle>
-        <CardDescription>
-          Manage your organization details and preferences
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <OrganizationForm
-          organization={userOrganization}
-          formData={orgFormData}
-          onFormDataChange={setOrgFormData}
-          onSave={handleOrgSave}
-          isLoading={isLoading}
-        />
-      </CardContent>
-    </Card>
+    <div className="space-y-6">
+      <Card>
+        <CardHeader className="pb-4">
+          <CardTitle className="flex items-center gap-3">
+            <Building className="h-5 w-5" />
+            Organization Settings
+          </CardTitle>
+          <CardDescription>
+            Manage your organization details and preferences
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <OrganizationForm
+            organization={userOrganization}
+            formData={orgFormData}
+            onFormDataChange={setOrgFormData}
+            onSave={handleOrgSave}
+            isLoading={isLoading}
+          />
+        </CardContent>
+      </Card>
+    </div>
   )
 }

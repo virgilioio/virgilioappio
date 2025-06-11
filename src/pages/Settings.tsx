@@ -1,28 +1,29 @@
 
+import { useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { AuthGate } from '@/components/auth/AuthGate'
-import { PermissionGate } from '@/components/auth/PermissionGate'
-import { useAuth } from '@/contexts/AuthContext'
 import { Button } from '@/components/ui/button'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { User, Building, Receipt, Users, ArrowLeft, LogOut } from 'lucide-react'
+import { Sheet, SheetContent } from '@/components/ui/sheet'
+import { ArrowLeft, LogOut } from 'lucide-react'
 import { Section } from '@/components/layout/Section'
 import { AppContainer } from '@/components/layout/AppContainer'
+import { useAuth } from '@/contexts/AuthContext'
 import { toast } from '@/hooks/use-toast'
 import { ProfileTab } from '@/components/settings/ProfileTab'
 import { OrganizationTab } from '@/components/settings/OrganizationTab'
 import { BillingTab } from '@/components/settings/BillingTab'
 import { MembersTab } from '@/components/settings/MembersTab'
-import { usePermissions } from '@/hooks/usePermissions'
+import { SettingsSidebar } from '@/components/settings/SettingsSidebar'
+import { SettingsMobileHeader } from '@/components/settings/SettingsMobileHeader'
 
 const VALID_TABS = ['profile', 'organization', 'billing', 'members'] as const
 type ValidTab = typeof VALID_TABS[number]
 
 export default function Settings() {
-  const { user, logout } = useAuth()
-  const permissions = usePermissions()
+  const { logout } = useAuth()
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   
   // Get tab from URL or default to 'profile'
   const urlTab = searchParams.get('tab')
@@ -30,6 +31,7 @@ export default function Settings() {
 
   const handleTabChange = (tab: string) => {
     setSearchParams({ tab })
+    setMobileMenuOpen(false) // Close mobile menu when switching tabs
   }
 
   const handleLogout = async () => {
@@ -52,39 +54,34 @@ export default function Settings() {
     navigate('/')
   }
 
-  // Filter available tabs based on permissions
-  const availableTabs = [
-    { id: 'profile', label: 'My Profile', icon: User, component: ProfileTab, show: true },
-    { 
-      id: 'organization', 
-      label: 'Organization', 
-      icon: Building, 
-      component: OrganizationTab, 
-      show: permissions.canManageOrganization 
-    },
-    { 
-      id: 'billing', 
-      label: 'Billing', 
-      icon: Receipt, 
-      component: BillingTab, 
-      show: permissions.canViewBilling 
-    },
-    { 
-      id: 'members', 
-      label: 'Members', 
-      icon: Users, 
-      component: MembersTab, 
-      show: permissions.canViewMembers 
-    },
-  ].filter(tab => tab.show)
+  const renderTabContent = () => {
+    switch (currentTab) {
+      case 'profile':
+        return <ProfileTab />
+      case 'organization':
+        return <OrganizationTab />
+      case 'billing':
+        return <BillingTab />
+      case 'members':
+        return <MembersTab />
+      default:
+        return <ProfileTab />
+    }
+  }
 
   return (
     <AuthGate>
-      <Section>
-        <AppContainer>
-          {/* Header with Navigation */}
-          <div className="mb-layout-lg">
-            <div className="flex items-center gap-3 mb-layout-sm">
+      <Section className="min-h-screen">
+        <AppContainer className="max-w-none">
+          {/* Mobile Header */}
+          <SettingsMobileHeader 
+            onMenuToggle={() => setMobileMenuOpen(true)}
+            onBackToDashboard={handleBackToDashboard}
+          />
+
+          {/* Desktop Header */}
+          <div className="hidden md:flex items-center justify-between mb-layout-lg pt-layout-md">
+            <div className="flex items-center gap-3">
               <Button 
                 variant="ghost" 
                 size="sm" 
@@ -96,61 +93,63 @@ export default function Settings() {
               </Button>
             </div>
             
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="heading-1 text-text-primary">Settings</h1>
-                <p className="text-md text-text-secondary leading-relaxed">
-                  Manage your account settings and preferences
-                </p>
+            <Button 
+              variant="destructive" 
+              onClick={handleLogout}
+              className="flex items-center gap-2"
+            >
+              <LogOut className="h-4 w-4" />
+              Logout
+            </Button>
+          </div>
+
+          {/* Page Title - Desktop Only */}
+          <div className="hidden md:block mb-layout-lg">
+            <h1 className="heading-xl text-text-primary">Settings</h1>
+            <p className="text-lg text-text-secondary leading-relaxed mt-2">
+              Manage your account settings and preferences
+            </p>
+          </div>
+
+          {/* Main Layout */}
+          <div className="flex min-h-[calc(100vh-200px)]">
+            {/* Desktop Sidebar */}
+            <div className="hidden md:block w-64 shrink-0">
+              <div className="sticky top-0 h-[calc(100vh-200px)] overflow-y-auto">
+                <div className="bg-surface-primary border border-border rounded-brand p-2">
+                  <SettingsSidebar 
+                    currentTab={currentTab}
+                    onTabChange={handleTabChange}
+                  />
+                </div>
               </div>
-              
-              <Button 
-                variant="destructive" 
-                onClick={handleLogout}
-                className="flex items-center gap-2"
-              >
-                <LogOut className="h-4 w-4" />
-                Logout
-              </Button>
+            </div>
+
+            {/* Content Area */}
+            <div className="flex-1 md:ml-6">
+              <div className="w-full">
+                {renderTabContent()}
+              </div>
             </div>
           </div>
 
-          {/* Sticky Tab Navigation */}
-          <div className="sticky top-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-10 pb-layout-sm mb-layout-md">
-            <Tabs value={currentTab} onValueChange={handleTabChange}>
-              <TabsList className={`grid w-full max-w-2xl grid-cols-${availableTabs.length}`}>
-                {availableTabs.map((tab) => (
-                  <TabsTrigger 
-                    key={tab.id} 
-                    value={tab.id} 
-                    className="flex items-center gap-2 transition-all text-sm font-medium"
-                  >
-                    <tab.icon className="h-4 w-4" />
-                    <span className="hidden sm:inline">{tab.label}</span>
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-
-              {/* Tab Content */}
-              <div className="mt-layout-md">
-                <TabsContent value="profile" className="m-0">
-                  <ProfileTab />
-                </TabsContent>
-
-                <TabsContent value="organization" className="m-0">
-                  <OrganizationTab />
-                </TabsContent>
-
-                <TabsContent value="billing" className="m-0">
-                  <BillingTab />
-                </TabsContent>
-
-                <TabsContent value="members" className="m-0">
-                  <MembersTab />
-                </TabsContent>
+          {/* Mobile Sidebar Sheet */}
+          <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+            <SheetContent side="left" className="w-72 p-0">
+              <div className="p-4 border-b">
+                <h2 className="heading-sm text-text-primary">Settings</h2>
+                <p className="text-sm text-text-secondary mt-1">
+                  Manage your account
+                </p>
               </div>
-            </Tabs>
-          </div>
+              <div className="p-2">
+                <SettingsSidebar 
+                  currentTab={currentTab}
+                  onTabChange={handleTabChange}
+                />
+              </div>
+            </SheetContent>
+          </Sheet>
         </AppContainer>
       </Section>
     </AuthGate>

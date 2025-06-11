@@ -72,55 +72,80 @@ export function ProfileTab() {
   )
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <User className="h-5 w-5" />
-          Profile Information
-        </CardTitle>
-        <CardDescription>
-          Manage your personal information and preferences
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-md">
-        {/* Avatar Section */}
-        <div className="pb-md border-b">
-          <AvatarUploader
-            avatarUrl={profile?.avatar_url}
-            firstName={profile?.first_name}
-            lastName={profile?.last_name}
-            userEmail={user?.email}
-            isLoading={profileLoading}
-            onUpload={handleAvatarUpload}
-          />
-        </div>
-
-        {/* Profile Form */}
-        <div className="space-y-md">
-          <div className="flex items-center justify-between">
-            <h4 className="font-semibold">Personal Information</h4>
-            {lastUpdated && (
-              <span className="text-xs text-muted-foreground">
-                Last updated: {lastUpdated}
-              </span>
-            )}
+    <div className="space-y-6">
+      {/* Profile Information Card */}
+      <Card>
+        <CardHeader className="pb-4">
+          <CardTitle className="flex items-center gap-3">
+            <User className="h-5 w-5" />
+            Profile Information
+          </CardTitle>
+          <CardDescription>
+            Manage your personal information and preferences
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Avatar Section */}
+          <div className="pb-6 border-b border-border">
+            <AvatarUploader
+              avatarUrl={profile?.avatar_url}
+              firstName={profile?.first_name}
+              lastName={profile?.last_name}
+              userEmail={user?.email}
+              isLoading={profileLoading}
+              onUpload={handleAvatarUpload}
+            />
           </div>
-          
-          <ProfileForm
-            formData={profileFormData}
-            onFormDataChange={setProfileFormData}
-          />
-        </div>
 
-        {/* Account Info */}
-        <div className="pt-md border-t space-y-sm">
-          <h4 className="font-semibold">Account Information</h4>
-          <div className="grid gap-sm text-sm text-muted-foreground">
-            <div className="flex items-center gap-2">
+          {/* Profile Form */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h4 className="heading-sm font-semibold">Personal Information</h4>
+              {lastUpdated && (
+                <span className="text-sm text-text-secondary">
+                  Last updated: {lastUpdated}
+                </span>
+              )}
+            </div>
+            
+            <ProfileForm
+              formData={profileFormData}
+              onFormDataChange={setProfileFormData}
+            />
+          </div>
+
+          {/* Save Button */}
+          <div className="flex justify-end pt-4 border-t border-border">
+            <Button 
+              onClick={handleProfileSave} 
+              disabled={profileLoading || !hasChanges}
+              className="flex items-center gap-2"
+            >
+              <Save className="h-4 w-4" />
+              {profileLoading ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Account Information Card */}
+      <Card>
+        <CardHeader className="pb-4">
+          <CardTitle className="flex items-center gap-3">
+            <Shield className="h-5 w-5" />
+            Account Information
+          </CardTitle>
+          <CardDescription>
+            View your account details and permissions
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 text-md text-text-secondary">
+            <div className="flex items-center gap-3">
               <Mail className="h-4 w-4" />
               <span>Email: {user?.email}</span>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <Shield className="h-4 w-4" />
               <span>User Type: </span>
               <Badge variant="secondary">
@@ -128,7 +153,7 @@ export function ProfileTab() {
               </Badge>
             </div>
             {user?.user_metadata?.member_role && (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
                 <Shield className="h-4 w-4" />
                 <span>Member Role: </span>
                 <Badge variant="outline">
@@ -137,20 +162,8 @@ export function ProfileTab() {
               </div>
             )}
           </div>
-        </div>
-
-        {/* Save Button */}
-        <div className="flex justify-end pt-md border-t">
-          <Button 
-            onClick={handleProfileSave} 
-            disabled={profileLoading || !hasChanges}
-            className="flex items-center gap-2"
-          >
-            <Save className="h-4 w-4" />
-            {profileLoading ? 'Saving...' : 'Save Changes'}
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </div>
   )
 }
