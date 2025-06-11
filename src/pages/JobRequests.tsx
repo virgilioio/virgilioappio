@@ -6,6 +6,7 @@ import { JobRequestTable } from '@/components/job-requests/JobRequestTable'
 import { JobRequestForm } from '@/components/job-requests/JobRequestForm'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { PermissionGate } from '@/components/auth/PermissionGate'
+import { GuestRestriction } from '@/components/auth/GuestRestriction'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 
@@ -72,13 +73,10 @@ export default function JobRequests() {
       <PermissionGate 
         permission="canViewJobRequests"
         fallback={
-          <Card>
-            <CardContent className="py-8">
-              <div className="text-center text-muted-foreground">
-                You don't have permission to view job requests.
-              </div>
-            </CardContent>
-          </Card>
+          <GuestRestriction 
+            action="view job requests" 
+            suggestion="Contact your administrator to request access to job request management."
+          />
         }
       >
         <JobRequestTable
@@ -145,6 +143,18 @@ export default function JobRequests() {
                   <span className="font-medium">Created:</span> 
                   <span className="ml-1">{new Date(selectedRequest.created_at).toLocaleDateString()}</span>
                 </div>
+                {selectedRequest.approved_at && (
+                  <div>
+                    <span className="font-medium">Approved:</span> 
+                    <span className="ml-1">{new Date(selectedRequest.approved_at).toLocaleDateString()}</span>
+                  </div>
+                )}
+                {selectedRequest.approver_role && (
+                  <div>
+                    <span className="font-medium">Approved by:</span> 
+                    <span className="ml-1">{selectedRequest.approver_role}</span>
+                  </div>
+                )}
               </div>
 
               {selectedRequest.notes && (

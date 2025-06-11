@@ -81,12 +81,12 @@ export function usePermissions(): PermissionsState {
   const isGuest = (memberRole === 'guest' || !hasOrganizationContext) && !isPlatformAdmin && !isWorkspaceOwner
   
   return {
-    // Job permissions - clients/workspace owners can view but not create/edit/delete
+    // Job permissions - SECURED: Only platform admins and admin members can create jobs directly
     canViewJobs: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin'].includes(memberRole),
-    canCreateJobs: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin',
-    canEditJobs: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin',
-    canDeleteJobs: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin',
-    canArchiveJobs: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin',
+    canCreateJobs: isPlatformAdmin || memberRole === 'admin',
+    canEditJobs: isPlatformAdmin || memberRole === 'admin',
+    canDeleteJobs: isPlatformAdmin || memberRole === 'admin',
+    canArchiveJobs: isPlatformAdmin || memberRole === 'admin',
     
     // Member permissions - clients can view their org members but not manage them
     canViewMembers: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin',
@@ -102,11 +102,11 @@ export function usePermissions(): PermissionsState {
     canDeleteOrganizations: isPlatformAdmin,
     canManageOrganization: isPlatformAdmin || isWorkspaceOwner,
     
-    // Job request permissions - clients can view and create requests for their org
+    // Job request permissions - SECURED: Guests cannot request jobs
     canViewJobRequests: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin', 'client'].includes(memberRole),
     canCreateJobRequests: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin', 'client'].includes(memberRole),
-    canApproveJobRequests: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin',
-    canManageJobRequests: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin',
+    canApproveJobRequests: isPlatformAdmin || memberRole === 'admin' || memberRole === 'customer_success',
+    canManageJobRequests: isPlatformAdmin || memberRole === 'admin' || memberRole === 'customer_success',
     canRequestJobs: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin', 'client'].includes(memberRole),
     
     // Candidate permissions - clients can view candidates for their jobs

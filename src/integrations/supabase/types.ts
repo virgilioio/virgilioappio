@@ -191,7 +191,9 @@ export type Database = {
       }
       job_requests: {
         Row: {
+          approved_at: string | null
           approved_by: string | null
+          approver_role: string | null
           created_at: string
           currency: string | null
           department: string | null
@@ -210,7 +212,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          approved_at?: string | null
           approved_by?: string | null
+          approver_role?: string | null
           created_at?: string
           currency?: string | null
           department?: string | null
@@ -229,7 +233,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          approved_at?: string | null
           approved_by?: string | null
+          approver_role?: string | null
           created_at?: string
           currency?: string | null
           department?: string | null
@@ -473,6 +479,10 @@ export type Database = {
         Returns: string
       }
       get_invite_expiry: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      get_member_role: {
         Args: Record<PropertyKey, never>
         Returns: string
       }

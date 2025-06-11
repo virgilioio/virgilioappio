@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
@@ -18,6 +19,8 @@ export interface JobRequest {
   organization_id: string
   status: 'pending' | 'approved' | 'rejected'
   approved_by?: string
+  approved_at?: string
+  approver_role?: string
   job_id?: string
   created_at: string
   updated_at: string
@@ -150,7 +153,7 @@ export function useJobRequests() {
     }
   }
 
-  const createJobRequest = async (requestData: Omit<JobRequest, 'id' | 'submitted_by' | 'organization_id' | 'status' | 'approved_by' | 'created_at' | 'updated_at' | 'job_id'>) => {
+  const createJobRequest = async (requestData: Omit<JobRequest, 'id' | 'submitted_by' | 'organization_id' | 'status' | 'approved_by' | 'approved_at' | 'approver_role' | 'created_at' | 'updated_at' | 'job_id'>) => {
     if (!user) throw new Error('User not authenticated')
 
     const organizationId = user.user_metadata?.organization_id
@@ -232,6 +235,9 @@ export function useJobRequests() {
         throw new Error('Job request has already been approved')
       }
 
+      // Get approver role for audit trail
+      const approverRole = user.user_metadata?.member_role || 'unknown'
+
       // Create a new job from the approved request
       const { data: newJob, error: jobInsertError } = await supabase
         .from('jobs')
@@ -253,10 +259,12 @@ export function useJobRequests() {
 
       if (jobInsertError) throw jobInsertError
 
-      // Update the job request status and link to the created job
+      // Update the job request status and link to the created job with audit trail
       await updateJobRequest(id, {
         status: 'approved',
         approved_by: user.id,
+        approved_at: new Date().toISOString(),
+        approver_role: approverRole,
         job_id: newJob.id
       })
 
