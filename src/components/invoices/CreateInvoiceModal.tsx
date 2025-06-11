@@ -1,3 +1,4 @@
+
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -95,8 +96,10 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
     onOpenChange(false)
   }
 
-  // Filter organizations - for now show all since we don't have organization_type in the Organization interface
-  const availableOrganizations = organizations
+  // Filter organizations based on permissions
+  const availableOrganizations = isPlatformAdmin 
+    ? organizations 
+    : organizations.filter(org => org.organization_type === 'client')
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

@@ -8,7 +8,6 @@ export interface PermissionsState {
   canCreateJobs: boolean
   canEditJobs: boolean
   canDeleteJobs: boolean
-  canArchiveJobs: boolean
   
   // Member permissions
   canViewMembers: boolean
@@ -27,7 +26,6 @@ export interface PermissionsState {
   // Job request permissions
   canViewJobRequests: boolean
   canCreateJobRequests: boolean
-  canRequestJobs: boolean
   canApproveJobRequests: boolean
   canManageJobRequests: boolean
   
@@ -43,14 +41,11 @@ export interface PermissionsState {
   canCreateInvoices: boolean
   canManageInvoices: boolean
   canUploadInvoicePDFs: boolean
-  canViewBilling: boolean
   
   // Admin permissions
   isWorkspaceOwner: boolean
   isPlatformAdmin: boolean
   isBillingMember: boolean
-  isMember: boolean
-  isGuest: boolean
 }
 
 export function usePermissions(): PermissionsState {
@@ -65,8 +60,6 @@ export function usePermissions(): PermissionsState {
   const isPlatformAdmin = userType === 'platform_admin'
   const isWorkspaceOwner = userType === 'workspace_owner'
   const isBillingMember = memberRole === 'billing'
-  const isMember = ['admin', 'recruiter', 'billing'].includes(memberRole)
-  const isGuest = !isMember && !isPlatformAdmin && !isWorkspaceOwner
   
   return {
     // Job permissions
@@ -74,7 +67,6 @@ export function usePermissions(): PermissionsState {
     canCreateJobs: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin',
     canEditJobs: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin',
     canDeleteJobs: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin',
-    canArchiveJobs: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin',
     
     // Member permissions  
     canViewMembers: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin',
@@ -93,7 +85,6 @@ export function usePermissions(): PermissionsState {
     // Job request permissions
     canViewJobRequests: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin'].includes(memberRole),
     canCreateJobRequests: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin'].includes(memberRole),
-    canRequestJobs: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin'].includes(memberRole),
     canApproveJobRequests: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin',
     canManageJobRequests: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin',
     
@@ -109,13 +100,10 @@ export function usePermissions(): PermissionsState {
     canCreateInvoices: isPlatformAdmin || isBillingMember,
     canManageInvoices: isPlatformAdmin || isBillingMember,
     canUploadInvoicePDFs: isPlatformAdmin || isBillingMember,
-    canViewBilling: isPlatformAdmin || isWorkspaceOwner || isBillingMember,
     
     // Admin flags
     isWorkspaceOwner,
     isPlatformAdmin,
     isBillingMember,
-    isMember,
-    isGuest,
   }
 }
