@@ -70,9 +70,9 @@ const handler = async (req: Request): Promise<Response> => {
     const inviteUrl = `https://app.virgilio.io/accept-invite/${member.invite_token}`;
     const expiryDate = new Date(member.invite_expires_at).toLocaleDateString();
 
-    // Send the invitation email using Resend's default domain
+    // Send the invitation email
     const emailResponse = await resend.emails.send({
-      from: "Virgilio <onboarding@resend.dev>",
+      from: "Virgilio <noreply@app.virgilio.io>",
       to: [email],
       subject: `You've been invited to join ${organizationName} on Virgilio`,
       html: `
