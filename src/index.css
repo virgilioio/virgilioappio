@@ -56,11 +56,26 @@
     --surface-tertiary: 210 17% 93%; /* #e9ecef */
     --surface-overlay: 0 0% 0% / 0.5;
 
-    /* Typography Hierarchy */
+    /* Typography Hierarchy - Enhanced */
     --text-primary: 0 0% 20%; /* #333333 */
     --text-secondary: 0 0% 40%; /* #666666 */
     --text-tertiary: 0 0% 60%; /* #999999 */
     --text-muted: 0 0% 80%; /* #cccccc */
+
+    /* Typography Scale */
+    --font-size-xs: 0.75rem; /* 12px */
+    --font-size-sm: 0.875rem; /* 14px */
+    --font-size-md: 1rem; /* 16px */
+    --font-size-lg: 1.125rem; /* 18px */
+    --font-size-xl: 1.25rem; /* 20px */
+    --font-size-2xl: 1.5rem; /* 24px */
+    --font-size-3xl: 1.875rem; /* 30px */
+    --font-size-4xl: 2.25rem; /* 36px */
+
+    /* Line Heights */
+    --line-height-tight: 1.25;
+    --line-height-normal: 1.5;
+    --line-height-relaxed: 1.75;
 
     /* Spacing Tokens */
     --spacing-xs: 0.25rem; /* 4px */
@@ -90,10 +105,12 @@
     --shadow-neumorphic-hover: -2px 2px 0px hsl(var(--primary));
     --shadow-neumorphic-active: 0px 0px 0px hsl(var(--primary));
 
-    /* Component Heights */
-    --button-height-sm: 36px;
+    /* Component Heights - Refined */
+    --button-height-sm: 32px;
     --button-height-default: 40px;
-    --button-height-lg: 44px;
+    --button-height-lg: 48px;
+    --input-height: 40px;
+    --table-row-height: 52px;
 
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
@@ -179,30 +196,48 @@
   body {
     @apply bg-background text-foreground font-inter;
     font-feature-settings: "rlig" 1, "calt" 1;
+    line-height: var(--line-height-normal);
   }
 
+  /* Enhanced Typography Hierarchy */
   h1, h2, h3, h4, h5, h6 {
-    @apply font-poppins;
+    @apply font-poppins font-semibold;
+    line-height: var(--line-height-tight);
   }
 
   h1 {
-    @apply text-3xl font-bold leading-tight;
+    font-size: var(--font-size-4xl);
+    margin-bottom: var(--spacing-lg);
   }
 
   h2 {
-    @apply text-2xl font-semibold leading-tight;
+    font-size: var(--font-size-3xl);
+    margin-bottom: var(--spacing-md);
   }
 
   h3 {
-    @apply text-xl font-medium leading-snug;
+    font-size: var(--font-size-2xl);
+    margin-bottom: var(--spacing-md);
   }
 
   h4 {
-    @apply text-lg font-medium leading-snug;
+    font-size: var(--font-size-xl);
+    margin-bottom: var(--spacing-sm);
   }
 
-  .font-button {
-    @apply text-sm font-bold tracking-tight;
+  h5 {
+    font-size: var(--font-size-lg);
+    margin-bottom: var(--spacing-sm);
+  }
+
+  h6 {
+    font-size: var(--font-size-md);
+    margin-bottom: var(--spacing-sm);
+  }
+
+  p {
+    line-height: var(--line-height-relaxed);
+    margin-bottom: var(--spacing-md);
   }
 
   /* Reduced motion support */
@@ -222,6 +257,27 @@
 }
 
 @layer utilities {
+  /* Enhanced Typography Classes */
+  .text-xs { font-size: var(--font-size-xs); line-height: var(--line-height-normal); }
+  .text-sm { font-size: var(--font-size-sm); line-height: var(--line-height-normal); }
+  .text-md { font-size: var(--font-size-md); line-height: var(--line-height-normal); }
+  .text-lg { font-size: var(--font-size-lg); line-height: var(--line-height-normal); }
+  .text-xl { font-size: var(--font-size-xl); line-height: var(--line-height-normal); }
+  .text-2xl { font-size: var(--font-size-2xl); line-height: var(--line-height-tight); }
+  .text-3xl { font-size: var(--font-size-3xl); line-height: var(--line-height-tight); }
+  .text-4xl { font-size: var(--font-size-4xl); line-height: var(--line-height-tight); }
+
+  .heading-xs { font-size: var(--font-size-sm); line-height: var(--line-height-tight); @apply font-poppins font-semibold; }
+  .heading-sm { font-size: var(--font-size-md); line-height: var(--line-height-tight); @apply font-poppins font-semibold; }
+  .heading-md { font-size: var(--font-size-lg); line-height: var(--line-height-tight); @apply font-poppins font-semibold; }
+  .heading-lg { font-size: var(--font-size-xl); line-height: var(--line-height-tight); @apply font-poppins font-semibold; }
+  .heading-xl { font-size: var(--font-size-2xl); line-height: var(--line-height-tight); @apply font-poppins font-semibold; }
+
+  /* Leading utilities */
+  .leading-tight { line-height: var(--line-height-tight); }
+  .leading-normal { line-height: var(--line-height-normal); }
+  .leading-relaxed { line-height: var(--line-height-relaxed); }
+
   /* Virgilio.io Brand Spacing Utilities */
   .spacing-xs { margin: var(--spacing-xs); }
   .spacing-sm { margin: var(--spacing-sm); }
@@ -280,38 +336,94 @@
 }
 
 @layer components {
-  /* Brand Button Styles */
+  /* Enhanced Button Styles */
   .btn-neumorphic {
-    @apply inline-flex items-center justify-center rounded-brand px-4 py-2 font-button;
+    @apply inline-flex items-center justify-center rounded-brand px-4 py-2 font-medium;
     @apply bg-accent text-accent-foreground shadow-neumorphic;
     @apply transition-all duration-200 ease-out;
     @apply hover:shadow-neumorphic-hover hover:-translate-y-0.5;
     @apply active:shadow-neumorphic-active active:translate-y-0 active:scale-95;
     @apply focus-brand disabled:pointer-events-none disabled:opacity-50;
     height: var(--button-height-default);
+    font-size: var(--font-size-sm);
+    font-weight: 600;
+    letter-spacing: 0.025em;
   }
 
   .btn-neumorphic-sm {
-    @apply btn-neumorphic px-3 text-xs;
+    @apply btn-neumorphic px-3;
     height: var(--button-height-sm);
+    font-size: var(--font-size-xs);
   }
 
   .btn-neumorphic-lg {
-    @apply btn-neumorphic px-6 text-base;
+    @apply btn-neumorphic px-6;
     height: var(--button-height-lg);
+    font-size: var(--font-size-md);
   }
 
-  /* Brand Card Styles */
+  /* Enhanced Card Styles */
   .card-brand {
-    @apply bg-surface-primary border border-brand rounded-brand p-layout-md shadow-sm;
+    @apply bg-surface-primary border border-brand rounded-brand shadow-sm;
     @apply transition-all duration-200 hover:shadow-md hover:-translate-y-0.5;
+    padding: var(--layout-padding-md);
   }
 
-  /* Typography Classes */
-  .heading-1 { @apply text-3xl font-bold leading-tight font-poppins; }
-  .heading-2 { @apply text-2xl font-semibold leading-tight font-poppins; }
-  .heading-3 { @apply text-xl font-medium leading-snug font-poppins; }
-  .heading-4 { @apply text-lg font-medium leading-snug font-poppins; }
-  .body-text { @apply text-base leading-relaxed font-inter; }
-  .caption-text { @apply text-sm text-secondary leading-normal font-inter; }
+  /* Enhanced Typography Classes */
+  .heading-1 { 
+    font-size: var(--font-size-4xl); 
+    line-height: var(--line-height-tight); 
+    @apply font-poppins font-bold;
+    margin-bottom: var(--spacing-lg);
+  }
+  
+  .heading-2 { 
+    font-size: var(--font-size-3xl); 
+    line-height: var(--line-height-tight); 
+    @apply font-poppins font-semibold;
+    margin-bottom: var(--spacing-md);
+  }
+  
+  .heading-3 { 
+    font-size: var(--font-size-2xl); 
+    line-height: var(--line-height-tight); 
+    @apply font-poppins font-semibold;
+    margin-bottom: var(--spacing-md);
+  }
+  
+  .heading-4 { 
+    font-size: var(--font-size-xl); 
+    line-height: var(--line-height-tight); 
+    @apply font-poppins font-medium;
+    margin-bottom: var(--spacing-sm);
+  }
+  
+  .body-text { 
+    font-size: var(--font-size-md); 
+    line-height: var(--line-height-relaxed); 
+    @apply font-inter;
+    margin-bottom: var(--spacing-md);
+  }
+  
+  .caption-text { 
+    font-size: var(--font-size-sm); 
+    line-height: var(--line-height-normal); 
+    @apply font-inter text-secondary;
+  }
+
+  /* Table Enhancement */
+  .table-row {
+    height: var(--table-row-height);
+    @apply px-4 transition-colors hover:bg-muted/50;
+  }
+
+  .table-cell {
+    @apply px-4 py-3 align-middle;
+  }
+
+  .table-header {
+    @apply px-4 py-3 text-left align-middle font-medium text-muted-foreground;
+    font-size: var(--font-size-sm);
+    height: var(--table-row-height);
+  }
 }

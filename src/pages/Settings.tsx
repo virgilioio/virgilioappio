@@ -84,7 +84,7 @@ export default function Settings() {
         <AppContainer>
           {/* Header with Navigation */}
           <div className="mb-layout-lg">
-            <div className="flex items-center gap-3 mb-4">
+            <div className="flex items-center gap-3 mb-layout-sm">
               <Button 
                 variant="ghost" 
                 size="sm" 
@@ -98,8 +98,8 @@ export default function Settings() {
             
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-3xl font-bold tracking-tight text-text-primary">Settings</h1>
-                <p className="text-text-secondary mt-sm">
+                <h1 className="heading-1 text-text-primary">Settings</h1>
+                <p className="text-md text-text-secondary leading-relaxed">
                   Manage your account settings and preferences
                 </p>
               </div>
@@ -116,14 +116,14 @@ export default function Settings() {
           </div>
 
           {/* Sticky Tab Navigation */}
-          <div className="sticky top-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-10 pb-4 mb-layout-md">
+          <div className="sticky top-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 z-10 pb-layout-sm mb-layout-md">
             <Tabs value={currentTab} onValueChange={handleTabChange}>
               <TabsList className={`grid w-full max-w-2xl grid-cols-${availableTabs.length}`}>
                 {availableTabs.map((tab) => (
                   <TabsTrigger 
                     key={tab.id} 
                     value={tab.id} 
-                    className="flex items-center gap-2 transition-all"
+                    className="flex items-center gap-2 transition-all text-sm font-medium"
                   >
                     <tab.icon className="h-4 w-4" />
                     <span className="hidden sm:inline">{tab.label}</span>

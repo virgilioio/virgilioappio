@@ -103,14 +103,20 @@ export default {
 				mono: ['Monaco', 'Menlo', 'monospace']
 			},
 			fontSize: {
-				xs: '0.675rem',      // 10.8px
-				sm: '0.7875rem',     // 12.6px
-				base: '0.9rem',      // 14.4px
-				lg: '1.0125rem',     // 16.2px
-				xl: '1.125rem',      // 18px
-				'2xl': '1.35rem',    // 21.6px
-				'3xl': '1.575rem',   // 25.2px
-				'4xl': '2.025rem'    // 32.4px
+				xs: 'var(--font-size-xs)',
+				sm: 'var(--font-size-sm)',
+				md: 'var(--font-size-md)',
+				base: 'var(--font-size-md)',
+				lg: 'var(--font-size-lg)',
+				xl: 'var(--font-size-xl)',
+				'2xl': 'var(--font-size-2xl)',
+				'3xl': 'var(--font-size-3xl)',
+				'4xl': 'var(--font-size-4xl)'
+			},
+			lineHeight: {
+				tight: 'var(--line-height-tight)',
+				normal: 'var(--line-height-normal)',
+				relaxed: 'var(--line-height-relaxed)'
 			},
 			spacing: {
 				'xs': 'var(--spacing-xs)',      // 4px
@@ -133,7 +139,9 @@ export default {
 			height: {
 				'button-sm': 'var(--button-height-sm)',
 				'button': 'var(--button-height-default)',
-				'button-lg': 'var(--button-height-lg)'
+				'button-lg': 'var(--button-height-lg)',
+				'input': 'var(--input-height)',
+				'table-row': 'var(--table-row-height)'
 			},
 			boxShadow: {
 				'neumorphic': 'var(--shadow-neumorphic-base)',

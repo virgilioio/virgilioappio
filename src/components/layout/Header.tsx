@@ -66,7 +66,7 @@ export function Header() {
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <div className="flex items-center">
-            <Link to="/" className="text-xl font-bold text-primary hover:scale-105 transition-transform duration-default">
+            <Link to="/" className="heading-lg font-bold text-primary hover:scale-105 transition-transform duration-default">
               Virgilio.io
             </Link>
           </div>
@@ -124,9 +124,9 @@ export function Header() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56" align="end" forceMount>
-                <div className="flex flex-col space-y-1 p-2">
+                <div className="flex flex-col space-y-1 p-3">
                   <p className="text-sm font-medium leading-none">{user?.email}</p>
-                  <p className="text-xs leading-none text-muted-foreground">
+                  <p className="text-xs leading-normal text-muted-foreground">
                     {user?.user_metadata?.user_type || 'guest'}
                   </p>
                 </div>
@@ -173,7 +173,7 @@ export function Header() {
                         to={item.href}
                         onClick={() => setIsMobileMenuOpen(false)}
                         className={cn(
-                          "block px-3 py-2 rounded-brand text-base font-medium transition-all duration-default",
+                          "block px-3 py-2 rounded-brand text-md font-medium transition-all duration-default",
                           isActivePath(item.href)
                             ? "bg-accent text-accent-foreground shadow-neumorphic-active"
                             : "text-text-secondary hover:text-text-primary hover:bg-accent/50"
@@ -191,7 +191,7 @@ export function Header() {
                     to={item.href}
                     onClick={() => setIsMobileMenuOpen(false)}
                     className={cn(
-                      "block px-3 py-2 rounded-brand text-base font-medium transition-all duration-default",
+                      "block px-3 py-2 rounded-brand text-md font-medium transition-all duration-default",
                       isActivePath(item.href)
                         ? "bg-accent text-accent-foreground shadow-neumorphic-active"
                         : "text-text-secondary hover:text-text-primary hover:bg-accent/50"

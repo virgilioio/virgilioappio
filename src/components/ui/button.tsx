@@ -6,7 +6,7 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-brand font-button ring-offset-background transition-all duration-default ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-brand font-medium ring-offset-background transition-all duration-default ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
@@ -21,9 +21,9 @@ const buttonVariants = cva(
         info: "bg-info text-info-foreground shadow-sm hover:bg-info/90 hover:-translate-y-0.5 active:scale-95"
       },
       size: {
-        default: "h-button px-4 py-2",
-        sm: "h-button-sm rounded-md px-3 text-xs",
-        lg: "h-button-lg rounded-md px-6 text-base",
+        default: "h-button px-4 py-2 text-sm font-semibold tracking-wide",
+        sm: "h-button-sm px-3 py-1.5 text-xs font-semibold tracking-wide",
+        lg: "h-button-lg px-6 py-3 text-md font-semibold tracking-wide",
         icon: "h-button w-button",
       },
     },
