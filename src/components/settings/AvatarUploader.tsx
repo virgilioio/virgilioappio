@@ -91,6 +91,11 @@ export function AvatarUploader({
     }
   }
 
+  const handleButtonClick = () => {
+    const input = document.getElementById('avatar-upload') as HTMLInputElement
+    input?.click()
+  }
+
   return (
     <>
       <div className="flex items-center gap-md">
@@ -101,14 +106,16 @@ export function AvatarUploader({
           </AvatarFallback>
         </Avatar>
         <div>
-          <Label htmlFor="avatar-upload" className="cursor-pointer">
-            <Button variant="outline" size="sm" disabled={isLoading} asChild>
-              <span className="flex items-center gap-2">
-                <Camera className="h-4 w-4" />
-                Change Avatar
-              </span>
-            </Button>
-          </Label>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            disabled={isLoading}
+            onClick={handleButtonClick}
+            className="flex items-center gap-2"
+          >
+            <Camera className="h-4 w-4" />
+            Change Avatar
+          </Button>
           <input
             id="avatar-upload"
             type="file"
