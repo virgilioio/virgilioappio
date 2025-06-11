@@ -53,8 +53,8 @@ export function JobsTable({ jobs, isLoading, onView, onEdit, onArchive, onCreate
   if (isLoading) {
     return (
       <Card>
-        <CardContent className="p-token-lg">
-          <div className="flex items-center justify-center py-token-xl">
+        <CardContent>
+          <div className="flex items-center justify-center py-xl">
             <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin"></div>
           </div>
         </CardContent>
@@ -65,17 +65,17 @@ export function JobsTable({ jobs, isLoading, onView, onEdit, onArchive, onCreate
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mb-md">
           <CardTitle>Jobs</CardTitle>
           {permissions.canCreateJobs && (
-            <Button onClick={onCreateNew}>
-              <Plus className="h-4 w-4 mr-2" />
+            <Button onClick={onCreateNew} className="gap-1">
+              <Plus className="h-4 w-4" />
               Create Job
             </Button>
           )}
         </div>
         
-        <div className="flex gap-4 mt-4">
+        <div className="flex gap-md">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -116,56 +116,58 @@ export function JobsTable({ jobs, isLoading, onView, onEdit, onArchive, onCreate
       
       <CardContent>
         {filteredJobs.length === 0 ? (
-          <div className="text-center py-token-xl text-muted-foreground">
+          <div className="text-center py-xl text-muted-foreground">
             {jobs.length === 0 ? 'No jobs found' : 'No jobs match your filters'}
           </div>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Title</TableHead>
-                <TableHead>Level</TableHead>
-                <TableHead>Department</TableHead>
-                <TableHead>Location</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredJobs.map((job) => (
-                <TableRow key={job.id}>
-                  <TableCell className="font-medium">{job.title}</TableCell>
-                  <TableCell>{job.level}</TableCell>
-                  <TableCell>{job.department || '-'}</TableCell>
-                  <TableCell>{job.location || '-'}</TableCell>
-                  <TableCell>
-                    <Badge variant={getStatusBadgeVariant(job.status)}>
-                      {job.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{new Date(job.created_at).toLocaleDateString()}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      <Button variant="ghost" size="sm" onClick={() => onView(job)}>
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      {permissions.canEditJobs && (
-                        <Button variant="ghost" size="sm" onClick={() => onEdit(job)}>
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                      )}
-                      {permissions.canArchiveJobs && job.status !== 'archived' && (
-                        <Button variant="ghost" size="sm" onClick={() => onArchive(job.id)}>
-                          <Archive className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  </TableCell>
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Title</TableHead>
+                  <TableHead>Level</TableHead>
+                  <TableHead>Department</TableHead>
+                  <TableHead>Location</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Created</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {filteredJobs.map((job) => (
+                  <TableRow key={job.id}>
+                    <TableCell className="font-medium">{job.title}</TableCell>
+                    <TableCell>{job.level}</TableCell>
+                    <TableCell>{job.department || '-'}</TableCell>
+                    <TableCell>{job.location || '-'}</TableCell>
+                    <TableCell>
+                      <Badge variant={getStatusBadgeVariant(job.status)}>
+                        {job.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{new Date(job.created_at).toLocaleDateString()}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center justify-end gap-sm">
+                        <Button variant="ghost" size="sm" onClick={() => onView(job)}>
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        {permissions.canEditJobs && (
+                          <Button variant="ghost" size="sm" onClick={() => onEdit(job)}>
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {permissions.canArchiveJobs && job.status !== 'archived' && (
+                          <Button variant="ghost" size="sm" onClick={() => onArchive(job.id)}>
+                            <Archive className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         )}
       </CardContent>
     </Card>

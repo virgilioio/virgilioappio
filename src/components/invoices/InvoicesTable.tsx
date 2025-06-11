@@ -67,7 +67,7 @@ export function InvoicesTable() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-md">
             <Receipt className="h-5 w-5" />
             Invoices
           </CardTitle>
@@ -81,7 +81,7 @@ export function InvoicesTable() {
     <>
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
+          <CardTitle className="flex items-center gap-md">
             <Receipt className="h-5 w-5" />
             Invoices
           </CardTitle>
@@ -91,7 +91,7 @@ export function InvoicesTable() {
         </CardHeader>
         <CardContent>
           {invoices.length === 0 ? (
-            <div className="text-center py-layout-md">
+            <div className="text-center py-xl">
               <p className="text-muted-foreground">No invoices found.</p>
               <p className="text-sm text-muted-foreground mt-sm">
                 Invoices will appear here once billing is set up.
@@ -107,7 +107,7 @@ export function InvoicesTable() {
                     <TableHead>Status</TableHead>
                     <TableHead>Issued</TableHead>
                     <TableHead>Due Date</TableHead>
-                    <TableHead className="w-[100px]">Actions</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -136,7 +136,7 @@ export function InvoicesTable() {
                         {invoice.due_date ? formatDate(invoice.due_date) : 'N/A'}
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center justify-end gap-sm">
                           {/* Upload button for Platform Admins */}
                           {isPlatformAdmin && (
                             <Button

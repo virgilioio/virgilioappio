@@ -32,7 +32,7 @@ export function CandidateTable({ candidates, isLoading, onEdit, onDelete, onAddN
           <CardTitle>Candidates</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-center py-8">
+          <div className="flex items-center justify-center py-xl">
             <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin"></div>
           </div>
         </CardContent>
@@ -43,21 +43,21 @@ export function CandidateTable({ candidates, isLoading, onEdit, onDelete, onAddN
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="flex items-center gap-2">
+        <CardTitle className="flex items-center gap-md">
           Candidates
           <Badge variant="secondary">{candidates.length}</Badge>
         </CardTitle>
         <PermissionGate permission="canManageCandidates">
-          <Button onClick={onAddNew} size="sm">
-            <UserPlus className="h-4 w-4 mr-2" />
+          <Button onClick={onAddNew} size="sm" className="gap-1">
+            <UserPlus className="h-4 w-4" />
             Add Candidate
           </Button>
         </PermissionGate>
       </CardHeader>
       <CardContent>
         {candidates.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            <UserPlus className="h-12 w-12 mx-auto mb-4 opacity-50" />
+          <div className="text-center py-xl text-muted-foreground">
+            <UserPlus className="h-12 w-12 mx-auto mb-md opacity-50" />
             <p>No candidates added yet</p>
             <p className="text-sm">Add candidates to start tracking applicants for this job</p>
           </div>
@@ -71,7 +71,7 @@ export function CandidateTable({ candidates, isLoading, onEdit, onDelete, onAddN
                   <TableHead>Notes</TableHead>
                   <TableHead>Resume</TableHead>
                   <TableHead>Added</TableHead>
-                  <TableHead className="w-24">Actions</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -117,7 +117,7 @@ export function CandidateTable({ candidates, isLoading, onEdit, onDelete, onAddN
                     </TableCell>
                     <TableCell>
                       <PermissionGate permission="canManageCandidates">
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center justify-end gap-sm">
                           <Button
                             variant="ghost"
                             size="sm"
