@@ -10,7 +10,7 @@ import { DollarSign, Calendar, AlertTriangle } from 'lucide-react'
 
 interface MetricCardProps {
   title: string
-  value: string | number
+  value: string | number | React.ReactNode
   icon?: React.ReactNode
   tooltip?: string
   variant?: 'default' | 'success' | 'warning' | 'destructive'
@@ -60,8 +60,8 @@ function MetricCard({ title, value, icon, tooltip, variant = 'default' }: Metric
 
 export function BillingMetricsDashboard() {
   const { invoices } = useInvoices()
-  const { canManageInvoices, canViewBilling, organizationId } = usePermissions()
-  const { user } = useAuth()
+  const { canManageInvoices, canViewBilling } = usePermissions()
+  const { user, organizationId } = useAuth()
 
   // Don't render if user can't view billing
   if (!canViewBilling) {
