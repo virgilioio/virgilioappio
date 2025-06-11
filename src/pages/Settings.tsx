@@ -13,16 +13,26 @@ import { MembersTab } from '@/components/settings/MembersTab'
 import { BillingTab } from '@/components/settings/BillingTab'
 import { DebugPanel } from '@/components/debug/DebugPanel'
 import { usePermissions } from '@/hooks/usePermissions'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 
 export default function Settings() {
   const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
   const initialTab = searchParams.get('tab') || 'profile'
   const [activeTab, setActiveTab] = useState(initialTab)
   const permissions = usePermissions()
 
   // Show debug panel in development
   const showDebugPanel = process.env.NODE_ENV === 'development' || window.location.hostname === 'localhost'
+
+  const handleMenuToggle = () => {
+    // Handle mobile menu toggle - could implement a mobile drawer here
+    console.log('Menu toggle clicked')
+  }
+
+  const handleBackToDashboard = () => {
+    navigate('/')
+  }
 
   return (
     <AuthGate>
@@ -47,12 +57,15 @@ export default function Settings() {
               <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
                 {/* Mobile Header */}
                 <div className="lg:hidden">
-                  <SettingsMobileHeader activeTab={activeTab} onTabChange={setActiveTab} />
+                  <SettingsMobileHeader 
+                    onMenuToggle={handleMenuToggle} 
+                    onBackToDashboard={handleBackToDashboard} 
+                  />
                 </div>
 
                 {/* Desktop Sidebar */}
                 <div className="hidden lg:block lg:w-64 flex-shrink-0">
-                  <SettingsSidebar activeTab={activeTab} onTabChange={setActiveTab} />
+                  <SettingsSidebar currentTab={activeTab} onTabChange={setActiveTab} />
                 </div>
 
                 {/* Content */}
