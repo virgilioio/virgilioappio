@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Search, Eye, Edit, Archive, MoreHorizontal } from 'lucide-react'
+import { Plus, Search, Eye, Edit, Archive, MoreHorizontal, FileText } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Job } from '@/hooks/useJobs'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -19,9 +19,10 @@ interface JobsTableProps {
   onEdit: (job: Job) => void
   onArchive: (id: string) => void
   onCreateNew: () => void
+  onRequestJob: () => void
 }
 
-export function JobsTable({ jobs, isLoading, onView, onEdit, onArchive, onCreateNew }: JobsTableProps) {
+export function JobsTable({ jobs, isLoading, onView, onEdit, onArchive, onCreateNew, onRequestJob }: JobsTableProps) {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [levelFilter, setLevelFilter] = useState<string>('all')
@@ -74,12 +75,20 @@ export function JobsTable({ jobs, isLoading, onView, onEdit, onArchive, onCreate
             <div className="flex flex-col gap-4">
               <div className="flex items-center justify-between">
                 <CardTitle>Jobs</CardTitle>
-                {permissions.canCreateJobs && (
-                  <Button onClick={onCreateNew} size="sm" className="gap-1">
-                    <Plus className="h-4 w-4" />
-                    Create
-                  </Button>
-                )}
+                <div className="flex gap-2">
+                  {permissions.canCreateJobs && (
+                    <Button onClick={onCreateNew} size="sm" className="gap-1">
+                      <Plus className="h-4 w-4" />
+                      Create
+                    </Button>
+                  )}
+                  {permissions.canRequestJobs && !permissions.canCreateJobs && (
+                    <Button onClick={onRequestJob} size="sm" variant="outline" className="gap-1">
+                      <FileText className="h-4 w-4" />
+                      Request
+                    </Button>
+                  )}
+                </div>
               </div>
               
               <div className="space-y-3">
@@ -198,12 +207,20 @@ export function JobsTable({ jobs, isLoading, onView, onEdit, onArchive, onCreate
       <CardHeader>
         <div className="flex items-center justify-between mb-4">
           <CardTitle>Jobs</CardTitle>
-          {permissions.canCreateJobs && (
-            <Button onClick={onCreateNew} className="gap-1">
-              <Plus className="h-4 w-4" />
-              Create Job
-            </Button>
-          )}
+          <div className="flex gap-2">
+            {permissions.canCreateJobs && (
+              <Button onClick={onCreateNew} className="gap-1">
+                <Plus className="h-4 w-4" />
+                Create Job
+              </Button>
+            )}
+            {permissions.canRequestJobs && !permissions.canCreateJobs && (
+              <Button onClick={onRequestJob} variant="outline" className="gap-1">
+                <FileText className="h-4 w-4" />
+                Request Job
+              </Button>
+            )}
+          </div>
         </div>
         
         <div className="flex gap-4">

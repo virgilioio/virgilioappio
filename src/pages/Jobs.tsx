@@ -1,18 +1,21 @@
-
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { AuthGate } from '@/components/auth/AuthGate'
 import { PermissionGate } from '@/components/auth/PermissionGate'
 import { GuestRestriction } from '@/components/auth/GuestRestriction'
 import { JobsTable } from '@/components/jobs/JobsTable'
 import { JobForm } from '@/components/jobs/JobForm'
+import { JobRequestForm } from '@/components/job-requests/JobRequestForm'
 import { useJobs, Job } from '@/hooks/useJobs'
+import { useJobRequests } from '@/hooks/useJobRequests'
 import { usePermissions } from '@/hooks/usePermissions'
 
 export default function Jobs() {
   const navigate = useNavigate()
   const [isFormOpen, setIsFormOpen] = useState(false)
+  const [isRequestFormOpen, setIsRequestFormOpen] = useState(false)
   const [selectedJob, setSelectedJob] = useState<Job | null>(null)
   const [archiveJobId, setArchiveJobId] = useState<string | null>(null)
   const permissions = usePermissions()
@@ -25,6 +28,8 @@ export default function Jobs() {
     archiveJob
   } = useJobs()
 
+  const { createJobRequest, isLoading: isRequestLoading } = useJobRequests()
+
   const handleCreateNew = () => {
     // Additional frontend check for workspace owners
     if (permissions.isWorkspaceOwner && !permissions.canCreateJobs) {
@@ -33,6 +38,10 @@ export default function Jobs() {
     }
     setSelectedJob(null)
     setIsFormOpen(true)
+  }
+
+  const handleRequestJob = () => {
+    setIsRequestFormOpen(true)
   }
 
   const handleView = (job: Job) => {
@@ -61,6 +70,11 @@ export default function Jobs() {
     } else {
       await createJob(data)
     }
+  }
+
+  const handleJobRequestSubmit = async (data: any) => {
+    await createJobRequest(data)
+    setIsRequestFormOpen(false)
   }
 
   return (
@@ -95,6 +109,7 @@ export default function Jobs() {
               onEdit={handleEdit}
               onArchive={handleArchive}
               onCreateNew={handleCreateNew}
+              onRequestJob={handleRequestJob}
             />
 
             <JobForm
@@ -104,6 +119,19 @@ export default function Jobs() {
               job={selectedJob}
               isLoading={isLoading}
             />
+
+            <Dialog open={isRequestFormOpen} onOpenChange={setIsRequestFormOpen}>
+              <DialogContent className="mx-4 max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>Request New Job</DialogTitle>
+                </DialogHeader>
+                <JobRequestForm
+                  onSubmit={handleJobRequestSubmit}
+                  onCancel={() => setIsRequestFormOpen(false)}
+                  isLoading={isRequestLoading}
+                />
+              </DialogContent>
+            </Dialog>
 
             <AlertDialog open={!!archiveJobId} onOpenChange={() => setArchiveJobId(null)}>
               <AlertDialogContent className="mx-4 max-w-md sm:max-w-lg">
