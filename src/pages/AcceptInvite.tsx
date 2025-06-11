@@ -133,7 +133,7 @@ export default function AcceptInvite() {
             first_name: firstName.trim(),
             last_name: lastName.trim()
           },
-          emailRedirectTo: `${window.location.origin}/`
+          emailRedirectTo: 'https://app.virgilio.io/'
         }
       })
 
