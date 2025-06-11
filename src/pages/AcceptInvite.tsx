@@ -236,15 +236,15 @@ export default function AcceptInvite() {
 
   if (isValidating) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-emerald-100">
-        <Card className="w-full max-w-md">
+      <div className="min-h-screen flex items-center justify-center bg-surface-primary p-4">
+        <Card className="w-full max-w-md card-brand">
           <CardHeader className="text-center">
-            <VirgilioLogo size="lg" className="justify-center mb-4" />
+            <VirgilioLogo size="lg" className="justify-center mb-6" />
           </CardHeader>
           <CardContent className="pt-0">
-            <div className="flex items-center justify-center space-x-2">
-              <Loader2 className="h-5 w-5 animate-spin" />
-              <span>Validating invitation...</span>
+            <div className="flex items-center justify-center space-x-3">
+              <Loader2 className="h-5 w-5 animate-spin text-accent" />
+              <span className="text-text-primary">Validating invitation...</span>
             </div>
           </CardContent>
         </Card>
@@ -254,15 +254,15 @@ export default function AcceptInvite() {
 
   if (!invitationData?.is_valid) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-emerald-100">
-        <Card className="w-full max-w-md">
+      <div className="min-h-screen flex items-center justify-center bg-surface-primary p-4">
+        <Card className="w-full max-w-md card-brand">
           <CardHeader className="text-center">
-            <VirgilioLogo size="lg" className="justify-center mb-4" />
-            <div className="mx-auto mb-4 w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
-              <XCircle className="h-6 w-6 text-red-600" />
+            <VirgilioLogo size="lg" className="justify-center mb-6" />
+            <div className="mx-auto mb-4 w-12 h-12 bg-destructive/10 rounded-full flex items-center justify-center">
+              <XCircle className="h-6 w-6 text-destructive" />
             </div>
-            <CardTitle className="text-red-900">Invalid Invitation</CardTitle>
-            <CardDescription>
+            <CardTitle className="text-text-primary font-poppins">Invalid Invitation</CardTitle>
+            <CardDescription className="text-text-secondary">
               {invitationData?.error_message || 'This invitation link is invalid or has expired.'}
             </CardDescription>
           </CardHeader>
@@ -281,31 +281,31 @@ export default function AcceptInvite() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-emerald-100 p-4">
-      <Card className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center bg-surface-primary p-4">
+      <Card className="w-full max-w-md card-brand">
         <CardHeader className="text-center">
-          <VirgilioLogo size="lg" className="justify-center mb-4" />
-          <div className="mx-auto mb-4 w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
-            <CheckCircle2 className="h-6 w-6 text-green-600" />
+          <VirgilioLogo size="lg" className="justify-center mb-6" />
+          <div className="mx-auto mb-4 w-12 h-12 bg-success/10 rounded-full flex items-center justify-center">
+            <CheckCircle2 className="h-6 w-6 text-success" />
           </div>
-          <CardTitle className="text-2xl">You're Invited!</CardTitle>
-          <CardDescription>
-            Join <strong>{invitationData.organization_name}</strong> as a{' '}
-            <strong>{invitationData.member_role.replace('_', ' ')}</strong>
+          <CardTitle className="text-2xl font-poppins text-text-primary">You're Invited!</CardTitle>
+          <CardDescription className="text-text-secondary">
+            Join <strong className="text-text-primary">{invitationData.organization_name}</strong> as a{' '}
+            <strong className="text-text-primary">{invitationData.member_role.replace('_', ' ')}</strong>
           </CardDescription>
         </CardHeader>
         
         <CardContent>
-          <Alert className="mb-6">
-            <AlertDescription>
+          <Alert className="mb-6 bg-accent/10 border-accent/20">
+            <AlertDescription className="text-text-primary">
               Creating account for: <strong>{invitationData.invite_email}</strong>
             </AlertDescription>
           </Alert>
 
-          <form onSubmit={handleAcceptInvitation} className="space-y-4">
+          <form onSubmit={handleAcceptInvitation} className="space-y-6">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="firstName">First Name</Label>
+                <Label htmlFor="firstName" className="text-text-primary">First Name</Label>
                 <Input
                   id="firstName"
                   type="text"
@@ -313,14 +313,15 @@ export default function AcceptInvite() {
                   onChange={(e) => setFirstName(e.target.value)}
                   placeholder="Enter your first name"
                   disabled={isSubmitting}
+                  className="mt-2"
                 />
                 {errors.firstName && (
-                  <p className="text-sm text-red-600 mt-1">{errors.firstName}</p>
+                  <p className="text-sm text-destructive mt-1">{errors.firstName}</p>
                 )}
               </div>
               
               <div>
-                <Label htmlFor="lastName">Last Name</Label>
+                <Label htmlFor="lastName" className="text-text-primary">Last Name</Label>
                 <Input
                   id="lastName"
                   type="text"
@@ -328,16 +329,17 @@ export default function AcceptInvite() {
                   onChange={(e) => setLastName(e.target.value)}
                   placeholder="Enter your last name"
                   disabled={isSubmitting}
+                  className="mt-2"
                 />
                 {errors.lastName && (
-                  <p className="text-sm text-red-600 mt-1">{errors.lastName}</p>
+                  <p className="text-sm text-destructive mt-1">{errors.lastName}</p>
                 )}
               </div>
             </div>
 
             <div>
-              <Label htmlFor="password">Password</Label>
-              <div className="relative">
+              <Label htmlFor="password" className="text-text-primary">Password</Label>
+              <div className="relative mt-2">
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
@@ -350,20 +352,20 @@ export default function AcceptInvite() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-text-secondary hover:text-text-primary transition-colors"
                   disabled={isSubmitting}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
               {errors.password && (
-                <p className="text-sm text-red-600 mt-1">{errors.password}</p>
+                <p className="text-sm text-destructive mt-1">{errors.password}</p>
               )}
             </div>
 
             <div>
-              <Label htmlFor="confirmPassword">Confirm Password</Label>
-              <div className="relative">
+              <Label htmlFor="confirmPassword" className="text-text-primary">Confirm Password</Label>
+              <div className="relative mt-2">
                 <Input
                   id="confirmPassword"
                   type={showConfirmPassword ? "text" : "password"}
@@ -376,30 +378,24 @@ export default function AcceptInvite() {
                 <button
                   type="button"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-text-secondary hover:text-text-primary transition-colors"
                   disabled={isSubmitting}
                 >
                   {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
               {errors.confirmPassword && (
-                <p className="text-sm text-red-600 mt-1">{errors.confirmPassword}</p>
+                <p className="text-sm text-destructive mt-1">{errors.confirmPassword}</p>
               )}
             </div>
 
             <Button 
               type="submit" 
-              className="w-full" 
+              className="w-full mt-8" 
               disabled={isSubmitting}
+              loading={isSubmitting}
             >
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating Account...
-                </>
-              ) : (
-                'Accept Invitation & Create Account'
-              )}
+              {isSubmitting ? 'Creating Account...' : 'Accept Invitation & Create Account'}
             </Button>
           </form>
         </CardContent>

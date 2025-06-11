@@ -66,23 +66,23 @@ export default function VerifyEmail() {
   if (!email) return null
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-emerald-100 p-4">
-      <Card className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center bg-surface-primary p-4">
+      <Card className="w-full max-w-md card-brand">
         <CardHeader className="text-center">
-          <VirgilioLogo size="lg" className="justify-center mb-4" />
-          <div className="mx-auto mb-4 w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
-            <Mail className="h-8 w-8 text-green-600" />
+          <VirgilioLogo size="lg" className="justify-center mb-6" />
+          <div className="mx-auto mb-4 w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center">
+            <Mail className="h-8 w-8 text-accent" />
           </div>
-          <CardTitle className="text-2xl">Check Your Email</CardTitle>
-          <CardDescription>
+          <CardTitle className="text-2xl font-poppins text-text-primary">Check Your Email</CardTitle>
+          <CardDescription className="text-text-secondary">
             We've sent a verification link to verify your account
           </CardDescription>
         </CardHeader>
         
         <CardContent className="space-y-6">
-          <Alert>
-            <CheckCircle2 className="h-4 w-4" />
-            <AlertDescription>
+          <Alert className="bg-success/10 border-success/20">
+            <CheckCircle2 className="h-4 w-4 text-success" />
+            <AlertDescription className="text-text-primary">
               <strong>Account created successfully!</strong>
               {organizationName && (
                 <span> You've been added to <strong>{organizationName}</strong>.</span>
@@ -91,11 +91,11 @@ export default function VerifyEmail() {
           </Alert>
 
           <div className="text-center space-y-4">
-            <p className="text-sm text-muted-foreground">
+            <p className="text-sm text-text-secondary">
               We sent a verification email to:
             </p>
-            <p className="font-medium break-all">{email}</p>
-            <p className="text-sm text-muted-foreground">
+            <p className="font-medium break-all text-text-primary font-poppins">{email}</p>
+            <p className="text-sm text-text-secondary">
               Click the verification link in your email to complete your account setup and start using Virgilio.
             </p>
           </div>
@@ -106,13 +106,9 @@ export default function VerifyEmail() {
               disabled={isResending || resendCooldown > 0}
               variant="outline"
               className="w-full"
+              loading={isResending}
             >
-              {isResending ? (
-                <>
-                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                  Sending...
-                </>
-              ) : resendCooldown > 0 ? (
+              {resendCooldown > 0 ? (
                 `Resend in ${resendCooldown}s`
               ) : (
                 <>
@@ -131,8 +127,8 @@ export default function VerifyEmail() {
             </Button>
           </div>
 
-          <Alert>
-            <AlertDescription className="text-xs text-center">
+          <Alert className="bg-warning/10 border-warning/20">
+            <AlertDescription className="text-xs text-center text-text-secondary">
               <strong>Can't find the email?</strong> Check your spam folder or contact support if you continue having issues.
             </AlertDescription>
           </Alert>
