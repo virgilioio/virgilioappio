@@ -72,7 +72,7 @@ export default function Settings() {
   return (
     <AuthGate>
       <Section className="min-h-screen">
-        <AppContainer className="max-w-none">
+        <AppContainer variant="default">
           {/* Mobile Header */}
           <SettingsMobileHeader 
             onMenuToggle={() => setMobileMenuOpen(true)}
@@ -127,7 +127,7 @@ export default function Settings() {
 
             {/* Content Area */}
             <div className="flex-1 min-w-0">
-              <div className="w-full px-4 lg:px-0">
+              <div className="w-full">
                 {renderTabContent()}
               </div>
             </div>

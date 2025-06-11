@@ -95,6 +95,11 @@
     --layout-padding-md: 1rem; /* 16px - reduced from 24px */
     --layout-padding-lg: 1.5rem; /* 24px - reduced from 32px */
 
+    /* Layout Max Width - NEW */
+    --layout-max-width: 1200px;
+    --layout-max-width-sm: 800px;
+    --layout-max-width-lg: 1400px;
+
     /* Animation Timings */
     --transition-fast: 150ms;
     --transition-default: 200ms;
@@ -304,6 +309,45 @@
   .py-layout-lg { padding-top: var(--layout-padding-lg); padding-bottom: var(--layout-padding-lg); }
 
   .gap-gutter { gap: var(--layout-gutter); }
+
+  /* Layout Container Utilities - NEW */
+  .layout-container {
+    max-width: var(--layout-max-width);
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: var(--spacing-lg);
+    padding-right: var(--spacing-lg);
+  }
+
+  .layout-container-sm {
+    max-width: var(--layout-max-width-sm);
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: var(--spacing-lg);
+    padding-right: var(--spacing-lg);
+  }
+
+  .layout-container-lg {
+    max-width: var(--layout-max-width-lg);
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: var(--spacing-lg);
+    padding-right: var(--spacing-lg);
+  }
+
+  /* Mobile responsive layout containers */
+  @media (max-width: 768px) {
+    .layout-container,
+    .layout-container-sm,
+    .layout-container-lg {
+      max-width: 100%;
+      padding-left: var(--spacing-sm);
+      padding-right: var(--spacing-sm);
+    }
+  }
 
   /* Brand Color Utilities */
   .bg-surface-primary { background-color: hsl(var(--surface-primary)); }

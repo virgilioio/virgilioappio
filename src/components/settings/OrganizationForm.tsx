@@ -45,9 +45,9 @@ export function OrganizationForm({
 
   if (!organization) {
     return (
-      <div className="text-center py-layout-md">
+      <div className="text-center py-8">
         <p className="text-muted-foreground">No organization found.</p>
-        <p className="text-sm text-muted-foreground mt-sm">
+        <p className="text-sm text-muted-foreground mt-2">
           Contact your administrator to set up an organization.
         </p>
       </div>
@@ -55,8 +55,8 @@ export function OrganizationForm({
   }
 
   return (
-    <div className="space-y-lg">
-      <div className="grid gap-md">
+    <div className="max-w-2xl mx-auto space-y-6">
+      <div className="grid gap-4">
         <FormField label="Organization Name" required htmlFor="org-name">
           <Input
             id="org-name"
@@ -100,11 +100,11 @@ export function OrganizationForm({
         </FormField>
       </div>
 
-      <div className="pt-md border-t">
-        <div className="grid gap-sm text-sm text-muted-foreground">
+      <div className="pt-4 border-t">
+        <div className="grid gap-2 text-sm text-muted-foreground">
           <div className="flex justify-between">
             <span>Organization ID:</span>
-            <code className="text-xs">{organization.id}</code>
+            <code className="text-xs bg-muted px-2 py-1 rounded">{organization.id}</code>
           </div>
           <div className="flex justify-between">
             <span>Created:</span>
@@ -113,7 +113,7 @@ export function OrganizationForm({
         </div>
       </div>
 
-      <div className="flex justify-end pt-md">
+      <div className="flex justify-end pt-4">
         <Button 
           onClick={onSave} 
           disabled={isLoading}

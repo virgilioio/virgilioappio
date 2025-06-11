@@ -6,6 +6,8 @@ import { PermissionGate } from '@/components/auth/PermissionGate'
 import { OrganizationsTable } from '@/components/organizations/OrganizationsTable'
 import { OrganizationForm } from '@/components/organizations/OrganizationForm'
 import { useOrganizations, Organization } from '@/hooks/useOrganizations'
+import { AppContainer } from '@/components/layout/AppContainer'
+import { Section } from '@/components/layout/Section'
 
 export default function Organizations() {
   const [isFormOpen, setIsFormOpen] = useState(false)
@@ -52,49 +54,51 @@ export default function Organizations() {
   return (
     <AuthGate>
       <PermissionGate permission="canManageOrganization">
-        <div className="min-h-screen bg-background">
-          <div className="container mx-auto py-token-xl px-token-lg">
-            <div className="mb-token-xl">
-              <h1 className="text-3xl font-bold tracking-tight">Organizations</h1>
-              <p className="text-muted-foreground mt-token-sm">
-                Manage organizations and their settings
-              </p>
+        <Section className="min-h-screen">
+          <AppContainer variant="default">
+            <div className="py-6 lg:py-8">
+              <div className="mb-6 lg:mb-8">
+                <h1 className="text-3xl font-bold tracking-tight">Organizations</h1>
+                <p className="text-muted-foreground mt-2">
+                  Manage organizations and their settings
+                </p>
+              </div>
+
+              <OrganizationsTable
+                organizations={organizations}
+                isLoading={isLoading}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+                onCreateNew={handleCreateNew}
+              />
+
+              <OrganizationForm
+                isOpen={isFormOpen}
+                onClose={() => setIsFormOpen(false)}
+                onSubmit={handleFormSubmit}
+                organization={selectedOrganization}
+                isLoading={isLoading}
+              />
+
+              <AlertDialog open={!!deleteOrgId} onOpenChange={() => setDeleteOrgId(null)}>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Deactivate Organization</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Are you sure you want to deactivate this organization? This will set its status to inactive but won't permanently delete it.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleConfirmDelete}>
+                      Deactivate
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
-
-            <OrganizationsTable
-              organizations={organizations}
-              isLoading={isLoading}
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-              onCreateNew={handleCreateNew}
-            />
-
-            <OrganizationForm
-              isOpen={isFormOpen}
-              onClose={() => setIsFormOpen(false)}
-              onSubmit={handleFormSubmit}
-              organization={selectedOrganization}
-              isLoading={isLoading}
-            />
-
-            <AlertDialog open={!!deleteOrgId} onOpenChange={() => setDeleteOrgId(null)}>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Deactivate Organization</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Are you sure you want to deactivate this organization? This will set its status to inactive but won't permanently delete it.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleConfirmDelete}>
-                    Deactivate
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
-        </div>
+          </AppContainer>
+        </Section>
       </PermissionGate>
     </AuthGate>
   )

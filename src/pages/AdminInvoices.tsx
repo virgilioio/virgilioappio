@@ -32,7 +32,7 @@ export default function AdminInvoices() {
   if (!canManageInvoices) {
     return (
       <Section>
-        <AppContainer>
+        <AppContainer variant="sm">
           <Card>
             <CardContent className="pt-6">
               <p className="text-center text-muted-foreground">
@@ -47,7 +47,7 @@ export default function AdminInvoices() {
 
   return (
     <Section>
-      <AppContainer>
+      <AppContainer variant="default">
         <div className="space-y-6">
           {/* Header */}
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">

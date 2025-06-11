@@ -6,6 +6,8 @@ import { PermissionGate } from '@/components/auth/PermissionGate'
 import { MembersTable } from '@/components/members/MembersTable'
 import { MemberForm } from '@/components/members/MemberForm'
 import { useMembers, Member } from '@/hooks/useMembers'
+import { AppContainer } from '@/components/layout/AppContainer'
+import { Section } from '@/components/layout/Section'
 
 export default function Members() {
   const [isFormOpen, setIsFormOpen] = useState(false)
@@ -52,49 +54,51 @@ export default function Members() {
   return (
     <AuthGate>
       <PermissionGate permission="canManageMembers">
-        <div className="min-h-screen bg-background">
-          <div className="container mx-auto py-token-xl px-token-lg">
-            <div className="mb-token-xl">
-              <h1 className="text-3xl font-bold tracking-tight">Team Members</h1>
-              <p className="text-muted-foreground mt-token-sm">
-                Manage team members and their roles within your organization
-              </p>
+        <Section className="min-h-screen">
+          <AppContainer variant="default">
+            <div className="py-6 lg:py-8">
+              <div className="mb-6 lg:mb-8">
+                <h1 className="text-3xl font-bold tracking-tight">Team Members</h1>
+                <p className="text-muted-foreground mt-2">
+                  Manage team members and their roles within your organization
+                </p>
+              </div>
+
+              <MembersTable
+                members={members}
+                isLoading={isLoading}
+                onEdit={handleEdit}
+                onDeactivate={handleDeactivate}
+                onCreateNew={handleCreateNew}
+              />
+
+              <MemberForm
+                isOpen={isFormOpen}
+                onClose={() => setIsFormOpen(false)}
+                onSubmit={handleFormSubmit}
+                member={selectedMember}
+                isLoading={isLoading}
+              />
+
+              <AlertDialog open={!!deactivateMemberId} onOpenChange={() => setDeactivateMemberId(null)}>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Deactivate Member</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Are you sure you want to deactivate this member? They will lose access to the organization but can be reactivated later.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleConfirmDeactivate}>
+                      Deactivate
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
-
-            <MembersTable
-              members={members}
-              isLoading={isLoading}
-              onEdit={handleEdit}
-              onDeactivate={handleDeactivate}
-              onCreateNew={handleCreateNew}
-            />
-
-            <MemberForm
-              isOpen={isFormOpen}
-              onClose={() => setIsFormOpen(false)}
-              onSubmit={handleFormSubmit}
-              member={selectedMember}
-              isLoading={isLoading}
-            />
-
-            <AlertDialog open={!!deactivateMemberId} onOpenChange={() => setDeactivateMemberId(null)}>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Deactivate Member</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Are you sure you want to deactivate this member? They will lose access to the organization but can be reactivated later.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleConfirmDeactivate}>
-                    Deactivate
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
-        </div>
+          </AppContainer>
+        </Section>
       </PermissionGate>
     </AuthGate>
   )
