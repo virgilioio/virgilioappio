@@ -9,6 +9,7 @@ export interface Organization {
   name: string
   country: string
   status: 'active' | 'inactive'
+  organization_type: 'platform' | 'client'
   owner_id: string | null
   created_at: string
   updated_at: string

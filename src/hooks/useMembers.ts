@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
@@ -9,6 +10,7 @@ export interface Member {
   organization_id: string
   member_role: 'recruiter' | 'customer_success' | 'billing' | 'sales' | 'admin' | 'client'
   user_status: 'active' | 'inactive' | 'invited'
+  user_type?: 'guest' | 'member' | 'workspace_owner' | 'platform_admin'
   created_at: string
   updated_at: string
   invite_token?: string | null
