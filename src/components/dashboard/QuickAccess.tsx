@@ -60,7 +60,7 @@ export function QuickAccess({ permissions }: QuickAccessProps) {
               variant="outline" 
               size="sm" 
               asChild 
-              className="w-full justify-start gap-2 h-10"
+              className="w-full justify-start h-10"
             >
               <Link to={action.href} className="flex items-center gap-2">
                 <Icon className="h-4 w-4" />
