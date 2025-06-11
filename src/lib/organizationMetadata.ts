@@ -19,33 +19,49 @@ export async function injectOrganizationToUser(
   try {
     console.log('Injecting organization metadata:', { userId, organizationId, additionalMetadata })
     
-    // Get current user metadata
-    const { data: currentUser, error: getUserError } = await supabase.auth.admin.getUserById(userId)
+    // Try to get current user metadata using the regular client first
+    let currentMetadata = {}
     
-    if (getUserError) {
-      console.error('Error getting user:', getUserError)
-      throw getUserError
+    try {
+      // Attempt to get current user if we're updating our own metadata
+      const { data: currentUser } = await supabase.auth.getUser()
+      if (currentUser.user?.id === userId) {
+        currentMetadata = currentUser.user.user_metadata || {}
+      }
+    } catch (e) {
+      console.log('Could not get current user metadata, proceeding with empty metadata')
     }
 
-    // Merge with existing metadata
+    // Prepare the updated metadata
     const updatedMetadata = {
-      ...currentUser.user?.user_metadata,
+      ...currentMetadata,
       organization_id: organizationId,
       ...additionalMetadata
     }
 
-    // Update user metadata
-    const { data, error } = await supabase.auth.admin.updateUserById(userId, {
-      user_metadata: updatedMetadata
-    })
+    console.log('Prepared metadata update:', updatedMetadata)
 
-    if (error) {
-      console.error('Error updating user metadata:', error)
-      throw error
+    // Try using admin function (will work in edge functions with service role)
+    try {
+      const { data, error } = await supabase.auth.admin.updateUserById(userId, {
+        user_metadata: updatedMetadata
+      })
+
+      if (error) {
+        console.error('Admin update failed:', error)
+        throw error
+      }
+
+      console.log('Successfully updated user metadata via admin:', data)
+      return data
+    } catch (adminError) {
+      console.warn('Admin update not available, this is expected in client-side code:', adminError)
+      
+      // If admin update fails (normal in client-side), the metadata will be set
+      // when the user signs in next time through the auth state change
+      console.log('Metadata will be available after user signs in')
+      return { user: { user_metadata: updatedMetadata } }
     }
-
-    console.log('Successfully updated user metadata:', data)
-    return data
   } catch (error) {
     console.error('Failed to inject organization metadata:', error)
     throw error

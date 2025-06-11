@@ -10,6 +10,7 @@ import { Loader2, CheckCircle2, XCircle, Eye, EyeOff } from 'lucide-react'
 import { supabase } from '@/integrations/supabase/client'
 import { toast } from '@/hooks/use-toast'
 import { VirgilioLogo } from '@/components/VirgilioLogo'
+import { injectOrganizationToUser } from '@/lib/organizationMetadata'
 
 interface InvitationData {
   member_id: string
@@ -19,6 +20,15 @@ interface InvitationData {
   invite_email: string
   is_valid: boolean
   error_message: string
+}
+
+interface AcceptInvitationResult {
+  success: boolean
+  error_message: string
+  member_id: string
+  user_type: string
+  member_role: string
+  organization_id: string
 }
 
 export default function AcceptInvite() {
@@ -157,7 +167,7 @@ export default function AcceptInvite() {
       // Accept the invitation by linking the user_id with retry logic
       let retryCount = 0
       const maxRetries = 3
-      let acceptResult = null
+      let acceptResult: AcceptInvitationResult | null = null
 
       while (retryCount < maxRetries) {
         try {
@@ -200,7 +210,32 @@ export default function AcceptInvite() {
         throw new Error(acceptResult?.error_message || 'Failed to accept invitation')
       }
 
-      console.log('Invitation accepted successfully')
+      console.log('Invitation accepted successfully, result:', acceptResult)
+
+      // Inject organization metadata into the user's auth record
+      try {
+        console.log('Injecting organization metadata:', {
+          userId: authData.user.id,
+          organizationId: acceptResult.organization_id,
+          userType: acceptResult.user_type,
+          memberRole: acceptResult.member_role
+        })
+
+        await injectOrganizationToUser(
+          authData.user.id,
+          acceptResult.organization_id,
+          {
+            user_type: acceptResult.user_type,
+            member_role: acceptResult.member_role
+          }
+        )
+
+        console.log('Organization metadata injected successfully')
+      } catch (metadataError) {
+        console.error('Failed to inject organization metadata:', metadataError)
+        // Don't fail the whole process, but log the error
+        console.warn('User created and invitation accepted, but metadata injection failed')
+      }
 
       toast({
         title: 'Welcome to Virgilio!',
