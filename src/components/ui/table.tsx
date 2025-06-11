@@ -54,12 +54,17 @@ TableFooter.displayName = "TableFooter"
 
 const TableRow = React.forwardRef<
   HTMLTableRowElement,
-  React.HTMLAttributes<HTMLTableRowElement>
->(({ className, ...props }, ref) => (
+  React.HTMLAttributes<HTMLTableRowElement> & {
+    interactive?: boolean
+  }
+>(({ className, interactive = false, ...props }, ref) => (
   <tr
     ref={ref}
     className={cn(
-      "border-b transition-all duration-200 hover:bg-muted/30 hover:shadow-sm data-[state=selected]:bg-muted h-[52px]",
+      "border-b transition-all duration-150 ease-in-out data-[state=selected]:bg-muted h-[52px]",
+      interactive 
+        ? "cursor-pointer hover:bg-muted/50 hover:shadow-sm hover:-translate-y-px" 
+        : "hover:bg-muted/30",
       className
     )}
     {...props}
@@ -74,7 +79,7 @@ const TableHead = React.forwardRef<
   <th
     ref={ref}
     className={cn(
-      "h-11 px-md text-left align-middle font-semibold text-muted-foreground text-sm [&:has([role=checkbox])]:pr-0",
+      "h-11 px-4 text-left align-middle font-semibold text-text-secondary text-sm border-b border-border/50 [&:has([role=checkbox])]:pr-0",
       className
     )}
     {...props}
@@ -88,7 +93,7 @@ const TableCell = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <td
     ref={ref}
-    className={cn("px-md py-sm align-middle text-md [&:has([role=checkbox])]:pr-0", className)}
+    className={cn("px-4 py-3 align-middle text-md [&:has([role=checkbox])]:pr-0", className)}
     {...props}
   />
 ))

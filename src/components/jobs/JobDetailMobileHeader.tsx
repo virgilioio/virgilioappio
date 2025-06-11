@@ -16,9 +16,9 @@ export function JobDetailMobileHeader({ jobTitle, onMenuToggle, onBackToJobs }: 
           variant="ghost" 
           size="sm" 
           onClick={onBackToJobs}
-          className="shrink-0 min-h-[44px]"
+          className="shrink-0 min-h-[44px] min-w-[44px] hover:scale-110 transition-all duration-150 ease-in-out"
         >
-          <ArrowLeft className="h-4 w-4" />
+          <ArrowLeft className="h-5 w-5" />
         </Button>
         <div className="min-w-0 flex-1">
           <h1 className="text-lg font-semibold text-text-primary truncate">{jobTitle}</h1>
@@ -29,9 +29,9 @@ export function JobDetailMobileHeader({ jobTitle, onMenuToggle, onBackToJobs }: 
         variant="ghost" 
         size="sm" 
         onClick={onMenuToggle}
-        className="shrink-0 min-h-[44px]"
+        className="shrink-0 min-h-[44px] min-w-[44px] hover:scale-110 transition-all duration-150 ease-in-out"
       >
-        <Menu className="h-4 w-4" />
+        <Menu className="h-5 w-5" />
       </Button>
     </div>
   )

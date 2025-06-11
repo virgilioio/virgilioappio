@@ -31,10 +31,10 @@ export function JobDetailSidebar({ currentTab, onTabChange, jobTitle, className 
   ]
 
   return (
-    <nav className={cn("flex flex-col gap-1 p-2", className)}>
+    <nav className={cn("flex flex-col gap-1 p-4", className)}>
       {/* Job Title */}
-      <div className="px-3 py-2 mb-4">
-        <h2 className="heading-sm font-poppins font-semibold text-primary truncate">
+      <div className="px-3 py-3 mb-4 border-b border-border/50">
+        <h2 className="text-lg font-poppins font-semibold text-text-primary truncate">
           {jobTitle}
         </h2>
       </div>
@@ -48,11 +48,11 @@ export function JobDetailSidebar({ currentTab, onTabChange, jobTitle, className 
             key={item.id}
             variant={isActive ? "default" : "ghost"}
             className={cn(
-              "w-full justify-start h-11 px-3 py-2.5",
+              "w-full justify-start h-11 px-3 py-2.5 transition-all duration-150 ease-in-out",
               "text-md font-medium",
               isActive 
                 ? "bg-accent text-accent-foreground shadow-neumorphic" 
-                : "text-text-secondary hover:text-text-primary hover:bg-accent/50"
+                : "text-text-secondary hover:text-text-primary hover:bg-accent/50 hover:translate-x-1"
             )}
             onClick={() => onTabChange(item.id)}
           >
