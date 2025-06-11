@@ -1,4 +1,3 @@
-
 import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -76,18 +75,17 @@ export function JobsTable({ jobs, isLoading, onView, onEdit, onArchive, onCreate
               <div className="flex items-center justify-between">
                 <CardTitle>Jobs</CardTitle>
                 <div className="flex gap-2">
-                  {permissions.canCreateJobs && (
+                  {permissions.canCreateJobs ? (
                     <Button onClick={onCreateNew} size="sm" className="gap-1">
                       <Plus className="h-4 w-4" />
                       Create
                     </Button>
-                  )}
-                  {permissions.canRequestJobs && !permissions.canCreateJobs && (
-                    <Button onClick={onRequestJob} size="sm" variant="outline" className="gap-1">
-                      <FileText className="h-4 w-4" />
+                  ) : permissions.canRequestJobs ? (
+                    <Button onClick={onRequestJob} size="sm" className="gap-1">
+                      <Plus className="h-4 w-4" />
                       Request
                     </Button>
-                  )}
+                  ) : null}
                 </div>
               </div>
               
@@ -208,18 +206,17 @@ export function JobsTable({ jobs, isLoading, onView, onEdit, onArchive, onCreate
         <div className="flex items-center justify-between mb-4">
           <CardTitle>Jobs</CardTitle>
           <div className="flex gap-2">
-            {permissions.canCreateJobs && (
+            {permissions.canCreateJobs ? (
               <Button onClick={onCreateNew} className="gap-1">
                 <Plus className="h-4 w-4" />
                 Create Job
               </Button>
-            )}
-            {permissions.canRequestJobs && !permissions.canCreateJobs && (
-              <Button onClick={onRequestJob} variant="outline" className="gap-1">
-                <FileText className="h-4 w-4" />
+            ) : permissions.canRequestJobs ? (
+              <Button onClick={onRequestJob} className="gap-1">
+                <Plus className="h-4 w-4" />
                 Request Job
               </Button>
-            )}
+            ) : null}
           </div>
         </div>
         
