@@ -1,30 +1,19 @@
 
-import { useState } from "react"
-import { Search, Plus, Edit, UserX } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
+import { useState } from 'react'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Plus, Edit, UserMinus, MoreHorizontal, Mail, RefreshCw } from 'lucide-react'
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { PermissionGate } from "@/components/auth/PermissionGate"
-import { AdminModeIndicator } from "@/components/admin/AdminModeIndicator"
-import { MemberOrgIndicator } from "@/components/members/MemberOrgIndicator"
-import { useAuth } from "@/contexts/AuthContext"
-import { Member } from "@/hooks/useMembers"
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { Member } from '@/hooks/useMembers'
+import { usePermissions } from '@/hooks/usePermissions'
 
 interface MembersTableProps {
   members: Member[]
@@ -32,65 +21,79 @@ interface MembersTableProps {
   onEdit: (member: Member) => void
   onDeactivate: (id: string) => void
   onCreateNew: () => void
+  onResendInvitation?: (memberId: string, email: string) => void
 }
 
-export function MembersTable({ 
-  members, 
-  isLoading, 
-  onEdit, 
-  onDeactivate, 
-  onCreateNew 
+export function MembersTable({
+  members,
+  isLoading,
+  onEdit,
+  onDeactivate,
+  onCreateNew,
+  onResendInvitation
 }: MembersTableProps) {
-  const { user, organizationId } = useAuth()
-  const [searchTerm, setSearchTerm] = useState("")
-  const [statusFilter, setStatusFilter] = useState<string>("all")
-  const [roleFilter, setRoleFilter] = useState<string>("all")
+  const permissions = usePermissions()
+  const [resendingId, setResendingId] = useState<string | null>(null)
 
-  const isPlatformAdmin = user?.user_metadata?.user_type === 'platform_admin'
-
-  const filteredMembers = members.filter(member => {
-    const matchesSearch = 
-      (member.user_email?.toLowerCase().includes(searchTerm.toLowerCase())) ||
-      (member.organization_name?.toLowerCase().includes(searchTerm.toLowerCase()))
+  const handleResendInvitation = async (member: Member) => {
+    if (!onResendInvitation || !member.user_email) return
     
-    const matchesStatus = statusFilter === "all" || member.user_status === statusFilter
-    const matchesRole = roleFilter === "all" || member.member_role === roleFilter
-    
-    return matchesSearch && matchesStatus && matchesRole
-  })
-
-  const getRoleBadgeVariant = (role: string) => {
-    switch (role) {
-      case 'admin': return 'destructive'
-      case 'recruiter': return 'default'
-      case 'customer_success': return 'secondary'
-      case 'billing': return 'outline'
-      case 'sales': return 'outline'
-      case 'client': return 'secondary'
-      default: return 'secondary'
+    setResendingId(member.id)
+    try {
+      await onResendInvitation(member.id, member.user_email)
+    } finally {
+      setResendingId(null)
     }
   }
 
-  const getStatusBadgeVariant = (status: string) => {
+  const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'active': return 'default'
-      case 'inactive': return 'secondary'
-      case 'invited': return 'outline'
-      default: return 'secondary'
+      case 'active':
+        return <Badge variant="default" className="bg-green-100 text-green-800">Active</Badge>
+      case 'inactive':
+        return <Badge variant="secondary">Inactive</Badge>
+      case 'invited':
+        return <Badge variant="outline" className="border-yellow-200 text-yellow-800">Invited</Badge>
+      default:
+        return <Badge variant="secondary">{status}</Badge>
     }
   }
 
-  const formatRole = (role: string) => {
-    return role.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())
+  const getRoleBadge = (role: string) => {
+    const roleColors = {
+      admin: 'bg-purple-100 text-purple-800',
+      recruiter: 'bg-blue-100 text-blue-800',
+      customer_success: 'bg-green-100 text-green-800',
+      sales: 'bg-orange-100 text-orange-800',
+      billing: 'bg-gray-100 text-gray-800',
+      client: 'bg-indigo-100 text-indigo-800'
+    }
+
+    return (
+      <Badge 
+        variant="secondary" 
+        className={roleColors[role as keyof typeof roleColors] || 'bg-gray-100 text-gray-800'}
+      >
+        {role.replace('_', ' ')}
+      </Badge>
+    )
+  }
+
+  const isInvitationExpired = (member: Member) => {
+    if (member.user_status !== 'invited' || !member.invite_expires_at) return false
+    return new Date(member.invite_expires_at) < new Date()
   }
 
   if (isLoading) {
     return (
       <Card>
-        <CardContent className="p-token-xl">
-          <div className="flex items-center justify-center">
-            <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin"></div>
-            <span className="ml-token-md text-muted-foreground">Loading members...</span>
+        <CardHeader>
+          <CardTitle>Team Members</CardTitle>
+          <CardDescription>Manage your organization's team members</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-center py-8">
+            <div className="text-muted-foreground">Loading members...</div>
           </div>
         </CardContent>
       </Card>
@@ -98,153 +101,122 @@ export function MembersTable({
   }
 
   return (
-    <div>
-      <AdminModeIndicator />
-      
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Team Members</CardTitle>
-              <CardDescription>
-                {isPlatformAdmin 
-                  ? "Manage members across all organizations (Platform Admin Mode)"
-                  : "Manage members and their roles within your organization"
-                }
-              </CardDescription>
-            </div>
-            <PermissionGate permission="canManageMembers">
-              <Button onClick={onCreateNew} className="gap-token-sm">
-                <Plus className="h-4 w-4" />
-                Invite Member
-              </Button>
-            </PermissionGate>
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle>Team Members</CardTitle>
+            <CardDescription>
+              Manage your organization's team members and their roles
+            </CardDescription>
           </div>
-        </CardHeader>
-        
-        <CardContent>
-          {/* Filters */}
-          <div className="flex gap-token-md mb-token-lg">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-                <Input
-                  placeholder="Search by email or organization..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
-            
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Filter by status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Statuses</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="inactive">Inactive</SelectItem>
-                <SelectItem value="invited">Invited</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select value={roleFilter} onValueChange={setRoleFilter}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Filter by role" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Roles</SelectItem>
-                <SelectItem value="admin">Admin</SelectItem>
-                <SelectItem value="recruiter">Recruiter</SelectItem>
-                <SelectItem value="customer_success">Customer Success</SelectItem>
-                <SelectItem value="billing">Billing</SelectItem>
-                <SelectItem value="sales">Sales</SelectItem>
-                <SelectItem value="client">Client</SelectItem>
-              </SelectContent>
-            </Select>
+          <Button onClick={onCreateNew} className="flex items-center gap-2">
+            <Plus className="h-4 w-4" />
+            Invite Member
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {members.length === 0 ? (
+          <div className="text-center py-8">
+            <div className="text-muted-foreground mb-4">No team members found</div>
+            <Button onClick={onCreateNew} variant="outline">
+              <Plus className="h-4 w-4 mr-2" />
+              Invite Your First Member
+            </Button>
           </div>
-
-          {/* Table */}
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Email</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Organization</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Joined</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredMembers.length === 0 ? (
+        ) : (
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-token-xl text-muted-foreground">
-                    {searchTerm || statusFilter !== "all" || roleFilter !== "all" 
-                      ? "No members found matching your filters" 
-                      : "No members found"}
-                  </TableCell>
+                  <TableHead>Member</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Organization</TableHead>
+                  <TableHead>Joined</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
-              ) : (
-                filteredMembers.map((member) => (
-                  <TableRow key={member.id}>
-                    <TableCell className="font-medium">
-                      {member.user_email || 'Pending invitation'}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={getRoleBadgeVariant(member.member_role)}>
-                        {formatRole(member.member_role)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <span>{member.organization_name}</span>
-                        {isPlatformAdmin && (
-                          <MemberOrgIndicator 
-                            organizationName={member.organization_name || ''} 
-                            currentUserOrgId={organizationId}
-                          />
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={getStatusBadgeVariant(member.user_status)}>
-                        {member.user_status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{new Date(member.created_at).toLocaleDateString()}</TableCell>
-                    <TableCell className="text-right">
-                      <PermissionGate permission="canManageMembers">
-                        <div className="flex justify-end gap-token-sm">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => onEdit(member)}
-                            className="h-8 w-8 p-0"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          {member.user_status !== 'inactive' && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => onDeactivate(member.id)}
-                              className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                            >
-                              <UserX className="h-4 w-4" />
-                            </Button>
+              </TableHeader>
+              <TableBody>
+                {members.map((member) => {
+                  const isExpired = isInvitationExpired(member)
+                  
+                  return (
+                    <TableRow key={member.id}>
+                      <TableCell>
+                        <div className="space-y-1">
+                          <div className="font-medium">
+                            {member.user_email || 'No email'}
+                            {member.user_status === 'invited' && (
+                              <Mail className="inline h-3 w-3 ml-1 text-muted-foreground" />
+                            )}
+                          </div>
+                          {member.user_status === 'invited' && member.invite_expires_at && (
+                            <div className={`text-xs ${isExpired ? 'text-red-500' : 'text-muted-foreground'}`}>
+                              {isExpired ? 'Expired' : 'Expires'}: {new Date(member.invite_expires_at).toLocaleDateString()}
+                            </div>
                           )}
                         </div>
-                      </PermissionGate>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-    </div>
+                      </TableCell>
+                      <TableCell>
+                        {getRoleBadge(member.member_role)}
+                      </TableCell>
+                      <TableCell>
+                        {getStatusBadge(member.user_status)}
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm text-muted-foreground">
+                          {member.organization_name}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-sm text-muted-foreground">
+                          {new Date(member.created_at).toLocaleDateString()}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" className="h-8 w-8 p-0">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => onEdit(member)}>
+                              <Edit className="mr-2 h-4 w-4" />
+                              Edit
+                            </DropdownMenuItem>
+                            
+                            {member.user_status === 'invited' && onResendInvitation && member.user_email && (
+                              <DropdownMenuItem 
+                                onClick={() => handleResendInvitation(member)}
+                                disabled={resendingId === member.id}
+                              >
+                                <RefreshCw className={`mr-2 h-4 w-4 ${resendingId === member.id ? 'animate-spin' : ''}`} />
+                                {resendingId === member.id ? 'Sending...' : 'Resend Invitation'}
+                              </DropdownMenuItem>
+                            )}
+                            
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                              onClick={() => onDeactivate(member.id)}
+                              className="text-red-600"
+                            >
+                              <UserMinus className="mr-2 h-4 w-4" />
+                              Deactivate
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   )
 }

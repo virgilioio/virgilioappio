@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
@@ -12,6 +11,8 @@ export interface Member {
   user_status: 'active' | 'inactive' | 'invited'
   created_at: string
   updated_at: string
+  invite_token?: string | null
+  invite_expires_at?: string | null
   user_email?: string
   organization_name?: string
 }
@@ -21,6 +22,7 @@ export interface CreateMemberData {
   organization_id: string
   member_role: 'recruiter' | 'customer_success' | 'billing' | 'sales' | 'admin' | 'client'
   user_status?: 'active' | 'inactive' | 'invited'
+  email?: string // For invitation emails
 }
 
 export interface UpdateMemberData {
@@ -44,8 +46,6 @@ export function useMembers() {
     try {
       console.log('Fetching members for user:', user.id)
       
-      // With RLS enabled, the query will automatically filter by organization
-      // No need to manually filter by organization_id since RLS handles it
       const { data, error: fetchError } = await supabase
         .from('members')
         .select(`
@@ -58,7 +58,6 @@ export function useMembers() {
 
       if (fetchError) {
         console.error('Error fetching members:', fetchError)
-        // Handle RLS-related errors gracefully
         if (fetchError.message.includes('row-level security')) {
           console.warn('RLS policy blocked access - user may not have permission to view members')
           setMembers([])
@@ -69,7 +68,6 @@ export function useMembers() {
 
       console.log('Fetched members:', data)
       
-      // Get user emails for members that have user_id
       const membersWithDetails = await Promise.all(
         (data || []).map(async (member) => {
           const typedMember: Member = {
@@ -81,8 +79,6 @@ export function useMembers() {
           
           if (member.user_id) {
             try {
-              // Note: This admin API call won't work for regular users due to RLS
-              // For now, we'll skip email lookup for non-admin users
               if (user.user_metadata?.user_type === 'platform_admin') {
                 const { data: userData, error: userError } = await supabase.auth.admin.getUserById(member.user_id)
                 if (!userError && userData.user) {
@@ -112,10 +108,34 @@ export function useMembers() {
     }
   }
 
+  const sendInvitationEmail = async (memberId: string, email: string) => {
+    try {
+      console.log('Sending invitation email for member:', memberId)
+      
+      const { data, error } = await supabase.functions.invoke('send-invitation', {
+        body: {
+          memberId,
+          email,
+          inviterName: user?.user_metadata?.first_name || user?.email
+        }
+      })
+
+      if (error) {
+        console.error('Error sending invitation email:', error)
+        throw error
+      }
+
+      console.log('Invitation email sent successfully:', data)
+      return data
+    } catch (error) {
+      console.error('Failed to send invitation email:', error)
+      throw error
+    }
+  }
+
   const createMember = async (data: CreateMemberData) => {
     if (!user) throw new Error('User not authenticated')
     
-    // Ensure organization_id is set if not provided
     const organizationId = data.organization_id || user.user_metadata?.organization_id
     if (!organizationId) {
       throw new Error('No organization found for user')
@@ -126,9 +146,18 @@ export function useMembers() {
 
     try {
       console.log('Creating member:', { ...data, organization_id: organizationId })
+      
+      // For invitations, set user_status to 'invited' and user_id to null
+      const memberData = {
+        ...data,
+        organization_id: organizationId,
+        user_status: data.user_id ? (data.user_status || 'active') : 'invited',
+        user_id: data.user_id || null
+      }
+
       const { data: newMember, error: createError } = await supabase
         .from('members')
-        .insert([{ ...data, organization_id: organizationId }])
+        .insert([memberData])
         .select()
         .single()
 
@@ -138,15 +167,35 @@ export function useMembers() {
       }
 
       console.log('Created member:', newMember)
-      toast({
-        title: 'Success',
-        description: 'Member invited successfully'
-      })
+
+      // If this is an invitation (no user_id and email provided), send invitation email
+      if (!data.user_id && data.email && newMember.invite_token) {
+        try {
+          await sendInvitationEmail(newMember.id, data.email)
+          toast({
+            title: 'Success',
+            description: `Invitation sent to ${data.email} successfully`
+          })
+        } catch (emailError) {
+          console.error('Failed to send invitation email:', emailError)
+          // Don't fail the whole operation, but show a warning
+          toast({
+            title: 'Member Created',
+            description: 'Member created but invitation email failed to send. You may need to resend the invitation.',
+            variant: 'destructive'
+          })
+        }
+      } else {
+        toast({
+          title: 'Success',
+          description: 'Member added successfully'
+        })
+      }
 
       await getMembers() // Refresh the list
       return newMember
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to invite member'
+      const errorMessage = err instanceof Error ? err.message : 'Failed to create member'
       console.error('Member creation error:', err)
       setError(errorMessage)
       toast({
@@ -239,6 +288,27 @@ export function useMembers() {
     }
   }
 
+  const resendInvitation = async (memberId: string, email: string) => {
+    setIsLoading(true)
+    try {
+      await sendInvitationEmail(memberId, email)
+      toast({
+        title: 'Success',
+        description: 'Invitation resent successfully'
+      })
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to resend invitation'
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive'
+      })
+      throw error
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   useEffect(() => {
     if (user) {
       getMembers()
@@ -252,6 +322,7 @@ export function useMembers() {
     getMembers,
     createMember,
     updateMember,
-    deactivateMember
+    deactivateMember,
+    resendInvitation
   }
 }

@@ -19,7 +19,8 @@ export default function Members() {
     isLoading,
     createMember,
     updateMember,
-    deactivateMember
+    deactivateMember,
+    resendInvitation
   } = useMembers()
 
   const handleCreateNew = () => {
@@ -70,6 +71,7 @@ export default function Members() {
                 onEdit={handleEdit}
                 onDeactivate={handleDeactivate}
                 onCreateNew={handleCreateNew}
+                onResendInvitation={resendInvitation}
               />
 
               <MemberForm

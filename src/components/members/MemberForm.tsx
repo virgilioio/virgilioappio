@@ -95,12 +95,13 @@ export function MemberForm({
 
       if (!member) {
         // Creating new member (invitation)
-        data.user_id = null // Will be set when user accepts invitation
+        data.user_id = null
+        data.email = email.trim() // Include email for invitation
         if (permissions.isPlatformAdmin) {
           data.organization_id = organizationId
         } else {
           // For workspace owners, use their organization
-          const userOrg = organizations.find(org => org.owner_id === null) // This logic needs to be improved
+          const userOrg = organizations.find(org => org.owner_id === null)
           data.organization_id = userOrg?.id || organizations[0]?.id
         }
       } else if (permissions.isPlatformAdmin) {
@@ -159,6 +160,19 @@ export function MemberForm({
                 {errors.email && (
                   <p className="text-sm text-destructive">{errors.email}</p>
                 )}
+                <p className="text-xs text-muted-foreground">
+                  An invitation email will be sent to this address
+                </p>
+              </div>
+            )}
+
+            {/* Show current email for existing members */}
+            {member && member.user_email && (
+              <div className="grid gap-token-sm">
+                <Label>Email Address</Label>
+                <div className="px-3 py-2 bg-muted rounded-md text-sm">
+                  {member.user_email}
+                </div>
               </div>
             )}
 
@@ -220,6 +234,11 @@ export function MemberForm({
                     ))}
                   </SelectContent>
                 </Select>
+                {member.user_status === 'invited' && member.invite_expires_at && (
+                  <p className="text-xs text-muted-foreground">
+                    Invitation expires: {new Date(member.invite_expires_at).toLocaleDateString()}
+                  </p>
+                )}
               </div>
             )}
           </div>
@@ -229,7 +248,7 @@ export function MemberForm({
               Cancel
             </Button>
             <Button type="submit" disabled={isLoading}>
-              {isLoading ? 'Saving...' : (member ? 'Update Member' : 'Send Invitation')}
+              {isLoading ? 'Processing...' : (member ? 'Update Member' : 'Send Invitation')}
             </Button>
           </DialogFooter>
         </form>

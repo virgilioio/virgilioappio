@@ -330,6 +330,8 @@ export type Database = {
         Row: {
           created_at: string | null
           id: string
+          invite_expires_at: string | null
+          invite_token: string | null
           member_role: Database["public"]["Enums"]["member_role"]
           organization_id: string | null
           updated_at: string | null
@@ -340,6 +342,8 @@ export type Database = {
         Insert: {
           created_at?: string | null
           id?: string
+          invite_expires_at?: string | null
+          invite_token?: string | null
           member_role: Database["public"]["Enums"]["member_role"]
           organization_id?: string | null
           updated_at?: string | null
@@ -350,6 +354,8 @@ export type Database = {
         Update: {
           created_at?: string | null
           id?: string
+          invite_expires_at?: string | null
+          invite_token?: string | null
           member_role?: Database["public"]["Enums"]["member_role"]
           organization_id?: string | null
           updated_at?: string | null
@@ -444,6 +450,22 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_invitation: {
+        Args: { token_input: string; new_user_id: string }
+        Returns: {
+          success: boolean
+          error_message: string
+          member_id: string
+        }[]
+      }
+      generate_invite_token: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      get_invite_expiry: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       get_user_member_data: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -470,6 +492,17 @@ export type Database = {
           expected_org_id: string
           members_table_org_id: string
           test_result: string
+        }[]
+      }
+      validate_invite_token: {
+        Args: { token_input: string }
+        Returns: {
+          member_id: string
+          organization_id: string
+          member_role: string
+          organization_name: string
+          is_valid: boolean
+          error_message: string
         }[]
       }
     }
