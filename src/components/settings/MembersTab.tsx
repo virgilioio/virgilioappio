@@ -2,12 +2,13 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Users } from 'lucide-react'
 import { MembersTable } from '@/components/members/MembersTable'
+import { InviteSystemDebug } from '@/components/debug/InviteSystemDebug'
 import { useMembers } from '@/hooks/useMembers'
 import { useState } from 'react'
 import { MemberForm } from '@/components/members/MemberForm'
 
 export function MembersTab() {
-  const { members, isLoading, updateMember, deactivateMember, createMember } = useMembers()
+  const { members, isLoading, updateMember, deactivateMember, createMember, resendInvitation } = useMembers()
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [editingMember, setEditingMember] = useState(null)
 
@@ -35,8 +36,16 @@ export function MembersTab() {
     }
   }
 
+  // Show debug panel in development
+  const showDebugPanel = process.env.NODE_ENV === 'development' || window.location.hostname === 'localhost'
+
   return (
     <div className="space-y-6">
+      {/* Debug Panel for Development */}
+      {showDebugPanel && (
+        <InviteSystemDebug />
+      )}
+
       <Card>
         <CardHeader className="pb-4">
           <CardTitle className="flex items-center gap-3">
@@ -54,6 +63,7 @@ export function MembersTab() {
             onEdit={handleEdit}
             onDeactivate={handleDeactivate}
             onCreateNew={handleCreateNew}
+            onResendInvitation={resendInvitation}
           />
         </CardContent>
       </Card>
