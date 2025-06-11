@@ -458,6 +458,10 @@ export type Database = {
           member_id: string
         }[]
       }
+      cleanup_expired_invitations: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
       generate_invite_token: {
         Args: Record<PropertyKey, never>
         Returns: string
