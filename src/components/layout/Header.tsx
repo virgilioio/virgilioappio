@@ -64,8 +64,12 @@ export function Header() {
         <div className="flex items-center justify-between h-14 sm:h-16">
           {/* Logo */}
           <div className="flex items-center">
-            <Link to="/" className="text-lg sm:text-xl font-bold text-primary hover:scale-105 transition-transform duration-default">
-              Virgilio.io
+            <Link to="/" className="hover:scale-105 transition-transform duration-default">
+              <img 
+                src="/lovable-uploads/aa02be45-3c91-457c-abbd-e6d7753f62e7.png" 
+                alt="Virgilio" 
+                className="h-8 sm:h-10 w-auto"
+              />
             </Link>
           </div>
 
