@@ -68,7 +68,7 @@ export function Header() {
               <img 
                 src="/lovable-uploads/aa02be45-3c91-457c-abbd-e6d7753f62e7.png" 
                 alt="Virgilio" 
-                className="h-8 sm:h-10 w-auto"
+                className="h-6 sm:h-8 w-auto"
               />
             </Link>
           </div>
