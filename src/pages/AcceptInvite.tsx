@@ -9,7 +9,6 @@ import { Loader2, CheckCircle2, XCircle, Eye, EyeOff } from 'lucide-react'
 import { supabase } from '@/integrations/supabase/client'
 import { toast } from '@/hooks/use-toast'
 import { VirgilioLogo } from '@/components/VirgilioLogo'
-import { injectOrganizationToUser } from '@/lib/organizationMetadata'
 
 interface InvitationData {
   member_id: string
@@ -19,15 +18,6 @@ interface InvitationData {
   invite_email: string
   is_valid: boolean
   error_message: string
-}
-
-interface AcceptInvitationResult {
-  success: boolean
-  error_message: string
-  member_id: string
-  user_type: string
-  member_role: string
-  organization_id: string
 }
 
 export default function AcceptInvite() {
@@ -124,8 +114,6 @@ export default function AcceptInvite() {
     return Object.keys(newErrors).length === 0
   }
 
-  const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
-
   const handleAcceptInvitation = async (e: React.FormEvent) => {
     e.preventDefault()
     
@@ -160,117 +148,37 @@ export default function AcceptInvite() {
 
       console.log('User created successfully:', authData.user.id)
 
-      // Wait a moment to ensure the user is properly created in the database
-      await sleep(1000)
-
-      // Accept the invitation by linking the user_id with retry logic
-      let retryCount = 0
-      const maxRetries = 3
-      let acceptResult: AcceptInvitationResult | null = null
-
-      while (retryCount < maxRetries) {
-        try {
-          console.log(`Attempting to accept invitation (attempt ${retryCount + 1})`)
-          
-          const { data: acceptData, error: acceptError } = await supabase.rpc('accept_invitation', {
-            token_input: token,
-            new_user_id: authData.user.id
-          })
-
-          if (acceptError) {
-            console.error(`Error accepting invitation (attempt ${retryCount + 1}):`, acceptError)
-            
-            // If it's a foreign key constraint error, wait a bit longer and retry
-            if (acceptError.message.includes('foreign key constraint') || acceptError.message.includes('violates')) {
-              retryCount++
-              if (retryCount < maxRetries) {
-                console.log('Foreign key constraint error, retrying in 2 seconds...')
-                await sleep(2000)
-                continue
-              }
-            }
-            throw acceptError
+      // Use the new edge function to accept invitation and inject metadata
+      const { data: edgeFunctionResult, error: edgeFunctionError } = await supabase.functions.invoke(
+        'accept-invitation-with-metadata',
+        {
+          body: {
+            token: token,
+            newUserId: authData.user.id
           }
-
-          acceptResult = acceptData?.[0]
-          break // Success, exit retry loop
-          
-        } catch (error) {
-          retryCount++
-          if (retryCount >= maxRetries) {
-            throw error
-          }
-          console.log(`Retry ${retryCount} failed, waiting before next attempt...`)
-          await sleep(2000)
         }
+      )
+
+      if (edgeFunctionError) {
+        console.error('Edge function error:', edgeFunctionError)
+        throw new Error(edgeFunctionError.message || 'Failed to process invitation')
       }
 
-      if (!acceptResult?.success) {
-        throw new Error(acceptResult?.error_message || 'Failed to accept invitation')
+      if (!edgeFunctionResult?.success) {
+        throw new Error(edgeFunctionResult?.error || 'Failed to accept invitation')
       }
 
-      console.log('Invitation accepted successfully, result:', acceptResult)
+      console.log('Invitation processed successfully:', edgeFunctionResult)
 
-      // Inject organization metadata into the user's auth record
-      try {
-        console.log('Injecting organization metadata:', {
-          userId: authData.user.id,
-          organizationId: acceptResult.organization_id,
-          userType: acceptResult.user_type,
-          memberRole: acceptResult.member_role
-        })
-
-        // Try to update user metadata using admin function
-        const { data: metadataResult, error: metadataError } = await supabase.auth.admin.updateUserById(
-          authData.user.id,
-          {
-            user_metadata: {
-              user_type: acceptResult.user_type,
-              member_role: acceptResult.member_role,
-              organization_id: acceptResult.organization_id
-            }
-          }
-        )
-
-        if (metadataError) {
-          console.warn('Direct admin metadata update failed:', metadataError)
-          
-          // Fallback to the existing metadata injection function
-          await injectOrganizationToUser(
-            authData.user.id,
-            acceptResult.organization_id,
-            {
-              user_type: acceptResult.user_type,
-              member_role: acceptResult.member_role
-            }
-          )
-          
-          console.log('Fallback metadata injection completed')
-          
-          toast({
-            title: 'Account Created',
-            description: `Welcome to ${invitationData.organization_name}! Your metadata will be available after your first login.`,
-            variant: 'default'
-          })
-        } else {
-          console.log('Organization metadata injected successfully via admin:', metadataResult)
-          
-          toast({
-            title: 'Welcome to Virgilio!',
-            description: `You've successfully joined ${invitationData.organization_name} as ${acceptResult.member_role.replace('_', ' ')}.`
-          })
-        }
-
-      } catch (metadataError) {
-        console.error('Failed to inject organization metadata:', metadataError)
-        
-        // Don't fail the whole process, but notify about the limitation
-        toast({
-          title: 'Account Created',
-          description: `You've joined ${invitationData.organization_name}, but some metadata may not be immediately available. Please sign in to complete setup.`,
-          variant: 'default'
-        })
-      }
+      // Show success message
+      const hasWarning = edgeFunctionResult.warning
+      toast({
+        title: hasWarning ? 'Account Created with Warning' : 'Welcome to Virgilio!',
+        description: hasWarning 
+          ? `You've joined ${invitationData.organization_name}, but some metadata may not be immediately available. Please sign in to complete setup.`
+          : `You've successfully joined ${invitationData.organization_name} as ${edgeFunctionResult.result.member_role.replace('_', ' ')}.`,
+        variant: hasWarning ? 'default' : 'default'
+      })
 
       // Redirect to email verification page with context
       navigate(`/verify-email?email=${encodeURIComponent(invitationData.invite_email)}&organization=${encodeURIComponent(invitationData.organization_name)}`)
@@ -283,8 +191,6 @@ export default function AcceptInvite() {
       // Provide more specific error messages
       if (error.message?.includes('User already registered')) {
         errorMessage = 'This email is already registered. Please try logging in instead.'
-      } else if (error.message?.includes('foreign key constraint')) {
-        errorMessage = 'There was a temporary issue. Please try again in a few moments.'
       } else if (error.message?.includes('expired')) {
         errorMessage = 'This invitation has expired. Please request a new invitation.'
       }
