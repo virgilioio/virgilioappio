@@ -19,6 +19,11 @@ export interface Invoice {
   updated_at: string
   created_by?: string
   file_name?: string
+  // New payment tracking fields
+  paid_at?: string
+  payment_method?: string
+  payment_reference?: string
+  payment_notes?: string
 }
 
 export interface CreateInvoiceData {
@@ -29,6 +34,13 @@ export interface CreateInvoiceData {
   currency: string
   due_date?: string
   issued_at?: string
+}
+
+export interface PaymentData {
+  paid_at: string
+  payment_method: string
+  payment_reference?: string
+  payment_notes?: string
 }
 
 export function useInvoices() {
@@ -183,15 +195,19 @@ export function useInvoices() {
     }
   }
 
-  const markInvoiceAsPaid = async (invoiceId: string): Promise<void> => {
+  const markInvoiceAsPaid = async (invoiceId: string, paymentData: PaymentData): Promise<void> => {
     if (!user) throw new Error('User not authenticated')
 
     try {
-      console.log('Marking invoice as paid:', invoiceId)
+      console.log('Marking invoice as paid:', invoiceId, paymentData)
       const { error } = await supabase
         .from('invoices')
         .update({ 
           status: 'paid',
+          paid_at: paymentData.paid_at,
+          payment_method: paymentData.payment_method,
+          payment_reference: paymentData.payment_reference || null,
+          payment_notes: paymentData.payment_notes || null,
           updated_at: new Date().toISOString()
         })
         .eq('id', invoiceId)
@@ -210,6 +226,52 @@ export function useInvoices() {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to update invoice status'
       console.error('Mark as paid error:', err)
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive'
+      })
+      throw err
+    }
+  }
+
+  const updateInvoiceStatus = async (invoiceId: string, status: 'pending' | 'paid' | 'overdue'): Promise<void> => {
+    if (!user) throw new Error('User not authenticated')
+
+    try {
+      console.log('Updating invoice status:', invoiceId, status)
+      const updateData: any = { 
+        status,
+        updated_at: new Date().toISOString()
+      }
+
+      // If marking as not paid, clear payment fields
+      if (status !== 'paid') {
+        updateData.paid_at = null
+        updateData.payment_method = null
+        updateData.payment_reference = null
+        updateData.payment_notes = null
+      }
+
+      const { error } = await supabase
+        .from('invoices')
+        .update(updateData)
+        .eq('id', invoiceId)
+
+      if (error) {
+        console.error('Error updating invoice status:', error)
+        throw error
+      }
+
+      await getInvoices() // Refresh the list
+      
+      toast({
+        title: 'Success',
+        description: `Invoice status updated to ${status}`
+      })
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update invoice status'
+      console.error('Update status error:', err)
       toast({
         title: 'Error',
         description: errorMessage,
@@ -270,6 +332,7 @@ export function useInvoices() {
     createInvoice,
     uploadInvoicePDF,
     markInvoiceAsPaid,
+    updateInvoiceStatus,
     deleteInvoice,
     refreshInvoices
   }

@@ -41,6 +41,22 @@ export function DebugPanel() {
   const firstCandidateId = candidates.length > 0 ? candidates[0].id : undefined
   const { comments } = useCandidateComments(firstCandidateId)
 
+  // Calculate invoice payment statistics
+  const getInvoiceStats = () => {
+    const paidInvoices = invoices.filter(i => i.status === 'paid')
+    const totalPaidAmount = paidInvoices.reduce((sum, invoice) => sum + invoice.amount, 0)
+    const invoicesWithPaymentData = paidInvoices.filter(i => i.paid_at && i.payment_method)
+    
+    return {
+      totalPaid: totalPaidAmount,
+      paidCount: paidInvoices.length,
+      withPaymentData: invoicesWithPaymentData.length,
+      paymentMethods: [...new Set(paidInvoices.map(i => i.payment_method).filter(Boolean))]
+    }
+  }
+
+  const invoiceStats = getInvoiceStats()
+
   const getInitials = (firstName: string | null, lastName: string | null) => {
     const first = firstName?.charAt(0) || ''
     const last = lastName?.charAt(0) || ''
@@ -135,6 +151,27 @@ export function DebugPanel() {
                   <p>Candidate ID: {firstCandidateId.slice(0, 8)}...</p>
                 )}
               </>
+            )}
+          </div>
+
+          <Separator />
+
+          <div>
+            <h4 className="font-semibold mb-1">Invoice Payment Stats</h4>
+            <p>Total Paid: ${invoiceStats.totalPaid.toLocaleString()}</p>
+            <p>Paid Invoices: {invoiceStats.paidCount}</p>
+            <p>With Payment Data: {invoiceStats.withPaymentData}</p>
+            {invoiceStats.paymentMethods.length > 0 && (
+              <div>
+                <p className="text-muted-foreground">Methods Used:</p>
+                <div className="flex flex-wrap gap-1 mt-1">
+                  {invoiceStats.paymentMethods.map(method => (
+                    <Badge key={method} variant="outline" className="text-xs">
+                      {method}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
 

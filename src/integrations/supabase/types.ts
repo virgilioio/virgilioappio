@@ -87,6 +87,10 @@ export type Database = {
           invoice_url: string | null
           issued_at: string
           organization_id: string
+          paid_at: string | null
+          payment_method: string | null
+          payment_notes: string | null
+          payment_reference: string | null
           status: string
           title: string
           updated_at: string
@@ -103,6 +107,10 @@ export type Database = {
           invoice_url?: string | null
           issued_at?: string
           organization_id: string
+          paid_at?: string | null
+          payment_method?: string | null
+          payment_notes?: string | null
+          payment_reference?: string | null
           status?: string
           title: string
           updated_at?: string
@@ -119,6 +127,10 @@ export type Database = {
           invoice_url?: string | null
           issued_at?: string
           organization_id?: string
+          paid_at?: string | null
+          payment_method?: string | null
+          payment_notes?: string | null
+          payment_reference?: string | null
           status?: string
           title?: string
           updated_at?: string
