@@ -1,11 +1,9 @@
 
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
-import { ArrowLeft, Edit, Archive, DollarSign, MapPin, Building, Users, Calendar, UserCheck, Briefcase, Globe } from 'lucide-react'
+import { Sheet, SheetContent } from '@/components/ui/sheet'
+import { ArrowLeft, Archive } from 'lucide-react'
 import { AuthGate } from '@/components/auth/AuthGate'
 import { PermissionGate } from '@/components/auth/PermissionGate'
 import { useJobs, Job } from '@/hooks/useJobs'
@@ -14,15 +12,23 @@ import { JobForm } from '@/components/jobs/JobForm'
 import { useCandidates } from '@/hooks/useCandidates'
 import { CandidateTable } from '@/components/candidates/CandidateTable'
 import { CandidateForm } from '@/components/candidates/CandidateForm'
+import { JobDetailSidebar } from '@/components/jobs/JobDetailSidebar'
+import { JobOverviewTab } from '@/components/jobs/JobOverviewTab'
+import { JobDetailMobileHeader } from '@/components/jobs/JobDetailMobileHeader'
 import type { Candidate } from '@/hooks/useCandidates'
+
+const VALID_TABS = ['overview', 'candidates'] as const
+type ValidTab = typeof VALID_TABS[number]
 
 export default function JobDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const [job, setJob] = useState<Job | null>(null)
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [isCandidateFormOpen, setIsCandidateFormOpen] = useState(false)
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const { getJob, updateJob, archiveJob, isLoading } = useJobs()
   const { 
     candidates, 
@@ -32,6 +38,10 @@ export default function JobDetail() {
     deleteCandidate 
   } = useCandidates(id)
   const permissions = usePermissions()
+
+  // Get tab from URL or default to 'overview'
+  const urlTab = searchParams.get('tab')
+  const currentTab = VALID_TABS.includes(urlTab as ValidTab) ? (urlTab as ValidTab) : 'overview'
 
   useEffect(() => {
     if (id) {
@@ -49,6 +59,11 @@ export default function JobDetail() {
       console.error('Failed to load job:', error)
       navigate('/jobs')
     }
+  }
+
+  const handleTabChange = (tab: string) => {
+    setSearchParams({ tab })
+    setMobileMenuOpen(false) // Close mobile menu when switching tabs
   }
 
   const handleEdit = () => {
@@ -98,35 +113,31 @@ export default function JobDetail() {
     await deleteCandidate(candidateId)
   }
 
-  const getStatusBadgeVariant = (status: string) => {
-    switch (status) {
-      case 'open':
-        return 'default'
-      case 'draft':
-        return 'secondary'
-      case 'closed':
-        return 'destructive'
-      case 'archived':
-        return 'outline'
-      default:
-        return 'secondary'
-    }
+  const handleBackToJobs = () => {
+    navigate('/jobs')
   }
 
-  const formatSalary = (min: number | null, max: number | null, currency: string | null) => {
-    if (!min && !max) return 'Not specified'
-    
-    const curr = currency || 'USD'
-    if (min && max) {
-      return `${curr} ${min.toLocaleString()} - ${max.toLocaleString()}`
+  const renderTabContent = () => {
+    if (!job) return null
+
+    switch (currentTab) {
+      case 'overview':
+        return <JobOverviewTab job={job} onEdit={handleEdit} />
+      case 'candidates':
+        return (
+          <PermissionGate permission="canViewCandidates">
+            <CandidateTable
+              candidates={candidates}
+              isLoading={candidatesLoading}
+              onEdit={handleEditCandidate}
+              onDelete={handleDeleteCandidate}
+              onAddNew={handleAddCandidate}
+            />
+          </PermissionGate>
+        )
+      default:
+        return <JobOverviewTab job={job} onEdit={handleEdit} />
     }
-    if (min) {
-      return `${curr} ${min.toLocaleString()}+`
-    }
-    if (max) {
-      return `Up to ${curr} ${max.toLocaleString()}`
-    }
-    return 'Not specified'
   }
 
   if (isLoading || !job) {
@@ -149,176 +160,98 @@ export default function JobDetail() {
     <AuthGate>
       <PermissionGate permission="canViewJobs">
         <div className="min-h-screen bg-background">
-          <div className="container mx-auto py-lg px-md max-w-7xl">
-            {/* Header Navigation */}
-            <div className="mb-lg">
-              <Button variant="ghost" onClick={() => navigate('/jobs')} className="mb-md min-h-[44px] gap-sm">
-                <ArrowLeft className="h-5 w-5" />
+          {/* Mobile Header */}
+          <JobDetailMobileHeader 
+            jobTitle={job.title}
+            onMenuToggle={() => setMobileMenuOpen(true)}
+            onBackToJobs={handleBackToJobs}
+          />
+
+          {/* Desktop Header */}
+          <div className="hidden md:flex items-center justify-between mb-6 lg:mb-8 pt-6 lg:pt-8 container mx-auto px-md max-w-7xl">
+            <div className="flex items-center gap-3">
+              <Button 
+                variant="ghost" 
+                onClick={handleBackToJobs}
+                className="flex items-center gap-2 min-h-[44px]"
+              >
+                <ArrowLeft className="h-4 w-4" />
                 Back to Jobs
               </Button>
             </div>
-
-            {/* Job Information Card - Full Width */}
-            <Card className="mb-lg">
-              <CardHeader>
-                <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-md">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-md mb-sm flex-wrap">
-                      <h1 className="heading-lg font-poppins font-semibold text-primary">{job.title}</h1>
-                      <Badge variant={getStatusBadgeVariant(job.status)} className="shrink-0">
-                        {job.status}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center gap-md text-secondary mb-md flex-wrap">
-                      <div className="flex items-center gap-xs">
-                        <Building className="h-4 w-4" />
-                        <span className="text-md">{job.organization_name || 'Organization'}</span>
-                      </div>
-                      <Separator orientation="vertical" className="h-4 hidden sm:block" />
-                      <div className="flex items-center gap-xs">
-                        <Briefcase className="h-4 w-4" />
-                        <span className="text-md">{job.level}</span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="flex flex-col sm:flex-row gap-sm shrink-0">
-                    {permissions.canEditJobs && (
-                      <Button variant="outline" onClick={handleEdit} className="min-h-[44px] gap-sm">
-                        <Edit className="h-5 w-5" />
-                        Edit Job
-                      </Button>
-                    )}
-                    
-                    {permissions.canArchiveJobs && job.status !== 'archived' && (
-                      <Button variant="outline" onClick={handleArchive} className="min-h-[44px] gap-sm">
-                        <Archive className="h-5 w-5" />
-                        Archive
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {/* Job Description */}
-                {job.description && (
-                  <div className="mb-lg">
-                    <h3 className="heading-md font-poppins font-semibold text-primary mb-md flex items-center gap-sm">
-                      <Briefcase className="h-5 w-5 text-accent" />
-                      Job Description
-                    </h3>
-                    <div className="whitespace-pre-wrap text-md leading-relaxed text-primary bg-surface-secondary p-md rounded-brand">
-                      {job.description}
-                    </div>
-                  </div>
-                )}
-
-                {/* Job Details Grid */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-lg">
-                  <div className="flex items-start gap-sm">
-                    <Building className="h-5 w-5 text-secondary mt-xs shrink-0" />
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-secondary mb-xs">Department</p>
-                      <p className="text-md text-primary break-words">
-                        {job.department || 'Not specified'}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-sm">
-                    <MapPin className="h-5 w-5 text-secondary mt-xs shrink-0" />
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-secondary mb-xs">Location</p>
-                      <p className="text-md text-primary break-words">
-                        {job.location || 'Not specified'}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-sm">
-                    <DollarSign className="h-5 w-5 text-secondary mt-xs shrink-0" />
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-secondary mb-xs">Salary Range</p>
-                      <p className="text-md text-primary break-words">
-                        {formatSalary(job.salary_min, job.salary_max, job.currency)}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-start gap-sm">
-                    <Users className="h-5 w-5 text-secondary mt-xs shrink-0" />
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-secondary mb-xs">Hiring Team</p>
-                      <p className="text-md text-primary">
-                        {job.hiring_team && job.hiring_team.length > 0
-                          ? `${job.hiring_team.length} member(s)`
-                          : 'No team assigned'
-                        }
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Timeline Information */}
-                <div className="mt-lg pt-lg border-t border-border">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-lg">
-                    <div className="flex items-start gap-sm">
-                      <Calendar className="h-5 w-5 text-secondary mt-xs shrink-0" />
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-secondary mb-xs">Created</p>
-                        <p className="text-md text-primary">
-                          {new Date(job.created_at).toLocaleDateString()}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-sm">
-                      <UserCheck className="h-5 w-5 text-secondary mt-xs shrink-0" />
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-secondary mb-xs">Last Updated</p>
-                        <p className="text-md text-primary">
-                          {new Date(job.updated_at).toLocaleDateString()}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Candidates Section - Full Width */}
-            <PermissionGate permission="canViewCandidates">
-              <CandidateTable
-                candidates={candidates}
-                isLoading={candidatesLoading}
-                onEdit={handleEditCandidate}
-                onDelete={handleDeleteCandidate}
-                onAddNew={handleAddCandidate}
-              />
-            </PermissionGate>
-
-            {/* Forms */}
-            <JobForm
-              isOpen={isFormOpen}
-              onClose={() => setIsFormOpen(false)}
-              onSubmit={handleFormSubmit}
-              job={job}
-              isLoading={isLoading}
-            />
-
-            {job && (
-              <CandidateForm
-                isOpen={isCandidateFormOpen}
-                onClose={() => {
-                  setIsCandidateFormOpen(false)
-                  setSelectedCandidate(null)
-                }}
-                onSubmit={handleCandidateFormSubmit}
-                candidate={selectedCandidate}
-                jobId={job.id}
-                isLoading={candidatesLoading}
-              />
+            
+            {permissions.canArchiveJobs && job.status !== 'archived' && (
+              <Button variant="outline" onClick={handleArchive} className="min-h-[44px] gap-sm">
+                <Archive className="h-5 w-5" />
+                Archive
+              </Button>
             )}
           </div>
+
+          {/* Main Layout */}
+          <div className="flex flex-col lg:flex-row min-h-[calc(100vh-200px)] gap-6 container mx-auto px-md max-w-7xl">
+            {/* Desktop Sidebar */}
+            <div className="hidden lg:block w-64 shrink-0">
+              <div className="sticky top-6 h-[calc(100vh-200px)] overflow-y-auto">
+                <div className="bg-surface-primary border border-border rounded-brand p-2">
+                  <JobDetailSidebar 
+                    currentTab={currentTab}
+                    onTabChange={handleTabChange}
+                    jobTitle={job.title}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Content Area */}
+            <div className="flex-1 min-w-0">
+              <div className="w-full px-4 lg:px-0">
+                {renderTabContent()}
+              </div>
+            </div>
+          </div>
+
+          {/* Mobile Sidebar Sheet */}
+          <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+            <SheetContent side="left" className="w-72 p-0">
+              <div className="p-4 border-b">
+                <h2 className="text-lg font-semibold text-text-primary">Job Details</h2>
+                <p className="text-sm text-text-secondary mt-1 truncate">
+                  {job.title}
+                </p>
+              </div>
+              <div className="p-2">
+                <JobDetailSidebar 
+                  currentTab={currentTab}
+                  onTabChange={handleTabChange}
+                  jobTitle={job.title}
+                />
+              </div>
+            </SheetContent>
+          </Sheet>
+
+          {/* Forms */}
+          <JobForm
+            isOpen={isFormOpen}
+            onClose={() => setIsFormOpen(false)}
+            onSubmit={handleFormSubmit}
+            job={job}
+            isLoading={isLoading}
+          />
+
+          {job && (
+            <CandidateForm
+              isOpen={isCandidateFormOpen}
+              onClose={() => {
+                setIsCandidateFormOpen(false)
+                setSelectedCandidate(null)
+              }}
+              onSubmit={handleCandidateFormSubmit}
+              candidate={selectedCandidate}
+              jobId={job.id}
+              isLoading={candidatesLoading}
+            />
+          )}
         </div>
       </PermissionGate>
     </AuthGate>
