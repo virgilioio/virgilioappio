@@ -58,15 +58,15 @@ export function SettingsSidebar({ currentTab, onTabChange, className }: Settings
             key={item.id}
             variant={isActive ? "default" : "ghost"}
             className={cn(
-              "w-full justify-start h-11 px-3 py-2.5",
-              "text-md font-medium",
+              "w-full justify-start h-10 px-2 py-1",
+              "text-sm font-medium",
               isActive 
                 ? "bg-accent text-accent-foreground shadow-neumorphic" 
                 : "text-text-secondary hover:text-text-primary hover:bg-accent/50"
             )}
             onClick={() => onTabChange(item.id)}
           >
-            <Icon className="h-5 w-5 mr-3 shrink-0" />
+            <Icon className="h-4 w-4 mr-2 shrink-0" />
             <span className="truncate">{item.label}</span>
           </Button>
         )

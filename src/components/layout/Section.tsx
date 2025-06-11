@@ -17,7 +17,7 @@ export function Section({ children, className, variant = "default" }: SectionPro
 
   return (
     <section className={cn(
-      "py-layout-lg",
+      "py-layout-md",
       variantClasses[variant],
       className
     )}>

@@ -67,8 +67,8 @@ export function InvoicesTable() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-md">
-            <Receipt className="h-5 w-5" />
+          <CardTitle className="flex items-center gap-2">
+            <Receipt className="h-4 w-4" />
             Invoices
           </CardTitle>
           <CardDescription>Loading invoices...</CardDescription>
@@ -81,8 +81,8 @@ export function InvoicesTable() {
     <>
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-md">
-            <Receipt className="h-5 w-5" />
+          <CardTitle className="flex items-center gap-2">
+            <Receipt className="h-4 w-4" />
             Invoices
           </CardTitle>
           <CardDescription>
@@ -91,9 +91,9 @@ export function InvoicesTable() {
         </CardHeader>
         <CardContent>
           {invoices.length === 0 ? (
-            <div className="text-center py-xl">
+            <div className="text-center py-8">
               <p className="text-muted-foreground">No invoices found.</p>
-              <p className="text-sm text-muted-foreground mt-sm">
+              <p className="text-xs text-muted-foreground mt-1">
                 Invoices will appear here once billing is set up.
               </p>
             </div>
@@ -116,7 +116,7 @@ export function InvoicesTable() {
                       <TableCell className="font-medium">
                         {invoice.title}
                         {invoice.file_name && (
-                          <div className="text-xs text-muted-foreground mt-1">
+                          <div className="text-xs text-muted-foreground mt-0.5">
                             📄 {invoice.file_name}
                           </div>
                         )}
@@ -136,7 +136,7 @@ export function InvoicesTable() {
                         {invoice.due_date ? formatDate(invoice.due_date) : 'N/A'}
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center justify-end gap-sm">
+                        <div className="flex items-center justify-end gap-1">
                           {/* Upload button for Platform Admins */}
                           {isPlatformAdmin && (
                             <Button
@@ -145,7 +145,7 @@ export function InvoicesTable() {
                               onClick={() => handleUploadClick(invoice)}
                               title="Upload PDF"
                             >
-                              <Upload className="h-4 w-4" />
+                              <Upload className="h-3.5 w-3.5" />
                             </Button>
                           )}
                           
@@ -157,7 +157,7 @@ export function InvoicesTable() {
                               onClick={() => handleDownloadClick(invoice)}
                               title="Download PDF"
                             >
-                              <Download className="h-4 w-4" />
+                              <Download className="h-3.5 w-3.5" />
                             </Button>
                           )}
                           
@@ -169,7 +169,7 @@ export function InvoicesTable() {
                               onClick={() => window.open(invoice.invoice_url, '_blank')}
                               title="Open external link"
                             >
-                              <ExternalLink className="h-4 w-4" />
+                              <ExternalLink className="h-3.5 w-3.5" />
                             </Button>
                           )}
                         </div>

@@ -29,9 +29,9 @@ export function FormField({
   const helpId = helpText ? `${fieldId}-help` : undefined
 
   return (
-    <div className={cn("space-y-xs", className)}>
+    <div className={cn("space-y-1", className)}>
       {label && (
-        <Label htmlFor={fieldId} className="flex items-center gap-1">
+        <Label htmlFor={fieldId} className="flex items-center gap-1 text-sm font-medium mb-1">
           {label}
           {required && <span className="text-destructive">*</span>}
         </Label>
@@ -44,17 +44,17 @@ export function FormField({
         })}
       </div>
       {error && (
-        <p id={errorId} className="text-sm text-destructive font-medium">
+        <p id={errorId} className="text-xs text-destructive font-medium">
           {error}
         </p>
       )}
       {success && !error && (
-        <p className="text-sm text-success font-medium">
+        <p className="text-xs text-success font-medium">
           {success}
         </p>
       )}
       {helpText && !error && !success && (
-        <p id={helpId} className="text-sm text-muted-foreground">
+        <p id={helpId} className="text-xs text-muted-foreground">
           {helpText}
         </p>
       )}

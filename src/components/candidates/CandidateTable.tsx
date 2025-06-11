@@ -31,14 +31,14 @@ export function CandidateTable({ candidates, isLoading, onEdit, onDelete, onAddN
           <CardTitle>Candidates</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
+          <div className="space-y-2">
             {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="flex items-center space-x-4 h-[52px]">
-                <Skeleton className="h-4 w-[150px]" />
-                <Skeleton className="h-4 w-[200px]" />
-                <Skeleton className="h-4 w-[100px]" />
-                <Skeleton className="h-4 w-[80px]" />
-                <Skeleton className="h-4 w-[60px]" />
+              <div key={i} className="flex items-center space-x-3 h-11">
+                <Skeleton className="h-3 w-[120px]" />
+                <Skeleton className="h-3 w-[160px]" />
+                <Skeleton className="h-3 w-[80px]" />
+                <Skeleton className="h-3 w-[60px]" />
+                <Skeleton className="h-3 w-[50px]" />
               </div>
             ))}
           </div>
@@ -50,12 +50,12 @@ export function CandidateTable({ candidates, isLoading, onEdit, onDelete, onAddN
   return (
     <Card hover>
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="flex items-center gap-3">
+        <CardTitle className="flex items-center gap-2">
           Candidates
           <Badge variant="secondary" interactive>{candidates.length}</Badge>
         </CardTitle>
         <PermissionGate permission="canManageCandidates">
-          <Button onClick={onAddNew} size="sm" className="gap-2">
+          <Button onClick={onAddNew} size="sm" className="gap-1">
             <UserPlus className="h-4 w-4" />
             Add Candidate
           </Button>
@@ -63,10 +63,10 @@ export function CandidateTable({ candidates, isLoading, onEdit, onDelete, onAddN
       </CardHeader>
       <CardContent>
         {candidates.length === 0 ? (
-          <div className="text-center py-12 text-text-secondary">
-            <UserPlus className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p className="text-lg font-medium mb-2">No candidates added yet</p>
-            <p className="text-sm">Add candidates to start tracking applicants for this job</p>
+          <div className="text-center py-8 text-text-secondary">
+            <UserPlus className="h-10 w-10 mx-auto mb-3 opacity-50" />
+            <p className="text-md font-medium mb-1">No candidates added yet</p>
+            <p className="text-xs">Add candidates to start tracking applicants for this job</p>
           </div>
         ) : (
           <div className="rounded-md border border-border">
@@ -90,7 +90,7 @@ export function CandidateTable({ candidates, isLoading, onEdit, onDelete, onAddN
                     <TableCell>
                       <a 
                         href={`mailto:${candidate.candidate_email}`}
-                        className="flex items-center gap-2 text-primary hover:underline transition-all duration-150 ease-in-out hover:text-primary/80"
+                        className="flex items-center gap-1 text-primary hover:underline transition-all duration-150 ease-in-out hover:text-primary/80"
                       >
                         <Mail className="h-4 w-4" />
                         {candidate.candidate_email}
@@ -111,16 +111,16 @@ export function CandidateTable({ candidates, isLoading, onEdit, onDelete, onAddN
                           href={candidate.resume_url} 
                           target="_blank" 
                           rel="noopener noreferrer"
-                          className="flex items-center gap-2 text-primary hover:underline transition-all duration-150 ease-in-out hover:text-primary/80"
+                          className="flex items-center gap-1 text-primary hover:underline transition-all duration-150 ease-in-out hover:text-primary/80"
                         >
                           <FileText className="h-4 w-4" />
                           Resume
                         </a>
                       ) : (
-                        <span className="text-text-secondary text-sm">No resume</span>
+                        <span className="text-text-secondary text-xs">No resume</span>
                       )}
                     </TableCell>
-                    <TableCell className="text-sm text-text-secondary">
+                    <TableCell className="text-xs text-text-secondary">
                       {new Date(candidate.created_at).toLocaleDateString()}
                     </TableCell>
                     <TableCell>
@@ -130,17 +130,17 @@ export function CandidateTable({ candidates, isLoading, onEdit, onDelete, onAddN
                             variant="ghost"
                             size="sm"
                             onClick={() => onEdit(candidate)}
-                            className="h-8 w-8 p-0 hover:bg-accent/50 hover:scale-110 transition-all duration-150 ease-in-out"
+                            className="h-7 w-7 p-0 hover:bg-accent/50 hover:scale-110 transition-all duration-150 ease-in-out"
                           >
-                            <Edit className="h-4 w-4" />
+                            <Edit className="h-3.5 w-3.5" />
                           </Button>
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => handleDelete(candidate.id)}
-                            className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10 hover:scale-110 transition-all duration-150 ease-in-out"
+                            className="h-7 w-7 p-0 text-destructive hover:bg-destructive/10 hover:scale-110 transition-all duration-150 ease-in-out"
                           >
-                            <Trash2 className="h-4 w-4" />
+                            <Trash2 className="h-3.5 w-3.5" />
                           </Button>
                         </div>
                       </PermissionGate>

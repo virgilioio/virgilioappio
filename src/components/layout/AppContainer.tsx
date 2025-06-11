@@ -9,7 +9,7 @@ interface AppContainerProps {
 export function AppContainer({ children, className }: AppContainerProps) {
   return (
     <div className={cn(
-      "mx-auto max-w-7xl px-layout-sm sm:px-layout-md lg:px-layout-lg",
+      "mx-auto max-w-6xl px-3 sm:px-4 lg:px-4",
       className
     )}>
       {children}

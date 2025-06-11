@@ -10,7 +10,7 @@ const Table = React.forwardRef<
   <div className="relative w-full overflow-auto">
     <table
       ref={ref}
-      className={cn("w-full caption-bottom text-md", className)}
+      className={cn("w-full caption-bottom text-sm", className)}
       {...props}
     />
   </div>
@@ -61,7 +61,7 @@ const TableRow = React.forwardRef<
   <tr
     ref={ref}
     className={cn(
-      "border-b transition-all duration-150 ease-in-out data-[state=selected]:bg-muted h-[52px]",
+      "border-b transition-all duration-150 ease-in-out data-[state=selected]:bg-muted h-11",
       interactive 
         ? "cursor-pointer hover:bg-muted/50 hover:shadow-sm hover:-translate-y-px" 
         : "hover:bg-muted/30",
@@ -79,7 +79,7 @@ const TableHead = React.forwardRef<
   <th
     ref={ref}
     className={cn(
-      "h-11 px-4 text-left align-middle font-semibold text-text-secondary text-sm border-b border-border/50 [&:has([role=checkbox])]:pr-0",
+      "h-11 px-2 text-left align-middle font-medium text-text-secondary text-xs border-b border-border/50 [&:has([role=checkbox])]:pr-0",
       className
     )}
     {...props}
@@ -93,7 +93,7 @@ const TableCell = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <td
     ref={ref}
-    className={cn("px-4 py-3 align-middle text-md [&:has([role=checkbox])]:pr-0", className)}
+    className={cn("px-2 py-2 align-middle text-sm [&:has([role=checkbox])]:pr-0", className)}
     {...props}
   />
 ))
@@ -105,7 +105,7 @@ const TableCaption = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <caption
     ref={ref}
-    className={cn("mt-4 text-sm text-muted-foreground", className)}
+    className={cn("mt-3 text-xs text-muted-foreground", className)}
     {...props}
   />
 ))

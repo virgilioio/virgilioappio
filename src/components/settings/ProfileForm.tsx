@@ -29,7 +29,7 @@ export function ProfileForm({ formData, onFormDataChange }: ProfileFormProps) {
   }
 
   return (
-    <div className="grid gap-md md:grid-cols-2">
+    <div className="grid gap-3 md:grid-cols-2">
       <FormField label="First Name" required htmlFor="first-name">
         <Input
           id="first-name"

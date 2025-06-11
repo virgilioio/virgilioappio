@@ -98,10 +98,10 @@ export function AvatarUploader({
 
   return (
     <>
-      <div className="flex items-center gap-md">
-        <Avatar className="h-20 w-20">
+      <div className="flex items-center gap-3">
+        <Avatar className="h-16 w-16">
           <AvatarImage src={avatarUrl || ''} />
-          <AvatarFallback className="text-lg">
+          <AvatarFallback className="text-md">
             {getInitials(firstName, lastName)}
           </AvatarFallback>
         </Avatar>
@@ -111,9 +111,9 @@ export function AvatarUploader({
             size="sm" 
             disabled={isLoading}
             onClick={handleButtonClick}
-            className="flex items-center gap-2"
+            className="flex items-center gap-1"
           >
-            <Camera className="h-4 w-4" />
+            <Camera className="h-3.5 w-3.5" />
             Change Avatar
           </Button>
           <input
