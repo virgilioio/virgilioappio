@@ -220,26 +220,57 @@ export default function AcceptInvite() {
           memberRole: acceptResult.member_role
         })
 
-        await injectOrganizationToUser(
+        // Try to update user metadata using admin function
+        const { data: metadataResult, error: metadataError } = await supabase.auth.admin.updateUserById(
           authData.user.id,
-          acceptResult.organization_id,
           {
-            user_type: acceptResult.user_type,
-            member_role: acceptResult.member_role
+            user_metadata: {
+              user_type: acceptResult.user_type,
+              member_role: acceptResult.member_role,
+              organization_id: acceptResult.organization_id
+            }
           }
         )
 
-        console.log('Organization metadata injected successfully')
+        if (metadataError) {
+          console.warn('Direct admin metadata update failed:', metadataError)
+          
+          // Fallback to the existing metadata injection function
+          await injectOrganizationToUser(
+            authData.user.id,
+            acceptResult.organization_id,
+            {
+              user_type: acceptResult.user_type,
+              member_role: acceptResult.member_role
+            }
+          )
+          
+          console.log('Fallback metadata injection completed')
+          
+          toast({
+            title: 'Account Created',
+            description: `Welcome to ${invitationData.organization_name}! Your metadata will be available after your first login.`,
+            variant: 'default'
+          })
+        } else {
+          console.log('Organization metadata injected successfully via admin:', metadataResult)
+          
+          toast({
+            title: 'Welcome to Virgilio!',
+            description: `You've successfully joined ${invitationData.organization_name} as ${acceptResult.member_role.replace('_', ' ')}.`
+          })
+        }
+
       } catch (metadataError) {
         console.error('Failed to inject organization metadata:', metadataError)
-        // Don't fail the whole process, but log the error
-        console.warn('User created and invitation accepted, but metadata injection failed')
+        
+        // Don't fail the whole process, but notify about the limitation
+        toast({
+          title: 'Account Created',
+          description: `You've joined ${invitationData.organization_name}, but some metadata may not be immediately available. Please sign in to complete setup.`,
+          variant: 'default'
+        })
       }
-
-      toast({
-        title: 'Welcome to Virgilio!',
-        description: `You've successfully joined ${invitationData.organization_name}.`
-      })
 
       // Redirect to email verification page with context
       navigate(`/verify-email?email=${encodeURIComponent(invitationData.invite_email)}&organization=${encodeURIComponent(invitationData.organization_name)}`)
