@@ -22,6 +22,7 @@ export interface CreateMemberData {
   organization_id: string
   member_role: 'recruiter' | 'customer_success' | 'billing' | 'sales' | 'admin' | 'client'
   user_status?: 'active' | 'inactive' | 'invited'
+  user_type?: 'guest' | 'member' | 'workspace_owner' | 'platform_admin'
   email?: string // For invitation emails
 }
 
@@ -72,7 +73,7 @@ export function useMembers() {
         (data || []).map(async (member) => {
           const typedMember: Member = {
             ...member,
-            member_role: member.member_role as 'recruiter' | 'customer_success' | 'billing' | 'sales' | 'admin',
+            member_role: member.member_role as 'recruiter' | 'customer_success' | 'billing' | 'sales' | 'admin' | 'client',
             user_status: member.user_status as 'active' | 'inactive' | 'invited',
             organization_name: member.organizations?.name
           }
@@ -152,7 +153,8 @@ export function useMembers() {
         ...data,
         organization_id: organizationId,
         user_status: data.user_id ? (data.user_status || 'active') : 'invited',
-        user_id: data.user_id || null
+        user_id: data.user_id || null,
+        user_type: data.user_type || 'member'
       }
 
       const { data: newMember, error: createError } = await supabase

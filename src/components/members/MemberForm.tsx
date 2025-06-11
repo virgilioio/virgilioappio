@@ -39,6 +39,7 @@ export function MemberForm({
 }: MemberFormProps) {
   const [email, setEmail] = useState("")
   const [role, setRole] = useState<string>("")
+  const [userType, setUserType] = useState<string>("")
   const [organizationId, setOrganizationId] = useState<string>("")
   const [status, setStatus] = useState<string>("invited")
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -50,16 +51,27 @@ export function MemberForm({
     if (member) {
       setEmail(member.user_email || "")
       setRole(member.member_role)
+      setUserType(member.user_type || "member")
       setOrganizationId(member.organization_id)
       setStatus(member.user_status)
     } else {
       setEmail("")
       setRole("")
+      setUserType("member")
       setOrganizationId("")
       setStatus("invited")
     }
     setErrors({})
   }, [member, isOpen])
+
+  // Auto-set role when user type changes
+  useEffect(() => {
+    if (userType === 'workspace_owner') {
+      setRole('client')
+    } else if (userType === 'platform_admin') {
+      setRole('admin')
+    }
+  }, [userType])
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
@@ -72,6 +84,10 @@ export function MemberForm({
 
     if (!role) {
       newErrors.role = "Role is required"
+    }
+
+    if (!userType) {
+      newErrors.userType = "User type is required"
     }
 
     if (!organizationId && permissions.isPlatformAdmin) {
@@ -91,6 +107,7 @@ export function MemberForm({
       const data: any = {
         member_role: role,
         user_status: status,
+        user_type: userType,
       }
 
       if (!member) {
@@ -122,6 +139,14 @@ export function MemberForm({
     { value: 'billing', label: 'Billing' },
     { value: 'sales', label: 'Sales' },
     { value: 'admin', label: 'Admin' },
+    { value: 'client', label: 'Client' },
+  ]
+
+  const userTypeOptions = [
+    { value: 'guest', label: 'Guest' },
+    { value: 'member', label: 'Member' },
+    { value: 'workspace_owner', label: 'Workspace Owner' },
+    { value: 'platform_admin', label: 'Platform Admin' },
   ]
 
   const statusOptions = [
@@ -139,7 +164,7 @@ export function MemberForm({
           </DialogTitle>
           <DialogDescription>
             {member 
-              ? 'Update member role and status.'
+              ? 'Update member role, type and status.'
               : 'Send an invitation to join the organization.'}
           </DialogDescription>
         </DialogHeader>
@@ -176,6 +201,33 @@ export function MemberForm({
               </div>
             )}
 
+            {/* User Type field - only for platform admins */}
+            {permissions.isPlatformAdmin && (
+              <div className="grid gap-token-sm">
+                <Label htmlFor="userType">User Type</Label>
+                <Select value={userType} onValueChange={setUserType}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select user type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {userTypeOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.userType && (
+                  <p className="text-sm text-destructive">{errors.userType}</p>
+                )}
+                {userType === 'workspace_owner' && (
+                  <p className="text-xs text-muted-foreground">
+                    Workspace owners will have admin privileges in their organization
+                  </p>
+                )}
+              </div>
+            )}
+
             {/* Role field */}
             <div className="grid gap-token-sm">
               <Label htmlFor="role">Role</Label>
@@ -194,6 +246,11 @@ export function MemberForm({
               {errors.role && (
                 <p className="text-sm text-destructive">{errors.role}</p>
               )}
+              {userType === 'workspace_owner' && role !== 'client' && (
+                <p className="text-xs text-amber-600">
+                  Workspace owners typically have the "Client" role
+                </p>
+              )}
             </div>
 
             {/* Organization field - only for platform admins */}
@@ -207,13 +264,18 @@ export function MemberForm({
                   <SelectContent>
                     {organizations.map((org) => (
                       <SelectItem key={org.id} value={org.id}>
-                        {org.name}
+                        {org.name} ({org.organization_type})
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
                 {errors.organizationId && (
                   <p className="text-sm text-destructive">{errors.organizationId}</p>
+                )}
+                {userType === 'workspace_owner' && (
+                  <p className="text-xs text-muted-foreground">
+                    The selected organization will be owned by this user
+                  </p>
                 )}
               </div>
             )}
