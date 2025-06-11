@@ -61,7 +61,8 @@ export function useOrganizations() {
         (data || []).map(async (org) => {
           const typedOrg: Organization = {
             ...org,
-            status: org.status as 'active' | 'inactive' // Type assertion for database string
+            status: org.status as 'active' | 'inactive', // Type assertion for database string
+            organization_type: org.organization_type as 'platform' | 'client' // Type assertion for database string
           }
           
           if (org.owner_id) {
