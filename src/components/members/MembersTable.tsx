@@ -66,6 +66,7 @@ export function MembersTable({
       case 'customer_success': return 'secondary'
       case 'billing': return 'outline'
       case 'sales': return 'outline'
+      case 'client': return 'secondary'
       default: return 'secondary'
     }
   }
@@ -159,6 +160,7 @@ export function MembersTable({
                 <SelectItem value="customer_success">Customer Success</SelectItem>
                 <SelectItem value="billing">Billing</SelectItem>
                 <SelectItem value="sales">Sales</SelectItem>
+                <SelectItem value="client">Client</SelectItem>
               </SelectContent>
             </Select>
           </div>
