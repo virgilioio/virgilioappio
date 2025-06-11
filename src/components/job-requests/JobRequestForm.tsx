@@ -1,3 +1,4 @@
+
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -6,7 +7,10 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { AlertTriangle } from 'lucide-react'
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { AlertTriangle, Check, ChevronsUpDown } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { JobRequest } from '@/hooks/useJobRequests'
 import { useAuth } from '@/contexts/AuthContext'
 
@@ -15,6 +19,45 @@ interface JobRequestFormProps {
   onCancel: () => void
   isLoading?: boolean
 }
+
+const currencies = [
+  { value: 'USD', label: 'USD - US Dollar' },
+  { value: 'EUR', label: 'EUR - Euro' },
+  { value: 'GBP', label: 'GBP - British Pound' },
+  { value: 'JPY', label: 'JPY - Japanese Yen' },
+  { value: 'CHF', label: 'CHF - Swiss Franc' },
+  { value: 'CAD', label: 'CAD - Canadian Dollar' },
+  { value: 'AUD', label: 'AUD - Australian Dollar' },
+  { value: 'CNY', label: 'CNY - Chinese Yuan' },
+  { value: 'INR', label: 'INR - Indian Rupee' },
+  { value: 'KRW', label: 'KRW - South Korean Won' },
+  { value: 'SGD', label: 'SGD - Singapore Dollar' },
+  { value: 'HKD', label: 'HKD - Hong Kong Dollar' },
+  { value: 'NOK', label: 'NOK - Norwegian Krone' },
+  { value: 'SEK', label: 'SEK - Swedish Krona' },
+  { value: 'DKK', label: 'DKK - Danish Krone' },
+  { value: 'PLN', label: 'PLN - Polish Zloty' },
+  { value: 'CZK', label: 'CZK - Czech Koruna' },
+  { value: 'HUF', label: 'HUF - Hungarian Forint' },
+  { value: 'RUB', label: 'RUB - Russian Ruble' },
+  { value: 'BRL', label: 'BRL - Brazilian Real' },
+  { value: 'MXN', label: 'MXN - Mexican Peso' },
+  { value: 'ARS', label: 'ARS - Argentine Peso' },
+  { value: 'CLP', label: 'CLP - Chilean Peso' },
+  { value: 'COP', label: 'COP - Colombian Peso' },
+  { value: 'ZAR', label: 'ZAR - South African Rand' },
+  { value: 'TRY', label: 'TRY - Turkish Lira' },
+  { value: 'ILS', label: 'ILS - Israeli Shekel' },
+  { value: 'AED', label: 'AED - UAE Dirham' },
+  { value: 'SAR', label: 'SAR - Saudi Riyal' },
+  { value: 'EGP', label: 'EGP - Egyptian Pound' },
+  { value: 'THB', label: 'THB - Thai Baht' },
+  { value: 'MYR', label: 'MYR - Malaysian Ringgit' },
+  { value: 'IDR', label: 'IDR - Indonesian Rupiah' },
+  { value: 'PHP', label: 'PHP - Philippine Peso' },
+  { value: 'VND', label: 'VND - Vietnamese Dong' },
+  { value: 'NZD', label: 'NZD - New Zealand Dollar' }
+]
 
 export function JobRequestForm({ onSubmit, onCancel, isLoading = false }: JobRequestFormProps) {
   const { hasOrganizationContext, organizationId } = useAuth()
@@ -31,6 +74,7 @@ export function JobRequestForm({ onSubmit, onCancel, isLoading = false }: JobReq
   })
 
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [currencyOpen, setCurrencyOpen] = useState(false)
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
@@ -233,16 +277,49 @@ export function JobRequestForm({ onSubmit, onCancel, isLoading = false }: JobReq
 
             <div className="space-y-2">
               <Label htmlFor="currency">Currency</Label>
-              <Select value={formData.currency} onValueChange={(value) => handleChange('currency', value)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="USD">USD</SelectItem>
-                  <SelectItem value="EUR">EUR</SelectItem>
-                  <SelectItem value="GBP">GBP</SelectItem>
-                </SelectContent>
-              </Select>
+              <Popover open={currencyOpen} onOpenChange={setCurrencyOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={currencyOpen}
+                    className="w-full justify-between"
+                  >
+                    {formData.currency
+                      ? currencies.find((currency) => currency.value === formData.currency)?.label
+                      : "Select currency..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-full p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Search currency..." />
+                    <CommandList>
+                      <CommandEmpty>No currency found.</CommandEmpty>
+                      <CommandGroup>
+                        {currencies.map((currency) => (
+                          <CommandItem
+                            key={currency.value}
+                            value={currency.value}
+                            onSelect={(currentValue) => {
+                              handleChange('currency', currentValue.toUpperCase())
+                              setCurrencyOpen(false)
+                            }}
+                          >
+                            <Check
+                              className={cn(
+                                "mr-2 h-4 w-4",
+                                formData.currency === currency.value ? "opacity-100" : "opacity-0"
+                              )}
+                            />
+                            {currency.label}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
 
