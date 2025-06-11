@@ -1,7 +1,7 @@
 
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { FormField } from '@/components/ui/form-field'
 
 interface ProfileFormData {
   first_name: string
@@ -30,48 +30,44 @@ export function ProfileForm({ formData, onFormDataChange }: ProfileFormProps) {
 
   return (
     <div className="grid gap-md md:grid-cols-2">
-      <div>
-        <Label htmlFor="first-name">First Name</Label>
+      <FormField label="First Name" required htmlFor="first-name">
         <Input
           id="first-name"
           value={formData.first_name}
           onChange={(e) => updateFormData('first_name', e.target.value)}
           placeholder="Enter first name"
         />
-      </div>
+      </FormField>
 
-      <div>
-        <Label htmlFor="last-name">Last Name</Label>
+      <FormField label="Last Name" required htmlFor="last-name">
         <Input
           id="last-name"
           value={formData.last_name}
           onChange={(e) => updateFormData('last_name', e.target.value)}
           placeholder="Enter last name"
         />
-      </div>
+      </FormField>
 
-      <div className="md:col-span-2">
-        <Label htmlFor="title">Job Title</Label>
+      <FormField label="Job Title" htmlFor="title" className="md:col-span-2">
         <Input
           id="title"
           value={formData.title}
           onChange={(e) => updateFormData('title', e.target.value)}
           placeholder="Enter job title"
         />
-      </div>
+      </FormField>
 
-      <div>
-        <Label htmlFor="phone">Phone</Label>
+      <FormField label="Phone" htmlFor="phone">
         <Input
           id="phone"
+          type="tel"
           value={formData.phone}
           onChange={(e) => updateFormData('phone', e.target.value)}
           placeholder="Enter phone number"
         />
-      </div>
+      </FormField>
 
-      <div>
-        <Label htmlFor="timezone">Timezone</Label>
+      <FormField label="Timezone" htmlFor="timezone">
         <Select 
           value={formData.timezone} 
           onValueChange={(value) => updateFormData('timezone', value)}
@@ -87,17 +83,22 @@ export function ProfileForm({ formData, onFormDataChange }: ProfileFormProps) {
             ))}
           </SelectContent>
         </Select>
-      </div>
+      </FormField>
 
-      <div className="md:col-span-2">
-        <Label htmlFor="linkedin">LinkedIn URL</Label>
+      <FormField 
+        label="LinkedIn URL" 
+        htmlFor="linkedin" 
+        className="md:col-span-2"
+        helpText="Your professional LinkedIn profile URL"
+      >
         <Input
           id="linkedin"
+          type="url"
           value={formData.linkedin_url}
           onChange={(e) => updateFormData('linkedin_url', e.target.value)}
           placeholder="https://linkedin.com/in/yourprofile"
         />
-      </div>
+      </FormField>
     </div>
   )
 }

@@ -1,8 +1,8 @@
 
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
+import { FormField } from '@/components/ui/form-field'
 import { Save } from 'lucide-react'
 
 interface OrganizationFormData {
@@ -55,20 +55,18 @@ export function OrganizationForm({
   }
 
   return (
-    <div className="space-y-md">
+    <div className="space-y-lg">
       <div className="grid gap-md">
-        <div>
-          <Label htmlFor="org-name">Organization Name</Label>
+        <FormField label="Organization Name" required htmlFor="org-name">
           <Input
             id="org-name"
             value={formData.name}
             onChange={(e) => updateFormData('name', e.target.value)}
             placeholder="Enter organization name"
           />
-        </div>
+        </FormField>
 
-        <div>
-          <Label htmlFor="org-country">Country</Label>
+        <FormField label="Country" required htmlFor="org-country">
           <Select 
             value={formData.country} 
             onValueChange={(value) => updateFormData('country', value)}
@@ -84,10 +82,9 @@ export function OrganizationForm({
               ))}
             </SelectContent>
           </Select>
-        </div>
+        </FormField>
 
-        <div>
-          <Label htmlFor="org-status">Status</Label>
+        <FormField label="Status" htmlFor="org-status">
           <Select 
             value={formData.status} 
             onValueChange={(value) => updateFormData('status', value as 'active' | 'inactive')}
@@ -100,7 +97,7 @@ export function OrganizationForm({
               <SelectItem value="inactive">Inactive</SelectItem>
             </SelectContent>
           </Select>
-        </div>
+        </FormField>
       </div>
 
       <div className="pt-md border-t">

@@ -2,10 +2,10 @@
 import React, { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Separator } from '@/components/ui/separator'
+import { FormField } from '@/components/ui/form-field'
 import { useAuth } from '@/contexts/AuthContext'
 import { CandidateComments } from './CandidateComments'
 import type { Candidate } from '@/hooks/useCandidates'
@@ -33,6 +33,7 @@ export function CandidateForm({
     notes: '',
     resume_url: ''
   })
+  const [errors, setErrors] = useState<Record<string, string>>({})
   const { user } = useAuth()
 
   useEffect(() => {
@@ -51,15 +52,41 @@ export function CandidateForm({
         resume_url: ''
       })
     }
+    setErrors({})
   }, [candidate, isOpen])
+
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {}
+    
+    if (!formData.candidate_name.trim()) {
+      newErrors.candidate_name = 'Name is required'
+    }
+    
+    if (!formData.candidate_email.trim()) {
+      newErrors.candidate_email = 'Email is required'
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.candidate_email)) {
+      newErrors.candidate_email = 'Please enter a valid email address'
+    }
+    
+    if (formData.resume_url && !/^https?:\/\/.+/.test(formData.resume_url)) {
+      newErrors.resume_url = 'Please enter a valid URL'
+    }
+    
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
+    
+    if (!validateForm()) return
+    
     const submitData = {
       ...formData,
       job_id: jobId
     }
     onSubmit(submitData)
+    
     if (!candidate) {
       setFormData({
         candidate_name: '',
@@ -70,12 +97,11 @@ export function CandidateForm({
     }
   }
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }))
+  const handleChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }))
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: '' }))
+    }
   }
 
   if (!user) return null
@@ -91,56 +117,74 @@ export function CandidateForm({
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Candidate Form */}
-          <div className="space-y-4">
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <Label htmlFor="candidate_name">Name *</Label>
+          <div className="space-y-md">
+            <form onSubmit={handleSubmit} className="space-y-md">
+              <FormField 
+                label="Name" 
+                required 
+                error={errors.candidate_name}
+                htmlFor="candidate_name"
+              >
                 <Input
                   id="candidate_name"
                   name="candidate_name"
                   value={formData.candidate_name}
-                  onChange={handleChange}
-                  required
+                  onChange={(e) => handleChange('candidate_name', e.target.value)}
+                  error={!!errors.candidate_name}
+                  placeholder="Enter candidate name"
                 />
-              </div>
+              </FormField>
 
-              <div>
-                <Label htmlFor="candidate_email">Email *</Label>
+              <FormField 
+                label="Email" 
+                required 
+                error={errors.candidate_email}
+                htmlFor="candidate_email"
+              >
                 <Input
                   id="candidate_email"
                   name="candidate_email"
                   type="email"
                   value={formData.candidate_email}
-                  onChange={handleChange}
-                  required
+                  onChange={(e) => handleChange('candidate_email', e.target.value)}
+                  error={!!errors.candidate_email}
+                  placeholder="Enter email address"
                 />
-              </div>
+              </FormField>
 
-              <div>
-                <Label htmlFor="resume_url">Resume URL</Label>
+              <FormField 
+                label="Resume URL" 
+                error={errors.resume_url}
+                helpText="Link to candidate's resume or portfolio"
+                htmlFor="resume_url"
+              >
                 <Input
                   id="resume_url"
                   name="resume_url"
                   type="url"
                   value={formData.resume_url}
-                  onChange={handleChange}
+                  onChange={(e) => handleChange('resume_url', e.target.value)}
+                  error={!!errors.resume_url}
                   placeholder="https://..."
                 />
-              </div>
+              </FormField>
 
-              <div>
-                <Label htmlFor="notes">Notes</Label>
+              <FormField 
+                label="Notes" 
+                htmlFor="notes"
+                helpText="Additional information about this candidate"
+              >
                 <Textarea
                   id="notes"
                   name="notes"
                   value={formData.notes}
-                  onChange={handleChange}
+                  onChange={(e) => handleChange('notes', e.target.value)}
                   rows={4}
                   placeholder="Add any additional notes about this candidate..."
                 />
-              </div>
+              </FormField>
 
-              <div className="flex gap-3 pt-4">
+              <div className="flex gap-3 pt-md">
                 <Button type="submit" disabled={isLoading} className="flex-1">
                   {isLoading ? 'Saving...' : candidate ? 'Update Candidate' : 'Add Candidate'}
                 </Button>
@@ -153,7 +197,7 @@ export function CandidateForm({
 
           {/* Comments Section - Only show for existing candidates */}
           {candidate && (
-            <div className="space-y-4">
+            <div className="space-y-md">
               <Separator className="lg:hidden" />
               <CandidateComments
                 candidateId={candidate.id}
