@@ -332,6 +332,7 @@ export type Database = {
           id: string
           invite_expires_at: string | null
           invite_token: string | null
+          invited_email: string | null
           member_role: Database["public"]["Enums"]["member_role"]
           organization_id: string | null
           updated_at: string | null
@@ -344,6 +345,7 @@ export type Database = {
           id?: string
           invite_expires_at?: string | null
           invite_token?: string | null
+          invited_email?: string | null
           member_role: Database["public"]["Enums"]["member_role"]
           organization_id?: string | null
           updated_at?: string | null
@@ -356,6 +358,7 @@ export type Database = {
           id?: string
           invite_expires_at?: string | null
           invite_token?: string | null
+          invited_email?: string | null
           member_role?: Database["public"]["Enums"]["member_role"]
           organization_id?: string | null
           updated_at?: string | null
@@ -505,6 +508,7 @@ export type Database = {
           organization_id: string
           member_role: string
           organization_name: string
+          invite_email: string
           is_valid: boolean
           error_message: string
         }[]

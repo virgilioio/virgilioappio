@@ -14,6 +14,7 @@ export interface Member {
   updated_at: string
   invite_token?: string | null
   invite_expires_at?: string | null
+  invited_email?: string | null
   user_email?: string
   organization_name?: string
 }
@@ -149,13 +150,14 @@ export function useMembers() {
     try {
       console.log('Creating member:', { ...data, organization_id: organizationId })
       
-      // Prepare the member data - remove email from the database insert
+      // Prepare the member data - include email for invited members
       const memberData = {
         organization_id: organizationId,
         member_role: data.member_role,
         user_status: data.user_id ? (data.user_status || 'active') : 'invited',
         user_id: data.user_id || null,
-        user_type: data.user_type || 'member'
+        user_type: data.user_type || 'member',
+        invited_email: !data.user_id && data.email ? data.email : null
       }
 
       console.log('Inserting member data:', memberData)

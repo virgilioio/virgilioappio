@@ -44,6 +44,18 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log('Sending invitation for member:', memberId, 'to email:', email);
 
+    // Update the member record with the invited email
+    const { error: updateError } = await supabase
+      .from('members')
+      .update({ invited_email: email })
+      .eq('id', memberId)
+      .eq('user_status', 'invited');
+
+    if (updateError) {
+      console.error('Error updating member with email:', updateError);
+      throw updateError;
+    }
+
     // Get member details with organization info
     const { data: member, error: memberError } = await supabase
       .from('members')
@@ -70,7 +82,7 @@ const handler = async (req: Request): Promise<Response> => {
     const inviteUrl = `https://app.virgilio.io/accept-invite/${member.invite_token}`;
     const expiryDate = new Date(member.invite_expires_at).toLocaleDateString();
 
-    // Send the invitation email
+    // Send the invitation email with updated branding
     const emailResponse = await resend.emails.send({
       from: "Virgilio <noreply@app.virgilio.io>",
       to: [email],
@@ -83,68 +95,120 @@ const handler = async (req: Request): Promise<Response> => {
           <meta name="viewport" content="width=device-width, initial-scale=1.0">
           <title>Invitation to Virgilio</title>
         </head>
-        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8fafc;">
           
           <div style="text-align: center; margin-bottom: 40px;">
-            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 20px; border-radius: 12px; margin-bottom: 30px;">
-              <h1 style="margin: 0; font-size: 28px; font-weight: 600;">Virgilio</h1>
+            <div style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); color: white; padding: 30px; border-radius: 16px; margin-bottom: 30px; box-shadow: 0 10px 30px rgba(99, 102, 241, 0.2);">
+              <img src="https://etrxjxstjfcozdjumfsj.supabase.co/storage/v1/object/public/assets/virgilio-logo-white.png" alt="Virgilio" style="height: 40px; margin-bottom: 10px;" />
+              <h1 style="margin: 0; font-size: 32px; font-weight: 700; letter-spacing: -0.5px;">Virgilio</h1>
+              <p style="margin: 10px 0 0 0; font-size: 16px; opacity: 0.9;">Connecting talent with opportunity</p>
             </div>
           </div>
 
-          <div style="background: #f8fafc; padding: 30px; border-radius: 12px; border-left: 4px solid #667eea;">
-            <h2 style="color: #1a202c; margin-top: 0; font-size: 24px;">You're Invited!</h2>
-            
-            <p style="font-size: 16px; margin-bottom: 20px;">
-              ${inviterName ? `<strong>${inviterName}</strong> has` : 'You have been'} invited you to join <strong>${organizationName}</strong> on Virgilio, the recruitment platform that connects talent with opportunity.
-            </p>
-
-            <p style="font-size: 16px; margin-bottom: 25px;">
-              As a member of <strong>${organizationName}</strong>, you'll have access to:
-            </p>
-
-            <ul style="font-size: 16px; margin-bottom: 30px; padding-left: 20px;">
-              <li style="margin-bottom: 8px;">Collaborative recruitment tools</li>
-              <li style="margin-bottom: 8px;">Candidate management system</li>
-              <li style="margin-bottom: 8px;">Team collaboration features</li>
-              <li style="margin-bottom: 8px;">Real-time notifications and updates</li>
-            </ul>
-
-            <div style="text-align: center; margin: 30px 0;">
-              <a href="${inviteUrl}" 
-                 style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
-                        color: white; 
-                        text-decoration: none; 
-                        padding: 15px 30px; 
-                        border-radius: 8px; 
-                        font-weight: 600; 
-                        font-size: 16px; 
-                        display: inline-block; 
-                        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);">
-                Accept Invitation
-              </a>
+          <div style="background: white; padding: 40px; border-radius: 16px; box-shadow: 0 4px 25px rgba(0, 0, 0, 0.08); border: 1px solid #e2e8f0;">
+            <div style="text-align: center; margin-bottom: 30px;">
+              <div style="display: inline-flex; align-items: center; justify-content: center; width: 64px; height: 64px; background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); border-radius: 50%; margin-bottom: 20px;">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="9" cy="7" r="4"></circle>
+                  <path d="m22 2-5 10-3-3-10 5 18-12z"></path>
+                </svg>
+              </div>
+              <h2 style="color: #1e293b; margin: 0; font-size: 28px; font-weight: 700;">You're Invited!</h2>
+              <p style="color: #64748b; font-size: 16px; margin: 10px 0 0 0;">Join your team on Virgilio</p>
             </div>
-
-            <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px; padding: 15px; margin: 25px 0;">
-              <p style="margin: 0; font-size: 14px; color: #856404;">
-                <strong>⏰ Important:</strong> This invitation will expire on <strong>${expiryDate}</strong>. 
-                Please accept it before then to join your team.
+            
+            <div style="background: #f8fafc; padding: 24px; border-radius: 12px; border-left: 4px solid #6366f1; margin-bottom: 30px;">
+              <p style="font-size: 16px; margin: 0 0 15px 0; color: #334155;">
+                ${inviterName ? `<strong style="color: #6366f1;">${inviterName}</strong> has invited you to join` : 'You have been invited to join'} <strong style="color: #1e293b;">${organizationName}</strong> on Virgilio.
+              </p>
+              <p style="font-size: 15px; margin: 0; color: #64748b;">
+                Complete your account setup to start collaborating with your team.
               </p>
             </div>
 
-            <p style="font-size: 14px; color: #6b7280; margin-bottom: 10px;">
-              Can't click the button? Copy and paste this link into your browser:
-            </p>
-            <p style="font-size: 12px; color: #6b7280; word-break: break-all; background: #f1f5f9; padding: 10px; border-radius: 4px;">
-              ${inviteUrl}
-            </p>
+            <div style="margin-bottom: 30px;">
+              <h3 style="color: #1e293b; margin: 0 0 16px 0; font-size: 18px; font-weight: 600;">What you'll get access to:</h3>
+              <div style="space-y: 12px;">
+                <div style="display: flex; align-items: center; margin-bottom: 12px;">
+                  <div style="width: 20px; height: 20px; background: #6366f1; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 12px; flex-shrink: 0;">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="20,6 9,17 4,12"></polyline>
+                    </svg>
+                  </div>
+                  <span style="color: #334155; font-size: 15px;">Advanced recruitment tools and candidate management</span>
+                </div>
+                <div style="display: flex; align-items: center; margin-bottom: 12px;">
+                  <div style="width: 20px; height: 20px; background: #6366f1; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 12px; flex-shrink: 0;">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="20,6 9,17 4,12"></polyline>
+                    </svg>
+                  </div>
+                  <span style="color: #334155; font-size: 15px;">Team collaboration and communication features</span>
+                </div>
+                <div style="display: flex; align-items: center; margin-bottom: 12px;">
+                  <div style="width: 20px; height: 20px; background: #6366f1; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 12px; flex-shrink: 0;">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="20,6 9,17 4,12"></polyline>
+                    </svg>
+                  </div>
+                  <span style="color: #334155; font-size: 15px;">Real-time notifications and progress tracking</span>
+                </div>
+                <div style="display: flex; align-items: center;">
+                  <div style="width: 20px; height: 20px; background: #6366f1; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 12px; flex-shrink: 0;">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="20,6 9,17 4,12"></polyline>
+                    </svg>
+                  </div>
+                  <span style="color: #334155; font-size: 15px;">Comprehensive analytics and reporting dashboard</span>
+                </div>
+              </div>
+            </div>
+
+            <div style="text-align: center; margin: 35px 0;">
+              <a href="${inviteUrl}" 
+                 style="background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); 
+                        color: white; 
+                        text-decoration: none; 
+                        padding: 16px 32px; 
+                        border-radius: 12px; 
+                        font-weight: 600; 
+                        font-size: 16px; 
+                        display: inline-block; 
+                        box-shadow: 0 8px 25px rgba(99, 102, 241, 0.3);
+                        transition: all 0.2s ease;">
+                Accept Invitation & Join Team
+              </a>
+            </div>
+
+            <div style="background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 16px; margin: 25px 0;">
+              <div style="display: flex; align-items: center;">
+                <div style="margin-right: 12px;">⏰</div>
+                <div>
+                  <p style="margin: 0; font-size: 14px; color: #92400e;">
+                    <strong>Time-sensitive invitation:</strong> This invitation expires on <strong>${expiryDate}</strong>. 
+                    Please accept it before then to join your team.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div style="border-top: 1px solid #e2e8f0; padding-top: 20px; margin-top: 30px;">
+              <p style="font-size: 13px; color: #64748b; margin: 0 0 8px 0;">
+                Having trouble with the button? Copy and paste this link:
+              </p>
+              <p style="font-size: 12px; color: #6366f1; word-break: break-all; background: #f1f5f9; padding: 12px; border-radius: 6px; margin: 0; font-family: monospace;">
+                ${inviteUrl}
+              </p>
+            </div>
           </div>
 
-          <div style="text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
-            <p style="font-size: 14px; color: #6b7280; margin: 0;">
-              This invitation was sent by Virgilio. If you didn't expect this invitation, you can safely ignore this email.
+          <div style="text-align: center; margin-top: 40px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
+            <p style="font-size: 14px; color: #64748b; margin: 0 0 8px 0;">
+              This invitation was sent by Virgilio on behalf of ${organizationName}.
             </p>
-            <p style="font-size: 12px; color: #9ca3af; margin: 10px 0 0 0;">
-              © 2024 Virgilio. All rights reserved.
+            <p style="font-size: 12px; color: #94a3b8; margin: 0;">
+              © 2024 Virgilio. All rights reserved. | Connecting talent with opportunity.
             </p>
           </div>
 

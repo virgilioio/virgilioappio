@@ -15,6 +15,7 @@ interface InvitationData {
   organization_id: string
   member_role: string
   organization_name: string
+  invite_email: string
   is_valid: boolean
   error_message: string
 }
@@ -26,9 +27,10 @@ export default function AcceptInvite() {
   const [isValidating, setIsValidating] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [invitationData, setInvitationData] = useState<InvitationData | null>(null)
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [email, setEmail] = useState('')
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   useEffect(() => {
@@ -62,6 +64,7 @@ export default function AcceptInvite() {
           organization_id: '',
           member_role: '',
           organization_name: '',
+          invite_email: '',
           is_valid: false,
           error_message: 'Invalid invitation token'
         })
@@ -73,6 +76,7 @@ export default function AcceptInvite() {
         organization_id: '',
         member_role: '',
         organization_name: '',
+        invite_email: '',
         is_valid: false,
         error_message: 'Failed to validate invitation'
       })
@@ -84,10 +88,12 @@ export default function AcceptInvite() {
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
 
-    if (!email.trim()) {
-      newErrors.email = 'Email is required'
-    } else if (!/\S+@\S+\.\S+/.test(email)) {
-      newErrors.email = 'Please enter a valid email'
+    if (!firstName.trim()) {
+      newErrors.firstName = 'First name is required'
+    }
+
+    if (!lastName.trim()) {
+      newErrors.lastName = 'Last name is required'
     }
 
     if (!password) {
@@ -109,21 +115,21 @@ export default function AcceptInvite() {
   const handleAcceptInvitation = async (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!validateForm() || !invitationData?.is_valid) return
+    if (!validateForm() || !invitationData?.is_valid || !invitationData.invite_email) return
 
     setIsSubmitting(true)
 
     try {
-      console.log('Creating user account for:', email)
+      console.log('Creating user account for:', invitationData.invite_email)
       
-      // Create the user account
+      // Create the user account using the email from the invitation
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
-        email: email.trim(),
+        email: invitationData.invite_email,
         password: password,
         options: {
           data: {
-            first_name: '', // We can enhance this later to collect name
-            last_name: ''
+            first_name: firstName.trim(),
+            last_name: lastName.trim()
           }
         }
       })
@@ -236,24 +242,41 @@ export default function AcceptInvite() {
         <CardContent>
           <Alert className="mb-6">
             <AlertDescription>
-              Complete your account setup to join your team and start collaborating.
+              Creating account for: <strong>{invitationData.invite_email}</strong>
             </AlertDescription>
           </Alert>
 
           <form onSubmit={handleAcceptInvitation} className="space-y-4">
-            <div>
-              <Label htmlFor="email">Email Address</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Enter your email address"
-                disabled={isSubmitting}
-              />
-              {errors.email && (
-                <p className="text-sm text-red-600 mt-1">{errors.email}</p>
-              )}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="firstName">First Name</Label>
+                <Input
+                  id="firstName"
+                  type="text"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  placeholder="Enter your first name"
+                  disabled={isSubmitting}
+                />
+                {errors.firstName && (
+                  <p className="text-sm text-red-600 mt-1">{errors.firstName}</p>
+                )}
+              </div>
+              
+              <div>
+                <Label htmlFor="lastName">Last Name</Label>
+                <Input
+                  id="lastName"
+                  type="text"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  placeholder="Enter your last name"
+                  disabled={isSubmitting}
+                />
+                {errors.lastName && (
+                  <p className="text-sm text-red-600 mt-1">{errors.lastName}</p>
+                )}
+              </div>
             </div>
 
             <div>
