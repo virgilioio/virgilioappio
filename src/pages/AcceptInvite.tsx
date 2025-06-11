@@ -115,6 +115,8 @@ export default function AcceptInvite() {
     return Object.keys(newErrors).length === 0
   }
 
+  const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+
   const handleAcceptInvitation = async (e: React.FormEvent) => {
     e.preventDefault()
     
@@ -149,20 +151,53 @@ export default function AcceptInvite() {
 
       console.log('User created successfully:', authData.user.id)
 
-      // Accept the invitation by linking the user_id
-      const { data: acceptData, error: acceptError } = await supabase.rpc('accept_invitation', {
-        token_input: token,
-        new_user_id: authData.user.id
-      })
+      // Wait a moment to ensure the user is properly created in the database
+      await sleep(1000)
 
-      if (acceptError) {
-        console.error('Error accepting invitation:', acceptError)
-        throw acceptError
+      // Accept the invitation by linking the user_id with retry logic
+      let retryCount = 0
+      const maxRetries = 3
+      let acceptResult = null
+
+      while (retryCount < maxRetries) {
+        try {
+          console.log(`Attempting to accept invitation (attempt ${retryCount + 1})`)
+          
+          const { data: acceptData, error: acceptError } = await supabase.rpc('accept_invitation', {
+            token_input: token,
+            new_user_id: authData.user.id
+          })
+
+          if (acceptError) {
+            console.error(`Error accepting invitation (attempt ${retryCount + 1}):`, acceptError)
+            
+            // If it's a foreign key constraint error, wait a bit longer and retry
+            if (acceptError.message.includes('foreign key constraint') || acceptError.message.includes('violates')) {
+              retryCount++
+              if (retryCount < maxRetries) {
+                console.log('Foreign key constraint error, retrying in 2 seconds...')
+                await sleep(2000)
+                continue
+              }
+            }
+            throw acceptError
+          }
+
+          acceptResult = acceptData?.[0]
+          break // Success, exit retry loop
+          
+        } catch (error) {
+          retryCount++
+          if (retryCount >= maxRetries) {
+            throw error
+          }
+          console.log(`Retry ${retryCount} failed, waiting before next attempt...`)
+          await sleep(2000)
+        }
       }
 
-      const result = acceptData?.[0]
-      if (!result?.success) {
-        throw new Error(result?.error_message || 'Failed to accept invitation')
+      if (!acceptResult?.success) {
+        throw new Error(acceptResult?.error_message || 'Failed to accept invitation')
       }
 
       console.log('Invitation accepted successfully')
@@ -177,9 +212,21 @@ export default function AcceptInvite() {
 
     } catch (error: any) {
       console.error('Error accepting invitation:', error)
+      
+      let errorMessage = 'Failed to accept invitation. Please try again.'
+      
+      // Provide more specific error messages
+      if (error.message?.includes('User already registered')) {
+        errorMessage = 'This email is already registered. Please try logging in instead.'
+      } else if (error.message?.includes('foreign key constraint')) {
+        errorMessage = 'There was a temporary issue. Please try again in a few moments.'
+      } else if (error.message?.includes('expired')) {
+        errorMessage = 'This invitation has expired. Please request a new invitation.'
+      }
+      
       toast({
         title: 'Error',
-        description: error.message || 'Failed to accept invitation. Please try again.',
+        description: errorMessage,
         variant: 'destructive'
       })
     } finally {
