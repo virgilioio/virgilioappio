@@ -459,6 +459,9 @@ export type Database = {
           success: boolean
           error_message: string
           member_id: string
+          user_type: string
+          member_role: string
+          organization_id: string
         }[]
       }
       cleanup_expired_invitations: {
