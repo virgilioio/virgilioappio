@@ -78,7 +78,7 @@ export function OnboardingProgress({ profile, isLoading }: OnboardingProgressPro
         )}
         
         <Button variant="outline" size="sm" asChild className="w-full gap-1">
-          <Link to="/settings?tab=profile">
+          <Link to="/settings?tab=profile" className="flex items-center gap-1">
             {isComplete ? 'Edit Profile' : 'Complete Setup'}
             <ExternalLink className="h-3 w-3" />
           </Link>

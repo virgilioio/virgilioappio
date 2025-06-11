@@ -74,7 +74,7 @@ export function PaymentsTracker() {
               <span className="text-sm text-text-secondary">pending invoices</span>
             </div>
             <Button variant="ghost" size="sm" asChild>
-              <Link to="/settings?tab=billing" className="gap-1">
+              <Link to="/settings?tab=billing" className="flex items-center gap-1">
                 View all
                 <ExternalLink className="h-3 w-3" />
               </Link>

@@ -76,7 +76,7 @@ export function PaymentHistory() {
         )}
         
         <Button variant="ghost" size="sm" asChild className="w-full gap-1">
-          <Link to="/settings?tab=billing">
+          <Link to="/settings?tab=billing" className="flex items-center gap-1">
             View all payments
             <ExternalLink className="h-3 w-3" />
           </Link>
