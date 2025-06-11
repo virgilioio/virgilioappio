@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { Layout } from "@/components/layout/Layout";
 import Index from "./pages/Index";
+import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
 import Members from "./pages/Members";
 import Organizations from "./pages/Organizations";
@@ -35,6 +36,7 @@ function App() {
               <Route path="/verify-email" element={<VerifyEmail />} />
               <Route element={<Layout />}>
                 <Route path="/" element={<Index />} />
+                <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/members" element={<Members />} />
                 <Route path="/organizations" element={<Organizations />} />
                 <Route path="/settings" element={<Settings />} />
