@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -133,8 +134,8 @@ export default function JobDetail() {
       <AuthGate>
         <PermissionGate permission="canViewJobs">
           <div className="min-h-screen bg-background">
-            <div className="container mx-auto py-token-xl px-token-lg">
-              <div className="flex items-center justify-center py-token-xl">
+            <div className="container mx-auto py-6 sm:py-8 lg:py-12 px-4 sm:px-6 lg:px-8">
+              <div className="flex items-center justify-center py-12">
                 <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin"></div>
               </div>
             </div>
@@ -148,52 +149,54 @@ export default function JobDetail() {
     <AuthGate>
       <PermissionGate permission="canViewJobs">
         <div className="min-h-screen bg-background">
-          <div className="container mx-auto py-token-xl px-token-lg">
-            <div className="mb-token-xl">
-              <Button variant="ghost" onClick={() => navigate('/jobs')} className="mb-4">
+          <div className="container mx-auto py-6 sm:py-8 lg:py-12 px-4 sm:px-6 lg:px-8">
+            <div className="mb-6 sm:mb-8 lg:mb-12">
+              <Button variant="ghost" onClick={() => navigate('/jobs')} className="mb-4 min-h-[44px]">
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back to Jobs
               </Button>
               
-              <div className="flex items-start justify-between">
-                <div>
-                  <h1 className="text-3xl font-bold tracking-tight">{job.title}</h1>
-                  <p className="text-muted-foreground mt-token-sm">
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                <div className="min-w-0 flex-1">
+                  <h1 className="text-2xl sm:text-3xl font-bold tracking-tight truncate">{job.title}</h1>
+                  <p className="text-muted-foreground mt-2 text-sm sm:text-md">
                     {job.organization_name || 'Organization'} • {job.level}
                   </p>
                 </div>
                 
-                <div className="flex items-center gap-3">
-                  <Badge variant={getStatusBadgeVariant(job.status)}>
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                  <Badge variant={getStatusBadgeVariant(job.status)} className="self-start">
                     {job.status}
                   </Badge>
                   
-                  {permissions.canEditJobs && (
-                    <Button variant="outline" onClick={handleEdit}>
-                      <Edit className="h-4 w-4 mr-2" />
-                      Edit
-                    </Button>
-                  )}
-                  
-                  {permissions.canArchiveJobs && job.status !== 'archived' && (
-                    <Button variant="outline" onClick={handleArchive}>
-                      <Archive className="h-4 w-4 mr-2" />
-                      Archive
-                    </Button>
-                  )}
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    {permissions.canEditJobs && (
+                      <Button variant="outline" onClick={handleEdit} className="min-h-[44px]">
+                        <Edit className="h-4 w-4 mr-2" />
+                        Edit
+                      </Button>
+                    )}
+                    
+                    {permissions.canArchiveJobs && job.status !== 'archived' && (
+                      <Button variant="outline" onClick={handleArchive} className="min-h-[44px]">
+                        <Archive className="h-4 w-4 mr-2" />
+                        Archive
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-2 space-y-6">
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+              <div className="xl:col-span-2 space-y-6">
                 <Card>
                   <CardHeader>
                     <CardTitle>Job Description</CardTitle>
                   </CardHeader>
                   <CardContent>
                     {job.description ? (
-                      <div className="whitespace-pre-wrap text-sm">
+                      <div className="whitespace-pre-wrap text-sm leading-relaxed">
                         {job.description}
                       </div>
                     ) : (
@@ -215,17 +218,16 @@ export default function JobDetail() {
               </div>
 
               <div className="space-y-6">
-                
                 <Card>
                   <CardHeader>
                     <CardTitle>Job Details</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="flex items-center gap-3">
-                      <Building className="h-4 w-4 text-muted-foreground" />
-                      <div>
+                    <div className="flex items-start gap-3">
+                      <Building className="h-4 w-4 text-muted-foreground mt-1 shrink-0" />
+                      <div className="min-w-0">
                         <p className="text-sm font-medium">Department</p>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-sm text-muted-foreground break-words">
                           {job.department || 'Not specified'}
                         </p>
                       </div>
@@ -233,11 +235,11 @@ export default function JobDetail() {
 
                     <Separator />
 
-                    <div className="flex items-center gap-3">
-                      <MapPin className="h-4 w-4 text-muted-foreground" />
-                      <div>
+                    <div className="flex items-start gap-3">
+                      <MapPin className="h-4 w-4 text-muted-foreground mt-1 shrink-0" />
+                      <div className="min-w-0">
                         <p className="text-sm font-medium">Location</p>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-sm text-muted-foreground break-words">
                           {job.location || 'Not specified'}
                         </p>
                       </div>
@@ -245,11 +247,11 @@ export default function JobDetail() {
 
                     <Separator />
 
-                    <div className="flex items-center gap-3">
-                      <DollarSign className="h-4 w-4 text-muted-foreground" />
-                      <div>
+                    <div className="flex items-start gap-3">
+                      <DollarSign className="h-4 w-4 text-muted-foreground mt-1 shrink-0" />
+                      <div className="min-w-0">
                         <p className="text-sm font-medium">Salary Range</p>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-sm text-muted-foreground break-words">
                           {formatSalary(job.salary_min, job.salary_max, job.currency)}
                         </p>
                       </div>
@@ -257,9 +259,9 @@ export default function JobDetail() {
 
                     <Separator />
 
-                    <div className="flex items-center gap-3">
-                      <Users className="h-4 w-4 text-muted-foreground" />
-                      <div>
+                    <div className="flex items-start gap-3">
+                      <Users className="h-4 w-4 text-muted-foreground mt-1 shrink-0" />
+                      <div className="min-w-0">
                         <p className="text-sm font-medium">Hiring Team</p>
                         <p className="text-sm text-muted-foreground">
                           {job.hiring_team && job.hiring_team.length > 0

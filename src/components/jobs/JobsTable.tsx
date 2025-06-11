@@ -6,9 +6,11 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Search, Eye, Edit, Archive } from 'lucide-react'
+import { Plus, Search, Eye, Edit, Archive, MoreHorizontal } from 'lucide-react'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Job } from '@/hooks/useJobs'
 import { usePermissions } from '@/hooks/usePermissions'
+import { useIsMobile } from '@/hooks/use-mobile'
 
 interface JobsTableProps {
   jobs: Job[]
@@ -24,6 +26,7 @@ export function JobsTable({ jobs, isLoading, onView, onEdit, onArchive, onCreate
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [levelFilter, setLevelFilter] = useState<string>('all')
   const permissions = usePermissions()
+  const isMobile = useIsMobile()
 
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
@@ -54,7 +57,7 @@ export function JobsTable({ jobs, isLoading, onView, onEdit, onArchive, onCreate
     return (
       <Card>
         <CardContent>
-          <div className="flex items-center justify-center py-xl">
+          <div className="flex items-center justify-center py-12">
             <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin"></div>
           </div>
         </CardContent>
@@ -62,10 +65,138 @@ export function JobsTable({ jobs, isLoading, onView, onEdit, onArchive, onCreate
     )
   }
 
+  // Mobile Card Layout
+  if (isMobile) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center justify-between">
+                <CardTitle>Jobs</CardTitle>
+                {permissions.canCreateJobs && (
+                  <Button onClick={onCreateNew} size="sm" className="gap-1">
+                    <Plus className="h-4 w-4" />
+                    Create
+                  </Button>
+                )}
+              </div>
+              
+              <div className="space-y-3">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search jobs..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-3">
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Statuses</SelectItem>
+                      <SelectItem value="draft">Draft</SelectItem>
+                      <SelectItem value="open">Open</SelectItem>
+                      <SelectItem value="closed">Closed</SelectItem>
+                      <SelectItem value="archived">Archived</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  
+                  <Select value={levelFilter} onValueChange={setLevelFilter}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Level" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Levels</SelectItem>
+                      <SelectItem value="L1 - Specialists">L1 - Specialists</SelectItem>
+                      <SelectItem value="L2 - Managers">L2 - Managers</SelectItem>
+                      <SelectItem value="L3 - Directors / VPs / Executive Search">L3 - Directors / VPs / Executive Search</SelectItem>
+                      <SelectItem value="L4 - C-Level">L4 - C-Level</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+          </CardHeader>
+        </Card>
+
+        {filteredJobs.length === 0 ? (
+          <Card>
+            <CardContent className="py-12">
+              <div className="text-center text-muted-foreground">
+                {jobs.length === 0 ? 'No jobs found' : 'No jobs match your filters'}
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-3">
+            {filteredJobs.map((job) => (
+              <Card key={job.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => onView(job)}>
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <h3 className="font-semibold text-md truncate">{job.title}</h3>
+                      <p className="text-sm text-muted-foreground mt-1">{job.level}</p>
+                      <div className="flex flex-wrap gap-2 mt-2 text-sm text-muted-foreground">
+                        <span>{job.department || 'No dept'}</span>
+                        <span>•</span>
+                        <span>{job.location || 'Remote'}</span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-3">
+                        <Badge variant={getStatusBadgeVariant(job.status)} className="text-xs">
+                          {job.status}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(job.created_at).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onView(job); }}>
+                          <Eye className="h-4 w-4 mr-2" />
+                          View
+                        </DropdownMenuItem>
+                        {permissions.canEditJobs && (
+                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(job); }}>
+                            <Edit className="h-4 w-4 mr-2" />
+                            Edit
+                          </DropdownMenuItem>
+                        )}
+                        {permissions.canArchiveJobs && job.status !== 'archived' && (
+                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onArchive(job.id); }}>
+                            <Archive className="h-4 w-4 mr-2" />
+                            Archive
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // Desktop Table Layout
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between mb-md">
+        <div className="flex items-center justify-between mb-4">
           <CardTitle>Jobs</CardTitle>
           {permissions.canCreateJobs && (
             <Button onClick={onCreateNew} className="gap-1">
@@ -75,7 +206,7 @@ export function JobsTable({ jobs, isLoading, onView, onEdit, onArchive, onCreate
           )}
         </div>
         
-        <div className="flex gap-md">
+        <div className="flex gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -116,48 +247,50 @@ export function JobsTable({ jobs, isLoading, onView, onEdit, onArchive, onCreate
       
       <CardContent>
         {filteredJobs.length === 0 ? (
-          <div className="text-center py-xl text-muted-foreground">
+          <div className="text-center py-12 text-muted-foreground">
             {jobs.length === 0 ? 'No jobs found' : 'No jobs match your filters'}
           </div>
         ) : (
-          <div className="rounded-md border">
+          <div className="rounded-md border overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Title</TableHead>
-                  <TableHead>Level</TableHead>
-                  <TableHead>Department</TableHead>
-                  <TableHead>Location</TableHead>
+                  <TableHead className="hidden sm:table-cell">Level</TableHead>
+                  <TableHead className="hidden md:table-cell">Department</TableHead>
+                  <TableHead className="hidden lg:table-cell">Location</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Created</TableHead>
+                  <TableHead className="hidden sm:table-cell">Created</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredJobs.map((job) => (
                   <TableRow key={job.id}>
-                    <TableCell className="font-medium">{job.title}</TableCell>
-                    <TableCell>{job.level}</TableCell>
-                    <TableCell>{job.department || '-'}</TableCell>
-                    <TableCell>{job.location || '-'}</TableCell>
+                    <TableCell className="font-medium">
+                      <div className="truncate max-w-[200px]">{job.title}</div>
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell">{job.level}</TableCell>
+                    <TableCell className="hidden md:table-cell">{job.department || '-'}</TableCell>
+                    <TableCell className="hidden lg:table-cell">{job.location || '-'}</TableCell>
                     <TableCell>
                       <Badge variant={getStatusBadgeVariant(job.status)}>
                         {job.status}
                       </Badge>
                     </TableCell>
-                    <TableCell>{new Date(job.created_at).toLocaleDateString()}</TableCell>
+                    <TableCell className="hidden sm:table-cell">{new Date(job.created_at).toLocaleDateString()}</TableCell>
                     <TableCell>
-                      <div className="flex items-center justify-end gap-sm">
-                        <Button variant="ghost" size="sm" onClick={() => onView(job)}>
+                      <div className="flex items-center justify-end gap-1">
+                        <Button variant="ghost" size="icon" onClick={() => onView(job)}>
                           <Eye className="h-4 w-4" />
                         </Button>
                         {permissions.canEditJobs && (
-                          <Button variant="ghost" size="sm" onClick={() => onEdit(job)}>
+                          <Button variant="ghost" size="icon" onClick={() => onEdit(job)}>
                             <Edit className="h-4 w-4" />
                           </Button>
                         )}
                         {permissions.canArchiveJobs && job.status !== 'archived' && (
-                          <Button variant="ghost" size="sm" onClick={() => onArchive(job.id)}>
+                          <Button variant="ghost" size="icon" onClick={() => onArchive(job.id)}>
                             <Archive className="h-4 w-4" />
                           </Button>
                         )}

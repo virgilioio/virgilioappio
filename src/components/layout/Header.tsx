@@ -63,16 +63,16 @@ export function Header() {
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-surface-primary border-b border-border/10 shadow-neumorphic">
       <div className="mx-auto max-w-7xl px-layout-sm sm:px-layout-md lg:px-layout-lg">
-        <div className="flex items-center justify-between h-16">
+        <div className="flex items-center justify-between h-14 sm:h-16">
           {/* Logo */}
           <div className="flex items-center">
-            <Link to="/" className="heading-lg font-bold text-primary hover:scale-105 transition-transform duration-default">
+            <Link to="/" className="text-lg sm:text-xl font-bold text-primary hover:scale-105 transition-transform duration-default">
               Virgilio.io
             </Link>
           </div>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-lg">
+          <nav className="hidden lg:flex items-center space-x-6">
             {navItems.map((item) => {
               if (item.permission) {
                 return (
@@ -80,7 +80,7 @@ export function Header() {
                     <Link
                       to={item.href}
                       className={cn(
-                        "px-3 py-2 rounded-brand text-sm font-medium transition-all duration-default",
+                        "px-3 py-2 rounded-brand text-sm font-medium transition-all duration-default min-h-[44px] flex items-center",
                         isActivePath(item.href)
                           ? "bg-accent text-accent-foreground shadow-neumorphic-active"
                           : "text-text-secondary hover:text-text-primary hover:bg-accent/50 hover:shadow-neumorphic-hover hover:-translate-y-0.5"
@@ -97,7 +97,7 @@ export function Header() {
                   key={item.href}
                   to={item.href}
                   className={cn(
-                    "px-3 py-2 rounded-brand text-sm font-medium transition-all duration-default",
+                    "px-3 py-2 rounded-brand text-sm font-medium transition-all duration-default min-h-[44px] flex items-center",
                     isActivePath(item.href)
                       ? "bg-accent text-accent-foreground shadow-neumorphic-active"
                       : "text-text-secondary hover:text-text-primary hover:bg-accent/50 hover:shadow-neumorphic-hover hover:-translate-y-0.5"
@@ -110,14 +110,14 @@ export function Header() {
           </nav>
 
           {/* User Avatar & Mobile Menu Button */}
-          <div className="flex items-center space-x-sm">
+          <div className="flex items-center space-x-2 sm:space-x-3">
             {/* User Avatar Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-                  <Avatar className="h-10 w-10">
+                <Button variant="ghost" className="relative h-9 w-9 sm:h-10 sm:w-10 rounded-full">
+                  <Avatar className="h-9 w-9 sm:h-10 sm:w-10">
                     <AvatarImage src={profile?.avatar_url || ''} />
-                    <AvatarFallback className="bg-accent text-accent-foreground font-medium">
+                    <AvatarFallback className="bg-accent text-accent-foreground font-medium text-sm">
                       {getUserInitials()}
                     </AvatarFallback>
                   </Avatar>
@@ -125,20 +125,20 @@ export function Header() {
               </DropdownMenuTrigger>
               <DropdownMenuContent className="w-56" align="end" forceMount>
                 <div className="flex flex-col space-y-1 p-3">
-                  <p className="text-sm font-medium leading-none">{user?.email}</p>
+                  <p className="text-sm font-medium leading-none truncate">{user?.email}</p>
                   <p className="text-xs leading-normal text-muted-foreground">
                     {user?.user_metadata?.user_type || 'guest'}
                   </p>
                 </div>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <Link to="/settings" className="cursor-pointer">
+                  <Link to="/settings" className="cursor-pointer min-h-[44px] flex items-center">
                     <User className="mr-2 h-4 w-4" />
                     <span>Settings</span>
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
+                <DropdownMenuItem onClick={handleLogout} className="cursor-pointer min-h-[44px] flex items-center">
                   <LogOut className="mr-2 h-4 w-4" />
                   <span>Logout</span>
                 </DropdownMenuItem>
@@ -149,7 +149,7 @@ export function Header() {
             <Button
               variant="ghost"
               size="icon"
-              className="md:hidden"
+              className="lg:hidden h-9 w-9 sm:h-10 sm:w-10"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             >
               {isMobileMenuOpen ? (
@@ -163,7 +163,7 @@ export function Header() {
 
         {/* Mobile Navigation */}
         {isMobileMenuOpen && (
-          <div className="md:hidden border-t border-border/10 bg-surface-primary">
+          <div className="lg:hidden border-t border-border/10 bg-surface-primary">
             <nav className="px-2 pt-2 pb-3 space-y-1">
               {navItems.map((item) => {
                 if (item.permission) {
@@ -173,7 +173,7 @@ export function Header() {
                         to={item.href}
                         onClick={() => setIsMobileMenuOpen(false)}
                         className={cn(
-                          "block px-3 py-2 rounded-brand text-md font-medium transition-all duration-default",
+                          "block px-4 py-3 rounded-brand text-md font-medium transition-all duration-default min-h-[44px] flex items-center",
                           isActivePath(item.href)
                             ? "bg-accent text-accent-foreground shadow-neumorphic-active"
                             : "text-text-secondary hover:text-text-primary hover:bg-accent/50"
@@ -191,7 +191,7 @@ export function Header() {
                     to={item.href}
                     onClick={() => setIsMobileMenuOpen(false)}
                     className={cn(
-                      "block px-3 py-2 rounded-brand text-md font-medium transition-all duration-default",
+                      "block px-4 py-3 rounded-brand text-md font-medium transition-all duration-default min-h-[44px] flex items-center",
                       isActivePath(item.href)
                         ? "bg-accent text-accent-foreground shadow-neumorphic-active"
                         : "text-text-secondary hover:text-text-primary hover:bg-accent/50"

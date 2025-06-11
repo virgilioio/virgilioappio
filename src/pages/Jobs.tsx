@@ -59,10 +59,10 @@ export default function Jobs() {
     <AuthGate>
       <PermissionGate permission="canViewJobs">
         <div className="min-h-screen bg-background">
-          <div className="container mx-auto py-token-xl px-token-lg">
-            <div className="mb-token-xl">
-              <h1 className="text-3xl font-bold tracking-tight">Jobs</h1>
-              <p className="text-muted-foreground mt-token-sm">
+          <div className="container mx-auto py-6 sm:py-8 lg:py-12 px-4 sm:px-6 lg:px-8">
+            <div className="mb-6 sm:mb-8 lg:mb-12">
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Jobs</h1>
+              <p className="text-muted-foreground mt-2 text-sm sm:text-md">
                 Manage job postings and track hiring progress
               </p>
             </div>
@@ -85,16 +85,16 @@ export default function Jobs() {
             />
 
             <AlertDialog open={!!archiveJobId} onOpenChange={() => setArchiveJobId(null)}>
-              <AlertDialogContent>
+              <AlertDialogContent className="mx-4 max-w-md sm:max-w-lg">
                 <AlertDialogHeader>
                   <AlertDialogTitle>Archive Job</AlertDialogTitle>
                   <AlertDialogDescription>
                     Are you sure you want to archive this job? It will be moved to archived status but can be reactivated later.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleConfirmArchive}>
+                <AlertDialogFooter className="flex-col sm:flex-row gap-3">
+                  <AlertDialogCancel className="w-full sm:w-auto min-h-[44px]">Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleConfirmArchive} className="w-full sm:w-auto min-h-[44px]">
                     Archive
                   </AlertDialogAction>
                 </AlertDialogFooter>
