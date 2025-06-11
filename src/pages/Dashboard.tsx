@@ -16,27 +16,29 @@ export default function Dashboard() {
 
   return (
     <AppContainer>
-      <div className="space-y-6">
-        <WelcomeHeader profile={profile} isLoading={profileLoading} />
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {permissions.canViewBilling && (
-            <PaymentsTracker />
-          )}
+      <>
+        <div className="space-y-6">
+          <WelcomeHeader profile={profile} isLoading={profileLoading} />
           
-          <OnboardingProgress profile={profile} isLoading={profileLoading} />
-          
-          {permissions.canViewBilling && (
-            <PaymentHistory />
-          )}
-          
-          <QuickAccess permissions={permissions} />
-          
-          <JobsOverview permissions={permissions} />
-          
-          <RecentActivity />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {permissions.canViewBilling && (
+              <PaymentsTracker />
+            )}
+            
+            <OnboardingProgress profile={profile} isLoading={profileLoading} />
+            
+            {permissions.canViewBilling && (
+              <PaymentHistory />
+            )}
+            
+            <QuickAccess permissions={permissions} />
+            
+            <JobsOverview permissions={permissions} />
+            
+            <RecentActivity />
+          </div>
         </div>
-      </div>
+      </>
     </AppContainer>
   )
 }
