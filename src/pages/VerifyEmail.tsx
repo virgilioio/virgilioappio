@@ -7,6 +7,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Mail, RefreshCw, CheckCircle2 } from 'lucide-react'
 import { supabase } from '@/integrations/supabase/client'
 import { toast } from '@/hooks/use-toast'
+import { VirgilioLogo } from '@/components/VirgilioLogo'
 
 export default function VerifyEmail() {
   const navigate = useNavigate()
@@ -65,11 +66,12 @@ export default function VerifyEmail() {
   if (!email) return null
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-emerald-100 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
-            <Mail className="h-8 w-8 text-blue-600" />
+          <VirgilioLogo size="lg" className="justify-center mb-4" />
+          <div className="mx-auto mb-4 w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
+            <Mail className="h-8 w-8 text-green-600" />
           </div>
           <CardTitle className="text-2xl">Check Your Email</CardTitle>
           <CardDescription>

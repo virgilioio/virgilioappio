@@ -9,6 +9,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Loader2, CheckCircle2, XCircle, Eye, EyeOff } from 'lucide-react'
 import { supabase } from '@/integrations/supabase/client'
 import { toast } from '@/hooks/use-toast'
+import { VirgilioLogo } from '@/components/VirgilioLogo'
 
 interface InvitationData {
   member_id: string
@@ -188,9 +189,12 @@ export default function AcceptInvite() {
 
   if (isValidating) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-emerald-100">
         <Card className="w-full max-w-md">
-          <CardContent className="pt-6">
+          <CardHeader className="text-center">
+            <VirgilioLogo size="lg" className="justify-center mb-4" />
+          </CardHeader>
+          <CardContent className="pt-0">
             <div className="flex items-center justify-center space-x-2">
               <Loader2 className="h-5 w-5 animate-spin" />
               <span>Validating invitation...</span>
@@ -203,9 +207,10 @@ export default function AcceptInvite() {
 
   if (!invitationData?.is_valid) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-emerald-100">
         <Card className="w-full max-w-md">
           <CardHeader className="text-center">
+            <VirgilioLogo size="lg" className="justify-center mb-4" />
             <div className="mx-auto mb-4 w-12 h-12 bg-red-100 rounded-full flex items-center justify-center">
               <XCircle className="h-6 w-6 text-red-600" />
             </div>
@@ -229,9 +234,10 @@ export default function AcceptInvite() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-emerald-100 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
+          <VirgilioLogo size="lg" className="justify-center mb-4" />
           <div className="mx-auto mb-4 w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
             <CheckCircle2 className="h-6 w-6 text-green-600" />
           </div>
