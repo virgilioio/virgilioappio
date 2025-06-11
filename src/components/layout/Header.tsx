@@ -1,7 +1,6 @@
-
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
-import { Menu, X, LogOut, User } from 'lucide-react'
+import { Menu, X, LogOut, User, ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import {
@@ -58,6 +57,8 @@ export function Header() {
     return location.pathname.startsWith(href)
   }
 
+  const isJobsActive = isActivePath('/jobs') || isActivePath('/job-requests')
+
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-surface-primary border-b border-border/10 shadow-neumorphic">
       <div className="mx-auto max-w-7xl px-layout-sm sm:px-layout-md lg:px-layout-lg">
@@ -75,7 +76,55 @@ export function Header() {
 
           {/* Desktop Navigation */}
           <nav className="hidden lg:flex items-center space-x-6">
-            {navItems.map((item) => {
+            {/* Dashboard */}
+            <Link
+              to="/dashboard"
+              className={cn(
+                "px-3 py-2 rounded-brand text-sm font-medium transition-all duration-default min-h-[44px] flex items-center",
+                isActivePath('/dashboard')
+                  ? "bg-accent text-accent-foreground shadow-neumorphic-active"
+                  : "text-text-secondary hover:text-text-primary hover:bg-accent/50 hover:shadow-neumorphic-hover hover:-translate-y-0.5"
+              )}
+            >
+              Dashboard
+            </Link>
+
+            {/* Jobs Dropdown */}
+            <PermissionGate permission="canViewJobs">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className={cn(
+                      "px-3 py-2 rounded-brand text-sm font-medium transition-all duration-default min-h-[44px] flex items-center gap-1",
+                      isJobsActive
+                        ? "bg-accent text-accent-foreground shadow-neumorphic-active"
+                        : "text-text-secondary hover:text-text-primary hover:bg-accent/50 hover:shadow-neumorphic-hover hover:-translate-y-0.5"
+                    )}
+                  >
+                    Jobs
+                    <ChevronDown className="h-3 w-3" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-48">
+                  <DropdownMenuItem asChild>
+                    <Link to="/jobs" className="cursor-pointer min-h-[44px] flex items-center">
+                      Active Jobs
+                    </Link>
+                  </DropdownMenuItem>
+                  <PermissionGate permission="canViewJobRequests">
+                    <DropdownMenuItem asChild>
+                      <Link to="/job-requests" className="cursor-pointer min-h-[44px] flex items-center">
+                        Job Requests
+                      </Link>
+                    </DropdownMenuItem>
+                  </PermissionGate>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </PermissionGate>
+
+            {/* Other nav items */}
+            {navItems.slice(1).map((item) => {
               if (item.permission) {
                 return (
                   <PermissionGate key={item.href} permission={item.permission}>
@@ -167,7 +216,54 @@ export function Header() {
         {isMobileMenuOpen && (
           <div className="lg:hidden border-t border-border/10 bg-surface-primary">
             <nav className="px-2 pt-2 pb-3 space-y-1">
-              {navItems.map((item) => {
+              {/* Dashboard */}
+              <Link
+                to="/dashboard"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className={cn(
+                  "block px-4 py-3 rounded-brand text-md font-medium transition-all duration-default min-h-[44px] flex items-center",
+                  isActivePath('/dashboard')
+                    ? "bg-accent text-accent-foreground shadow-neumorphic-active"
+                    : "text-text-secondary hover:text-text-primary hover:bg-accent/50"
+                )}
+              >
+                Dashboard
+              </Link>
+
+              {/* Jobs Section */}
+              <PermissionGate permission="canViewJobs">
+                <div className="space-y-1">
+                  <Link
+                    to="/jobs"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className={cn(
+                      "block px-4 py-3 rounded-brand text-md font-medium transition-all duration-default min-h-[44px] flex items-center",
+                      isActivePath('/jobs')
+                        ? "bg-accent text-accent-foreground shadow-neumorphic-active"
+                        : "text-text-secondary hover:text-text-primary hover:bg-accent/50"
+                    )}
+                  >
+                    Active Jobs
+                  </Link>
+                  <PermissionGate permission="canViewJobRequests">
+                    <Link
+                      to="/job-requests"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                      className={cn(
+                        "block px-4 py-3 rounded-brand text-md font-medium transition-all duration-default min-h-[44px] flex items-center pl-8",
+                        isActivePath('/job-requests')
+                          ? "bg-accent text-accent-foreground shadow-neumorphic-active"
+                          : "text-text-secondary hover:text-text-primary hover:bg-accent/50"
+                      )}
+                    >
+                      Job Requests
+                    </Link>
+                  </PermissionGate>
+                </div>
+              </PermissionGate>
+
+              {/* Other nav items */}
+              {navItems.slice(1).map((item) => {
                 if (item.permission) {
                   return (
                     <PermissionGate key={item.href} permission={item.permission}>
