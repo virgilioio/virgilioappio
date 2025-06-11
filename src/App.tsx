@@ -16,6 +16,7 @@ import JobDetail from "./pages/JobDetail";
 import JobRequests from "./pages/JobRequests";
 import AdminInvoices from "./pages/AdminInvoices";
 import AcceptInvite from "./pages/AcceptInvite";
+import VerifyEmail from "./pages/VerifyEmail";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -31,6 +32,7 @@ function App() {
             <Routes>
               <Route path="/login" element={<Login />} />
               <Route path="/accept-invite/:token" element={<AcceptInvite />} />
+              <Route path="/verify-email" element={<VerifyEmail />} />
               <Route element={<Layout />}>
                 <Route path="/" element={<Index />} />
                 <Route path="/members" element={<Members />} />

@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Loader2, CheckCircle2, XCircle } from 'lucide-react'
+import { Loader2, CheckCircle2, XCircle, Eye, EyeOff } from 'lucide-react'
 import { supabase } from '@/integrations/supabase/client'
 import { toast } from '@/hooks/use-toast'
 
@@ -31,6 +31,8 @@ export default function AcceptInvite() {
   const [lastName, setLastName] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
 
   useEffect(() => {
@@ -130,7 +132,8 @@ export default function AcceptInvite() {
           data: {
             first_name: firstName.trim(),
             last_name: lastName.trim()
-          }
+          },
+          emailRedirectTo: `${window.location.origin}/`
         }
       })
 
@@ -165,11 +168,11 @@ export default function AcceptInvite() {
 
       toast({
         title: 'Welcome to Virgilio!',
-        description: `You've successfully joined ${invitationData.organization_name}. Please check your email to verify your account.`
+        description: `You've successfully joined ${invitationData.organization_name}.`
       })
 
-      // Redirect to login with message about email verification
-      navigate('/login?message=verify-email')
+      // Redirect to email verification page with context
+      navigate(`/verify-email?email=${encodeURIComponent(invitationData.invite_email)}&organization=${encodeURIComponent(invitationData.organization_name)}`)
 
     } catch (error: any) {
       console.error('Error accepting invitation:', error)
@@ -281,14 +284,25 @@ export default function AcceptInvite() {
 
             <div>
               <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Create a secure password"
-                disabled={isSubmitting}
-              />
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Create a secure password"
+                  disabled={isSubmitting}
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  disabled={isSubmitting}
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
               {errors.password && (
                 <p className="text-sm text-red-600 mt-1">{errors.password}</p>
               )}
@@ -296,14 +310,25 @@ export default function AcceptInvite() {
 
             <div>
               <Label htmlFor="confirmPassword">Confirm Password</Label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Confirm your password"
-                disabled={isSubmitting}
-              />
+              <div className="relative">
+                <Input
+                  id="confirmPassword"
+                  type={showConfirmPassword ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Confirm your password"
+                  disabled={isSubmitting}
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  disabled={isSubmitting}
+                >
+                  {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
               {errors.confirmPassword && (
                 <p className="text-sm text-red-600 mt-1">{errors.confirmPassword}</p>
               )}
