@@ -1,6 +1,5 @@
 
 import { useState, useEffect } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
@@ -48,7 +47,6 @@ export function InviteSystemDebug() {
   const handleRefresh = async () => {
     setIsRefreshing(true)
     try {
-      // Trigger a refresh of member data
       window.location.reload()
     } finally {
       setIsRefreshing(false)
@@ -68,130 +66,95 @@ export function InviteSystemDebug() {
   }
 
   if (isLoading) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Invite System Debug</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-4">Loading debug info...</div>
-        </CardContent>
-      </Card>
-    )
+    return <div className="text-center py-2 text-xs">Loading...</div>
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <Shield className="h-5 w-5" />
-              Invite System Debug
-            </CardTitle>
-            <CardDescription>
-              Monitor invitation system health and statistics
-            </CardDescription>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Invitation Statistics */}
-        {stats && (
-          <div>
-            <h4 className="font-medium mb-3 flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              Invitation Statistics
-            </h4>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="text-center p-3 bg-blue-50 rounded-lg">
-                <div className="text-2xl font-bold text-blue-600">{stats.total_invites}</div>
-                <div className="text-sm text-blue-600">Total Invites</div>
-              </div>
-              <div className="text-center p-3 bg-yellow-50 rounded-lg">
-                <div className="text-2xl font-bold text-yellow-600">{stats.pending_invites}</div>
-                <div className="text-sm text-yellow-600">Pending</div>
-              </div>
-              <div className="text-center p-3 bg-red-50 rounded-lg">
-                <div className="text-2xl font-bold text-red-600">{stats.expired_invites}</div>
-                <div className="text-sm text-red-600">Expired</div>
-              </div>
-              <div className="text-center p-3 bg-green-50 rounded-lg">
-                <div className="text-2xl font-bold text-green-600">{stats.accepted_invites}</div>
-                <div className="text-sm text-green-600">Accepted</div>
-              </div>
+    <div className="space-y-3">
+      {/* Compact Statistics */}
+      {stats && (
+        <div>
+          <h4 className="font-medium mb-2 flex items-center gap-1 text-xs">
+            <Users className="h-3 w-3" />
+            Stats
+          </h4>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="text-center p-2 bg-blue-50 rounded text-xs">
+              <div className="font-bold text-blue-600">{stats.total_invites}</div>
+              <div className="text-blue-600">Total</div>
+            </div>
+            <div className="text-center p-2 bg-yellow-50 rounded text-xs">
+              <div className="font-bold text-yellow-600">{stats.pending_invites}</div>
+              <div className="text-yellow-600">Pending</div>
+            </div>
+            <div className="text-center p-2 bg-red-50 rounded text-xs">
+              <div className="font-bold text-red-600">{stats.expired_invites}</div>
+              <div className="text-red-600">Expired</div>
+            </div>
+            <div className="text-center p-2 bg-green-50 rounded text-xs">
+              <div className="font-bold text-green-600">{stats.accepted_invites}</div>
+              <div className="text-green-600">Accepted</div>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        <Separator />
+      <Separator />
 
-        {/* Current Invitations */}
-        <div>
-          <h4 className="font-medium mb-3 flex items-center gap-2">
-            <Clock className="h-4 w-4" />
-            Active Invitations
-          </h4>
-          <div className="space-y-2 max-h-60 overflow-y-auto">
-            {members
-              .filter(m => m.user_status === 'invited')
-              .map(member => {
-                const isExpired = member.invite_expires_at && 
-                  new Date(member.invite_expires_at) < new Date()
-                
-                return (
-                  <div key={member.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                    <div>
-                      <div className="font-medium">{member.user_email || 'No email'}</div>
-                      <div className="text-sm text-gray-500">
-                        Role: {member.member_role} • Org: {member.organization_name}
-                      </div>
-                      {member.invite_expires_at && (
-                        <div className="text-xs text-gray-400">
-                          Expires: {new Date(member.invite_expires_at).toLocaleString()}
-                        </div>
-                      )}
-                    </div>
-                    <Badge variant={isExpired ? "destructive" : "secondary"}>
-                      {isExpired ? 'Expired' : 'Active'}
-                    </Badge>
+      {/* Compact Actions */}
+      <div className="flex gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleRefresh}
+          disabled={isRefreshing}
+          className="h-6 text-xs"
+        >
+          <RefreshCw className={`h-3 w-3 mr-1 ${isRefreshing ? 'animate-spin' : ''}`} />
+          Refresh
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={testTokenValidation}
+          className="h-6 text-xs"
+        >
+          Test Token
+        </Button>
+      </div>
+
+      {/* Active Invitations - Compact List */}
+      <div>
+        <h4 className="font-medium mb-2 flex items-center gap-1 text-xs">
+          <Clock className="h-3 w-3" />
+          Active ({members.filter(m => m.user_status === 'invited').length})
+        </h4>
+        <div className="space-y-1 max-h-32 overflow-y-auto">
+          {members
+            .filter(m => m.user_status === 'invited')
+            .slice(0, 3)
+            .map(member => {
+              const isExpired = member.invite_expires_at && 
+                new Date(member.invite_expires_at) < new Date()
+              
+              return (
+                <div key={member.id} className="flex items-center justify-between p-1 bg-gray-50 rounded text-xs">
+                  <div className="truncate">
+                    <div className="font-medium truncate">{member.user_email || 'No email'}</div>
                   </div>
-                )
-              })}
-            {members.filter(m => m.user_status === 'invited').length === 0 && (
-              <div className="text-center py-4 text-gray-500">
-                No active invitations
-              </div>
-            )}
-          </div>
+                  <Badge variant={isExpired ? "destructive" : "secondary"} className="text-xs h-4">
+                    {isExpired ? 'Exp' : 'Active'}
+                  </Badge>
+                </div>
+              )
+            })}
+          {members.filter(m => m.user_status === 'invited').length === 0 && (
+            <div className="text-center py-2 text-gray-500 text-xs">
+              No active invitations
+            </div>
+          )}
         </div>
-
-        <Separator />
-
-        {/* Security Test */}
-        <div>
-          <h4 className="font-medium mb-3">Security Tests</h4>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={testTokenValidation}
-          >
-            Test Token Validation
-          </Button>
-          <p className="text-xs text-gray-500 mt-2">
-            Check console for token validation test results
-          </p>
-        </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }
