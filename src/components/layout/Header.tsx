@@ -1,4 +1,3 @@
-
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { Menu, X, LogOut, User } from 'lucide-react'
@@ -33,9 +32,6 @@ export function Header() {
   const navItems: NavItem[] = [
     { label: 'Dashboard', href: '/' },
     { label: 'Jobs', href: '/jobs', permission: 'canViewJobs' },
-    { label: 'Members', href: '/admin/members', permission: 'canManageMembers' },
-    { label: 'Organizations', href: '/admin/organizations', permission: 'canManageOrganization' },
-    { label: 'Settings', href: '/settings' },
   ]
 
   const handleLogout = async () => {
