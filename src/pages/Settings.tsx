@@ -1,157 +1,92 @@
 
 import { useState } from 'react'
-import { useSearchParams, useNavigate } from 'react-router-dom'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AuthGate } from '@/components/auth/AuthGate'
-import { Button } from '@/components/ui/button'
-import { Sheet, SheetContent } from '@/components/ui/sheet'
-import { ArrowLeft, LogOut } from 'lucide-react'
-import { Section } from '@/components/layout/Section'
+import { OrgGate } from '@/components/auth/OrgGate'
 import { AppContainer } from '@/components/layout/AppContainer'
-import { useAuth } from '@/contexts/AuthContext'
-import { toast } from '@/hooks/use-toast'
-import { ProfileTab } from '@/components/settings/ProfileTab'
-import { OrganizationTab } from '@/components/settings/OrganizationTab'
-import { BillingTab } from '@/components/settings/BillingTab'
-import { MembersTab } from '@/components/settings/MembersTab'
+import { Section } from '@/components/layout/Section'
 import { SettingsSidebar } from '@/components/settings/SettingsSidebar'
 import { SettingsMobileHeader } from '@/components/settings/SettingsMobileHeader'
-
-const VALID_TABS = ['profile', 'organization', 'billing', 'members'] as const
-type ValidTab = typeof VALID_TABS[number]
+import { ProfileTab } from '@/components/settings/ProfileTab'
+import { OrganizationTab } from '@/components/settings/OrganizationTab'
+import { MembersTab } from '@/components/settings/MembersTab'
+import { BillingTab } from '@/components/settings/BillingTab'
+import { DebugPanel } from '@/components/debug/DebugPanel'
+import { usePermissions } from '@/hooks/usePermissions'
+import { useSearchParams } from 'react-router-dom'
 
 export default function Settings() {
-  const { logout } = useAuth()
-  const [searchParams, setSearchParams] = useSearchParams()
-  const navigate = useNavigate()
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  
-  // Get tab from URL or default to 'profile'
-  const urlTab = searchParams.get('tab')
-  const currentTab = VALID_TABS.includes(urlTab as ValidTab) ? (urlTab as ValidTab) : 'profile'
+  const [searchParams] = useSearchParams()
+  const initialTab = searchParams.get('tab') || 'profile'
+  const [activeTab, setActiveTab] = useState(initialTab)
+  const permissions = usePermissions()
 
-  const handleTabChange = (tab: string) => {
-    setSearchParams({ tab })
-    setMobileMenuOpen(false) // Close mobile menu when switching tabs
-  }
-
-  const handleLogout = async () => {
-    try {
-      await logout()
-      toast({
-        title: 'Logged out',
-        description: 'You have been successfully logged out.'
-      })
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to log out. Please try again.',
-        variant: 'destructive'
-      })
-    }
-  }
-
-  const handleBackToDashboard = () => {
-    navigate('/')
-  }
-
-  const renderTabContent = () => {
-    switch (currentTab) {
-      case 'profile':
-        return <ProfileTab />
-      case 'organization':
-        return <OrganizationTab />
-      case 'billing':
-        return <BillingTab />
-      case 'members':
-        return <MembersTab />
-      default:
-        return <ProfileTab />
-    }
-  }
+  // Show debug panel in development
+  const showDebugPanel = process.env.NODE_ENV === 'development' || window.location.hostname === 'localhost'
 
   return (
     <AuthGate>
-      <Section className="min-h-screen">
-        <AppContainer variant="default">
-          {/* Mobile Header */}
-          <SettingsMobileHeader 
-            onMenuToggle={() => setMobileMenuOpen(true)}
-            onBackToDashboard={handleBackToDashboard}
-          />
+      <OrgGate>
+        <Section className="min-h-screen">
+          <AppContainer variant="default">
+            <div className="py-6 lg:py-8">
+              <div className="mb-6 lg:mb-8">
+                <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
+                <p className="text-muted-foreground mt-2">
+                  Manage your account preferences and organization settings
+                </p>
+              </div>
 
-          {/* Desktop Header */}
-          <div className="hidden md:flex items-center justify-between mb-6 lg:mb-8 pt-6 lg:pt-8">
-            <div className="flex items-center gap-3">
-              <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={handleBackToDashboard}
-                className="flex items-center gap-2 min-h-[44px]"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Back to Dashboard
-              </Button>
-            </div>
-            
-            <Button 
-              variant="destructive" 
-              onClick={handleLogout}
-              className="flex items-center gap-2 min-h-[44px]"
-            >
-              <LogOut className="h-4 w-4" />
-              Logout
-            </Button>
-          </div>
+              {/* Debug Panel for Development */}
+              {showDebugPanel && (
+                <div className="mb-6">
+                  <DebugPanel />
+                </div>
+              )}
 
-          {/* Page Title - Desktop Only */}
-          <div className="hidden md:block mb-6 lg:mb-8">
-            <h1 className="text-2xl lg:text-3xl font-bold text-text-primary">Settings</h1>
-            <p className="text-md lg:text-lg text-text-secondary leading-relaxed mt-2">
-              Manage your account settings and preferences
-            </p>
-          </div>
+              <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
+                {/* Mobile Header */}
+                <div className="lg:hidden">
+                  <SettingsMobileHeader activeTab={activeTab} onTabChange={setActiveTab} />
+                </div>
 
-          {/* Main Layout */}
-          <div className="flex flex-col lg:flex-row min-h-[calc(100vh-200px)] gap-6">
-            {/* Desktop Sidebar */}
-            <div className="hidden lg:block w-64 shrink-0">
-              <div className="sticky top-6 h-[calc(100vh-200px)] overflow-y-auto">
-                <div className="bg-surface-primary border border-border rounded-brand p-2">
-                  <SettingsSidebar 
-                    currentTab={currentTab}
-                    onTabChange={handleTabChange}
-                  />
+                {/* Desktop Sidebar */}
+                <div className="hidden lg:block lg:w-64 flex-shrink-0">
+                  <SettingsSidebar activeTab={activeTab} onTabChange={setActiveTab} />
+                </div>
+
+                {/* Content */}
+                <div className="flex-1 min-w-0">
+                  <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                    <TabsList className="lg:hidden grid w-full grid-cols-4 mb-6">
+                      <TabsTrigger value="profile">Profile</TabsTrigger>
+                      <TabsTrigger value="organization">Org</TabsTrigger>
+                      <TabsTrigger value="members">Members</TabsTrigger>
+                      <TabsTrigger value="billing">Billing</TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="profile" className="mt-0">
+                      <ProfileTab />
+                    </TabsContent>
+
+                    <TabsContent value="organization" className="mt-0">
+                      <OrganizationTab />
+                    </TabsContent>
+
+                    <TabsContent value="members" className="mt-0">
+                      <MembersTab />
+                    </TabsContent>
+
+                    <TabsContent value="billing" className="mt-0">
+                      <BillingTab />
+                    </TabsContent>
+                  </Tabs>
                 </div>
               </div>
             </div>
-
-            {/* Content Area */}
-            <div className="flex-1 min-w-0">
-              <div className="w-full">
-                {renderTabContent()}
-              </div>
-            </div>
-          </div>
-
-          {/* Mobile Sidebar Sheet */}
-          <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-            <SheetContent side="left" className="w-72 p-0">
-              <div className="p-4 border-b">
-                <h2 className="text-lg font-semibold text-text-primary">Settings</h2>
-                <p className="text-sm text-text-secondary mt-1">
-                  Manage your account
-                </p>
-              </div>
-              <div className="p-2">
-                <SettingsSidebar 
-                  currentTab={currentTab}
-                  onTabChange={handleTabChange}
-                />
-              </div>
-            </SheetContent>
-          </Sheet>
-        </AppContainer>
-      </Section>
+          </AppContainer>
+        </Section>
+      </OrgGate>
     </AuthGate>
   )
 }
