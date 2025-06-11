@@ -103,21 +103,21 @@ export function JobsOverview({ permissions }: JobsOverviewProps) {
         
         <div className="flex gap-2 pt-2 border-t">
           {permissions.canViewJobs && (
-            <Button variant="ghost" size="sm" asChild>
-              <Link to="/jobs" className="flex items-center gap-1">
+            <Link to="/jobs">
+              <Button variant="ghost" size="sm">
                 View Jobs
                 <ExternalLink className="h-3 w-3" />
-              </Link>
-            </Button>
+              </Button>
+            </Link>
           )}
           
           {permissions.canViewJobRequests && (
-            <Button variant="ghost" size="sm" asChild>
-              <Link to="/job-requests" className="flex items-center gap-1">
+            <Link to="/job-requests">
+              <Button variant="ghost" size="sm">
                 View Requests
                 <ExternalLink className="h-3 w-3" />
-              </Link>
-            </Button>
+              </Button>
+            </Link>
           )}
         </div>
       </CardContent>

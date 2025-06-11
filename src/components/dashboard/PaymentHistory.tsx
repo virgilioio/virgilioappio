@@ -75,12 +75,12 @@ export function PaymentHistory() {
           </div>
         )}
         
-        <Button variant="ghost" size="sm" asChild className="w-full">
-          <Link to="/settings?tab=billing" className="flex items-center gap-1">
+        <Link to="/settings?tab=billing">
+          <Button variant="ghost" size="sm" className="w-full">
             View all payments
             <ExternalLink className="h-3 w-3" />
-          </Link>
-        </Button>
+          </Button>
+        </Link>
       </CardContent>
     </Card>
   )

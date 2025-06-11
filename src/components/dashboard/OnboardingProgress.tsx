@@ -77,12 +77,12 @@ export function OnboardingProgress({ profile, isLoading }: OnboardingProgressPro
           </div>
         )}
         
-        <Button variant="outline" size="sm" asChild className="w-full">
-          <Link to="/settings?tab=profile" className="flex items-center gap-1">
+        <Link to="/settings?tab=profile">
+          <Button variant="outline" size="sm" className="w-full">
             {isComplete ? 'Edit Profile' : 'Complete Setup'}
             <ExternalLink className="h-3 w-3" />
-          </Link>
-        </Button>
+          </Button>
+        </Link>
       </CardContent>
     </Card>
   )

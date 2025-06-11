@@ -55,18 +55,16 @@ export function QuickAccess({ permissions }: QuickAccessProps) {
         {quickActions.map((action) => {
           const Icon = action.icon
           return (
-            <Button 
-              key={action.action}
-              variant="outline" 
-              size="sm" 
-              asChild 
-              className="w-full justify-start h-10"
-            >
-              <Link to={action.href} className="flex items-center gap-2">
+            <Link key={action.action} to={action.href}>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="w-full justify-start h-10"
+              >
                 <Icon className="h-4 w-4" />
                 {action.label}
-              </Link>
-            </Button>
+              </Button>
+            </Link>
           )
         })}
       </CardContent>
