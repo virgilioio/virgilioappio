@@ -78,7 +78,9 @@ export type Database = {
         Row: {
           amount: number
           created_at: string
+          created_by: string | null
           currency: string
+          description: string | null
           due_date: string | null
           file_name: string | null
           id: string
@@ -92,7 +94,9 @@ export type Database = {
         Insert: {
           amount: number
           created_at?: string
+          created_by?: string | null
           currency?: string
+          description?: string | null
           due_date?: string | null
           file_name?: string | null
           id?: string
@@ -106,7 +110,9 @@ export type Database = {
         Update: {
           amount?: number
           created_at?: string
+          created_by?: string | null
           currency?: string
+          description?: string | null
           due_date?: string | null
           file_name?: string | null
           id?: string

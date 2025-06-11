@@ -1,120 +1,109 @@
 
 import { useAuth } from '@/contexts/AuthContext'
+import { useUserProfile } from '@/hooks/useUserProfile'
 
 export interface PermissionsState {
-  // Role-based permissions
-  isPlatformAdmin: boolean
-  isWorkspaceOwner: boolean
-  isMember: boolean
-  isGuest: boolean
-  
-  // Sub-role permissions
-  isRecruiter: boolean
-  isCustomerSuccess: boolean
-  isBilling: boolean
-  isSales: boolean
-  isAdmin: boolean
-  
-  // Action-based permissions
-  canViewMembers: boolean
-  canManageMembers: boolean
-  canCreateJobs: boolean
-  canRequestJobs: boolean
+  // Job permissions
   canViewJobs: boolean
+  canCreateJobs: boolean
   canEditJobs: boolean
-  canArchiveJobs: boolean
-  canViewBilling: boolean
-  canManageBilling: boolean
-  canManageOrganization: boolean
-  canInviteMembers: boolean
+  canDeleteJobs: boolean
+  
+  // Member permissions
+  canViewMembers: boolean
+  canCreateMembers: boolean
+  canEditMembers: boolean
   canDeleteMembers: boolean
+  canManageMembers: boolean
+  
+  // Organization permissions
+  canViewOrganizations: boolean
+  canCreateOrganizations: boolean
+  canEditOrganizations: boolean
+  canDeleteOrganizations: boolean
+  canManageOrganization: boolean
+  
+  // Job request permissions
+  canViewJobRequests: boolean
+  canCreateJobRequests: boolean
+  canApproveJobRequests: boolean
+  canManageJobRequests: boolean
   
   // Candidate permissions
   canViewCandidates: boolean
+  canCreateCandidates: boolean
+  canEditCandidates: boolean
+  canDeleteCandidates: boolean
   canManageCandidates: boolean
   
-  // Job Request permissions
-  canViewJobRequests: boolean
-  canManageJobRequests: boolean
-  canApproveJobRequests: boolean
+  // Billing & Invoice permissions
+  canViewInvoices: boolean
+  canCreateInvoices: boolean
+  canManageInvoices: boolean
+  canUploadInvoicePDFs: boolean
+  
+  // Admin permissions
+  isWorkspaceOwner: boolean
+  isPlatformAdmin: boolean
+  isBillingMember: boolean
 }
 
 export function usePermissions(): PermissionsState {
-  const { userType, memberRole, hasOrganizationContext } = useAuth()
+  const { user } = useAuth()
+  const { profile } = useUserProfile()
   
-  // Role-based permissions (from user_type)
+  // Get user type and member role from user metadata or profile
+  const userType = user?.user_metadata?.user_type || 'guest'
+  const memberRole = user?.user_metadata?.member_role || 'guest'
+  
+  // Platform admin has all permissions
   const isPlatformAdmin = userType === 'platform_admin'
-  const isWorkspaceOwner = userType === 'workspace_owner' || isPlatformAdmin
-  const isMember = userType === 'member' || isWorkspaceOwner
-  const isGuest = userType === 'guest' && !isPlatformAdmin
-  
-  // Sub-role permissions (from member_role)
-  const isRecruiter = memberRole === 'recruiter'
-  const isCustomerSuccess = memberRole === 'customer_success'
-  const isBilling = memberRole === 'billing'
-  const isSales = memberRole === 'sales'
-  const isAdmin = memberRole === 'admin' || isPlatformAdmin
-  
-  // Action-based permissions (all require organization context unless platform admin)
-  const hasOrgAccess = hasOrganizationContext || isPlatformAdmin
-  
-  const canViewMembers = hasOrgAccess && (isMember || isPlatformAdmin)
-  const canManageMembers = hasOrgAccess && (isWorkspaceOwner || isAdmin || isPlatformAdmin)
-  const canCreateJobs = hasOrgAccess && (isRecruiter || isWorkspaceOwner || isPlatformAdmin)
-  const canRequestJobs = hasOrgAccess && (isMember || isPlatformAdmin)
-  const canViewJobs = hasOrgAccess && (isMember || isGuest || isPlatformAdmin)
-  const canEditJobs = hasOrgAccess && (isRecruiter || isWorkspaceOwner || isPlatformAdmin)
-  const canArchiveJobs = canEditJobs
-  const canViewBilling = hasOrgAccess && (isBilling || isWorkspaceOwner || isPlatformAdmin)
-  const canManageBilling = hasOrgAccess && (isWorkspaceOwner || isPlatformAdmin)
-  const canManageOrganization = hasOrgAccess && (isWorkspaceOwner || isPlatformAdmin)
-  const canInviteMembers = canManageMembers
-  const canDeleteMembers = hasOrgAccess && (isWorkspaceOwner || isPlatformAdmin)
-  
-  // Candidate permissions
-  const canViewCandidates = hasOrgAccess && (isMember || isGuest || isPlatformAdmin)
-  const canManageCandidates = hasOrgAccess && (isRecruiter || isWorkspaceOwner || isPlatformAdmin)
-  
-  // Job Request permissions
-  const canViewJobRequests = hasOrgAccess && (isWorkspaceOwner || isPlatformAdmin)
-  const canManageJobRequests = hasOrgAccess && (isWorkspaceOwner || isPlatformAdmin)
-  const canApproveJobRequests = hasOrgAccess && (isPlatformAdmin || isCustomerSuccess)
+  const isWorkspaceOwner = userType === 'workspace_owner'
+  const isBillingMember = memberRole === 'billing'
   
   return {
-    // Role-based
-    isPlatformAdmin,
-    isWorkspaceOwner,
-    isMember,
-    isGuest,
+    // Job permissions
+    canViewJobs: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin'].includes(memberRole),
+    canCreateJobs: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin',
+    canEditJobs: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin',
+    canDeleteJobs: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin',
     
-    // Sub-role
-    isRecruiter,
-    isCustomerSuccess,
-    isBilling,
-    isSales,
-    isAdmin,
+    // Member permissions  
+    canViewMembers: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin',
+    canCreateMembers: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin',
+    canEditMembers: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin',
+    canDeleteMembers: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin',
+    canManageMembers: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin',
     
-    // Action-based
-    canViewMembers,
-    canManageMembers,
-    canCreateJobs,
-    canRequestJobs,
-    canViewJobs,
-    canEditJobs,
-    canArchiveJobs,
-    canViewBilling,
-    canManageBilling,
-    canManageOrganization,
-    canInviteMembers,
-    canDeleteMembers,
+    // Organization permissions
+    canViewOrganizations: isPlatformAdmin,
+    canCreateOrganizations: isPlatformAdmin,
+    canEditOrganizations: isPlatformAdmin || isWorkspaceOwner,
+    canDeleteOrganizations: isPlatformAdmin,
+    canManageOrganization: isPlatformAdmin || isWorkspaceOwner,
+    
+    // Job request permissions
+    canViewJobRequests: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin'].includes(memberRole),
+    canCreateJobRequests: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin'].includes(memberRole),
+    canApproveJobRequests: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin',
+    canManageJobRequests: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin',
     
     // Candidate permissions
-    canViewCandidates,
-    canManageCandidates,
+    canViewCandidates: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin'].includes(memberRole),
+    canCreateCandidates: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin'].includes(memberRole),
+    canEditCandidates: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin'].includes(memberRole),
+    canDeleteCandidates: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin',
+    canManageCandidates: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin'].includes(memberRole),
     
-    // Job Request permissions
-    canViewJobRequests,
-    canManageJobRequests,
-    canApproveJobRequests,
+    // Billing & Invoice permissions
+    canViewInvoices: isPlatformAdmin || isWorkspaceOwner || isBillingMember,
+    canCreateInvoices: isPlatformAdmin || isBillingMember,
+    canManageInvoices: isPlatformAdmin || isBillingMember,
+    canUploadInvoicePDFs: isPlatformAdmin || isBillingMember,
+    
+    // Admin flags
+    isWorkspaceOwner,
+    isPlatformAdmin,
+    isBillingMember,
   }
 }

@@ -12,14 +12,14 @@ import {
 } from '@/components/ui/table'
 import { useInvoices, Invoice } from '@/hooks/useInvoices'
 import { usePermissions } from '@/hooks/usePermissions'
-import { Receipt, ExternalLink, Upload, Download } from 'lucide-react'
+import { Receipt, Download, FileText } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { InvoiceUploadModal } from './InvoiceUploadModal'
 import { getInvoicePdfUrl } from '@/lib/invoiceStorage'
 
 export function InvoicesTable() {
   const { invoices, isLoading, refreshInvoices } = useInvoices()
-  const { isPlatformAdmin } = usePermissions()
+  const { isPlatformAdmin, canManageInvoices } = usePermissions()
   const [uploadModalOpen, setUploadModalOpen] = useState(false)
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null)
 
@@ -63,6 +63,19 @@ export function InvoicesTable() {
     refreshInvoices()
   }
 
+  const getStatusColor = (status: Invoice['status']) => {
+    switch (status) {
+      case 'paid':
+        return 'text-green-600'
+      case 'pending':
+        return 'text-orange-600'
+      case 'overdue':
+        return 'text-red-600'
+      default:
+        return 'text-gray-600'
+    }
+  }
+
   if (isLoading) {
     return (
       <Card>
@@ -91,100 +104,155 @@ export function InvoicesTable() {
         </CardHeader>
         <CardContent>
           {invoices.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-muted-foreground">No invoices found.</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Invoices will appear here once billing is set up.
+            <div className="text-center py-12">
+              <div className="mx-auto w-12 h-12 bg-muted rounded-full flex items-center justify-center mb-4">
+                <Receipt className="h-6 w-6 text-muted-foreground" />
+              </div>
+              <h3 className="text-lg font-medium mb-2">No invoices yet</h3>
+              <p className="text-muted-foreground text-sm max-w-sm mx-auto">
+                Invoices will appear here once your organization has billing activity. 
+                Contact support if you have questions about billing.
               </p>
             </div>
           ) : (
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Invoice</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Issued</TableHead>
-                    <TableHead>Due Date</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {invoices.map((invoice) => (
-                    <TableRow key={invoice.id}>
-                      <TableCell className="font-medium">
-                        {invoice.title}
-                        {invoice.file_name && (
-                          <div className="text-xs text-muted-foreground mt-0.5">
-                            📄 {invoice.file_name}
-                          </div>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {formatAmount(invoice.amount, invoice.currency)}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={getStatusBadgeVariant(invoice.status)}>
-                          {invoice.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {formatDate(invoice.issued_at)}
-                      </TableCell>
-                      <TableCell>
-                        {invoice.due_date ? formatDate(invoice.due_date) : 'N/A'}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center justify-end gap-1">
-                          {/* Upload button for Platform Admins */}
-                          {isPlatformAdmin && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleUploadClick(invoice)}
-                              title="Upload PDF"
-                            >
-                              <Upload className="h-3.5 w-3.5" />
-                            </Button>
-                          )}
-                          
-                          {/* Download button if file exists */}
-                          {invoice.invoice_url && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDownloadClick(invoice)}
-                              title="Download PDF"
-                            >
-                              <Download className="h-3.5 w-3.5" />
-                            </Button>
-                          )}
-                          
-                          {/* External link button (existing functionality) */}
-                          {invoice.invoice_url && !invoice.file_name && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => window.open(invoice.invoice_url, '_blank')}
-                              title="Open external link"
-                            >
-                              <ExternalLink className="h-3.5 w-3.5" />
-                            </Button>
-                          )}
-                        </div>
-                      </TableCell>
+            <div className="space-y-4">
+              {/* Summary stats for clients */}
+              <div className="grid gap-4 md:grid-cols-3 mb-6">
+                <div className="bg-muted/50 rounded-lg p-4">
+                  <div className="text-sm text-muted-foreground mb-1">Total Outstanding</div>
+                  <div className="text-lg font-semibold text-orange-600">
+                    {formatAmount(
+                      invoices
+                        .filter(i => i.status === 'pending' || i.status === 'overdue')
+                        .reduce((sum, i) => sum + i.amount, 0),
+                      invoices[0]?.currency || 'USD'
+                    )}
+                  </div>
+                </div>
+                <div className="bg-muted/50 rounded-lg p-4">
+                  <div className="text-sm text-muted-foreground mb-1">Total Paid</div>
+                  <div className="text-lg font-semibold text-green-600">
+                    {formatAmount(
+                      invoices
+                        .filter(i => i.status === 'paid')
+                        .reduce((sum, i) => sum + i.amount, 0),
+                      invoices[0]?.currency || 'USD'
+                    )}
+                  </div>
+                </div>
+                <div className="bg-muted/50 rounded-lg p-4">
+                  <div className="text-sm text-muted-foreground mb-1">Total Invoices</div>
+                  <div className="text-lg font-semibold">
+                    {invoices.length}
+                  </div>
+                </div>
+              </div>
+
+              {/* Invoices table */}
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Invoice</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Issued</TableHead>
+                      <TableHead>Due Date</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {invoices.map((invoice) => (
+                      <TableRow key={invoice.id}>
+                        <TableCell className="font-medium">
+                          <div>
+                            <div className="font-medium">{invoice.title}</div>
+                            {invoice.description && (
+                              <div className="text-xs text-muted-foreground mt-0.5">
+                                {invoice.description}
+                              </div>
+                            )}
+                            {invoice.file_name && (
+                              <div className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                                <FileText className="h-3 w-3" />
+                                {invoice.file_name}
+                              </div>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="font-medium">
+                            {formatAmount(invoice.amount, invoice.currency)}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={getStatusBadgeVariant(invoice.status)}>
+                            {invoice.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm">
+                            {formatDate(invoice.issued_at)}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm">
+                            {invoice.due_date ? (
+                              <span className={invoice.status === 'overdue' ? 'text-red-600 font-medium' : ''}>
+                                {formatDate(invoice.due_date)}
+                              </span>
+                            ) : (
+                              'N/A'
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center justify-end gap-1">
+                            {/* Admin upload button */}
+                            {canManageInvoices && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleUploadClick(invoice)}
+                                title="Upload PDF"
+                              >
+                                <FileText className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
+                            
+                            {/* Download button if file exists */}
+                            {invoice.invoice_url && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDownloadClick(invoice)}
+                                title="Download PDF"
+                                className="text-blue-600 hover:text-blue-700"
+                              >
+                                <Download className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
+                            
+                            {/* No file message for clients */}
+                            {!invoice.invoice_url && !canManageInvoices && (
+                              <span className="text-xs text-muted-foreground">
+                                PDF not available
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </div>
           )}
         </CardContent>
       </Card>
 
-      {/* Upload Modal */}
-      {selectedInvoice && (
+      {/* Upload Modal (Admin only) */}
+      {selectedInvoice && canManageInvoices && (
         <InvoiceUploadModal
           open={uploadModalOpen}
           onOpenChange={setUploadModalOpen}

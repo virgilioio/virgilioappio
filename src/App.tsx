@@ -1,113 +1,61 @@
 
-import { Suspense, lazy } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
-import { DebugPanel } from "@/components/debug/DebugPanel";
 import { Layout } from "@/components/layout/Layout";
+import { AuthGate } from "@/components/auth/AuthGate";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
+import Jobs from "./pages/Jobs";
+import JobDetail from "./pages/JobDetail";
+import JobRequests from "./pages/JobRequests";
+import Members from "./pages/Members";
+import Organizations from "./pages/Organizations";
 import Settings from "./pages/Settings";
+import AdminInvoices from "./pages/AdminInvoices";
 import NotFound from "./pages/NotFound";
-
-const Organizations = lazy(() => import("./pages/Organizations"));
-const Members = lazy(() => import("./pages/Members"));
-const Jobs = lazy(() => import("./pages/Jobs"));
-const JobDetail = lazy(() => import("./pages/JobDetail"));
-const JobRequests = lazy(() => import("./pages/JobRequests"));
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <Routes>
-            {/* Public routes */}
-            <Route path="/login" element={<Login />} />
-            
-            {/* Protected routes with layout */}
-            <Route 
-              path="/" 
-              element={
-                <Layout>
-                  <Index />
-                </Layout>
-              } 
-            />
-            <Route 
-              path="/settings" 
-              element={
-                <Layout>
-                  <Settings />
-                </Layout>
-              } 
-            />
-            <Route 
-              path="/admin/organizations" 
-              element={
-                <Layout>
-                  <Suspense fallback={<div>Loading...</div>}>
-                    <Organizations />
-                  </Suspense>
-                </Layout>
-              } 
-            />
-            <Route 
-              path="/admin/members" 
-              element={
-                <Layout>
-                  <Suspense fallback={<div>Loading...</div>}>
-                    <Members />
-                  </Suspense>
-                </Layout>
-              } 
-            />
-            <Route 
-              path="/jobs" 
-              element={
-                <Layout>
-                  <Suspense fallback={<div>Loading...</div>}>
-                    <Jobs />
-                  </Suspense>
-                </Layout>
-              } 
-            />
-            <Route 
-              path="/jobs/:id" 
-              element={
-                <Layout>
-                  <Suspense fallback={<div>Loading...</div>}>
-                    <JobDetail />
-                  </Suspense>
-                </Layout>
-              } 
-            />
-            <Route 
-              path="/job-requests" 
-              element={
-                <Layout>
-                  <Suspense fallback={<div>Loading...</div>}>
-                    <JobRequests />
-                  </Suspense>
-                </Layout>
-              } 
-            />
-            
-            {/* Catch all */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-          <DebugPanel />
+          <AuthProvider>
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route
+                path="/*"
+                element={
+                  <AuthGate>
+                    <Layout>
+                      <Routes>
+                        <Route path="/" element={<Index />} />
+                        <Route path="/jobs" element={<Jobs />} />
+                        <Route path="/jobs/:id" element={<JobDetail />} />
+                        <Route path="/job-requests" element={<JobRequests />} />
+                        <Route path="/admin/members" element={<Members />} />
+                        <Route path="/admin/organizations" element={<Organizations />} />
+                        <Route path="/admin/invoices" element={<AdminInvoices />} />
+                        <Route path="/settings" element={<Settings />} />
+                        <Route path="*" element={<NotFound />} />
+                      </Routes>
+                    </Layout>
+                  </AuthGate>
+                }
+              />
+            </Routes>
+          </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>
-    </AuthProvider>
-  </QueryClientProvider>
-);
+    </QueryClientProvider>
+  );
+}
 
 export default App;

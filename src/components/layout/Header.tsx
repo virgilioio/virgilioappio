@@ -1,3 +1,4 @@
+
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { Menu, X, LogOut, User } from 'lucide-react'
@@ -32,6 +33,7 @@ export function Header() {
   const navItems: NavItem[] = [
     { label: 'Dashboard', href: '/' },
     { label: 'Jobs', href: '/jobs', permission: 'canViewJobs' },
+    { label: 'Invoices', href: '/admin/invoices', permission: 'canManageInvoices' },
   ]
 
   const handleLogout = async () => {
