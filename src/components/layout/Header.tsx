@@ -31,7 +31,7 @@ export function Header() {
   const location = useLocation()
 
   const navItems: NavItem[] = [
-    { label: 'Dashboard', href: '/' },
+    { label: 'Dashboard', href: '/dashboard' },
     { label: 'Jobs', href: '/jobs', permission: 'canViewJobs' },
     { label: 'Invoices', href: '/admin/invoices', permission: 'canManageInvoices' },
   ]
