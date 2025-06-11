@@ -16,17 +16,19 @@ import { useCandidates } from '@/hooks/useCandidates'
 import { useJobRequests } from '@/hooks/useJobRequests'
 import { useCandidateComments } from '@/hooks/useCandidateComments'
 import { useUserProfile } from '@/hooks/useUserProfile'
+import { useInvoices } from '@/hooks/useInvoices'
 
 export function DebugPanel() {
   const [isOpen, setIsOpen] = useState(false)
   const [isMinimized, setIsMinimized] = useState(false)
   const location = useLocation()
-  const { user } = useAuth()
+  const { user, organizationId } = useAuth()
   const permissions = usePermissions()
   const { members } = useMembers()
   const { organizations } = useOrganizations()
   const { jobs } = useJobs()
   const { jobRequests } = useJobRequests()
+  const { invoices } = useInvoices()
   const { profile } = useUserProfile()
   
   // Extract job ID from current route if on job detail page
@@ -111,6 +113,8 @@ export function DebugPanel() {
             <p>ID: {user?.id}</p>
             <p>Type: {user?.user_metadata?.user_type || 'guest'}</p>
             <p>Role: {user?.user_metadata?.member_role || 'member'}</p>
+            <p>Org ID: {organizationId || 'None'}</p>
+            <p>Has Org Context: {permissions.hasOrganizationContext ? 'Yes' : 'No'}</p>
             {profile?.timezone && <p>Timezone: {profile.timezone}</p>}
           </div>
 
@@ -122,6 +126,7 @@ export function DebugPanel() {
             <p>Members: {members.length}</p>
             <p>Jobs: {jobs.length}</p>
             <p>Job Requests: {jobRequests.length}</p>
+            <p>Invoices: {invoices.length}</p>
             {jobId && (
               <>
                 <p>Candidates: {candidates.length}</p>
@@ -147,8 +152,31 @@ export function DebugPanel() {
               <Badge variant={permissions.isMember ? "default" : "secondary"}>
                 Member
               </Badge>
+              <Badge variant={permissions.isClient ? "default" : "secondary"}>
+                Client
+              </Badge>
               <Badge variant={permissions.isGuest ? "default" : "secondary"}>
                 Guest
+              </Badge>
+            </div>
+          </div>
+
+          <Separator />
+
+          <div>
+            <h4 className="font-semibold mb-1">Billing Permissions</h4>
+            <div className="flex flex-wrap gap-1">
+              <Badge variant={permissions.canViewBilling ? "default" : "secondary"}>
+                View Billing
+              </Badge>
+              <Badge variant={permissions.canViewInvoices ? "default" : "secondary"}>
+                View Invoices
+              </Badge>
+              <Badge variant={permissions.canManageInvoices ? "default" : "secondary"}>
+                Manage Invoices
+              </Badge>
+              <Badge variant={permissions.canUploadInvoicePDFs ? "default" : "secondary"}>
+                Upload PDFs
               </Badge>
             </div>
           </div>

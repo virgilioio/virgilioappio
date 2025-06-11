@@ -50,11 +50,13 @@ export interface PermissionsState {
   isPlatformAdmin: boolean
   isBillingMember: boolean
   isMember: boolean
+  isClient: boolean
   isGuest: boolean
+  hasOrganizationContext: boolean
 }
 
 export function usePermissions(): PermissionsState {
-  const { user } = useAuth()
+  const { user, organizationId } = useAuth()
   const { profile } = useUserProfile()
   
   // Get user type and member role from user metadata or profile
@@ -66,12 +68,17 @@ export function usePermissions(): PermissionsState {
   const isWorkspaceOwner = userType === 'workspace_owner'
   const isBillingMember = memberRole === 'billing'
   
-  // Update member check to include 'client' role for workspace owners and guests
-  const isMember = ['recruiter', 'admin', 'billing', 'client'].includes(memberRole)
+  // Check if user has organization context (critical for security)
+  const hasOrganizationContext = !!organizationId
   
-  // Guests are users who either have 'guest' member_role OR 'client' member_role 
-  // (since clients are technically guests from an access perspective)
-  const isGuest = (memberRole === 'guest' || memberRole === 'client') && !isPlatformAdmin && !isWorkspaceOwner
+  // Client members have 'client' role and organization context
+  const isClient = memberRole === 'client' && hasOrganizationContext
+  
+  // Members are users with specific member roles and org context
+  const isMember = ['recruiter', 'admin', 'billing', 'client'].includes(memberRole) && hasOrganizationContext
+  
+  // Guests are users without membership or org context
+  const isGuest = (memberRole === 'guest' || !hasOrganizationContext) && !isPlatformAdmin && !isWorkspaceOwner
   
   return {
     // Job permissions - clients/workspace owners can view but not create/edit/delete
@@ -109,18 +116,21 @@ export function usePermissions(): PermissionsState {
     canDeleteCandidates: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin',
     canManageCandidates: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin'].includes(memberRole),
     
-    // Billing & Invoice permissions - clients can view their own billing
-    canViewInvoices: isPlatformAdmin || isWorkspaceOwner || isBillingMember || memberRole === 'client',
+    // Billing & Invoice permissions - CRITICAL SECURITY FIX
+    // Only users with org context can view billing (prevents guests from accessing)
+    canViewInvoices: isPlatformAdmin || isBillingMember || (isWorkspaceOwner && hasOrganizationContext) || (isClient && hasOrganizationContext),
     canCreateInvoices: isPlatformAdmin || isBillingMember,
     canManageInvoices: isPlatformAdmin || isBillingMember,
     canUploadInvoicePDFs: isPlatformAdmin || isBillingMember,
-    canViewBilling: isPlatformAdmin || isWorkspaceOwner || isBillingMember || memberRole === 'client',
+    canViewBilling: isPlatformAdmin || isBillingMember || (isWorkspaceOwner && hasOrganizationContext) || (isClient && hasOrganizationContext),
     
     // Admin flags
     isWorkspaceOwner,
     isPlatformAdmin,
     isBillingMember,
     isMember,
+    isClient,
     isGuest,
+    hasOrganizationContext,
   }
 }
