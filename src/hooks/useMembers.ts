@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
@@ -77,19 +76,19 @@ export function useMembers() {
             ...member,
             member_role: member.member_role as 'recruiter' | 'customer_success' | 'billing' | 'sales' | 'admin' | 'client',
             user_status: member.user_status as 'active' | 'inactive' | 'invited',
+            user_type: member.user_type as 'guest' | 'member' | 'workspace_owner' | 'platform_admin',
             organization_name: member.organizations?.name
           }
           
-          if (member.user_id) {
+          // Only try to fetch user email for platform admins and only if user_id exists
+          if (member.user_id && user.user_metadata?.user_type === 'platform_admin') {
             try {
-              if (user.user_metadata?.user_type === 'platform_admin') {
-                const { data: userData, error: userError } = await supabase.auth.admin.getUserById(member.user_id)
-                if (!userError && userData.user) {
-                  return { ...typedMember, user_email: userData.user.email }
-                }
+              const { data: userData, error: userError } = await supabase.auth.admin.getUserById(member.user_id)
+              if (!userError && userData.user) {
+                return { ...typedMember, user_email: userData.user.email }
               }
             } catch (e) {
-              console.warn('Could not fetch user email for member:', member.id)
+              console.warn('Could not fetch user email for member:', member.id, e)
             }
           }
           return typedMember
@@ -150,14 +149,16 @@ export function useMembers() {
     try {
       console.log('Creating member:', { ...data, organization_id: organizationId })
       
-      // For invitations, set user_status to 'invited' and user_id to null
+      // Prepare the member data - remove email from the database insert
       const memberData = {
-        ...data,
         organization_id: organizationId,
+        member_role: data.member_role,
         user_status: data.user_id ? (data.user_status || 'active') : 'invited',
         user_id: data.user_id || null,
         user_type: data.user_type || 'member'
       }
+
+      console.log('Inserting member data:', memberData)
 
       const { data: newMember, error: createError } = await supabase
         .from('members')
