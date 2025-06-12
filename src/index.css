@@ -8,11 +8,11 @@
 
 @layer base {
   :root {
-    /* Light Mode Colors */
-    --background: 0 0% 100%;
+    /* Light Mode Colors - World-class depth pattern */
+    --background: 0 0% 97%; /* Changed from pure white to subtle gray #f8f9fa */
     --foreground: 0 0% 20%;
 
-    --card: 0 0% 100%;
+    --card: 0 0% 100%; /* Keep cards pure white for contrast */
     --card-foreground: 0 0% 20%;
 
     --popover: 0 0% 100%;
@@ -50,9 +50,9 @@
 
     --radius: 8px;
 
-    /* Virgilio.io Surface Colors */
-    --surface-primary: 0 0% 100%;
-    --surface-secondary: 0 0% 97%; /* #f8f9fa */
+    /* Virgilio.io Surface Colors - Enhanced for depth */
+    --surface-primary: 0 0% 100%; /* Pure white for cards */
+    --surface-secondary: 0 0% 97%; /* #f8f9fa - now matches background */
     --surface-tertiary: 210 17% 93%; /* #e9ecef */
     --surface-overlay: 0 0% 0% / 0.5;
 
@@ -105,10 +105,10 @@
     --transition-default: 200ms;
     --transition-slow: 300ms;
 
-    /* Neumorphic Shadows - Subtle */
-    --shadow-neumorphic-base: -2px 2px 0px hsl(var(--primary));
-    --shadow-neumorphic-hover: -1px 1px 0px hsl(var(--primary));
-    --shadow-neumorphic-active: 0px 0px 0px hsl(var(--primary));
+    /* Enhanced Shadows for World-class Depth */
+    --shadow-neumorphic-base: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+    --shadow-neumorphic-hover: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    --shadow-neumorphic-active: 0 1px 2px 0 rgb(0 0 0 / 0.05);
 
     /* Component Heights - Compact */
     --button-height-sm: 28px;
@@ -129,13 +129,14 @@
   }
 
   .dark {
-    --background: 222.2 84% 4.9%; /* #0f172a */
+    /* Dark mode maintains good contrast with appropriate background/surface separation */
+    --background: 222.2 84% 4.9%; /* #0f172a - darker background */
     --foreground: 210 40% 98%;
 
-    --card: 222.2 84% 4.9%;
+    --card: 217.2 32.6% 17.5%; /* #1e293b - elevated surface */
     --card-foreground: 210 40% 98%;
 
-    --popover: 222.2 84% 4.9%;
+    --popover: 217.2 32.6% 17.5%;
     --popover-foreground: 210 40% 98%;
 
     --primary: 60 100% 85%; /* accent yellow in dark mode */
@@ -166,9 +167,9 @@
     --input: 217.2 32.6% 17.5%;
     --ring: 60 100% 85%;
 
-    /* Dark mode surface colors */
-    --surface-primary: 222.2 84% 4.9%; /* #0f172a */
-    --surface-secondary: 217.2 32.6% 17.5%; /* #1e293b */
+    /* Dark mode surface colors - maintain depth hierarchy */
+    --surface-primary: 217.2 32.6% 17.5%; /* #1e293b - elevated cards */
+    --surface-secondary: 215.4 16.3% 26.1%; /* #334155 - secondary surfaces */
     --surface-tertiary: 215.4 16.3% 26.1%; /* #334155 */
     --surface-overlay: 0 0% 0% / 0.8;
 
@@ -178,10 +179,10 @@
     --text-tertiary: 215.4 16.3% 46.9%;
     --text-muted: 217.2 32.6% 17.5%;
 
-    /* Dark mode neumorphic shadows */
-    --shadow-neumorphic-base: -2px 2px 0px hsl(var(--accent));
-    --shadow-neumorphic-hover: -1px 1px 0px hsl(var(--accent));
-    --shadow-neumorphic-active: 0px 0px 0px hsl(var(--accent));
+    /* Dark mode enhanced shadows */
+    --shadow-neumorphic-base: 0 1px 3px 0 rgb(0 0 0 / 0.3), 0 1px 2px -1px rgb(0 0 0 / 0.3);
+    --shadow-neumorphic-hover: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.3);
+    --shadow-neumorphic-active: 0 1px 2px 0 rgb(0 0 0 / 0.2);
 
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
@@ -362,7 +363,7 @@
   .border-brand { border-color: hsl(var(--border)); }
   .rounded-brand { border-radius: var(--radius); }
 
-  /* Neumorphic Shadows */
+  /* Enhanced Neumorphic Shadows for World-class Depth */
   .shadow-neumorphic { box-shadow: var(--shadow-neumorphic-base); }
   .shadow-neumorphic-hover { box-shadow: var(--shadow-neumorphic-hover); }
   .shadow-neumorphic-active { box-shadow: var(--shadow-neumorphic-active); }
@@ -407,10 +408,11 @@
     font-size: var(--font-size-md);
   }
 
-  /* Enhanced Card Styles - Compact */
+  /* Enhanced Card Styles with World-class Depth */
   .card-brand {
-    @apply bg-surface-primary border border-brand rounded-brand shadow-sm;
-    @apply transition-all duration-200 hover:shadow-md hover:-translate-y-0.5;
+    @apply bg-surface-primary border border-brand rounded-brand;
+    box-shadow: var(--shadow-neumorphic-base);
+    @apply transition-all duration-200 hover:shadow-neumorphic-hover hover:-translate-y-0.5;
     padding: var(--layout-padding-md);
   }
 
