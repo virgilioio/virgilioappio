@@ -1,15 +1,13 @@
 
 import { useState } from 'react'
-import { format } from 'date-fns'
-import { Search, Filter, Plus, Edit, Trash2 } from 'lucide-react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Plus, Edit, Trash2, Building2, User, Calendar } from 'lucide-react'
 import { Organization } from '@/hooks/useOrganizations'
 import { usePermissions } from '@/hooks/usePermissions'
+import { Skeleton } from '@/components/ui/skeleton'
 
 interface OrganizationsTableProps {
   organizations: Organization[]
@@ -19,45 +17,35 @@ interface OrganizationsTableProps {
   onCreateNew: () => void
 }
 
-export function OrganizationsTable({ 
-  organizations, 
-  isLoading, 
-  onEdit, 
-  onDelete, 
-  onCreateNew 
+export function OrganizationsTable({
+  organizations,
+  isLoading,
+  onEdit,
+  onDelete,
+  onCreateNew
 }: OrganizationsTableProps) {
-  const [searchTerm, setSearchTerm] = useState('')
-  const [statusFilter, setStatusFilter] = useState<string>('all')
-  const [countryFilter, setCountryFilter] = useState<string>('all')
   const permissions = usePermissions()
-
-  // Get unique countries for filter
-  const countries = Array.from(new Set(organizations.map(org => org.country))).sort()
-
-  // Filter organizations
-  const filteredOrganizations = organizations.filter(org => {
-    const matchesSearch = org.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (org.owner_email && org.owner_email.toLowerCase().includes(searchTerm.toLowerCase()))
-    const matchesStatus = statusFilter === 'all' || org.status === statusFilter
-    const matchesCountry = countryFilter === 'all' || org.country === countryFilter
-
-    return matchesSearch && matchesStatus && matchesCountry
-  })
-
-  const getStatusBadge = (status: string) => {
-    return (
-      <Badge variant={status === 'active' ? 'default' : 'secondary'}>
-        {status}
-      </Badge>
-    )
-  }
 
   if (isLoading) {
     return (
       <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Building2 className="h-5 w-5" />
+                Organizations
+              </CardTitle>
+              <CardDescription>Manage client organizations</CardDescription>
+            </div>
+            <Skeleton className="h-10 w-32" />
+          </div>
+        </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-center py-xl">
-            <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin"></div>
+          <div className="space-y-3">
+            {[...Array(3)].map((_, i) => (
+              <Skeleton key={i} className="h-16 w-full" />
+            ))}
           </div>
         </CardContent>
       </Card>
@@ -67,104 +55,109 @@ export function OrganizationsTable({
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between mb-md">
-          <CardTitle className="text-xl font-semibold">Organizations</CardTitle>
-          {permissions.isPlatformAdmin && (
-            <Button onClick={onCreateNew} className="gap-1">
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Building2 className="h-5 w-5" />
+              Organizations
+            </CardTitle>
+            <CardDescription>
+              Manage client organizations and their settings
+            </CardDescription>
+          </div>
+          {permissions.canCreateOrganizations && (
+            <Button onClick={onCreateNew} className="gap-2">
               <Plus className="h-4 w-4" />
               Create Organization
             </Button>
           )}
         </div>
-        
-        {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-md">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search by name or owner email..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-          
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="inactive">Inactive</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Select value={countryFilter} onValueChange={setCountryFilter}>
-            <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder="Country" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Countries</SelectItem>
-              {countries.map(country => (
-                <SelectItem key={country} value={country}>{country}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
       </CardHeader>
-
+      
       <CardContent>
-        {filteredOrganizations.length === 0 ? (
-          <div className="text-center py-xl text-muted-foreground">
-            {organizations.length === 0 ? 'No organizations found' : 'No organizations match your filters'}
+        {organizations.length === 0 ? (
+          <div className="text-center py-8">
+            <Building2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-2">No organizations yet</h3>
+            <p className="text-muted-foreground mb-4">
+              Create your first organization to get started.
+            </p>
+            {permissions.canCreateOrganizations && (
+              <Button onClick={onCreateNew} className="gap-2">
+                <Plus className="h-4 w-4" />
+                Create Organization
+              </Button>
+            )}
           </div>
         ) : (
-          <div className="rounded-md border">
+          <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Country</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Type</TableHead>
                   <TableHead>Owner</TableHead>
+                  <TableHead>Created By</TableHead>
                   <TableHead>Created</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredOrganizations.map((org) => (
+                {organizations.map((org) => (
                   <TableRow key={org.id}>
                     <TableCell className="font-medium">{org.name}</TableCell>
                     <TableCell>{org.country}</TableCell>
-                    <TableCell>{getStatusBadge(org.status)}</TableCell>
+                    <TableCell>
+                      <Badge variant={org.status === 'active' ? 'default' : 'secondary'}>
+                        {org.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">
+                        {org.organization_type}
+                      </Badge>
+                    </TableCell>
                     <TableCell>
                       {org.owner_email ? (
-                        <span className="text-sm">{org.owner_email}</span>
+                        <div className="flex items-center gap-1 text-sm">
+                          <User className="h-3 w-3" />
+                          {org.owner_email}
+                        </div>
                       ) : (
-                        <span className="text-sm text-muted-foreground">No owner</span>
+                        <span className="text-muted-foreground text-sm">No owner</span>
                       )}
                     </TableCell>
                     <TableCell>
-                      <span className="text-sm text-muted-foreground">
-                        {format(new Date(org.created_at), 'MMM dd, yyyy')}
-                      </span>
+                      {org.created_by_email ? (
+                        <span className="text-sm">{org.created_by_email}</span>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">Unknown</span>
+                      )}
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center justify-end gap-sm">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => onEdit(org)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        {permissions.isPlatformAdmin && (
+                      <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                        <Calendar className="h-3 w-3" />
+                        {new Date(org.created_at).toLocaleDateString()}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        {permissions.canEditOrganizations && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => onEdit(org)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {permissions.canDeleteOrganizations && (
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => onDelete(org.id)}
-                            className="text-destructive hover:text-destructive"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>

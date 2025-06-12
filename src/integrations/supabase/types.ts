@@ -386,9 +386,11 @@ export type Database = {
         Row: {
           country: string
           created_at: string
+          created_by: string | null
           id: string
           name: string
           organization_type: string
+          owner_assigned_at: string | null
           owner_id: string | null
           status: string
           updated_at: string
@@ -396,9 +398,11 @@ export type Database = {
         Insert: {
           country: string
           created_at?: string
+          created_by?: string | null
           id?: string
           name: string
           organization_type?: string
+          owner_assigned_at?: string | null
           owner_id?: string | null
           status?: string
           updated_at?: string
@@ -406,9 +410,11 @@ export type Database = {
         Update: {
           country?: string
           created_at?: string
+          created_by?: string | null
           id?: string
           name?: string
           organization_type?: string
+          owner_assigned_at?: string | null
           owner_id?: string | null
           status?: string
           updated_at?: string

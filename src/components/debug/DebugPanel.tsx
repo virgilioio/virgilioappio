@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePermissions } from '@/hooks/usePermissions'
 import { InviteSystemDebug } from './InviteSystemDebug'
-import { Bug, User, Shield, Settings, X } from 'lucide-react'
+import { OrganizationDebug } from './OrganizationDebug'
+import { Bug, User, Shield, Settings, X, Building2 } from 'lucide-react'
 
 export function DebugPanel() {
   const { user, organizationId, userType, memberRole } = useAuth()
@@ -61,7 +62,7 @@ export function DebugPanel() {
         
         <CardContent className="pt-0 max-h-80 overflow-y-auto">
           <Tabs defaultValue="user" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 h-8">
+            <TabsList className="grid w-full grid-cols-4 h-8">
               <TabsTrigger value="user" className="flex items-center gap-1 text-xs">
                 <User className="h-3 w-3" />
                 User
@@ -69,6 +70,10 @@ export function DebugPanel() {
               <TabsTrigger value="permissions" className="flex items-center gap-1 text-xs">
                 <Shield className="h-3 w-3" />
                 Perms
+              </TabsTrigger>
+              <TabsTrigger value="organizations" className="flex items-center gap-1 text-xs">
+                <Building2 className="h-3 w-3" />
+                Orgs
               </TabsTrigger>
               <TabsTrigger value="invites" className="flex items-center gap-1 text-xs">
                 <Settings className="h-3 w-3" />
@@ -120,6 +125,12 @@ export function DebugPanel() {
                     <div>Manage Members: <Badge variant={permissions.canManageMembers ? "default" : "secondary"} className="text-xs h-4">{permissions.canManageMembers ? 'Yes' : 'No'}</Badge></div>
                   </div>
                 </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="organizations" className="mt-3">
+              <div className="text-xs">
+                <OrganizationDebug />
               </div>
             </TabsContent>
 

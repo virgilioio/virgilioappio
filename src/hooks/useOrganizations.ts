@@ -13,7 +13,10 @@ export interface Organization {
   owner_id: string | null
   created_at: string
   updated_at: string
+  created_by: string | null
+  owner_assigned_at: string | null
   owner_email?: string
+  created_by_email?: string
 }
 
 export interface CreateOrganizationData {
@@ -56,30 +59,44 @@ export function useOrganizations() {
 
       console.log('Fetched organizations:', data)
       
-      // Get owner emails for organizations that have owners
-      const organizationsWithOwners = await Promise.all(
+      // Get owner and creator emails for organizations
+      const organizationsWithDetails = await Promise.all(
         (data || []).map(async (org) => {
           const typedOrg: Organization = {
             ...org,
-            status: org.status as 'active' | 'inactive', // Type assertion for database string
-            organization_type: org.organization_type as 'platform' | 'client' // Type assertion for database string
+            status: org.status as 'active' | 'inactive',
+            organization_type: org.organization_type as 'platform' | 'client'
           }
           
+          // Get owner email if owner_id exists
           if (org.owner_id) {
             try {
               const { data: userData, error: userError } = await supabase.auth.admin.getUserById(org.owner_id)
               if (!userError && userData.user) {
-                return { ...typedOrg, owner_email: userData.user.email }
+                typedOrg.owner_email = userData.user.email
               }
             } catch (e) {
               console.warn('Could not fetch owner email for organization:', org.id)
             }
           }
+
+          // Get creator email if created_by exists
+          if (org.created_by) {
+            try {
+              const { data: creatorData, error: creatorError } = await supabase.auth.admin.getUserById(org.created_by)
+              if (!creatorError && creatorData.user) {
+                typedOrg.created_by_email = creatorData.user.email
+              }
+            } catch (e) {
+              console.warn('Could not fetch creator email for organization:', org.id)
+            }
+          }
+          
           return typedOrg
         })
       )
 
-      setOrganizations(organizationsWithOwners)
+      setOrganizations(organizationsWithDetails)
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch organizations'
       console.error('Organizations fetch error:', err)
@@ -100,6 +117,8 @@ export function useOrganizations() {
 
     try {
       console.log('Creating organization:', data)
+      
+      // Note: created_by will be automatically populated by the database trigger
       const { data: newOrg, error: createError } = await supabase
         .from('organizations')
         .insert([data])
@@ -117,7 +136,7 @@ export function useOrganizations() {
         description: 'Organization created successfully'
       })
 
-      await getOrganizations() // Refresh the list
+      await getOrganizations() // Refresh the list to show the new org immediately
       return newOrg
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to create organization'

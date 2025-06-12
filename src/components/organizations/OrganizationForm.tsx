@@ -7,9 +7,10 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form'
 import { Organization, CreateOrganizationData, UpdateOrganizationData } from '@/hooks/useOrganizations'
 import { usePermissions } from '@/hooks/usePermissions'
+import { useMembers } from '@/hooks/useMembers'
 
 const formSchema = z.object({
   name: z.string().min(1, 'Organization name is required'),
@@ -59,7 +60,15 @@ export function OrganizationForm({
   isLoading 
 }: OrganizationFormProps) {
   const permissions = usePermissions()
+  const { members } = useMembers()
   const isEditing = !!organization
+
+  // Get workspace owners for the owner dropdown
+  const workspaceOwners = members.filter(member => 
+    member.user_type === 'workspace_owner' && 
+    member.user_status === 'active' &&
+    member.user_id // Only show members with actual user accounts
+  )
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -179,20 +188,31 @@ export function OrganizationForm({
               )}
             />
 
-            {permissions.isPlatformAdmin && (
+            {permissions.canManageOrganization && (
               <FormField
                 control={form.control}
                 name="owner_id"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Owner (Optional)</FormLabel>
-                    <FormControl>
-                      <Input 
-                        placeholder="Enter owner user ID" 
-                        {...field}
-                        disabled={isEditing && !permissions.isPlatformAdmin}
-                      />
-                    </FormControl>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select an owner" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="">No owner assigned</SelectItem>
+                        {workspaceOwners.map((member) => (
+                          <SelectItem key={member.user_id} value={member.user_id || ''}>
+                            {member.invited_email} ({member.user_type})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormDescription>
+                      Optional. Assign later after inviting a workspace owner.
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
