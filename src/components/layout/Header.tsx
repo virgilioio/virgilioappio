@@ -67,7 +67,7 @@ export function Header() {
           <div className="flex items-center">
             <Link to="/" className="hover:scale-105 transition-transform duration-default">
               <img 
-                src="/lovable-uploads/aa02be45-3c91-457c-abbd-e6d7753f62e7.png" 
+                src="/virgilio-logo.png" 
                 alt="Virgilio" 
                 className="h-6 sm:h-8 w-auto"
               />
