@@ -14,7 +14,7 @@ interface OrganizationsTableProps {
   isLoading: boolean
   onEdit: (organization: Organization) => void
   onDelete: (id: string) => void
-  onCreateNew: () => void
+  onCreateNew?: () => void
 }
 
 export function OrganizationsTable({
@@ -55,22 +55,14 @@ export function OrganizationsTable({
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <Building2 className="h-5 w-5" />
-              Organizations
-            </CardTitle>
-            <CardDescription>
-              Manage client organizations and their settings
-            </CardDescription>
-          </div>
-          {permissions.canCreateOrganizations && (
-            <Button onClick={onCreateNew} className="gap-2">
-              <Plus className="h-4 w-4" />
-              Create Organization
-            </Button>
-          )}
+        <div>
+          <CardTitle className="flex items-center gap-2">
+            <Building2 className="h-5 w-5" />
+            Organizations
+          </CardTitle>
+          <CardDescription>
+            Manage client organizations and their settings
+          </CardDescription>
         </div>
       </CardHeader>
       
@@ -82,7 +74,7 @@ export function OrganizationsTable({
             <p className="text-muted-foreground mb-4">
               Create your first organization to get started.
             </p>
-            {permissions.canCreateOrganizations && (
+            {permissions.canCreateOrganizations && onCreateNew && (
               <Button onClick={onCreateNew} className="gap-2">
                 <Plus className="h-4 w-4" />
                 Create Organization
