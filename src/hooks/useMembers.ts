@@ -51,42 +51,94 @@ export function useMembers() {
     try {
       console.log('Fetching members for user:', user.id)
       
-      const { data, error: fetchError } = await supabase
+      // First, fetch members with organization data
+      const { data: membersData, error: membersError } = await supabase
         .from('members')
         .select(`
           *,
           organizations!inner (
             name
-          ),
-          profiles (
-            first_name,
-            last_name
           )
         `)
         .order('created_at', { ascending: false })
 
-      if (fetchError) {
-        console.error('Error fetching members:', fetchError)
-        if (fetchError.message.includes('row-level security')) {
+      if (membersError) {
+        console.error('Error fetching members:', membersError)
+        if (membersError.message.includes('row-level security')) {
           console.warn('RLS policy blocked access - user may not have permission to view members')
           setMembers([])
           return
         }
-        throw fetchError
+        throw membersError
       }
 
-      console.log('Fetched members raw data:', data)
-      
-      const membersWithDetails = (data || []).map((member) => {
-        // Handle the profiles data from the joined query
-        let profile = null
-        if (member.profiles) {
-          if (Array.isArray(member.profiles)) {
-            profile = member.profiles[0] || null
+      console.log('Fetched members raw data:', membersData)
+
+      if (!membersData || membersData.length === 0) {
+        console.log('No members found')
+        setMembers([])
+        return
+      }
+
+      // Get unique user IDs that are not null
+      const userIds = membersData
+        .filter(member => member.user_id)
+        .map(member => member.user_id)
+
+      console.log('User IDs to fetch:', userIds)
+
+      // Fetch user emails from auth.users using the admin client
+      let userEmails: Record<string, string> = {}
+      if (userIds.length > 0) {
+        try {
+          // Try to get user data through a more direct approach
+          const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers()
+          
+          if (authError) {
+            console.warn('Could not fetch auth users:', authError)
           } else {
-            profile = member.profiles
+            console.log('Fetched auth users:', authUsers.users.length)
+            // Create mapping of user_id to email
+            authUsers.users.forEach(authUser => {
+              if (userIds.includes(authUser.id)) {
+                userEmails[authUser.id] = authUser.email || ''
+              }
+            })
+            console.log('User emails mapping:', userEmails)
           }
+        } catch (authError) {
+          console.warn('Auth users fetch failed, will try profiles fallback:', authError)
         }
+      }
+
+      // Fetch profiles data
+      let profilesData: any[] = []
+      if (userIds.length > 0) {
+        const { data: profiles, error: profilesError } = await supabase
+          .from('profiles')
+          .select('user_id, first_name, last_name')
+          .in('user_id', userIds)
+
+        if (profilesError) {
+          console.warn('Error fetching profiles:', profilesError)
+        } else {
+          profilesData = profiles || []
+          console.log('Fetched profiles:', profilesData)
+        }
+      }
+
+      // Create profiles mapping
+      const profilesMap = profilesData.reduce((acc, profile) => {
+        acc[profile.user_id] = profile
+        return acc
+      }, {} as Record<string, any>)
+
+      console.log('Profiles mapping:', profilesMap)
+
+      // Combine all data
+      const membersWithDetails = membersData.map((member) => {
+        const profile = member.user_id ? profilesMap[member.user_id] : null
+        const userEmail = member.user_id ? userEmails[member.user_id] : null
         
         const typedMember: Member = {
           ...member,
@@ -95,8 +147,19 @@ export function useMembers() {
           user_type: member.user_type as 'guest' | 'member' | 'workspace_owner' | 'platform_admin',
           organization_name: member.organizations?.name,
           user_first_name: profile?.first_name || null,
-          user_last_name: profile?.last_name || null
+          user_last_name: profile?.last_name || null,
+          user_email: userEmail || null
         }
+        
+        console.log('Processed member:', {
+          id: typedMember.id,
+          user_id: typedMember.user_id,
+          user_email: typedMember.user_email,
+          user_first_name: typedMember.user_first_name,
+          user_last_name: typedMember.user_last_name,
+          invited_email: typedMember.invited_email,
+          user_status: typedMember.user_status
+        })
         
         return typedMember
       })
