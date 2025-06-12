@@ -36,14 +36,39 @@ export function MembersTable({
   const [resendingId, setResendingId] = useState<string | null>(null)
 
   const handleResendInvitation = async (member: Member) => {
-    if (!onResendInvitation || !member.user_email) return
+    if (!onResendInvitation || !member.invited_email) return
     
     setResendingId(member.id)
     try {
-      await onResendInvitation(member.id, member.user_email)
+      await onResendInvitation(member.id, member.invited_email)
     } finally {
       setResendingId(null)
     }
+  }
+
+  const getMemberDisplayName = (member: Member) => {
+    // For invited members, show the invited email
+    if (member.user_status === 'invited' && member.invited_email) {
+      return member.invited_email
+    }
+    
+    // For active members, try to show the full name
+    if (member.user_first_name && member.user_last_name) {
+      return `${member.user_first_name} ${member.user_last_name}`
+    }
+    
+    // Fall back to first name only if available
+    if (member.user_first_name) {
+      return member.user_first_name
+    }
+    
+    // Fall back to email if available
+    if (member.user_email) {
+      return member.user_email
+    }
+    
+    // Last resort - show invited email or placeholder
+    return member.invited_email || 'Unknown Member'
   }
 
   const getStatusBadge = (status: string) => {
@@ -141,13 +166,14 @@ export function MembersTable({
               <TableBody>
                 {members.map((member) => {
                   const isExpired = isInvitationExpired(member)
+                  const displayName = getMemberDisplayName(member)
                   
                   return (
                     <TableRow key={member.id}>
                       <TableCell>
                         <div className="space-y-1">
                           <div className="font-medium">
-                            {member.user_email || 'No email'}
+                            {displayName}
                             {member.user_status === 'invited' && (
                               <Mail className="inline h-3 w-3 ml-1 text-muted-foreground" />
                             )}
@@ -155,6 +181,11 @@ export function MembersTable({
                           {member.user_status === 'invited' && member.invite_expires_at && (
                             <div className={`text-xs ${isExpired ? 'text-red-500' : 'text-muted-foreground'}`}>
                               {isExpired ? 'Expired' : 'Expires'}: {new Date(member.invite_expires_at).toLocaleDateString()}
+                            </div>
+                          )}
+                          {member.user_email && member.user_email !== displayName && (
+                            <div className="text-xs text-muted-foreground">
+                              {member.user_email}
                             </div>
                           )}
                         </div>
@@ -188,7 +219,7 @@ export function MembersTable({
                               Edit
                             </DropdownMenuItem>
                             
-                            {member.user_status === 'invited' && onResendInvitation && member.user_email && (
+                            {member.user_status === 'invited' && onResendInvitation && member.invited_email && (
                               <DropdownMenuItem 
                                 onClick={() => handleResendInvitation(member)}
                                 disabled={resendingId === member.id}

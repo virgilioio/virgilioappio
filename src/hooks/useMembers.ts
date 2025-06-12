@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
@@ -16,6 +17,8 @@ export interface Member {
   invite_expires_at?: string | null
   invited_email?: string | null
   user_email?: string
+  user_first_name?: string
+  user_last_name?: string
   organization_name?: string
 }
 
@@ -55,6 +58,10 @@ export function useMembers() {
           *,
           organizations!inner (
             name
+          ),
+          profiles (
+            first_name,
+            last_name
           )
         `)
         .order('created_at', { ascending: false })
@@ -78,7 +85,9 @@ export function useMembers() {
             member_role: member.member_role as 'recruiter' | 'customer_success' | 'billing' | 'sales' | 'admin' | 'client',
             user_status: member.user_status as 'active' | 'inactive' | 'invited',
             user_type: member.user_type as 'guest' | 'member' | 'workspace_owner' | 'platform_admin',
-            organization_name: member.organizations?.name
+            organization_name: member.organizations?.name,
+            user_first_name: member.profiles?.first_name,
+            user_last_name: member.profiles?.last_name
           }
           
           // Only try to fetch user email for platform admins and only if user_id exists
