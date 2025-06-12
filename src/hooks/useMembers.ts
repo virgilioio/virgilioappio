@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
@@ -75,12 +76,29 @@ export function useMembers() {
         throw fetchError
       }
 
-      console.log('Fetched members:', data)
+      console.log('Fetched members raw data:', data)
+      console.log('First member structure:', data?.[0])
       
       const membersWithDetails = await Promise.all(
         (data || []).map(async (member) => {
-          // Fix: Properly access the profiles data from the joined query
-          const profile = Array.isArray(member.profiles) ? member.profiles[0] : member.profiles
+          console.log('Processing member:', member.id)
+          console.log('Member profiles data:', member.profiles)
+          console.log('Type of member.profiles:', typeof member.profiles)
+          console.log('Is array?', Array.isArray(member.profiles))
+          
+          // Debug the profiles data structure
+          let profile = null
+          if (member.profiles) {
+            if (Array.isArray(member.profiles)) {
+              profile = member.profiles[0] || null
+              console.log('Using first profile from array:', profile)
+            } else {
+              profile = member.profiles
+              console.log('Using direct profile object:', profile)
+            }
+          } else {
+            console.log('No profiles data found for member:', member.id)
+          }
           
           const typedMember: Member = {
             ...member,
@@ -91,6 +109,15 @@ export function useMembers() {
             user_first_name: profile?.first_name || null,
             user_last_name: profile?.last_name || null
           }
+          
+          console.log('Final member data:', {
+            id: typedMember.id,
+            user_id: typedMember.user_id,
+            user_first_name: typedMember.user_first_name,
+            user_last_name: typedMember.user_last_name,
+            invited_email: typedMember.invited_email,
+            user_status: typedMember.user_status
+          })
           
           // Only try to fetch user email for platform admins and only if user_id exists
           if (member.user_id && user.user_metadata?.user_type === 'platform_admin') {
@@ -107,6 +134,7 @@ export function useMembers() {
         })
       )
 
+      console.log('Final members with details:', membersWithDetails)
       setMembers(membersWithDetails)
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch members'
