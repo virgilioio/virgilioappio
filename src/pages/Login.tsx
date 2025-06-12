@@ -58,7 +58,7 @@ export default function Login() {
         <div className="flex flex-col justify-center px-8 lg:px-16 xl:px-24">
           {/* Logo */}
           <div className="mb-12">
-            <VirgilioLogo size="lg" />
+            <VirgilioLogo size="sm" />
           </div>
 
           {/* Welcome Text */}
