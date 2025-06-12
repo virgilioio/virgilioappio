@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { Layout } from "@/components/layout/Layout";
+import { useFavicon } from "@/hooks/useFavicon";
 import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
 import Members from "./pages/Members";
@@ -21,6 +22,32 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
+function AppContent() {
+  useFavicon(); // Initialize favicon management
+  
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/accept-invite/:token" element={<AcceptInvite />} />
+        <Route path="/verify-email" element={<VerifyEmail />} />
+        <Route element={<Layout />}>
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/members" element={<Members />} />
+          <Route path="/organizations" element={<Organizations />} />
+          <Route path="/settings" element={<Settings />} />
+          <Route path="/jobs" element={<Jobs />} />
+          <Route path="/jobs/:id" element={<JobDetail />} />
+          <Route path="/job-requests" element={<JobRequests />} />
+          <Route path="/admin/invoices" element={<AdminInvoices />} />
+        </Route>
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </BrowserRouter>
+  );
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -28,25 +55,7 @@ function App() {
         <TooltipProvider>
           <Toaster />
           <Sonner />
-          <BrowserRouter>
-            <Routes>
-              <Route path="/login" element={<Login />} />
-              <Route path="/accept-invite/:token" element={<AcceptInvite />} />
-              <Route path="/verify-email" element={<VerifyEmail />} />
-              <Route element={<Layout />}>
-                <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                <Route path="/dashboard" element={<Dashboard />} />
-                <Route path="/members" element={<Members />} />
-                <Route path="/organizations" element={<Organizations />} />
-                <Route path="/settings" element={<Settings />} />
-                <Route path="/jobs" element={<Jobs />} />
-                <Route path="/jobs/:id" element={<JobDetail />} />
-                <Route path="/job-requests" element={<JobRequests />} />
-                <Route path="/admin/invoices" element={<AdminInvoices />} />
-              </Route>
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </BrowserRouter>
+          <AppContent />
         </TooltipProvider>
       </AuthProvider>
     </QueryClientProvider>

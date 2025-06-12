@@ -428,6 +428,42 @@ export type Database = {
         }
         Relationships: []
       }
+      platform_assets: {
+        Row: {
+          asset_type: string
+          created_at: string
+          file_name: string
+          file_url: string
+          id: string
+          is_active: boolean
+          updated_at: string
+          uploaded_at: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          asset_type: string
+          created_at?: string
+          file_name: string
+          file_url: string
+          id?: string
+          is_active?: boolean
+          updated_at?: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          asset_type?: string
+          created_at?: string
+          file_name?: string
+          file_url?: string
+          id?: string
+          is_active?: boolean
+          updated_at?: string
+          uploaded_at?: string
+          uploaded_by?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -482,6 +518,10 @@ export type Database = {
           member_role: string
           organization_id: string
         }[]
+      }
+      activate_platform_asset: {
+        Args: { new_asset_id: string; asset_type_param: string }
+        Returns: undefined
       }
       cleanup_expired_invitations: {
         Args: Record<PropertyKey, never>

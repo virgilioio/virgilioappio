@@ -1,3 +1,5 @@
+import { useState, useEffect } from 'react'
+import { supabase } from '@/integrations/supabase/client'
 
 interface VirgilioLogoProps {
   size?: 'sm' | 'md' | 'lg' | 'xl';
@@ -5,6 +7,8 @@ interface VirgilioLogoProps {
 }
 
 export function VirgilioLogo({ size = 'md', className = '' }: VirgilioLogoProps) {
+  const [logoUrl, setLogoUrl] = useState('/virgilio-logo.png')
+  
   const sizeMap = {
     sm: 24,
     md: 32,
@@ -14,14 +18,38 @@ export function VirgilioLogo({ size = 'md', className = '' }: VirgilioLogoProps)
 
   const logoHeight = sizeMap[size];
 
+  useEffect(() => {
+    // Fetch current active logo from platform assets
+    const fetchLogo = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('platform_assets')
+          .select('file_url')
+          .eq('asset_type', 'logo')
+          .eq('is_active', true)
+          .single()
+
+        if (data && !error) {
+          setLogoUrl(data.file_url)
+        }
+      } catch (error) {
+        console.log('Using default logo - no custom logo found')
+        // Keep default logo if no custom one is found
+      }
+    }
+
+    fetchLogo()
+  }, [])
+
   return (
     <div className={`flex items-center ${className}`}>
       <img 
-        src="/virgilio-logo.png" 
+        src={logoUrl} 
         alt="Virgilio"
         height={logoHeight}
         className="h-auto"
         style={{ height: `${logoHeight}px` }}
+        onError={() => setLogoUrl('/virgilio-logo.png')} // Fallback to default on error
       />
     </div>
   );

@@ -4,11 +4,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { Separator } from '@/components/ui/separator'
 import { OrganizationsTable } from '@/components/organizations/OrganizationsTable'
 import { OrganizationForm } from '@/components/organizations/OrganizationForm'
+import { PlatformAssetUploader } from './PlatformAssetUploader'
 import { useOrganizations, Organization } from '@/hooks/useOrganizations'
 import { usePermissions } from '@/hooks/usePermissions'
-import { Shield, Search, Plus, Building2 } from 'lucide-react'
+import { Shield, Search, Plus, Building2, Palette } from 'lucide-react'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 
 export function PlatformTab() {
@@ -80,12 +82,12 @@ export function PlatformTab() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Header */}
       <div>
         <h2 className="text-2xl font-bold tracking-tight mb-2">Platform Settings</h2>
         <p className="text-muted-foreground">
-          Manage organizations and platform-wide settings
+          Manage platform branding, organizations and system-wide settings
         </p>
       </div>
 
@@ -112,6 +114,28 @@ export function PlatformTab() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Platform Branding - Only for Platform Admins */}
+      {permissions.isPlatformAdmin && (
+        <>
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Palette className="h-5 w-5" />
+                Platform Branding
+              </CardTitle>
+              <CardDescription>
+                Manage the platform's visual identity including logo and favicon
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <PlatformAssetUploader />
+            </CardContent>
+          </Card>
+
+          <Separator />
+        </>
+      )}
 
       {/* Organizations Manager */}
       <Card>
