@@ -4,9 +4,8 @@ import { Navigate, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { VirgilioLogo } from '@/components/VirgilioLogo'
-import { CreateDevAdmin } from '@/components/dev/CreateDevAdmin'
 import { useAuth } from '@/contexts/AuthContext'
 
 export default function Login() {
@@ -125,19 +124,6 @@ export default function Login() {
               </form>
             </CardContent>
           </Card>
-
-          {/* Development Setup */}
-          <div className="mt-12 pt-8 border-t border-border/20">
-            <div className="mb-4">
-              <h3 className="text-lg font-semibold text-foreground mb-2">
-                Configuración de desarrollo
-              </h3>
-              <p className="text-sm text-muted-foreground">
-                Configuración rápida para pruebas y desarrollo
-              </p>
-            </div>
-            <CreateDevAdmin />
-          </div>
         </div>
 
         {/* Right Side - Decorative Content */}
