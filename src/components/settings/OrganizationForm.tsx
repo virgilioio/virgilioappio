@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { FormField } from '@/components/ui/form-field'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { Save } from 'lucide-react'
+import { COUNTRIES } from '@/constants/countries'
 
 interface OrganizationFormData {
   name: string
@@ -35,20 +36,6 @@ export function OrganizationForm({
   onSave, 
   isLoading 
 }: OrganizationFormProps) {
-  const countryOptions = [
-    { value: 'United States', label: 'United States' },
-    { value: 'Canada', label: 'Canada' },
-    { value: 'United Kingdom', label: 'United Kingdom' },
-    { value: 'Germany', label: 'Germany' },
-    { value: 'France', label: 'France' },
-    { value: 'Italy', label: 'Italy' },
-    { value: 'Spain', label: 'Spain' },
-    { value: 'Netherlands', label: 'Netherlands' },
-    { value: 'Australia', label: 'Australia' },
-    { value: 'Japan', label: 'Japan' },
-    { value: 'Other', label: 'Other' }
-  ]
-
   const updateFormData = (field: keyof OrganizationFormData, value: string) => {
     onFormDataChange({ ...formData, [field]: value })
   }
@@ -78,7 +65,7 @@ export function OrganizationForm({
 
         <FormField label="Country" required htmlFor="org-country">
           <SearchableSelect
-            options={countryOptions}
+            options={COUNTRIES}
             value={formData.country}
             onValueChange={(value) => updateFormData('country', value)}
             placeholder="Select country"

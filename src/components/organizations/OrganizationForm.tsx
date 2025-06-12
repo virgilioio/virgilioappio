@@ -12,6 +12,7 @@ import { SearchableSelect } from '@/components/ui/searchable-select'
 import { Organization, CreateOrganizationData, UpdateOrganizationData } from '@/hooks/useOrganizations'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useMembers } from '@/hooks/useMembers'
+import { COUNTRIES } from '@/constants/countries'
 
 const formSchema = z.object({
   name: z.string().min(1, 'Organization name is required'),
@@ -29,29 +30,6 @@ interface OrganizationFormProps {
   organization?: Organization | null
   isLoading: boolean
 }
-
-const countries = [
-  'United States',
-  'United Kingdom',
-  'Germany',
-  'France',
-  'Canada',
-  'Australia',
-  'Japan',
-  'Brazil',
-  'India',
-  'Netherlands',
-  'Sweden',
-  'Norway',
-  'Denmark',
-  'Finland',
-  'Switzerland',
-  'Austria',
-  'Belgium',
-  'Spain',
-  'Italy',
-  'Portugal'
-].sort().map(country => ({ value: country, label: country }))
 
 export function OrganizationForm({ 
   isOpen, 
@@ -162,7 +140,7 @@ export function OrganizationForm({
                   <FormLabel>Country</FormLabel>
                   <FormControl>
                     <SearchableSelect
-                      options={countries}
+                      options={COUNTRIES}
                       value={field.value}
                       onValueChange={field.onChange}
                       placeholder="Select a country"
