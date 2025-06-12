@@ -1,4 +1,3 @@
-
 import { useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { Menu, X, LogOut, User, ChevronDown } from 'lucide-react'
@@ -11,6 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { VirgilioLogo } from '@/components/VirgilioLogo'
 import { useAuth } from '@/contexts/AuthContext'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -66,11 +66,7 @@ export function Header() {
           {/* Logo */}
           <div className="flex items-center">
             <Link to="/" className="hover:scale-105 transition-transform duration-default">
-              <img 
-                src="/virgilio-logo.png" 
-                alt="Virgilio" 
-                className="h-6 sm:h-8 w-auto"
-              />
+              <VirgilioLogo size="sm" />
             </Link>
           </div>
 
