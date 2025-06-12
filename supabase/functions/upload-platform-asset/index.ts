@@ -21,30 +21,34 @@ Deno.serve(async (req) => {
           autoRefreshToken: false,
           persistSession: false,
         },
+        global: {
+          headers: { Authorization: req.headers.get('Authorization') ?? '' }
+        }
       }
     )
 
-    // Get auth token from request
-    const authHeader = req.headers.get('Authorization')
-    if (!authHeader) {
+    // Get the user from the auth header
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    
+    if (userError || !user) {
+      console.log('Authentication failed:', userError)
       return new Response(
-        JSON.stringify({ error: 'No authorization header' }),
+        JSON.stringify({ error: 'Authentication required' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    // Set auth token
-    supabase.auth.setSession({ access_token: authHeader.replace('Bearer ', ''), refresh_token: '' })
+    console.log('Authenticated user:', user.id)
 
     // Verify user is platform admin
     const { data: memberData, error: memberError } = await supabase
       .from('members')
       .select('user_type')
-      .eq('user_id', (await supabase.auth.getUser()).data.user?.id)
+      .eq('user_id', user.id)
       .single()
 
     if (memberError || memberData?.user_type !== 'platform_admin') {
-      console.log('Unauthorized access attempt:', memberError)
+      console.log('Unauthorized access attempt:', memberError || 'Not platform admin')
       return new Response(
         JSON.stringify({ error: 'Unauthorized: Platform admin access required' }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -126,7 +130,7 @@ Deno.serve(async (req) => {
           asset_type: assetType,
           file_name: fileName,
           file_url: urlData.publicUrl,
-          uploaded_by: (await supabase.auth.getUser()).data.user?.id,
+          uploaded_by: user.id,
           is_active: false // Will be activated separately
         })
         .select()
