@@ -65,7 +65,7 @@ export function TypingAnimation() {
       {/* Animated Job Titles Container */}
       <div className="relative h-16 flex items-center">
         <div 
-          className={`text-4xl xl:text-5xl font-inter font-medium text-text-primary transition-all duration-500 ${
+          className={`text-4xl xl:text-5xl font-poppins font-bold text-text-primary transition-all duration-500 ${
             isSliding ? 'transform -translate-y-8 opacity-0' : 'transform translate-y-0 opacity-100'
           }`}
         >
