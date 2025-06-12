@@ -16,7 +16,6 @@ export function TypingAnimation() {
   const [currentTitleIndex, setCurrentTitleIndex] = useState(0)
   const [currentText, setCurrentText] = useState('')
   const [isTyping, setIsTyping] = useState(true)
-  const [showCursor, setShowCursor] = useState(true)
   const [isSliding, setIsSliding] = useState(false)
 
   useEffect(() => {
@@ -30,52 +29,40 @@ export function TypingAnimation() {
       return () => clearTimeout(timeout)
     } else if (isTyping && currentText.length === currentTitle.length) {
       // Finished typing, pause before sliding
-      setIsTyping(false)
-      const timeout = setTimeout(() => {
+      const pauseTimeout = setTimeout(() => {
+        setIsTyping(false)
         setIsSliding(true)
-        // Start sliding animation
+        
+        // Start sliding animation, then reset
         const slideTimeout = setTimeout(() => {
-          // Reset for next title
           setCurrentText('')
           setIsSliding(false)
           setIsTyping(true)
           setCurrentTitleIndex((prev) => (prev + 1) % jobTitles.length)
         }, 500) // Duration of slide animation
+        
         return () => clearTimeout(slideTimeout)
       }, 1500) // Pause before sliding
-      return () => clearTimeout(timeout)
+      
+      return () => clearTimeout(pauseTimeout)
     }
-  }, [currentText, currentTitleIndex, isTyping])
-
-  // Cursor blinking effect
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setShowCursor(prev => !prev)
-    }, 500)
-    return () => clearInterval(interval)
-  }, [])
+  }, [currentText, currentTitleIndex, isTyping, isSliding])
 
   return (
     <div className="text-left">
       {/* Static Headline */}
-      <h1 className="text-4xl xl:text-5xl font-poppins font-normal text-primary mb-2 leading-tight">
+      <h1 className="text-4xl xl:text-5xl font-poppins font-normal text-primary leading-tight">
         For all your hiring needs. <span className="font-bold">Globally.</span>
       </h1>
       
       {/* Animated Job Titles Container */}
-      <div className="relative h-16 flex items-center">
+      <div className="relative h-16 flex items-center mt-1">
         <div 
           className={`text-4xl xl:text-5xl font-poppins font-bold text-text-primary transition-all duration-500 ${
             isSliding ? 'transform -translate-y-8 opacity-0' : 'transform translate-y-0 opacity-100'
           }`}
         >
           {currentText}
-          <span 
-            className={`inline-block w-0.5 h-12 bg-primary ml-1 ${
-              showCursor ? 'opacity-100' : 'opacity-0'
-            }`}
-            style={{ transition: 'opacity 0.1s' }}
-          />
         </div>
       </div>
     </div>
