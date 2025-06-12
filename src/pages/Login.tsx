@@ -1,6 +1,5 @@
-
 import { useState } from 'react'
-import { Navigate } from 'react-router-dom'
+import { Navigate, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -13,6 +12,7 @@ import { Shield } from 'lucide-react'
 
 export default function Login() {
   const { login, isAuthenticated, isLoading } = useAuth()
+  const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -20,7 +20,7 @@ export default function Login() {
 
   // Redirect if already authenticated
   if (isAuthenticated) {
-    return <Navigate to="/" replace />
+    return <Navigate to="/dashboard" replace />
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -32,6 +32,9 @@ export default function Login() {
       const { error } = await login(email, password)
       if (error) {
         setError(error.message)
+      } else {
+        // Successful login - redirect to dashboard
+        navigate('/dashboard')
       }
     } catch (err) {
       setError('An unexpected error occurred')
