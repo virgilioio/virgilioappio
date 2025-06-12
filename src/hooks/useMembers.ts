@@ -92,14 +92,14 @@ export function useMembers() {
       if (userIds.length > 0) {
         try {
           // Try to get user data through a more direct approach
-          const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers()
+          const { data: authResponse, error: authError } = await supabase.auth.admin.listUsers()
           
           if (authError) {
             console.warn('Could not fetch auth users:', authError)
           } else {
-            console.log('Fetched auth users:', authUsers.users.length)
+            console.log('Fetched auth users:', authResponse.users.length)
             // Create mapping of user_id to email
-            authUsers.users.forEach(authUser => {
+            authResponse.users.forEach((authUser: any) => {
               if (userIds.includes(authUser.id)) {
                 userEmails[authUser.id] = authUser.email || ''
               }
