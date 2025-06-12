@@ -58,20 +58,20 @@ export function TypingAnimation() {
   return (
     <div className="text-left">
       {/* Static Headline */}
-      <h1 className="text-4xl xl:text-5xl font-poppins font-normal text-primary mb-4 leading-tight">
+      <h1 className="text-4xl xl:text-5xl font-poppins font-normal text-primary mb-2 leading-tight">
         For all your hiring needs. <span className="font-bold">Globally.</span>
       </h1>
       
       {/* Animated Job Titles Container */}
       <div className="relative h-16 flex items-center">
         <div 
-          className={`text-2xl xl:text-3xl font-inter font-medium text-text-primary transition-all duration-500 ${
+          className={`text-4xl xl:text-5xl font-inter font-medium text-text-primary transition-all duration-500 ${
             isSliding ? 'transform -translate-y-8 opacity-0' : 'transform translate-y-0 opacity-100'
           }`}
         >
           {currentText}
           <span 
-            className={`inline-block w-0.5 h-8 bg-primary ml-1 ${
+            className={`inline-block w-0.5 h-12 bg-primary ml-1 ${
               showCursor ? 'opacity-100' : 'opacity-0'
             }`}
             style={{ transition: 'opacity 0.1s' }}
