@@ -63,12 +63,15 @@ export function OrganizationForm({
   const { members } = useMembers()
   const isEditing = !!organization
 
-  // Get workspace owners for the owner dropdown
+  // Get workspace owners for the owner dropdown - filter out members without valid user_id
   const workspaceOwners = members.filter(member => 
     member.user_type === 'workspace_owner' && 
     member.user_status === 'active' &&
-    member.user_id // Only show members with actual user accounts
+    member.user_id && // Only show members with actual user accounts
+    member.user_id.trim() !== '' // Ensure it's not an empty string
   )
+
+  console.log('Workspace owners for select:', workspaceOwners)
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -76,7 +79,7 @@ export function OrganizationForm({
       name: '',
       country: '',
       status: 'active',
-      owner_id: ''
+      owner_id: 'none' // Use 'none' instead of empty string
     }
   })
 
@@ -86,14 +89,14 @@ export function OrganizationForm({
         name: organization.name,
         country: organization.country,
         status: organization.status,
-        owner_id: organization.owner_id || ''
+        owner_id: organization.owner_id || 'none' // Convert null to 'none'
       })
     } else {
       form.reset({
         name: '',
         country: '',
         status: 'active',
-        owner_id: ''
+        owner_id: 'none' // Use 'none' instead of empty string
       })
     }
   }, [organization, form])
@@ -102,8 +105,9 @@ export function OrganizationForm({
     try {
       const submitData = {
         ...data,
-        owner_id: data.owner_id || null
+        owner_id: data.owner_id === 'none' ? null : data.owner_id // Convert 'none' back to null
       }
+      console.log('Submitting organization data:', submitData)
       await onSubmit(submitData)
       onClose()
     } catch (error) {
@@ -202,9 +206,9 @@ export function OrganizationForm({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="">No owner assigned</SelectItem>
+                        <SelectItem value="none">No owner assigned</SelectItem>
                         {workspaceOwners.map((member) => (
-                          <SelectItem key={member.user_id} value={member.user_id || ''}>
+                          <SelectItem key={member.user_id} value={member.user_id!}>
                             {member.invited_email} ({member.user_type})
                           </SelectItem>
                         ))}
