@@ -64,10 +64,10 @@ export default function Login() {
           {/* Welcome Text */}
           <div className="mb-8">
             <h1 className="text-4xl font-bold text-foreground mb-2">
-              Bienvenido de vuelta
+              Welcome back
             </h1>
             <p className="text-lg text-muted-foreground">
-              Inicia sesión en tu cuenta para continuar
+              Sign in to your account to continue
             </p>
           </div>
 
@@ -77,14 +77,14 @@ export default function Login() {
               <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="space-y-2">
                   <Label htmlFor="email" className="text-base font-medium">
-                    Correo electrónico
+                    Email
                   </Label>
                   <Input
                     id="email"
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Ingresa tu correo electrónico"
+                    placeholder="Enter your email"
                     required
                     disabled={isSubmitting}
                     className="h-12 text-base"
@@ -93,14 +93,14 @@ export default function Login() {
 
                 <div className="space-y-2">
                   <Label htmlFor="password" className="text-base font-medium">
-                    Contraseña
+                    Password
                   </Label>
                   <Input
                     id="password"
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Ingresa tu contraseña"
+                    placeholder="Enter your password"
                     required
                     disabled={isSubmitting}
                     className="h-12 text-base"
@@ -119,7 +119,7 @@ export default function Login() {
                   disabled={isSubmitting}
                   size="lg"
                 >
-                  {isSubmitting ? 'Iniciando sesión...' : 'Iniciar sesión'}
+                  {isSubmitting ? 'Signing in...' : 'Sign in'}
                 </Button>
               </form>
             </CardContent>
@@ -143,10 +143,10 @@ export default function Login() {
                 <div className="text-4xl">🚀</div>
               </div>
               <h2 className="text-3xl font-bold text-foreground mb-4">
-                Conecta talento con oportunidad
+                Connect talent with opportunity
               </h2>
               <p className="text-lg text-muted-foreground">
-                Virgilio.io te ayuda a encontrar y gestionar el mejor talento para tu organización
+                Virgilio.io helps you find and manage the best talent for your organization
               </p>
             </div>
 
@@ -154,22 +154,22 @@ export default function Login() {
               <div className="bg-surface-primary/80 backdrop-blur-sm rounded-lg p-4 border border-border/20">
                 <div className="text-2xl mb-2">📊</div>
                 <div className="font-medium text-foreground">Analytics</div>
-                <div className="text-muted-foreground">Insights detallados</div>
+                <div className="text-muted-foreground">Detailed insights</div>
               </div>
               <div className="bg-surface-primary/80 backdrop-blur-sm rounded-lg p-4 border border-border/20">
                 <div className="text-2xl mb-2">🔒</div>
-                <div className="font-medium text-foreground">Seguridad</div>
-                <div className="text-muted-foreground">Datos protegidos</div>
+                <div className="font-medium text-foreground">Security</div>
+                <div className="text-muted-foreground">Protected data</div>
               </div>
               <div className="bg-surface-primary/80 backdrop-blur-sm rounded-lg p-4 border border-border/20">
                 <div className="text-2xl mb-2">⚡</div>
-                <div className="font-medium text-foreground">Velocidad</div>
-                <div className="text-muted-foreground">Procesos ágiles</div>
+                <div className="font-medium text-foreground">Speed</div>
+                <div className="text-muted-foreground">Agile processes</div>
               </div>
               <div className="bg-surface-primary/80 backdrop-blur-sm rounded-lg p-4 border border-border/20">
                 <div className="text-2xl mb-2">🎯</div>
-                <div className="font-medium text-foreground">Precisión</div>
-                <div className="text-muted-foreground">Matches perfectos</div>
+                <div className="font-medium text-foreground">Precision</div>
+                <div className="text-muted-foreground">Perfect matches</div>
               </div>
             </div>
           </div>
