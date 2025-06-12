@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
 import { VirgilioLogo } from '@/components/VirgilioLogo'
+import { TypingAnimation } from '@/components/TypingAnimation'
 import { useAuth } from '@/contexts/AuthContext'
 
 export default function Login() {
@@ -68,7 +69,8 @@ export default function Login() {
       </header>
 
       {/* Left Side - 70% with #fffead background */}
-      <div className="w-[70%] relative overflow-hidden" style={{ backgroundColor: '#fffead' }}>
+      <div className="w-[70%] relative overflow-hidden flex items-center justify-center" style={{ backgroundColor: '#fffead' }}>
+        <TypingAnimation />
       </div>
 
       {/* Right Side - 30% white background with login form */}
