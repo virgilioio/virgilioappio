@@ -1,8 +1,10 @@
+
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { FormField } from '@/components/ui/form-field'
 import { SearchableSelect } from '@/components/ui/searchable-select'
+import { Card, CardContent } from '@/components/ui/card'
 import { Save } from 'lucide-react'
 import { COUNTRIES } from '@/constants/countries'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -44,81 +46,89 @@ export function OrganizationForm({
 
   if (!organization) {
     return (
-      <div className="text-center py-8">
-        <p className="text-muted-foreground">No organization found.</p>
-        <p className="text-sm text-muted-foreground mt-2">
-          Contact your administrator to set up an organization.
-        </p>
-      </div>
+      <Card className="max-w-2xl mx-auto">
+        <CardContent className="text-center py-8">
+          <p className="text-muted-foreground">No organization found.</p>
+          <p className="text-sm text-muted-foreground mt-2">
+            Contact your administrator to set up an organization.
+          </p>
+        </CardContent>
+      </Card>
     )
   }
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      <div className="grid gap-4">
-        <FormField label="Organization Name" required htmlFor="org-name">
-          <Input
-            id="org-name"
-            value={formData.name}
-            onChange={(e) => updateFormData('name', e.target.value)}
-            placeholder="Enter organization name"
-          />
-        </FormField>
+      <Card>
+        <CardContent className="p-6">
+          <div className="grid gap-4">
+            <FormField label="Organization Name" required htmlFor="org-name">
+              <Input
+                id="org-name"
+                value={formData.name}
+                onChange={(e) => updateFormData('name', e.target.value)}
+                placeholder="Enter organization name"
+              />
+            </FormField>
 
-        <FormField label="Country" required htmlFor="org-country">
-          <SearchableSelect
-            options={COUNTRIES}
-            value={formData.country}
-            onValueChange={(value) => updateFormData('country', value)}
-            placeholder="Select country"
-            searchPlaceholder="Search countries..."
-            emptyMessage="No countries found."
-          />
-        </FormField>
+            <FormField label="Country" required htmlFor="org-country">
+              <SearchableSelect
+                options={COUNTRIES}
+                value={formData.country}
+                onValueChange={(value) => updateFormData('country', value)}
+                placeholder="Select country"
+                searchPlaceholder="Search countries..."
+                emptyMessage="No countries found."
+              />
+            </FormField>
 
-        {permissions.isPlatformAdmin && (
-          <FormField label="Status" htmlFor="org-status">
-            <Select 
-              value={formData.status} 
-              onValueChange={(value) => updateFormData('status', value as 'active' | 'inactive')}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="inactive">Inactive</SelectItem>
-              </SelectContent>
-            </Select>
-          </FormField>
-        )}
+            {permissions.isPlatformAdmin && (
+              <FormField label="Status" htmlFor="org-status">
+                <Select 
+                  value={formData.status} 
+                  onValueChange={(value) => updateFormData('status', value as 'active' | 'inactive')}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
+              </FormField>
+            )}
 
-        {!permissions.isPlatformAdmin && (
-          <FormField label="Status" htmlFor="org-status-readonly">
-            <div className="px-3 py-2 bg-muted rounded-md text-sm">
-              <span className="capitalize">{formData.status}</span>
-              <span className="text-muted-foreground ml-2">
-                (Only platform administrators can change status)
-              </span>
+            {!permissions.isPlatformAdmin && (
+              <FormField label="Status" htmlFor="org-status-readonly">
+                <div className="px-3 py-2 bg-muted rounded-md text-sm">
+                  <span className="capitalize">{formData.status}</span>
+                  <span className="text-muted-foreground ml-2">
+                    (Only platform administrators can change status)
+                  </span>
+                </div>
+              </FormField>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="p-6">
+          <div className="grid gap-2 text-sm text-muted-foreground">
+            <div className="flex justify-between">
+              <span>Organization ID:</span>
+              <code className="text-xs bg-muted px-2 py-1 rounded">{organization.id}</code>
             </div>
-          </FormField>
-        )}
-      </div>
-
-      <div className="pt-4 border-t">
-        <div className="grid gap-2 text-sm text-muted-foreground">
-          <div className="flex justify-between">
-            <span>Organization ID:</span>
-            <code className="text-xs bg-muted px-2 py-1 rounded">{organization.id}</code>
+            <div className="flex justify-between">
+              <span>Created:</span>
+              <span>{new Date(organization.created_at).toLocaleDateString()}</span>
+            </div>
           </div>
-          <div className="flex justify-between">
-            <span>Created:</span>
-            <span>{new Date(organization.created_at).toLocaleDateString()}</span>
-          </div>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
 
-      <div className="flex justify-end pt-4">
+      <div className="flex justify-end">
         <Button 
           onClick={onSave} 
           disabled={isLoading}
