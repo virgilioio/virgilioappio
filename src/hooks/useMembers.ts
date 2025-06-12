@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
@@ -80,14 +79,17 @@ export function useMembers() {
       
       const membersWithDetails = await Promise.all(
         (data || []).map(async (member) => {
+          // Fix: Properly access the profiles data from the joined query
+          const profile = Array.isArray(member.profiles) ? member.profiles[0] : member.profiles
+          
           const typedMember: Member = {
             ...member,
             member_role: member.member_role as 'recruiter' | 'customer_success' | 'billing' | 'sales' | 'admin' | 'client',
             user_status: member.user_status as 'active' | 'inactive' | 'invited',
             user_type: member.user_type as 'guest' | 'member' | 'workspace_owner' | 'platform_admin',
             organization_name: member.organizations?.name,
-            user_first_name: member.profiles?.first_name,
-            user_last_name: member.profiles?.last_name
+            user_first_name: profile?.first_name || null,
+            user_last_name: profile?.last_name || null
           }
           
           // Only try to fetch user email for platform admins and only if user_id exists
