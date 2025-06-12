@@ -1,5 +1,5 @@
 
-import { User, Building, Receipt, Users } from 'lucide-react'
+import { User, Building, Receipt, Users, Shield } from 'lucide-react'
 import { usePermissions } from '@/hooks/usePermissions'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -44,6 +44,12 @@ export function SettingsSidebar({ currentTab, onTabChange, className }: Settings
       label: 'Members', 
       icon: Users, 
       show: permissions.canViewMembers 
+    },
+    { 
+      id: 'platform', 
+      label: 'Platform', 
+      icon: Shield, 
+      show: permissions.isPlatformAdmin || permissions.canCreateOrganizations 
     },
   ].filter(item => item.show)
 

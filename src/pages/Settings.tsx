@@ -11,6 +11,7 @@ import { ProfileTab } from '@/components/settings/ProfileTab'
 import { OrganizationTab } from '@/components/settings/OrganizationTab'
 import { MembersTab } from '@/components/settings/MembersTab'
 import { BillingTab } from '@/components/settings/BillingTab'
+import { PlatformTab } from '@/components/settings/PlatformTab'
 import { DebugPanel } from '@/components/debug/DebugPanel'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useSearchParams, useNavigate } from 'react-router-dom'
@@ -71,11 +72,14 @@ export default function Settings() {
                 {/* Content */}
                 <div className="flex-1 min-w-0">
                   <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                    <TabsList className="lg:hidden grid w-full grid-cols-4 mb-6">
+                    <TabsList className="lg:hidden grid w-full grid-cols-5 mb-6">
                       <TabsTrigger value="profile">Profile</TabsTrigger>
                       <TabsTrigger value="organization">Org</TabsTrigger>
                       <TabsTrigger value="members">Members</TabsTrigger>
                       <TabsTrigger value="billing">Billing</TabsTrigger>
+                      {(permissions.isPlatformAdmin || permissions.canCreateOrganizations) && (
+                        <TabsTrigger value="platform">Platform</TabsTrigger>
+                      )}
                     </TabsList>
 
                     <TabsContent value="profile" className="mt-0">
@@ -92,6 +96,10 @@ export default function Settings() {
 
                     <TabsContent value="billing" className="mt-0">
                       <BillingTab />
+                    </TabsContent>
+
+                    <TabsContent value="platform" className="mt-0">
+                      <PlatformTab />
                     </TabsContent>
                   </Tabs>
                 </div>
