@@ -1,4 +1,3 @@
-
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -6,6 +5,7 @@ import { FormField } from '@/components/ui/form-field'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { Save } from 'lucide-react'
 import { COUNTRIES } from '@/constants/countries'
+import { usePermissions } from '@/hooks/usePermissions'
 
 interface OrganizationFormData {
   name: string
@@ -36,6 +36,8 @@ export function OrganizationForm({
   onSave, 
   isLoading 
 }: OrganizationFormProps) {
+  const permissions = usePermissions()
+  
   const updateFormData = (field: keyof OrganizationFormData, value: string) => {
     onFormDataChange({ ...formData, [field]: value })
   }
@@ -74,20 +76,33 @@ export function OrganizationForm({
           />
         </FormField>
 
-        <FormField label="Status" htmlFor="org-status">
-          <Select 
-            value={formData.status} 
-            onValueChange={(value) => updateFormData('status', value as 'active' | 'inactive')}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="inactive">Inactive</SelectItem>
-            </SelectContent>
-          </Select>
-        </FormField>
+        {permissions.isPlatformAdmin && (
+          <FormField label="Status" htmlFor="org-status">
+            <Select 
+              value={formData.status} 
+              onValueChange={(value) => updateFormData('status', value as 'active' | 'inactive')}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="inactive">Inactive</SelectItem>
+              </SelectContent>
+            </Select>
+          </FormField>
+        )}
+
+        {!permissions.isPlatformAdmin && (
+          <FormField label="Status" htmlFor="org-status-readonly">
+            <div className="px-3 py-2 bg-muted rounded-md text-sm">
+              <span className="capitalize">{formData.status}</span>
+              <span className="text-muted-foreground ml-2">
+                (Only platform administrators can change status)
+              </span>
+            </div>
+          </FormField>
+        )}
       </div>
 
       <div className="pt-4 border-t">
