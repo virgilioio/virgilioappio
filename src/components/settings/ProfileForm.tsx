@@ -1,7 +1,7 @@
 
 import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { FormField } from '@/components/ui/form-field'
+import { SearchableSelect } from '@/components/ui/searchable-select'
 
 interface ProfileFormData {
   first_name: string
@@ -18,10 +18,19 @@ interface ProfileFormProps {
 }
 
 export function ProfileForm({ formData, onFormDataChange }: ProfileFormProps) {
-  const timezones = [
-    'UTC', 'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles',
-    'Europe/London', 'Europe/Paris', 'Europe/Berlin', 'Asia/Tokyo', 'Asia/Shanghai',
-    'Australia/Sydney', 'Pacific/Auckland'
+  const timezoneOptions = [
+    { value: 'UTC', label: 'UTC' },
+    { value: 'America/New_York', label: 'America/New_York (Eastern Time)' },
+    { value: 'America/Chicago', label: 'America/Chicago (Central Time)' },
+    { value: 'America/Denver', label: 'America/Denver (Mountain Time)' },
+    { value: 'America/Los_Angeles', label: 'America/Los_Angeles (Pacific Time)' },
+    { value: 'Europe/London', label: 'Europe/London (GMT)' },
+    { value: 'Europe/Paris', label: 'Europe/Paris (CET)' },
+    { value: 'Europe/Berlin', label: 'Europe/Berlin (CET)' },
+    { value: 'Asia/Tokyo', label: 'Asia/Tokyo (JST)' },
+    { value: 'Asia/Shanghai', label: 'Asia/Shanghai (CST)' },
+    { value: 'Australia/Sydney', label: 'Australia/Sydney (AEDT)' },
+    { value: 'Pacific/Auckland', label: 'Pacific/Auckland (NZDT)' }
   ]
 
   const updateFormData = (field: keyof ProfileFormData, value: string) => {
@@ -68,21 +77,14 @@ export function ProfileForm({ formData, onFormDataChange }: ProfileFormProps) {
       </FormField>
 
       <FormField label="Timezone" htmlFor="timezone">
-        <Select 
-          value={formData.timezone} 
+        <SearchableSelect
+          options={timezoneOptions}
+          value={formData.timezone}
           onValueChange={(value) => updateFormData('timezone', value)}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Select timezone" />
-          </SelectTrigger>
-          <SelectContent>
-            {timezones.map((tz) => (
-              <SelectItem key={tz} value={tz}>
-                {tz}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          placeholder="Select timezone"
+          searchPlaceholder="Search timezones..."
+          emptyMessage="No timezones found."
+        />
       </FormField>
 
       <FormField 

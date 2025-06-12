@@ -1,8 +1,9 @@
 
+import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Button } from '@/components/ui/button'
 import { FormField } from '@/components/ui/form-field'
+import { SearchableSelect } from '@/components/ui/searchable-select'
 import { Save } from 'lucide-react'
 
 interface OrganizationFormData {
@@ -34,9 +35,18 @@ export function OrganizationForm({
   onSave, 
   isLoading 
 }: OrganizationFormProps) {
-  const countries = [
-    'United States', 'Canada', 'United Kingdom', 'Germany', 'France', 
-    'Italy', 'Spain', 'Netherlands', 'Australia', 'Japan', 'Other'
+  const countryOptions = [
+    { value: 'United States', label: 'United States' },
+    { value: 'Canada', label: 'Canada' },
+    { value: 'United Kingdom', label: 'United Kingdom' },
+    { value: 'Germany', label: 'Germany' },
+    { value: 'France', label: 'France' },
+    { value: 'Italy', label: 'Italy' },
+    { value: 'Spain', label: 'Spain' },
+    { value: 'Netherlands', label: 'Netherlands' },
+    { value: 'Australia', label: 'Australia' },
+    { value: 'Japan', label: 'Japan' },
+    { value: 'Other', label: 'Other' }
   ]
 
   const updateFormData = (field: keyof OrganizationFormData, value: string) => {
@@ -67,21 +77,14 @@ export function OrganizationForm({
         </FormField>
 
         <FormField label="Country" required htmlFor="org-country">
-          <Select 
-            value={formData.country} 
+          <SearchableSelect
+            options={countryOptions}
+            value={formData.country}
             onValueChange={(value) => updateFormData('country', value)}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select country" />
-            </SelectTrigger>
-            <SelectContent>
-              {countries.map((country) => (
-                <SelectItem key={country} value={country}>
-                  {country}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            placeholder="Select country"
+            searchPlaceholder="Search countries..."
+            emptyMessage="No countries found."
+          />
         </FormField>
 
         <FormField label="Status" htmlFor="org-status">

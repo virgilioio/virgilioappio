@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form'
+import { SearchableSelect } from '@/components/ui/searchable-select'
 import { Organization, CreateOrganizationData, UpdateOrganizationData } from '@/hooks/useOrganizations'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useMembers } from '@/hooks/useMembers'
@@ -50,7 +51,7 @@ const countries = [
   'Spain',
   'Italy',
   'Portugal'
-].sort()
+].sort().map(country => ({ value: country, label: country }))
 
 export function OrganizationForm({ 
   isOpen, 
@@ -70,6 +71,14 @@ export function OrganizationForm({
     member.user_id && // Only show members with actual user accounts
     member.user_id.trim() !== '' // Ensure it's not an empty string
   )
+
+  const ownerOptions = [
+    { value: 'none', label: 'No owner assigned' },
+    ...workspaceOwners.map(member => ({
+      value: member.user_id!,
+      label: `${member.invited_email} (${member.user_type})`
+    }))
+  ]
 
   console.log('Workspace owners for select:', workspaceOwners)
 
@@ -151,20 +160,16 @@ export function OrganizationForm({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Country</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a country" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {countries.map((country) => (
-                        <SelectItem key={country} value={country}>
-                          {country}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <FormControl>
+                    <SearchableSelect
+                      options={countries}
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      placeholder="Select a country"
+                      searchPlaceholder="Search countries..."
+                      emptyMessage="No countries found."
+                    />
+                  </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
@@ -199,21 +204,16 @@ export function OrganizationForm({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Owner (Optional)</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select an owner" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="none">No owner assigned</SelectItem>
-                        {workspaceOwners.map((member) => (
-                          <SelectItem key={member.user_id} value={member.user_id!}>
-                            {member.invited_email} ({member.user_type})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <FormControl>
+                      <SearchableSelect
+                        options={ownerOptions}
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        placeholder="Select an owner"
+                        searchPlaceholder="Search owners..."
+                        emptyMessage="No owners found."
+                      />
+                    </FormControl>
                     <FormDescription>
                       Optional. Assign later after inviting a workspace owner.
                     </FormDescription>
