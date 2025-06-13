@@ -79,6 +79,19 @@ export function usePermissions(): PermissionsState {
   
   // Guests are users without membership or org context
   const isGuest = (memberRole === 'guest' || !hasOrganizationContext) && !isPlatformAdmin && !isWorkspaceOwner
+
+  // Add debug logging to help troubleshoot permission issues
+  console.log('Permission Debug:', {
+    userType,
+    memberRole,
+    isPlatformAdmin,
+    isWorkspaceOwner,
+    isBillingMember,
+    hasOrganizationContext,
+    isClient,
+    isMember,
+    isGuest
+  })
   
   return {
     // Job permissions - SECURED: Only platform admins and admin members can create jobs directly
@@ -109,12 +122,12 @@ export function usePermissions(): PermissionsState {
     canManageJobRequests: isPlatformAdmin || memberRole === 'admin' || memberRole === 'customer_success',
     canRequestJobs: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin', 'client'].includes(memberRole),
     
-    // Candidate permissions - clients can view candidates for their jobs
+    // Candidate permissions - FIXED: Only Platform Admins and Virgilio team members (recruiters/admins) can manage candidates
     canViewCandidates: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin', 'client'].includes(memberRole),
-    canCreateCandidates: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin'].includes(memberRole),
-    canEditCandidates: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin'].includes(memberRole),
-    canDeleteCandidates: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin',
-    canManageCandidates: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin'].includes(memberRole),
+    canCreateCandidates: isPlatformAdmin || ['recruiter', 'admin'].includes(memberRole),
+    canEditCandidates: isPlatformAdmin || ['recruiter', 'admin'].includes(memberRole),
+    canDeleteCandidates: isPlatformAdmin || memberRole === 'admin',
+    canManageCandidates: isPlatformAdmin || ['recruiter', 'admin'].includes(memberRole),
     
     // Billing & Invoice permissions - CRITICAL SECURITY FIX
     // Only users with org context can view billing (prevents guests from accessing)
