@@ -471,6 +471,7 @@ export type Database = {
           first_name: string | null
           last_name: string | null
           linkedin_url: string | null
+          organization_id: string | null
           phone: string | null
           timezone: string | null
           title: string | null
@@ -483,6 +484,7 @@ export type Database = {
           first_name?: string | null
           last_name?: string | null
           linkedin_url?: string | null
+          organization_id?: string | null
           phone?: string | null
           timezone?: string | null
           title?: string | null
@@ -495,6 +497,7 @@ export type Database = {
           first_name?: string | null
           last_name?: string | null
           linkedin_url?: string | null
+          organization_id?: string | null
           phone?: string | null
           timezone?: string | null
           title?: string | null
@@ -534,6 +537,14 @@ export type Database = {
       get_invite_expiry: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      get_member_display_info: {
+        Args: { member_user_id: string }
+        Returns: {
+          first_name: string
+          last_name: string
+          email: string
+        }[]
       }
       get_member_role: {
         Args: Record<PropertyKey, never>

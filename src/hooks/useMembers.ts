@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
@@ -51,13 +52,17 @@ export function useMembers() {
     try {
       console.log('Fetching members for user:', user.id)
       
-      // First, fetch members with organization data
+      // Fetch members with organization data and profile data using proper JOINs
       const { data: membersData, error: membersError } = await supabase
         .from('members')
         .select(`
           *,
           organizations!inner (
             name
+          ),
+          profiles (
+            first_name,
+            last_name
           )
         `)
         .order('created_at', { ascending: false })
@@ -72,7 +77,7 @@ export function useMembers() {
         throw membersError
       }
 
-      console.log('Fetched members raw data:', membersData)
+      console.log('Fetched members with profile data:', membersData)
 
       if (!membersData || membersData.length === 0) {
         console.log('No members found')
@@ -80,65 +85,9 @@ export function useMembers() {
         return
       }
 
-      // Get unique user IDs that are not null
-      const userIds = membersData
-        .filter(member => member.user_id)
-        .map(member => member.user_id)
-
-      console.log('User IDs to fetch:', userIds)
-
-      // Fetch user emails from auth.users using the admin client
-      let userEmails: Record<string, string> = {}
-      if (userIds.length > 0) {
-        try {
-          // Try to get user data through a more direct approach
-          const { data: authResponse, error: authError } = await supabase.auth.admin.listUsers()
-          
-          if (authError) {
-            console.warn('Could not fetch auth users:', authError)
-          } else {
-            console.log('Fetched auth users:', authResponse.users.length)
-            // Create mapping of user_id to email
-            authResponse.users.forEach((authUser: any) => {
-              if (userIds.includes(authUser.id)) {
-                userEmails[authUser.id] = authUser.email || ''
-              }
-            })
-            console.log('User emails mapping:', userEmails)
-          }
-        } catch (authError) {
-          console.warn('Auth users fetch failed, will try profiles fallback:', authError)
-        }
-      }
-
-      // Fetch profiles data
-      let profilesData: any[] = []
-      if (userIds.length > 0) {
-        const { data: profiles, error: profilesError } = await supabase
-          .from('profiles')
-          .select('user_id, first_name, last_name')
-          .in('user_id', userIds)
-
-        if (profilesError) {
-          console.warn('Error fetching profiles:', profilesError)
-        } else {
-          profilesData = profiles || []
-          console.log('Fetched profiles:', profilesData)
-        }
-      }
-
-      // Create profiles mapping
-      const profilesMap = profilesData.reduce((acc, profile) => {
-        acc[profile.user_id] = profile
-        return acc
-      }, {} as Record<string, any>)
-
-      console.log('Profiles mapping:', profilesMap)
-
-      // Combine all data
+      // Transform the data to match our Member interface
       const membersWithDetails = membersData.map((member) => {
-        const profile = member.user_id ? profilesMap[member.user_id] : null
-        const userEmail = member.user_id ? userEmails[member.user_id] : null
+        const profile = member.profiles
         
         const typedMember: Member = {
           ...member,
@@ -148,13 +97,12 @@ export function useMembers() {
           organization_name: member.organizations?.name,
           user_first_name: profile?.first_name || null,
           user_last_name: profile?.last_name || null,
-          user_email: userEmail || null
+          user_email: null // We'll populate this separately if needed
         }
         
         console.log('Processed member:', {
           id: typedMember.id,
           user_id: typedMember.user_id,
-          user_email: typedMember.user_email,
           user_first_name: typedMember.user_first_name,
           user_last_name: typedMember.user_last_name,
           invited_email: typedMember.invited_email,

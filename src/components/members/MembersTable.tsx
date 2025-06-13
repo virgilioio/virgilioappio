@@ -1,4 +1,3 @@
-
 import { useState } from 'react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
@@ -67,8 +66,8 @@ export function MembersTable({
       return member.user_email
     }
     
-    // Last resort - show invited email or placeholder
-    return member.invited_email || 'Unknown Member'
+    // Last resort - show invited email or indicate pending
+    return member.invited_email || 'Member (Name Pending)'
   }
 
   const getStatusBadge = (status: string) => {
