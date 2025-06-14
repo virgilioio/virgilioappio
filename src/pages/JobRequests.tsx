@@ -9,6 +9,7 @@ import { PermissionGate } from '@/components/auth/PermissionGate'
 import { GuestRestriction } from '@/components/auth/GuestRestriction'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { ListTodo } from 'lucide-react'
 
 export default function JobRequests() {
   const {
@@ -64,7 +65,10 @@ export default function JobRequests() {
   return (
     <div className="container mx-auto py-6 sm:py-8 px-4 sm:px-6 lg:px-8 space-y-6 sm:space-y-8">
       <div>
-        <h1 className="text-2xl sm:text-3xl font-bold">Job Requests</h1>
+        <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
+          <ListTodo className="h-6 w-6 sm:h-7 sm:w-7" />
+          Job Requests
+        </h1>
         <p className="text-muted-foreground mt-2 text-sm sm:text-md">
           Manage job requests and approvals
         </p>

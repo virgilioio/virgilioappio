@@ -1,3 +1,4 @@
+
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
@@ -11,6 +12,7 @@ import { JobRequestForm } from '@/components/job-requests/JobRequestForm'
 import { useJobs, Job } from '@/hooks/useJobs'
 import { useJobRequests } from '@/hooks/useJobRequests'
 import { usePermissions } from '@/hooks/usePermissions'
+import { Briefcase } from 'lucide-react'
 
 export default function Jobs() {
   const navigate = useNavigate()
@@ -91,7 +93,10 @@ export default function Jobs() {
         <div className="min-h-screen bg-background">
           <div className="container mx-auto py-6 sm:py-8 lg:py-12 px-4 sm:px-6 lg:px-8">
             <div className="mb-6 sm:mb-8 lg:mb-12">
-              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Jobs</h1>
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
+                <Briefcase className="h-6 w-6 sm:h-7 sm:w-7" />
+                Jobs
+              </h1>
               <p className="text-muted-foreground mt-2 text-sm sm:text-md">
                 Manage job postings and track hiring progress
               </p>
