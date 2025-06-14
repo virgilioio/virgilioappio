@@ -50,15 +50,46 @@ export function OrganizationForm({
     member.user_id.trim() !== '' // Ensure it's not an empty string
   )
 
+  // Create formatted options for the owner dropdown
   const ownerOptions = [
     { value: 'none', label: 'No owner assigned' },
-    ...workspaceOwners.map(member => ({
-      value: member.user_id!,
-      label: `${member.invited_email} (${member.user_type})`
-    }))
+    ...workspaceOwners.map(member => {
+      const firstName = member.user_first_name || ''
+      const lastName = member.user_last_name || ''
+      const fullName = `${firstName} ${lastName}`.trim()
+      const email = member.user_email || member.invited_email || ''
+      
+      let displayLabel = ''
+      if (fullName && email) {
+        displayLabel = `${fullName} (${email})`
+      } else if (email) {
+        displayLabel = email
+      } else if (fullName) {
+        displayLabel = `${fullName} (No email)`
+      } else {
+        displayLabel = `Unknown User (ID: ${member.user_id})`
+      }
+      
+      return {
+        value: member.user_id!,
+        label: displayLabel
+      }
+    }),
+    // Also include invited workspace owners
+    ...members
+      .filter(member => 
+        member.user_type === 'workspace_owner' && 
+        member.user_status === 'invited' &&
+        member.invited_email
+      )
+      .map(member => ({
+        value: `invited_${member.id}`, // Use a different prefix for invited users
+        label: `Pending Invitation (${member.invited_email})`
+      }))
   ]
 
   console.log('Workspace owners for select:', workspaceOwners)
+  console.log('Owner options:', ownerOptions)
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -92,7 +123,8 @@ export function OrganizationForm({
     try {
       const submitData = {
         ...data,
-        owner_id: data.owner_id === 'none' ? null : data.owner_id // Convert 'none' back to null
+        // Only set owner_id if it's not 'none' and doesn't start with 'invited_'
+        owner_id: data.owner_id === 'none' || data.owner_id?.startsWith('invited_') ? null : data.owner_id
       }
       console.log('Submitting organization data:', submitData)
       await onSubmit(submitData)
@@ -193,7 +225,8 @@ export function OrganizationForm({
                       />
                     </FormControl>
                     <FormDescription>
-                      Optional. Assign later after inviting a workspace owner.
+                      Optional. You can assign a workspace owner to manage this organization.
+                      {ownerOptions.length <= 1 && " No workspace owners available - invite users with workspace owner role first."}
                     </FormDescription>
                     <FormMessage />
                   </FormItem>

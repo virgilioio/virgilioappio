@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
@@ -85,6 +84,22 @@ export function useMembers() {
         return
       }
 
+      // For active members with user_id, fetch their actual email from auth.users
+      const activeUserIds = membersData
+        .filter(member => member.user_id && member.user_status === 'active')
+        .map(member => member.user_id)
+
+      let userEmails: { [key: string]: string } = {}
+      if (activeUserIds.length > 0) {
+        try {
+          // We can only get user emails for the current user or through admin API
+          // For now, we'll use the profile data and invited_email as fallback
+          console.log('Active user IDs found:', activeUserIds)
+        } catch (emailError) {
+          console.warn('Could not fetch user emails:', emailError)
+        }
+      }
+
       // Transform the data to match our Member interface
       const membersWithDetails = membersData.map((member) => {
         const profile = member.profiles
@@ -97,7 +112,7 @@ export function useMembers() {
           organization_name: member.organizations?.name,
           user_first_name: profile?.first_name || null,
           user_last_name: profile?.last_name || null,
-          user_email: null // We'll populate this separately if needed
+          user_email: userEmails[member.user_id] || member.invited_email || null
         }
         
         console.log('Processed member:', {
@@ -105,6 +120,7 @@ export function useMembers() {
           user_id: typedMember.user_id,
           user_first_name: typedMember.user_first_name,
           user_last_name: typedMember.user_last_name,
+          user_email: typedMember.user_email,
           invited_email: typedMember.invited_email,
           user_status: typedMember.user_status
         })
