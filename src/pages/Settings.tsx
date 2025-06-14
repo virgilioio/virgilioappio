@@ -13,7 +13,7 @@ import { PlatformTab } from '@/components/settings/PlatformTab'
 import { DebugPanel } from '@/components/debug/DebugPanel'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useSearchParams, useNavigate } from 'react-router-dom'
-import { Settings } from 'lucide-react'
+import { Settings as SettingsIcon } from 'lucide-react'
 
 export default function Settings() {
   const [searchParams] = useSearchParams()
@@ -41,7 +41,7 @@ export default function Settings() {
           <div className="container mx-auto py-6 sm:py-8 lg:py-12 px-4 sm:px-6 lg:px-8">
             <div className="mb-6 sm:mb-8 lg:mb-12">
               <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
-                <Settings className="h-6 w-6 sm:h-7 sm:w-7" />
+                <SettingsIcon className="h-6 w-6 sm:h-7 sm:w-7" />
                 Settings
               </h1>
               <p className="text-muted-foreground mt-2 text-sm sm:text-md">
