@@ -1,4 +1,3 @@
-
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -6,6 +5,7 @@ import { SearchableSelect } from '@/components/ui/searchable-select'
 import { FormField } from '@/components/ui/form-field'
 import { useJobAssignments } from '@/hooks/useJobAssignments'
 import { useMembers } from '@/hooks/useMembers'
+import { useOrganizations } from '@/hooks/useOrganizations'
 import { usePermissions } from '@/hooks/usePermissions'
 import { User, UserMinus } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
@@ -19,6 +19,7 @@ export function JobAssignmentsPanel({ jobId, jobTitle }: JobAssignmentsPanelProp
   const [selectedUserId, setSelectedUserId] = useState('')
   const { assignments, assignUserToJob, removeUserFromJob, isLoading: assignmentsLoading } = useJobAssignments(jobId)
   const { members, isLoading: membersLoading } = useMembers()
+  const { organizations } = useOrganizations()
   const permissions = usePermissions()
 
   // Security check - only platform admins and customer success can access
@@ -37,16 +38,19 @@ export function JobAssignmentsPanel({ jobId, jobTitle }: JobAssignmentsPanelProp
     return member.user_id && !assignedUserIds.has(member.user_id)
   })
 
-  // Create options for the searchable select
+  // Create options for the searchable select with organization names
   const userOptions = unassignedUsers.map(member => {
     const firstName = member.user_first_name || ''
     const lastName = member.user_last_name || ''
     const displayName = `${firstName} ${lastName}`.trim() || 'Unnamed User'
-    const email = member.invited_email || 'No email'
+    
+    // Find the organization name
+    const organization = organizations.find(org => org.id === member.organization_id)
+    const organizationName = organization?.name || 'Unknown Organization'
     
     return {
       value: member.user_id!,
-      label: `${displayName} (${email}) - ${member.member_role}`
+      label: `${displayName} - ${organizationName}`
     }
   })
 
