@@ -63,122 +63,124 @@ export default function JobRequests() {
   }
 
   return (
-    <div className="container mx-auto py-6 sm:py-8 px-4 sm:px-6 lg:px-8 space-y-6 sm:space-y-8">
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-2">
-          <ListTodo className="h-6 w-6 sm:h-7 sm:w-7" />
-          Job Requests
-        </h1>
-        <p className="text-muted-foreground mt-2 text-sm sm:text-md">
-          Manage job requests and approvals
-        </p>
-      </div>
-
-      <PermissionGate 
-        permission="canViewJobRequests"
-        fallback={
-          <GuestRestriction 
-            action="view job requests" 
-            suggestion="Contact your administrator to request access to job request management."
-          />
-        }
-      >
-        <JobRequestTable
-          jobRequests={jobRequests}
-          isLoading={isLoading}
-          onView={handleView}
-          onApprove={handleApprove}
-          onDelete={handleDelete}
-          onCreateNew={handleCreateNew}
+    <PermissionGate 
+      permission="canViewJobRequests"
+      fallback={
+        <GuestRestriction 
+          action="view job requests" 
+          suggestion="Contact your administrator to request access to job request management."
         />
-      </PermissionGate>
+      }
+    >
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto py-6 sm:py-8 lg:py-12 px-4 sm:px-6 lg:px-8">
+          <div className="mb-6 sm:mb-8 lg:mb-12">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
+              <ListTodo className="h-6 w-6 sm:h-7 sm:w-7" />
+              Job Requests
+            </h1>
+            <p className="text-muted-foreground mt-2 text-sm sm:text-md">
+              Manage job requests and approvals
+            </p>
+          </div>
 
-      <Dialog open={showForm} onOpenChange={setShowForm}>
-        <DialogContent className="mx-4 max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Request New Job</DialogTitle>
-          </DialogHeader>
-          <JobRequestForm
-            onSubmit={handleFormSubmit}
-            onCancel={handleFormCancel}
+          <JobRequestTable
+            jobRequests={jobRequests}
             isLoading={isLoading}
+            onView={handleView}
+            onApprove={handleApprove}
+            onDelete={handleDelete}
+            onCreateNew={handleCreateNew}
           />
-        </DialogContent>
-      </Dialog>
 
-      {selectedRequest && (
-        <Dialog open={!!selectedRequest} onOpenChange={() => setSelectedRequest(null)}>
-          <DialogContent className="mx-4 max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Job Request Details</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <h3 className="font-semibold text-lg truncate">{selectedRequest.title}</h3>
-                  <p className="text-sm text-muted-foreground">Level: {selectedRequest.level}</p>
-                </div>
-                <Badge variant={selectedRequest.status === 'pending' ? 'secondary' : selectedRequest.status === 'approved' ? 'default' : 'destructive'} className="self-start">
-                  {selectedRequest.status}
-                </Badge>
-              </div>
-              
-              {selectedRequest.description && (
-                <div>
-                  <h4 className="font-medium">Description</h4>
-                  <p className="text-sm leading-relaxed break-words">{selectedRequest.description}</p>
-                </div>
-              )}
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="font-medium">Department:</span> 
-                  <span className="ml-1 break-words">{selectedRequest.department || 'Not specified'}</span>
-                </div>
-                <div>
-                  <span className="font-medium">Location:</span> 
-                  <span className="ml-1 break-words">{selectedRequest.location || 'Not specified'}</span>
-                </div>
-                <div className="sm:col-span-2">
-                  <span className="font-medium">Salary Range:</span> 
-                  <span className="ml-1 break-words">{formatSalary(selectedRequest.salary_min, selectedRequest.salary_max, selectedRequest.currency)}</span>
-                </div>
-                <div>
-                  <span className="font-medium">Created:</span> 
-                  <span className="ml-1">{new Date(selectedRequest.created_at).toLocaleDateString()}</span>
-                </div>
-                {selectedRequest.approved_at && (
-                  <div>
-                    <span className="font-medium">Approved:</span> 
-                    <span className="ml-1">{new Date(selectedRequest.approved_at).toLocaleDateString()}</span>
+          <Dialog open={showForm} onOpenChange={setShowForm}>
+            <DialogContent className="mx-4 max-w-2xl">
+              <DialogHeader>
+                <DialogTitle>Request New Job</DialogTitle>
+              </DialogHeader>
+              <JobRequestForm
+                onSubmit={handleFormSubmit}
+                onCancel={handleFormCancel}
+                isLoading={isLoading}
+              />
+            </DialogContent>
+          </Dialog>
+
+          {selectedRequest && (
+            <Dialog open={!!selectedRequest} onOpenChange={() => setSelectedRequest(null)}>
+              <DialogContent className="mx-4 max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Job Request Details</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <h3 className="font-semibold text-lg truncate">{selectedRequest.title}</h3>
+                      <p className="text-sm text-muted-foreground">Level: {selectedRequest.level}</p>
+                    </div>
+                    <Badge variant={selectedRequest.status === 'pending' ? 'secondary' : selectedRequest.status === 'approved' ? 'default' : 'destructive'} className="self-start">
+                      {selectedRequest.status}
+                    </Badge>
                   </div>
-                )}
-                {selectedRequest.approver_role && (
-                  <div>
-                    <span className="font-medium">Approved by:</span> 
-                    <span className="ml-1">{selectedRequest.approver_role}</span>
+                  
+                  {selectedRequest.description && (
+                    <div>
+                      <h4 className="font-medium">Description</h4>
+                      <p className="text-sm leading-relaxed break-words">{selectedRequest.description}</p>
+                    </div>
+                  )}
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="font-medium">Department:</span> 
+                      <span className="ml-1 break-words">{selectedRequest.department || 'Not specified'}</span>
+                    </div>
+                    <div>
+                      <span className="font-medium">Location:</span> 
+                      <span className="ml-1 break-words">{selectedRequest.location || 'Not specified'}</span>
+                    </div>
+                    <div className="sm:col-span-2">
+                      <span className="font-medium">Salary Range:</span> 
+                      <span className="ml-1 break-words">{formatSalary(selectedRequest.salary_min, selectedRequest.salary_max, selectedRequest.currency)}</span>
+                    </div>
+                    <div>
+                      <span className="font-medium">Created:</span> 
+                      <span className="ml-1">{new Date(selectedRequest.created_at).toLocaleDateString()}</span>
+                    </div>
+                    {selectedRequest.approved_at && (
+                      <div>
+                        <span className="font-medium">Approved:</span> 
+                        <span className="ml-1">{new Date(selectedRequest.approved_at).toLocaleDateString()}</span>
+                      </div>
+                    )}
+                    {selectedRequest.approver_role && (
+                      <div>
+                        <span className="font-medium">Approved by:</span> 
+                        <span className="ml-1">{selectedRequest.approver_role}</span>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
 
-              {selectedRequest.notes && (
-                <div>
-                  <h4 className="font-medium">Notes</h4>
-                  <p className="text-sm leading-relaxed break-words">{selectedRequest.notes}</p>
-                </div>
-              )}
+                  {selectedRequest.notes && (
+                    <div>
+                      <h4 className="font-medium">Notes</h4>
+                      <p className="text-sm leading-relaxed break-words">{selectedRequest.notes}</p>
+                    </div>
+                  )}
 
-              {selectedRequest.job_id && (
-                <div className="bg-green-50 p-3 rounded-lg">
-                  <p className="text-sm text-green-800 break-words">
-                    ✅ This request has been approved and converted to a job (ID: {selectedRequest.job_id})
-                  </p>
+                  {selectedRequest.job_id && (
+                    <div className="bg-green-50 p-3 rounded-lg">
+                      <p className="text-sm text-green-800 break-words">
+                        ✅ This request has been approved and converted to a job (ID: {selectedRequest.job_id})
+                      </p>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
-    </div>
+              </DialogContent>
+            </Dialog>
+          )}
+        </div>
+      </div>
+    </PermissionGate>
   )
 }
