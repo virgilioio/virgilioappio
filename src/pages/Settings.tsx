@@ -3,9 +3,6 @@ import { useState } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { AuthGate } from '@/components/auth/AuthGate'
 import { OrgGate } from '@/components/auth/OrgGate'
-import { AppContainer } from '@/components/layout/AppContainer'
-import { PageHeader } from '@/components/layout/PageHeader'
-import { Section } from '@/components/layout/Section'
 import { SettingsSidebar } from '@/components/settings/SettingsSidebar'
 import { SettingsMobileHeader } from '@/components/settings/SettingsMobileHeader'
 import { ProfileTab } from '@/components/settings/ProfileTab'
@@ -16,6 +13,7 @@ import { PlatformTab } from '@/components/settings/PlatformTab'
 import { DebugPanel } from '@/components/debug/DebugPanel'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useSearchParams, useNavigate } from 'react-router-dom'
+import { Settings } from 'lucide-react'
 
 export default function Settings() {
   const [searchParams] = useSearchParams()
@@ -39,73 +37,78 @@ export default function Settings() {
   return (
     <AuthGate>
       <OrgGate>
-        <Section className="min-h-screen">
-          <AppContainer variant="default">
-            <div className="py-lg">
-              <PageHeader
-                title="Settings"
-                subtitle="Manage your account preferences and organization settings"
-              />
+        <div className="min-h-screen bg-background">
+          <div className="container mx-auto py-6 sm:py-8 lg:py-12 px-4 sm:px-6 lg:px-8">
+            <div className="mb-6 sm:mb-8 lg:mb-12">
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
+                <Settings className="h-6 w-6 sm:h-7 sm:w-7" />
+                Settings
+              </h1>
+              <p className="text-muted-foreground mt-2 text-sm sm:text-md">
+                Manage your account preferences and organization settings
+              </p>
+            </div>
 
-              {/* Debug Panel for Development */}
-              {showDebugPanel && (
-                <div className="mb-lg">
-                  <DebugPanel />
-                </div>
-              )}
+            {/* Debug Panel for Development */}
+            {showDebugPanel && (
+              <div className="mb-6">
+                <DebugPanel />
+              </div>
+            )}
 
-              <div className="flex flex-col lg:flex-row gap-lg">
-                {/* Mobile Header */}
-                <div className="lg:hidden">
-                  <SettingsMobileHeader 
-                    onMenuToggle={handleMenuToggle} 
-                    onBackToDashboard={handleBackToDashboard} 
-                  />
-                </div>
+            <div className="flex flex-col lg:flex-row gap-6">
+              {/* Mobile Header */}
+              <div className="lg:hidden">
+                <SettingsMobileHeader 
+                  onMenuToggle={handleMenuToggle} 
+                  onBackToDashboard={handleBackToDashboard} 
+                />
+              </div>
 
-                {/* Desktop Sidebar */}
-                <div className="hidden lg:block lg:w-60 flex-shrink-0">
+              {/* Desktop Sidebar */}
+              <div className="hidden lg:block lg:w-60 flex-shrink-0">
+                <div className="bg-card border border-border rounded-lg shadow-sm">
                   <SettingsSidebar currentTab={activeTab} onTabChange={setActiveTab} />
                 </div>
+              </div>
 
-                {/* Content */}
-                <div className="flex-1 min-w-0">
-                  <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                    <TabsList className="lg:hidden grid w-full grid-cols-5 mb-lg">
-                      <TabsTrigger value="profile" className="text-xs">Profile</TabsTrigger>
-                      <TabsTrigger value="organization" className="text-xs">Org</TabsTrigger>
-                      <TabsTrigger value="members" className="text-xs">Members</TabsTrigger>
-                      <TabsTrigger value="billing" className="text-xs">Billing</TabsTrigger>
-                      {(permissions.isPlatformAdmin || permissions.canCreateOrganizations) && (
-                        <TabsTrigger value="platform" className="text-xs">Platform</TabsTrigger>
-                      )}
-                    </TabsList>
+              {/* Content */}
+              <div className="flex-1 min-w-0">
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                  <TabsList className="lg:hidden grid w-full grid-cols-5 mb-6">
+                    <TabsTrigger value="profile" className="text-xs">Profile</TabsTrigger>
+                    <TabsTrigger value="organization" className="text-xs">Org</TabsTrigger>
+                    <TabsTrigger value="members" className="text-xs">Members</TabsTrigger>
+                    <TabsTrigger value="billing" className="text-xs">Billing</TabsTrigger>
+                    {(permissions.isPlatformAdmin || permissions.canCreateOrganizations) && (
+                      <TabsTrigger value="platform" className="text-xs">Platform</TabsTrigger>
+                    )}
+                  </TabsList>
 
-                    <TabsContent value="profile" className="mt-0">
-                      <ProfileTab />
-                    </TabsContent>
+                  <TabsContent value="profile" className="mt-0">
+                    <ProfileTab />
+                  </TabsContent>
 
-                    <TabsContent value="organization" className="mt-0">
-                      <OrganizationTab />
-                    </TabsContent>
+                  <TabsContent value="organization" className="mt-0">
+                    <OrganizationTab />
+                  </TabsContent>
 
-                    <TabsContent value="members" className="mt-0">
-                      <MembersTab />
-                    </TabsContent>
+                  <TabsContent value="members" className="mt-0">
+                    <MembersTab />
+                  </TabsContent>
 
-                    <TabsContent value="billing" className="mt-0">
-                      <BillingTab />
-                    </TabsContent>
+                  <TabsContent value="billing" className="mt-0">
+                    <BillingTab />
+                  </TabsContent>
 
-                    <TabsContent value="platform" className="mt-0">
-                      <PlatformTab />
-                    </TabsContent>
-                  </Tabs>
-                </div>
+                  <TabsContent value="platform" className="mt-0">
+                    <PlatformTab />
+                  </TabsContent>
+                </Tabs>
               </div>
             </div>
-          </AppContainer>
-        </Section>
+          </div>
+        </div>
       </OrgGate>
     </AuthGate>
   )

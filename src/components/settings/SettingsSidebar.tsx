@@ -54,29 +54,31 @@ export function SettingsSidebar({ currentTab, onTabChange, className }: Settings
   ].filter(item => item.show)
 
   return (
-    <nav className={cn("flex flex-col gap-1 p-2", className)}>
-      {navItems.map((item) => {
-        const isActive = currentTab === item.id
-        const Icon = item.icon
-        
-        return (
-          <Button
-            key={item.id}
-            variant={isActive ? "default" : "ghost"}
-            className={cn(
-              "w-full justify-start h-10 px-2 py-1",
-              "text-sm font-medium",
-              isActive 
-                ? "bg-accent text-accent-foreground shadow-neumorphic" 
-                : "text-text-secondary hover:text-text-primary hover:bg-accent/50"
-            )}
-            onClick={() => onTabChange(item.id)}
-          >
-            <Icon className="h-4 w-4 mr-2 shrink-0" />
-            <span className="truncate">{item.label}</span>
-          </Button>
-        )
-      })}
+    <nav className={cn("p-4", className)}>
+      <div className="space-y-1">
+        {navItems.map((item) => {
+          const isActive = currentTab === item.id
+          const Icon = item.icon
+          
+          return (
+            <Button
+              key={item.id}
+              variant={isActive ? "default" : "ghost"}
+              className={cn(
+                "w-full justify-start h-10 px-3 py-2",
+                "text-sm font-medium transition-colors",
+                isActive 
+                  ? "bg-primary text-primary-foreground shadow-sm" 
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
+              )}
+              onClick={() => onTabChange(item.id)}
+            >
+              <Icon className="h-4 w-4 mr-3 shrink-0" />
+              <span className="truncate">{item.label}</span>
+            </Button>
+          )
+        })}
+      </div>
     </nav>
   )
 }
