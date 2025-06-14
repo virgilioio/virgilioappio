@@ -35,7 +35,7 @@ export function CandidateForm({
     location_city: '',
     salary_amount: '',
     salary_currency: 'USD',
-    salary_period: '',
+    salary_period: 'annually',
     profile_summary: '',
     notes: ''
   })
@@ -51,7 +51,7 @@ export function CandidateForm({
         location_city: candidate.location_city || '',
         salary_amount: candidate.salary_amount?.toString() || '',
         salary_currency: candidate.salary_currency || 'USD',
-        salary_period: candidate.salary_period || '',
+        salary_period: candidate.salary_period || 'annually',
         profile_summary: candidate.profile_summary || '',
         notes: candidate.notes || ''
       })
@@ -63,7 +63,7 @@ export function CandidateForm({
         location_city: '',
         salary_amount: '',
         salary_currency: 'USD',
-        salary_period: '',
+        salary_period: 'annually',
         profile_summary: '',
         notes: ''
       })
@@ -82,8 +82,8 @@ export function CandidateForm({
       newErrors.salary_amount = 'Please enter a valid number'
     }
     
-    if (formData.salary_amount && !formData.salary_period) {
-      newErrors.salary_period = 'Please select a salary period'
+    if (formData.salary_amount && Number(formData.salary_amount) <= 0) {
+      newErrors.salary_amount = 'Salary must be greater than 0'
     }
     
     setErrors(newErrors)
@@ -110,7 +110,7 @@ export function CandidateForm({
         location_city: '',
         salary_amount: '',
         salary_currency: 'USD',
-        salary_period: '',
+        salary_period: 'annually',
         profile_summary: '',
         notes: ''
       })
@@ -128,168 +128,209 @@ export function CandidateForm({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-surface-primary">
+        <DialogHeader className="pb-md">
+          <DialogTitle className="text-xl font-semibold text-text-primary">
             {candidate ? 'Edit Candidate' : 'Add New Candidate'}
           </DialogTitle>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-lg">
           {/* Candidate Form */}
           <div className="space-y-md">
             <form onSubmit={handleSubmit} className="space-y-md">
-              <FormField 
-                label="Name" 
-                required 
-                error={errors.candidate_name}
-                htmlFor="candidate_name"
-              >
-                <Input
-                  id="candidate_name"
-                  name="candidate_name"
-                  value={formData.candidate_name}
-                  onChange={(e) => handleChange('candidate_name', e.target.value)}
-                  error={!!errors.candidate_name}
-                  placeholder="Enter candidate name"
-                />
-              </FormField>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {/* Basic Information */}
+              <div className="space-y-md">
+                <h3 className="text-md font-medium text-text-primary">Basic Information</h3>
+                
                 <FormField 
-                  label="Country"
-                  htmlFor="location_country"
+                  label="Name or Alias" 
+                  required 
+                  error={errors.candidate_name}
+                  htmlFor="candidate_name"
                 >
                   <Input
-                    id="location_country"
-                    name="location_country"
-                    value={formData.location_country}
-                    onChange={(e) => handleChange('location_country', e.target.value)}
-                    placeholder="Country"
-                  />
-                </FormField>
-
-                <FormField 
-                  label="State/Province"
-                  htmlFor="location_state"
-                >
-                  <Input
-                    id="location_state"
-                    name="location_state"
-                    value={formData.location_state}
-                    onChange={(e) => handleChange('location_state', e.target.value)}
-                    placeholder="State/Province"
-                  />
-                </FormField>
-
-                <FormField 
-                  label="City"
-                  htmlFor="location_city"
-                >
-                  <Input
-                    id="location_city"
-                    name="location_city"
-                    value={formData.location_city}
-                    onChange={(e) => handleChange('location_city', e.target.value)}
-                    placeholder="City"
+                    id="candidate_name"
+                    name="candidate_name"
+                    value={formData.candidate_name}
+                    onChange={(e) => handleChange('candidate_name', e.target.value)}
+                    error={!!errors.candidate_name}
+                    placeholder="Enter candidate name or alias"
+                    className="h-[40px]"
                   />
                 </FormField>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <Separator />
+
+              {/* Location Information */}
+              <div className="space-y-md">
+                <h3 className="text-md font-medium text-text-primary">Location</h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-sm">
+                  <FormField 
+                    label="Country"
+                    htmlFor="location_country"
+                  >
+                    <Input
+                      id="location_country"
+                      name="location_country"
+                      value={formData.location_country}
+                      onChange={(e) => handleChange('location_country', e.target.value)}
+                      placeholder="Country"
+                      className="h-[40px]"
+                    />
+                  </FormField>
+
+                  <FormField 
+                    label="State/Province"
+                    htmlFor="location_state"
+                  >
+                    <Input
+                      id="location_state"
+                      name="location_state"
+                      value={formData.location_state}
+                      onChange={(e) => handleChange('location_state', e.target.value)}
+                      placeholder="State/Province"
+                      className="h-[40px]"
+                    />
+                  </FormField>
+
+                  <FormField 
+                    label="City"
+                    htmlFor="location_city"
+                  >
+                    <Input
+                      id="location_city"
+                      name="location_city"
+                      value={formData.location_city}
+                      onChange={(e) => handleChange('location_city', e.target.value)}
+                      placeholder="City"
+                      className="h-[40px]"
+                    />
+                  </FormField>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Salary Information */}
+              <div className="space-y-md">
+                <h3 className="text-md font-medium text-text-primary">Salary Expectations</h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-sm">
+                  <FormField 
+                    label="Amount"
+                    error={errors.salary_amount}
+                    htmlFor="salary_amount"
+                  >
+                    <Input
+                      id="salary_amount"
+                      name="salary_amount"
+                      type="number"
+                      value={formData.salary_amount}
+                      onChange={(e) => handleChange('salary_amount', e.target.value)}
+                      error={!!errors.salary_amount}
+                      placeholder="50000"
+                      className="h-[40px]"
+                    />
+                  </FormField>
+
+                  <FormField 
+                    label="Currency"
+                    htmlFor="salary_currency"
+                  >
+                    <Select 
+                      value={formData.salary_currency} 
+                      onValueChange={(value) => handleChange('salary_currency', value)}
+                    >
+                      <SelectTrigger className="h-[40px]">
+                        <SelectValue placeholder="Currency" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="USD">USD - US Dollar</SelectItem>
+                        <SelectItem value="EUR">EUR - Euro</SelectItem>
+                        <SelectItem value="GBP">GBP - British Pound</SelectItem>
+                        <SelectItem value="CAD">CAD - Canadian Dollar</SelectItem>
+                        <SelectItem value="AUD">AUD - Australian Dollar</SelectItem>
+                        <SelectItem value="MXN">MXN - Mexican Peso</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </FormField>
+
+                  <FormField 
+                    label="Period"
+                    htmlFor="salary_period"
+                  >
+                    <Select 
+                      value={formData.salary_period} 
+                      onValueChange={(value) => handleChange('salary_period', value)}
+                    >
+                      <SelectTrigger className="h-[40px]">
+                        <SelectValue placeholder="Period" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="hourly">Hourly</SelectItem>
+                        <SelectItem value="monthly">Monthly</SelectItem>
+                        <SelectItem value="annually">Annually</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </FormField>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Profile & Notes */}
+              <div className="space-y-md">
                 <FormField 
-                  label="Salary Amount"
-                  error={errors.salary_amount}
-                  htmlFor="salary_amount"
+                  label="Profile Summary" 
+                  htmlFor="profile_summary"
+                  helpText="Brief overview of candidate's experience and skills"
                 >
-                  <Input
-                    id="salary_amount"
-                    name="salary_amount"
-                    type="number"
-                    value={formData.salary_amount}
-                    onChange={(e) => handleChange('salary_amount', e.target.value)}
-                    error={!!errors.salary_amount}
-                    placeholder="50000"
+                  <Textarea
+                    id="profile_summary"
+                    name="profile_summary"
+                    value={formData.profile_summary}
+                    onChange={(e) => handleChange('profile_summary', e.target.value)}
+                    rows={4}
+                    placeholder="Brief summary of candidate's background, experience, and key skills..."
+                    className="resize-none"
                   />
                 </FormField>
 
                 <FormField 
-                  label="Currency"
-                  htmlFor="salary_currency"
+                  label="Internal Notes" 
+                  htmlFor="notes"
+                  helpText="Private notes visible only to internal team"
                 >
-                  <Select 
-                    value={formData.salary_currency} 
-                    onValueChange={(value) => handleChange('salary_currency', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select currency" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="USD">USD</SelectItem>
-                      <SelectItem value="EUR">EUR</SelectItem>
-                      <SelectItem value="GBP">GBP</SelectItem>
-                      <SelectItem value="CAD">CAD</SelectItem>
-                      <SelectItem value="AUD">AUD</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </FormField>
-
-                <FormField 
-                  label="Period"
-                  error={errors.salary_period}
-                  htmlFor="salary_period"
-                >
-                  <Select 
-                    value={formData.salary_period} 
-                    onValueChange={(value) => handleChange('salary_period', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select period" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="hourly">Hourly</SelectItem>
-                      <SelectItem value="monthly">Monthly</SelectItem>
-                      <SelectItem value="annually">Annually</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Textarea
+                    id="notes"
+                    name="notes"
+                    value={formData.notes}
+                    onChange={(e) => handleChange('notes', e.target.value)}
+                    rows={3}
+                    placeholder="Add any additional internal notes about this candidate..."
+                    className="resize-none"
+                  />
                 </FormField>
               </div>
 
-              <FormField 
-                label="Profile Summary" 
-                htmlFor="profile_summary"
-                helpText="Brief overview of candidate's experience and skills"
-              >
-                <Textarea
-                  id="profile_summary"
-                  name="profile_summary"
-                  value={formData.profile_summary}
-                  onChange={(e) => handleChange('profile_summary', e.target.value)}
-                  rows={3}
-                  placeholder="Brief summary of candidate's background and experience..."
-                />
-              </FormField>
-
-              <FormField 
-                label="Notes" 
-                htmlFor="notes"
-                helpText="Internal notes about this candidate"
-              >
-                <Textarea
-                  id="notes"
-                  name="notes"
-                  value={formData.notes}
-                  onChange={(e) => handleChange('notes', e.target.value)}
-                  rows={3}
-                  placeholder="Add any additional notes about this candidate..."
-                />
-              </FormField>
-
-              <div className="flex gap-3 pt-md">
-                <Button type="submit" disabled={isLoading} className="flex-1">
+              {/* Form Actions */}
+              <div className="flex gap-sm pt-md">
+                <Button 
+                  type="submit" 
+                  disabled={isLoading} 
+                  className="flex-1 h-[44px]"
+                >
                   {isLoading ? 'Saving...' : candidate ? 'Update Candidate' : 'Add Candidate'}
                 </Button>
-                <Button type="button" variant="outline" onClick={onClose}>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={onClose}
+                  className="h-[44px]"
+                >
                   Cancel
                 </Button>
               </div>
@@ -300,11 +341,14 @@ export function CandidateForm({
           {candidate && (
             <div className="space-y-md">
               <Separator className="lg:hidden" />
-              <CandidateComments
-                candidateId={candidate.id}
-                jobId={candidate.job_id}
-                organizationId={user.user_metadata?.organization_id || 'default-org'}
-              />
+              <div className="bg-surface-secondary rounded-brand p-md">
+                <h3 className="text-md font-medium text-text-primary mb-md">Comments</h3>
+                <CandidateComments
+                  candidateId={candidate.id}
+                  jobId={candidate.job_id}
+                  organizationId={user.user_metadata?.organization_id || 'default-org'}
+                />
+              </div>
             </div>
           )}
         </div>
