@@ -145,6 +145,44 @@ export type Database = {
           },
         ]
       }
+      job_assignments: {
+        Row: {
+          assigned_by: string | null
+          created_at: string
+          id: string
+          job_id: string
+          organization_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          assigned_by?: string | null
+          created_at?: string
+          id?: string
+          job_id: string
+          organization_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          assigned_by?: string | null
+          created_at?: string
+          id?: string
+          job_id?: string
+          organization_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_assignments_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_candidates: {
         Row: {
           added_by: string | null
@@ -580,6 +618,10 @@ export type Database = {
       get_user_type: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      is_user_assigned_to_job: {
+        Args: { job_id_param: string; user_id_param?: string }
+        Returns: boolean
       }
       test_get_user_organization_id: {
         Args: Record<PropertyKey, never>

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
@@ -16,6 +15,7 @@ import { JobDetailSidebar } from '@/components/jobs/JobDetailSidebar'
 import { JobOverviewTab } from '@/components/jobs/JobOverviewTab'
 import { JobDetailMobileHeader } from '@/components/jobs/JobDetailMobileHeader'
 import type { Candidate } from '@/hooks/useCandidates'
+import { JobAssignmentGuard } from '@/components/auth/JobAssignmentGuard'
 
 const VALID_TABS = ['overview', 'candidates'] as const
 type ValidTab = typeof VALID_TABS[number]
@@ -159,100 +159,102 @@ export default function JobDetail() {
   return (
     <AuthGate>
       <PermissionGate permission="canViewJobs">
-        <div className="min-h-screen bg-background">
-          {/* Mobile Header */}
-          <JobDetailMobileHeader 
-            jobTitle={job.title}
-            onMenuToggle={() => setMobileMenuOpen(true)}
-            onBackToJobs={handleBackToJobs}
-          />
+        <JobAssignmentGuard>
+          <div className="min-h-screen bg-background">
+            {/* Mobile Header */}
+            <JobDetailMobileHeader 
+              jobTitle={job.title}
+              onMenuToggle={() => setMobileMenuOpen(true)}
+              onBackToJobs={handleBackToJobs}
+            />
 
-          {/* Desktop Header */}
-          <div className="hidden md:flex items-center justify-between mb-6 lg:mb-8 pt-6 lg:pt-8 container mx-auto px-md max-w-7xl">
-            <div className="flex items-center gap-3">
-              <Button 
-                variant="ghost" 
-                onClick={handleBackToJobs}
-                className="flex items-center gap-2 min-h-[44px]"
-              >
-                <ArrowLeft className="h-4 w-4" />
-                Back to Jobs
-              </Button>
+            {/* Desktop Header */}
+            <div className="hidden md:flex items-center justify-between mb-6 lg:mb-8 pt-6 lg:pt-8 container mx-auto px-md max-w-7xl">
+              <div className="flex items-center gap-3">
+                <Button 
+                  variant="ghost" 
+                  onClick={handleBackToJobs}
+                  className="flex items-center gap-2 min-h-[44px]"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Back to Jobs
+                </Button>
+              </div>
+              
+              {permissions.canArchiveJobs && job.status !== 'archived' && (
+                <Button variant="outline" onClick={handleArchive} className="min-h-[44px] gap-sm">
+                  <Archive className="h-5 w-5" />
+                  Archive
+                </Button>
+              )}
             </div>
-            
-            {permissions.canArchiveJobs && job.status !== 'archived' && (
-              <Button variant="outline" onClick={handleArchive} className="min-h-[44px] gap-sm">
-                <Archive className="h-5 w-5" />
-                Archive
-              </Button>
-            )}
-          </div>
 
-          {/* Main Layout */}
-          <div className="flex flex-col lg:flex-row min-h-[calc(100vh-200px)] gap-6 container mx-auto px-md max-w-7xl">
-            {/* Desktop Sidebar */}
-            <div className="hidden lg:block w-64 shrink-0">
-              <div className="sticky top-6 h-[calc(100vh-200px)] overflow-y-auto">
-                <div className="bg-surface-primary border border-border rounded-brand p-2">
+            {/* Main Layout */}
+            <div className="flex flex-col lg:flex-row min-h-[calc(100vh-200px)] gap-6 container mx-auto px-md max-w-7xl">
+              {/* Desktop Sidebar */}
+              <div className="hidden lg:block w-64 shrink-0">
+                <div className="sticky top-6 h-[calc(100vh-200px)] overflow-y-auto">
+                  <div className="bg-surface-primary border border-border rounded-brand p-2">
+                    <JobDetailSidebar 
+                      currentTab={currentTab}
+                      onTabChange={handleTabChange}
+                      jobTitle={job.title}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Content Area */}
+              <div className="flex-1 min-w-0">
+                <div className="w-full px-4 lg:px-0">
+                  {renderTabContent()}
+                </div>
+              </div>
+            </div>
+
+            {/* Mobile Sidebar Sheet */}
+            <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+              <SheetContent side="left" className="w-72 p-0">
+                <div className="p-4 border-b">
+                  <h2 className="text-lg font-semibold text-text-primary">Job Details</h2>
+                  <p className="text-sm text-text-secondary mt-1 truncate">
+                    {job.title}
+                  </p>
+                </div>
+                <div className="p-2">
                   <JobDetailSidebar 
                     currentTab={currentTab}
                     onTabChange={handleTabChange}
                     jobTitle={job.title}
                   />
                 </div>
-              </div>
-            </div>
+              </SheetContent>
+            </Sheet>
 
-            {/* Content Area */}
-            <div className="flex-1 min-w-0">
-              <div className="w-full px-4 lg:px-0">
-                {renderTabContent()}
-              </div>
-            </div>
-          </div>
-
-          {/* Mobile Sidebar Sheet */}
-          <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
-            <SheetContent side="left" className="w-72 p-0">
-              <div className="p-4 border-b">
-                <h2 className="text-lg font-semibold text-text-primary">Job Details</h2>
-                <p className="text-sm text-text-secondary mt-1 truncate">
-                  {job.title}
-                </p>
-              </div>
-              <div className="p-2">
-                <JobDetailSidebar 
-                  currentTab={currentTab}
-                  onTabChange={handleTabChange}
-                  jobTitle={job.title}
-                />
-              </div>
-            </SheetContent>
-          </Sheet>
-
-          {/* Forms */}
-          <JobForm
-            isOpen={isFormOpen}
-            onClose={() => setIsFormOpen(false)}
-            onSubmit={handleFormSubmit}
-            job={job}
-            isLoading={isLoading}
-          />
-
-          {job && (
-            <CandidateForm
-              isOpen={isCandidateFormOpen}
-              onClose={() => {
-                setIsCandidateFormOpen(false)
-                setSelectedCandidate(null)
-              }}
-              onSubmit={handleCandidateFormSubmit}
-              candidate={selectedCandidate}
-              jobId={job.id}
-              isLoading={candidatesLoading}
+            {/* Forms */}
+            <JobForm
+              isOpen={isFormOpen}
+              onClose={() => setIsFormOpen(false)}
+              onSubmit={handleFormSubmit}
+              job={job}
+              isLoading={isLoading}
             />
-          )}
-        </div>
+
+            {job && (
+              <CandidateForm
+                isOpen={isCandidateFormOpen}
+                onClose={() => {
+                  setIsCandidateFormOpen(false)
+                  setSelectedCandidate(null)
+                }}
+                onSubmit={handleCandidateFormSubmit}
+                candidate={selectedCandidate}
+                jobId={job.id}
+                isLoading={candidatesLoading}
+              />
+            )}
+          </div>
+        </JobAssignmentGuard>
       </PermissionGate>
     </AuthGate>
   )

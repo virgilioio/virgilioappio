@@ -95,7 +95,8 @@ export function usePermissions(): PermissionsState {
   
   return {
     // Job permissions - SECURED: Only platform admins and admin members can create jobs directly
-    canViewJobs: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin'].includes(memberRole),
+    // Clients can only view jobs they're assigned to (enforced by RLS)
+    canViewJobs: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin', 'client'].includes(memberRole),
     canCreateJobs: isPlatformAdmin || memberRole === 'admin',
     canEditJobs: isPlatformAdmin || memberRole === 'admin',
     canDeleteJobs: isPlatformAdmin || memberRole === 'admin',
@@ -122,12 +123,17 @@ export function usePermissions(): PermissionsState {
     canManageJobRequests: isPlatformAdmin || memberRole === 'admin' || memberRole === 'customer_success',
     canRequestJobs: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin', 'client'].includes(memberRole),
     
-    // Candidate permissions - FIXED: Only Platform Admins and Virgilio team members (recruiters/admins) can manage candidates
+    // Candidate permissions - SECURED: Only Platform Admins and Virgilio team members can manage candidates
+    // Clients can view candidates for jobs they're assigned to (enforced by RLS)
     canViewCandidates: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin', 'client'].includes(memberRole),
     canCreateCandidates: isPlatformAdmin || ['recruiter', 'admin'].includes(memberRole),
     canEditCandidates: isPlatformAdmin || ['recruiter', 'admin'].includes(memberRole),
     canDeleteCandidates: isPlatformAdmin || memberRole === 'admin',
     canManageCandidates: isPlatformAdmin || ['recruiter', 'admin'].includes(memberRole),
+    
+    // Job assignment permissions - NEW: Control who can assign users to jobs
+    canViewJobAssignments: isPlatformAdmin || ['recruiter', 'admin'].includes(memberRole),
+    canManageJobAssignments: isPlatformAdmin || ['recruiter', 'admin'].includes(memberRole),
     
     // Billing & Invoice permissions - CRITICAL SECURITY FIX
     // Only users with org context can view billing (prevents guests from accessing)
