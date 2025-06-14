@@ -7,7 +7,7 @@ import { Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-brand font-medium ring-offset-background transition-all duration-150 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none [&_svg]:pointer-events-none [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-1 whitespace-nowrap rounded-brand font-medium ring-offset-background transition-all duration-150 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none [&_svg]:pointer-events-none [&_svg]:shrink-0",
   {
     variants: {
       variant: {
@@ -22,10 +22,10 @@ const buttonVariants = cva(
         info: "bg-info text-info-foreground shadow-sm hover:bg-info/90 hover:-translate-y-0.5 hover:shadow-md active:scale-95"
       },
       size: {
-        default: "h-8 px-2 py-1 text-sm font-medium tracking-wide [&_svg]:size-4",
-        sm: "h-7 px-2 py-1 text-xs font-medium tracking-wide [&_svg]:size-3.5",
-        lg: "h-10 px-3 py-2 text-md font-medium tracking-wide [&_svg]:size-5",
-        icon: "h-8 w-8 [&_svg]:size-4",
+        default: "h-button px-2 py-1 text-sm font-medium tracking-wide [&_svg]:size-3.5",
+        sm: "h-button-sm px-2 py-1 text-xs font-medium tracking-wide [&_svg]:size-3",
+        lg: "h-button-lg px-3 py-1 text-md font-medium tracking-wide [&_svg]:size-4",
+        icon: "h-button w-button [&_svg]:size-3.5",
       },
     },
     defaultVariants: {

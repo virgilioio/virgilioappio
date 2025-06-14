@@ -56,28 +56,29 @@
     --surface-tertiary: 210 17% 93%; /* #e9ecef */
     --surface-overlay: 0 0% 0% / 0.5;
 
-    /* Typography Hierarchy - Compact */
+    /* Typography Hierarchy - NEW COMPACT SCALE */
     --text-primary: 0 0% 20%; /* #333333 */
     --text-secondary: 0 0% 40%; /* #666666 */
     --text-tertiary: 0 0% 60%; /* #999999 */
     --text-muted: 0 0% 80%; /* #cccccc */
 
-    /* Typography Scale - Compact */
-    --font-size-xs: 0.75rem; /* 12px */
-    --font-size-sm: 0.875rem; /* 14px */
-    --font-size-md: 0.875rem; /* 14px - reduced from 16px */
-    --font-size-lg: 1rem; /* 16px - reduced from 18px */
-    --font-size-xl: 1.125rem; /* 18px - reduced from 20px */
-    --font-size-2xl: 1.25rem; /* 20px - reduced from 24px */
-    --font-size-3xl: 1.5rem; /* 24px - reduced from 30px */
-    --font-size-4xl: 1.875rem; /* 30px - reduced from 36px */
+    /* Typography Scale - NEW COMPACT SCALE */
+    --font-size-xs: 0.6875rem; /* 11px - reduced from 12px */
+    --font-size-sm: 0.75rem; /* 12px - reduced from 14px */
+    --font-size-md: 0.8125rem; /* 13px - reduced from 14px */
+    --font-size-base: 0.8125rem; /* 13px - new base size */
+    --font-size-lg: 0.875rem; /* 14px - reduced from 16px */
+    --font-size-xl: 1rem; /* 16px - reduced from 18px */
+    --font-size-2xl: 1.125rem; /* 18px - reduced from 20px */
+    --font-size-3xl: 1.25rem; /* 20px - reduced from 24px */
+    --font-size-4xl: 1.5rem; /* 24px - reduced from 30px */
 
-    /* Line Heights - Tighter */
-    --line-height-tight: 1.25;
+    /* Line Heights - Optimized for compact scale */
+    --line-height-tight: 1.2;
     --line-height-normal: 1.4;
     --line-height-relaxed: 1.5;
 
-    /* Spacing Tokens - Compact */
+    /* Spacing Tokens - Refined for compact design */
     --spacing-xs: 0.25rem; /* 4px */
     --spacing-sm: 0.5rem; /* 8px */
     --spacing-md: 0.75rem; /* 12px */
@@ -89,13 +90,13 @@
     --spacing-5xl: 3rem; /* 48px */
     --spacing-6xl: 4rem; /* 64px */
 
-    /* Layout Tokens - Compact */
-    --layout-gutter: 1rem; /* 16px - reduced from 24px */
-    --layout-padding-sm: 0.75rem; /* 12px - reduced from 16px */
-    --layout-padding-md: 1rem; /* 16px - reduced from 24px */
-    --layout-padding-lg: 1.5rem; /* 24px - reduced from 32px */
+    /* Layout Tokens - Compact and consistent */
+    --layout-gutter: 1rem; /* 16px */
+    --layout-padding-sm: 0.75rem; /* 12px */
+    --layout-padding-md: 1rem; /* 16px */
+    --layout-padding-lg: 1.5rem; /* 24px */
 
-    /* Layout Max Width - NEW */
+    /* Layout Max Width */
     --layout-max-width: 1200px;
     --layout-max-width-sm: 800px;
     --layout-max-width-lg: 1400px;
@@ -110,13 +111,13 @@
     --shadow-neumorphic-hover: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
     --shadow-neumorphic-active: 0 1px 2px 0 rgb(0 0 0 / 0.05);
 
-    /* Component Heights - Compact */
+    /* Component Heights - Compact and touch-friendly */
     --button-height-sm: 28px;
     --button-height-default: 32px;
-    --button-height-lg: 40px;
-    --input-height: 36px;
-    --table-row-height: 44px;
-    --sidebar-item-height: 40px;
+    --button-height-lg: 36px;
+    --input-height: 32px;
+    --table-row-height: 40px;
+    --sidebar-item-height: 36px;
 
     --sidebar-background: 0 0% 98%;
     --sidebar-foreground: 240 5.3% 26.1%;
@@ -201,7 +202,8 @@
   }
 
   body {
-    @apply bg-background text-foreground font-inter text-sm;
+    @apply bg-background text-foreground font-inter;
+    font-size: var(--font-size-base);
     font-feature-settings: "rlig" 1, "calt" 1;
     line-height: var(--line-height-normal);
   }
@@ -213,32 +215,32 @@
   }
 
   h1 {
-    font-size: var(--font-size-4xl);
+    font-size: var(--font-size-3xl);
     margin-bottom: var(--spacing-md);
   }
 
   h2 {
-    font-size: var(--font-size-3xl);
-    margin-bottom: var(--spacing-sm);
-  }
-
-  h3 {
     font-size: var(--font-size-2xl);
     margin-bottom: var(--spacing-sm);
   }
 
-  h4 {
+  h3 {
     font-size: var(--font-size-xl);
-    margin-bottom: var(--spacing-xs);
+    margin-bottom: var(--spacing-sm);
   }
 
-  h5 {
+  h4 {
     font-size: var(--font-size-lg);
     margin-bottom: var(--spacing-xs);
   }
 
-  h6 {
+  h5 {
     font-size: var(--font-size-md);
+    margin-bottom: var(--spacing-xs);
+  }
+
+  h6 {
+    font-size: var(--font-size-sm);
     margin-bottom: var(--spacing-xs);
   }
 
@@ -264,28 +266,29 @@
 }
 
 @layer utilities {
-  /* Enhanced Typography Classes - Compact */
+  /* Enhanced Typography Classes - NEW COMPACT SCALE */
   .text-xs { font-size: var(--font-size-xs); line-height: var(--line-height-normal); }
   .text-sm { font-size: var(--font-size-sm); line-height: var(--line-height-normal); }
   .text-md { font-size: var(--font-size-md); line-height: var(--line-height-normal); }
+  .text-base { font-size: var(--font-size-base); line-height: var(--line-height-normal); }
   .text-lg { font-size: var(--font-size-lg); line-height: var(--line-height-normal); }
   .text-xl { font-size: var(--font-size-xl); line-height: var(--line-height-normal); }
   .text-2xl { font-size: var(--font-size-2xl); line-height: var(--line-height-tight); }
   .text-3xl { font-size: var(--font-size-3xl); line-height: var(--line-height-tight); }
   .text-4xl { font-size: var(--font-size-4xl); line-height: var(--line-height-tight); }
 
-  .heading-xs { font-size: var(--font-size-sm); line-height: var(--line-height-tight); @apply font-poppins font-medium; }
-  .heading-sm { font-size: var(--font-size-md); line-height: var(--line-height-tight); @apply font-poppins font-medium; }
-  .heading-md { font-size: var(--font-size-lg); line-height: var(--line-height-tight); @apply font-poppins font-medium; }
-  .heading-lg { font-size: var(--font-size-xl); line-height: var(--line-height-tight); @apply font-poppins font-medium; }
-  .heading-xl { font-size: var(--font-size-2xl); line-height: var(--line-height-tight); @apply font-poppins font-medium; }
+  .heading-xs { font-size: var(--font-size-xs); line-height: var(--line-height-tight); @apply font-poppins font-medium; }
+  .heading-sm { font-size: var(--font-size-sm); line-height: var(--line-height-tight); @apply font-poppins font-medium; }
+  .heading-md { font-size: var(--font-size-md); line-height: var(--line-height-tight); @apply font-poppins font-medium; }
+  .heading-lg { font-size: var(--font-size-lg); line-height: var(--line-height-tight); @apply font-poppins font-medium; }
+  .heading-xl { font-size: var(--font-size-xl); line-height: var(--line-height-tight); @apply font-poppins font-medium; }
 
   /* Leading utilities */
   .leading-tight { line-height: var(--line-height-tight); }
   .leading-normal { line-height: var(--line-height-normal); }
   .leading-relaxed { line-height: var(--line-height-relaxed); }
 
-  /* Virgilio.io Brand Spacing Utilities - Compact */
+  /* Virgilio.io Brand Spacing Utilities */
   .spacing-xs { margin: var(--spacing-xs); }
   .spacing-sm { margin: var(--spacing-sm); }
   .spacing-md { margin: var(--spacing-md); }
@@ -311,7 +314,7 @@
 
   .gap-gutter { gap: var(--layout-gutter); }
 
-  /* Layout Container Utilities - NEW */
+  /* Layout Container Utilities */
   .layout-container {
     max-width: var(--layout-max-width);
     width: 100%;
@@ -416,30 +419,30 @@
     padding: var(--layout-padding-md);
   }
 
-  /* Enhanced Typography Classes - Compact */
+  /* Enhanced Typography Classes */
   .heading-1 { 
-    font-size: var(--font-size-4xl); 
-    line-height: var(--line-height-tight); 
-    @apply font-poppins font-semibold;
-    margin-bottom: var(--spacing-md);
-  }
-  
-  .heading-2 { 
     font-size: var(--font-size-3xl); 
     line-height: var(--line-height-tight); 
-    @apply font-poppins font-medium;
+    @apply font-poppins font-semibold;
     margin-bottom: var(--spacing-sm);
   }
   
-  .heading-3 { 
+  .heading-2 { 
     font-size: var(--font-size-2xl); 
     line-height: var(--line-height-tight); 
     @apply font-poppins font-medium;
     margin-bottom: var(--spacing-sm);
   }
   
-  .heading-4 { 
+  .heading-3 { 
     font-size: var(--font-size-xl); 
+    line-height: var(--line-height-tight); 
+    @apply font-poppins font-medium;
+    margin-bottom: var(--spacing-xs);
+  }
+  
+  .heading-4 { 
+    font-size: var(--font-size-lg); 
     line-height: var(--line-height-tight); 
     @apply font-poppins font-medium;
     margin-bottom: var(--spacing-xs);
@@ -465,11 +468,11 @@
   }
 
   .table-cell {
-    @apply px-2 py-2 align-middle;
+    @apply px-2 py-1 align-middle;
   }
 
   .table-header {
-    @apply px-2 py-2 text-left align-middle font-medium text-muted-foreground;
+    @apply px-2 py-1 text-left align-middle font-medium text-muted-foreground;
     font-size: var(--font-size-xs);
     height: var(--table-row-height);
   }

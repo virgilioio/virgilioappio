@@ -33,7 +33,6 @@ export function useUserProfile() {
     try {
       console.log('Fetching profile for user:', user.id)
       
-      // Use the standard client API instead of admin endpoints
       const { data, error: fetchError } = await supabase
         .from('profiles')
         .select('*')

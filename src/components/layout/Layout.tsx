@@ -10,7 +10,7 @@ export function Layout() {
       <OrgGate>
         <div className="min-h-screen bg-background">
           <Header />
-          <main className="pt-14 sm:pt-16">
+          <main className="pt-12 sm:pt-14">
             <Outlet />
           </main>
         </div>

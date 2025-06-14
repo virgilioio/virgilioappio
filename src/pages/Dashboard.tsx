@@ -2,6 +2,7 @@
 import { usePermissions } from '@/hooks/usePermissions'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { AppContainer } from '@/components/layout/AppContainer'
+import { PageHeader } from '@/components/layout/PageHeader'
 import { WelcomeHeader } from '@/components/dashboard/WelcomeHeader'
 import { PaymentsTracker } from '@/components/dashboard/PaymentsTracker'
 import { OnboardingProgress } from '@/components/dashboard/OnboardingProgress'
@@ -16,10 +17,10 @@ export default function Dashboard() {
 
   return (
     <AppContainer>
-      <div className="space-y-6">
+      <div className="space-y-lg py-lg">
         <WelcomeHeader profile={profile} isLoading={profileLoading} />
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-md">
           {permissions.canViewBilling && (
             <PaymentsTracker />
           )}

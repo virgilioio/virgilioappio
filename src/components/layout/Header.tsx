@@ -82,7 +82,7 @@ export function Header() {
       show: canViewJobRequests,
     },
     {
-      href: '/invoices', // Fixed: was /admin/invoices
+      href: '/invoices',
       icon: Receipt,
       label: 'Invoices',
       show: canViewInvoices,
@@ -110,13 +110,13 @@ export function Header() {
                 key={item.href}
                 to={item.href}
                 onClick={() => setIsSheetOpen(false)}
-                className={`flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                className={`flex items-center gap-2 px-2 py-1 text-sm font-medium rounded-md transition-colors ${
                   isActive
                     ? 'bg-primary text-primary-foreground'
                     : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                 }`}
               >
-                <Icon className="h-4 w-4" />
+                <Icon className="h-3.5 w-3.5" />
                 {item.label}
               </Link>
             )
@@ -127,11 +127,11 @@ export function Header() {
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border">
-      <div className="flex items-center justify-between px-4 py-3 sm:px-6">
+      <div className="flex items-center justify-between px-md py-2 sm:px-lg">
         {/* Logo and Desktop Navigation */}
-        <div className="flex items-center gap-8">
-          <Link to="/dashboard" className="flex items-center gap-2">
-            <VirgilioLogo className="h-8 w-auto" />
+        <div className="flex items-center gap-6">
+          <Link to="/dashboard" className="flex items-center gap-sm">
+            <VirgilioLogo className="h-6 w-auto" />
           </Link>
           
           {/* Desktop Navigation */}
@@ -147,13 +147,13 @@ export function Header() {
                   <Link
                     key={item.href}
                     to={item.href}
-                    className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                    className={`flex items-center gap-2 px-2 py-1 text-sm font-medium rounded-md transition-colors ${
                       isActive
                         ? 'bg-primary text-primary-foreground'
                         : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                     }`}
                   >
-                    <Icon className="h-4 w-4" />
+                    <Icon className="h-3.5 w-3.5" />
                     {item.label}
                   </Link>
                 )
@@ -162,10 +162,10 @@ export function Header() {
         </div>
 
         {/* User Menu and Mobile Navigation */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-sm">
           {/* User Role Badge */}
           {(isPlatformAdmin || isWorkspaceOwner) && (
-            <Badge variant="outline" className="hidden sm:inline-flex">
+            <Badge variant="outline" className="hidden sm:inline-flex text-xs">
               {isPlatformAdmin ? 'Platform Admin' : 'Workspace Owner'}
             </Badge>
           )}
@@ -173,14 +173,14 @@ export function Header() {
           {/* User Menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-                <Avatar className="h-8 w-8">
+              <Button variant="ghost" className="relative h-7 w-7 rounded-full">
+                <Avatar className="h-7 w-7">
                   <AvatarImage src={user?.user_metadata?.avatar_url} alt={userDisplayName} />
-                  <AvatarFallback>{userInitials}</AvatarFallback>
+                  <AvatarFallback className="text-xs">{userInitials}</AvatarFallback>
                 </Avatar>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-56" align="end" forceMount>
+            <DropdownMenuContent className="w-52" align="end" forceMount>
               <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col space-y-1">
                   <p className="text-sm font-medium leading-none">{userDisplayName}</p>
@@ -190,19 +190,19 @@ export function Header() {
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
                 <Link to="/settings" className="flex items-center gap-2 w-full">
-                  <User className="h-4 w-4" />
+                  <User className="h-3.5 w-3.5" />
                   Profile
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link to="/settings" className="flex items-center gap-2 w-full">
-                  <Settings className="h-4 w-4" />
+                  <Settings className="h-3.5 w-3.5" />
                   Settings
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleLogout} className="text-red-600 focus:text-red-600">
-                <LogOut className="h-4 w-4 mr-2" />
+                <LogOut className="h-3.5 w-3.5 mr-2" />
                 Log out
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -211,15 +211,15 @@ export function Header() {
           {/* Mobile Navigation */}
           <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="lg:hidden">
-                <Menu className="h-5 w-5" />
+              <Button variant="ghost" size="icon" className="lg:hidden h-7 w-7">
+                <Menu className="h-4 w-4" />
                 <span className="sr-only">Toggle navigation menu</span>
               </Button>
             </SheetTrigger>
             <SheetContent side="left" className="w-64">
-              <div className="flex flex-col gap-4">
-                <Link to="/dashboard" className="flex items-center gap-2" onClick={() => setIsSheetOpen(false)}>
-                  <VirgilioLogo className="h-8 w-auto" />
+              <div className="flex flex-col gap-md">
+                <Link to="/dashboard" className="flex items-center gap-sm" onClick={() => setIsSheetOpen(false)}>
+                  <VirgilioLogo className="h-6 w-auto" />
                 </Link>
                 <NavigationContent />
               </div>
