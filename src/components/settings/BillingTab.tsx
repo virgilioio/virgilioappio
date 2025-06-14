@@ -1,3 +1,4 @@
+
 import { useState } from 'react'
 import { Plus, Search, Filter } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -22,6 +23,13 @@ export function BillingTab() {
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [monthFilter, setMonthFilter] = useState<string>('all')
   const [organizationFilter, setOrganizationFilter] = useState<string>('all')
+
+  console.log('BillingTab permissions:', {
+    canManageInvoices,
+    canViewBilling,
+    isPlatformAdmin,
+    isBillingMember
+  })
 
   // Show admin/billing member view if they have manage permissions
   const showAdminView = canManageInvoices
@@ -73,9 +81,17 @@ export function BillingTab() {
 
   const monthOptions = getMonthOptions()
 
-  // If user doesn't have billing view permission, don't render anything
+  // If user doesn't have billing view permission, show no access message
   if (!canViewBilling) {
-    return null
+    return (
+      <Card>
+        <CardContent className="pt-6">
+          <p className="text-center text-muted-foreground">
+            You don't have permission to view billing information.
+          </p>
+        </CardContent>
+      </Card>
+    )
   }
 
   return (

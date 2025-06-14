@@ -1,303 +1,231 @@
+
 import { useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
-import { Menu, X, LogOut, User, ChevronDown } from 'lucide-react'
+import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Badge } from '@/components/ui/badge'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { VirgilioLogo } from '@/components/VirgilioLogo'
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
+import {
+  Menu,
+  Home,
+  Briefcase,
+  Users,
+  Building2,
+  FileText,
+  Settings,
+  Receipt,
+  LogOut,
+  User,
+} from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
-import { useUserProfile } from '@/hooks/useUserProfile'
 import { usePermissions } from '@/hooks/usePermissions'
-import { PermissionGate } from '@/components/auth/PermissionGate'
-import { cn } from '@/lib/utils'
-
-interface NavItem {
-  label: string
-  href: string
-  permission?: keyof ReturnType<typeof usePermissions>
-}
+import { VirgilioLogo } from '@/components/VirgilioLogo'
+import { AdminModeIndicator } from '@/components/admin/AdminModeIndicator'
 
 export function Header() {
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const { user, logout } = useAuth()
-  const { profile } = useUserProfile()
-  const permissions = usePermissions()
+  const { 
+    canViewJobs, 
+    canViewMembers, 
+    canViewOrganizations, 
+    canViewJobRequests, 
+    canViewInvoices,
+    isPlatformAdmin,
+    isWorkspaceOwner
+  } = usePermissions()
+  const navigate = useNavigate()
   const location = useLocation()
-
-  const navItems: NavItem[] = [
-    { label: 'Dashboard', href: '/dashboard' },
-    { label: 'Invoices', href: '/admin/invoices', permission: 'canManageInvoices' },
-  ]
+  const [isSheetOpen, setIsSheetOpen] = useState(false)
 
   const handleLogout = async () => {
     await logout()
+    navigate('/auth')
   }
 
-  const getUserInitials = () => {
-    if (profile?.first_name && profile?.last_name) {
-      return `${profile.first_name.charAt(0)}${profile.last_name.charAt(0)}`.toUpperCase()
-    }
-    if (profile?.first_name) {
-      return profile.first_name.substring(0, 2).toUpperCase()
-    }
-    if (!user?.email) return 'U'
-    return user.email.substring(0, 2).toUpperCase()
-  }
+  const navigationItems = [
+    {
+      href: '/dashboard',
+      icon: Home,
+      label: 'Dashboard',
+      show: true,
+    },
+    {
+      href: '/jobs',
+      icon: Briefcase,
+      label: 'Jobs',
+      show: canViewJobs,
+    },
+    {
+      href: '/members',
+      icon: Users,
+      label: 'Members',
+      show: canViewMembers,
+    },
+    {
+      href: '/organizations',
+      icon: Building2,
+      label: 'Organizations',
+      show: canViewOrganizations,
+    },
+    {
+      href: '/job-requests',
+      icon: FileText,
+      label: 'Job Requests',
+      show: canViewJobRequests,
+    },
+    {
+      href: '/invoices', // Fixed: was /admin/invoices
+      icon: Receipt,
+      label: 'Invoices',
+      show: canViewInvoices,
+    },
+  ]
 
-  const isActivePath = (href: string) => {
-    if (href === '/') {
-      return location.pathname === '/'
-    }
-    return location.pathname.startsWith(href)
-  }
+  const userDisplayName = user?.user_metadata?.first_name || user?.email?.split('@')[0] || 'User'
+  const userInitials = user?.user_metadata?.first_name && user?.user_metadata?.last_name
+    ? `${user.user_metadata.first_name[0]}${user.user_metadata.last_name[0]}`
+    : user?.email?.[0]?.toUpperCase() || 'U'
 
-  const isJobsActive = isActivePath('/jobs') || isActivePath('/job-requests')
+  const NavigationContent = () => (
+    <>
+      {isPlatformAdmin && <AdminModeIndicator />}
+      <nav className="space-y-1">
+        {navigationItems
+          .filter(item => item.show)
+          .map((item) => {
+            const Icon = item.icon
+            const isActive = location.pathname === item.href || 
+              (item.href === '/dashboard' && location.pathname === '/')
+            
+            return (
+              <Link
+                key={item.href}
+                to={item.href}
+                onClick={() => setIsSheetOpen(false)}
+                className={`flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                  isActive
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                }`}
+              >
+                <Icon className="h-4 w-4" />
+                {item.label}
+              </Link>
+            )
+          })}
+      </nav>
+    </>
+  )
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-surface-primary border-b border-border/10 shadow-neumorphic">
-      <div className="mx-auto max-w-7xl px-layout-sm sm:px-layout-md lg:px-layout-lg">
-        <div className="flex items-center justify-between h-14 sm:h-16">
-          {/* Logo */}
-          <div className="flex items-center">
-            <Link to="/" className="hover:scale-105 transition-transform duration-default">
-              <VirgilioLogo size="sm" />
-            </Link>
-          </div>
-
+    <header className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border">
+      <div className="flex items-center justify-between px-4 py-3 sm:px-6">
+        {/* Logo and Desktop Navigation */}
+        <div className="flex items-center gap-8">
+          <Link to="/dashboard" className="flex items-center gap-2">
+            <VirgilioLogo className="h-8 w-auto" />
+          </Link>
+          
           {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center space-x-6">
-            {/* Dashboard */}
-            <Link
-              to="/dashboard"
-              className={cn(
-                "px-3 py-2 rounded-brand text-sm font-medium transition-all duration-default min-h-[44px] flex items-center",
-                isActivePath('/dashboard')
-                  ? "bg-accent text-accent-foreground shadow-neumorphic-active"
-                  : "text-text-secondary hover:text-text-primary hover:bg-accent/50 hover:shadow-neumorphic-hover hover:-translate-y-0.5"
-              )}
-            >
-              Dashboard
-            </Link>
-
-            {/* Jobs Dropdown */}
-            <PermissionGate permission="canViewJobs">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    className={cn(
-                      "px-3 py-2 rounded-brand text-sm font-medium transition-all duration-default min-h-[44px] flex items-center gap-1",
-                      isJobsActive
-                        ? "bg-accent text-accent-foreground shadow-neumorphic-active"
-                        : "text-text-secondary hover:text-text-primary hover:bg-accent/50 hover:shadow-neumorphic-hover hover:-translate-y-0.5"
-                    )}
-                  >
-                    Jobs
-                    <ChevronDown className="h-3 w-3" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-48">
-                  <DropdownMenuItem asChild>
-                    <Link to="/jobs" className="cursor-pointer min-h-[44px] flex items-center">
-                      Active Jobs
-                    </Link>
-                  </DropdownMenuItem>
-                  <PermissionGate permission="canViewJobRequests">
-                    <DropdownMenuItem asChild>
-                      <Link to="/job-requests" className="cursor-pointer min-h-[44px] flex items-center">
-                        Job Requests
-                      </Link>
-                    </DropdownMenuItem>
-                  </PermissionGate>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </PermissionGate>
-
-            {/* Other nav items */}
-            {navItems.slice(1).map((item) => {
-              if (item.permission) {
-                return (
-                  <PermissionGate key={item.href} permission={item.permission}>
-                    <Link
-                      to={item.href}
-                      className={cn(
-                        "px-3 py-2 rounded-brand text-sm font-medium transition-all duration-default min-h-[44px] flex items-center",
-                        isActivePath(item.href)
-                          ? "bg-accent text-accent-foreground shadow-neumorphic-active"
-                          : "text-text-secondary hover:text-text-primary hover:bg-accent/50 hover:shadow-neumorphic-hover hover:-translate-y-0.5"
-                      )}
-                    >
-                      {item.label}
-                    </Link>
-                  </PermissionGate>
-                )
-              }
-              
-              return (
-                <Link
-                  key={item.href}
-                  to={item.href}
-                  className={cn(
-                    "px-3 py-2 rounded-brand text-sm font-medium transition-all duration-default min-h-[44px] flex items-center",
-                    isActivePath(item.href)
-                      ? "bg-accent text-accent-foreground shadow-neumorphic-active"
-                      : "text-text-secondary hover:text-text-primary hover:bg-accent/50 hover:shadow-neumorphic-hover hover:-translate-y-0.5"
-                  )}
-                >
-                  {item.label}
-                </Link>
-              )
-            })}
-          </nav>
-
-          {/* User Avatar & Mobile Menu Button */}
-          <div className="flex items-center space-x-2 sm:space-x-3">
-            {/* User Avatar Dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-9 w-9 sm:h-10 sm:w-10 rounded-full">
-                  <Avatar className="h-9 w-9 sm:h-10 sm:w-10">
-                    <AvatarImage src={profile?.avatar_url || ''} />
-                    <AvatarFallback className="bg-accent text-accent-foreground font-medium text-sm">
-                      {getUserInitials()}
-                    </AvatarFallback>
-                  </Avatar>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56" align="end" forceMount>
-                <div className="flex flex-col space-y-1 p-3">
-                  <p className="text-sm font-medium leading-none truncate">{user?.email}</p>
-                  <p className="text-xs leading-normal text-muted-foreground">
-                    {user?.user_metadata?.user_type || 'guest'}
-                  </p>
-                </div>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link to="/settings" className="cursor-pointer min-h-[44px] flex items-center">
-                    <User className="mr-2 h-4 w-4" />
-                    <span>Settings</span>
-                  </Link>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout} className="cursor-pointer min-h-[44px] flex items-center">
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span>Logout</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            {/* Mobile Menu Button */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="lg:hidden h-9 w-9 sm:h-10 sm:w-10"
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            >
-              {isMobileMenuOpen ? (
-                <X className="h-5 w-5" />
-              ) : (
-                <Menu className="h-5 w-5" />
-              )}
-            </Button>
-          </div>
-        </div>
-
-        {/* Mobile Navigation */}
-        {isMobileMenuOpen && (
-          <div className="lg:hidden border-t border-border/10 bg-surface-primary">
-            <nav className="px-2 pt-2 pb-3 space-y-1">
-              {/* Dashboard */}
-              <Link
-                to="/dashboard"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className={cn(
-                  "block px-4 py-3 rounded-brand text-md font-medium transition-all duration-default min-h-[44px] flex items-center",
-                  isActivePath('/dashboard')
-                    ? "bg-accent text-accent-foreground shadow-neumorphic-active"
-                    : "text-text-secondary hover:text-text-primary hover:bg-accent/50"
-                )}
-              >
-                Dashboard
-              </Link>
-
-              {/* Jobs Section */}
-              <PermissionGate permission="canViewJobs">
-                <div className="space-y-1">
-                  <Link
-                    to="/jobs"
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className={cn(
-                      "block px-4 py-3 rounded-brand text-md font-medium transition-all duration-default min-h-[44px] flex items-center",
-                      isActivePath('/jobs')
-                        ? "bg-accent text-accent-foreground shadow-neumorphic-active"
-                        : "text-text-secondary hover:text-text-primary hover:bg-accent/50"
-                    )}
-                  >
-                    Active Jobs
-                  </Link>
-                  <PermissionGate permission="canViewJobRequests">
-                    <Link
-                      to="/job-requests"
-                      onClick={() => setIsMobileMenuOpen(false)}
-                      className={cn(
-                        "block px-4 py-3 rounded-brand text-md font-medium transition-all duration-default min-h-[44px] flex items-center pl-8",
-                        isActivePath('/job-requests')
-                          ? "bg-accent text-accent-foreground shadow-neumorphic-active"
-                          : "text-text-secondary hover:text-text-primary hover:bg-accent/50"
-                      )}
-                    >
-                      Job Requests
-                    </Link>
-                  </PermissionGate>
-                </div>
-              </PermissionGate>
-
-              {/* Other nav items */}
-              {navItems.slice(1).map((item) => {
-                if (item.permission) {
-                  return (
-                    <PermissionGate key={item.href} permission={item.permission}>
-                      <Link
-                        to={item.href}
-                        onClick={() => setIsMobileMenuOpen(false)}
-                        className={cn(
-                          "block px-4 py-3 rounded-brand text-md font-medium transition-all duration-default min-h-[44px] flex items-center",
-                          isActivePath(item.href)
-                            ? "bg-accent text-accent-foreground shadow-neumorphic-active"
-                            : "text-text-secondary hover:text-text-primary hover:bg-accent/50"
-                        )}
-                      >
-                        {item.label}
-                      </Link>
-                    </PermissionGate>
-                  )
-                }
+          <nav className="hidden lg:flex items-center gap-1">
+            {navigationItems
+              .filter(item => item.show)
+              .map((item) => {
+                const Icon = item.icon
+                const isActive = location.pathname === item.href || 
+                  (item.href === '/dashboard' && location.pathname === '/')
                 
                 return (
                   <Link
                     key={item.href}
                     to={item.href}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                    className={cn(
-                      "block px-4 py-3 rounded-brand text-md font-medium transition-all duration-default min-h-[44px] flex items-center",
-                      isActivePath(item.href)
-                        ? "bg-accent text-accent-foreground shadow-neumorphic-active"
-                        : "text-text-secondary hover:text-text-primary hover:bg-accent/50"
-                    )}
+                    className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+                      isActive
+                        ? 'bg-primary text-primary-foreground'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                    }`}
                   >
+                    <Icon className="h-4 w-4" />
                     {item.label}
                   </Link>
                 )
               })}
-            </nav>
-          </div>
-        )}
+          </nav>
+        </div>
+
+        {/* User Menu and Mobile Navigation */}
+        <div className="flex items-center gap-2">
+          {/* User Role Badge */}
+          {(isPlatformAdmin || isWorkspaceOwner) && (
+            <Badge variant="outline" className="hidden sm:inline-flex">
+              {isPlatformAdmin ? 'Platform Admin' : 'Workspace Owner'}
+            </Badge>
+          )}
+
+          {/* User Menu */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="relative h-8 w-8 rounded-full">
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={user?.user_metadata?.avatar_url} alt={userDisplayName} />
+                  <AvatarFallback>{userInitials}</AvatarFallback>
+                </Avatar>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent className="w-56" align="end" forceMount>
+              <DropdownMenuLabel className="font-normal">
+                <div className="flex flex-col space-y-1">
+                  <p className="text-sm font-medium leading-none">{userDisplayName}</p>
+                  <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
+                </div>
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild>
+                <Link to="/settings" className="flex items-center gap-2 w-full">
+                  <User className="h-4 w-4" />
+                  Profile
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link to="/settings" className="flex items-center gap-2 w-full">
+                  <Settings className="h-4 w-4" />
+                  Settings
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleLogout} className="text-red-600 focus:text-red-600">
+                <LogOut className="h-4 w-4 mr-2" />
+                Log out
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Mobile Navigation */}
+          <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" className="lg:hidden">
+                <Menu className="h-5 w-5" />
+                <span className="sr-only">Toggle navigation menu</span>
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-64">
+              <div className="flex flex-col gap-4">
+                <Link to="/dashboard" className="flex items-center gap-2" onClick={() => setIsSheetOpen(false)}>
+                  <VirgilioLogo className="h-8 w-auto" />
+                </Link>
+                <NavigationContent />
+              </div>
+            </SheetContent>
+          </Sheet>
+        </div>
       </div>
     </header>
   )
