@@ -16,7 +16,7 @@ interface MembersTableProps {
   onEdit: (member: Member) => void
   onDeactivate: (id: string) => void
   onCreateNew: () => void
-  onResendInvitation: (id: string) => void
+  onResendInvitation: (id: string, email: string) => void
 }
 
 export function MembersTable({ 
@@ -36,7 +36,7 @@ export function MembersTable({
     switch (status) {
       case 'active':
         return 'default'
-      case 'pending':
+      case 'invited':
         return 'secondary'
       case 'inactive':
         return 'destructive'
@@ -47,10 +47,12 @@ export function MembersTable({
 
   const filteredMembers = members.filter(member => {
     const email = member.invited_email || member.user_email || ''
-    const name = member.user_name || ''
+    const firstName = member.user_first_name || ''
+    const lastName = member.user_last_name || ''
+    const fullName = `${firstName} ${lastName}`.trim()
     
     const matchesSearch = email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         name.toLowerCase().includes(searchTerm.toLowerCase())
+                         fullName.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesStatus = statusFilter === 'all' || member.user_status === statusFilter
     const matchesRole = roleFilter === 'all' || member.member_role === roleFilter
     
@@ -103,7 +105,7 @@ export function MembersTable({
             <SelectContent>
               <SelectItem value="all">All Statuses</SelectItem>
               <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="invited">Invited</SelectItem>
               <SelectItem value="inactive">Inactive</SelectItem>
             </SelectContent>
           </Select>
@@ -139,46 +141,56 @@ export function MembersTable({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredMembers.map((member) => (
-                <TableRow key={member.id} interactive onClick={() => onEdit(member)}>
-                  <TableCell className="font-medium">
-                    <div>
-                      <div>{member.user_name || member.invited_email}</div>
-                      {member.user_name && member.invited_email && (
-                        <div className="text-sm text-muted-foreground">{member.invited_email}</div>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline">{member.member_role}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={getStatusBadgeVariant(member.user_status)}>
-                      {member.user_status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{new Date(member.created_at).toLocaleDateString()}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      {member.user_status === 'pending' && permissions.canManageMembers && (
-                        <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); onResendInvitation(member.id); }}>
-                          <Mail className="h-4 w-4" />
-                        </Button>
-                      )}
-                      {permissions.canManageMembers && (
-                        <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); onEdit(member); }}>
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                      )}
-                      {permissions.canManageMembers && member.user_status !== 'inactive' && (
-                        <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); onDeactivate(member.id); }}>
-                          <UserMinus className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {filteredMembers.map((member) => {
+                const firstName = member.user_first_name || ''
+                const lastName = member.user_last_name || ''
+                const fullName = `${firstName} ${lastName}`.trim()
+                const displayName = fullName || member.invited_email
+                
+                return (
+                  <TableRow key={member.id} interactive onClick={() => onEdit(member)}>
+                    <TableCell className="font-medium">
+                      <div>
+                        <div>{displayName}</div>
+                        {fullName && member.invited_email && (
+                          <div className="text-sm text-muted-foreground">{member.invited_email}</div>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{member.member_role}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={getStatusBadgeVariant(member.user_status)}>
+                        {member.user_status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{new Date(member.created_at).toLocaleDateString()}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        {member.user_status === 'invited' && permissions.canManageMembers && (
+                          <Button variant="ghost" size="sm" onClick={(e) => { 
+                            e.stopPropagation(); 
+                            onResendInvitation(member.id, member.invited_email || ''); 
+                          }}>
+                            <Mail className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {permissions.canManageMembers && (
+                          <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); onEdit(member); }}>
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {permissions.canManageMembers && member.user_status !== 'inactive' && (
+                          <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); onDeactivate(member.id); }}>
+                            <UserMinus className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )
+              })}
             </TableBody>
           </Table>
         )}

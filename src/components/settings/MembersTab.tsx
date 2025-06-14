@@ -36,6 +36,10 @@ export function MembersTab() {
     }
   }
 
+  const handleResendInvitation = async (memberId: string, email: string) => {
+    await resendInvitation(memberId, email)
+  }
+
   // Show debug panel in development
   const showDebugPanel = process.env.NODE_ENV === 'development' || window.location.hostname === 'localhost'
 
@@ -63,7 +67,7 @@ export function MembersTab() {
             onEdit={handleEdit}
             onDeactivate={handleDeactivate}
             onCreateNew={handleCreateNew}
-            onResendInvitation={resendInvitation}
+            onResendInvitation={handleResendInvitation}
           />
         </CardContent>
       </Card>

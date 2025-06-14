@@ -51,6 +51,10 @@ export default function Members() {
     }
   }
 
+  const handleResendInvitation = async (memberId: string, email: string) => {
+    await resendInvitation(memberId, email)
+  }
+
   return (
     <AuthGate>
       <PermissionGate permission="canManageMembers">
@@ -72,7 +76,7 @@ export default function Members() {
               onEdit={handleEdit}
               onDeactivate={handleDeactivate}
               onCreateNew={handleCreateNew}
-              onResendInvitation={resendInvitation}
+              onResendInvitation={handleResendInvitation}
             />
 
             <MemberForm
