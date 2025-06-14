@@ -38,6 +38,10 @@ export interface PermissionsState {
   canDeleteCandidates: boolean
   canManageCandidates: boolean
   
+  // Job assignment permissions
+  canViewJobAssignments: boolean
+  canManageJobAssignments: boolean
+  
   // Billing & Invoice permissions
   canViewInvoices: boolean
   canCreateInvoices: boolean
