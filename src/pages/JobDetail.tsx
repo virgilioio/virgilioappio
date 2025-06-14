@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
@@ -14,10 +15,11 @@ import { CandidateForm } from '@/components/candidates/CandidateForm'
 import { JobDetailSidebar } from '@/components/jobs/JobDetailSidebar'
 import { JobOverviewTab } from '@/components/jobs/JobOverviewTab'
 import { JobDetailMobileHeader } from '@/components/jobs/JobDetailMobileHeader'
+import { JobAssignmentsPanel } from '@/components/jobs/JobAssignmentsPanel'
 import type { Candidate } from '@/hooks/useCandidates'
 import { JobAssignmentGuard } from '@/components/auth/JobAssignmentGuard'
 
-const VALID_TABS = ['overview', 'candidates'] as const
+const VALID_TABS = ['overview', 'candidates', 'assignments'] as const
 type ValidTab = typeof VALID_TABS[number]
 
 export default function JobDetail() {
@@ -42,6 +44,9 @@ export default function JobDetail() {
   // Get tab from URL or default to 'overview'
   const urlTab = searchParams.get('tab')
   const currentTab = VALID_TABS.includes(urlTab as ValidTab) ? (urlTab as ValidTab) : 'overview'
+
+  // Check if user can see assignments tab
+  const canViewAssignments = permissions.isPlatformAdmin || permissions.canManageJobAssignments
 
   useEffect(() => {
     if (id) {
@@ -135,6 +140,14 @@ export default function JobDetail() {
             />
           </PermissionGate>
         )
+      case 'assignments':
+        return canViewAssignments ? (
+          <JobAssignmentsPanel jobId={job.id} jobTitle={job.title} />
+        ) : (
+          <div className="p-6 text-center">
+            <p className="text-text-secondary">You don't have permission to view job assignments.</p>
+          </div>
+        )
       default:
         return <JobOverviewTab job={job} onEdit={handleEdit} />
     }
@@ -199,6 +212,7 @@ export default function JobDetail() {
                       currentTab={currentTab}
                       onTabChange={handleTabChange}
                       jobTitle={job.title}
+                      canViewAssignments={canViewAssignments}
                     />
                   </div>
                 </div>
@@ -226,6 +240,7 @@ export default function JobDetail() {
                     currentTab={currentTab}
                     onTabChange={handleTabChange}
                     jobTitle={job.title}
+                    canViewAssignments={canViewAssignments}
                   />
                 </div>
               </SheetContent>

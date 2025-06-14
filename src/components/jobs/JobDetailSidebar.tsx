@@ -1,66 +1,90 @@
 
-import { Briefcase, Users } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { Button } from '@/components/ui/button'
-
-interface JobDetailNavItem {
-  id: string
-  label: string
-  icon: React.ComponentType<{ className?: string }>
-}
+import { FileText, Users, UserCheck } from 'lucide-react'
 
 interface JobDetailSidebarProps {
   currentTab: string
   onTabChange: (tab: string) => void
   jobTitle: string
-  className?: string
+  canViewAssignments?: boolean
 }
 
-export function JobDetailSidebar({ currentTab, onTabChange, jobTitle, className }: JobDetailSidebarProps) {
-  const navItems: JobDetailNavItem[] = [
-    { 
-      id: 'overview', 
-      label: 'Overview', 
-      icon: Briefcase
+export function JobDetailSidebar({ 
+  currentTab, 
+  onTabChange, 
+  jobTitle,
+  canViewAssignments = false 
+}: JobDetailSidebarProps) {
+  const tabs = [
+    {
+      id: 'overview',
+      label: 'Overview',
+      icon: FileText,
+      description: 'Job details and information'
     },
-    { 
-      id: 'candidates', 
-      label: 'Candidates', 
-      icon: Users
-    },
+    {
+      id: 'candidates',
+      label: 'Candidates',
+      icon: Users,
+      description: 'Manage job candidates'
+    }
   ]
 
+  // Add assignments tab only if user has permission
+  if (canViewAssignments) {
+    tabs.push({
+      id: 'assignments',
+      label: 'Assignments',
+      icon: UserCheck,
+      description: 'Manage user job access'
+    })
+  }
+
   return (
-    <nav className={cn("flex flex-col gap-1 p-3", className)}>
-      {/* Job Title */}
-      <div className="px-2 py-2 mb-3 border-b border-border/50">
-        <h2 className="text-md font-poppins font-medium text-text-primary truncate">
+    <div className="space-y-1">
+      <div className="px-2 py-1 mb-2">
+        <h3 className="font-medium text-text-primary text-sm truncate" title={jobTitle}>
           {jobTitle}
-        </h2>
+        </h3>
       </div>
       
-      {navItems.map((item) => {
-        const isActive = currentTab === item.id
-        const Icon = item.icon
+      {tabs.map((tab) => {
+        const Icon = tab.icon
+        const isActive = currentTab === tab.id
         
         return (
-          <Button
-            key={item.id}
-            variant={isActive ? "default" : "ghost"}
+          <button
+            key={tab.id}
+            onClick={() => onTabChange(tab.id)}
             className={cn(
-              "w-full justify-start h-10 px-2 py-1 transition-all duration-150 ease-in-out",
-              "text-sm font-medium",
+              "w-full flex items-start gap-3 p-3 rounded-md text-left transition-colors",
+              "hover:bg-surface-secondary/50",
               isActive 
-                ? "bg-accent text-accent-foreground shadow-neumorphic" 
-                : "text-text-secondary hover:text-text-primary hover:bg-accent/50 hover:translate-x-1"
+                ? "bg-accent text-accent-foreground shadow-sm" 
+                : "text-text-secondary hover:text-text-primary"
             )}
-            onClick={() => onTabChange(item.id)}
           >
-            <Icon className="h-4 w-4 mr-2 shrink-0" />
-            <span className="truncate">{item.label}</span>
-          </Button>
+            <Icon className={cn(
+              "h-4 w-4 mt-0.5 shrink-0",
+              isActive ? "text-accent-foreground" : "text-text-secondary"
+            )} />
+            <div className="min-w-0 flex-1">
+              <div className={cn(
+                "font-medium text-sm",
+                isActive ? "text-accent-foreground" : "text-text-primary"
+              )}>
+                {tab.label}
+              </div>
+              <div className={cn(
+                "text-xs mt-0.5 leading-tight",
+                isActive ? "text-accent-foreground/80" : "text-text-secondary"
+              )}>
+                {tab.description}
+              </div>
+            </div>
+          </button>
         )
       })}
-    </nav>
+    </div>
   )
 }
