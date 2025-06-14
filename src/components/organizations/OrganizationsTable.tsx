@@ -98,7 +98,7 @@ export function OrganizationsTable({
               </TableHeader>
               <TableBody>
                 {organizations.map((org) => (
-                  <TableRow key={org.id}>
+                  <TableRow key={org.id} interactive onClick={() => onEdit(org)}>
                     <TableCell className="font-medium">{org.name}</TableCell>
                     <TableCell>{org.country}</TableCell>
                     <TableCell>
@@ -140,7 +140,7 @@ export function OrganizationsTable({
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => onEdit(org)}
+                            onClick={(e) => { e.stopPropagation(); onEdit(org); }}
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
@@ -149,7 +149,7 @@ export function OrganizationsTable({
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => onDelete(org.id)}
+                            onClick={(e) => { e.stopPropagation(); onDelete(org.id); }}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>

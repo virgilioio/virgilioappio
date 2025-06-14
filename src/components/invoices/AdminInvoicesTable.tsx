@@ -113,6 +113,13 @@ export function AdminInvoicesTable({ invoices, isLoading }: AdminInvoicesTablePr
     }
   }
 
+  const handleRowClick = (invoice: Invoice) => {
+    // If invoice has a URL, download it; otherwise do nothing
+    if (invoice.invoice_url) {
+      handleDownloadClick(invoice)
+    }
+  }
+
   const handleStatusChange = async (invoiceId: string, newStatus: 'pending' | 'paid' | 'overdue') => {
     try {
       await updateInvoiceStatus(invoiceId, newStatus)
@@ -185,7 +192,12 @@ export function AdminInvoicesTable({ invoices, isLoading }: AdminInvoicesTablePr
                 </TableHeader>
                 <TableBody>
                   {invoices.map((invoice) => (
-                    <TableRow key={invoice.id}>
+                    <TableRow 
+                      key={invoice.id}
+                      interactive={!!invoice.invoice_url}
+                      onClick={() => handleRowClick(invoice)}
+                      className={!invoice.invoice_url ? 'cursor-default' : ''}
+                    >
                       <TableCell className="font-medium">
                         <div>
                           {invoice.title}
@@ -219,7 +231,7 @@ export function AdminInvoicesTable({ invoices, isLoading }: AdminInvoicesTablePr
                               handleStatusChange(invoice.id, value)
                             }
                           >
-                            <SelectTrigger className="w-24 h-8">
+                            <SelectTrigger className="w-24 h-8" onClick={(e) => e.stopPropagation()}>
                               <SelectValue>
                                 <Badge variant={getStatusBadgeVariant(invoice.status)} className="flex items-center gap-1">
                                   {getStatusIcon(invoice.status)}
@@ -294,7 +306,7 @@ export function AdminInvoicesTable({ invoices, isLoading }: AdminInvoicesTablePr
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleUploadClick(invoice)}
+                              onClick={(e) => { e.stopPropagation(); handleUploadClick(invoice); }}
                               title="Upload PDF"
                             >
                               <Upload className="h-3.5 w-3.5" />
@@ -306,7 +318,7 @@ export function AdminInvoicesTable({ invoices, isLoading }: AdminInvoicesTablePr
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handleDownloadClick(invoice)}
+                              onClick={(e) => { e.stopPropagation(); handleDownloadClick(invoice); }}
                               title="Download PDF"
                             >
                               <Download className="h-3.5 w-3.5" />
@@ -318,7 +330,7 @@ export function AdminInvoicesTable({ invoices, isLoading }: AdminInvoicesTablePr
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => handlePaymentClick(invoice)}
+                              onClick={(e) => { e.stopPropagation(); handlePaymentClick(invoice); }}
                               title="Log Payment"
                             >
                               <DollarSign className="h-3.5 w-3.5" />
@@ -333,6 +345,7 @@ export function AdminInvoicesTable({ invoices, isLoading }: AdminInvoicesTablePr
                                   variant="ghost"
                                   size="sm"
                                   title="Delete Invoice"
+                                  onClick={(e) => e.stopPropagation()}
                                 >
                                   <Trash2 className="h-3.5 w-3.5" />
                                 </Button>

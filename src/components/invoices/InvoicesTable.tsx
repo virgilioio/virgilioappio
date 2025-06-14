@@ -59,6 +59,13 @@ export function InvoicesTable() {
     }
   }
 
+  const handleRowClick = (invoice: Invoice) => {
+    // If invoice has a URL, download it; otherwise do nothing
+    if (invoice.invoice_url) {
+      handleDownloadClick(invoice)
+    }
+  }
+
   const handleUploadComplete = () => {
     refreshInvoices()
   }
@@ -163,7 +170,12 @@ export function InvoicesTable() {
                   </TableHeader>
                   <TableBody>
                     {invoices.map((invoice) => (
-                      <TableRow key={invoice.id}>
+                      <TableRow 
+                        key={invoice.id} 
+                        interactive={!!invoice.invoice_url}
+                        onClick={() => handleRowClick(invoice)}
+                        className={!invoice.invoice_url ? 'cursor-default' : ''}
+                      >
                         <TableCell className="font-medium">
                           <div>
                             <div className="font-medium">{invoice.title}</div>
@@ -213,7 +225,7 @@ export function InvoicesTable() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => handleUploadClick(invoice)}
+                                onClick={(e) => { e.stopPropagation(); handleUploadClick(invoice); }}
                                 title="Upload PDF"
                               >
                                 <FileText className="h-3.5 w-3.5" />
@@ -225,7 +237,7 @@ export function InvoicesTable() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => handleDownloadClick(invoice)}
+                                onClick={(e) => { e.stopPropagation(); handleDownloadClick(invoice); }}
                                 title="Download PDF"
                                 className="text-blue-600 hover:text-blue-700"
                               >

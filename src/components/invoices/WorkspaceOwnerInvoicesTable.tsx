@@ -118,6 +118,12 @@ export function WorkspaceOwnerInvoicesTable({ invoices, isLoading }: WorkspaceOw
     }
   }
 
+  const handleRowClick = (invoice: Invoice) => {
+    if (invoice.invoice_url) {
+      handleDownloadInvoice(invoice)
+    }
+  }
+
   const sortedInvoices = [...invoices].sort((a, b) => {
     const dateA = new Date(a.due_date || a.issued_at)
     const dateB = new Date(b.due_date || b.issued_at)
@@ -190,7 +196,12 @@ export function WorkspaceOwnerInvoicesTable({ invoices, isLoading }: WorkspaceOw
             </TableHeader>
             <TableBody>
               {sortedInvoices.map((invoice) => (
-                <TableRow key={invoice.id} className="h-[52px]">
+                <TableRow 
+                  key={invoice.id} 
+                  className="h-[52px]"
+                  interactive={!!invoice.invoice_url}
+                  onClick={() => handleRowClick(invoice)}
+                >
                   <TableCell className="font-medium">
                     <div>
                       <div className="font-medium text-text-primary">{invoice.title}</div>
@@ -221,7 +232,7 @@ export function WorkspaceOwnerInvoicesTable({ invoices, isLoading }: WorkspaceOw
                   </TableCell>
                   <TableCell>
                     <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
+                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                         <Button variant="ghost" size="icon" className="h-8 w-8">
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
@@ -229,7 +240,7 @@ export function WorkspaceOwnerInvoicesTable({ invoices, isLoading }: WorkspaceOw
                       <DropdownMenuContent align="end">
                         {invoice.invoice_url ? (
                           <DropdownMenuItem 
-                            onClick={() => handleDownloadInvoice(invoice)}
+                            onClick={(e) => { e.stopPropagation(); handleDownloadInvoice(invoice); }}
                             disabled={downloadingFiles.has(invoice.id)}
                           >
                             <Download className="h-4 w-4 mr-2" />
@@ -253,7 +264,11 @@ export function WorkspaceOwnerInvoicesTable({ invoices, isLoading }: WorkspaceOw
         {/* Mobile Card Layout */}
         <div className="md:hidden space-y-4">
           {sortedInvoices.map((invoice) => (
-            <Card key={invoice.id} className="p-4">
+            <Card 
+              key={invoice.id} 
+              className={`p-4 ${invoice.invoice_url ? 'cursor-pointer hover:shadow-md transition-shadow' : ''}`}
+              onClick={() => handleRowClick(invoice)}
+            >
               <div className="space-y-3">
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0">
@@ -288,7 +303,7 @@ export function WorkspaceOwnerInvoicesTable({ invoices, isLoading }: WorkspaceOw
                     variant="outline" 
                     size="sm" 
                     className="w-full"
-                    onClick={() => handleDownloadInvoice(invoice)}
+                    onClick={(e) => { e.stopPropagation(); handleDownloadInvoice(invoice); }}
                     disabled={downloadingFiles.has(invoice.id)}
                   >
                     <Download className="h-4 w-4 mr-2" />
