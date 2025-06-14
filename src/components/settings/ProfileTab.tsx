@@ -20,7 +20,7 @@ interface ProfileFormData {
 
 export function ProfileTab() {
   const { user } = useAuth()
-  const { profile, updateMyProfile, uploadAvatar, isLoading: profileLoading } = useUserProfile()
+  const { profile, updateProfile, uploadAvatar, isLoading: profileLoading } = useUserProfile()
   
   const [profileFormData, setProfileFormData] = useState<ProfileFormData>({
     first_name: '',
@@ -49,7 +49,7 @@ export function ProfileTab() {
 
   const handleProfileSave = async () => {
     try {
-      await updateMyProfile(profileFormData)
+      await updateProfile(profileFormData)
       setLastUpdated(new Date().toLocaleString())
     } catch (error) {
       // Error handling is done in the hook
@@ -72,21 +72,21 @@ export function ProfileTab() {
   )
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-md">
       {/* Profile Information Card */}
       <Card>
-        <CardHeader className="pb-4">
-          <CardTitle className="flex items-center gap-3">
-            <User className="h-5 w-5" />
+        <CardHeader className="pb-sm">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <User className="h-4 w-4" />
             Profile Information
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="text-xs">
             Manage your personal information and preferences
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-md">
           {/* Avatar Section */}
-          <div className="pb-6 border-b border-border">
+          <div className="pb-md border-b border-border">
             <AvatarUploader
               avatarUrl={profile?.avatar_url}
               firstName={profile?.first_name}
@@ -98,11 +98,11 @@ export function ProfileTab() {
           </div>
 
           {/* Profile Form */}
-          <div className="space-y-4">
+          <div className="space-y-sm">
             <div className="flex items-center justify-between">
-              <h4 className="heading-sm font-semibold">Personal Information</h4>
+              <h4 className="text-sm font-medium">Personal Information</h4>
               {lastUpdated && (
-                <span className="text-sm text-text-secondary">
+                <span className="text-xs text-text-secondary">
                   Last updated: {lastUpdated}
                 </span>
               )}
@@ -115,13 +115,14 @@ export function ProfileTab() {
           </div>
 
           {/* Save Button */}
-          <div className="flex justify-end pt-4 border-t border-border">
+          <div className="flex justify-end pt-sm border-t border-border">
             <Button 
               onClick={handleProfileSave} 
               disabled={profileLoading || !hasChanges}
               className="flex items-center gap-2"
+              size="sm"
             >
-              <Save className="h-4 w-4" />
+              <Save className="h-3 w-3" />
               {profileLoading ? 'Saving...' : 'Save Changes'}
             </Button>
           </div>
@@ -130,33 +131,33 @@ export function ProfileTab() {
 
       {/* Account Information Card */}
       <Card>
-        <CardHeader className="pb-4">
-          <CardTitle className="flex items-center gap-3">
-            <Shield className="h-5 w-5" />
+        <CardHeader className="pb-sm">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Shield className="h-4 w-4" />
             Account Information
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="text-xs">
             View your account details and permissions
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-4 text-md text-text-secondary">
-            <div className="flex items-center gap-3">
-              <Mail className="h-4 w-4" />
+        <CardContent className="space-y-sm">
+          <div className="grid gap-sm text-sm text-text-secondary">
+            <div className="flex items-center gap-2">
+              <Mail className="h-3 w-3" />
               <span>Email: {user?.email}</span>
             </div>
-            <div className="flex items-center gap-3">
-              <Shield className="h-4 w-4" />
+            <div className="flex items-center gap-2">
+              <Shield className="h-3 w-3" />
               <span>User Type: </span>
-              <Badge variant="secondary">
+              <Badge variant="secondary" className="text-xs">
                 {user?.user_metadata?.user_type || 'guest'}
               </Badge>
             </div>
             {user?.user_metadata?.member_role && (
-              <div className="flex items-center gap-3">
-                <Shield className="h-4 w-4" />
+              <div className="flex items-center gap-2">
+                <Shield className="h-3 w-3" />
                 <span>Member Role: </span>
-                <Badge variant="outline">
+                <Badge variant="outline" className="text-xs">
                   {user.user_metadata.member_role}
                 </Badge>
               </div>
