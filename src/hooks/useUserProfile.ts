@@ -36,7 +36,7 @@ export function useUserProfile() {
       
       const { data, error: fetchError } = await supabase
         .from('profiles')
-        .select('*')
+        .select('*, user_id as id')
         .eq('user_id', user.id)
         .single()
 
@@ -68,7 +68,7 @@ export function useUserProfile() {
           updated_at: new Date().toISOString()
         })
         .eq('user_id', user.id)
-        .select()
+        .select('*, user_id as id')
         .single()
 
       if (error) {

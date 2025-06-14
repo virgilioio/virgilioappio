@@ -1,4 +1,3 @@
-
 import { useAuth } from '@/contexts/AuthContext'
 import { useUserProfile } from '@/hooks/useUserProfile'
 
@@ -79,7 +78,7 @@ export function usePermissions(): PermissionsState {
   const isClient = memberRole === 'client' && hasOrganizationContext
   
   // Members are users with specific member roles and org context
-  const isMember = ['recruiter', 'admin', 'billing', 'client'].includes(memberRole) && hasOrganizationContext
+  const isMember = ['recruiter', 'admin', 'billing', 'client', 'customer_success'].includes(memberRole) && hasOrganizationContext
   
   // Guests are users without membership or org context
   const isGuest = (memberRole === 'guest' || !hasOrganizationContext) && !isPlatformAdmin && !isWorkspaceOwner
@@ -98,49 +97,46 @@ export function usePermissions(): PermissionsState {
   })
   
   return {
-    // Job permissions - SECURED: Only platform admins and admin members can create jobs directly
-    // Clients can only view jobs they're assigned to (enforced by RLS)
-    canViewJobs: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin', 'client'].includes(memberRole),
-    canCreateJobs: isPlatformAdmin || memberRole === 'admin',
-    canEditJobs: isPlatformAdmin || memberRole === 'admin',
+    // Job permissions - UPDATED: Customer Success can create and manage jobs
+    canViewJobs: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin', 'client', 'customer_success'].includes(memberRole),
+    canCreateJobs: isPlatformAdmin || memberRole === 'admin' || memberRole === 'customer_success',
+    canEditJobs: isPlatformAdmin || memberRole === 'admin' || memberRole === 'customer_success',
     canDeleteJobs: isPlatformAdmin || memberRole === 'admin',
     canArchiveJobs: isPlatformAdmin || memberRole === 'admin',
     
-    // Member permissions - clients can view their org members but not manage them
-    canViewMembers: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin',
-    canCreateMembers: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin',
-    canEditMembers: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin',
+    // Member permissions - UPDATED: Customer Success can manage members
+    canViewMembers: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin' || memberRole === 'customer_success',
+    canCreateMembers: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin' || memberRole === 'customer_success',
+    canEditMembers: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin' || memberRole === 'customer_success',
     canDeleteMembers: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin',
-    canManageMembers: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin',
+    canManageMembers: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin' || memberRole === 'customer_success',
     
-    // Organization permissions - workspace owners and platform admins only
-    canViewOrganizations: isPlatformAdmin,
-    canCreateOrganizations: isPlatformAdmin,
-    canEditOrganizations: isPlatformAdmin || isWorkspaceOwner,
+    // Organization permissions - UPDATED: Customer Success can manage organizations
+    canViewOrganizations: isPlatformAdmin || memberRole === 'customer_success',
+    canCreateOrganizations: isPlatformAdmin || memberRole === 'customer_success',
+    canEditOrganizations: isPlatformAdmin || isWorkspaceOwner || memberRole === 'customer_success',
     canDeleteOrganizations: isPlatformAdmin,
     canManageOrganization: isPlatformAdmin || isWorkspaceOwner,
     
-    // Job request permissions - SECURED: Guests cannot request jobs
-    canViewJobRequests: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin', 'client'].includes(memberRole),
-    canCreateJobRequests: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin', 'client'].includes(memberRole),
+    // Job request permissions - Customer Success already has these permissions
+    canViewJobRequests: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin', 'client', 'customer_success'].includes(memberRole),
+    canCreateJobRequests: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin', 'client', 'customer_success'].includes(memberRole),
     canApproveJobRequests: isPlatformAdmin || memberRole === 'admin' || memberRole === 'customer_success',
     canManageJobRequests: isPlatformAdmin || memberRole === 'admin' || memberRole === 'customer_success',
-    canRequestJobs: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin', 'client'].includes(memberRole),
+    canRequestJobs: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin', 'client', 'customer_success'].includes(memberRole),
     
     // Candidate permissions - SECURED: Only Platform Admins and Virgilio team members can manage candidates
-    // Clients can view candidates for jobs they're assigned to (enforced by RLS)
-    canViewCandidates: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin', 'client'].includes(memberRole),
-    canCreateCandidates: isPlatformAdmin || ['recruiter', 'admin'].includes(memberRole),
-    canEditCandidates: isPlatformAdmin || ['recruiter', 'admin'].includes(memberRole),
+    canViewCandidates: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin', 'client', 'customer_success'].includes(memberRole),
+    canCreateCandidates: isPlatformAdmin || ['recruiter', 'admin', 'customer_success'].includes(memberRole),
+    canEditCandidates: isPlatformAdmin || ['recruiter', 'admin', 'customer_success'].includes(memberRole),
     canDeleteCandidates: isPlatformAdmin || memberRole === 'admin',
-    canManageCandidates: isPlatformAdmin || ['recruiter', 'admin'].includes(memberRole),
+    canManageCandidates: isPlatformAdmin || ['recruiter', 'admin', 'customer_success'].includes(memberRole),
     
-    // Job assignment permissions - NEW: Control who can assign users to jobs
-    canViewJobAssignments: isPlatformAdmin || ['recruiter', 'admin'].includes(memberRole),
-    canManageJobAssignments: isPlatformAdmin || ['recruiter', 'admin'].includes(memberRole),
+    // Job assignment permissions - UPDATED: Customer Success can manage job assignments
+    canViewJobAssignments: isPlatformAdmin || ['recruiter', 'admin', 'customer_success'].includes(memberRole),
+    canManageJobAssignments: isPlatformAdmin || ['recruiter', 'admin', 'customer_success'].includes(memberRole),
     
     // Billing & Invoice permissions - CRITICAL SECURITY FIX
-    // Only users with org context can view billing (prevents guests from accessing)
     canViewInvoices: isPlatformAdmin || isBillingMember || (isWorkspaceOwner && hasOrganizationContext) || (isClient && hasOrganizationContext),
     canCreateInvoices: isPlatformAdmin || isBillingMember,
     canManageInvoices: isPlatformAdmin || isBillingMember,
