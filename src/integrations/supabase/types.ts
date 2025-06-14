@@ -148,35 +148,50 @@ export type Database = {
       job_candidates: {
         Row: {
           added_by: string | null
-          candidate_email: string
           candidate_name: string
           created_at: string
           id: string
           job_id: string
+          location_city: string | null
+          location_country: string | null
+          location_state: string | null
           notes: string | null
-          resume_url: string | null
+          profile_summary: string | null
+          salary_amount: number | null
+          salary_currency: string | null
+          salary_period: string | null
           updated_at: string
         }
         Insert: {
           added_by?: string | null
-          candidate_email: string
           candidate_name: string
           created_at?: string
           id?: string
           job_id: string
+          location_city?: string | null
+          location_country?: string | null
+          location_state?: string | null
           notes?: string | null
-          resume_url?: string | null
+          profile_summary?: string | null
+          salary_amount?: number | null
+          salary_currency?: string | null
+          salary_period?: string | null
           updated_at?: string
         }
         Update: {
           added_by?: string | null
-          candidate_email?: string
           candidate_name?: string
           created_at?: string
           id?: string
           job_id?: string
+          location_city?: string | null
+          location_country?: string | null
+          location_state?: string | null
           notes?: string | null
-          resume_url?: string | null
+          profile_summary?: string | null
+          salary_amount?: number | null
+          salary_currency?: string | null
+          salary_period?: string | null
           updated_at?: string
         }
         Relationships: [

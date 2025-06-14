@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
@@ -8,8 +7,13 @@ export interface Candidate {
   id: string
   job_id: string
   candidate_name: string
-  candidate_email: string
-  resume_url: string | null
+  location_country: string | null
+  location_state: string | null
+  location_city: string | null
+  salary_amount: number | null
+  salary_currency: string | null
+  salary_period: string | null
+  profile_summary: string | null
   notes: string | null
   added_by: string | null
   created_at: string
@@ -18,8 +22,13 @@ export interface Candidate {
 
 export interface CreateCandidateData {
   candidate_name: string
-  candidate_email: string
-  resume_url?: string | null
+  location_country?: string | null
+  location_state?: string | null
+  location_city?: string | null
+  salary_amount?: number | null
+  salary_currency?: string | null
+  salary_period?: string | null
+  profile_summary?: string | null
   notes?: string | null
 }
 

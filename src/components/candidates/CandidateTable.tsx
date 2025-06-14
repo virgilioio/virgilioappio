@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Edit, Trash2, FileText, UserPlus, Mail } from 'lucide-react'
+import { Edit, Trash2, UserPlus, MapPin, DollarSign } from 'lucide-react'
 import { Candidate } from '@/hooks/useCandidates'
 import { PermissionGate } from '@/components/auth/PermissionGate'
 
@@ -24,6 +24,22 @@ export function CandidateTable({ candidates, isLoading, onEdit, onDelete, onAddN
     }
   }
 
+  const formatLocation = (candidate: Candidate) => {
+    const parts = [candidate.location_city, candidate.location_state, candidate.location_country]
+      .filter(Boolean)
+    return parts.length > 0 ? parts.join(', ') : 'Not specified'
+  }
+
+  const formatSalary = (candidate: Candidate) => {
+    if (!candidate.salary_amount) return 'Not specified'
+    
+    const currency = candidate.salary_currency || 'USD'
+    const amount = candidate.salary_amount.toLocaleString()
+    const period = candidate.salary_period || 'annually'
+    
+    return `${currency} ${amount} ${period}`
+  }
+
   if (isLoading) {
     return (
       <Card>
@@ -36,9 +52,9 @@ export function CandidateTable({ candidates, isLoading, onEdit, onDelete, onAddN
               <div key={i} className="flex items-center space-x-3 h-11">
                 <Skeleton className="h-3 w-[120px]" />
                 <Skeleton className="h-3 w-[160px]" />
-                <Skeleton className="h-3 w-[80px]" />
+                <Skeleton className="h-3 w-[140px]" />
+                <Skeleton className="h-3 w-[120px]" />
                 <Skeleton className="h-3 w-[60px]" />
-                <Skeleton className="h-3 w-[50px]" />
               </div>
             ))}
           </div>
@@ -74,9 +90,9 @@ export function CandidateTable({ candidates, isLoading, onEdit, onDelete, onAddN
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Notes</TableHead>
-                  <TableHead>Resume</TableHead>
+                  <TableHead>Location</TableHead>
+                  <TableHead>Salary</TableHead>
+                  <TableHead>Profile Summary</TableHead>
                   <TableHead>Added</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -88,36 +104,24 @@ export function CandidateTable({ candidates, isLoading, onEdit, onDelete, onAddN
                       {candidate.candidate_name}
                     </TableCell>
                     <TableCell>
-                      <a 
-                        href={`mailto:${candidate.candidate_email}`}
-                        className="flex items-center gap-1 text-primary hover:underline transition-all duration-150 ease-in-out hover:text-primary/80"
-                      >
-                        <Mail className="h-4 w-4" />
-                        {candidate.candidate_email}
-                      </a>
+                      <div className="flex items-center gap-1 text-sm text-text-secondary">
+                        <MapPin className="h-3 w-3" />
+                        {formatLocation(candidate)}
+                      </div>
                     </TableCell>
                     <TableCell>
-                      {candidate.notes ? (
-                        <div className="max-w-xs truncate" title={candidate.notes}>
-                          {candidate.notes}
+                      <div className="flex items-center gap-1 text-sm text-text-secondary">
+                        <DollarSign className="h-3 w-3" />
+                        {formatSalary(candidate)}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {candidate.profile_summary ? (
+                        <div className="max-w-xs truncate" title={candidate.profile_summary}>
+                          {candidate.profile_summary}
                         </div>
                       ) : (
-                        <span className="text-text-secondary">No notes</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {candidate.resume_url ? (
-                        <a 
-                          href={candidate.resume_url} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1 text-primary hover:underline transition-all duration-150 ease-in-out hover:text-primary/80"
-                        >
-                          <FileText className="h-4 w-4" />
-                          Resume
-                        </a>
-                      ) : (
-                        <span className="text-text-secondary text-xs">No resume</span>
+                        <span className="text-text-secondary text-sm">No summary</span>
                       )}
                     </TableCell>
                     <TableCell className="text-xs text-text-secondary">
