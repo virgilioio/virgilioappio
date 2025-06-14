@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
@@ -36,7 +35,7 @@ export function useUserProfile() {
       
       const { data, error: fetchError } = await supabase
         .from('profiles')
-        .select('*, user_id as id')
+        .select('*')
         .eq('user_id', user.id)
         .single()
 
@@ -46,7 +45,12 @@ export function useUserProfile() {
       }
 
       console.log('Fetched profile:', data)
-      setProfile(data)
+      // Transform the data to match our interface by adding id field
+      const profileData: UserProfile = {
+        ...data,
+        id: data.user_id
+      }
+      setProfile(profileData)
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch profile'
       console.error('Profile fetch error:', err)
@@ -68,7 +72,7 @@ export function useUserProfile() {
           updated_at: new Date().toISOString()
         })
         .eq('user_id', user.id)
-        .select('*, user_id as id')
+        .select('*')
         .single()
 
       if (error) {
@@ -77,8 +81,13 @@ export function useUserProfile() {
       }
 
       console.log('Updated profile:', data)
-      setProfile(data)
-      return data
+      // Transform the data to match our interface
+      const profileData: UserProfile = {
+        ...data,
+        id: data.user_id
+      }
+      setProfile(profileData)
+      return profileData
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to update profile'
       console.error('Update profile error:', err)
