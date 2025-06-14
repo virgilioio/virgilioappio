@@ -6,6 +6,9 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
+import { SearchableSelect } from '@/components/ui/searchable-select'
+import { Badge } from '@/components/ui/badge'
+import { X } from 'lucide-react'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Check, ChevronsUpDown } from 'lucide-react'
@@ -80,6 +83,7 @@ export function JobForm({ isOpen, onClose, onSubmit, job, isLoading }: JobFormPr
   })
 
   const [currencyOpen, setCurrencyOpen] = useState(false)
+  const [hiringTeamOpen, setHiringTeamOpen] = useState(false)
 
   const { organizations } = useOrganizations()
   const { members } = useMembers()
@@ -146,13 +150,29 @@ export function JobForm({ isOpen, onClose, onSubmit, job, isLoading }: JobFormPr
     }
   }
 
-  const handleMemberToggle = (memberId: string) => {
+  const handleAddMember = (memberId: string) => {
+    if (!formData.hiring_team.includes(memberId)) {
+      setFormData(prev => ({
+        ...prev,
+        hiring_team: [...prev.hiring_team, memberId]
+      }))
+    }
+    setHiringTeamOpen(false)
+  }
+
+  const handleRemoveMember = (memberId: string) => {
     setFormData(prev => ({
       ...prev,
-      hiring_team: prev.hiring_team.includes(memberId)
-        ? prev.hiring_team.filter(id => id !== memberId)
-        : [...prev.hiring_team, memberId]
+      hiring_team: prev.hiring_team.filter(id => id !== memberId)
     }))
+  }
+
+  const getSelectedMembers = () => {
+    return members.filter(member => formData.hiring_team.includes(member.id))
+  }
+
+  const getAvailableMembers = () => {
+    return members.filter(member => !formData.hiring_team.includes(member.id))
   }
 
   return (
@@ -323,28 +343,61 @@ export function JobForm({ isOpen, onClose, onSubmit, job, isLoading }: JobFormPr
 
             <div className="col-span-2">
               <Label>Hiring Team</Label>
-              <div className="mt-2 max-h-32 overflow-y-auto border rounded-md p-2">
-                {members.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No team members available</p>
-                ) : (
-                  members.map(member => (
-                    <div key={member.id} className="flex items-center space-x-2 py-1">
-                      <input
-                        type="checkbox"
-                        id={`member-${member.id}`}
-                        checked={formData.hiring_team.includes(member.id)}
-                        onChange={() => handleMemberToggle(member.id)}
-                        className="rounded"
-                      />
-                      <label 
-                        htmlFor={`member-${member.id}`}
-                        className="text-sm cursor-pointer"
-                      >
+              <div className="space-y-3">
+                {/* Selected Members */}
+                {getSelectedMembers().length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {getSelectedMembers().map(member => (
+                      <Badge key={member.id} variant="secondary" className="flex items-center gap-1">
                         {member.user_email || 'Unknown'} ({member.member_role})
-                      </label>
-                    </div>
-                  ))
+                        <X 
+                          className="h-3 w-3 cursor-pointer" 
+                          onClick={() => handleRemoveMember(member.id)}
+                        />
+                      </Badge>
+                    ))}
+                  </div>
                 )}
+                
+                {/* Add Member Dropdown */}
+                <Popover open={hiringTeamOpen} onOpenChange={setHiringTeamOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={hiringTeamOpen}
+                      className="w-full justify-between"
+                    >
+                      Add team member...
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-full p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Search team members..." />
+                      <CommandList>
+                        <CommandEmpty>No team members found.</CommandEmpty>
+                        <CommandGroup>
+                          {getAvailableMembers().map((member) => (
+                            <CommandItem
+                              key={member.id}
+                              onSelect={() => handleAddMember(member.id)}
+                              className="cursor-pointer"
+                            >
+                              <div className="flex flex-col">
+                                <span>{member.user_email || 'Unknown'}</span>
+                                <span className="text-sm text-muted-foreground">
+                                  {member.member_role} • {member.organization_name || 'No org'}
+                                </span>
+                              </div>
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
             </div>
           </div>
