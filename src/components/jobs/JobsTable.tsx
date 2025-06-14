@@ -1,3 +1,4 @@
+
 import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -280,7 +281,7 @@ export function JobsTable({ jobs, isLoading, onView, onEdit, onArchive, onCreate
               </TableHeader>
               <TableBody>
                 {filteredJobs.map((job) => (
-                  <TableRow key={job.id}>
+                  <TableRow key={job.id} interactive onClick={() => onView(job)}>
                     <TableCell className="font-medium">
                       <div className="truncate max-w-[200px]">{job.title}</div>
                     </TableCell>
@@ -295,16 +296,16 @@ export function JobsTable({ jobs, isLoading, onView, onEdit, onArchive, onCreate
                     <TableCell className="hidden sm:table-cell">{new Date(job.created_at).toLocaleDateString()}</TableCell>
                     <TableCell>
                       <div className="flex items-center justify-end gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => onView(job)}>
+                        <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onView(job); }}>
                           <Eye className="h-4 w-4" />
                         </Button>
                         {permissions.canEditJobs && (
-                          <Button variant="ghost" size="icon" onClick={() => onEdit(job)}>
+                          <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onEdit(job); }}>
                             <Edit className="h-4 w-4" />
                           </Button>
                         )}
                         {permissions.canArchiveJobs && job.status !== 'archived' && (
-                          <Button variant="ghost" size="icon" onClick={() => onArchive(job.id)}>
+                          <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onArchive(job.id); }}>
                             <Archive className="h-4 w-4" />
                           </Button>
                         )}

@@ -147,7 +147,7 @@ export function JobRequestTable({
             </TableHeader>
             <TableBody>
               {filteredJobRequests.map((request) => (
-                <TableRow key={request.id}>
+                <TableRow key={request.id} interactive onClick={() => onView(request)}>
                   <TableCell className="font-medium">{request.title}</TableCell>
                   <TableCell>{request.level}</TableCell>
                   <TableCell>{request.department || '-'}</TableCell>
@@ -160,16 +160,16 @@ export function JobRequestTable({
                   <TableCell>{new Date(request.created_at).toLocaleDateString()}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
-                      <Button variant="ghost" size="sm" onClick={() => onView(request)}>
+                      <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); onView(request); }}>
                         <Eye className="h-4 w-4" />
                       </Button>
                       {permissions.canApproveJobRequests && request.status === 'pending' && (
-                        <Button variant="ghost" size="sm" onClick={() => onApprove(request.id)}>
+                        <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); onApprove(request.id); }}>
                           <CheckCircle className="h-4 w-4" />
                         </Button>
                       )}
                       {permissions.canManageJobRequests && (
-                        <Button variant="ghost" size="sm" onClick={() => onDelete(request.id)}>
+                        <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); onDelete(request.id); }}>
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       )}
