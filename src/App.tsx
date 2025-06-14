@@ -1,3 +1,4 @@
+
 import {
   BrowserRouter as Router,
   Routes,
@@ -12,14 +13,11 @@ import JobDetail from './pages/JobDetail'
 import Members from './pages/Members'
 import Organizations from './pages/Organizations'
 import JobRequests from './pages/JobRequests'
-import Billing from './pages/Billing'
 import Settings from './pages/Settings'
-import Auth from './pages/Auth'
+import Login from './pages/Login'
 import { useAuth } from './contexts/AuthContext'
 import NotFound from './pages/NotFound'
-import Invoices from './pages/Invoices'
-import Pricing from './pages/Pricing'
-import Onboarding from './pages/Onboarding'
+import AdminInvoices from './pages/AdminInvoices'
 import CandidateProfile from '@/pages/CandidateProfile'
 
 const queryClient = new QueryClient()
@@ -31,8 +29,7 @@ function App() {
         <Router>
           <div className="min-h-screen bg-background text-foreground">
             <Routes>
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/pricing" element={<Pricing />} />
+              <Route path="/auth" element={<Login />} />
               <Route
                 path="/"
                 element={
@@ -85,7 +82,7 @@ function App() {
                 path="/billing"
                 element={
                   <RequireAuth>
-                    <Billing />
+                    <Settings />
                   </RequireAuth>
                 }
               />
@@ -93,7 +90,7 @@ function App() {
                 path="/invoices"
                 element={
                   <RequireAuth>
-                    <Invoices />
+                    <AdminInvoices />
                   </RequireAuth>
                 }
               />
@@ -102,14 +99,6 @@ function App() {
                 element={
                   <RequireAuth>
                     <Settings />
-                  </RequireAuth>
-                }
-              />
-              <Route
-                path="/onboarding"
-                element={
-                  <RequireAuth>
-                    <Onboarding />
                   </RequireAuth>
                 }
               />
