@@ -167,7 +167,7 @@ export function CandidateForm({
               <div className="space-y-4">
                 <h3 className="text-lg font-medium text-text-primary">Location</h3>
                 
-                <div className="grid grid-cols-1 gap-4">
+                <div className="space-y-4">
                   <FormField 
                     label="Country"
                     htmlFor="location_country"
@@ -220,7 +220,7 @@ export function CandidateForm({
               <div className="space-y-4">
                 <h3 className="text-lg font-medium text-text-primary">Salary Expectations</h3>
                 
-                <div className="grid grid-cols-1 gap-4">
+                <div className="space-y-4">
                   <FormField 
                     label="Amount"
                     error={errors.salary_amount}
@@ -317,7 +317,6 @@ export function CandidateForm({
                     placeholder="Add any additional internal notes about this candidate..."
                     className="resize-none w-full"
                   />
-                </Textarea>
                 </FormField>
               </div>
 
