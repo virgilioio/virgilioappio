@@ -1,4 +1,3 @@
-
 import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -6,7 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Search, Eye, CheckCircle, Trash2 } from 'lucide-react'
+import { Plus, Search, CheckCircle, Trash2 } from 'lucide-react'
 import { JobRequest } from '@/hooks/useJobRequests'
 import { usePermissions } from '@/hooks/usePermissions'
 
@@ -160,9 +159,6 @@ export function JobRequestTable({
                   <TableCell>{new Date(request.created_at).toLocaleDateString()}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
-                      <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); onView(request); }}>
-                        <Eye className="h-4 w-4" />
-                      </Button>
                       {permissions.canApproveJobRequests && request.status === 'pending' && (
                         <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); onApprove(request.id); }}>
                           <CheckCircle className="h-4 w-4" />

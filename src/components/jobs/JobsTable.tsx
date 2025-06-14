@@ -1,4 +1,3 @@
-
 import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -6,7 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Search, Eye, Edit, Archive, MoreHorizontal, FileText } from 'lucide-react'
+import { Plus, Search, Edit, Archive, MoreHorizontal, FileText } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Job } from '@/hooks/useJobs'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -173,7 +172,7 @@ export function JobsTable({ jobs, isLoading, onView, onEdit, onArchive, onCreate
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onView(job); }}>
-                          <Eye className="h-4 w-4 mr-2" />
+                          <FileText className="h-4 w-4 mr-2" />
                           View
                         </DropdownMenuItem>
                         {permissions.canEditJobs && (
@@ -296,9 +295,6 @@ export function JobsTable({ jobs, isLoading, onView, onEdit, onArchive, onCreate
                     <TableCell className="hidden sm:table-cell">{new Date(job.created_at).toLocaleDateString()}</TableCell>
                     <TableCell>
                       <div className="flex items-center justify-end gap-1">
-                        <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onView(job); }}>
-                          <Eye className="h-4 w-4" />
-                        </Button>
                         {permissions.canEditJobs && (
                           <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onEdit(job); }}>
                             <Edit className="h-4 w-4" />
