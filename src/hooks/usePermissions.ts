@@ -1,3 +1,4 @@
+
 import { useAuth } from '@/contexts/AuthContext'
 import { useUserProfile } from '@/hooks/useUserProfile'
 
@@ -59,26 +60,19 @@ export interface PermissionsState {
 }
 
 export function usePermissions(): PermissionsState {
-  const { user, organizationId } = useAuth()
+  const { user, organizationId, userType, memberRole, hasOrganizationContext } = useAuth()
   const { profile } = useUserProfile()
-  
-  // Get user type and member role from user metadata or profile
-  const userType = user?.user_metadata?.user_type || 'guest'
-  const memberRole = user?.user_metadata?.member_role || 'guest'
   
   // Platform admin has all permissions
   const isPlatformAdmin = userType === 'platform_admin'
   const isWorkspaceOwner = userType === 'workspace_owner'
   const isBillingMember = memberRole === 'billing'
   
-  // Check if user has organization context (critical for security)
-  const hasOrganizationContext = !!organizationId
-  
   // Client members have 'client' role and organization context
   const isClient = memberRole === 'client' && hasOrganizationContext
   
   // Members are users with specific member roles and org context
-  const isMember = ['recruiter', 'admin', 'billing', 'client', 'customer_success'].includes(memberRole) && hasOrganizationContext
+  const isMember = ['recruiter', 'admin', 'billing', 'client', 'customer_success'].includes(memberRole || '') && hasOrganizationContext
   
   // Guests are users without membership or org context
   const isGuest = (memberRole === 'guest' || !hasOrganizationContext) && !isPlatformAdmin && !isWorkspaceOwner
@@ -98,7 +92,7 @@ export function usePermissions(): PermissionsState {
   
   return {
     // Job permissions - UPDATED: Customer Success can create and manage jobs
-    canViewJobs: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin', 'client', 'customer_success'].includes(memberRole),
+    canViewJobs: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin', 'client', 'customer_success'].includes(memberRole || ''),
     canCreateJobs: isPlatformAdmin || memberRole === 'admin' || memberRole === 'customer_success',
     canEditJobs: isPlatformAdmin || memberRole === 'admin' || memberRole === 'customer_success',
     canDeleteJobs: isPlatformAdmin || memberRole === 'admin',
@@ -119,22 +113,22 @@ export function usePermissions(): PermissionsState {
     canManageOrganization: isPlatformAdmin || isWorkspaceOwner,
     
     // Job request permissions - Customer Success already has these permissions
-    canViewJobRequests: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin', 'client', 'customer_success'].includes(memberRole),
-    canCreateJobRequests: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin', 'client', 'customer_success'].includes(memberRole),
+    canViewJobRequests: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin', 'client', 'customer_success'].includes(memberRole || ''),
+    canCreateJobRequests: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin', 'client', 'customer_success'].includes(memberRole || ''),
     canApproveJobRequests: isPlatformAdmin || memberRole === 'admin' || memberRole === 'customer_success',
     canManageJobRequests: isPlatformAdmin || memberRole === 'admin' || memberRole === 'customer_success',
-    canRequestJobs: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin', 'client', 'customer_success'].includes(memberRole),
+    canRequestJobs: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin', 'client', 'customer_success'].includes(memberRole || ''),
     
     // Candidate permissions - SECURED: Only Platform Admins and Virgilio team members can manage candidates
-    canViewCandidates: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin', 'client', 'customer_success'].includes(memberRole),
-    canCreateCandidates: isPlatformAdmin || ['recruiter', 'admin', 'customer_success'].includes(memberRole),
-    canEditCandidates: isPlatformAdmin || ['recruiter', 'admin', 'customer_success'].includes(memberRole),
+    canViewCandidates: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin', 'client', 'customer_success'].includes(memberRole || ''),
+    canCreateCandidates: isPlatformAdmin || ['recruiter', 'admin', 'customer_success'].includes(memberRole || ''),
+    canEditCandidates: isPlatformAdmin || ['recruiter', 'admin', 'customer_success'].includes(memberRole || ''),
     canDeleteCandidates: isPlatformAdmin || memberRole === 'admin',
-    canManageCandidates: isPlatformAdmin || ['recruiter', 'admin', 'customer_success'].includes(memberRole),
+    canManageCandidates: isPlatformAdmin || ['recruiter', 'admin', 'customer_success'].includes(memberRole || ''),
     
     // Job assignment permissions - UPDATED: Customer Success can manage job assignments
-    canViewJobAssignments: isPlatformAdmin || ['recruiter', 'admin', 'customer_success'].includes(memberRole),
-    canManageJobAssignments: isPlatformAdmin || ['recruiter', 'admin', 'customer_success'].includes(memberRole),
+    canViewJobAssignments: isPlatformAdmin || ['recruiter', 'admin', 'customer_success'].includes(memberRole || ''),
+    canManageJobAssignments: isPlatformAdmin || ['recruiter', 'admin', 'customer_success'].includes(memberRole || ''),
     
     // Billing & Invoice permissions - CRITICAL SECURITY FIX
     canViewInvoices: isPlatformAdmin || isBillingMember || (isWorkspaceOwner && hasOrganizationContext) || (isClient && hasOrganizationContext),
