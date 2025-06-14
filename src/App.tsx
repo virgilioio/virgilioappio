@@ -7,6 +7,7 @@ import {
 } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { Layout } from './components/layout/Layout'
 import Dashboard from './pages/Dashboard'
 import Jobs from './pages/Jobs'
 import JobDetail from './pages/JobDetail'
@@ -31,79 +32,26 @@ function App() {
             <Routes>
               <Route path="/auth" element={<Login />} />
               <Route
-                path="/"
+                path="/*"
                 element={
                   <RequireAuth>
-                    <Dashboard />
+                    <Layout />
                   </RequireAuth>
                 }
-              />
-              <Route
-                path="/jobs"
-                element={
-                  <RequireAuth>
-                    <Jobs />
-                  </RequireAuth>
-                }
-              />
-              <Route
-                path="/jobs/:id"
-                element={
-                  <RequireAuth>
-                    <JobDetail />
-                  </RequireAuth>
-                }
-              />
-              <Route
-                path="/members"
-                element={
-                  <RequireAuth>
-                    <Members />
-                  </RequireAuth>
-                }
-              />
-              <Route
-                path="/organizations"
-                element={
-                  <RequireAuth>
-                    <Organizations />
-                  </RequireAuth>
-                }
-              />
-              <Route
-                path="/job-requests"
-                element={
-                  <RequireAuth>
-                    <JobRequests />
-                  </RequireAuth>
-                }
-              />
-              <Route
-                path="/billing"
-                element={
-                  <RequireAuth>
-                    <Settings />
-                  </RequireAuth>
-                }
-              />
-              <Route
-                path="/invoices"
-                element={
-                  <RequireAuth>
-                    <AdminInvoices />
-                  </RequireAuth>
-                }
-              />
-              <Route
-                path="/settings"
-                element={
-                  <RequireAuth>
-                    <Settings />
-                  </RequireAuth>
-                }
-              />
-              <Route path="/jobs/:jobId/candidates/:candidateId" element={<CandidateProfile />} />
-              <Route path="*" element={<NotFound />} />
+              >
+                <Route index element={<Dashboard />} />
+                <Route path="dashboard" element={<Dashboard />} />
+                <Route path="jobs" element={<Jobs />} />
+                <Route path="jobs/:id" element={<JobDetail />} />
+                <Route path="jobs/:jobId/candidates/:candidateId" element={<CandidateProfile />} />
+                <Route path="members" element={<Members />} />
+                <Route path="organizations" element={<Organizations />} />
+                <Route path="job-requests" element={<JobRequests />} />
+                <Route path="billing" element={<Settings />} />
+                <Route path="invoices" element={<AdminInvoices />} />
+                <Route path="settings" element={<Settings />} />
+                <Route path="*" element={<NotFound />} />
+              </Route>
             </Routes>
           </div>
         </Router>
