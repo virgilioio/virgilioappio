@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
@@ -157,20 +158,20 @@ export function useMembers() {
   const createMember = async (data: CreateMemberData) => {
     if (!user) throw new Error('User not authenticated')
     
-    const organizationId = data.organization_id || user.user_metadata?.organization_id
-    if (!organizationId) {
-      throw new Error('No organization found for user')
+    // Validate that organization_id is provided in the form data
+    if (!data.organization_id) {
+      throw new Error('Organization is required for member creation')
     }
 
     setIsLoading(true)
     setError(null)
 
     try {
-      console.log('Creating member:', { ...data, organization_id: organizationId })
+      console.log('Creating member with organization_id:', data.organization_id, 'Full data:', data)
       
       // Prepare the member data - include email for invited members
       const memberData = {
-        organization_id: organizationId,
+        organization_id: data.organization_id,
         member_role: data.member_role,
         user_status: data.user_id ? (data.user_status || 'active') : 'invited',
         user_id: data.user_id || null,
