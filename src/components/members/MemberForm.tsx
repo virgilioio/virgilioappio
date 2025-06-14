@@ -21,6 +21,7 @@ import {
 import { Member } from "@/hooks/useMembers"
 import { useOrganizations } from "@/hooks/useOrganizations"
 import { usePermissions } from "@/hooks/usePermissions"
+import { useAuth } from "@/contexts/AuthContext"
 
 interface MemberFormProps {
   isOpen: boolean
@@ -46,6 +47,10 @@ export function MemberForm({
   
   const { organizations } = useOrganizations()
   const permissions = usePermissions()
+  const { memberRole } = useAuth()
+  
+  // Check if current user is Customer Success
+  const isCustomerSuccess = memberRole === 'customer_success'
 
   useEffect(() => {
     if (member) {
@@ -57,7 +62,7 @@ export function MemberForm({
     } else {
       setEmail("")
       setRole("")
-      setUserType("member")
+      setUserType("")
       setOrganizationId("")
       setStatus("invited")
     }
@@ -70,8 +75,12 @@ export function MemberForm({
       setRole('client')
     } else if (userType === 'platform_admin') {
       setRole('admin')
+    } else if (userType === 'guest') {
+      setRole('client') // Guests are typically clients
+    } else if (userType === 'member' && !role) {
+      setRole('client') // Default role for members
     }
-  }, [userType])
+  }, [userType, role])
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
@@ -82,7 +91,8 @@ export function MemberForm({
       newErrors.email = "Please enter a valid email"
     }
 
-    if (!role) {
+    // For Customer Success users, role is auto-assigned, so don't validate it
+    if (!isCustomerSuccess && !role) {
       newErrors.role = "Role is required"
     }
 
@@ -114,7 +124,7 @@ export function MemberForm({
         // Creating new member (invitation)
         data.user_id = null
         data.email = email.trim() // Include email for invitation
-        if (permissions.isPlatformAdmin) {
+        if (permissions.isPlatformAdmin || isCustomerSuccess) {
           data.organization_id = organizationId
         } else {
           // For workspace owners, use their organization
@@ -142,7 +152,11 @@ export function MemberForm({
     { value: 'client', label: 'Client' },
   ]
 
-  const userTypeOptions = [
+  // For Customer Success users, limit user type options to workspace_owner and guest
+  const userTypeOptions = isCustomerSuccess ? [
+    { value: 'workspace_owner', label: 'Workspace Owner' },
+    { value: 'guest', label: 'Guest' },
+  ] : [
     { value: 'guest', label: 'Guest' },
     { value: 'member', label: 'Member' },
     { value: 'workspace_owner', label: 'Workspace Owner' },
@@ -160,12 +174,14 @@ export function MemberForm({
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>
-            {member ? 'Edit Member' : 'Invite New Member'}
+            {member ? 'Edit Member' : 'Invite New User'}
           </DialogTitle>
           <DialogDescription>
             {member 
               ? 'Update member role, type and status.'
-              : 'Send an invitation to join the organization.'}
+              : isCustomerSuccess 
+                ? 'Invite a new user to join an organization as either a Workspace Owner or Guest.'
+                : 'Send an invitation to join the organization.'}
           </DialogDescription>
         </DialogHeader>
         
@@ -201,8 +217,8 @@ export function MemberForm({
               </div>
             )}
 
-            {/* User Type field - only for platform admins */}
-            {permissions.isPlatformAdmin && (
+            {/* User Type field - always show for platform admins and customer success */}
+            {(permissions.isPlatformAdmin || isCustomerSuccess) && (
               <div className="grid gap-token-sm">
                 <Label htmlFor="userType">User Type</Label>
                 <Select value={userType} onValueChange={setUserType}>
@@ -220,41 +236,58 @@ export function MemberForm({
                 {errors.userType && (
                   <p className="text-sm text-destructive">{errors.userType}</p>
                 )}
-                {userType === 'workspace_owner' && (
+                {isCustomerSuccess && (
                   <p className="text-xs text-muted-foreground">
-                    Workspace owners will have admin privileges in their organization
+                    {userType === 'workspace_owner' 
+                      ? 'Workspace owners will have admin privileges in their organization'
+                      : 'Guests will have limited access to the organization'}
                   </p>
                 )}
               </div>
             )}
 
-            {/* Role field */}
-            <div className="grid gap-token-sm">
-              <Label htmlFor="role">Role</Label>
-              <Select value={role} onValueChange={setRole}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select a role" />
-                </SelectTrigger>
-                <SelectContent>
-                  {roleOptions.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {errors.role && (
-                <p className="text-sm text-destructive">{errors.role}</p>
-              )}
-              {userType === 'workspace_owner' && role !== 'client' && (
-                <p className="text-xs text-amber-600">
-                  Workspace owners typically have the "Client" role
-                </p>
-              )}
-            </div>
+            {/* Role field - hidden for Customer Success users when creating new members */}
+            {!isCustomerSuccess && (
+              <div className="grid gap-token-sm">
+                <Label htmlFor="role">Role</Label>
+                <Select value={role} onValueChange={setRole}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {roleOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.role && (
+                  <p className="text-sm text-destructive">{errors.role}</p>
+                )}
+                {userType === 'workspace_owner' && role !== 'client' && (
+                  <p className="text-xs text-amber-600">
+                    Workspace owners typically have the "Client" role
+                  </p>
+                )}
+              </div>
+            )}
 
-            {/* Organization field - only for platform admins */}
-            {permissions.isPlatformAdmin && (
+            {/* Show auto-assigned role for Customer Success users */}
+            {isCustomerSuccess && !member && role && (
+              <div className="grid gap-token-sm">
+                <Label>Role (Auto-assigned)</Label>
+                <div className="px-3 py-2 bg-muted rounded-md text-sm">
+                  {roleOptions.find(opt => opt.value === role)?.label}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Role is automatically assigned based on user type
+                </p>
+              </div>
+            )}
+
+            {/* Organization field - for platform admins and customer success */}
+            {(permissions.isPlatformAdmin || isCustomerSuccess) && (
               <div className="grid gap-token-sm">
                 <Label htmlFor="organization">Organization</Label>
                 <Select value={organizationId} onValueChange={setOrganizationId}>

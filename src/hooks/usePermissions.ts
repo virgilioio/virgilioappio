@@ -110,7 +110,7 @@ export function usePermissions(): PermissionsState {
     canCreateOrganizations: isPlatformAdmin || memberRole === 'customer_success',
     canEditOrganizations: isPlatformAdmin || isWorkspaceOwner || memberRole === 'customer_success',
     canDeleteOrganizations: isPlatformAdmin,
-    canManageOrganization: isPlatformAdmin || isWorkspaceOwner,
+    canManageOrganization: isPlatformAdmin || isWorkspaceOwner || memberRole === 'customer_success',
     
     // Job request permissions - Customer Success already has these permissions
     canViewJobRequests: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin', 'client', 'customer_success'].includes(memberRole || ''),
