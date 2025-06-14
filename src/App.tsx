@@ -16,6 +16,8 @@ import Organizations from './pages/Organizations'
 import JobRequests from './pages/JobRequests'
 import Settings from './pages/Settings'
 import Login from './pages/Login'
+import AcceptInvite from './pages/AcceptInvite'
+import VerifyEmail from './pages/VerifyEmail'
 import { useAuth } from './contexts/AuthContext'
 import NotFound from './pages/NotFound'
 import AdminInvoices from './pages/AdminInvoices'
@@ -31,6 +33,8 @@ function App() {
           <div className="min-h-screen bg-background text-foreground">
             <Routes>
               <Route path="/auth" element={<Login />} />
+              <Route path="/accept-invite/:token" element={<AcceptInvite />} />
+              <Route path="/verify-email" element={<VerifyEmail />} />
               <Route
                 path="/*"
                 element={
