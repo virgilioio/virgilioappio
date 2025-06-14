@@ -61,7 +61,8 @@ export function useMembers() {
           ),
           profiles (
             first_name,
-            last_name
+            last_name,
+            email
           )
         `)
         .order('created_at', { ascending: false })
@@ -84,22 +85,6 @@ export function useMembers() {
         return
       }
 
-      // For active members with user_id, fetch their actual email from auth.users
-      const activeUserIds = membersData
-        .filter(member => member.user_id && member.user_status === 'active')
-        .map(member => member.user_id)
-
-      let userEmails: { [key: string]: string } = {}
-      if (activeUserIds.length > 0) {
-        try {
-          // We can only get user emails for the current user or through admin API
-          // For now, we'll use the profile data and invited_email as fallback
-          console.log('Active user IDs found:', activeUserIds)
-        } catch (emailError) {
-          console.warn('Could not fetch user emails:', emailError)
-        }
-      }
-
       // Transform the data to match our Member interface
       const membersWithDetails = membersData.map((member) => {
         const profile = member.profiles
@@ -112,7 +97,7 @@ export function useMembers() {
           organization_name: member.organizations?.name,
           user_first_name: profile?.first_name || null,
           user_last_name: profile?.last_name || null,
-          user_email: userEmails[member.user_id] || member.invited_email || null
+          user_email: profile?.email || member.invited_email || null
         }
         
         console.log('Processed member:', {

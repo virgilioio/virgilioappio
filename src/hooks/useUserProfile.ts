@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
+import { supabase } from '@/integrations/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
 
 export interface UserProfile {
@@ -14,6 +14,7 @@ export interface UserProfile {
   avatar_url?: string
   timezone?: string
   organization_id?: string
+  email?: string
   created_at: string
   updated_at: string
 }
