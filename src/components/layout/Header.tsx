@@ -1,4 +1,3 @@
-
 import { useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
@@ -17,7 +16,6 @@ import {
   Menu,
   Home,
   Briefcase,
-  Users,
   Building2,
   FileText,
   Settings,
@@ -34,7 +32,6 @@ export function Header() {
   const { user, logout } = useAuth()
   const { 
     canViewJobs, 
-    canViewMembers, 
     canViewOrganizations, 
     canViewJobRequests, 
     canViewInvoices,
@@ -62,12 +59,6 @@ export function Header() {
       icon: Briefcase,
       label: 'Jobs',
       show: canViewJobs,
-    },
-    {
-      href: '/members',
-      icon: Users,
-      label: 'Members',
-      show: canViewMembers,
     },
     {
       href: '/organizations',
