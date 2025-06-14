@@ -1,14 +1,13 @@
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { SearchableSelect } from '@/components/ui/searchable-select'
 import { FormField } from '@/components/ui/form-field'
 import { useJobAssignments } from '@/hooks/useJobAssignments'
 import { useMembers } from '@/hooks/useMembers'
 import { usePermissions } from '@/hooks/usePermissions'
-import { User, UserMinus, Search } from 'lucide-react'
+import { User, UserMinus } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
 
 interface JobAssignmentsPanelProps {
@@ -17,7 +16,7 @@ interface JobAssignmentsPanelProps {
 }
 
 export function JobAssignmentsPanel({ jobId, jobTitle }: JobAssignmentsPanelProps) {
-  const [searchTerm, setSearchTerm] = useState('')
+  const [selectedUserId, setSelectedUserId] = useState('')
   const { assignments, assignUserToJob, removeUserFromJob, isLoading: assignmentsLoading } = useJobAssignments(jobId)
   const { members, isLoading: membersLoading } = useMembers()
   const permissions = usePermissions()
@@ -33,30 +32,55 @@ export function JobAssignmentsPanel({ jobId, jobTitle }: JobAssignmentsPanelProp
 
   const assignedUserIds = new Set(assignments.map(a => a.user_id))
   
-  // Filter members based on search term
-  const filteredMembers = members.filter(member => {
-    if (!member.user_id) return false // Skip invited members
-    
-    const searchLower = searchTerm.toLowerCase()
-    const firstName = member.user_first_name || ''
-    const lastName = member.user_last_name || ''
-    const email = member.invited_email || ''
-    const fullName = `${firstName} ${lastName}`.trim()
-    
-    return (
-      fullName.toLowerCase().includes(searchLower) ||
-      email.toLowerCase().includes(searchLower) ||
-      member.member_role.toLowerCase().includes(searchLower)
-    )
+  // Get unassigned users for the dropdown
+  const unassignedUsers = members.filter(member => {
+    return member.user_id && !assignedUserIds.has(member.user_id)
   })
 
-  const handleAssignUser = async (userId: string, organizationId: string) => {
+  // Create options for the searchable select
+  const userOptions = unassignedUsers.map(member => {
+    const firstName = member.user_first_name || ''
+    const lastName = member.user_last_name || ''
+    const displayName = `${firstName} ${lastName}`.trim() || 'Unnamed User'
+    const email = member.invited_email || 'No email'
+    
+    return {
+      value: member.user_id!,
+      label: `${displayName} (${email}) - ${member.member_role}`
+    }
+  })
+
+  // Get assigned users with their details
+  const assignedUsers = assignments.map(assignment => {
+    const member = members.find(m => m.user_id === assignment.user_id)
+    if (!member) return null
+    
+    const firstName = member.user_first_name || ''
+    const lastName = member.user_last_name || ''
+    const displayName = `${firstName} ${lastName}`.trim() || 'Unnamed User'
+    const email = member.invited_email || 'No email'
+    
+    return {
+      assignment,
+      member,
+      displayName,
+      email
+    }
+  }).filter(Boolean)
+
+  const handleAssignUser = async () => {
+    if (!selectedUserId) return
+
+    const member = members.find(m => m.user_id === selectedUserId)
+    if (!member) return
+
     try {
       await assignUserToJob({
         job_id: jobId,
-        user_id: userId,
-        organization_id: organizationId
+        user_id: selectedUserId,
+        organization_id: member.organization_id
       })
+      setSelectedUserId('') // Clear selection after successful assignment
     } catch (error) {
       console.error('Failed to assign user:', error)
     }
@@ -111,108 +135,87 @@ export function JobAssignmentsPanel({ jobId, jobTitle }: JobAssignmentsPanelProp
         </p>
       </div>
 
-      {/* Search */}
-      <FormField label="Search users">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-text-secondary h-4 w-4" />
-          <Input
-            placeholder="Search by name, email, or role..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
+      {/* Add User Assignment Section */}
+      <div className="bg-surface-primary border border-border rounded-brand p-6">
+        <h3 className="text-lg font-medium text-text-primary mb-4">Add User Assignment</h3>
+        <div className="space-y-4">
+          <FormField label="Select user to assign">
+            <SearchableSelect
+              options={userOptions}
+              value={selectedUserId}
+              onValueChange={setSelectedUserId}
+              placeholder="Search for a user to assign..."
+              searchPlaceholder="Type to search users..."
+              emptyMessage="No unassigned users found."
+              disabled={assignmentsLoading}
+            />
+          </FormField>
+          <Button
+            onClick={handleAssignUser}
+            disabled={!selectedUserId || assignmentsLoading}
+            className="gap-2"
+          >
+            <User className="h-4 w-4" />
+            Assign User
+          </Button>
         </div>
-      </FormField>
+      </div>
 
-      {/* Members Table */}
-      <div className="border border-border rounded-brand overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>User</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>Assignment Status</TableHead>
-              <TableHead className="w-32">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredMembers.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={4} className="text-center py-8 text-text-secondary">
-                  {searchTerm ? 'No users match your search criteria.' : 'No users found.'}
-                </TableCell>
-              </TableRow>
-            ) : (
-              filteredMembers.map((member) => {
-                const isAssigned = member.user_id && assignedUserIds.has(member.user_id)
-                const firstName = member.user_first_name || ''
-                const lastName = member.user_last_name || ''
-                const displayName = `${firstName} ${lastName}`.trim() || 'Unnamed User'
-                const email = member.invited_email || 'No email'
+      {/* Current Assignments Section */}
+      <div className="bg-surface-primary border border-border rounded-brand p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-medium text-text-primary">Current Assignments</h3>
+          <Badge variant="secondary">
+            {assignments.length} assigned
+          </Badge>
+        </div>
 
-                return (
-                  <TableRow key={member.id}>
-                    <TableCell>
-                      <div className="space-y-1">
-                        <div className="font-medium text-text-primary">{displayName}</div>
-                        <div className="text-sm text-text-secondary">{email}</div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={getRoleBadgeVariant(member.member_role)}>
-                        {member.member_role}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={isAssigned ? 'default' : 'secondary'}>
-                        {isAssigned ? 'Assigned' : 'Not Assigned'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {member.user_id && (
-                        <div className="flex gap-2">
-                          {isAssigned ? (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleUnassignUser(member.user_id!)}
-                              disabled={assignmentsLoading}
-                              className="gap-1"
-                            >
-                              <UserMinus className="h-3 w-3" />
-                              Unassign
-                            </Button>
-                          ) : (
-                            <Button
-                              variant="default"
-                              size="sm"
-                              onClick={() => handleAssignUser(member.user_id!, member.organization_id)}
-                              disabled={assignmentsLoading}
-                              className="gap-1"
-                            >
-                              <User className="h-3 w-3" />
-                              Assign
-                            </Button>
-                          )}
-                        </div>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                )
-              })
-            )}
-          </TableBody>
-        </Table>
+        {assignedUsers.length === 0 ? (
+          <div className="text-center py-8 text-text-secondary">
+            <p>No users are currently assigned to this job.</p>
+            <p className="text-sm mt-1">Use the form above to assign users.</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {assignedUsers.map((item) => {
+              if (!item) return null
+              
+              return (
+                <div key={item.assignment.id} className="flex items-center justify-between p-4 border border-border rounded-md bg-background">
+                  <div className="flex items-center gap-4">
+                    <div>
+                      <div className="font-medium text-text-primary">{item.displayName}</div>
+                      <div className="text-sm text-text-secondary">{item.email}</div>
+                    </div>
+                    <Badge variant={getRoleBadgeVariant(item.member.member_role)}>
+                      {item.member.member_role}
+                    </Badge>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleUnassignUser(item.member.user_id!)}
+                    disabled={assignmentsLoading}
+                    className="gap-2"
+                  >
+                    <UserMinus className="h-3 w-3" />
+                    Unassign
+                  </Button>
+                </div>
+              )
+            })}
+          </div>
+        )}
       </div>
 
       {/* Assignment Summary */}
       <div className="bg-surface-primary border border-border rounded-brand p-4">
         <div className="flex items-center justify-between text-sm">
           <span className="text-text-secondary">
-            Total Users: {filteredMembers.length}
+            Available Users: {unassignedUsers.length}
           </span>
           <span className="text-text-secondary">
-            Assigned: {assignments.length}
+            Assigned Users: {assignments.length}
           </span>
         </div>
       </div>
