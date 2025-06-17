@@ -53,7 +53,7 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen flex">
+    <div className="min-h-screen flex flex-col lg:flex-row">
       {/* Invisible Header - Fixed positioned to match main header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-transparent">
         <div className="mx-auto max-w-7xl px-layout-sm sm:px-layout-md lg:px-layout-lg">
@@ -68,19 +68,21 @@ export default function Login() {
         </div>
       </header>
 
-      {/* Left Side - 70% with #fffead background */}
-      <div className="w-[70%] relative overflow-hidden flex items-center justify-center" style={{ backgroundColor: '#fffead' }}>
-        <TypingAnimation />
+      {/* Left Side - Responsive width with #fffead background */}
+      <div className="w-full lg:w-2/3 xl:w-3/5 2xl:w-2/3 relative overflow-hidden flex items-center justify-center min-h-[50vh] lg:min-h-screen" style={{ backgroundColor: '#fffead' }}>
+        <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <TypingAnimation />
+        </div>
       </div>
 
-      {/* Right Side - 30% white background with login form */}
-      <div className="w-[30%] bg-white flex flex-col justify-center px-8 xl:px-12">
+      {/* Right Side - Responsive width white background with login form */}
+      <div className="w-full lg:w-1/3 xl:w-2/5 2xl:w-1/3 bg-white flex flex-col justify-center px-6 sm:px-8 lg:px-8 xl:px-12 min-h-[50vh] lg:min-h-screen">
         {/* Welcome Text */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold text-foreground mb-2">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground mb-2">
             Welcome back
           </h1>
-          <p className="text-lg text-muted-foreground">
+          <p className="text-base sm:text-lg text-muted-foreground">
             Sign in to your account to continue
           </p>
         </div>

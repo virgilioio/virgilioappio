@@ -49,16 +49,16 @@ export function TypingAnimation() {
   }, [currentText, currentTitleIndex, isTyping, isSliding])
 
   return (
-    <div className="text-left pl-8 xl:pl-12">
+    <div className="text-left">
       {/* Static Headline */}
-      <h1 className="text-3xl xl:text-4xl 2xl:text-5xl font-poppins font-normal text-primary leading-tight">
+      <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-3xl xl:text-4xl 2xl:text-5xl font-poppins font-normal text-primary leading-tight max-w-4xl">
         For all your hiring needs. <span className="font-bold">Globally.</span>
       </h1>
       
       {/* Animated Job Titles Container */}
-      <div className="relative h-16 flex items-center mt-1">
+      <div className="relative h-12 sm:h-14 md:h-16 lg:h-16 xl:h-20 2xl:h-24 flex items-center mt-1">
         <div 
-          className={`text-3xl xl:text-4xl 2xl:text-5xl font-poppins font-bold text-text-primary transition-all duration-500 ${
+          className={`text-xl sm:text-2xl md:text-3xl lg:text-3xl xl:text-4xl 2xl:text-5xl font-poppins font-bold text-text-primary transition-all duration-500 max-w-4xl ${
             isSliding ? 'transform -translate-y-8 opacity-0' : 'transform translate-y-0 opacity-100'
           }`}
         >
