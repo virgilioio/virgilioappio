@@ -1,14 +1,17 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Users } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Users, Plus } from 'lucide-react'
 import { MembersTable } from '@/components/members/MembersTable'
 import { InviteSystemDebug } from '@/components/debug/InviteSystemDebug'
 import { useMembers } from '@/hooks/useMembers'
+import { usePermissions } from '@/hooks/usePermissions'
 import { useState } from 'react'
 import { MemberForm } from '@/components/members/MemberForm'
 
 export function MembersTab() {
   const { members, isLoading, updateMember, deactivateMember, createMember, resendInvitation } = useMembers()
+  const permissions = usePermissions()
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [editingMember, setEditingMember] = useState(null)
 
@@ -51,14 +54,24 @@ export function MembersTab() {
       )}
 
       <Card>
-        <CardHeader className="pb-4">
-          <CardTitle className="flex items-center gap-3">
-            <Users className="h-5 w-5" />
-            Team Members
-          </CardTitle>
-          <CardDescription>
-            Manage your organization's team members and their roles
-          </CardDescription>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-3">
+                <Users className="h-5 w-5" />
+                Team Members
+              </CardTitle>
+              <CardDescription>
+                Manage your organization's team members and their roles
+              </CardDescription>
+            </div>
+            {permissions.canManageMembers && (
+              <Button onClick={handleCreateNew}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Member
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           <MembersTable 
@@ -66,7 +79,6 @@ export function MembersTab() {
             isLoading={isLoading}
             onEdit={handleEdit}
             onDeactivate={handleDeactivate}
-            onCreateNew={handleCreateNew}
             onResendInvitation={handleResendInvitation}
           />
         </CardContent>

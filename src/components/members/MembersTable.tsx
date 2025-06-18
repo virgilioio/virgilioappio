@@ -1,12 +1,11 @@
 
 import { useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Search, Edit, UserMinus, Mail, Users } from 'lucide-react'
+import { Search, Edit, UserMinus, Mail } from 'lucide-react'
 import { Member } from '@/hooks/useMembers'
 import { usePermissions } from '@/hooks/usePermissions'
 
@@ -15,7 +14,6 @@ interface MembersTableProps {
   isLoading: boolean
   onEdit: (member: Member) => void
   onDeactivate: (id: string) => void
-  onCreateNew: () => void
   onResendInvitation: (id: string, email: string) => void
 }
 
@@ -24,7 +22,6 @@ export function MembersTable({
   isLoading, 
   onEdit, 
   onDeactivate, 
-  onCreateNew, 
   onResendInvitation 
 }: MembersTableProps) {
   const [searchTerm, setSearchTerm] = useState('')
@@ -61,75 +58,58 @@ export function MembersTable({
 
   if (isLoading) {
     return (
-      <Card>
-        <CardContent className="p-6">
-          <div className="flex items-center justify-center py-12">
-            <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin"></div>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="flex items-center justify-center py-12">
+        <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin"></div>
+      </div>
     )
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            Team Members
-          </CardTitle>
-          {permissions.canManageMembers && (
-            <Button onClick={onCreateNew}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Member
-            </Button>
-          )}
+    <div className="space-y-4">
+      {/* Search and Filter Controls */}
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search members..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
         </div>
         
-        <div className="flex gap-4 mt-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search members..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-          
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[150px]">
-              <SelectValue placeholder="Filter by status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="invited">Invited</SelectItem>
-              <SelectItem value="inactive">Inactive</SelectItem>
-            </SelectContent>
-          </Select>
-          
-          <Select value={roleFilter} onValueChange={setRoleFilter}>
-            <SelectTrigger className="w-[150px]">
-              <SelectValue placeholder="Filter by role" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Roles</SelectItem>
-              <SelectItem value="admin">Admin</SelectItem>
-              <SelectItem value="member">Member</SelectItem>
-              <SelectItem value="viewer">Viewer</SelectItem>
-            </SelectContent>
-          </Select>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-full sm:w-[150px]">
+            <SelectValue placeholder="Filter by status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Statuses</SelectItem>
+            <SelectItem value="active">Active</SelectItem>
+            <SelectItem value="invited">Invited</SelectItem>
+            <SelectItem value="inactive">Inactive</SelectItem>
+          </SelectContent>
+        </Select>
+        
+        <Select value={roleFilter} onValueChange={setRoleFilter}>
+          <SelectTrigger className="w-full sm:w-[150px]">
+            <SelectValue placeholder="Filter by role" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Roles</SelectItem>
+            <SelectItem value="admin">Admin</SelectItem>
+            <SelectItem value="member">Member</SelectItem>
+            <SelectItem value="viewer">Viewer</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Table */}
+      {filteredMembers.length === 0 ? (
+        <div className="text-center py-12 text-muted-foreground">
+          {members.length === 0 ? 'No team members found' : 'No members match your filters'}
         </div>
-      </CardHeader>
-      
-      <CardContent>
-        {filteredMembers.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground">
-            {members.length === 0 ? 'No team members found' : 'No members match your filters'}
-          </div>
-        ) : (
+      ) : (
+        <div className="border rounded-lg overflow-hidden">
           <Table>
             <TableHeader>
               <TableRow>
@@ -193,8 +173,8 @@ export function MembersTable({
               })}
             </TableBody>
           </Table>
-        )}
-      </CardContent>
-    </Card>
+        </div>
+      )}
+    </div>
   )
 }
