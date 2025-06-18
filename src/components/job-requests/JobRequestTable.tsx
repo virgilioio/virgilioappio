@@ -1,13 +1,15 @@
+
 import { useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Search, CheckCircle, Trash2 } from 'lucide-react'
+import { Plus, Search, CheckCircle, Trash2, ListTodo } from 'lucide-react'
 import { JobRequest } from '@/hooks/useJobRequests'
 import { usePermissions } from '@/hooks/usePermissions'
+import { Skeleton } from '@/components/ui/skeleton'
 
 interface JobRequestTableProps {
   jobRequests: JobRequest[]
@@ -67,9 +69,23 @@ export function JobRequestTable({
   if (isLoading) {
     return (
       <Card>
-        <CardContent className="p-token-lg">
-          <div className="flex items-center justify-center py-token-xl">
-            <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin"></div>
+        <CardHeader>
+          <div className="flex items-start justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <ListTodo className="h-5 w-5" />
+                Job Requests
+              </CardTitle>
+              <CardDescription>Manage job requests and approvals</CardDescription>
+            </div>
+            <Skeleton className="h-10 w-32" />
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {[...Array(3)].map((_, i) => (
+              <Skeleton key={i} className="h-16 w-full" />
+            ))}
           </div>
         </CardContent>
       </Card>
@@ -79,11 +95,19 @@ export function JobRequestTable({
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <CardTitle>Job Requests</CardTitle>
+        <div className="flex items-start justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <ListTodo className="h-5 w-5" />
+              Job Requests
+            </CardTitle>
+            <CardDescription>
+              Manage job requests and approvals
+            </CardDescription>
+          </div>
           {permissions.canRequestJobs && (
-            <Button onClick={onCreateNew}>
-              <Plus className="h-4 w-4 mr-2" />
+            <Button onClick={onCreateNew} className="gap-2">
+              <Plus className="h-4 w-4" />
               Request Job
             </Button>
           )}
@@ -128,53 +152,65 @@ export function JobRequestTable({
       
       <CardContent>
         {filteredJobRequests.length === 0 ? (
-          <div className="text-center py-token-xl text-muted-foreground">
-            {jobRequests.length === 0 ? 'No job requests found' : 'No job requests match your filters'}
+          <div className="text-center py-8">
+            <ListTodo className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-2">No job requests yet</h3>
+            <p className="text-muted-foreground mb-4">
+              {jobRequests.length === 0 ? 'Create your first job request to get started.' : 'No job requests match your filters.'}
+            </p>
+            {permissions.canRequestJobs && jobRequests.length === 0 && (
+              <Button onClick={onCreateNew} className="gap-2">
+                <Plus className="h-4 w-4" />
+                Request Job
+              </Button>
+            )}
           </div>
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Title</TableHead>
-                <TableHead>Level</TableHead>
-                <TableHead>Department</TableHead>
-                <TableHead>Salary</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Created</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredJobRequests.map((request) => (
-                <TableRow key={request.id} interactive onClick={() => onView(request)}>
-                  <TableCell className="font-medium">{request.title}</TableCell>
-                  <TableCell>{request.level}</TableCell>
-                  <TableCell>{request.department || '-'}</TableCell>
-                  <TableCell>{formatSalary(request.salary_min, request.salary_max, request.currency)}</TableCell>
-                  <TableCell>
-                    <Badge variant={getStatusBadgeVariant(request.status)}>
-                      {request.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{new Date(request.created_at).toLocaleDateString()}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      {permissions.canApproveJobRequests && request.status === 'pending' && (
-                        <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); onApprove(request.id); }}>
-                          <CheckCircle className="h-4 w-4" />
-                        </Button>
-                      )}
-                      {permissions.canManageJobRequests && (
-                        <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); onDelete(request.id); }}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  </TableCell>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Title</TableHead>
+                  <TableHead>Level</TableHead>
+                  <TableHead>Department</TableHead>
+                  <TableHead>Salary</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Created</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {filteredJobRequests.map((request) => (
+                  <TableRow key={request.id} interactive onClick={() => onView(request)}>
+                    <TableCell className="font-medium">{request.title}</TableCell>
+                    <TableCell>{request.level}</TableCell>
+                    <TableCell>{request.department || '-'}</TableCell>
+                    <TableCell>{formatSalary(request.salary_min, request.salary_max, request.currency)}</TableCell>
+                    <TableCell>
+                      <Badge variant={getStatusBadgeVariant(request.status)}>
+                        {request.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{new Date(request.created_at).toLocaleDateString()}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        {permissions.canApproveJobRequests && request.status === 'pending' && (
+                          <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); onApprove(request.id); }}>
+                            <CheckCircle className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {permissions.canManageJobRequests && (
+                          <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); onDelete(request.id); }}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         )}
       </CardContent>
     </Card>

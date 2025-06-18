@@ -1,15 +1,17 @@
+
 import { useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Search, Edit, Archive, MoreHorizontal, FileText } from 'lucide-react'
+import { Plus, Search, Edit, Archive, MoreHorizontal, FileText, Briefcase } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Job } from '@/hooks/useJobs'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useIsMobile } from '@/hooks/use-mobile'
+import { Skeleton } from '@/components/ui/skeleton'
 
 interface JobsTableProps {
   jobs: Job[]
@@ -56,9 +58,23 @@ export function JobsTable({ jobs, isLoading, onView, onEdit, onArchive, onCreate
   if (isLoading) {
     return (
       <Card>
+        <CardHeader>
+          <div className="flex items-start justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Briefcase className="h-5 w-5" />
+                Jobs
+              </CardTitle>
+              <CardDescription>Manage job postings and track hiring progress</CardDescription>
+            </div>
+            <Skeleton className="h-10 w-32" />
+          </div>
+        </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-center py-12">
-            <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin"></div>
+          <div className="space-y-3">
+            {[...Array(3)].map((_, i) => (
+              <Skeleton key={i} className="h-16 w-full" />
+            ))}
           </div>
         </CardContent>
       </Card>
@@ -72,8 +88,16 @@ export function JobsTable({ jobs, isLoading, onView, onEdit, onArchive, onCreate
         <Card>
           <CardHeader>
             <div className="flex flex-col gap-4">
-              <div className="flex items-center justify-between">
-                <CardTitle>Jobs</CardTitle>
+              <div className="flex items-start justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Briefcase className="h-5 w-5" />
+                    Jobs
+                  </CardTitle>
+                  <CardDescription>
+                    Manage job postings and track hiring progress
+                  </CardDescription>
+                </div>
                 <div className="flex gap-2">
                   {permissions.canCreateJobs ? (
                     <Button onClick={onCreateNew} size="sm" className="gap-1">
@@ -134,9 +158,28 @@ export function JobsTable({ jobs, isLoading, onView, onEdit, onArchive, onCreate
 
         {filteredJobs.length === 0 ? (
           <Card>
-            <CardContent className="py-12">
-              <div className="text-center text-muted-foreground">
-                {jobs.length === 0 ? 'No jobs found' : 'No jobs match your filters'}
+            <CardContent className="py-8">
+              <div className="text-center">
+                <Briefcase className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-semibold mb-2">No jobs yet</h3>
+                <p className="text-muted-foreground mb-4">
+                  {jobs.length === 0 ? 'Create your first job to get started.' : 'No jobs match your filters.'}
+                </p>
+                {jobs.length === 0 && (permissions.canCreateJobs || permissions.canRequestJobs) && (
+                  <div className="flex gap-2 justify-center">
+                    {permissions.canCreateJobs ? (
+                      <Button onClick={onCreateNew} className="gap-2">
+                        <Plus className="h-4 w-4" />
+                        Create Job
+                      </Button>
+                    ) : permissions.canRequestJobs ? (
+                      <Button onClick={onRequestJob} className="gap-2">
+                        <Plus className="h-4 w-4" />
+                        Request Job
+                      </Button>
+                    ) : null}
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -203,16 +246,24 @@ export function JobsTable({ jobs, isLoading, onView, onEdit, onArchive, onCreate
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between mb-4">
-          <CardTitle>Jobs</CardTitle>
+        <div className="flex items-start justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Briefcase className="h-5 w-5" />
+              Jobs
+            </CardTitle>
+            <CardDescription>
+              Manage job postings and track hiring progress
+            </CardDescription>
+          </div>
           <div className="flex gap-2">
             {permissions.canCreateJobs ? (
-              <Button onClick={onCreateNew} className="gap-1">
+              <Button onClick={onCreateNew} className="gap-2">
                 <Plus className="h-4 w-4" />
                 Create Job
               </Button>
             ) : permissions.canRequestJobs ? (
-              <Button onClick={onRequestJob} className="gap-1">
+              <Button onClick={onRequestJob} className="gap-2">
                 <Plus className="h-4 w-4" />
                 Request Job
               </Button>
@@ -220,7 +271,7 @@ export function JobsTable({ jobs, isLoading, onView, onEdit, onArchive, onCreate
           </div>
         </div>
         
-        <div className="flex gap-4">
+        <div className="flex gap-4 mt-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -261,8 +312,27 @@ export function JobsTable({ jobs, isLoading, onView, onEdit, onArchive, onCreate
       
       <CardContent>
         {filteredJobs.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground">
-            {jobs.length === 0 ? 'No jobs found' : 'No jobs match your filters'}
+          <div className="text-center py-8">
+            <Briefcase className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-2">No jobs yet</h3>
+            <p className="text-muted-foreground mb-4">
+              {jobs.length === 0 ? 'Create your first job to get started.' : 'No jobs match your filters.'}
+            </p>
+            {jobs.length === 0 && (permissions.canCreateJobs || permissions.canRequestJobs) && (
+              <div className="flex gap-2 justify-center">
+                {permissions.canCreateJobs ? (
+                  <Button onClick={onCreateNew} className="gap-2">
+                    <Plus className="h-4 w-4" />
+                    Create Job
+                  </Button>
+                ) : permissions.canRequestJobs ? (
+                  <Button onClick={onRequestJob} className="gap-2">
+                    <Plus className="h-4 w-4" />
+                    Request Job
+                  </Button>
+                ) : null}
+              </div>
+            )}
           </div>
         ) : (
           <div className="rounded-md border overflow-x-auto">
