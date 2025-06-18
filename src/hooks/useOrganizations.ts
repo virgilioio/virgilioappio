@@ -58,14 +58,10 @@ export function useOrganizations() {
         console.log('User permissions debug:', debugData?.[0])
       }
       
-      // Fetch organizations with creator and owner information from profiles table
-      const { data, error: fetchError } = await supabase
+      // Fetch organizations without the problematic foreign key joins
+      const { data: orgsData, error: fetchError } = await supabase
         .from('organizations')
-        .select(`
-          *,
-          creator_profile:profiles!organizations_created_by_fkey(email),
-          owner_profile:profiles!organizations_owner_id_fkey(email)
-        `)
+        .select('*')
         .order('created_at', { ascending: false })
 
       if (fetchError) {
@@ -73,24 +69,47 @@ export function useOrganizations() {
         throw fetchError
       }
 
-      console.log('Fetched organizations:', data)
+      console.log('Fetched organizations:', orgsData)
       
-      // Transform the data to include email information
-      const organizationsWithDetails = (data || []).map((org: any) => {
+      // Now fetch profile information separately to avoid foreign key issues
+      const organizationsWithDetails: Organization[] = []
+      
+      for (const org of orgsData || []) {
+        let ownerEmail = null
+        let createdByEmail = null
+        
+        // Get owner email if owner_id exists
+        if (org.owner_id) {
+          const { data: ownerProfile } = await supabase
+            .from('profiles')
+            .select('email')
+            .eq('user_id', org.owner_id)
+            .single()
+          
+          ownerEmail = ownerProfile?.email
+        }
+        
+        // Get creator email if created_by exists
+        if (org.created_by) {
+          const { data: creatorProfile } = await supabase
+            .from('profiles')
+            .select('email')
+            .eq('user_id', org.created_by)
+            .single()
+          
+          createdByEmail = creatorProfile?.email
+        }
+        
         const typedOrg: Organization = {
           ...org,
           status: org.status as 'active' | 'inactive',
           organization_type: org.organization_type as 'platform' | 'client',
-          owner_email: org.owner_profile?.email,
-          created_by_email: org.creator_profile?.email
+          owner_email: ownerEmail,
+          created_by_email: createdByEmail
         }
         
-        // Remove the joined profile objects as they're not part of our interface
-        delete (typedOrg as any).creator_profile
-        delete (typedOrg as any).owner_profile
-        
-        return typedOrg
-      })
+        organizationsWithDetails.push(typedOrg)
+      }
 
       setOrganizations(organizationsWithDetails)
     } catch (err) {
