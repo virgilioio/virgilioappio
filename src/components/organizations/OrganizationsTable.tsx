@@ -1,4 +1,3 @@
-
 import { useState } from 'react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
@@ -55,14 +54,22 @@ export function OrganizationsTable({
   return (
     <Card>
       <CardHeader>
-        <div>
-          <CardTitle className="flex items-center gap-2">
-            <Building2 className="h-5 w-5" />
-            Organizations
-          </CardTitle>
-          <CardDescription>
-            Manage client organizations and their settings
-          </CardDescription>
+        <div className="flex items-start justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Building2 className="h-5 w-5" />
+              Organizations
+            </CardTitle>
+            <CardDescription>
+              Manage client organizations and their settings
+            </CardDescription>
+          </div>
+          {permissions.canCreateOrganizations && onCreateNew && (
+            <Button onClick={onCreateNew} className="gap-2">
+              <Plus className="h-4 w-4" />
+              Create Organization
+            </Button>
+          )}
         </div>
       </CardHeader>
       
