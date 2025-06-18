@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import {
@@ -149,6 +148,7 @@ export function MemberForm({
     { value: 'billing', label: 'Billing' },
     { value: 'sales', label: 'Sales' },
     { value: 'admin', label: 'Admin' },
+    { value: 'platform_admin', label: 'Platform Admin' },
     { value: 'client', label: 'Client' },
   ]
 
