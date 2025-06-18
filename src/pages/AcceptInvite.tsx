@@ -124,7 +124,7 @@ export default function AcceptInvite() {
     try {
       console.log('Creating user account for:', invitationData.invite_email)
       
-      // Create the user account using the email from the invitation
+      // Create the user account with auto-confirmation
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
         email: invitationData.invite_email,
         password: password,
@@ -133,7 +133,8 @@ export default function AcceptInvite() {
             first_name: firstName.trim(),
             last_name: lastName.trim()
           },
-          emailRedirectTo: 'https://app.virgilio.io/'
+          emailRedirectTo: window.location.origin,
+          captcha: undefined // Skip captcha for invited users
         }
       })
 
@@ -148,7 +149,7 @@ export default function AcceptInvite() {
 
       console.log('User created successfully:', authData.user.id)
 
-      // Use the new edge function to accept invitation and inject metadata
+      // Use the edge function to accept invitation and inject metadata
       const { data: edgeFunctionResult, error: edgeFunctionError } = await supabase.functions.invoke(
         'accept-invitation-with-metadata',
         {
@@ -170,18 +171,43 @@ export default function AcceptInvite() {
 
       console.log('Invitation processed successfully:', edgeFunctionResult)
 
-      // Show success message
+      // If user was created but not confirmed (needs email verification)
+      if (authData.user && !authData.user.email_confirmed_at) {
+        console.log('User needs email confirmation, but auto-signing in...')
+        
+        // Attempt to sign in the user immediately
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+          email: invitationData.invite_email,
+          password: password
+        })
+
+        if (signInError) {
+          console.log('Auto sign-in failed, user will need to verify email:', signInError)
+          // Show success message but redirect to verification
+          toast({
+            title: 'Account Created Successfully!',
+            description: `Please check your email (${invitationData.invite_email}) to verify your account before signing in.`,
+            variant: 'default'
+          })
+          navigate(`/verify-email?email=${encodeURIComponent(invitationData.invite_email)}&organization=${encodeURIComponent(invitationData.organization_name)}`)
+          return
+        }
+
+        console.log('User auto-signed in successfully:', signInData.user?.id)
+      }
+
+      // Show success message and redirect to dashboard
       const hasWarning = edgeFunctionResult.warning
       toast({
-        title: hasWarning ? 'Account Created with Warning' : 'Welcome to Virgilio!',
+        title: hasWarning ? 'Welcome to Virgilio!' : 'Welcome to Virgilio!',
         description: hasWarning 
-          ? `You've joined ${invitationData.organization_name}, but some metadata may not be immediately available. Please sign in to complete setup.`
+          ? `You've joined ${invitationData.organization_name}! Some metadata may not be immediately available.`
           : `You've successfully joined ${invitationData.organization_name} as ${edgeFunctionResult.result.member_role.replace('_', ' ')}.`,
-        variant: hasWarning ? 'default' : 'default'
+        variant: 'default'
       })
 
-      // Redirect to email verification page with context
-      navigate(`/verify-email?email=${encodeURIComponent(invitationData.invite_email)}&organization=${encodeURIComponent(invitationData.organization_name)}`)
+      // Redirect to dashboard
+      navigate('/dashboard')
 
     } catch (error: any) {
       console.error('Error accepting invitation:', error)
@@ -193,6 +219,8 @@ export default function AcceptInvite() {
         errorMessage = 'This email is already registered. Please try logging in instead.'
       } else if (error.message?.includes('expired')) {
         errorMessage = 'This invitation has expired. Please request a new invitation.'
+      } else if (error.message?.includes('Email not confirmed')) {
+        errorMessage = 'Please check your email to confirm your account before signing in.'
       }
       
       toast({
