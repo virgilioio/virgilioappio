@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -133,8 +134,7 @@ export default function AcceptInvite() {
             first_name: firstName.trim(),
             last_name: lastName.trim()
           },
-          emailRedirectTo: window.location.origin,
-          captcha: undefined // Skip captcha for invited users
+          emailRedirectTo: window.location.origin
         }
       })
 
