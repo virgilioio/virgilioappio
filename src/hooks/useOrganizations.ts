@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
@@ -47,9 +46,15 @@ export function useOrganizations() {
 
     try {
       console.log('Fetching organizations for user:', user.id)
+      
+      // Fetch organizations with creator and owner information from profiles table
       const { data, error: fetchError } = await supabase
         .from('organizations')
-        .select('*')
+        .select(`
+          *,
+          creator_profile:profiles!organizations_created_by_fkey(email),
+          owner_profile:profiles!organizations_owner_id_fkey(email)
+        `)
         .order('created_at', { ascending: false })
 
       if (fetchError) {
@@ -59,42 +64,22 @@ export function useOrganizations() {
 
       console.log('Fetched organizations:', data)
       
-      // Get owner and creator emails for organizations
-      const organizationsWithDetails = await Promise.all(
-        (data || []).map(async (org) => {
-          const typedOrg: Organization = {
-            ...org,
-            status: org.status as 'active' | 'inactive',
-            organization_type: org.organization_type as 'platform' | 'client'
-          }
-          
-          // Get owner email if owner_id exists
-          if (org.owner_id) {
-            try {
-              const { data: userData, error: userError } = await supabase.auth.admin.getUserById(org.owner_id)
-              if (!userError && userData.user) {
-                typedOrg.owner_email = userData.user.email
-              }
-            } catch (e) {
-              console.warn('Could not fetch owner email for organization:', org.id)
-            }
-          }
-
-          // Get creator email if created_by exists
-          if (org.created_by) {
-            try {
-              const { data: creatorData, error: creatorError } = await supabase.auth.admin.getUserById(org.created_by)
-              if (!creatorError && creatorData.user) {
-                typedOrg.created_by_email = creatorData.user.email
-              }
-            } catch (e) {
-              console.warn('Could not fetch creator email for organization:', org.id)
-            }
-          }
-          
-          return typedOrg
-        })
-      )
+      // Transform the data to include email information
+      const organizationsWithDetails = (data || []).map((org: any) => {
+        const typedOrg: Organization = {
+          ...org,
+          status: org.status as 'active' | 'inactive',
+          organization_type: org.organization_type as 'platform' | 'client',
+          owner_email: org.owner_profile?.email,
+          created_by_email: org.creator_profile?.email
+        }
+        
+        // Remove the joined profile objects as they're not part of our interface
+        delete (typedOrg as any).creator_profile
+        delete (typedOrg as any).owner_profile
+        
+        return typedOrg
+      })
 
       setOrganizations(organizationsWithDetails)
     } catch (err) {
