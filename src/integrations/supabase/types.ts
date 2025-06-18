@@ -582,9 +582,32 @@ export type Database = {
         Args: { new_asset_id: string; asset_type_param: string }
         Returns: undefined
       }
+      audit_platform_admin_access: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          user_email: string
+          user_id: string
+          has_member_record: boolean
+          user_type: string
+          member_role: string
+          organization_id: string
+          issue_description: string
+        }[]
+      }
       cleanup_expired_invitations: {
         Args: Record<PropertyKey, never>
         Returns: number
+      }
+      debug_user_permissions: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          current_user_id: string
+          user_type: string
+          member_role: string
+          organization_id: string
+          member_count: number
+          can_see_all_orgs: boolean
+        }[]
       }
       generate_invite_token: {
         Args: Record<PropertyKey, never>

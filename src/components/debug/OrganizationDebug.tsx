@@ -1,80 +1,89 @@
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { useState } from 'react'
+import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { useOrganizations } from '@/hooks/useOrganizations'
-import { usePermissions } from '@/hooks/usePermissions'
-import { Building2, User, AlertTriangle, Calendar } from 'lucide-react'
+import { supabase } from '@/integrations/supabase/client'
+import { useAuth } from '@/contexts/AuthContext'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 export function OrganizationDebug() {
-  const { organizations, isLoading } = useOrganizations()
-  const permissions = usePermissions()
+  const { user } = useAuth()
+  const [debugData, setDebugData] = useState<any>(null)
+  const [auditData, setAuditData] = useState<any>(null)
+  const [isLoading, setIsLoading] = useState(false)
 
-  const organizationsWithoutOwner = organizations.filter(org => !org.owner_id)
-  const recentOrganizations = organizations.slice(0, 3)
+  const runDebugCheck = async () => {
+    if (!user) return
+    
+    setIsLoading(true)
+    try {
+      // Get debug user permissions
+      const { data: permissionData, error: permissionError } = await supabase
+        .rpc('debug_user_permissions')
+      
+      if (permissionError) {
+        console.error('Permission debug error:', permissionError)
+      }
+      
+      // Get platform admin audit
+      const { data: auditResult, error: auditError } = await supabase
+        .rpc('audit_platform_admin_access')
+      
+      if (auditError) {
+        console.error('Audit error:', auditError)
+      }
+      
+      setDebugData(permissionData?.[0] || null)
+      setAuditData(auditResult || [])
+    } catch (error) {
+      console.error('Debug check failed:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   return (
-    <div className="space-y-3">
-      {/* Permission Status */}
-      <div>
-        <h4 className="font-medium mb-2 text-xs flex items-center gap-1">
-          <User className="h-3 w-3" />
-          Organization Permissions
-        </h4>
-        <div className="space-y-1 text-xs">
-          <div>Can Manage: <Badge variant={permissions.canManageOrganization ? "default" : "secondary"} className="text-xs h-4">{permissions.canManageOrganization ? 'Yes' : 'No'}</Badge></div>
-          <div>Can Create: <Badge variant={permissions.canCreateOrganizations ? "default" : "secondary"} className="text-xs h-4">{permissions.canCreateOrganizations ? 'Yes' : 'No'}</Badge></div>
-          <div>Can Edit: <Badge variant={permissions.canEditOrganizations ? "default" : "secondary"} className="text-xs h-4">{permissions.canEditOrganizations ? 'Yes' : 'No'}</Badge></div>
-          <div>Can Delete: <Badge variant={permissions.canDeleteOrganizations ? "default" : "secondary"} className="text-xs h-4">{permissions.canDeleteOrganizations ? 'Yes' : 'No'}</Badge></div>
-        </div>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h4 className="font-medium text-xs">Organization Access Debug</h4>
+        <Button 
+          onClick={runDebugCheck} 
+          disabled={isLoading}
+          size="sm"
+          variant="outline"
+          className="text-xs h-6"
+        >
+          {isLoading ? 'Running...' : 'Run Debug'}
+        </Button>
       </div>
-
-      {/* Recent Organizations */}
-      <div>
-        <h4 className="font-medium mb-2 text-xs flex items-center gap-1">
-          <Building2 className="h-3 w-3" />
-          Recent Organizations ({organizations.length} total)
-        </h4>
-        {isLoading ? (
-          <div className="text-xs text-muted-foreground">Loading...</div>
-        ) : recentOrganizations.length > 0 ? (
-          <div className="space-y-2">
-            {recentOrganizations.map((org) => (
-              <div key={org.id} className="text-xs border rounded p-2 space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="font-medium">{org.name}</span>
-                  <Badge variant={org.status === 'active' ? "default" : "secondary"} className="text-xs h-4">
-                    {org.status}
+      
+      {debugData && (
+        <div className="space-y-2 text-xs">
+          <div><strong>User ID:</strong> {debugData.current_user_id?.slice(0, 8)}...</div>
+          <div><strong>User Type:</strong> <Badge variant="outline" className="text-xs h-4">{debugData.user_type}</Badge></div>
+          <div><strong>Member Role:</strong> <Badge variant="outline" className="text-xs h-4">{debugData.member_role || 'none'}</Badge></div>
+          <div><strong>Org ID:</strong> {debugData.organization_id?.slice(0, 8) || 'None'}...</div>
+          <div><strong>Member Count:</strong> {debugData.member_count}</div>
+          <div><strong>Can See All Orgs:</strong> 
+            <Badge variant={debugData.can_see_all_orgs ? "default" : "destructive"} className="text-xs h-4 ml-1">
+              {debugData.can_see_all_orgs ? 'YES' : 'NO'}
+            </Badge>
+          </div>
+        </div>
+      )}
+      
+      {auditData && auditData.length > 0 && (
+        <div className="mt-4">
+          <h5 className="font-medium text-xs mb-2">Platform Admin Audit:</h5>
+          <div className="space-y-1 text-xs">
+            {auditData.map((admin: any, index: number) => (
+              <div key={index} className="border-l-2 border-blue-200 pl-2">
+                <div><strong>{admin.user_email}</strong></div>
+                <div className="text-muted-foreground">
+                  Status: <Badge variant={admin.issue_description === 'OK' ? "default" : "destructive"} className="text-xs h-4">
+                    {admin.issue_description}
                   </Badge>
                 </div>
-                <div className="text-muted-foreground">
-                  <div>Type: {org.organization_type}</div>
-                  <div>Country: {org.country}</div>
-                  {org.owner_email && <div>Owner: {org.owner_email}</div>}
-                  {org.created_by_email && <div>Created by: {org.created_by_email}</div>}
-                  <div className="flex items-center gap-1">
-                    <Calendar className="h-2 w-2" />
-                    {new Date(org.created_at).toLocaleString()}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-xs text-muted-foreground">No organizations found</div>
-        )}
-      </div>
-
-      {/* Organizations without owners */}
-      {organizationsWithoutOwner.length > 0 && (
-        <div>
-          <h4 className="font-medium mb-2 text-xs flex items-center gap-1 text-yellow-600">
-            <AlertTriangle className="h-3 w-3" />
-            Organizations Missing Owner ({organizationsWithoutOwner.length})
-          </h4>
-          <div className="space-y-1">
-            {organizationsWithoutOwner.map((org) => (
-              <div key={org.id} className="text-xs text-yellow-600">
-                • {org.name} ({org.country})
               </div>
             ))}
           </div>

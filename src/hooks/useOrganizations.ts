@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
@@ -46,6 +47,16 @@ export function useOrganizations() {
 
     try {
       console.log('Fetching organizations for user:', user.id)
+      
+      // First, debug the user's permissions
+      const { data: debugData, error: debugError } = await supabase
+        .rpc('debug_user_permissions')
+      
+      if (debugError) {
+        console.error('Debug permissions error:', debugError)
+      } else {
+        console.log('User permissions debug:', debugData?.[0])
+      }
       
       // Fetch organizations with creator and owner information from profiles table
       const { data, error: fetchError } = await supabase
