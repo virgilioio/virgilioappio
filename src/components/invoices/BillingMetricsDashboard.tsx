@@ -1,4 +1,3 @@
-
 import { useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -77,20 +76,20 @@ export function BillingMetricsDashboard() {
       ? invoices // Admin/Billing sees all
       : invoices.filter(invoice => invoice.organization_id === organizationId) // Scoped to org
 
-    // Separate filtering for display purposes (by issue date)
-    let displayFilteredInvoices = baseInvoices
-    if (filters.selectedMonth) {
-      const monthStart = startOfMonth(filters.selectedMonth)
-      const monthEnd = endOfMonth(filters.selectedMonth)
-      
-      displayFilteredInvoices = baseInvoices.filter(invoice => {
-        const invoiceDate = new Date(invoice.issued_at)
-        return isWithinInterval(invoiceDate, { start: monthStart, end: monthEnd })
-      })
-    }
-
     const now = new Date()
-    const startOfMonthCurrent = new Date(now.getFullYear(), now.getMonth(), 1)
+    const currentMonthStart = startOfMonth(now)
+    const currentMonthEnd = endOfMonth(now)
+
+    // Always use a reference month - either selected filter or current month
+    const referenceMonth = filters.selectedMonth || now
+    const monthStart = startOfMonth(referenceMonth)
+    const monthEnd = endOfMonth(referenceMonth)
+
+    // Filter invoices by issue date for display purposes
+    const displayFilteredInvoices = baseInvoices.filter(invoice => {
+      const invoiceDate = new Date(invoice.issued_at)
+      return isWithinInterval(invoiceDate, { start: monthStart, end: monthEnd })
+    })
 
     // Helper functions
     const formatCurrency = (amount: number) => {
@@ -108,15 +107,12 @@ export function BillingMetricsDashboard() {
 
     if (canManageInvoices) {
       // Admin/Billing metrics
-      const referenceMonth = filters.selectedMonth || startOfMonthCurrent
-      const monthStart = startOfMonth(referenceMonth)
-      const monthEnd = endOfMonth(referenceMonth)
-
-      // Total Invoiced - filtered by ISSUE date
+      
+      // Total Invoiced - filtered by ISSUE date (use display filtered invoices)
       const totalInvoicedThisMonth = displayFilteredInvoices
         .reduce((sum, inv) => sum + inv.amount, 0)
 
-      // Total Paid - filtered by PAYMENT date (use base invoices, not display filtered)
+      // Total Paid - filtered by PAYMENT date (use base invoices with payment date filter)
       const totalPaidThisMonth = baseInvoices
         .filter(inv => inv.status === 'paid' && inv.paid_at && 
           isWithinInterval(getDateFromString(inv.paid_at), { start: monthStart, end: monthEnd }))
@@ -175,35 +171,35 @@ export function BillingMetricsDashboard() {
           title: 'Overdue Payments',
           value: formatCurrency(overdueAmount),
           icon: <AlertTriangle className="h-5 w-5" />,
-          tooltip: filters.selectedMonth ? 'Total overdue amount from selected period' : 'Total amount of overdue invoices',
+          tooltip: filters.selectedMonth ? 'Total overdue amount from selected period' : 'Total overdue amount from this month',
           variant: overdueAmount > 0 ? 'destructive' as const : 'default' as const
         },
         {
           title: 'Outstanding Balance',
           value: formatCurrency(outstandingBalance),
           icon: <AlertTriangle className="h-5 w-5" />,
-          tooltip: filters.selectedMonth ? 'Unpaid invoices from selected period' : 'Total unpaid invoice amount across all organizations',
+          tooltip: filters.selectedMonth ? 'Unpaid invoices from selected period' : 'Unpaid invoices from this month',
           variant: outstandingBalance > 0 ? 'warning' as const : 'default' as const
         },
         {
           title: 'Overdue Invoice Count',
           value: overdueCount,
           icon: <AlertTriangle className="h-5 w-5" />,
-          tooltip: filters.selectedMonth ? 'Number of overdue invoices from selected period' : 'Number of overdue invoices',
+          tooltip: filters.selectedMonth ? 'Number of overdue invoices from selected period' : 'Number of overdue invoices from this month',
           variant: overdueCount > 0 ? 'destructive' as const : 'default' as const
         },
         {
           title: 'Clients with Overdue',
           value: clientsWithOverdue,
           icon: <AlertTriangle className="h-5 w-5" />,
-          tooltip: filters.selectedMonth ? 'Organizations with overdue invoices from selected period' : 'Number of organizations with overdue invoices',
+          tooltip: filters.selectedMonth ? 'Organizations with overdue invoices from selected period' : 'Organizations with overdue invoices from this month',
           variant: clientsWithOverdue > 0 ? 'destructive' as const : 'default' as const
         },
         {
-          title: filters.selectedMonth ? `Invoices (${periodLabel})` : 'Invoices (Last 30 Days)',
+          title: filters.selectedMonth ? `Invoices (${periodLabel})` : 'Invoices (This Month)',
           value: invoicesInPeriod,
           icon: <Calendar className="h-5 w-5" />,
-          tooltip: filters.selectedMonth ? `Invoices from ${periodLabel.toLowerCase()}` : 'Invoices issued in the last 30 days',
+          tooltip: filters.selectedMonth ? `Invoices from ${periodLabel.toLowerCase()}` : 'Invoices issued this month',
           variant: 'default' as const
         },
         {
@@ -216,10 +212,7 @@ export function BillingMetricsDashboard() {
       ]
     } else {
       // Workspace Owner/Client metrics (org-scoped)
-      const referenceMonth = filters.selectedMonth || startOfMonthCurrent
-      const monthStart = startOfMonth(referenceMonth)
-      const monthEnd = endOfMonth(referenceMonth)
-
+      
       const outstandingBalance = displayFilteredInvoices
         .filter(inv => ['pending', 'overdue'].includes(inv.status))
         .reduce((sum, inv) => sum + inv.amount, 0)
@@ -232,15 +225,11 @@ export function BillingMetricsDashboard() {
         .filter(inv => inv.due_date && getDateFromString(inv.due_date) > now && inv.status === 'pending')
         .reduce((sum, inv) => sum + inv.amount, 0)
 
-      // Use base invoices for payment calculations filtered by payment date
-      const paidInPeriod = filters.selectedMonth 
-        ? baseInvoices
-            .filter(inv => inv.status === 'paid' && inv.paid_at && 
-              isWithinInterval(getDateFromString(inv.paid_at), { start: monthStart, end: monthEnd }))
-            .reduce((sum, inv) => sum + inv.amount, 0)
-        : baseInvoices
-            .filter(inv => inv.status === 'paid')
-            .reduce((sum, inv) => sum + inv.amount, 0)
+      // Paid invoices calculation - filter by payment date
+      const paidInPeriod = baseInvoices
+        .filter(inv => inv.status === 'paid' && inv.paid_at && 
+          isWithinInterval(getDateFromString(inv.paid_at), { start: monthStart, end: monthEnd }))
+        .reduce((sum, inv) => sum + inv.amount, 0)
 
       const overdueCount = displayFilteredInvoices.filter(inv => inv.status === 'overdue').length
 
@@ -249,42 +238,42 @@ export function BillingMetricsDashboard() {
 
       const periodLabel = filters.selectedMonth 
         ? filters.selectedMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
-        : 'YTD'
+        : 'This Month'
 
       return [
         {
           title: 'Outstanding Balance',
           value: formatCurrency(outstandingBalance),
           icon: <DollarSign className="h-5 w-5" />,
-          tooltip: filters.selectedMonth ? 'Unpaid invoices from selected month' : 'Total unpaid invoice amount for your organization',
+          tooltip: filters.selectedMonth ? 'Unpaid invoices from selected month' : 'Unpaid invoices from this month',
           variant: outstandingBalance > 0 ? 'warning' as const : 'default' as const
         },
         {
           title: 'Overdue Payments',
           value: formatCurrency(overdueAmount),
           icon: <AlertTriangle className="h-5 w-5" />,
-          tooltip: filters.selectedMonth ? 'Total overdue amount from selected month' : 'Total amount of overdue invoices for your organization',
+          tooltip: filters.selectedMonth ? 'Total overdue amount from selected month' : 'Total overdue amount from this month',
           variant: overdueAmount > 0 ? 'destructive' as const : 'default' as const
         },
         {
           title: 'Upcoming Due Amount',
           value: formatCurrency(upcomingDueAmount),
           icon: <Calendar className="h-5 w-5" />,
-          tooltip: filters.selectedMonth ? 'Pending invoices due from selected month' : 'Amount due for pending invoices',
+          tooltip: filters.selectedMonth ? 'Pending invoices due from selected month' : 'Pending invoices due from this month',
           variant: 'default' as const
         },
         {
           title: `Paid Invoices (${periodLabel})`,
           value: formatCurrency(paidInPeriod),
           icon: <DollarSign className="h-5 w-5" />,
-          tooltip: filters.selectedMonth ? 'Paid invoices from selected month (by payment date)' : 'Total paid invoices this year',
+          tooltip: filters.selectedMonth ? 'Paid invoices from selected month (by payment date)' : 'Invoices paid this month',
           variant: 'success' as const
         },
         {
           title: 'Overdue Invoice Count',
           value: overdueCount,
           icon: <AlertTriangle className="h-5 w-5" />,
-          tooltip: filters.selectedMonth ? 'Number of overdue invoices from selected month' : 'Number of overdue invoices',
+          tooltip: filters.selectedMonth ? 'Number of overdue invoices from selected month' : 'Number of overdue invoices from this month',
           variant: overdueCount > 0 ? 'destructive' as const : 'default' as const
         },
         // Latest Invoice Summary Card
