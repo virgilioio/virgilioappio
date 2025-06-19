@@ -1,6 +1,7 @@
 
 import { startOfMonth, endOfMonth, isWithinInterval } from 'date-fns'
 import { Invoice } from '@/hooks/useInvoices'
+import React, { createContext, useContext, useState, ReactNode } from 'react'
 
 export interface InvoiceFilters {
   searchTerm?: string
@@ -63,8 +64,6 @@ export function getInvoiceStats(invoices: Invoice[]) {
 }
 
 // Create a context for sharing filter state across components
-import React, { createContext, useContext, useState, ReactNode } from 'react'
-
 interface InvoiceFilterContextType {
   filters: InvoiceFilters
   setFilters: (filters: InvoiceFilters) => void
