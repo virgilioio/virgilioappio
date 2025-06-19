@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
@@ -59,43 +60,10 @@ export function useOrganizations() {
     try {
       console.log('Fetching organizations for user:', user.id, 'userType:', userType)
       
-      // Simplified query without complex foreign key relationships to avoid errors
-      let query = supabase
+      const { data: orgsData, error: fetchError } = await supabase
         .from('organizations')
         .select('*')
         .order('created_at', { ascending: false })
-
-      // For platform admins, get all organizations
-      if (userType === 'platform_admin') {
-        console.log('Platform admin - fetching all organizations')
-      } else {
-        // For non-platform admins, filter by owner or member relationship
-        if (userType === 'workspace_owner') {
-          // First try to get organizations where user is the owner
-          query = query.eq('owner_id', user.id)
-        } else {
-          // For regular members, get organizations via member relationship
-          const { data: memberData, error: memberError } = await supabase
-            .from('members')
-            .select('organization_id')
-            .eq('user_id', user.id)
-
-          if (memberError) {
-            throw memberError
-          }
-
-          const orgIds = memberData?.map(m => m.organization_id).filter(Boolean) || []
-          
-          if (orgIds.length === 0) {
-            setOrganizations([])
-            return
-          }
-
-          query = query.in('id', orgIds)
-        }
-      }
-
-      const { data: orgsData, error: fetchError } = await query
 
       if (fetchError) {
         console.error('Error fetching organizations:', fetchError)
@@ -104,7 +72,6 @@ export function useOrganizations() {
 
       console.log('Successfully fetched organizations:', orgsData)
       
-      // Transform the data without profile relationships for now
       const organizationsWithDetails: Organization[] = (orgsData || []).map((org: any) => ({
         id: org.id,
         name: org.name,
@@ -116,15 +83,15 @@ export function useOrganizations() {
         updated_at: org.updated_at,
         created_by: org.created_by,
         owner_assigned_at: org.owner_assigned_at,
-        owner_email: null, // Simplified - can be added back later
-        created_by_email: null, // Simplified - can be added back later
+        owner_email: null,
+        created_by_email: null,
         billing_poc_user_id: org.billing_poc_user_id,
         billing_poc_additional_email: org.billing_poc_additional_email,
         billing_poc_phone: org.billing_poc_phone,
         billing_poc_updated_by: org.billing_poc_updated_by,
         billing_poc_updated_at: org.billing_poc_updated_at,
-        billing_poc_user_email: null, // Simplified - can be added back later
-        billing_poc_user_name: null // Simplified - can be added back later
+        billing_poc_user_email: null,
+        billing_poc_user_name: null
       }))
 
       setOrganizations(organizationsWithDetails)
@@ -166,7 +133,7 @@ export function useOrganizations() {
         description: 'Organization created successfully'
       })
 
-      await getOrganizations() // Refresh the list
+      await getOrganizations()
       return newOrg
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to create organization'
@@ -190,7 +157,6 @@ export function useOrganizations() {
     try {
       console.log('Updating organization:', id, data)
       
-      // Add billing POC audit fields if billing POC data is being updated
       const updateData = { ...data }
       if (data.billing_poc_user_id !== undefined || data.billing_poc_additional_email !== undefined || data.billing_poc_phone !== undefined) {
         updateData.billing_poc_updated_by = user?.id
@@ -215,7 +181,7 @@ export function useOrganizations() {
         description: 'Organization updated successfully'
       })
 
-      await getOrganizations() // Refresh the list
+      await getOrganizations()
       return updatedOrg
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to update organization'
@@ -254,7 +220,7 @@ export function useOrganizations() {
         description: 'Organization deactivated successfully'
       })
 
-      await getOrganizations() // Refresh the list
+      await getOrganizations()
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to deactivate organization'
       console.error('Organization deletion error:', err)

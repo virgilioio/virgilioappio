@@ -32,7 +32,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     organization_id: null
   })
 
-  // Derived values
   const organizationId = memberData.organization_id
   const hasOrganizationContext = !!organizationId
   const userType = memberData.user_type
@@ -45,7 +44,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       if (error) {
         console.error('Error fetching member data:', error)
-        // Set default values if query fails
         setMemberData({
           user_type: 'guest',
           member_role: null,
@@ -64,7 +62,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           organization_id: memberInfo.organization_id
         })
       } else {
-        // User has no member record, set as guest
         setMemberData({
           user_type: 'guest',
           member_role: null,
@@ -82,7 +79,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   useEffect(() => {
-    // Set up auth state listener FIRST
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -91,7 +87,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(session?.user ?? null)
       
       if (session?.user) {
-        // Defer member data fetch to avoid recursion
         setTimeout(() => {
           fetchMemberData(session.user.id)
         }, 0)
@@ -105,7 +100,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(false)
     })
 
-    // THEN get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       console.log('Initial session:', session?.user?.id)
       setSession(session)

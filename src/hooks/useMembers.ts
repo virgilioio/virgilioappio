@@ -28,7 +28,7 @@ export interface CreateMemberData {
   member_role: 'recruiter' | 'customer_success' | 'billing' | 'sales' | 'admin' | 'client'
   user_status?: 'active' | 'inactive' | 'invited'
   user_type?: 'guest' | 'member' | 'workspace_owner' | 'platform_admin'
-  email?: string // For invitation emails
+  email?: string
 }
 
 export interface UpdateMemberData {
@@ -52,7 +52,6 @@ export function useMembers() {
     try {
       console.log('Fetching members for user:', user.id)
       
-      // Simplified query to avoid recursion issues
       const { data: membersData, error: membersError } = await supabase
         .from('members')
         .select('*')
@@ -76,7 +75,7 @@ export function useMembers() {
         return
       }
 
-      // Get organization names separately to avoid foreign key issues
+      // Get organization names separately
       const orgIds = [...new Set(membersData.map(m => m.organization_id).filter(Boolean))]
       let organizationsMap: Record<string, string> = {}
       
@@ -91,7 +90,7 @@ export function useMembers() {
         }
       }
 
-      // Get user profiles separately to avoid foreign key issues
+      // Get user profiles separately
       const userIds = [...new Set(membersData.map(m => m.user_id).filter(Boolean))]
       let profilesMap: Record<string, any> = {}
       
@@ -106,7 +105,6 @@ export function useMembers() {
         }
       }
 
-      // Transform the data to match our Member interface
       const membersWithDetails = membersData.map((member) => {
         const profile = profilesMap[member.user_id || '']
         
@@ -120,16 +118,6 @@ export function useMembers() {
           user_last_name: profile?.last_name || null,
           user_email: profile?.email || member.invited_email || null
         }
-        
-        console.log('Processed member:', {
-          id: typedMember.id,
-          user_id: typedMember.user_id,
-          user_first_name: typedMember.user_first_name,
-          user_last_name: typedMember.user_last_name,
-          user_email: typedMember.user_email,
-          invited_email: typedMember.invited_email,
-          user_status: typedMember.user_status
-        })
         
         return typedMember
       })
@@ -178,7 +166,6 @@ export function useMembers() {
   const createMember = async (data: CreateMemberData) => {
     if (!user) throw new Error('User not authenticated')
     
-    // Validate that organization_id is provided in the form data
     if (!data.organization_id) {
       throw new Error('Organization is required for member creation')
     }
@@ -189,7 +176,6 @@ export function useMembers() {
     try {
       console.log('Creating member with organization_id:', data.organization_id, 'Full data:', data)
       
-      // Prepare the member data - include email for invited members
       const memberData = {
         organization_id: data.organization_id,
         member_role: data.member_role,
@@ -214,7 +200,6 @@ export function useMembers() {
 
       console.log('Created member:', newMember)
 
-      // If this is an invitation (no user_id and email provided), send invitation email
       if (!data.user_id && data.email && newMember.invite_token) {
         try {
           await sendInvitationEmail(newMember.id, data.email)
@@ -224,7 +209,6 @@ export function useMembers() {
           })
         } catch (emailError) {
           console.error('Failed to send invitation email:', emailError)
-          // Don't fail the whole operation, but show a warning
           toast({
             title: 'Member Created',
             description: 'Member created but invitation email failed to send. You may need to resend the invitation.',
@@ -238,7 +222,7 @@ export function useMembers() {
         })
       }
 
-      await getMembers() // Refresh the list
+      await getMembers()
       return newMember
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to create member'
@@ -279,7 +263,7 @@ export function useMembers() {
         description: 'Member updated successfully'
       })
 
-      await getMembers() // Refresh the list
+      await getMembers()
       return updatedMember
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to update member'
@@ -318,7 +302,7 @@ export function useMembers() {
         description: 'Member deactivated successfully'
       })
 
-      await getMembers() // Refresh the list
+      await getMembers()
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to deactivate member'
       console.error('Member deactivation error:', err)
