@@ -1,11 +1,10 @@
-
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Edit, Trash2, UserPlus, MapPin, DollarSign, FileText, MessageCircle, Eye } from 'lucide-react'
+import { Trash2, UserPlus, MapPin, DollarSign, FileText } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
 import { Candidate } from '@/hooks/useCandidates'
 import { PermissionGate } from '@/components/auth/PermissionGate'
@@ -194,37 +193,7 @@ export function CandidateTable({ candidates, isLoading, onEdit, onDelete, onAddN
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center justify-end gap-1">
-                          <Link to={`/jobs/${jobId}/candidates/${candidate.id}`}>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-[36px] w-[36px] p-0 hover:bg-accent/50 hover:scale-110 transition-all duration-150"
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                          </Link>
-                          
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-[36px] w-[36px] p-0 hover:bg-accent/50 hover:scale-110 transition-all duration-150"
-                          >
-                            <MessageCircle className="h-4 w-4" />
-                          </Button>
-
                           <PermissionGate permission="canManageCandidates">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => {
-                                e.preventDefault()
-                                e.stopPropagation()
-                                onEdit(candidate)
-                              }}
-                              className="h-[36px] w-[36px] p-0 hover:bg-accent/50 hover:scale-110 transition-all duration-150"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
                             <Button
                               variant="ghost"
                               size="sm"
@@ -261,25 +230,20 @@ export function CandidateTable({ candidates, isLoading, onEdit, onDelete, onAddN
                               {formatLocation(candidate)}
                             </div>
                           </div>
-                          <div className="flex gap-1">
-                            <Button variant="ghost" size="sm" className="h-[40px] w-[40px] p-0">
-                              <Eye className="h-4 w-4" />
+                          <PermissionGate permission="canManageCandidates">
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              onClick={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                handleDelete(candidate.id)
+                              }}
+                              className="h-[40px] w-[40px] p-0 text-destructive hover:bg-destructive/10"
+                            >
+                              <Trash2 className="h-4 w-4" />
                             </Button>
-                            <PermissionGate permission="canManageCandidates">
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                onClick={(e) => {
-                                  e.preventDefault()
-                                  e.stopPropagation()
-                                  onEdit(candidate)
-                                }}
-                                className="h-[40px] w-[40px] p-0"
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                            </PermissionGate>
-                          </div>
+                          </PermissionGate>
                         </div>
 
                         <div className="flex items-center gap-1 text-sm text-text-secondary">
