@@ -43,6 +43,18 @@ export function CustomFieldInput({
 
   console.log('CustomFieldInput render - field:', field, 'value:', value)
 
+  // Validate field prop early
+  if (!field || typeof field !== 'object') {
+    console.error('CustomFieldInput: Invalid field prop:', field)
+    return (
+      <div className="p-4 border border-red-200 bg-red-50 rounded-md">
+        <p className="text-sm text-red-700">
+          Error: Invalid field configuration
+        </p>
+      </div>
+    )
+  }
+
   const validateValue = (inputValue: string): string | null => {
     if (!field.validation_rules) return null
 
@@ -132,8 +144,20 @@ export function CustomFieldInput({
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
   }
 
-  const renderInput = () => {
+  const renderInput = (): JSX.Element => {
     console.log('CustomFieldInput - renderInput for field type:', field.field_type)
+    
+    // Validate field_type exists
+    if (!field.field_type) {
+      console.error('CustomFieldInput - Missing field_type:', field)
+      return (
+        <div className="p-4 border border-red-200 bg-red-50 rounded-md">
+          <p className="text-sm text-red-700">
+            Error: Missing field type configuration
+          </p>
+        </div>
+      )
+    }
     
     switch (field.field_type) {
       case 'text':
@@ -180,7 +204,11 @@ export function CustomFieldInput({
                 <SelectItem key={option.id} value={option.option_value}>
                   {option.option_label}
                 </SelectItem>
-              ))}
+              )) || (
+                <SelectItem value="" disabled>
+                  No options available
+                </SelectItem>
+              )}
             </SelectContent>
           </Select>
         )
@@ -307,25 +335,18 @@ export function CustomFieldInput({
             <p className="text-sm text-orange-700">
               Unsupported field type: {field.field_type}
             </p>
+            <p className="text-xs text-orange-600 mt-1">
+              Contact support if this field type should be supported.
+            </p>
           </div>
         )
     }
   }
 
+  // Get the input element - this is guaranteed to be a valid JSX element
   const inputElement = renderInput()
-  
-  // Ensure we never return null or undefined
-  if (!inputElement) {
-    console.error('CustomFieldInput - renderInput returned null/undefined for field:', field)
-    return (
-      <div className="p-4 border border-red-200 bg-red-50 rounded-md">
-        <p className="text-sm text-red-700">
-          Error rendering field: {field.field_label}
-        </p>
-      </div>
-    )
-  }
 
+  // Handle checkbox special case
   if (field.field_type === 'checkbox') {
     return (
       <div className="space-y-2">
@@ -338,6 +359,7 @@ export function CustomFieldInput({
     )
   }
 
+  // Render with FormField wrapper for all other field types
   return (
     <FormField
       label={field.field_label}
