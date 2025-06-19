@@ -1,3 +1,4 @@
+
 import { useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -145,12 +146,17 @@ export function CustomFieldInput({
 
   const renderInput = (): JSX.Element => {
     console.log('CustomFieldInput - renderInput for field type:', field.field_type)
-    console.log('Available components check:', { 
+    console.log('Component validation check:', { 
       Input: typeof Input, 
       Textarea: typeof Textarea, 
       Select: typeof Select,
+      SelectTrigger: typeof SelectTrigger,
+      SelectContent: typeof SelectContent,
+      SelectItem: typeof SelectItem,
+      SelectValue: typeof SelectValue,
       Checkbox: typeof Checkbox,
-      Button: typeof Button
+      Button: typeof Button,
+      FormField: typeof FormField
     })
     
     // Validate field_type exists
@@ -165,93 +171,138 @@ export function CustomFieldInput({
       )
     }
     
+    let inputElement: JSX.Element | null = null
+    
     switch (field.field_type) {
       case 'text':
       case 'email':
         console.log('Rendering Input component for type:', field.field_type)
-        return (
-          <Input
-            type={field.field_type}
-            value={value}
-            onChange={(e) => handleValueChange(e.target.value)}
-            placeholder={field.placeholder_text || ''}
-            className={error ? 'border-red-500' : ''}
-          />
-        )
+        console.log('Input component check:', Input, typeof Input)
+        if (!Input) {
+          console.error('Input component is undefined!')
+          inputElement = <div className="p-2 border border-red-500 bg-red-50 text-red-700">Input component not available</div>
+        } else {
+          inputElement = (
+            <Input
+              type={field.field_type}
+              value={value}
+              onChange={(e) => handleValueChange(e.target.value)}
+              placeholder={field.placeholder_text || ''}
+              className={error ? 'border-red-500' : ''}
+            />
+          )
+        }
+        break
 
       case 'number':
         console.log('Rendering Input component for number type')
-        return (
-          <Input
-            type="number"
-            value={value}
-            onChange={(e) => handleValueChange(e.target.value)}
-            placeholder={field.placeholder_text || ''}
-            className={error ? 'border-red-500' : ''}
-          />
-        )
+        console.log('Input component check:', Input, typeof Input)
+        if (!Input) {
+          console.error('Input component is undefined!')
+          inputElement = <div className="p-2 border border-red-500 bg-red-50 text-red-700">Input component not available</div>
+        } else {
+          inputElement = (
+            <Input
+              type="number"
+              value={value}
+              onChange={(e) => handleValueChange(e.target.value)}
+              placeholder={field.placeholder_text || ''}
+              className={error ? 'border-red-500' : ''}
+            />
+          )
+        }
+        break
 
       case 'textarea':
         console.log('Rendering Textarea component')
-        return (
-          <Textarea
-            value={value}
-            onChange={(e) => handleValueChange(e.target.value)}
-            placeholder={field.placeholder_text || ''}
-            className={error ? 'border-red-500' : ''}
-          />
-        )
+        console.log('Textarea component check:', Textarea, typeof Textarea)
+        if (!Textarea) {
+          console.error('Textarea component is undefined!')
+          inputElement = <div className="p-2 border border-red-500 bg-red-50 text-red-700">Textarea component not available</div>
+        } else {
+          inputElement = (
+            <Textarea
+              value={value}
+              onChange={(e) => handleValueChange(e.target.value)}
+              placeholder={field.placeholder_text || ''}
+              className={error ? 'border-red-500' : ''}
+            />
+          )
+        }
+        break
 
       case 'select':
         console.log('Rendering Select component')
-        return (
-          <Select value={value} onValueChange={handleValueChange}>
-            <SelectTrigger className={error ? 'border-red-500' : ''}>
-              <SelectValue placeholder={field.placeholder_text || 'Select an option'} />
-            </SelectTrigger>
-            <SelectContent>
-              {field.select_options?.map((option) => (
-                <SelectItem key={option.id} value={option.option_value}>
-                  {option.option_label}
-                </SelectItem>
-              )) || (
-                <SelectItem value="" disabled>
-                  No options available
-                </SelectItem>
-              )}
-            </SelectContent>
-          </Select>
-        )
+        console.log('Select components check:', { Select, SelectTrigger, SelectContent, SelectItem, SelectValue })
+        if (!Select || !SelectTrigger || !SelectContent || !SelectItem || !SelectValue) {
+          console.error('Select components are undefined!', { Select, SelectTrigger, SelectContent, SelectItem, SelectValue })
+          inputElement = <div className="p-2 border border-red-500 bg-red-50 text-red-700">Select components not available</div>
+        } else {
+          inputElement = (
+            <Select value={value} onValueChange={handleValueChange}>
+              <SelectTrigger className={error ? 'border-red-500' : ''}>
+                <SelectValue placeholder={field.placeholder_text || 'Select an option'} />
+              </SelectTrigger>
+              <SelectContent>
+                {field.select_options?.map((option) => (
+                  <SelectItem key={option.id} value={option.option_value}>
+                    {option.option_label}
+                  </SelectItem>
+                )) || (
+                  <SelectItem value="" disabled>
+                    No options available
+                  </SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+          )
+        }
+        break
 
       case 'checkbox':
         console.log('Rendering Checkbox component')
-        return (
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id={field.field_name}
-              checked={value === 'true'}
-              onCheckedChange={(checked) => handleValueChange(checked.toString())}
-            />
-            <label htmlFor={field.field_name} className="text-sm">
-              {field.field_label}
-            </label>
-          </div>
-        )
+        console.log('Checkbox component check:', Checkbox, typeof Checkbox)
+        if (!Checkbox) {
+          console.error('Checkbox component is undefined!')
+          inputElement = <div className="p-2 border border-red-500 bg-red-50 text-red-700">Checkbox component not available</div>
+        } else {
+          inputElement = (
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id={field.field_name}
+                checked={value === 'true'}
+                onCheckedChange={(checked) => handleValueChange(checked.toString())}
+              />
+              <label htmlFor={field.field_name} className="text-sm">
+                {field.field_label}
+              </label>
+            </div>
+          )
+        }
+        break
 
       case 'date':
         console.log('Rendering Input component for date type')
-        return (
-          <Input
-            type="date"
-            value={value}
-            onChange={(e) => handleValueChange(e.target.value)}
-            className={error ? 'border-red-500' : ''}
-          />
-        )
+        console.log('Input component check:', Input, typeof Input)
+        if (!Input) {
+          console.error('Input component is undefined!')
+          inputElement = <div className="p-2 border border-red-500 bg-red-50 text-red-700">Input component not available</div>
+        } else {
+          inputElement = (
+            <Input
+              type="date"
+              value={value}
+              onChange={(e) => handleValueChange(e.target.value)}
+              className={error ? 'border-red-500' : ''}
+            />
+          )
+        }
+        break
 
       case 'file':
         console.log('Rendering file upload component')
-        return (
+        console.log('File components check:', { Button, Upload, File, X, Download })
+        inputElement = (
           <div className="space-y-4">
             {fileData ? (
               <div className="flex items-center justify-between p-3 border rounded-lg bg-muted">
@@ -340,10 +391,11 @@ export function CustomFieldInput({
             )}
           </div>
         )
+        break
 
       default:
         console.warn('CustomFieldInput - Unknown field type:', field.field_type)
-        return (
+        inputElement = (
           <div className="p-4 border border-orange-200 bg-orange-50 rounded-md">
             <p className="text-sm text-orange-700">
               Unsupported field type: {field.field_type}
@@ -354,10 +406,29 @@ export function CustomFieldInput({
           </div>
         )
     }
+
+    // Final validation before returning
+    console.log('Final inputElement check:', inputElement, typeof inputElement)
+    if (!inputElement || typeof inputElement !== 'object') {
+      console.error('Invalid element returned by renderInput:', inputElement)
+      return (
+        <div className="p-4 border border-red-500 bg-red-50 rounded-md">
+          <p className="text-sm text-red-700">
+            ⚠️ Failed to render input component
+          </p>
+          <p className="text-xs text-red-600 mt-1">
+            Field type: {field.field_type}
+          </p>
+        </div>
+      )
+    }
+
+    return inputElement
   }
 
   // Get the input element - this is guaranteed to be a valid JSX element
   const inputElement = renderInput()
+  console.log('Final inputElement before render:', inputElement)
 
   // Handle checkbox special case
   if (field.field_type === 'checkbox') {
@@ -373,6 +444,21 @@ export function CustomFieldInput({
   }
 
   // Render with FormField wrapper for all other field types
+  console.log('FormField component check:', FormField, typeof FormField)
+  if (!FormField) {
+    console.error('FormField component is undefined!')
+    return (
+      <div className="space-y-2">
+        <label className="text-sm font-medium">{field.field_label}</label>
+        {inputElement}
+        {field.help_text && (
+          <p className="text-sm text-muted-foreground">{field.help_text}</p>
+        )}
+        {error && <p className="text-sm text-red-500">{error}</p>}
+      </div>
+    )
+  }
+
   return (
     <FormField
       label={field.field_label}
