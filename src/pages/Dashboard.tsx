@@ -11,6 +11,7 @@ import { Section } from '@/components/layout/Section'
 import { InvoiceFilterProvider } from '@/utils/invoiceFilters'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { usePermissions } from '@/hooks/usePermissions'
+import { PermissionGate } from '@/components/auth/PermissionGate'
 
 export default function Dashboard() {
   const { profile, isLoading } = useUserProfile()
@@ -41,7 +42,10 @@ export default function Dashboard() {
         <AppContainer variant="default">
           <div className="space-y-6">
             <WelcomeHeader profile={profile} isLoading={isLoading} />
-            <PriorityPaymentAlert />
+            
+            <PermissionGate permission="canViewBilling">
+              <PriorityPaymentAlert />
+            </PermissionGate>
             
             {shouldShowOnboarding() && (
               <div className="grid gap-6 lg:grid-cols-3">
@@ -53,7 +57,9 @@ export default function Dashboard() {
             
             <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-3">
               <div className="lg:col-span-1 xl:col-span-1 space-y-6">
-                <PaymentsTracker />
+                <PermissionGate permission="canViewBilling">
+                  <PaymentsTracker />
+                </PermissionGate>
                 <JobsOverview permissions={permissions} />
               </div>
               
