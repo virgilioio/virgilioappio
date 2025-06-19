@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -73,6 +74,9 @@ export function PaymentsTracker() {
 
   const { totalDueLabel, incomingLabel } = getLabels()
 
+  // Calculate total receivable/expected income including overdue amounts
+  const totalReceivable = paymentMetrics.totalPending + paymentMetrics.overdueAmount
+
   return (
     <Card>
       <CardHeader>
@@ -124,22 +128,22 @@ export function PaymentsTracker() {
           <div className="space-y-1">
             <p className="text-sm text-text-secondary">{totalDueLabel}</p>
             <p className="text-2xl font-semibold text-text-primary">
-              {formatCurrency(paymentMetrics.totalPending)}
+              {formatCurrency(totalReceivable)}
             </p>
           </div>
           <div className="space-y-1">
             <p className="text-sm text-text-secondary">{incomingLabel}</p>
             <p className="text-2xl font-semibold text-success">
-              {formatCurrency(paymentMetrics.totalPending)}
+              {formatCurrency(totalReceivable)}
             </p>
           </div>
         </div>
         
-        {paymentMetrics.pendingCount > 0 && (
+        {(paymentMetrics.pendingCount > 0 || paymentMetrics.overdueCount > 0) && (
           <div className="flex items-center justify-between pt-2 border-t">
             <div className="flex items-center gap-2">
-              <Badge variant="secondary">{paymentMetrics.pendingCount}</Badge>
-              <span className="text-sm text-text-secondary">total pending invoices</span>
+              <Badge variant="secondary">{paymentMetrics.pendingCount + paymentMetrics.overdueCount}</Badge>
+              <span className="text-sm text-text-secondary">total outstanding invoices</span>
             </div>
             <Link to="/settings?tab=billing">
               <Button variant="ghost" size="sm">
