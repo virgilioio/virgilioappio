@@ -32,6 +32,8 @@ interface ValidationRule {
   message: string
 }
 
+type FieldType = 'text' | 'number' | 'email' | 'textarea' | 'select' | 'checkbox' | 'date' | 'file'
+
 const FIELD_TYPES = [
   { value: 'text', label: 'Text' },
   { value: 'number', label: 'Number' },
@@ -60,7 +62,7 @@ export function CountryFieldForm({ isOpen, onClose, countryId, countryCode, fiel
   const [formData, setFormData] = useState({
     field_name: '',
     field_label: '',
-    field_type: 'text' as const,
+    field_type: 'text' as FieldType,
     is_required: false,
     display_order: 1,
     placeholder_text: '',
@@ -202,7 +204,7 @@ export function CountryFieldForm({ isOpen, onClose, countryId, countryCode, fiel
             <FormField label="Field Type" required htmlFor="field_type">
               <Select 
                 value={formData.field_type} 
-                onValueChange={(value) => updateFormData('field_type', value)}
+                onValueChange={(value: FieldType) => updateFormData('field_type', value)}
               >
                 <SelectTrigger>
                   <SelectValue />
