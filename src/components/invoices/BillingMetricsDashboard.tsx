@@ -72,17 +72,18 @@ export function BillingMetricsDashboard() {
   }
 
   const metrics = useMemo(() => {
-    // Filter invoices based on role
-    let filteredInvoices = canManageInvoices 
+    // Base filtering based on role (for all calculations)
+    let baseInvoices = canManageInvoices 
       ? invoices // Admin/Billing sees all
       : invoices.filter(invoice => invoice.organization_id === organizationId) // Scoped to org
 
-    // Apply month filter if selected
+    // Separate filtering for display purposes (by issue date)
+    let displayFilteredInvoices = baseInvoices
     if (filters.selectedMonth) {
       const monthStart = startOfMonth(filters.selectedMonth)
       const monthEnd = endOfMonth(filters.selectedMonth)
       
-      filteredInvoices = filteredInvoices.filter(invoice => {
+      displayFilteredInvoices = baseInvoices.filter(invoice => {
         const invoiceDate = new Date(invoice.issued_at)
         return isWithinInterval(invoiceDate, { start: monthStart, end: monthEnd })
       })
@@ -90,8 +91,6 @@ export function BillingMetricsDashboard() {
 
     const now = new Date()
     const startOfMonthCurrent = new Date(now.getFullYear(), now.getMonth(), 1)
-    const startOfYear = new Date(now.getFullYear(), 0, 1)
-    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
 
     // Helper functions
     const formatCurrency = (amount: number) => {
@@ -108,42 +107,42 @@ export function BillingMetricsDashboard() {
     const getDateFromString = (dateString: string) => new Date(dateString)
 
     if (canManageInvoices) {
-      // Admin/Billing metrics - use the selected month or current month for calculations
+      // Admin/Billing metrics
       const referenceMonth = filters.selectedMonth || startOfMonthCurrent
       const monthStart = startOfMonth(referenceMonth)
       const monthEnd = endOfMonth(referenceMonth)
 
-      const totalInvoicedThisMonth = filteredInvoices
-        .filter(inv => {
-          const issueDate = getDateFromString(inv.issued_at)
-          return isWithinInterval(issueDate, { start: monthStart, end: monthEnd })
-        })
+      // Total Invoiced - filtered by ISSUE date
+      const totalInvoicedThisMonth = displayFilteredInvoices
         .reduce((sum, inv) => sum + inv.amount, 0)
 
-      const totalPaidThisMonth = filteredInvoices
+      // Total Paid - filtered by PAYMENT date (use base invoices, not display filtered)
+      const totalPaidThisMonth = baseInvoices
         .filter(inv => inv.status === 'paid' && inv.paid_at && 
           isWithinInterval(getDateFromString(inv.paid_at), { start: monthStart, end: monthEnd }))
         .reduce((sum, inv) => sum + inv.amount, 0)
 
-      const outstandingBalance = filteredInvoices
+      // Outstanding/overdue calculations - use display filtered invoices
+      const outstandingBalance = displayFilteredInvoices
         .filter(inv => ['pending', 'overdue'].includes(inv.status))
         .reduce((sum, inv) => sum + inv.amount, 0)
 
-      const overdueAmount = filteredInvoices
+      const overdueAmount = displayFilteredInvoices
         .filter(inv => inv.status === 'overdue')
         .reduce((sum, inv) => sum + inv.amount, 0)
 
-      const overdueCount = filteredInvoices.filter(inv => inv.status === 'overdue').length
+      const overdueCount = displayFilteredInvoices.filter(inv => inv.status === 'overdue').length
 
       const clientsWithOverdue = new Set(
-        filteredInvoices
+        displayFilteredInvoices
           .filter(inv => inv.status === 'overdue')
           .map(inv => inv.organization_id)
       ).size
 
-      const invoicesInPeriod = filteredInvoices.length
+      const invoicesInPeriod = displayFilteredInvoices.length
 
-      const paidInvoices = filteredInvoices.filter(inv => inv.status === 'paid' && inv.paid_at)
+      // Payment delay calculation - use all paid invoices for accuracy
+      const paidInvoices = baseInvoices.filter(inv => inv.status === 'paid' && inv.paid_at)
       const avgPaymentDelay = paidInvoices.length > 0
         ? paidInvoices.reduce((sum, inv) => {
             const issueDate = getDateFromString(inv.issued_at)
@@ -169,7 +168,7 @@ export function BillingMetricsDashboard() {
           title: `Total Paid (${periodLabel})`,
           value: formatCurrency(totalPaidThisMonth),
           icon: <DollarSign className="h-5 w-5" />,
-          tooltip: `Payments received in ${periodLabel.toLowerCase()}`,
+          tooltip: `Payments received in ${periodLabel.toLowerCase()}, regardless of issue date`,
           variant: 'success' as const
         },
         {
@@ -211,31 +210,41 @@ export function BillingMetricsDashboard() {
           title: 'Avg Payment Delay',
           value: formatDays(avgPaymentDelay),
           icon: <Calendar className="h-5 w-5" />,
-          tooltip: filters.selectedMonth ? 'Average payment delay for selected period' : 'Average time between invoice issue and payment',
+          tooltip: 'Average time between invoice issue and payment across all invoices',
           variant: 'default' as const
         }
       ]
     } else {
-      // Workspace Owner/Client metrics (org-scoped) - respect month filter
-      const outstandingBalance = filteredInvoices
+      // Workspace Owner/Client metrics (org-scoped)
+      const referenceMonth = filters.selectedMonth || startOfMonthCurrent
+      const monthStart = startOfMonth(referenceMonth)
+      const monthEnd = endOfMonth(referenceMonth)
+
+      const outstandingBalance = displayFilteredInvoices
         .filter(inv => ['pending', 'overdue'].includes(inv.status))
         .reduce((sum, inv) => sum + inv.amount, 0)
 
-      const overdueAmount = filteredInvoices
+      const overdueAmount = displayFilteredInvoices
         .filter(inv => inv.status === 'overdue')
         .reduce((sum, inv) => sum + inv.amount, 0)
 
-      const upcomingDueAmount = filteredInvoices
+      const upcomingDueAmount = displayFilteredInvoices
         .filter(inv => inv.due_date && getDateFromString(inv.due_date) > now && inv.status === 'pending')
         .reduce((sum, inv) => sum + inv.amount, 0)
 
-      const paidInPeriod = filteredInvoices
-        .filter(inv => inv.status === 'paid')
-        .reduce((sum, inv) => sum + inv.amount, 0)
+      // Use base invoices for payment calculations filtered by payment date
+      const paidInPeriod = filters.selectedMonth 
+        ? baseInvoices
+            .filter(inv => inv.status === 'paid' && inv.paid_at && 
+              isWithinInterval(getDateFromString(inv.paid_at), { start: monthStart, end: monthEnd }))
+            .reduce((sum, inv) => sum + inv.amount, 0)
+        : baseInvoices
+            .filter(inv => inv.status === 'paid')
+            .reduce((sum, inv) => sum + inv.amount, 0)
 
-      const overdueCount = filteredInvoices.filter(inv => inv.status === 'overdue').length
+      const overdueCount = displayFilteredInvoices.filter(inv => inv.status === 'overdue').length
 
-      const latestInvoice = filteredInvoices
+      const latestInvoice = displayFilteredInvoices
         .sort((a, b) => getDateFromString(b.issued_at).getTime() - getDateFromString(a.issued_at).getTime())[0]
 
       const periodLabel = filters.selectedMonth 
@@ -268,7 +277,7 @@ export function BillingMetricsDashboard() {
           title: `Paid Invoices (${periodLabel})`,
           value: formatCurrency(paidInPeriod),
           icon: <DollarSign className="h-5 w-5" />,
-          tooltip: filters.selectedMonth ? 'Paid invoices from selected month' : 'Total paid invoices this year',
+          tooltip: filters.selectedMonth ? 'Paid invoices from selected month (by payment date)' : 'Total paid invoices this year',
           variant: 'success' as const
         },
         {
