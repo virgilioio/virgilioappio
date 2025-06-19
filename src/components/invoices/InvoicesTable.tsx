@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -20,6 +19,8 @@ import { Receipt, Download, FileText, Search, Filter, Calendar } from 'lucide-re
 import { InvoiceUploadModal } from './InvoiceUploadModal'
 import { getInvoicePdfUrl } from '@/lib/invoiceStorage'
 import { filterInvoices, getInvoiceStats, useInvoiceFilter } from '@/utils/invoiceFilters'
+import { useSortableTable } from '@/hooks/useSortableTable'
+import { SortableHeader } from '@/components/ui/sortable-header'
 
 export function InvoicesTable() {
   const { invoices, isLoading, refreshInvoices } = useInvoices()
@@ -61,6 +62,12 @@ export function InvoicesTable() {
     setStatusFilter('all')
     setSelectedMonth(undefined)
   }
+
+  // Add sorting functionality  
+  const { sortedData: sortedInvoices, sortConfig, requestSort } = useSortableTable(
+    filteredInvoices, 
+    { key: 'issued_at', direction: 'desc' }
+  )
 
   const getStatusBadgeVariant = (status: Invoice['status']) => {
     switch (status) {
@@ -270,16 +277,56 @@ export function InvoicesTable() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Invoice</TableHead>
-                      <TableHead>Amount</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Issued</TableHead>
-                      <TableHead>Due Date</TableHead>
+                      <TableHead>
+                        <SortableHeader 
+                          sortKey="title" 
+                          currentSort={sortConfig} 
+                          onSort={requestSort}
+                        >
+                          Invoice
+                        </SortableHeader>
+                      </TableHead>
+                      <TableHead>
+                        <SortableHeader 
+                          sortKey="amount" 
+                          currentSort={sortConfig} 
+                          onSort={requestSort}
+                        >
+                          Amount
+                        </SortableHeader>
+                      </TableHead>
+                      <TableHead>
+                        <SortableHeader 
+                          sortKey="status" 
+                          currentSort={sortConfig} 
+                          onSort={requestSort}
+                        >
+                          Status
+                        </SortableHeader>
+                      </TableHead>
+                      <TableHead>
+                        <SortableHeader 
+                          sortKey="issued_at" 
+                          currentSort={sortConfig} 
+                          onSort={requestSort}
+                        >
+                          Issued
+                        </SortableHeader>
+                      </TableHead>
+                      <TableHead>
+                        <SortableHeader 
+                          sortKey="due_date" 
+                          currentSort={sortConfig} 
+                          onSort={requestSort}
+                        >
+                          Due Date
+                        </SortableHeader>
+                      </TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredInvoices.map((invoice) => (
+                    {sortedInvoices.map((invoice) => (
                       <TableRow 
                         key={invoice.id} 
                         interactive={!!invoice.invoice_url}

@@ -1,4 +1,3 @@
-
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -31,6 +30,7 @@ import { cn } from '@/lib/utils'
 import { useInvoices, CreateInvoiceData } from '@/hooks/useInvoices'
 import { useOrganizations } from '@/hooks/useOrganizations'
 import { usePermissions } from '@/hooks/usePermissions'
+import { useFormPersistence } from '@/hooks/useFormPersistence'
 
 const formSchema = z.object({
   organization_id: z.string().min(1, 'Organization is required'),
@@ -71,6 +71,13 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
     },
   })
 
+  // Add form persistence
+  const { clearPersistedData } = useFormPersistence({
+    storageKey: 'create-invoice-form',
+    form,
+    enabled: open
+  })
+
   const onSubmit = async (data: FormData) => {
     setIsSubmitting(true)
     try {
@@ -86,6 +93,7 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
 
       await createInvoice(invoiceData)
       form.reset()
+      clearPersistedData() // Clear persisted data on successful submit
       onOpenChange(false)
     } catch (error) {
       // Error handling is done in the hook
@@ -96,6 +104,7 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
 
   const handleCancel = () => {
     form.reset()
+    clearPersistedData() // Clear persisted data on cancel
     onOpenChange(false)
   }
 

@@ -1,4 +1,3 @@
-
 import { useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -36,6 +35,8 @@ import { Receipt, Upload, Download, CheckCircle, Trash2, DollarSign, Clock, Aler
 import { InvoiceUploadModal } from './InvoiceUploadModal'
 import { PaymentModal } from './PaymentModal'
 import { getInvoicePdfUrl } from '@/lib/invoiceStorage'
+import { useSortableTable } from '@/hooks/useSortableTable'
+import { SortableHeader } from '@/components/ui/sortable-header'
 
 interface AdminInvoicesTableProps {
   invoices: Invoice[]
@@ -49,6 +50,12 @@ export function AdminInvoicesTable({ invoices, isLoading }: AdminInvoicesTablePr
   const [uploadModalOpen, setUploadModalOpen] = useState(false)
   const [paymentModalOpen, setPaymentModalOpen] = useState(false)
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null)
+
+  // Add sorting functionality
+  const { sortedData: sortedInvoices, sortConfig, requestSort } = useSortableTable(
+    invoices, 
+    { key: 'issued_at', direction: 'desc' }
+  )
 
   const getStatusBadgeVariant = (status: Invoice['status']) => {
     switch (status) {
@@ -180,18 +187,66 @@ export function AdminInvoicesTable({ invoices, isLoading }: AdminInvoicesTablePr
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Invoice</TableHead>
-                    <TableHead>Organization</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead>
+                      <SortableHeader 
+                        sortKey="title" 
+                        currentSort={sortConfig} 
+                        onSort={requestSort}
+                      >
+                        Invoice
+                      </SortableHeader>
+                    </TableHead>
+                    <TableHead>
+                      <SortableHeader 
+                        sortKey="organization_id" 
+                        currentSort={sortConfig} 
+                        onSort={requestSort}
+                      >
+                        Organization
+                      </SortableHeader>
+                    </TableHead>
+                    <TableHead>
+                      <SortableHeader 
+                        sortKey="amount" 
+                        currentSort={sortConfig} 
+                        onSort={requestSort}
+                      >
+                        Amount
+                      </SortableHeader>
+                    </TableHead>
+                    <TableHead>
+                      <SortableHeader 
+                        sortKey="status" 
+                        currentSort={sortConfig} 
+                        onSort={requestSort}
+                      >
+                        Status
+                      </SortableHeader>
+                    </TableHead>
                     <TableHead>Payment Details</TableHead>
-                    <TableHead>Issued</TableHead>
-                    <TableHead>Due Date</TableHead>
+                    <TableHead>
+                      <SortableHeader 
+                        sortKey="issued_at" 
+                        currentSort={sortConfig} 
+                        onSort={requestSort}
+                      >
+                        Issued
+                      </SortableHeader>
+                    </TableHead>
+                    <TableHead>
+                      <SortableHeader 
+                        sortKey="due_date" 
+                        currentSort={sortConfig} 
+                        onSort={requestSort}
+                      >
+                        Due Date
+                      </SortableHeader>
+                    </TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {invoices.map((invoice) => (
+                  {sortedInvoices.map((invoice) => (
                     <TableRow 
                       key={invoice.id}
                       interactive={!!invoice.invoice_url}
