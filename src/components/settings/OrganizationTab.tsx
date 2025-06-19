@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react'
 import { useOrganizations } from '@/hooks/useOrganizations'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -169,24 +168,23 @@ export function OrganizationTab() {
     }
   }
 
-  // Show error state if there's an error
   if (error) {
     console.log('OrganizationTab - rendering error state:', error)
     return (
       <div className="space-y-6">
         <Card>
-          <CardHeader className="pb-4">
-            <CardTitle className="flex items-center gap-3">
-              <Building className="h-5 w-5" />
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Building className="h-4 w-4" />
               Organization Settings
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-xs">
               Manage your organization details and preferences
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-center py-8">
-              <p className="text-destructive">Error loading organization data: {error}</p>
+            <div className="text-center py-6">
+              <p className="text-destructive text-sm">Error loading organization data: {error}</p>
             </div>
           </CardContent>
         </Card>
@@ -194,24 +192,23 @@ export function OrganizationTab() {
     )
   }
 
-  // Show loading state
   if (isLoading) {
     console.log('OrganizationTab - rendering loading state')
     return (
       <div className="space-y-6">
         <Card>
-          <CardHeader className="pb-4">
-            <CardTitle className="flex items-center gap-3">
-              <Building className="h-5 w-5" />
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Building className="h-4 w-4" />
               Organization Settings
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-xs">
               Manage your organization details and preferences
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-center py-8">
-              <p className="text-muted-foreground">Loading organization data...</p>
+            <div className="text-center py-6">
+              <p className="text-muted-foreground text-sm">Loading organization data...</p>
             </div>
           </CardContent>
         </Card>
@@ -219,24 +216,23 @@ export function OrganizationTab() {
     )
   }
 
-  // Show no organization message
   if (!userOrganization) {
     console.log('OrganizationTab - rendering no organization state')
     return (
       <div className="space-y-6">
         <Card>
-          <CardHeader className="pb-4">
-            <CardTitle className="flex items-center gap-3">
-              <Building className="h-5 w-5" />
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Building className="h-4 w-4" />
               Organization Settings
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-xs">
               Manage your organization details and preferences
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-center py-8">
-              <p className="text-muted-foreground">
+            <div className="text-center py-6">
+              <p className="text-muted-foreground text-sm">
                 {userType === 'workspace_owner' 
                   ? 'No organization found. Please contact support if you believe this is an error.'
                   : userType === 'platform_admin'
@@ -262,21 +258,21 @@ export function OrganizationTab() {
     return (
       <div className="space-y-6">
         <Card>
-          <CardHeader className="pb-4">
-            <CardTitle className="flex items-center gap-3">
-              <Building className="h-5 w-5" />
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Building className="h-4 w-4" />
               Organization Settings
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-xs">
               Manage your organization details and preferences
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="text-center py-8">
-              <p className="text-muted-foreground">
+            <div className="text-center py-6">
+              <p className="text-muted-foreground text-sm">
                 You can only view and edit organizations that you own. Please contact support if you need to be assigned as the owner of an organization.
               </p>
-              <p className="text-sm text-muted-foreground mt-2">
+              <p className="text-xs text-muted-foreground mt-1">
                 Current organization: {userOrganization.name} (Owner: {userOrganization.owner_id})
               </p>
             </div>
@@ -292,15 +288,15 @@ export function OrganizationTab() {
     <div className="space-y-6">
       {/* Header with Edit Toggle */}
       <Card>
-        <CardHeader className="pb-4">
+        <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="flex items-center gap-3">
-                <Building className="h-5 w-5" />
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Building className="h-4 w-4" />
                 Organization Settings
-                {!isEditMode && <Lock className="h-4 w-4 text-muted-foreground" />}
+                {!isEditMode && <Lock className="h-3 w-3 text-muted-foreground" />}
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-xs">
                 {isEditMode 
                   ? 'Make changes to your organization details and preferences'
                   : 'View your organization details and preferences'
@@ -313,15 +309,17 @@ export function OrganizationTab() {
                 <Button 
                   onClick={handleEditModeToggle}
                   variant="outline"
-                  className="flex items-center gap-2"
+                  size="sm"
+                  className="flex items-center gap-1"
                 >
-                  <Edit className="h-4 w-4" />
+                  <Edit className="h-3 w-3" />
                   Edit Organization
                 </Button>
               ) : (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1">
                   <Button 
                     variant="outline" 
+                    size="sm"
                     onClick={handleCancelEdit}
                   >
                     Cancel
@@ -329,7 +327,8 @@ export function OrganizationTab() {
                   <Button 
                     onClick={handleOrgSave}
                     disabled={isLoading}
-                    className="flex items-center gap-2"
+                    size="sm"
+                    className="flex items-center gap-1"
                   >
                     Save Changes
                   </Button>
@@ -358,11 +357,11 @@ export function OrganizationTab() {
       <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-warning" />
+            <AlertDialogTitle className="flex items-center gap-2 text-lg">
+              <AlertTriangle className="h-4 w-4 text-warning" />
               Unsaved Changes
             </AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogDescription className="text-xs">
               You have unsaved changes to your organization settings. Are you sure you want to exit edit mode? 
               Your changes will be lost.
             </AlertDialogDescription>
