@@ -14,15 +14,32 @@ interface OrganizationFormData {
 
 export function OrganizationTab() {
   const { organizations, updateOrganization, isLoading, error } = useOrganizations()
-  const { userType } = useAuth()
+  const { userType, user } = useAuth()
   
-  console.log('OrganizationTab render - organizations:', organizations, 'isLoading:', isLoading, 'error:', error)
+  console.log('OrganizationTab render - organizations:', organizations, 'isLoading:', isLoading, 'error:', error, 'userType:', userType)
   
-  // Get the user's organization - workspace owners should have one
-  // Add explicit null check to prevent undefined access
-  const userOrganization = organizations && organizations.length > 0 ? organizations[0] : null
+  // Get the user's organization - prioritize owned organizations for workspace owners
+  const getUserOrganization = () => {
+    if (!organizations || organizations.length === 0) return null
+    
+    // For workspace owners, find the organization they own
+    if (userType === 'workspace_owner' && user) {
+      const ownedOrganization = organizations.find(org => org.owner_id === user.id)
+      if (ownedOrganization) {
+        console.log('Found owned organization for workspace owner:', ownedOrganization)
+        return ownedOrganization
+      }
+      
+      // Fallback to first organization if no owned organization found
+      console.log('No owned organization found, using first available organization')
+    }
+    
+    // For platform admins or fallback case, use first organization
+    return organizations[0]
+  }
   
-  console.log('OrganizationTab - userOrganization:', userOrganization)
+  const userOrganization = getUserOrganization()
+  console.log('OrganizationTab - selected userOrganization:', userOrganization)
   
   const [orgFormData, setOrgFormData] = useState<OrganizationFormData>({
     name: '',
@@ -44,6 +61,12 @@ export function OrganizationTab() {
   const handleOrgSave = async () => {
     if (!userOrganization?.id) {
       console.error('OrganizationTab - Cannot save: no organization ID')
+      return
+    }
+
+    // Validation for workspace owners - ensure they can only edit organizations they own
+    if (userType === 'workspace_owner' && user && userOrganization.owner_id !== user.id) {
+      console.error('OrganizationTab - Workspace owner trying to edit organization they do not own')
       return
     }
 
@@ -136,7 +159,34 @@ export function OrganizationTab() {
     )
   }
 
-  // Render the form only when we have valid organization data
+  // Show ownership warning for workspace owners if they don't own the organization
+  if (userType === 'workspace_owner' && user && userOrganization.owner_id !== user.id) {
+    console.log('OrganizationTab - workspace owner viewing non-owned organization')
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-3">
+              <Building className="h-5 w-5" />
+              Organization Settings
+            </CardTitle>
+            <CardDescription>
+              Manage your organization details and preferences
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">
+                You can only view and edit organizations that you own. Please contact support if you need to be assigned as the owner of an organization.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  // Render the form only when we have valid organization data and proper ownership
   console.log('OrganizationTab - rendering form with organization:', userOrganization)
   return (
     <div className="space-y-6">

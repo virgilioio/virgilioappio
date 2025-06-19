@@ -56,9 +56,45 @@ export function useOrganizations() {
         `)
         .order('created_at', { ascending: false })
 
-      // For workspace owners, only fetch their organization via member relationship
+      // For workspace owners, prioritize organizations they own
       if (userType === 'workspace_owner') {
-        // First get the organization IDs this user is a member of
+        // First try to get organizations where user is the owner
+        const { data: ownedOrgs, error: ownedError } = await supabase
+          .from('organizations')
+          .select(`
+            *,
+            owner_profile:profiles!fk_organizations_owner_profiles(email),
+            creator_profile:profiles!fk_organizations_created_by_profiles(email)
+          `)
+          .eq('owner_id', user.id)
+          .order('created_at', { ascending: false })
+
+        if (ownedError) {
+          console.error('Error fetching owned organizations:', ownedError)
+        }
+
+        if (ownedOrgs && ownedOrgs.length > 0) {
+          console.log('Found owned organizations for workspace owner:', ownedOrgs)
+          const organizationsWithDetails: Organization[] = ownedOrgs.map((org: any) => ({
+            id: org.id,
+            name: org.name,
+            country: org.country,
+            status: org.status as 'active' | 'inactive',
+            organization_type: org.organization_type as 'platform' | 'client',
+            owner_id: org.owner_id,
+            created_at: org.created_at,
+            updated_at: org.updated_at,
+            created_by: org.created_by,
+            owner_assigned_at: org.owner_assigned_at,
+            owner_email: org.owner_profile?.email || null,
+            created_by_email: org.creator_profile?.email || null
+          }))
+          setOrganizations(organizationsWithDetails)
+          return
+        }
+
+        // Fallback: Get organizations via member relationship
+        console.log('No owned organizations found, checking member relationship')
         const { data: memberData, error: memberError } = await supabase
           .from('members')
           .select('organization_id')
@@ -79,6 +115,7 @@ export function useOrganizations() {
         query = query.in('id', orgIds)
       }
 
+      // For platform admins, get all organizations (no filtering needed)
       const { data: orgsData, error: fetchError } = await query
 
       if (fetchError) {
