@@ -1,6 +1,9 @@
 
 import { useState } from 'react'
 import { format } from 'date-fns'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import * as z from 'zod'
 import {
   Dialog,
   DialogContent,
@@ -9,9 +12,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import {
   Select,
@@ -29,6 +39,16 @@ import {
 import { cn } from '@/lib/utils'
 import { CalendarIcon, DollarSign } from 'lucide-react'
 import { Invoice, PaymentData, useInvoices } from '@/hooks/useInvoices'
+import { useFormPersistence } from '@/hooks/useFormPersistence'
+
+const formSchema = z.object({
+  paid_at: z.date(),
+  payment_method: z.string().min(1, 'Payment method is required'),
+  payment_reference: z.string().optional(),
+  payment_notes: z.string().optional(),
+})
+
+type FormData = z.infer<typeof formSchema>
 
 interface PaymentModalProps {
   open: boolean
@@ -57,37 +77,40 @@ export function PaymentModal({
 }: PaymentModalProps) {
   const { markInvoiceAsPaid } = useInvoices()
   const [isLoading, setIsLoading] = useState(false)
-  
-  // Form state
-  const [paidAt, setPaidAt] = useState<Date>(new Date())
-  const [paymentMethod, setPaymentMethod] = useState<string>('')
-  const [paymentReference, setPaymentReference] = useState('')
-  const [paymentNotes, setPaymentNotes] = useState('')
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    if (!paymentMethod) {
-      return
-    }
+  const form = useForm<FormData>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      paid_at: new Date(),
+      payment_method: '',
+      payment_reference: '',
+      payment_notes: '',
+    },
+  })
 
+  // Add form persistence
+  const { clearPersistedData } = useFormPersistence({
+    storageKey: `payment-form-${invoice.id}`,
+    form,
+    enabled: open
+  })
+
+  const handleSubmit = async (data: FormData) => {
     setIsLoading(true)
     
     try {
       const paymentData: PaymentData = {
-        paid_at: paidAt.toISOString(),
-        payment_method: paymentMethod,
-        payment_reference: paymentReference.trim() || undefined,
-        payment_notes: paymentNotes.trim() || undefined,
+        paid_at: data.paid_at.toISOString(),
+        payment_method: data.payment_method,
+        payment_reference: data.payment_reference?.trim() || undefined,
+        payment_notes: data.payment_notes?.trim() || undefined,
       }
 
       await markInvoiceAsPaid(invoice.id, paymentData)
       
-      // Reset form
-      setPaidAt(new Date())
-      setPaymentMethod('')
-      setPaymentReference('')
-      setPaymentNotes('')
+      // Reset form and clear persistence
+      form.reset()
+      clearPersistedData()
       
       onOpenChange(false)
       onPaymentLogged?.()
@@ -96,6 +119,12 @@ export function PaymentModal({
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const handleCancel = () => {
+    form.reset()
+    clearPersistedData()
+    onOpenChange(false)
   }
 
   const formatAmount = (amount: number, currency: string) => {
@@ -118,103 +147,136 @@ export function PaymentModal({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Invoice Summary */}
-          <div className="rounded-lg bg-muted/50 p-3">
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-muted-foreground">Amount:</span>
-              <span className="font-medium">
-                {formatAmount(invoice.amount, invoice.currency)}
-              </span>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+            {/* Invoice Summary */}
+            <div className="rounded-lg bg-muted/50 p-3">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground">Amount:</span>
+                <span className="font-medium">
+                  {formatAmount(invoice.amount, invoice.currency)}
+                </span>
+              </div>
             </div>
-          </div>
 
-          {/* Payment Date */}
-          <div className="space-y-2">
-            <Label htmlFor="paid-at">Payment Date *</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "w-full justify-start text-left font-normal h-10",
-                    !paidAt && "text-muted-foreground"
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {paidAt ? format(paidAt, "PPP") : "Select date"}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={paidAt}
-                  onSelect={(date) => date && setPaidAt(date)}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
-          </div>
-
-          {/* Payment Method */}
-          <div className="space-y-2">
-            <Label htmlFor="payment-method">Payment Method *</Label>
-            <Select value={paymentMethod} onValueChange={setPaymentMethod}>
-              <SelectTrigger className="h-10">
-                <SelectValue placeholder="Select payment method" />
-              </SelectTrigger>
-              <SelectContent>
-                {PAYMENT_METHODS.map((method) => (
-                  <SelectItem key={method} value={method}>
-                    {method}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Payment Reference */}
-          <div className="space-y-2">
-            <Label htmlFor="payment-reference">Reference Number</Label>
-            <Input
-              id="payment-reference"
-              value={paymentReference}
-              onChange={(e) => setPaymentReference(e.target.value)}
-              placeholder="Transaction ID, check number, etc."
-              className="h-10"
+            {/* Payment Date */}
+            <FormField
+              control={form.control}
+              name="paid_at"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Payment Date *</FormLabel>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <FormControl>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full justify-start text-left font-normal h-10",
+                            !field.value && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {field.value ? format(field.value, "PPP") : "Select date"}
+                        </Button>
+                      </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={field.value}
+                        onSelect={field.onChange}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
 
-          {/* Payment Notes */}
-          <div className="space-y-2">
-            <Label htmlFor="payment-notes">Notes</Label>
-            <Textarea
-              id="payment-notes"
-              value={paymentNotes}
-              onChange={(e) => setPaymentNotes(e.target.value)}
-              placeholder="Additional payment details..."
-              rows={3}
+            {/* Payment Method */}
+            <FormField
+              control={form.control}
+              name="payment_method"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Payment Method *</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger className="h-10">
+                        <SelectValue placeholder="Select payment method" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {PAYMENT_METHODS.map((method) => (
+                        <SelectItem key={method} value={method}>
+                          {method}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
 
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={isLoading}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={isLoading || !paymentMethod}
-              loading={isLoading}
-            >
-              Mark as Paid
-            </Button>
-          </DialogFooter>
-        </form>
+            {/* Payment Reference */}
+            <FormField
+              control={form.control}
+              name="payment_reference"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Reference Number</FormLabel>
+                  <FormControl>
+                    <Input
+                      placeholder="Transaction ID, check number, etc."
+                      className="h-10"
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Payment Notes */}
+            <FormField
+              control={form.control}
+              name="payment_notes"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Notes</FormLabel>
+                  <FormControl>
+                    <Textarea
+                      placeholder="Additional payment details..."
+                      rows={3}
+                      {...field}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleCancel}
+                disabled={isLoading}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={isLoading}
+              >
+                {isLoading ? 'Processing...' : 'Mark as Paid'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   )

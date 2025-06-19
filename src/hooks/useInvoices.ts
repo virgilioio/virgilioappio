@@ -201,6 +201,49 @@ export function useInvoices() {
     }
   }
 
+  const updateInvoice = async (invoiceId: string, data: Partial<CreateInvoiceData & { status: 'pending' | 'paid' | 'overdue' }>): Promise<Invoice> => {
+    if (!user) throw new Error('User not authenticated')
+
+    try {
+      console.log('Updating invoice:', invoiceId, data)
+      const updateData = {
+        ...data,
+        updated_at: new Date().toISOString(),
+      }
+
+      const { data: invoice, error } = await supabase
+        .from('invoices')
+        .update(updateData)
+        .eq('id', invoiceId)
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Error updating invoice:', error)
+        throw error
+      }
+
+      console.log('Updated invoice:', invoice)
+      await getInvoices() // Refresh the list
+      
+      toast({
+        title: 'Success',
+        description: 'Invoice updated successfully'
+      })
+
+      return invoice as Invoice
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update invoice'
+      console.error('Update invoice error:', err)
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive'
+      })
+      throw err
+    }
+  }
+
   const uploadInvoicePDF = async (invoiceId: string, organizationId: string, file: File): Promise<string> => {
     if (!user) throw new Error('User not authenticated')
 
@@ -404,6 +447,7 @@ export function useInvoices() {
     error,
     getInvoices,
     createInvoice,
+    updateInvoice,
     uploadInvoicePDF,
     markInvoiceAsPaid,
     updateInvoiceStatus,
