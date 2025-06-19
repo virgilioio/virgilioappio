@@ -1,10 +1,11 @@
 
 import { createContext, useContext, useEffect, useState } from 'react'
-import { User, AuthError } from '@supabase/supabase-js'
+import { User, AuthError, Session } from '@supabase/supabase-js'
 import { supabase } from '@/integrations/supabase/client'
 
 interface AuthContextType {
   user: User | null
+  session: Session | null
   isAuthenticated: boolean
   isLoading: boolean
   organizationId: string | null
@@ -19,6 +20,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
+  const [session, setSession] = useState<Session | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [memberData, setMemberData] = useState<{
     user_type: string | null
@@ -80,11 +82,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // Set up auth state listener FIRST
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state change:', event, session?.user?.id)
+      setSession(session)
       setUser(session?.user ?? null)
+      
       if (session?.user) {
-        fetchMemberData(session.user.id)
+        // Defer member data fetch to avoid recursion
+        setTimeout(() => {
+          fetchMemberData(session.user.id)
+        }, 0)
       } else {
         setMemberData({
           user_type: null,
@@ -95,16 +105,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(false)
     })
 
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    // THEN get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('Initial session:', session?.user?.id)
+      setSession(session)
       setUser(session?.user ?? null)
       if (session?.user) {
-        // Defer member data fetch to avoid recursion
-        setTimeout(() => {
-          fetchMemberData(session.user.id)
-        }, 0)
+        fetchMemberData(session.user.id)
       } else {
         setMemberData({
           user_type: null,
@@ -132,6 +139,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const value = {
     user,
+    session,
     isAuthenticated: !!user,
     isLoading,
     organizationId,
