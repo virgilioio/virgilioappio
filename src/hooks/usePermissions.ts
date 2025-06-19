@@ -63,8 +63,8 @@ export function usePermissions(): PermissionsState {
   const { user, organizationId, userType, memberRole, hasOrganizationContext } = useAuth()
   const { profile } = useUserProfile()
   
-  // Platform admin has user_type = 'platform_admin' AND member_role = 'admin'
-  const isPlatformAdmin = userType === 'platform_admin' && memberRole === 'admin'
+  // Platform admin has user_type = 'platform_admin' - memberRole is not required
+  const isPlatformAdmin = userType === 'platform_admin'
   const isWorkspaceOwner = userType === 'workspace_owner'
   const isBillingMember = memberRole === 'billing'
   
@@ -77,7 +77,7 @@ export function usePermissions(): PermissionsState {
   // Guests are users without membership or org context
   const isGuest = (memberRole === 'guest' || !hasOrganizationContext) && !isPlatformAdmin && !isWorkspaceOwner
 
-  // Add debug logging to help troubleshoot permission issues
+  // Enhanced debug logging to help troubleshoot permission issues
   console.log('Permission Debug:', {
     userType,
     memberRole,
@@ -87,11 +87,12 @@ export function usePermissions(): PermissionsState {
     hasOrganizationContext,
     isClient,
     isMember,
-    isGuest
+    isGuest,
+    userId: user?.id
   })
   
   return {
-    // Job permissions - Platform admins (who have member_role 'admin') can manage everything
+    // Job permissions - Platform admins can manage everything
     canViewJobs: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin', 'client', 'customer_success'].includes(memberRole || ''),
     canCreateJobs: isPlatformAdmin || memberRole === 'admin' || memberRole === 'customer_success',
     canEditJobs: isPlatformAdmin || memberRole === 'admin' || memberRole === 'customer_success',
