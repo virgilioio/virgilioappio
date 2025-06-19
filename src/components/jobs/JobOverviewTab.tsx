@@ -85,9 +85,10 @@ export function JobOverviewTab({ job, onEdit }: JobOverviewTabProps) {
               <Briefcase className="h-5 w-5 text-accent" />
               Job Description
             </h3>
-            <div className="whitespace-pre-wrap text-md leading-relaxed text-text-primary bg-surface-secondary p-4 rounded-brand">
-              {job.description}
-            </div>
+            <div 
+              className="text-md leading-relaxed text-text-primary bg-surface-secondary p-4 rounded-brand prose prose-sm max-w-none [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:my-2 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0"
+              dangerouslySetInnerHTML={{ __html: job.description }}
+            />
           </div>
         )}
 
