@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
+import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
 import { SearchableSelect } from '@/components/ui/searchable-select'
@@ -332,12 +332,12 @@ export function JobForm({ isOpen, onClose, onSubmit, job, isLoading }: JobFormPr
 
             <div className="col-span-2">
               <Label htmlFor="description">Job Description</Label>
-              <Textarea
-                id="description"
+              <RichTextEditor
                 value={formData.description}
-                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                onChange={(value) => setFormData(prev => ({ ...prev, description: value }))}
                 placeholder="Describe the role, responsibilities, and requirements..."
-                rows={4}
+                minHeight="300px"
+                className="mt-1"
               />
             </div>
 
