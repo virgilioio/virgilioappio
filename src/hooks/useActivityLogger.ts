@@ -1,12 +1,15 @@
 
 import { useCreateActivity } from './useActivities'
+import type { Database } from '@/integrations/supabase/types'
+
+type ActivityType = Database['public']['Enums']['activity_type']
 
 export function useActivityLogger() {
   const createActivity = useCreateActivity()
 
   const logJobCreated = (jobTitle: string, jobId: string) => {
     createActivity.mutate({
-      activity_type: 'job_created',
+      activity_type: 'job_created' as ActivityType,
       title: `Created job "${jobTitle}"`,
       description: 'A new job posting has been created',
       entity_type: 'job',
@@ -16,7 +19,7 @@ export function useActivityLogger() {
 
   const logJobUpdated = (jobTitle: string, jobId: string) => {
     createActivity.mutate({
-      activity_type: 'job_updated',
+      activity_type: 'job_updated' as ActivityType,
       title: `Updated job "${jobTitle}"`,
       description: 'Job details have been modified',
       entity_type: 'job',
@@ -26,7 +29,7 @@ export function useActivityLogger() {
 
   const logJobPublished = (jobTitle: string, jobId: string) => {
     createActivity.mutate({
-      activity_type: 'job_published',
+      activity_type: 'job_published' as ActivityType,
       title: `Published job "${jobTitle}"`,
       description: 'Job is now live and accepting applications',
       entity_type: 'job',
@@ -36,7 +39,7 @@ export function useActivityLogger() {
 
   const logMemberInvited = (email: string) => {
     createActivity.mutate({
-      activity_type: 'member_invited',
+      activity_type: 'member_invited' as ActivityType,
       title: `Invited ${email} to join`,
       description: 'A new member invitation has been sent',
       entity_type: 'member',
@@ -45,7 +48,7 @@ export function useActivityLogger() {
 
   const logMemberJoined = (memberName: string) => {
     createActivity.mutate({
-      activity_type: 'member_joined',
+      activity_type: 'member_joined' as ActivityType,
       title: `${memberName} joined the organization`,
       description: 'New member has successfully joined',
       entity_type: 'member',
@@ -54,7 +57,7 @@ export function useActivityLogger() {
 
   const logJobRequestCreated = (jobTitle: string, requestId: string) => {
     createActivity.mutate({
-      activity_type: 'job_request_created',
+      activity_type: 'job_request_created' as ActivityType,
       title: `Requested new job: "${jobTitle}"`,
       description: 'A new job request has been submitted for approval',
       entity_type: 'job_request',
@@ -64,7 +67,7 @@ export function useActivityLogger() {
 
   const logJobRequestApproved = (jobTitle: string, requestId: string) => {
     createActivity.mutate({
-      activity_type: 'job_request_approved',
+      activity_type: 'job_request_approved' as ActivityType,
       title: `Approved job request: "${jobTitle}"`,
       description: 'Job request has been approved and is now being processed',
       entity_type: 'job_request',
@@ -74,7 +77,7 @@ export function useActivityLogger() {
 
   const logCandidateAdded = (candidateName: string, jobTitle: string, candidateId: string) => {
     createActivity.mutate({
-      activity_type: 'candidate_added',
+      activity_type: 'candidate_added' as ActivityType,
       title: `Added candidate ${candidateName}`,
       description: `New candidate added for "${jobTitle}"`,
       entity_type: 'candidate',
@@ -84,7 +87,7 @@ export function useActivityLogger() {
 
   const logInvoiceCreated = (invoiceTitle: string, amount: number, invoiceId: string) => {
     createActivity.mutate({
-      activity_type: 'invoice_created',
+      activity_type: 'invoice_created' as ActivityType,
       title: `Created invoice: ${invoiceTitle}`,
       description: `New invoice for $${amount.toLocaleString()} has been created`,
       entity_type: 'invoice',
@@ -94,7 +97,7 @@ export function useActivityLogger() {
 
   const logInvoicePaid = (invoiceTitle: string, amount: number, invoiceId: string) => {
     createActivity.mutate({
-      activity_type: 'invoice_paid',
+      activity_type: 'invoice_paid' as ActivityType,
       title: `Payment received: ${invoiceTitle}`,
       description: `Invoice for $${amount.toLocaleString()} has been paid`,
       entity_type: 'invoice',

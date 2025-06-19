@@ -2,12 +2,15 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/integrations/supabase/client'
 import { useUserProfile } from './useUserProfile'
+import type { Database } from '@/integrations/supabase/types'
+
+type ActivityType = Database['public']['Enums']['activity_type']
 
 export interface Activity {
   id: string
   user_id: string
   organization_id: string | null
-  activity_type: string
+  activity_type: ActivityType
   title: string
   description: string | null
   metadata: any
@@ -17,7 +20,7 @@ export interface Activity {
 }
 
 export interface CreateActivityData {
-  activity_type: string
+  activity_type: ActivityType
   title: string
   description?: string
   metadata?: any

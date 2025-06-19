@@ -2,6 +2,9 @@
 import { useEffect } from 'react'
 import { useCreateActivity } from './useActivities'
 import { useUserProfile } from './useUserProfile'
+import type { Database } from '@/integrations/supabase/types'
+
+type ActivityType = Database['public']['Enums']['activity_type']
 
 export function useSampleActivities() {
   const createActivity = useCreateActivity()
@@ -17,19 +20,19 @@ export function useSampleActivities() {
     // Create some sample activities to demonstrate the feature
     const sampleActivities = [
       {
-        activity_type: 'job_created',
+        activity_type: 'job_created' as ActivityType,
         title: 'Created job "Senior Software Engineer"',
         description: 'A new job posting has been created',
         entity_type: 'job',
       },
       {
-        activity_type: 'member_invited',
+        activity_type: 'member_invited' as ActivityType,
         title: 'Invited user@example.com to join',
         description: 'A new member invitation has been sent',
         entity_type: 'member',
       },
       {
-        activity_type: 'job_request_created',
+        activity_type: 'job_request_created' as ActivityType,
         title: 'Requested new job: "Product Manager"',
         description: 'A new job request has been submitted for approval',
         entity_type: 'job_request',
