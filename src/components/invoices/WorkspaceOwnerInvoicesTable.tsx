@@ -1,9 +1,10 @@
-
 import { useState } from 'react'
-import { MoreHorizontal, Download, FileText, Calendar, DollarSign } from 'lucide-react'
+import { MoreHorizontal, Download, FileText, Calendar, DollarSign, Search, Filter } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import {
   Table,
   TableBody,
@@ -19,10 +20,12 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Skeleton } from '@/components/ui/skeleton'
+import { MonthPicker } from '@/components/ui/month-picker'
 import { supabase } from '@/integrations/supabase/client'
 import { toast } from '@/hooks/use-toast'
 import { Invoice } from '@/hooks/useInvoices'
 import { useOrganizations } from '@/hooks/useOrganizations'
+import { filterInvoices, getInvoiceStats } from '@/utils/invoiceFilters'
 
 interface WorkspaceOwnerInvoicesTableProps {
   invoices: Invoice[]
@@ -32,6 +35,25 @@ interface WorkspaceOwnerInvoicesTableProps {
 export function WorkspaceOwnerInvoicesTable({ invoices, isLoading }: WorkspaceOwnerInvoicesTableProps) {
   const { organizations } = useOrganizations()
   const [downloadingFiles, setDownloadingFiles] = useState<Set<string>>(new Set())
+  const [searchTerm, setSearchTerm] = useState('')
+  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [selectedMonth, setSelectedMonth] = useState<Date | undefined>()
+
+  // Filter invoices based on all filters
+  const filteredInvoices = filterInvoices(invoices, {
+    searchTerm,
+    status: statusFilter,
+    selectedMonth
+  })
+
+  const stats = getInvoiceStats(filteredInvoices)
+  const hasActiveFilters = searchTerm || statusFilter !== 'all' || selectedMonth
+
+  const clearFilters = () => {
+    setSearchTerm('')
+    setStatusFilter('all')
+    setSelectedMonth(undefined)
+  }
 
   const getOrganizationName = (orgId: string) => {
     const org = organizations.find(o => o.id === orgId)
@@ -124,7 +146,7 @@ export function WorkspaceOwnerInvoicesTable({ invoices, isLoading }: WorkspaceOw
     }
   }
 
-  const sortedInvoices = [...invoices].sort((a, b) => {
+  const sortedInvoices = [...filteredInvoices].sort((a, b) => {
     const dateA = new Date(a.due_date || a.issued_at)
     const dateB = new Date(b.due_date || b.issued_at)
     return dateB.getTime() - dateA.getTime()
@@ -148,7 +170,7 @@ export function WorkspaceOwnerInvoicesTable({ invoices, isLoading }: WorkspaceOw
     )
   }
 
-  if (sortedInvoices.length === 0) {
+  if (invoices.length === 0) {
     return (
       <Card>
         <CardHeader>
@@ -177,10 +199,110 @@ export function WorkspaceOwnerInvoicesTable({ invoices, isLoading }: WorkspaceOw
       <CardHeader>
         <CardTitle>Invoices</CardTitle>
         <CardDescription>
-          Your organization's billing history ({sortedInvoices.length} invoice{sortedInvoices.length !== 1 ? 's' : ''})
+          Your organization's billing history ({invoices.length} invoice{invoices.length !== 1 ? 's' : ''})
         </CardDescription>
       </CardHeader>
       <CardContent>
+        {/* Filters */}
+        <Card className="mb-6">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Filter className="h-4 w-4" />
+                Filters
+              </CardTitle>
+              {hasActiveFilters && (
+                <Button variant="outline" size="sm" onClick={clearFilters}>
+                  Clear Filters
+                </Button>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-col gap-4 sm:flex-row">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Search invoices..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10"
+                />
+              </div>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-full sm:w-[140px]">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Status</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="paid">Paid</SelectItem>
+                  <SelectItem value="overdue">Overdue</SelectItem>
+                </SelectContent>
+              </Select>
+              <MonthPicker
+                selected={selectedMonth}
+                onSelect={setSelectedMonth}
+                placeholder="Filter by month"
+                className="w-full sm:w-[160px]"
+              />
+            </div>
+
+            {/* Filter summary */}
+            {hasActiveFilters && (
+              <div className="mt-4 pt-4 border-t">
+                <div className="flex flex-wrap gap-2 items-center text-sm text-muted-foreground">
+                  <span>Showing {filteredInvoices.length} of {invoices.length} invoices</span>
+                  {selectedMonth && (
+                    <Badge variant="secondary">
+                      <Calendar className="h-3 w-3 mr-1" />
+                      {selectedMonth.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                    </Badge>
+                  )}
+                  {statusFilter !== 'all' && (
+                    <Badge variant="secondary">
+                      Status: {statusFilter}
+                    </Badge>
+                  )}
+                  {searchTerm && (
+                    <Badge variant="secondary">
+                      Search: "{searchTerm}"
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Summary Stats */}
+        {hasActiveFilters && (
+          <div className="grid gap-4 md:grid-cols-4 mb-6">
+            <div className="bg-muted/50 rounded-lg p-4">
+              <div className="text-sm text-muted-foreground mb-1">Total Invoices</div>
+              <div className="text-lg font-semibold">{stats.totalInvoices}</div>
+            </div>
+            <div className="bg-muted/50 rounded-lg p-4">
+              <div className="text-sm text-muted-foreground mb-1">Pending</div>
+              <div className="text-lg font-semibold text-orange-600">
+                {stats.pendingCount} (${stats.totalPending.toLocaleString()})
+              </div>
+            </div>
+            <div className="bg-muted/50 rounded-lg p-4">
+              <div className="text-sm text-muted-foreground mb-1">Overdue</div>
+              <div className="text-lg font-semibold text-red-600">
+                {stats.overdueCount} (${stats.totalOverdue.toLocaleString()})
+              </div>
+            </div>
+            <div className="bg-muted/50 rounded-lg p-4">
+              <div className="text-sm text-muted-foreground mb-1">Paid</div>
+              <div className="text-lg font-semibold text-green-600">
+                {stats.paidCount} (${stats.totalPaid.toLocaleString()})
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Desktop Table */}
         <div className="hidden md:block">
           <Table>

@@ -1,6 +1,6 @@
 
 import { useState } from 'react'
-import { Plus, Search, Filter } from 'lucide-react'
+import { Plus, Search, Filter, Calendar } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -9,10 +9,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { AdminInvoicesTable } from '@/components/invoices/AdminInvoicesTable'
 import { CreateInvoiceModal } from '@/components/invoices/CreateInvoiceModal'
 import { BillingMetricsDashboard } from '@/components/invoices/BillingMetricsDashboard'
+import { MonthPicker } from '@/components/ui/month-picker'
 import { useInvoices } from '@/hooks/useInvoices'
 import { usePermissions } from '@/hooks/usePermissions'
 import { AppContainer } from '@/components/layout/AppContainer'
 import { Section } from '@/components/layout/Section'
+import { filterInvoices, getInvoiceStats } from '@/utils/invoiceFilters'
 
 export default function AdminInvoices() {
   const { invoices, isLoading } = useInvoices()
@@ -20,14 +22,24 @@ export default function AdminInvoices() {
   const [createModalOpen, setCreateModalOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [selectedMonth, setSelectedMonth] = useState<Date | undefined>()
 
-  // Filter invoices based on search and status
-  const filteredInvoices = invoices.filter(invoice => {
-    const matchesSearch = invoice.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         invoice.organization_id.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesStatus = statusFilter === 'all' || invoice.status === statusFilter
-    return matchesSearch && matchesStatus
+  // Filter invoices based on all filters
+  const filteredInvoices = filterInvoices(invoices, {
+    searchTerm,
+    status: statusFilter,
+    selectedMonth
   })
+
+  const stats = getInvoiceStats(filteredInvoices)
+
+  const clearFilters = () => {
+    setSearchTerm('')
+    setStatusFilter('all')
+    setSelectedMonth(undefined)
+  }
+
+  const hasActiveFilters = searchTerm || statusFilter !== 'all' || selectedMonth
 
   if (!canManageInvoices) {
     return (
@@ -69,10 +81,17 @@ export default function AdminInvoices() {
           {/* Filters */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Filter className="h-4 w-4" />
-                Filters
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <Filter className="h-4 w-4" />
+                  Filters
+                </CardTitle>
+                {hasActiveFilters && (
+                  <Button variant="outline" size="sm" onClick={clearFilters}>
+                    Clear Filters
+                  </Button>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
               <div className="flex flex-col gap-4 sm:flex-row">
@@ -96,9 +115,75 @@ export default function AdminInvoices() {
                     <SelectItem value="overdue">Overdue</SelectItem>
                   </SelectContent>
                 </Select>
+                <MonthPicker
+                  selected={selectedMonth}
+                  onSelect={setSelectedMonth}
+                  placeholder="Filter by month"
+                  className="w-full sm:w-[180px]"
+                />
               </div>
+              
+              {/* Filter summary */}
+              {hasActiveFilters && (
+                <div className="mt-4 pt-4 border-t">
+                  <div className="flex flex-wrap gap-2 items-center text-sm text-muted-foreground">
+                    <span>Showing {filteredInvoices.length} of {invoices.length} invoices</span>
+                    {selectedMonth && (
+                      <Badge variant="secondary">
+                        <Calendar className="h-3 w-3 mr-1" />
+                        {selectedMonth.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                      </Badge>
+                    )}
+                    {statusFilter !== 'all' && (
+                      <Badge variant="secondary">
+                        Status: {statusFilter}
+                      </Badge>
+                    )}
+                    {searchTerm && (
+                      <Badge variant="secondary">
+                        Search: "{searchTerm}"
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
+
+          {/* Summary Stats for Filtered Results */}
+          {hasActiveFilters && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Filtered Results Summary</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4 md:grid-cols-4">
+                  <div className="bg-muted/50 rounded-lg p-4">
+                    <div className="text-sm text-muted-foreground mb-1">Total Invoices</div>
+                    <div className="text-lg font-semibold">{stats.totalInvoices}</div>
+                  </div>
+                  <div className="bg-muted/50 rounded-lg p-4">
+                    <div className="text-sm text-muted-foreground mb-1">Pending</div>
+                    <div className="text-lg font-semibold text-orange-600">
+                      {stats.pendingCount} (${stats.totalPending.toLocaleString()})
+                    </div>
+                  </div>
+                  <div className="bg-muted/50 rounded-lg p-4">
+                    <div className="text-sm text-muted-foreground mb-1">Overdue</div>
+                    <div className="text-lg font-semibold text-red-600">
+                      {stats.overdueCount} (${stats.totalOverdue.toLocaleString()})
+                    </div>
+                  </div>
+                  <div className="bg-muted/50 rounded-lg p-4">
+                    <div className="text-sm text-muted-foreground mb-1">Paid</div>
+                    <div className="text-lg font-semibold text-green-600">
+                      {stats.paidCount} (${stats.totalPaid.toLocaleString()})
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Invoices Table */}
           <AdminInvoicesTable 

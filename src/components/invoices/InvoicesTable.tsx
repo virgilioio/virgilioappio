@@ -1,4 +1,3 @@
-
 import { useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -10,18 +9,41 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Button } from '@/components/ui/button'
+import { MonthPicker } from '@/components/ui/month-picker'
 import { useInvoices, Invoice } from '@/hooks/useInvoices'
 import { usePermissions } from '@/hooks/usePermissions'
-import { Receipt, Download, FileText } from 'lucide-react'
-import { Button } from '@/components/ui/button'
+import { Receipt, Download, FileText, Search, Filter, Calendar } from 'lucide-react'
 import { InvoiceUploadModal } from './InvoiceUploadModal'
 import { getInvoicePdfUrl } from '@/lib/invoiceStorage'
+import { filterInvoices, getInvoiceStats } from '@/utils/invoiceFilters'
 
 export function InvoicesTable() {
   const { invoices, isLoading, refreshInvoices } = useInvoices()
   const { isPlatformAdmin, canManageInvoices } = usePermissions()
   const [uploadModalOpen, setUploadModalOpen] = useState(false)
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [selectedMonth, setSelectedMonth] = useState<Date | undefined>()
+
+  // Filter invoices based on all filters
+  const filteredInvoices = filterInvoices(invoices, {
+    searchTerm,
+    status: statusFilter,
+    selectedMonth
+  })
+
+  const stats = getInvoiceStats(filteredInvoices)
+  const hasActiveFilters = searchTerm || statusFilter !== 'all' || selectedMonth
+
+  const clearFilters = () => {
+    setSearchTerm('')
+    setStatusFilter('all')
+    setSelectedMonth(undefined)
+  }
 
   const getStatusBadgeVariant = (status: Invoice['status']) => {
     switch (status) {
@@ -123,34 +145,105 @@ export function InvoicesTable() {
             </div>
           ) : (
             <div className="space-y-4">
-              {/* Summary stats for clients */}
+              {/* Filters */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <Filter className="h-4 w-4" />
+                      Filters
+                    </CardTitle>
+                    {hasActiveFilters && (
+                      <Button variant="outline" size="sm" onClick={clearFilters}>
+                        Clear Filters
+                      </Button>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-col gap-4 sm:flex-row">
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        placeholder="Search invoices..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                      <SelectTrigger className="w-full sm:w-[140px]">
+                        <SelectValue placeholder="Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Status</SelectItem>
+                        <SelectItem value="pending">Pending</SelectItem>
+                        <SelectItem value="paid">Paid</SelectItem>
+                        <SelectItem value="overdue">Overdue</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <MonthPicker
+                      selected={selectedMonth}
+                      onSelect={setSelectedMonth}
+                      placeholder="Filter by month"
+                      className="w-full sm:w-[160px]"
+                    />
+                  </div>
+
+                  {/* Filter summary */}
+                  {hasActiveFilters && (
+                    <div className="mt-4 pt-4 border-t">
+                      <div className="flex flex-wrap gap-2 items-center text-sm text-muted-foreground">
+                        <span>Showing {filteredInvoices.length} of {invoices.length} invoices</span>
+                        {selectedMonth && (
+                          <Badge variant="secondary">
+                            <Calendar className="h-3 w-3 mr-1" />
+                            {selectedMonth.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                          </Badge>
+                        )}
+                        {statusFilter !== 'all' && (
+                          <Badge variant="secondary">
+                            Status: {statusFilter}
+                          </Badge>
+                        )}
+                        {searchTerm && (
+                          <Badge variant="secondary">
+                            Search: "{searchTerm}"
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Summary stats for filtered results */}
               <div className="grid gap-4 md:grid-cols-3 mb-6">
                 <div className="bg-muted/50 rounded-lg p-4">
                   <div className="text-sm text-muted-foreground mb-1">Total Outstanding</div>
                   <div className="text-lg font-semibold text-orange-600">
-                    {formatAmount(
-                      invoices
-                        .filter(i => i.status === 'pending' || i.status === 'overdue')
-                        .reduce((sum, i) => sum + i.amount, 0),
-                      invoices[0]?.currency || 'USD'
-                    )}
+                    {formatAmount(stats.totalPending + stats.totalOverdue, filteredInvoices[0]?.currency || 'USD')}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {stats.pendingCount + stats.overdueCount} invoice{stats.pendingCount + stats.overdueCount !== 1 ? 's' : ''}
                   </div>
                 </div>
                 <div className="bg-muted/50 rounded-lg p-4">
                   <div className="text-sm text-muted-foreground mb-1">Total Paid</div>
                   <div className="text-lg font-semibold text-green-600">
-                    {formatAmount(
-                      invoices
-                        .filter(i => i.status === 'paid')
-                        .reduce((sum, i) => sum + i.amount, 0),
-                      invoices[0]?.currency || 'USD'
-                    )}
+                    {formatAmount(stats.totalPaid, filteredInvoices[0]?.currency || 'USD')}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {stats.paidCount} invoice{stats.paidCount !== 1 ? 's' : ''}
                   </div>
                 </div>
                 <div className="bg-muted/50 rounded-lg p-4">
                   <div className="text-sm text-muted-foreground mb-1">Total Invoices</div>
                   <div className="text-lg font-semibold">
-                    {invoices.length}
+                    {stats.totalInvoices}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {hasActiveFilters ? `of ${invoices.length} total` : 'all invoices'}
                   </div>
                 </div>
               </div>
@@ -169,7 +262,7 @@ export function InvoicesTable() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {invoices.map((invoice) => (
+                    {filteredInvoices.map((invoice) => (
                       <TableRow 
                         key={invoice.id} 
                         interactive={!!invoice.invoice_url}
