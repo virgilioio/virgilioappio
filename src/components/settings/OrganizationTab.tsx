@@ -2,9 +2,21 @@
 import { useState, useEffect } from 'react'
 import { useOrganizations } from '@/hooks/useOrganizations'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Building } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Building, Edit, Lock, AlertTriangle } from 'lucide-react'
 import { OrganizationForm } from './OrganizationForm'
+import { OrganizationDisplay } from './OrganizationDisplay'
 import { useAuth } from '@/contexts/AuthContext'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 interface OrganizationFormData {
   name: string
@@ -18,6 +30,9 @@ interface OrganizationFormData {
 export function OrganizationTab() {
   const { organizations, updateOrganization, isLoading, error } = useOrganizations()
   const { userType, user } = useAuth()
+  const [isEditMode, setIsEditMode] = useState(false)
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false)
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   
   console.log('OrganizationTab render - organizations:', organizations, 'isLoading:', isLoading, 'error:', error, 'userType:', userType)
   
@@ -83,6 +98,49 @@ export function OrganizationTab() {
     }
   }, [userOrganization])
 
+  const handleFormDataChange = (data: OrganizationFormData) => {
+    setOrgFormData(data)
+    setHasUnsavedChanges(true)
+  }
+
+  const handleEditModeToggle = () => {
+    if (isEditMode && hasUnsavedChanges) {
+      setShowConfirmDialog(true)
+    } else {
+      setIsEditMode(!isEditMode)
+      if (!isEditMode) {
+        // Reset form data when entering edit mode
+        if (userOrganization) {
+          setOrgFormData({
+            name: userOrganization.name || '',
+            country: userOrganization.country || '',
+            status: userOrganization.status || 'active',
+            billing_poc_user_id: userOrganization.billing_poc_user_id || null,
+            billing_poc_additional_email: userOrganization.billing_poc_additional_email || '',
+            billing_poc_phone: userOrganization.billing_poc_phone || ''
+          })
+        }
+        setHasUnsavedChanges(false)
+      }
+    }
+  }
+
+  const handleCancelEdit = () => {
+    setIsEditMode(false)
+    setHasUnsavedChanges(false)
+    // Reset form data
+    if (userOrganization) {
+      setOrgFormData({
+        name: userOrganization.name || '',
+        country: userOrganization.country || '',
+        status: userOrganization.status || 'active',
+        billing_poc_user_id: userOrganization.billing_poc_user_id || null,
+        billing_poc_additional_email: userOrganization.billing_poc_additional_email || '',
+        billing_poc_phone: userOrganization.billing_poc_phone || ''
+      })
+    }
+  }
+
   const handleOrgSave = async () => {
     if (!userOrganization?.id) {
       console.error('OrganizationTab handleOrgSave - Cannot save: no organization ID')
@@ -103,6 +161,8 @@ export function OrganizationTab() {
     try {
       console.log('OrganizationTab handleOrgSave - saving organization:', userOrganization.id, 'data:', orgFormData)
       await updateOrganization(userOrganization.id, orgFormData)
+      setIsEditMode(false)
+      setHasUnsavedChanges(false)
     } catch (error) {
       console.error('OrganizationTab handleOrgSave - save error:', error)
       // Error handling is done in the hook
@@ -226,30 +286,103 @@ export function OrganizationTab() {
     )
   }
 
-  // Render the form only when we have valid organization data and proper ownership
-  console.log('OrganizationTab - rendering form with organization:', userOrganization.name, 'owner validation passed')
+  // Render the main content
+  console.log('OrganizationTab - rendering content with organization:', userOrganization.name, 'editMode:', isEditMode)
   return (
     <div className="space-y-6">
+      {/* Header with Edit Toggle */}
       <Card>
         <CardHeader className="pb-4">
-          <CardTitle className="flex items-center gap-3">
-            <Building className="h-5 w-5" />
-            Organization Settings
-          </CardTitle>
-          <CardDescription>
-            Manage your organization details and preferences including billing point of contact
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-3">
+                <Building className="h-5 w-5" />
+                Organization Settings
+                {!isEditMode && <Lock className="h-4 w-4 text-muted-foreground" />}
+              </CardTitle>
+              <CardDescription>
+                {isEditMode 
+                  ? 'Make changes to your organization details and preferences'
+                  : 'View your organization details and preferences'
+                }
+              </CardDescription>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              {!isEditMode ? (
+                <Button 
+                  onClick={handleEditModeToggle}
+                  variant="outline"
+                  className="flex items-center gap-2"
+                >
+                  <Edit className="h-4 w-4" />
+                  Edit Organization
+                </Button>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Button 
+                    variant="outline" 
+                    onClick={handleCancelEdit}
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    onClick={handleOrgSave}
+                    disabled={isLoading}
+                    className="flex items-center gap-2"
+                  >
+                    Save Changes
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
         </CardHeader>
+        
         <CardContent>
-          <OrganizationForm
-            organization={userOrganization}
-            formData={orgFormData}
-            onFormDataChange={setOrgFormData}
-            onSave={handleOrgSave}
-            isLoading={isLoading}
-          />
+          {isEditMode ? (
+            <OrganizationForm
+              organization={userOrganization}
+              formData={orgFormData}
+              onFormDataChange={handleFormDataChange}
+              onSave={handleOrgSave}
+              isLoading={isLoading}
+            />
+          ) : (
+            <OrganizationDisplay organization={userOrganization} />
+          )}
         </CardContent>
       </Card>
+
+      {/* Confirmation Dialog */}
+      <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-warning" />
+              Unsaved Changes
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              You have unsaved changes to your organization settings. Are you sure you want to exit edit mode? 
+              Your changes will be lost.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setShowConfirmDialog(false)}>
+              Continue Editing
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => {
+                setShowConfirmDialog(false)
+                handleCancelEdit()
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Discard Changes
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
