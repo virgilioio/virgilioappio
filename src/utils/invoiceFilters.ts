@@ -81,15 +81,17 @@ export function InvoiceFilterProvider({ children }: InvoiceFilterProviderProps) 
   const [filters, setFilters] = useState<InvoiceFilters>({})
   const [filteredInvoices, setFilteredInvoices] = useState<Invoice[]>([])
 
-  return (
-    <InvoiceFilterContext.Provider value={{
-      filters,
-      setFilters,
-      filteredInvoices,
-      setFilteredInvoices
-    }}>
-      {children}
-    </InvoiceFilterContext.Provider>
+  return React.createElement(
+    InvoiceFilterContext.Provider,
+    {
+      value: {
+        filters,
+        setFilters,
+        filteredInvoices,
+        setFilteredInvoices
+      }
+    },
+    children
   )
 }
 
