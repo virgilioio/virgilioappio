@@ -27,11 +27,8 @@ export default function Dashboard() {
               <PriorityPaymentAlert />
             </PermissionGate>
             
-            <div className="grid gap-6 lg:grid-cols-3">
-              <div className="lg:col-span-1">
-                <OnboardingProgress profile={profile} isLoading={isLoading} />
-              </div>
-            </div>
+            {/* Compliance Progress - Full Width */}
+            <OnboardingProgress profile={profile} isLoading={isLoading} />
             
             <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-3">
               <div className="lg:col-span-1 xl:col-span-1 space-y-6">
