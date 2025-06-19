@@ -4,6 +4,7 @@ import { useUserProfile } from '@/hooks/useUserProfile'
 import { AppContainer } from '@/components/layout/AppContainer'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { WelcomeHeader } from '@/components/dashboard/WelcomeHeader'
+import { PriorityPaymentAlert } from '@/components/dashboard/PriorityPaymentAlert'
 import { PaymentsTracker } from '@/components/dashboard/PaymentsTracker'
 import { OnboardingProgress } from '@/components/dashboard/OnboardingProgress'
 import { PaymentHistory } from '@/components/dashboard/PaymentHistory'
@@ -19,6 +20,11 @@ export default function Dashboard() {
     <AppContainer>
       <div className="space-y-lg py-lg">
         <WelcomeHeader profile={profile} isLoading={profileLoading} />
+        
+        {/* Priority Payment Alert - shows at top for maximum visibility */}
+        {permissions.canViewBilling && (
+          <PriorityPaymentAlert />
+        )}
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-md">
           {permissions.canViewBilling && (
