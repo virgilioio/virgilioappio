@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react'
 import { useOrganizations } from '@/hooks/useOrganizations'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -140,32 +141,9 @@ export function OrganizationTab() {
     }
   }
 
-  const handleOrgSave = async () => {
-    if (!userOrganization?.id) {
-      console.error('OrganizationTab handleOrgSave - Cannot save: no organization ID')
-      return
-    }
-
-    // Enhanced validation for both workspace owners and platform admins
-    if ((userType === 'workspace_owner' || userType === 'platform_admin') && user && userOrganization.owner_id !== user.id) {
-      console.error('OrganizationTab handleOrgSave - User trying to edit organization they do not own:', {
-        userType,
-        userId: user.id,
-        organizationOwnerId: userOrganization.owner_id,
-        organizationName: userOrganization.name
-      })
-      return
-    }
-
-    try {
-      console.log('OrganizationTab handleOrgSave - saving organization:', userOrganization.id, 'data:', orgFormData)
-      await updateOrganization(userOrganization.id, orgFormData)
-      setIsEditMode(false)
-      setHasUnsavedChanges(false)
-    } catch (error) {
-      console.error('OrganizationTab handleOrgSave - save error:', error)
-      // Error handling is done in the hook
-    }
+  const handleSaveSuccess = () => {
+    setIsEditMode(false)
+    setHasUnsavedChanges(false)
   }
 
   if (error) {
@@ -316,23 +294,13 @@ export function OrganizationTab() {
                   Edit Organization
                 </Button>
               ) : (
-                <div className="flex items-center gap-1">
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={handleCancelEdit}
-                  >
-                    Cancel
-                  </Button>
-                  <Button 
-                    onClick={handleOrgSave}
-                    disabled={isLoading}
-                    size="sm"
-                    className="flex items-center gap-1"
-                  >
-                    Save Changes
-                  </Button>
-                </div>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleCancelEdit}
+                >
+                  Cancel
+                </Button>
               )}
             </div>
           </div>
@@ -344,7 +312,8 @@ export function OrganizationTab() {
               organization={userOrganization}
               formData={orgFormData}
               onFormDataChange={handleFormDataChange}
-              onSave={handleOrgSave}
+              updateOrganization={updateOrganization}
+              onSaveSuccess={handleSaveSuccess}
               isLoading={isLoading}
             />
           ) : (
