@@ -50,6 +50,11 @@ export function OnboardingProgress({ profile, isLoading }: OnboardingProgressPro
   const progress = calculateProgress()
   const isComplete = progress === 100
 
+  // Don't render if profile setup is complete
+  if (isComplete) {
+    return null
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -67,19 +72,13 @@ export function OnboardingProgress({ profile, isLoading }: OnboardingProgressPro
           <Progress value={progress} className="h-2" />
         </div>
         
-        {isComplete ? (
-          <div className="text-sm text-success">
-            ✅ Profile setup complete!
-          </div>
-        ) : (
-          <div className="text-sm text-text-secondary">
-            Complete your profile to unlock all features
-          </div>
-        )}
+        <div className="text-sm text-text-secondary">
+          Complete your profile to unlock all features
+        </div>
         
         <Link to="/settings?tab=profile">
           <Button variant="outline" size="sm" className="w-full">
-            {isComplete ? 'Edit Profile' : 'Complete Setup'}
+            Complete Setup
             <ExternalLink className="h-3 w-3" />
           </Button>
         </Link>
