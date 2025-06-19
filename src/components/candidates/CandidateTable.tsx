@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Edit, Trash2, UserPlus, MapPin, DollarSign, FileText, MessageCircle, Eye } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
 import { Candidate } from '@/hooks/useCandidates'
@@ -132,95 +133,117 @@ export function CandidateTable({ candidates, isLoading, onEdit, onDelete, onAddN
           <div className="space-y-sm">
             {/* Desktop Table View */}
             <div className="hidden md:block">
-              <div className="space-y-1">
-                {candidates.map((candidate) => (
-                  <div 
-                    key={candidate.id} 
-                    className="flex items-center justify-between h-[52px] px-sm bg-background border border-border rounded-brand hover:bg-surface-secondary hover:shadow-sm transition-all duration-150 ease-in-out"
-                  >
-                    <div className="flex items-center gap-md flex-1 min-w-0">
-                      {/* Name Column */}
-                      <div className="flex-1 min-w-[140px]">
-                        <div className="font-medium text-text-primary truncate">
-                          {candidate.candidate_name}
-                        </div>
-                        {(permissions.isPlatformAdmin || ['admin', 'recruiter'].includes(permissions.isClient ? '' : 'admin')) && (
-                          <div className="text-xs text-text-secondary">
-                            Added {new Date(candidate.created_at).toLocaleDateString()}
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Location</TableHead>
+                    <TableHead>Salary Expectations</TableHead>
+                    <TableHead>Added</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {candidates.map((candidate) => (
+                    <TableRow 
+                      key={candidate.id}
+                      interactive
+                      className="cursor-pointer"
+                    >
+                      <TableCell>
+                        <Link 
+                          to={`/jobs/${jobId}/candidates/${candidate.id}`}
+                          className="block w-full h-full"
+                        >
+                          <div className="font-medium text-text-primary">
+                            {candidate.candidate_name}
                           </div>
-                        )}
-                      </div>
+                        </Link>
+                      </TableCell>
+                      <TableCell>
+                        <Link 
+                          to={`/jobs/${jobId}/candidates/${candidate.id}`}
+                          className="block w-full h-full"
+                        >
+                          <div className="flex items-center gap-1 text-sm text-text-secondary">
+                            <MapPin className="h-3 w-3 shrink-0" />
+                            <span>{formatLocation(candidate)}</span>
+                          </div>
+                        </Link>
+                      </TableCell>
+                      <TableCell>
+                        <Link 
+                          to={`/jobs/${jobId}/candidates/${candidate.id}`}
+                          className="block w-full h-full"
+                        >
+                          <div className="flex items-center gap-1 text-sm text-text-secondary">
+                            <DollarSign className="h-3 w-3 shrink-0" />
+                            <span>{formatSalary(candidate)}</span>
+                          </div>
+                        </Link>
+                      </TableCell>
+                      <TableCell>
+                        <Link 
+                          to={`/jobs/${jobId}/candidates/${candidate.id}`}
+                          className="block w-full h-full"
+                        >
+                          <div className="text-sm text-text-secondary">
+                            {new Date(candidate.created_at).toLocaleDateString()}
+                          </div>
+                        </Link>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center justify-end gap-1">
+                          <Link to={`/jobs/${jobId}/candidates/${candidate.id}`}>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-[36px] w-[36px] p-0 hover:bg-accent/50 hover:scale-110 transition-all duration-150"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </Link>
+                          
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-[36px] w-[36px] p-0 hover:bg-accent/50 hover:scale-110 transition-all duration-150"
+                          >
+                            <MessageCircle className="h-4 w-4" />
+                          </Button>
 
-                      {/* Location Column */}
-                      <div className="flex-1 min-w-[120px]">
-                        <div className="flex items-center gap-1 text-sm text-text-secondary">
-                          <MapPin className="h-3 w-3 shrink-0" />
-                          <span className="truncate">{formatLocation(candidate)}</span>
+                          <PermissionGate permission="canManageCandidates">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                onEdit(candidate)
+                              }}
+                              className="h-[36px] w-[36px] p-0 hover:bg-accent/50 hover:scale-110 transition-all duration-150"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.preventDefault()
+                                e.stopPropagation()
+                                handleDelete(candidate.id)
+                              }}
+                              className="h-[36px] w-[36px] p-0 text-destructive hover:bg-destructive/10 hover:scale-110 transition-all duration-150"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </PermissionGate>
                         </div>
-                      </div>
-
-                      {/* Salary Column */}
-                      <div className="flex-1 min-w-[140px]">
-                        <div className="flex items-center gap-1 text-sm text-text-secondary">
-                          <DollarSign className="h-3 w-3 shrink-0" />
-                          <span className="truncate">{formatSalary(candidate)}</span>
-                        </div>
-                      </div>
-
-                      {/* Profile Preview Column */}
-                      <div className="flex-1 min-w-[200px]">
-                        {candidate.profile_summary ? (
-                          <p className="text-sm text-text-secondary line-clamp-2 leading-tight">
-                            {candidate.profile_summary}
-                          </p>
-                        ) : (
-                          <span className="text-sm text-text-secondary italic">No summary</span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex items-center gap-1 shrink-0">
-                      <Link to={`/jobs/${jobId}/candidates/${candidate.id}`}>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-[40px] w-[40px] p-0 hover:bg-accent/50 hover:scale-110 transition-all duration-150"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      </Link>
-                      
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-[40px] w-[40px] p-0 hover:bg-accent/50 hover:scale-110 transition-all duration-150"
-                      >
-                        <MessageCircle className="h-4 w-4" />
-                      </Button>
-
-                      <PermissionGate permission="canManageCandidates">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => onEdit(candidate)}
-                          className="h-[40px] w-[40px] p-0 hover:bg-accent/50 hover:scale-110 transition-all duration-150"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDelete(candidate.id)}
-                          className="h-[40px] w-[40px] p-0 text-destructive hover:bg-destructive/10 hover:scale-110 transition-all duration-150"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </PermissionGate>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
 
             {/* Mobile Card View */}
@@ -228,40 +251,43 @@ export function CandidateTable({ candidates, isLoading, onEdit, onDelete, onAddN
               {candidates.map((candidate) => (
                 <Card key={candidate.id} className="bg-background border-border hover:shadow-sm transition-all duration-150">
                   <CardContent className="p-sm">
-                    <div className="space-y-sm">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <h4 className="font-medium text-text-primary">{candidate.candidate_name}</h4>
-                          <div className="flex items-center gap-1 text-sm text-text-secondary mt-1">
-                            <MapPin className="h-3 w-3" />
-                            {formatLocation(candidate)}
+                    <Link to={`/jobs/${jobId}/candidates/${candidate.id}`} className="block">
+                      <div className="space-y-sm">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <h4 className="font-medium text-text-primary">{candidate.candidate_name}</h4>
+                            <div className="flex items-center gap-1 text-sm text-text-secondary mt-1">
+                              <MapPin className="h-3 w-3" />
+                              {formatLocation(candidate)}
+                            </div>
                           </div>
-                        </div>
-                        <div className="flex gap-1">
-                          <Link to={`/jobs/${jobId}/candidates/${candidate.id}`}>
+                          <div className="flex gap-1">
                             <Button variant="ghost" size="sm" className="h-[40px] w-[40px] p-0">
                               <Eye className="h-4 w-4" />
                             </Button>
-                          </Link>
-                          <PermissionGate permission="canManageCandidates">
-                            <Button variant="ghost" size="sm" onClick={() => onEdit(candidate)} className="h-[40px] w-[40px] p-0">
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                          </PermissionGate>
+                            <PermissionGate permission="canManageCandidates">
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                onClick={(e) => {
+                                  e.preventDefault()
+                                  e.stopPropagation()
+                                  onEdit(candidate)
+                                }}
+                                className="h-[40px] w-[40px] p-0"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            </PermissionGate>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-1 text-sm text-text-secondary">
+                          <DollarSign className="h-3 w-3" />
+                          {formatSalary(candidate)}
                         </div>
                       </div>
-
-                      <div className="flex items-center gap-1 text-sm text-text-secondary">
-                        <DollarSign className="h-3 w-3" />
-                        {formatSalary(candidate)}
-                      </div>
-
-                      {candidate.profile_summary && (
-                        <p className="text-sm text-text-secondary line-clamp-2">
-                          {candidate.profile_summary}
-                        </p>
-                      )}
-                    </div>
+                    </Link>
                   </CardContent>
                 </Card>
               ))}

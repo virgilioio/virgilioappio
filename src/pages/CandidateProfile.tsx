@@ -130,24 +130,26 @@ export default function CandidateProfile() {
       <PermissionGate permission="canViewCandidates">
         <JobAssignmentGuard>
           <AppContainer>
+            {/* Navigation */}
+            <div className="mb-lg">
+              <Link to={`/jobs/${jobId}?tab=candidates`}>
+                <Button variant="ghost" className="gap-sm h-[44px] text-text-secondary hover:text-text-primary">
+                  <ArrowLeft className="h-4 w-4" />
+                  Back to Candidates
+                </Button>
+              </Link>
+            </div>
+
             {/* Header */}
-            <div className="border-b border-border bg-surface-primary -mx-md px-md py-md mb-lg">
+            <div className="mb-lg">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-md">
-                  <Link to={`/jobs/${jobId}?tab=candidates`}>
-                    <Button variant="ghost" className="gap-sm h-[44px]">
-                      <ArrowLeft className="h-4 w-4" />
-                      Back to Candidates
-                    </Button>
-                  </Link>
-                  <div>
-                    <h1 className="text-xl font-semibold text-text-primary">{candidate.candidate_name}</h1>
-                    {job && (
-                      <p className="text-sm text-text-secondary">
-                        Candidate for <span className="font-medium">{job.title}</span>
-                      </p>
-                    )}
-                  </div>
+                <div>
+                  <h1 className="text-2xl font-semibold text-text-primary mb-2">{candidate.candidate_name}</h1>
+                  {job && (
+                    <p className="text-text-secondary">
+                      Candidate for <span className="font-medium text-text-primary">{job.title}</span>
+                    </p>
+                  )}
                 </div>
                 
                 <PermissionGate permission="canManageCandidates">
@@ -218,9 +220,10 @@ export default function CandidateProfile() {
                     </CardHeader>
                     <CardContent>
                       <div className="prose prose-sm max-w-none text-text-primary">
-                        <p className="whitespace-pre-wrap leading-relaxed">
-                          {candidate.profile_summary}
-                        </p>
+                        <div 
+                          className="leading-relaxed [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:my-2 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0"
+                          dangerouslySetInnerHTML={{ __html: candidate.profile_summary }}
+                        />
                       </div>
                     </CardContent>
                   </Card>
@@ -234,9 +237,10 @@ export default function CandidateProfile() {
                     </CardHeader>
                     <CardContent>
                       <div className="prose prose-sm max-w-none text-text-primary">
-                        <p className="whitespace-pre-wrap leading-relaxed">
-                          {candidate.notes}
-                        </p>
+                        <div 
+                          className="leading-relaxed [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:my-2 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0"
+                          dangerouslySetInnerHTML={{ __html: candidate.notes }}
+                        />
                       </div>
                     </CardContent>
                   </Card>
