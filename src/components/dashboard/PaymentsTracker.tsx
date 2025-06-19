@@ -8,17 +8,19 @@ import { DollarSign, TrendingUp, ExternalLink, AlertTriangle, Clock } from 'luci
 import { Link } from 'react-router-dom'
 import { useInvoices } from '@/hooks/useInvoices'
 import { useAuth } from '@/contexts/AuthContext'
+import { calculatePaymentMetrics } from '@/utils/invoiceUtils'
 
 export function PaymentsTracker() {
   const { invoices, isLoading } = useInvoices()
   const { userType, organizationId } = useAuth()
-  const [paymentsDue, setPaymentsDue] = useState(0)
-  const [overdueAmount, setOverdueAmount] = useState(0)
-  const [urgentAmount, setUrgentAmount] = useState(0)
-  const [incomingPayments, setIncomingPayments] = useState(0)
-  const [pendingCount, setPendingCount] = useState(0)
-  const [overdueCount, setOverdueCount] = useState(0)
-  const [urgentCount, setUrgentCount] = useState(0)
+  const [paymentMetrics, setPaymentMetrics] = useState({
+    totalPending: 0,
+    overdueAmount: 0,
+    urgentAmount: 0,
+    pendingCount: 0,
+    overdueCount: 0,
+    urgentCount: 0
+  })
 
   useEffect(() => {
     if (invoices) {
@@ -26,56 +28,22 @@ export function PaymentsTracker() {
       console.log('PaymentsTracker: Processing invoices for context:', { userType, organizationId, invoiceCount: invoices.length })
       console.log('All invoices received:', invoices)
       
-      const now = new Date()
-      const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
+      // Use unified payment metrics calculation
+      const metrics = calculatePaymentMetrics(
+        invoices,
+        userType !== 'platform_admin' ? organizationId : undefined
+      )
       
-      // Filter invoices based on user context
-      let relevantInvoices = invoices
-
-      if (userType !== 'platform_admin' && organizationId) {
-        // For workspace owners, only show invoices for their organization
-        relevantInvoices = invoices.filter(invoice => invoice.organization_id === organizationId)
-        console.log('PaymentsTracker: Filtered to organization invoices:', relevantInvoices.length)
-        console.log('Filtered invoices details:', relevantInvoices)
-      }
-
-      const pending = relevantInvoices.filter(invoice => invoice.status === 'pending')
-      console.log('Pending invoices:', pending.length, pending)
+      console.log('PaymentsTracker: Using calculated metrics:', metrics)
       
-      const paymentsDueAmount = pending.reduce((sum, invoice) => sum + (invoice.amount || 0), 0)
-      console.log('Payments due amount calculation:', paymentsDueAmount)
-      
-      // Calculate overdue (past due date)
-      const overdue = pending.filter(invoice => {
-        if (!invoice.due_date) return false
-        return new Date(invoice.due_date) < now
+      setPaymentMetrics({
+        totalPending: metrics.totalPending,
+        overdueAmount: metrics.overdueAmount,
+        urgentAmount: metrics.urgentAmount,
+        pendingCount: metrics.pendingCount,
+        overdueCount: metrics.overdueCount,
+        urgentCount: metrics.urgentCount
       })
-      const overdueTotal = overdue.reduce((sum, invoice) => sum + invoice.amount, 0)
-      
-      // Calculate urgent (due within 7 days, not overdue)
-      const urgent = pending.filter(invoice => {
-        if (!invoice.due_date) return false
-        const dueDate = new Date(invoice.due_date)
-        return dueDate >= now && dueDate <= sevenDaysFromNow
-      })
-      const urgentTotal = urgent.reduce((sum, invoice) => sum + invoice.amount, 0)
-      
-      console.log('PaymentsTracker: Final calculated amounts:', {
-        paymentsDueAmount,
-        overdueTotal,
-        urgentTotal,
-        pendingCount: pending.length,
-        overdueCount: overdue.length,
-        urgentCount: urgent.length
-      })
-      
-      setPaymentsDue(paymentsDueAmount)
-      setOverdueAmount(overdueTotal)
-      setUrgentAmount(urgentTotal)
-      setIncomingPayments(paymentsDueAmount) // For workspace owners, this represents what they owe
-      setPendingCount(pending.length)
-      setOverdueCount(overdue.length)
-      setUrgentCount(urgent.length)
     }
   }, [invoices, userType, organizationId])
 
@@ -131,36 +99,36 @@ export function PaymentsTracker() {
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Priority Section - Overdue & Urgent */}
-        {(overdueCount > 0 || urgentCount > 0) && (
+        {(paymentMetrics.overdueCount > 0 || paymentMetrics.urgentCount > 0) && (
           <div className="space-y-3 pb-4 border-b border-border">
-            {overdueCount > 0 && (
+            {paymentMetrics.overdueCount > 0 && (
               <div className="flex items-center justify-between p-3 rounded-lg border-destructive border bg-destructive/5">
                 <div className="flex items-center gap-2">
                   <AlertTriangle className="h-4 w-4 text-destructive" />
                   <div>
                     <p className="text-sm font-medium text-destructive">Overdue</p>
                     <p className="text-lg font-bold text-destructive">
-                      {formatCurrency(overdueAmount)}
+                      {formatCurrency(paymentMetrics.overdueAmount)}
                     </p>
                   </div>
                 </div>
-                <Badge variant="destructive">{overdueCount} invoice{overdueCount > 1 ? 's' : ''}</Badge>
+                <Badge variant="destructive">{paymentMetrics.overdueCount} invoice{paymentMetrics.overdueCount > 1 ? 's' : ''}</Badge>
               </div>
             )}
             
-            {urgentCount > 0 && (
+            {paymentMetrics.urgentCount > 0 && (
               <div className="flex items-center justify-between p-3 rounded-lg border-orange-200 border bg-orange-50">
                 <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4 text-orange-600" />
                   <div>
                     <p className="text-sm font-medium text-orange-700">Due Soon (7 days)</p>
                     <p className="text-lg font-bold text-orange-700">
-                      {formatCurrency(urgentAmount)}
+                      {formatCurrency(paymentMetrics.urgentAmount)}
                     </p>
                   </div>
                 </div>
                 <Badge variant="secondary" className="bg-orange-100 text-orange-700">
-                  {urgentCount} invoice{urgentCount > 1 ? 's' : ''}
+                  {paymentMetrics.urgentCount} invoice{paymentMetrics.urgentCount > 1 ? 's' : ''}
                 </Badge>
               </div>
             )}
@@ -172,21 +140,21 @@ export function PaymentsTracker() {
           <div className="space-y-1">
             <p className="text-sm text-text-secondary">{totalDueLabel}</p>
             <p className="text-2xl font-semibold text-text-primary">
-              {formatCurrency(paymentsDue)}
+              {formatCurrency(paymentMetrics.totalPending)}
             </p>
           </div>
           <div className="space-y-1">
             <p className="text-sm text-text-secondary">{incomingLabel}</p>
             <p className="text-2xl font-semibold text-success">
-              {formatCurrency(incomingPayments)}
+              {formatCurrency(paymentMetrics.totalPending)}
             </p>
           </div>
         </div>
         
-        {pendingCount > 0 && (
+        {paymentMetrics.pendingCount > 0 && (
           <div className="flex items-center justify-between pt-2 border-t">
             <div className="flex items-center gap-2">
-              <Badge variant="secondary">{pendingCount}</Badge>
+              <Badge variant="secondary">{paymentMetrics.pendingCount}</Badge>
               <span className="text-sm text-text-secondary">total pending invoices</span>
             </div>
             <Link to="/settings?tab=billing">

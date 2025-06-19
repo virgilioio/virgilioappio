@@ -8,6 +8,7 @@ import { Link } from 'react-router-dom'
 import { useInvoices } from '@/hooks/useInvoices'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useAuth } from '@/contexts/AuthContext'
+import { calculatePaymentMetrics } from '@/utils/invoiceUtils'
 
 export function PriorityPaymentAlert() {
   const { invoices } = useInvoices()
@@ -19,57 +20,29 @@ export function PriorityPaymentAlert() {
 
     console.log('PriorityPaymentAlert: Processing invoices for context:', { userType, organizationId, invoiceCount: invoices.length })
 
-    const now = new Date()
-    const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
-
-    // For workspace owners, show invoices they need to pay (pending status)
-    // For platform admins, show invoices they've sent that are overdue/urgent
-    const relevantInvoices = invoices.filter(invoice => {
-      if (userType === 'platform_admin') {
-        // Platform admins see all pending invoices (ones they've sent)
-        return invoice.status === 'pending'
-      } else {
-        // Workspace owners see invoices for their organization that they need to pay
-        return invoice.status === 'pending' && invoice.organization_id === organizationId
-      }
-    })
-
-    console.log('PriorityPaymentAlert: Relevant invoices:', relevantInvoices.length)
-
-    // Calculate overdue invoices (past due date)
-    const overdueInvoices = relevantInvoices.filter(invoice => {
-      if (!invoice.due_date) return false
-      return new Date(invoice.due_date) < now
-    })
-
-    const overdueAmount = overdueInvoices.reduce((sum, invoice) => sum + invoice.amount, 0)
-
-    // Calculate urgent invoices (due within 7 days)
-    const urgentInvoices = relevantInvoices.filter(invoice => {
-      if (!invoice.due_date) return false
-      const dueDate = new Date(invoice.due_date)
-      return dueDate >= now && dueDate <= sevenDaysFromNow
-    })
-
-    const urgentAmount = urgentInvoices.reduce((sum, invoice) => sum + invoice.amount, 0)
+    // Use unified payment metrics calculation
+    const metrics = calculatePaymentMetrics(
+      invoices,
+      userType !== 'platform_admin' ? organizationId : undefined
+    )
 
     console.log('PriorityPaymentAlert: Calculated amounts:', { 
-      overdueCount: overdueInvoices.length, 
-      overdueAmount,
-      urgentCount: urgentInvoices.length,
-      urgentAmount 
+      overdueCount: metrics.overdueCount, 
+      overdueAmount: metrics.overdueAmount,
+      urgentCount: metrics.urgentCount,
+      urgentAmount: metrics.urgentAmount 
     })
 
     return {
-      overdueData: overdueInvoices.length > 0 ? {
-        count: overdueInvoices.length,
-        amount: overdueAmount,
-        invoices: overdueInvoices
+      overdueData: metrics.overdueCount > 0 ? {
+        count: metrics.overdueCount,
+        amount: metrics.overdueAmount,
+        invoices: metrics.overdueInvoices
       } : null,
-      urgentData: urgentInvoices.length > 0 ? {
-        count: urgentInvoices.length,
-        amount: urgentAmount,
-        invoices: urgentInvoices
+      urgentData: metrics.urgentCount > 0 ? {
+        count: metrics.urgentCount,
+        amount: metrics.urgentAmount,
+        invoices: metrics.urgentInvoices
       } : null
     }
   }, [invoices, canViewBilling, userType, organizationId])
