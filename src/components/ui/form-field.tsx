@@ -28,6 +28,32 @@ export function FormField({
   const errorId = error ? `${fieldId}-error` : undefined
   const helpId = helpText ? `${fieldId}-help` : undefined
 
+  // Safely construct aria-describedby
+  const ariaDescribedBy = React.useMemo(() => {
+    const parts = [errorId, helpId].filter(Boolean)
+    return parts.length > 0 ? parts.join(' ') : undefined
+  }, [errorId, helpId])
+
+  // Validate and clone the children element safely
+  const clonedChild = React.useMemo(() => {
+    // Ensure children is a valid React element
+    if (!React.isValidElement(children)) {
+      console.warn('FormField: children is not a valid React element:', children)
+      return children
+    }
+
+    try {
+      return React.cloneElement(children as React.ReactElement, {
+        id: fieldId,
+        'aria-invalid': !!error,
+        'aria-describedby': ariaDescribedBy,
+      })
+    } catch (err) {
+      console.error('FormField: Failed to clone element:', err)
+      return children
+    }
+  }, [children, fieldId, error, ariaDescribedBy])
+
   return (
     <div className={cn("space-y-1", className)}>
       {label && (
@@ -37,11 +63,7 @@ export function FormField({
         </Label>
       )}
       <div className="relative">
-        {React.cloneElement(children as React.ReactElement, {
-          id: fieldId,
-          'aria-invalid': !!error,
-          'aria-describedby': cn(errorId, helpId).trim() || undefined,
-        })}
+        {clonedChild}
       </div>
       {error && (
         <p id={errorId} className="text-xs text-destructive font-medium">
