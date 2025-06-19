@@ -7,9 +7,11 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { DollarSign, TrendingUp, ExternalLink, AlertTriangle, Clock } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useInvoices } from '@/hooks/useInvoices'
+import { useAuth } from '@/contexts/AuthContext'
 
 export function PaymentsTracker() {
   const { invoices, isLoading } = useInvoices()
+  const { userType, organizationId } = useAuth()
   const [paymentsDue, setPaymentsDue] = useState(0)
   const [overdueAmount, setOverdueAmount] = useState(0)
   const [urgentAmount, setUrgentAmount] = useState(0)
@@ -20,10 +22,21 @@ export function PaymentsTracker() {
 
   useEffect(() => {
     if (invoices) {
+      console.log('PaymentsTracker: Processing invoices for context:', { userType, organizationId, invoiceCount: invoices.length })
+      
       const now = new Date()
       const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
       
-      const pending = invoices.filter(invoice => invoice.status === 'pending')
+      // Filter invoices based on user context
+      let relevantInvoices = invoices
+
+      if (userType !== 'platform_admin' && organizationId) {
+        // For workspace owners, only show invoices for their organization
+        relevantInvoices = invoices.filter(invoice => invoice.organization_id === organizationId)
+        console.log('PaymentsTracker: Filtered to organization invoices:', relevantInvoices.length)
+      }
+
+      const pending = relevantInvoices.filter(invoice => invoice.status === 'pending')
       const paymentsDueAmount = pending.reduce((sum, invoice) => sum + (invoice.amount || 0), 0)
       
       // Calculate overdue (past due date)
@@ -41,15 +54,24 @@ export function PaymentsTracker() {
       })
       const urgentTotal = urgent.reduce((sum, invoice) => sum + invoice.amount, 0)
       
+      console.log('PaymentsTracker: Calculated amounts:', {
+        paymentsDueAmount,
+        overdueTotal,
+        urgentTotal,
+        pendingCount: pending.length,
+        overdueCount: overdue.length,
+        urgentCount: urgent.length
+      })
+      
       setPaymentsDue(paymentsDueAmount)
       setOverdueAmount(overdueTotal)
       setUrgentAmount(urgentTotal)
-      setIncomingPayments(paymentsDueAmount) // For now, same as payments due
+      setIncomingPayments(paymentsDueAmount) // For workspace owners, this represents what they owe
       setPendingCount(pending.length)
       setOverdueCount(overdue.length)
       setUrgentCount(urgent.length)
     }
-  }, [invoices])
+  }, [invoices, userType, organizationId])
 
   if (isLoading) {
     return (
@@ -75,6 +97,23 @@ export function PaymentsTracker() {
       currency: 'USD'
     }).format(amount)
   }
+
+  // Determine labels based on user type
+  const getLabels = () => {
+    if (userType === 'platform_admin') {
+      return {
+        totalDueLabel: 'Total Receivable',
+        incomingLabel: 'Expected Income'
+      }
+    } else {
+      return {
+        totalDueLabel: 'Total Due',
+        incomingLabel: 'Amount Owed'
+      }
+    }
+  }
+
+  const { totalDueLabel, incomingLabel } = getLabels()
 
   return (
     <Card>
@@ -125,13 +164,13 @@ export function PaymentsTracker() {
         {/* Regular Metrics */}
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1">
-            <p className="text-sm text-text-secondary">Total Due</p>
+            <p className="text-sm text-text-secondary">{totalDueLabel}</p>
             <p className="text-2xl font-semibold text-text-primary">
               {formatCurrency(paymentsDue)}
             </p>
           </div>
           <div className="space-y-1">
-            <p className="text-sm text-text-secondary">Incoming</p>
+            <p className="text-sm text-text-secondary">{incomingLabel}</p>
             <p className="text-2xl font-semibold text-success">
               {formatCurrency(incomingPayments)}
             </p>

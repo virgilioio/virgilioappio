@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
@@ -47,7 +46,7 @@ export function useInvoices() {
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const { user } = useAuth()
+  const { user, organizationId, userType } = useAuth()
 
   const getInvoices = async () => {
     if (!user) return
@@ -56,18 +55,38 @@ export function useInvoices() {
     setError(null)
 
     try {
-      console.log('Fetching invoices for user:', user.id)
-      const { data, error: fetchError } = await supabase
+      console.log('Fetching invoices for user:', user.id, 'userType:', userType, 'organizationId:', organizationId)
+      
+      let query = supabase
         .from('invoices')
         .select('*')
         .order('created_at', { ascending: false })
+
+      // Filter invoices based on user type and organization context
+      if (userType === 'platform_admin') {
+        // Platform admins can see all invoices (they manage/send invoices)
+        console.log('Platform admin - fetching all invoices')
+      } else if (organizationId) {
+        // Workspace owners and other members see invoices for their organization
+        // These are invoices they need to pay (where their org is the recipient)
+        console.log('Filtering invoices for organization:', organizationId)
+        query = query.eq('organization_id', organizationId)
+      } else {
+        // Users without organization context see no invoices
+        console.log('No organization context - no invoices')
+        setInvoices([])
+        setIsLoading(false)
+        return
+      }
+
+      const { data, error: fetchError } = await query
 
       if (fetchError) {
         console.error('Error fetching invoices:', fetchError)
         throw fetchError
       }
 
-      console.log('Fetched invoices:', data)
+      console.log('Fetched invoices:', data?.length || 0, 'invoices for context:', { userType, organizationId })
       setInvoices((data || []) as Invoice[])
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch invoices'
@@ -322,7 +341,7 @@ export function useInvoices() {
     if (user) {
       getInvoices()
     }
-  }, [user])
+  }, [user, organizationId, userType])
 
   return {
     invoices,
