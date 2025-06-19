@@ -58,20 +58,85 @@ export function useOrganizations() {
         console.log('User permissions debug:', debugData?.[0])
       }
       
-      // Simplified query without problematic JOINs
+      // Query organizations with proper relationship syntax for profile data
       const { data: orgsData, error: fetchError } = await supabase
         .from('organizations')
-        .select('*')
+        .select(`
+          *,
+          owner_profile:profiles!organizations_owner_id_fkey(email),
+          creator_profile:profiles!organizations_created_by_fkey(email)
+        `)
         .order('created_at', { ascending: false })
 
       if (fetchError) {
         console.error('Error fetching organizations:', fetchError)
-        throw fetchError
+        // If the relationship query fails, fall back to basic query
+        console.log('Falling back to basic query without profile relationships')
+        
+        const { data: basicOrgsData, error: basicFetchError } = await supabase
+          .from('organizations')
+          .select('*')
+          .order('created_at', { ascending: false })
+
+        if (basicFetchError) {
+          throw basicFetchError
+        }
+
+        // For basic query, we'll fetch profile data separately for each org
+        const organizationsWithProfiles = await Promise.all(
+          (basicOrgsData || []).map(async (org: any) => {
+            let ownerEmail = null
+            let createdByEmail = null
+
+            // Fetch owner profile if owner_id exists
+            if (org.owner_id) {
+              const { data: ownerProfile } = await supabase
+                .from('profiles')
+                .select('email')
+                .eq('user_id', org.owner_id)
+                .single()
+              ownerEmail = ownerProfile?.email || null
+            }
+
+            // Fetch creator profile if created_by exists
+            if (org.created_by) {
+              const { data: creatorProfile } = await supabase
+                .from('profiles')
+                .select('email')
+                .eq('user_id', org.created_by)
+                .single()
+              createdByEmail = creatorProfile?.email || null
+            }
+
+            return {
+              ...org,
+              owner_email: ownerEmail,
+              created_by_email: createdByEmail
+            }
+          })
+        )
+
+        setOrganizations(organizationsWithProfiles.map((org: any) => ({
+          id: org.id,
+          name: org.name,
+          country: org.country,
+          status: org.status as 'active' | 'inactive',
+          organization_type: org.organization_type as 'platform' | 'client',
+          owner_id: org.owner_id,
+          created_at: org.created_at,
+          updated_at: org.updated_at,
+          created_by: org.created_by,
+          owner_assigned_at: org.owner_assigned_at,
+          owner_email: org.owner_email,
+          created_by_email: org.created_by_email
+        })))
+
+        return
       }
 
-      console.log('Fetched organizations:', orgsData)
+      console.log('Fetched organizations with profile relationships:', orgsData)
       
-      // Transform the data to match the expected interface
+      // Transform the data to include email information from relationships
       const organizationsWithDetails: Organization[] = (orgsData || []).map((org: any) => {
         const typedOrg: Organization = {
           id: org.id,
@@ -84,9 +149,8 @@ export function useOrganizations() {
           updated_at: org.updated_at,
           created_by: org.created_by,
           owner_assigned_at: org.owner_assigned_at,
-          // Note: Email information will be null for now, can be fetched separately if needed
-          owner_email: null,
-          created_by_email: null
+          owner_email: org.owner_profile?.email || null,
+          created_by_email: org.creator_profile?.email || null
         }
         
         return typedOrg

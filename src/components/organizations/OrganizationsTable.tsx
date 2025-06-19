@@ -1,3 +1,4 @@
+
 import { useState } from 'react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
@@ -24,6 +25,46 @@ export function OrganizationsTable({
   onCreateNew
 }: OrganizationsTableProps) {
   const permissions = usePermissions()
+
+  // Helper function to display owner information with fallback
+  const displayOwnerInfo = (org: Organization) => {
+    if (org.owner_email) {
+      return (
+        <div className="flex items-center gap-1 text-sm">
+          <User className="h-3 w-3" />
+          {org.owner_email}
+        </div>
+      )
+    }
+    
+    if (org.owner_id) {
+      return (
+        <div className="flex items-center gap-1 text-sm text-muted-foreground">
+          <User className="h-3 w-3" />
+          User ID: {org.owner_id.slice(0, 8)}...
+        </div>
+      )
+    }
+    
+    return <span className="text-muted-foreground text-sm">No owner</span>
+  }
+
+  // Helper function to display creator information with fallback
+  const displayCreatorInfo = (org: Organization) => {
+    if (org.created_by_email) {
+      return <span className="text-sm">{org.created_by_email}</span>
+    }
+    
+    if (org.created_by) {
+      return (
+        <span className="text-sm text-muted-foreground">
+          User ID: {org.created_by.slice(0, 8)}...
+        </span>
+      )
+    }
+    
+    return <span className="text-muted-foreground text-sm">Unknown</span>
+  }
 
   if (isLoading) {
     return (
@@ -119,21 +160,10 @@ export function OrganizationsTable({
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {org.owner_email ? (
-                        <div className="flex items-center gap-1 text-sm">
-                          <User className="h-3 w-3" />
-                          {org.owner_email}
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground text-sm">No owner</span>
-                      )}
+                      {displayOwnerInfo(org)}
                     </TableCell>
                     <TableCell>
-                      {org.created_by_email ? (
-                        <span className="text-sm">{org.created_by_email}</span>
-                      ) : (
-                        <span className="text-muted-foreground text-sm">Unknown</span>
-                      )}
+                      {displayCreatorInfo(org)}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1 text-sm text-muted-foreground">
