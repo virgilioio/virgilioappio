@@ -78,22 +78,8 @@ export function JobOverviewTab({ job, onEdit }: JobOverviewTabProps) {
         </div>
       </CardHeader>
       <CardContent>
-        {/* Job Description */}
-        {job.description && (
-          <div className="mb-8">
-            <h3 className="text-lg font-poppins font-semibold text-text-primary mb-4 flex items-center gap-2">
-              <Briefcase className="h-5 w-5 text-accent" />
-              Job Description
-            </h3>
-            <div 
-              className="text-md leading-relaxed text-text-primary bg-surface-secondary p-4 rounded-brand prose prose-sm max-w-none [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:my-2 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0"
-              dangerouslySetInnerHTML={{ __html: job.description }}
-            />
-          </div>
-        )}
-
         {/* Job Details Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <div className="flex items-start gap-3">
             <Building className="h-5 w-5 text-text-secondary mt-0.5 shrink-0" />
             <div className="min-w-0">
@@ -137,6 +123,20 @@ export function JobOverviewTab({ job, onEdit }: JobOverviewTabProps) {
             </div>
           </div>
         </div>
+
+        {/* Job Description */}
+        {job.description && (
+          <div className="mb-8">
+            <h3 className="text-lg font-poppins font-semibold text-text-primary mb-4 flex items-center gap-2">
+              <Briefcase className="h-5 w-5 text-accent" />
+              Job Description
+            </h3>
+            <div 
+              className="text-md leading-relaxed text-text-primary bg-surface-secondary p-4 rounded-brand prose prose-sm max-w-none [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:my-2 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0"
+              dangerouslySetInnerHTML={{ __html: job.description }}
+            />
+          </div>
+        )}
 
         {/* Timeline Information */}
         <div className="mt-8 pt-6 border-t border-border">
