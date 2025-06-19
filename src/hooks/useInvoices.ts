@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
@@ -55,6 +56,7 @@ export function useInvoices() {
     setError(null)
 
     try {
+      console.log('=== INVOICE FETCH DEBUG ===')
       console.log('Fetching invoices for user:', user.id, 'userType:', userType, 'organizationId:', organizationId)
       
       let query = supabase
@@ -86,7 +88,24 @@ export function useInvoices() {
         throw fetchError
       }
 
-      console.log('Fetched invoices:', data?.length || 0, 'invoices for context:', { userType, organizationId })
+      console.log('=== RAW INVOICE DATA ===')
+      console.log('Total invoices fetched:', data?.length || 0)
+      console.log('Sample invoice data:', data?.[0])
+      console.log('All invoices:', data)
+      
+      // Additional debug logging for workspace owners
+      if (userType !== 'platform_admin' && organizationId) {
+        const relevantInvoices = data?.filter(invoice => invoice.organization_id === organizationId) || []
+        console.log('=== WORKSPACE OWNER DEBUG ===')
+        console.log('Organization ID:', organizationId)
+        console.log('Filtered invoices for org:', relevantInvoices.length)
+        console.log('Filtered invoice details:', relevantInvoices)
+        
+        const pendingInvoices = relevantInvoices.filter(inv => inv.status === 'pending')
+        const totalPending = pendingInvoices.reduce((sum, inv) => sum + (inv.amount || 0), 0)
+        console.log('Pending invoices:', pendingInvoices.length, 'Total amount:', totalPending)
+      }
+
       setInvoices((data || []) as Invoice[])
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch invoices'

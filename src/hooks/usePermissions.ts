@@ -130,12 +130,12 @@ export function usePermissions(): PermissionsState {
     canViewJobAssignments: isPlatformAdmin || ['recruiter', 'admin', 'customer_success'].includes(memberRole || ''),
     canManageJobAssignments: isPlatformAdmin || ['recruiter', 'admin', 'customer_success'].includes(memberRole || ''),
     
-    // Billing & Invoice permissions
-    canViewInvoices: isPlatformAdmin || isBillingMember || (isWorkspaceOwner && hasOrganizationContext),
+    // Updated billing & Invoice permissions - workspace owners can now view invoices
+    canViewInvoices: isPlatformAdmin || isBillingMember || isWorkspaceOwner,
     canCreateInvoices: isPlatformAdmin || isBillingMember,
     canManageInvoices: isPlatformAdmin || isBillingMember,
     canUploadInvoicePDFs: isPlatformAdmin || isBillingMember,
-    canViewBilling: isPlatformAdmin || isBillingMember || (isWorkspaceOwner && hasOrganizationContext),
+    canViewBilling: isPlatformAdmin || isBillingMember || isWorkspaceOwner,
     
     // Admin flags
     isWorkspaceOwner,

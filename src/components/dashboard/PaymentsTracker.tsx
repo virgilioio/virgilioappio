@@ -22,7 +22,9 @@ export function PaymentsTracker() {
 
   useEffect(() => {
     if (invoices) {
+      console.log('=== PAYMENTS TRACKER DEBUG ===')
       console.log('PaymentsTracker: Processing invoices for context:', { userType, organizationId, invoiceCount: invoices.length })
+      console.log('All invoices received:', invoices)
       
       const now = new Date()
       const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
@@ -34,10 +36,14 @@ export function PaymentsTracker() {
         // For workspace owners, only show invoices for their organization
         relevantInvoices = invoices.filter(invoice => invoice.organization_id === organizationId)
         console.log('PaymentsTracker: Filtered to organization invoices:', relevantInvoices.length)
+        console.log('Filtered invoices details:', relevantInvoices)
       }
 
       const pending = relevantInvoices.filter(invoice => invoice.status === 'pending')
+      console.log('Pending invoices:', pending.length, pending)
+      
       const paymentsDueAmount = pending.reduce((sum, invoice) => sum + (invoice.amount || 0), 0)
+      console.log('Payments due amount calculation:', paymentsDueAmount)
       
       // Calculate overdue (past due date)
       const overdue = pending.filter(invoice => {
@@ -54,7 +60,7 @@ export function PaymentsTracker() {
       })
       const urgentTotal = urgent.reduce((sum, invoice) => sum + invoice.amount, 0)
       
-      console.log('PaymentsTracker: Calculated amounts:', {
+      console.log('PaymentsTracker: Final calculated amounts:', {
         paymentsDueAmount,
         overdueTotal,
         urgentTotal,
