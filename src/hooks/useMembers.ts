@@ -52,20 +52,10 @@ export function useMembers() {
     try {
       console.log('Fetching members for user:', user.id)
       
-      // Fetch members with organization data and profile data using proper JOINs
+      // Simplified query to avoid recursion issues
       const { data: membersData, error: membersError } = await supabase
         .from('members')
-        .select(`
-          *,
-          organizations!inner (
-            name
-          ),
-          profiles (
-            first_name,
-            last_name,
-            email
-          )
-        `)
+        .select('*')
         .order('created_at', { ascending: false })
 
       if (membersError) {
@@ -78,7 +68,7 @@ export function useMembers() {
         throw membersError
       }
 
-      console.log('Fetched members with profile data:', membersData)
+      console.log('Fetched members:', membersData)
 
       if (!membersData || membersData.length === 0) {
         console.log('No members found')
@@ -86,16 +76,46 @@ export function useMembers() {
         return
       }
 
+      // Get organization names separately to avoid foreign key issues
+      const orgIds = [...new Set(membersData.map(m => m.organization_id).filter(Boolean))]
+      let organizationsMap: Record<string, string> = {}
+      
+      if (orgIds.length > 0) {
+        const { data: orgsData } = await supabase
+          .from('organizations')
+          .select('id, name')
+          .in('id', orgIds)
+        
+        if (orgsData) {
+          organizationsMap = Object.fromEntries(orgsData.map(org => [org.id, org.name]))
+        }
+      }
+
+      // Get user profiles separately to avoid foreign key issues
+      const userIds = [...new Set(membersData.map(m => m.user_id).filter(Boolean))]
+      let profilesMap: Record<string, any> = {}
+      
+      if (userIds.length > 0) {
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('user_id, first_name, last_name, email')
+          .in('user_id', userIds)
+        
+        if (profilesData) {
+          profilesMap = Object.fromEntries(profilesData.map(profile => [profile.user_id, profile]))
+        }
+      }
+
       // Transform the data to match our Member interface
       const membersWithDetails = membersData.map((member) => {
-        const profile = member.profiles
+        const profile = profilesMap[member.user_id || '']
         
         const typedMember: Member = {
           ...member,
           member_role: member.member_role as 'recruiter' | 'customer_success' | 'billing' | 'sales' | 'admin' | 'client',
           user_status: member.user_status as 'active' | 'inactive' | 'invited',
           user_type: member.user_type as 'guest' | 'member' | 'workspace_owner' | 'platform_admin',
-          organization_name: member.organizations?.name,
+          organization_name: organizationsMap[member.organization_id] || null,
           user_first_name: profile?.first_name || null,
           user_last_name: profile?.last_name || null,
           user_email: profile?.email || member.invited_email || null

@@ -59,66 +59,22 @@ export function useOrganizations() {
     try {
       console.log('Fetching organizations for user:', user.id, 'userType:', userType)
       
+      // Simplified query without complex foreign key relationships to avoid errors
       let query = supabase
         .from('organizations')
-        .select(`
-          *,
-          owner_profile:profiles!fk_organizations_owner_profiles(email),
-          creator_profile:profiles!fk_organizations_created_by_profiles(email),
-          billing_poc_profile:profiles!organizations_billing_poc_user_id_fkey(email, first_name, last_name)
-        `)
+        .select('*')
         .order('created_at', { ascending: false })
 
-      // For both workspace owners and platform admins, prioritize organizations they own
-      if (userType === 'workspace_owner' || userType === 'platform_admin') {
-        // First try to get organizations where user is the owner
-        const { data: ownedOrgs, error: ownedError } = await supabase
-          .from('organizations')
-          .select(`
-            *,
-            owner_profile:profiles!fk_organizations_owner_profiles(email),
-            creator_profile:profiles!fk_organizations_created_by_profiles(email),
-            billing_poc_profile:profiles!organizations_billing_poc_user_id_fkey(email, first_name, last_name)
-          `)
-          .eq('owner_id', user.id)
-          .order('created_at', { ascending: false })
-
-        if (ownedError) {
-          console.error('Error fetching owned organizations:', ownedError)
-        }
-
-        if (ownedOrgs && ownedOrgs.length > 0) {
-          console.log(`Found owned organizations for ${userType}:`, ownedOrgs)
-          const organizationsWithDetails: Organization[] = ownedOrgs.map((org: any) => ({
-            id: org.id,
-            name: org.name,
-            country: org.country,
-            status: org.status as 'active' | 'inactive',
-            organization_type: org.organization_type as 'platform' | 'client',
-            owner_id: org.owner_id,
-            created_at: org.created_at,
-            updated_at: org.updated_at,
-            created_by: org.created_by,
-            owner_assigned_at: org.owner_assigned_at,
-            owner_email: org.owner_profile?.email || null,
-            created_by_email: org.creator_profile?.email || null,
-            billing_poc_user_id: org.billing_poc_user_id,
-            billing_poc_additional_email: org.billing_poc_additional_email,
-            billing_poc_phone: org.billing_poc_phone,
-            billing_poc_updated_by: org.billing_poc_updated_by,
-            billing_poc_updated_at: org.billing_poc_updated_at,
-            billing_poc_user_email: org.billing_poc_profile?.email || null,
-            billing_poc_user_name: org.billing_poc_profile 
-              ? `${org.billing_poc_profile.first_name || ''} ${org.billing_poc_profile.last_name || ''}`.trim()
-              : null
-          }))
-          setOrganizations(organizationsWithDetails)
-          return
-        }
-
-        // Fallback: Get organizations via member relationship (for workspace owners)
+      // For platform admins, get all organizations
+      if (userType === 'platform_admin') {
+        console.log('Platform admin - fetching all organizations')
+      } else {
+        // For non-platform admins, filter by owner or member relationship
         if (userType === 'workspace_owner') {
-          console.log('No owned organizations found for workspace owner, checking member relationship')
+          // First try to get organizations where user is the owner
+          query = query.eq('owner_id', user.id)
+        } else {
+          // For regular members, get organizations via member relationship
           const { data: memberData, error: memberError } = await supabase
             .from('members')
             .select('organization_id')
@@ -131,105 +87,24 @@ export function useOrganizations() {
           const orgIds = memberData?.map(m => m.organization_id).filter(Boolean) || []
           
           if (orgIds.length === 0) {
-            console.log('No organization found for workspace owner')
             setOrganizations([])
             return
           }
 
           query = query.in('id', orgIds)
         }
-      } else if (userType !== 'platform_admin') {
-        // For regular members, get organizations via member relationship
-        const { data: memberData, error: memberError } = await supabase
-          .from('members')
-          .select('organization_id')
-          .eq('user_id', user.id)
-
-        if (memberError) {
-          throw memberError
-        }
-
-        const orgIds = memberData?.map(m => m.organization_id).filter(Boolean) || []
-        
-        if (orgIds.length === 0) {
-          setOrganizations([])
-          return
-        }
-
-        query = query.in('id', orgIds)
       }
 
-      // For platform admins with no owned organizations, get all organizations
       const { data: orgsData, error: fetchError } = await query
 
       if (fetchError) {
-        console.error('Error fetching organizations with relationships:', fetchError)
-        
-        // Fallback to basic query without relationships
-        console.log('Falling back to basic query without profile relationships')
-        
-        let basicQuery = supabase
-          .from('organizations')
-          .select('*')
-          .order('created_at', { ascending: false })
-
-        // Apply same filtering for non-platform-admin users
-        if (userType !== 'platform_admin') {
-          const { data: memberData, error: memberError } = await supabase
-            .from('members')
-            .select('organization_id')
-            .eq('user_id', user.id)
-
-          if (memberError) {
-            throw memberError
-          }
-
-          const orgIds = memberData?.map(m => m.organization_id).filter(Boolean) || []
-          
-          if (orgIds.length === 0) {
-            setOrganizations([])
-            return
-          }
-
-          basicQuery = basicQuery.in('id', orgIds)
-        }
-
-        const { data: basicOrgsData, error: basicFetchError } = await basicQuery
-
-        if (basicFetchError) {
-          throw basicFetchError
-        }
-
-        // Transform basic data without profile relationships
-        const organizationsWithoutProfiles: Organization[] = (basicOrgsData || []).map((org: any) => ({
-          id: org.id,
-          name: org.name,
-          country: org.country,
-          status: org.status as 'active' | 'inactive',
-          organization_type: org.organization_type as 'platform' | 'client',
-          owner_id: org.owner_id,
-          created_at: org.created_at,
-          updated_at: org.updated_at,
-          created_by: org.created_by,
-          owner_assigned_at: org.owner_assigned_at,
-          owner_email: null,
-          created_by_email: null,
-          billing_poc_user_id: org.billing_poc_user_id,
-          billing_poc_additional_email: org.billing_poc_additional_email,
-          billing_poc_phone: org.billing_poc_phone,
-          billing_poc_updated_by: org.billing_poc_updated_by,
-          billing_poc_updated_at: org.billing_poc_updated_at,
-          billing_poc_user_email: null,
-          billing_poc_user_name: null
-        }))
-
-        setOrganizations(organizationsWithoutProfiles)
-        return
+        console.error('Error fetching organizations:', fetchError)
+        throw fetchError
       }
 
-      console.log('Successfully fetched organizations with profile relationships:', orgsData)
+      console.log('Successfully fetched organizations:', orgsData)
       
-      // Transform the data to include email information from relationships
+      // Transform the data without profile relationships for now
       const organizationsWithDetails: Organization[] = (orgsData || []).map((org: any) => ({
         id: org.id,
         name: org.name,
@@ -241,17 +116,15 @@ export function useOrganizations() {
         updated_at: org.updated_at,
         created_by: org.created_by,
         owner_assigned_at: org.owner_assigned_at,
-        owner_email: org.owner_profile?.email || null,
-        created_by_email: org.creator_profile?.email || null,
+        owner_email: null, // Simplified - can be added back later
+        created_by_email: null, // Simplified - can be added back later
         billing_poc_user_id: org.billing_poc_user_id,
         billing_poc_additional_email: org.billing_poc_additional_email,
         billing_poc_phone: org.billing_poc_phone,
         billing_poc_updated_by: org.billing_poc_updated_by,
         billing_poc_updated_at: org.billing_poc_updated_at,
-        billing_poc_user_email: org.billing_poc_profile?.email || null,
-        billing_poc_user_name: org.billing_poc_profile 
-          ? `${org.billing_poc_profile.first_name || ''} ${org.billing_poc_profile.last_name || ''}`.trim()
-          : null
+        billing_poc_user_email: null, // Simplified - can be added back later
+        billing_poc_user_name: null // Simplified - can be added back later
       }))
 
       setOrganizations(organizationsWithDetails)
