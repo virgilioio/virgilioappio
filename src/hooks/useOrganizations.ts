@@ -58,14 +58,10 @@ export function useOrganizations() {
         console.log('User permissions debug:', debugData?.[0])
       }
       
-      // Use a single optimized query with explicit JOINs to get all data at once
+      // Simplified query without problematic JOINs
       const { data: orgsData, error: fetchError } = await supabase
         .from('organizations')
-        .select(`
-          *,
-          owner_profile:profiles!left(email),
-          creator_profile:profiles!left(email)
-        `)
+        .select('*')
         .order('created_at', { ascending: false })
 
       if (fetchError) {
@@ -73,9 +69,9 @@ export function useOrganizations() {
         throw fetchError
       }
 
-      console.log('Fetched organizations with profiles:', orgsData)
+      console.log('Fetched organizations:', orgsData)
       
-      // Transform the data to include email information efficiently
+      // Transform the data to match the expected interface
       const organizationsWithDetails: Organization[] = (orgsData || []).map((org: any) => {
         const typedOrg: Organization = {
           id: org.id,
@@ -88,8 +84,9 @@ export function useOrganizations() {
           updated_at: org.updated_at,
           created_by: org.created_by,
           owner_assigned_at: org.owner_assigned_at,
-          owner_email: org.owner_profile?.email || null,
-          created_by_email: org.creator_profile?.email || null
+          // Note: Email information will be null for now, can be fetched separately if needed
+          owner_email: null,
+          created_by_email: null
         }
         
         return typedOrg
