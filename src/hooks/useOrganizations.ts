@@ -56,8 +56,8 @@ export function useOrganizations() {
         `)
         .order('created_at', { ascending: false })
 
-      // For workspace owners, prioritize organizations they own
-      if (userType === 'workspace_owner') {
+      // For both workspace owners and platform admins, prioritize organizations they own
+      if (userType === 'workspace_owner' || userType === 'platform_admin') {
         // First try to get organizations where user is the owner
         const { data: ownedOrgs, error: ownedError } = await supabase
           .from('organizations')
@@ -74,7 +74,7 @@ export function useOrganizations() {
         }
 
         if (ownedOrgs && ownedOrgs.length > 0) {
-          console.log('Found owned organizations for workspace owner:', ownedOrgs)
+          console.log(`Found owned organizations for ${userType}:`, ownedOrgs)
           const organizationsWithDetails: Organization[] = ownedOrgs.map((org: any) => ({
             id: org.id,
             name: org.name,
@@ -93,8 +93,30 @@ export function useOrganizations() {
           return
         }
 
-        // Fallback: Get organizations via member relationship
-        console.log('No owned organizations found, checking member relationship')
+        // Fallback: Get organizations via member relationship (for workspace owners)
+        if (userType === 'workspace_owner') {
+          console.log('No owned organizations found for workspace owner, checking member relationship')
+          const { data: memberData, error: memberError } = await supabase
+            .from('members')
+            .select('organization_id')
+            .eq('user_id', user.id)
+
+          if (memberError) {
+            throw memberError
+          }
+
+          const orgIds = memberData?.map(m => m.organization_id).filter(Boolean) || []
+          
+          if (orgIds.length === 0) {
+            console.log('No organization found for workspace owner')
+            setOrganizations([])
+            return
+          }
+
+          query = query.in('id', orgIds)
+        }
+      } else if (userType !== 'platform_admin') {
+        // For regular members, get organizations via member relationship
         const { data: memberData, error: memberError } = await supabase
           .from('members')
           .select('organization_id')
@@ -107,7 +129,6 @@ export function useOrganizations() {
         const orgIds = memberData?.map(m => m.organization_id).filter(Boolean) || []
         
         if (orgIds.length === 0) {
-          console.log('No organization found for workspace owner')
           setOrganizations([])
           return
         }
@@ -115,7 +136,7 @@ export function useOrganizations() {
         query = query.in('id', orgIds)
       }
 
-      // For platform admins, get all organizations (no filtering needed)
+      // For platform admins with no owned organizations, get all organizations
       const { data: orgsData, error: fetchError } = await query
 
       if (fetchError) {
@@ -129,8 +150,8 @@ export function useOrganizations() {
           .select('*')
           .order('created_at', { ascending: false })
 
-        // Apply same filtering for workspace owners
-        if (userType === 'workspace_owner') {
+        // Apply same filtering for non-platform-admin users
+        if (userType !== 'platform_admin') {
           const { data: memberData, error: memberError } = await supabase
             .from('members')
             .select('organization_id')
