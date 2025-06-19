@@ -654,6 +654,11 @@ export type Database = {
       }
       organizations: {
         Row: {
+          billing_poc_additional_email: string | null
+          billing_poc_phone: string | null
+          billing_poc_updated_at: string | null
+          billing_poc_updated_by: string | null
+          billing_poc_user_id: string | null
           country: string
           created_at: string
           created_by: string | null
@@ -666,6 +671,11 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          billing_poc_additional_email?: string | null
+          billing_poc_phone?: string | null
+          billing_poc_updated_at?: string | null
+          billing_poc_updated_by?: string | null
+          billing_poc_user_id?: string | null
           country: string
           created_at?: string
           created_by?: string | null
@@ -678,6 +688,11 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          billing_poc_additional_email?: string | null
+          billing_poc_phone?: string | null
+          billing_poc_updated_at?: string | null
+          billing_poc_updated_by?: string | null
+          billing_poc_user_id?: string | null
           country?: string
           created_at?: string
           created_by?: string | null

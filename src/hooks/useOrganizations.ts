@@ -16,6 +16,13 @@ export interface Organization {
   owner_assigned_at: string | null
   owner_email?: string
   created_by_email?: string
+  billing_poc_user_id?: string | null
+  billing_poc_additional_email?: string | null
+  billing_poc_phone?: string | null
+  billing_poc_updated_by?: string | null
+  billing_poc_updated_at?: string | null
+  billing_poc_user_email?: string | null
+  billing_poc_user_name?: string | null
 }
 
 export interface CreateOrganizationData {
@@ -30,6 +37,11 @@ export interface UpdateOrganizationData {
   country?: string
   status?: 'active' | 'inactive'
   owner_id?: string | null
+  billing_poc_user_id?: string | null
+  billing_poc_additional_email?: string | null
+  billing_poc_phone?: string | null
+  billing_poc_updated_by?: string | null
+  billing_poc_updated_at?: string | null
 }
 
 export function useOrganizations() {
@@ -52,7 +64,8 @@ export function useOrganizations() {
         .select(`
           *,
           owner_profile:profiles!fk_organizations_owner_profiles(email),
-          creator_profile:profiles!fk_organizations_created_by_profiles(email)
+          creator_profile:profiles!fk_organizations_created_by_profiles(email),
+          billing_poc_profile:profiles!organizations_billing_poc_user_id_fkey(email, first_name, last_name)
         `)
         .order('created_at', { ascending: false })
 
@@ -64,7 +77,8 @@ export function useOrganizations() {
           .select(`
             *,
             owner_profile:profiles!fk_organizations_owner_profiles(email),
-            creator_profile:profiles!fk_organizations_created_by_profiles(email)
+            creator_profile:profiles!fk_organizations_created_by_profiles(email),
+            billing_poc_profile:profiles!organizations_billing_poc_user_id_fkey(email, first_name, last_name)
           `)
           .eq('owner_id', user.id)
           .order('created_at', { ascending: false })
@@ -87,7 +101,16 @@ export function useOrganizations() {
             created_by: org.created_by,
             owner_assigned_at: org.owner_assigned_at,
             owner_email: org.owner_profile?.email || null,
-            created_by_email: org.creator_profile?.email || null
+            created_by_email: org.creator_profile?.email || null,
+            billing_poc_user_id: org.billing_poc_user_id,
+            billing_poc_additional_email: org.billing_poc_additional_email,
+            billing_poc_phone: org.billing_poc_phone,
+            billing_poc_updated_by: org.billing_poc_updated_by,
+            billing_poc_updated_at: org.billing_poc_updated_at,
+            billing_poc_user_email: org.billing_poc_profile?.email || null,
+            billing_poc_user_name: org.billing_poc_profile 
+              ? `${org.billing_poc_profile.first_name || ''} ${org.billing_poc_profile.last_name || ''}`.trim()
+              : null
           }))
           setOrganizations(organizationsWithDetails)
           return
@@ -190,7 +213,14 @@ export function useOrganizations() {
           created_by: org.created_by,
           owner_assigned_at: org.owner_assigned_at,
           owner_email: null,
-          created_by_email: null
+          created_by_email: null,
+          billing_poc_user_id: org.billing_poc_user_id,
+          billing_poc_additional_email: org.billing_poc_additional_email,
+          billing_poc_phone: org.billing_poc_phone,
+          billing_poc_updated_by: org.billing_poc_updated_by,
+          billing_poc_updated_at: org.billing_poc_updated_at,
+          billing_poc_user_email: null,
+          billing_poc_user_name: null
         }))
 
         setOrganizations(organizationsWithoutProfiles)
@@ -212,7 +242,16 @@ export function useOrganizations() {
         created_by: org.created_by,
         owner_assigned_at: org.owner_assigned_at,
         owner_email: org.owner_profile?.email || null,
-        created_by_email: org.creator_profile?.email || null
+        created_by_email: org.creator_profile?.email || null,
+        billing_poc_user_id: org.billing_poc_user_id,
+        billing_poc_additional_email: org.billing_poc_additional_email,
+        billing_poc_phone: org.billing_poc_phone,
+        billing_poc_updated_by: org.billing_poc_updated_by,
+        billing_poc_updated_at: org.billing_poc_updated_at,
+        billing_poc_user_email: org.billing_poc_profile?.email || null,
+        billing_poc_user_name: org.billing_poc_profile 
+          ? `${org.billing_poc_profile.first_name || ''} ${org.billing_poc_profile.last_name || ''}`.trim()
+          : null
       }))
 
       setOrganizations(organizationsWithDetails)
@@ -277,9 +316,17 @@ export function useOrganizations() {
 
     try {
       console.log('Updating organization:', id, data)
+      
+      // Add billing POC audit fields if billing POC data is being updated
+      const updateData = { ...data }
+      if (data.billing_poc_user_id !== undefined || data.billing_poc_additional_email !== undefined || data.billing_poc_phone !== undefined) {
+        updateData.billing_poc_updated_by = user?.id
+        updateData.billing_poc_updated_at = new Date().toISOString()
+      }
+      
       const { data: updatedOrg, error: updateError } = await supabase
         .from('organizations')
-        .update(data)
+        .update(updateData)
         .eq('id', id)
         .select()
         .single()

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,11 +11,15 @@ import { useCountries } from '@/hooks/useCountries'
 import { useCountryFields } from '@/hooks/useCountryFields'
 import { useOrganizationCustomData } from '@/hooks/useOrganizationCustomData'
 import { CustomFieldInput } from '@/components/organizations/CustomFieldInput'
+import { BillingPOCSection } from './BillingPOCSection'
 
 interface OrganizationFormData {
   name: string
   country: string
   status: 'active' | 'inactive'
+  billing_poc_user_id: string | null
+  billing_poc_additional_email: string
+  billing_poc_phone: string
 }
 
 interface Organization {
@@ -23,6 +28,11 @@ interface Organization {
   country: string
   status: 'active' | 'inactive'
   created_at: string
+  billing_poc_user_id?: string | null
+  billing_poc_additional_email?: string | null
+  billing_poc_phone?: string | null
+  billing_poc_user_email?: string | null
+  billing_poc_user_name?: string | null
 }
 
 interface OrganizationFormProps {
@@ -54,6 +64,7 @@ export function OrganizationForm({
   const [customFieldFiles, setCustomFieldFiles] = useState<Record<string, File>>({})
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [isSaving, setIsSaving] = useState(false)
+  const [billingPOCErrors, setBillingPOCErrors] = useState<Record<string, string>>({})
 
   console.log('OrganizationForm render - organization:', organization, 'formData:', formData)
 
@@ -70,8 +81,23 @@ export function OrganizationForm({
     }
   }, [customData])
 
-  const updateFormData = (field: keyof OrganizationFormData, value: string) => {
+  const updateFormData = (field: keyof OrganizationFormData, value: string | null) => {
     onFormDataChange({ ...formData, [field]: value })
+    
+    // Clear billing POC errors when user makes changes
+    if (field.startsWith('billing_poc_')) {
+      setBillingPOCErrors(prev => ({ ...prev, [field]: '' }))
+    }
+  }
+
+  const handleBillingPOCChange = (data: Partial<Pick<OrganizationFormData, 'billing_poc_user_id' | 'billing_poc_additional_email' | 'billing_poc_phone'>>) => {
+    const updatedFormData = { ...formData, ...data }
+    onFormDataChange(updatedFormData)
+    
+    // Clear related errors
+    Object.keys(data).forEach(key => {
+      setBillingPOCErrors(prev => ({ ...prev, [key]: '' }))
+    })
   }
 
   // Early return with safe fallback if no organization
@@ -87,6 +113,36 @@ export function OrganizationForm({
         </CardContent>
       </Card>
     )
+  }
+
+  const validateBillingPOC = (): boolean => {
+    const errors: Record<string, string> = {}
+    let hasErrors = false
+
+    // Only validate if user is platform admin or workspace owner
+    if (permissions.isPlatformAdmin || permissions.canManageOrganization) {
+      if (!formData.billing_poc_user_id) {
+        errors.billing_poc_user_id = 'Billing POC user is required for compliance'
+        hasErrors = true
+      }
+
+      if (!formData.billing_poc_phone || formData.billing_poc_phone.trim() === '') {
+        errors.billing_poc_phone = 'Phone number is required for billing POC'
+        hasErrors = true
+      }
+
+      // Validate additional email format if provided
+      if (formData.billing_poc_additional_email && formData.billing_poc_additional_email.trim() !== '') {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+        if (!emailRegex.test(formData.billing_poc_additional_email)) {
+          errors.billing_poc_additional_email = 'Invalid email format'
+          hasErrors = true
+        }
+      }
+    }
+
+    setBillingPOCErrors(errors)
+    return !hasErrors
   }
 
   const validateCustomField = (field: any, value: string): string | null => {
@@ -193,7 +249,11 @@ export function OrganizationForm({
       return
     }
 
-    if (!validateAllCustomFields()) {
+    // Validate billing POC and custom fields
+    const isBillingPOCValid = validateBillingPOC()
+    const areCustomFieldsValid = validateAllCustomFields()
+    
+    if (!isBillingPOCValid || !areCustomFieldsValid) {
       return
     }
 
@@ -242,6 +302,9 @@ export function OrganizationForm({
     }
     return undefined
   }
+
+  const canManageBillingPOC = permissions.isPlatformAdmin || permissions.canManageOrganization
+  const isReadOnly = !canManageBillingPOC
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -306,6 +369,20 @@ export function OrganizationForm({
         </CardContent>
       </Card>
 
+      {/* Billing POC Section */}
+      {canManageBillingPOC && (
+        <BillingPOCSection
+          organizationId={organization.id}
+          data={{
+            billing_poc_user_id: formData.billing_poc_user_id,
+            billing_poc_additional_email: formData.billing_poc_additional_email,
+            billing_poc_phone: formData.billing_poc_phone
+          }}
+          onChange={handleBillingPOCChange}
+          isReadOnly={isReadOnly}
+        />
+      )}
+
       {/* Country-specific fields */}
       {formData.country && (
         <Card>
@@ -357,6 +434,12 @@ export function OrganizationForm({
               <span>Created:</span>
               <span>{new Date(organization.created_at).toLocaleDateString()}</span>
             </div>
+            {organization.billing_poc_user_name && (
+              <div className="flex justify-between">
+                <span>Current Billing POC:</span>
+                <span>{organization.billing_poc_user_name} ({organization.billing_poc_user_email})</span>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

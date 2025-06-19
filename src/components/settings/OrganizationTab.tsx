@@ -10,6 +10,9 @@ interface OrganizationFormData {
   name: string
   country: string
   status: 'active' | 'inactive'
+  billing_poc_user_id: string | null
+  billing_poc_additional_email: string
+  billing_poc_phone: string
 }
 
 export function OrganizationTab() {
@@ -44,7 +47,10 @@ export function OrganizationTab() {
   const [orgFormData, setOrgFormData] = useState<OrganizationFormData>({
     name: '',
     country: '',
-    status: 'active'
+    status: 'active',
+    billing_poc_user_id: null,
+    billing_poc_additional_email: '',
+    billing_poc_phone: ''
   })
 
   useEffect(() => {
@@ -53,7 +59,10 @@ export function OrganizationTab() {
       setOrgFormData({
         name: userOrganization.name || '',
         country: userOrganization.country || '',
-        status: userOrganization.status || 'active'
+        status: userOrganization.status || 'active',
+        billing_poc_user_id: userOrganization.billing_poc_user_id || null,
+        billing_poc_additional_email: userOrganization.billing_poc_additional_email || '',
+        billing_poc_phone: userOrganization.billing_poc_phone || ''
       })
     }
   }, [userOrganization])
@@ -197,7 +206,7 @@ export function OrganizationTab() {
             Organization Settings
           </CardTitle>
           <CardDescription>
-            Manage your organization details and preferences
+            Manage your organization details and preferences including billing point of contact
           </CardDescription>
         </CardHeader>
         <CardContent>
