@@ -1,3 +1,4 @@
+
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -35,7 +36,10 @@ const formSchema = z.object({
   organization_id: z.string().min(1, 'Organization is required'),
   title: z.string().min(1, 'Title is required'),
   description: z.string().optional(),
-  amount: z.number().min(0.01, 'Amount must be greater than 0'),
+  amount: z.string()
+    .min(1, 'Amount is required')
+    .refine((val) => /^\d+(\.\d{1,2})?$/.test(val), 'Please enter a valid amount (e.g., 1234.56)')
+    .refine((val) => parseFloat(val) > 0, 'Amount must be greater than 0'),
   currency: z.string().min(1, 'Currency is required'),
   issued_at: z.date().optional(),
   due_date: z.date().optional(),
@@ -60,7 +64,7 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
       organization_id: '',
       title: '',
       description: '',
-      amount: 0,
+      amount: '',
       currency: 'USD',
       issued_at: new Date(),
       due_date: undefined,
@@ -74,7 +78,7 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
         organization_id: data.organization_id,
         title: data.title,
         description: data.description,
-        amount: data.amount,
+        amount: parseFloat(data.amount),
         currency: data.currency,
         issued_at: data.issued_at?.toISOString(),
         due_date: data.due_date?.toISOString(),
@@ -183,17 +187,15 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
                     <FormLabel>Amount *</FormLabel>
                     <FormControl>
                       <Input 
-                        type="number"
-                        step="0.01"
-                        min="0"
+                        type="text"
+                        inputMode="decimal"
                         placeholder="1234.56"
-                        pattern="[0-9]+(\.[0-9]{1,2})?"
                         {...field}
                         onChange={(e) => {
                           const value = e.target.value
-                          // Only allow numbers and decimals, no commas
-                          if (value === '' || /^\d*\.?\d*$/.test(value)) {
-                            field.onChange(parseFloat(value) || 0)
+                          // Only allow numbers and one decimal point
+                          if (value === '' || /^\d*\.?\d{0,2}$/.test(value)) {
+                            field.onChange(value)
                           }
                         }}
                       />
