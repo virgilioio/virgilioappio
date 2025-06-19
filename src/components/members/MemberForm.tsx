@@ -106,7 +106,8 @@ export function MemberForm({
       newErrors.userType = "User type is required"
     }
 
-    if (!organizationId && permissions.isPlatformAdmin) {
+    // Only Platform Admins and Customer Success need to select organization (not Workspace Owners)
+    if (!organizationId && permissions.isPlatformAdmin && !isWorkspaceOwner) {
       newErrors.organizationId = "Organization is required"
     }
 
@@ -130,10 +131,14 @@ export function MemberForm({
         // Creating new member (invitation)
         data.user_id = null
         data.email = email.trim() // Include email for invitation
-        if (permissions.isPlatformAdmin || isCustomerSuccess || isWorkspaceOwner) {
+        if (permissions.isPlatformAdmin || isCustomerSuccess) {
           data.organization_id = organizationId
-        } else {
+        } else if (isWorkspaceOwner) {
           // For workspace owners, use their organization
+          const userOrg = organizations.find(org => org.owner_id === null)
+          data.organization_id = userOrg?.id || organizations[0]?.id
+        } else {
+          // For other users, use their organization
           const userOrg = organizations.find(org => org.owner_id === null)
           data.organization_id = userOrg?.id || organizations[0]?.id
         }
@@ -302,8 +307,8 @@ export function MemberForm({
               </div>
             )}
 
-            {/* Organization field - for platform admins, customer success, and workspace owners */}
-            {(permissions.isPlatformAdmin || isCustomerSuccess || isWorkspaceOwner) && (
+            {/* Organization field - only for platform admins and customer success (not workspace owners) */}
+            {(permissions.isPlatformAdmin || isCustomerSuccess) && (
               <div className="grid gap-token-sm">
                 <Label htmlFor="organization">Organization</Label>
                 <Select value={organizationId} onValueChange={setOrganizationId}>
@@ -326,6 +331,19 @@ export function MemberForm({
                     The selected organization will be owned by this user
                   </p>
                 )}
+              </div>
+            )}
+
+            {/* Show current organization for workspace owners (read-only) */}
+            {isWorkspaceOwner && !member && organizations.length > 0 && (
+              <div className="grid gap-token-sm">
+                <Label>Organization</Label>
+                <div className="px-3 py-2 bg-muted rounded-md text-sm">
+                  {organizations.find(org => org.owner_id === null)?.name || organizations[0]?.name}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Users will be invited to your organization
+                </p>
               </div>
             )}
 
