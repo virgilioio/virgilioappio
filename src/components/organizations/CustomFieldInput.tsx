@@ -9,7 +9,6 @@ import { FormField } from '@/components/ui/form-field'
 import { Upload, File, X, Download } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { CountryField, FieldSelectOption } from '@/hooks/useCountries'
-import { OrganizationCustomData } from '@/hooks/useOrganizationCustomData'
 
 interface CustomFieldInputProps {
   field: CountryField & { 
@@ -302,7 +301,6 @@ export function CustomFieldInput({
         )
 
       default:
-        // IMPORTANT: Return a safe fallback instead of null to prevent React error #130
         console.warn('CustomFieldInput - Unknown field type:', field.field_type)
         return (
           <div className="p-4 border border-orange-200 bg-orange-50 rounded-md">
@@ -312,6 +310,95 @@ export function CustomFieldInput({
           </div>
         )
     }
+  }
+
+  const validateValue = (inputValue: string): string | null => {
+    if (!field.validation_rules) return null
+
+    for (const rule of field.validation_rules) {
+      switch (rule.rule_type) {
+        case 'regex':
+          if (!new RegExp(rule.rule_value).test(inputValue)) {
+            return rule.error_message
+          }
+          break
+        case 'min_length':
+          if (inputValue.length < parseInt(rule.rule_value)) {
+            return rule.error_message
+          }
+          break
+        case 'max_length':
+          if (inputValue.length > parseInt(rule.rule_value)) {
+            return rule.error_message
+          }
+          break
+        case 'min_value':
+          if (parseFloat(inputValue) < parseFloat(rule.rule_value)) {
+            return rule.error_message
+          }
+          break
+        case 'max_value':
+          if (parseFloat(inputValue) > parseFloat(rule.rule_value)) {
+            return rule.error_message
+          }
+          break
+      }
+    }
+    return null
+  }
+
+  const handleValueChange = (newValue: string) => {
+    onValueChange(newValue)
+  }
+
+  const handleFileSelect = (file: File) => {
+    // Validate file type
+    if (field.accepted_file_types) {
+      try {
+        const acceptedTypes = JSON.parse(field.accepted_file_types)
+        if (!acceptedTypes.includes(file.type)) {
+          toast({
+            title: 'Invalid file type',
+            description: `Please select a file of type: ${acceptedTypes.join(', ')}`,
+            variant: 'destructive'
+          })
+          return
+        }
+      } catch (e) {
+        console.error('Error parsing accepted file types:', e)
+      }
+    }
+
+    // Validate file size
+    const maxSizeMB = field.max_file_size_mb || 5
+    if (file.size > maxSizeMB * 1024 * 1024) {
+      toast({
+        title: 'File too large',
+        description: `File size must be less than ${maxSizeMB}MB`,
+        variant: 'destructive'
+      })
+      return
+    }
+
+    onFileChange(file)
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setDragOver(false)
+    
+    const files = Array.from(e.dataTransfer.files)
+    if (files.length > 0) {
+      handleFileSelect(files[0])
+    }
+  }
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes'
+    const k = 1024
+    const sizes = ['Bytes', 'KB', 'MB', 'GB']
+    const i = Math.floor(Math.log(bytes) / Math.log(k))
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
   }
 
   const inputElement = renderInput()
