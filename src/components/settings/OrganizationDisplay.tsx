@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { useCountryFields } from '@/hooks/useCountryFields'
 import { useOrganizationCustomData } from '@/hooks/useOrganizationCustomData'
+import { useBillingPOCMembers } from '@/hooks/useBillingPOCMembers'
 
 interface Organization {
   id: string
@@ -26,6 +27,10 @@ interface OrganizationDisplayProps {
 export function OrganizationDisplay({ organization }: OrganizationDisplayProps) {
   const { fields, isLoading: fieldsLoading } = useCountryFields(organization.country)
   const { customData, isLoading: customDataLoading } = useOrganizationCustomData(organization.id)
+  const { members } = useBillingPOCMembers(organization.id)
+
+  // Get billing POC member details from the members hook
+  const billingPOCMember = members.find(m => m.user_id === organization.billing_poc_user_id)
 
   const getCustomFieldValue = (fieldId: string) => {
     const data = customData.find(data => data.country_field_id === fieldId)
@@ -214,7 +219,7 @@ export function OrganizationDisplay({ organization }: OrganizationDisplayProps) 
           </p>
         </CardHeader>
         <CardContent>
-          {organization.billing_poc_user_name ? (
+          {organization.billing_poc_user_id && billingPOCMember ? (
             <div className="space-y-3">
               <div className="flex items-center justify-between py-2 border-b border-border/50">
                 <div className="space-y-0.5">
@@ -222,7 +227,9 @@ export function OrganizationDisplay({ organization }: OrganizationDisplayProps) 
                     <User className="h-3 w-3" />
                     Primary Contact
                   </p>
-                  <p className="text-sm font-medium">{organization.billing_poc_user_name}</p>
+                  <p className="text-sm font-medium">
+                    {`${billingPOCMember.first_name || ''} ${billingPOCMember.last_name || ''}`.trim() || 'Unknown User'}
+                  </p>
                 </div>
               </div>
               
@@ -232,7 +239,7 @@ export function OrganizationDisplay({ organization }: OrganizationDisplayProps) 
                     <Mail className="h-3 w-3" />
                     Primary Email
                   </p>
-                  <p className="text-sm font-medium">{organization.billing_poc_user_email || 'Not provided'}</p>
+                  <p className="text-sm font-medium">{billingPOCMember.email || 'Not provided'}</p>
                 </div>
               </div>
               
