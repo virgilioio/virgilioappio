@@ -61,3 +61,43 @@ export function getInvoiceStats(invoices: Invoice[]) {
     totalPaid
   }
 }
+
+// Create a context for sharing filter state across components
+import React, { createContext, useContext, useState, ReactNode } from 'react'
+
+interface InvoiceFilterContextType {
+  filters: InvoiceFilters
+  setFilters: (filters: InvoiceFilters) => void
+  filteredInvoices: Invoice[]
+  setFilteredInvoices: (invoices: Invoice[]) => void
+}
+
+const InvoiceFilterContext = createContext<InvoiceFilterContextType | null>(null)
+
+interface InvoiceFilterProviderProps {
+  children: ReactNode
+}
+
+export function InvoiceFilterProvider({ children }: InvoiceFilterProviderProps) {
+  const [filters, setFilters] = useState<InvoiceFilters>({})
+  const [filteredInvoices, setFilteredInvoices] = useState<Invoice[]>([])
+
+  return (
+    <InvoiceFilterContext.Provider value={{
+      filters,
+      setFilters,
+      filteredInvoices,
+      setFilteredInvoices
+    }}>
+      {children}
+    </InvoiceFilterContext.Provider>
+  )
+}
+
+export function useInvoiceFilter() {
+  const context = useContext(InvoiceFilterContext)
+  if (!context) {
+    throw new Error('useInvoiceFilter must be used within an InvoiceFilterProvider')
+  }
+  return context
+}

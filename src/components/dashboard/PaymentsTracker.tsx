@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -9,10 +8,12 @@ import { Link } from 'react-router-dom'
 import { useInvoices } from '@/hooks/useInvoices'
 import { useAuth } from '@/contexts/AuthContext'
 import { calculatePaymentMetrics } from '@/utils/invoiceUtils'
+import { useInvoiceFilter } from '@/utils/invoiceFilters'
 
 export function PaymentsTracker() {
   const { invoices, isLoading } = useInvoices()
   const { userType, organizationId } = useAuth()
+  const { filters } = useInvoiceFilter()
   const [paymentMetrics, setPaymentMetrics] = useState({
     totalPending: 0,
     overdueAmount: 0,
@@ -28,10 +29,11 @@ export function PaymentsTracker() {
       console.log('PaymentsTracker: Processing invoices for context:', { userType, organizationId, invoiceCount: invoices.length })
       console.log('All invoices received:', invoices)
       
-      // Use unified payment metrics calculation
+      // Use unified payment metrics calculation with month filter
       const metrics = calculatePaymentMetrics(
         invoices,
-        userType !== 'platform_admin' ? organizationId : undefined
+        userType !== 'platform_admin' ? organizationId : undefined,
+        filters
       )
       
       console.log('PaymentsTracker: Using calculated metrics:', metrics)
@@ -45,25 +47,7 @@ export function PaymentsTracker() {
         urgentCount: metrics.urgentCount
       })
     }
-  }, [invoices, userType, organizationId])
-
-  if (isLoading) {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <DollarSign className="h-5 w-5" />
-            Payments Tracker
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Skeleton className="h-16 w-full" />
-          <Skeleton className="h-16 w-full" />
-          <Skeleton className="h-8 w-32" />
-        </CardContent>
-      </Card>
-    )
-  }
+  }, [invoices, userType, organizationId, filters])
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {

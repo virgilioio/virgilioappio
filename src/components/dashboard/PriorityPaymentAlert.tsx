@@ -1,4 +1,3 @@
-
 import { useMemo } from 'react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
@@ -9,21 +8,24 @@ import { useInvoices } from '@/hooks/useInvoices'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useAuth } from '@/contexts/AuthContext'
 import { calculatePaymentMetrics } from '@/utils/invoiceUtils'
+import { useInvoiceFilter } from '@/utils/invoiceFilters'
 
 export function PriorityPaymentAlert() {
   const { invoices } = useInvoices()
   const { canViewBilling } = usePermissions()
   const { userType, organizationId } = useAuth()
+  const { filters } = useInvoiceFilter()
 
   const { overdueData, urgentData } = useMemo(() => {
     if (!canViewBilling || !invoices) return { overdueData: null, urgentData: null }
 
     console.log('PriorityPaymentAlert: Processing invoices for context:', { userType, organizationId, invoiceCount: invoices.length })
 
-    // Use unified payment metrics calculation
+    // Use unified payment metrics calculation with month filter
     const metrics = calculatePaymentMetrics(
       invoices,
-      userType !== 'platform_admin' ? organizationId : undefined
+      userType !== 'platform_admin' ? organizationId : undefined,
+      filters
     )
 
     console.log('PriorityPaymentAlert: Calculated amounts:', { 
@@ -45,7 +47,7 @@ export function PriorityPaymentAlert() {
         invoices: metrics.urgentInvoices
       } : null
     }
-  }, [invoices, canViewBilling, userType, organizationId])
+  }, [invoices, canViewBilling, userType, organizationId, filters])
 
   // Don't render if no critical payments or user can't view billing
   if (!canViewBilling || (!overdueData && !urgentData)) {

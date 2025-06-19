@@ -1,5 +1,6 @@
 
 import { Invoice } from '@/hooks/useInvoices'
+import { InvoiceFilters } from './invoiceFilters'
 
 /**
  * Automatically detects and updates invoice status based on due date
@@ -61,18 +62,32 @@ export function getUrgentInvoices(invoices: Invoice[], daysAhead: number = 7): I
 }
 
 /**
- * Calculates payment metrics with unified overdue logic
+ * Calculates payment metrics with unified overdue logic and optional filtering
  */
-export function calculatePaymentMetrics(invoices: Invoice[], organizationId?: string) {
+export function calculatePaymentMetrics(invoices: Invoice[], organizationId?: string, filters?: InvoiceFilters) {
   console.log('=== PAYMENT METRICS CALCULATION ===')
   console.log('Input invoices:', invoices.length)
   console.log('Organization filter:', organizationId)
+  console.log('Date filter:', filters?.selectedMonth)
   
   // Filter by organization if specified
   let relevantInvoices = invoices
   if (organizationId) {
     relevantInvoices = invoices.filter(invoice => invoice.organization_id === organizationId)
     console.log('Filtered to organization invoices:', relevantInvoices.length)
+  }
+
+  // Apply date filter if specified
+  if (filters?.selectedMonth) {
+    const { startOfMonth, endOfMonth, isWithinInterval } = require('date-fns')
+    const monthStart = startOfMonth(filters.selectedMonth)
+    const monthEnd = endOfMonth(filters.selectedMonth)
+    
+    relevantInvoices = relevantInvoices.filter(invoice => {
+      const invoiceDate = new Date(invoice.issued_at)
+      return isWithinInterval(invoiceDate, { start: monthStart, end: monthEnd })
+    })
+    console.log('Filtered to month invoices:', relevantInvoices.length)
   }
   
   // Auto-detect overdue invoices

@@ -1,5 +1,5 @@
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Plus, Search, Filter, Calendar } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -14,15 +14,26 @@ import { useInvoices } from '@/hooks/useInvoices'
 import { usePermissions } from '@/hooks/usePermissions'
 import { AppContainer } from '@/components/layout/AppContainer'
 import { Section } from '@/components/layout/Section'
-import { filterInvoices, getInvoiceStats } from '@/utils/invoiceFilters'
+import { filterInvoices, getInvoiceStats, InvoiceFilterProvider, useInvoiceFilter } from '@/utils/invoiceFilters'
 
-export default function AdminInvoices() {
+function AdminInvoicesContent() {
   const { invoices, isLoading } = useInvoices()
   const { canManageInvoices } = usePermissions()
+  const { filters, setFilters, setFilteredInvoices } = useInvoiceFilter()
   const [createModalOpen, setCreateModalOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [selectedMonth, setSelectedMonth] = useState<Date | undefined>()
+
+  // Update filter context when local filters change
+  useEffect(() => {
+    const newFilters = {
+      searchTerm,
+      status: statusFilter,
+      selectedMonth
+    }
+    setFilters(newFilters)
+  }, [searchTerm, statusFilter, selectedMonth, setFilters])
 
   // Filter invoices based on all filters
   const filteredInvoices = filterInvoices(invoices, {
@@ -30,6 +41,11 @@ export default function AdminInvoices() {
     status: statusFilter,
     selectedMonth
   })
+
+  // Update filtered invoices in context
+  useEffect(() => {
+    setFilteredInvoices(filteredInvoices)
+  }, [filteredInvoices, setFilteredInvoices])
 
   const stats = getInvoiceStats(filteredInvoices)
 
@@ -154,7 +170,14 @@ export default function AdminInvoices() {
           {hasActiveFilters && (
             <Card>
               <CardHeader>
-                <CardTitle>Filtered Results Summary</CardTitle>
+                <CardTitle>
+                  Filtered Results Summary
+                  {selectedMonth && (
+                    <span className="text-sm font-normal text-muted-foreground ml-2">
+                      ({selectedMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })})
+                    </span>
+                  )}
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid gap-4 md:grid-cols-4">
@@ -199,5 +222,13 @@ export default function AdminInvoices() {
         </div>
       </AppContainer>
     </Section>
+  )
+}
+
+export default function AdminInvoices() {
+  return (
+    <InvoiceFilterProvider>
+      <AdminInvoicesContent />
+    </InvoiceFilterProvider>
   )
 }

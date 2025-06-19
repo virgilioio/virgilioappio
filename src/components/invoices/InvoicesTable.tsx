@@ -1,4 +1,5 @@
-import { useState } from 'react'
+
+import { useState, useEffect } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
@@ -18,16 +19,27 @@ import { usePermissions } from '@/hooks/usePermissions'
 import { Receipt, Download, FileText, Search, Filter, Calendar } from 'lucide-react'
 import { InvoiceUploadModal } from './InvoiceUploadModal'
 import { getInvoicePdfUrl } from '@/lib/invoiceStorage'
-import { filterInvoices, getInvoiceStats } from '@/utils/invoiceFilters'
+import { filterInvoices, getInvoiceStats, useInvoiceFilter } from '@/utils/invoiceFilters'
 
 export function InvoicesTable() {
   const { invoices, isLoading, refreshInvoices } = useInvoices()
   const { isPlatformAdmin, canManageInvoices } = usePermissions()
+  const { filters, setFilters, setFilteredInvoices } = useInvoiceFilter()
   const [uploadModalOpen, setUploadModalOpen] = useState(false)
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [selectedMonth, setSelectedMonth] = useState<Date | undefined>()
+
+  // Update filter context when local filters change
+  useEffect(() => {
+    const newFilters = {
+      searchTerm,
+      status: statusFilter,
+      selectedMonth
+    }
+    setFilters(newFilters)
+  }, [searchTerm, statusFilter, selectedMonth, setFilters])
 
   // Filter invoices based on all filters
   const filteredInvoices = filterInvoices(invoices, {
@@ -35,6 +47,11 @@ export function InvoicesTable() {
     status: statusFilter,
     selectedMonth
   })
+
+  // Update filtered invoices in context
+  useEffect(() => {
+    setFilteredInvoices(filteredInvoices)
+  }, [filteredInvoices, setFilteredInvoices])
 
   const stats = getInvoiceStats(filteredInvoices)
   const hasActiveFilters = searchTerm || statusFilter !== 'all' || selectedMonth
