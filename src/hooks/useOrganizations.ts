@@ -48,29 +48,20 @@ export function useOrganizations() {
     try {
       console.log('Fetching organizations for user:', user.id)
       
-      // First, debug the user's permissions
-      const { data: debugData, error: debugError } = await supabase
-        .rpc('debug_user_permissions')
-      
-      if (debugError) {
-        console.error('Debug permissions error:', debugError)
-      } else {
-        console.log('User permissions debug:', debugData?.[0])
-      }
-      
-      // Query organizations with proper relationship syntax for profile data
+      // Try the query with proper foreign key relationships
       const { data: orgsData, error: fetchError } = await supabase
         .from('organizations')
         .select(`
           *,
-          owner_profile:profiles!organizations_owner_id_fkey(email),
-          creator_profile:profiles!organizations_created_by_fkey(email)
+          owner_profile:profiles!fk_organizations_owner_profiles(email),
+          creator_profile:profiles!fk_organizations_created_by_profiles(email)
         `)
         .order('created_at', { ascending: false })
 
       if (fetchError) {
-        console.error('Error fetching organizations:', fetchError)
-        // If the relationship query fails, fall back to basic query
+        console.error('Error fetching organizations with relationships:', fetchError)
+        
+        // Fallback to basic query without relationships
         console.log('Falling back to basic query without profile relationships')
         
         const { data: basicOrgsData, error: basicFetchError } = await supabase
@@ -82,41 +73,8 @@ export function useOrganizations() {
           throw basicFetchError
         }
 
-        // For basic query, we'll fetch profile data separately for each org
-        const organizationsWithProfiles = await Promise.all(
-          (basicOrgsData || []).map(async (org: any) => {
-            let ownerEmail = null
-            let createdByEmail = null
-
-            // Fetch owner profile if owner_id exists
-            if (org.owner_id) {
-              const { data: ownerProfile } = await supabase
-                .from('profiles')
-                .select('email')
-                .eq('user_id', org.owner_id)
-                .single()
-              ownerEmail = ownerProfile?.email || null
-            }
-
-            // Fetch creator profile if created_by exists
-            if (org.created_by) {
-              const { data: creatorProfile } = await supabase
-                .from('profiles')
-                .select('email')
-                .eq('user_id', org.created_by)
-                .single()
-              createdByEmail = creatorProfile?.email || null
-            }
-
-            return {
-              ...org,
-              owner_email: ownerEmail,
-              created_by_email: createdByEmail
-            }
-          })
-        )
-
-        setOrganizations(organizationsWithProfiles.map((org: any) => ({
+        // Transform basic data without profile relationships
+        const organizationsWithoutProfiles: Organization[] = (basicOrgsData || []).map((org: any) => ({
           id: org.id,
           name: org.name,
           country: org.country,
@@ -127,34 +85,31 @@ export function useOrganizations() {
           updated_at: org.updated_at,
           created_by: org.created_by,
           owner_assigned_at: org.owner_assigned_at,
-          owner_email: org.owner_email,
-          created_by_email: org.created_by_email
-        })))
+          owner_email: null, // No profile data available
+          created_by_email: null // No profile data available
+        }))
 
+        setOrganizations(organizationsWithoutProfiles)
         return
       }
 
-      console.log('Fetched organizations with profile relationships:', orgsData)
+      console.log('Successfully fetched organizations with profile relationships:', orgsData)
       
       // Transform the data to include email information from relationships
-      const organizationsWithDetails: Organization[] = (orgsData || []).map((org: any) => {
-        const typedOrg: Organization = {
-          id: org.id,
-          name: org.name,
-          country: org.country,
-          status: org.status as 'active' | 'inactive',
-          organization_type: org.organization_type as 'platform' | 'client',
-          owner_id: org.owner_id,
-          created_at: org.created_at,
-          updated_at: org.updated_at,
-          created_by: org.created_by,
-          owner_assigned_at: org.owner_assigned_at,
-          owner_email: org.owner_profile?.email || null,
-          created_by_email: org.creator_profile?.email || null
-        }
-        
-        return typedOrg
-      })
+      const organizationsWithDetails: Organization[] = (orgsData || []).map((org: any) => ({
+        id: org.id,
+        name: org.name,
+        country: org.country,
+        status: org.status as 'active' | 'inactive',
+        organization_type: org.organization_type as 'platform' | 'client',
+        owner_id: org.owner_id,
+        created_at: org.created_at,
+        updated_at: org.updated_at,
+        created_by: org.created_by,
+        owner_assigned_at: org.owner_assigned_at,
+        owner_email: org.owner_profile?.email || null,
+        created_by_email: org.creator_profile?.email || null
+      }))
 
       setOrganizations(organizationsWithDetails)
     } catch (err) {
@@ -178,7 +133,6 @@ export function useOrganizations() {
     try {
       console.log('Creating organization:', data)
       
-      // Note: created_by will be automatically populated by the database trigger
       const { data: newOrg, error: createError } = await supabase
         .from('organizations')
         .insert([data])
@@ -196,7 +150,7 @@ export function useOrganizations() {
         description: 'Organization created successfully'
       })
 
-      await getOrganizations() // Refresh the list to show the new org immediately
+      await getOrganizations() // Refresh the list
       return newOrg
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to create organization'

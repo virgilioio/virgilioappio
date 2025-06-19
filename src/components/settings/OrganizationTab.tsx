@@ -12,9 +12,9 @@ interface OrganizationFormData {
 }
 
 export function OrganizationTab() {
-  const { organizations, updateOrganization, isLoading } = useOrganizations()
+  const { organizations, updateOrganization, isLoading, error } = useOrganizations()
   
-  // Get the first organization for demo purposes - in a real app this would be based on user's organization
+  // Get the user's organization - workspace owners should have one
   const userOrganization = organizations?.[0]
   
   const [orgFormData, setOrgFormData] = useState<OrganizationFormData>({
@@ -28,7 +28,7 @@ export function OrganizationTab() {
       setOrgFormData({
         name: userOrganization.name || '',
         country: userOrganization.country || '',
-        status: userOrganization.status as 'active' | 'inactive' || 'active'
+        status: userOrganization.status || 'active'
       })
     }
   }, [userOrganization])
@@ -45,6 +45,30 @@ export function OrganizationTab() {
     }
   }
 
+  // Show error state if there's an error
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center gap-3">
+              <Building className="h-5 w-5" />
+              Organization Settings
+            </CardTitle>
+            <CardDescription>
+              Manage your organization details and preferences
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-center py-8">
+              <p className="text-destructive">Error loading organization data: {error}</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       <Card>
@@ -58,13 +82,23 @@ export function OrganizationTab() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <OrganizationForm
-            organization={userOrganization}
-            formData={orgFormData}
-            onFormDataChange={setOrgFormData}
-            onSave={handleOrgSave}
-            isLoading={isLoading}
-          />
+          {isLoading ? (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">Loading organization data...</p>
+            </div>
+          ) : !userOrganization ? (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">No organization data available</p>
+            </div>
+          ) : (
+            <OrganizationForm
+              organization={userOrganization}
+              formData={orgFormData}
+              onFormDataChange={setOrgFormData}
+              onSave={handleOrgSave}
+              isLoading={isLoading}
+            />
+          )}
         </CardContent>
       </Card>
     </div>
