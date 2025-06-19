@@ -52,7 +52,7 @@ export default function Organizations() {
 
   return (
     <AuthGate>
-      <PermissionGate permission="canManageOrganization">
+      <PermissionGate permission="canViewOrganizations">
         <div className="min-h-screen bg-background">
           <div className="container mx-auto py-6 sm:py-8 lg:py-12 px-4 sm:px-6 lg:px-8">
             <div className="mb-6 sm:mb-8 lg:mb-12">
