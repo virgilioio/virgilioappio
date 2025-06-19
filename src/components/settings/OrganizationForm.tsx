@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -56,6 +55,8 @@ export function OrganizationForm({
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [isSaving, setIsSaving] = useState(false)
 
+  console.log('OrganizationForm render - organization:', organization, 'formData:', formData)
+
   // Load existing custom data when component mounts or data changes
   useEffect(() => {
     if (customData.length > 0) {
@@ -71,6 +72,21 @@ export function OrganizationForm({
 
   const updateFormData = (field: keyof OrganizationFormData, value: string) => {
     onFormDataChange({ ...formData, [field]: value })
+  }
+
+  // Early return with safe fallback if no organization
+  if (!organization) {
+    console.log('OrganizationForm - no organization provided')
+    return (
+      <Card className="max-w-2xl mx-auto">
+        <CardContent className="text-center py-8">
+          <p className="text-muted-foreground">No organization found.</p>
+          <p className="text-sm text-muted-foreground mt-2">
+            Contact your administrator to set up an organization.
+          </p>
+        </CardContent>
+      </Card>
+    )
   }
 
   const validateCustomField = (field: any, value: string): string | null => {
@@ -209,19 +225,6 @@ export function OrganizationForm({
     } finally {
       setIsSaving(false)
     }
-  }
-
-  if (!organization) {
-    return (
-      <Card className="max-w-2xl mx-auto">
-        <CardContent className="text-center py-8">
-          <p className="text-muted-foreground">No organization found.</p>
-          <p className="text-sm text-muted-foreground mt-2">
-            Contact your administrator to set up an organization.
-          </p>
-        </CardContent>
-      </Card>
-    )
   }
 
   const getCustomFieldValue = (fieldId: string) => {

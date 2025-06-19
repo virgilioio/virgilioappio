@@ -42,6 +42,8 @@ export function CustomFieldInput({
   const [dragOver, setDragOver] = useState(false)
   const { toast } = useToast()
 
+  console.log('CustomFieldInput render - field:', field, 'value:', value)
+
   const validateValue = (inputValue: string): string | null => {
     if (!field.validation_rules) return null
 
@@ -132,6 +134,8 @@ export function CustomFieldInput({
   }
 
   const renderInput = () => {
+    console.log('CustomFieldInput - renderInput for field type:', field.field_type)
+    
     switch (field.field_type) {
       case 'text':
       case 'email':
@@ -298,14 +302,36 @@ export function CustomFieldInput({
         )
 
       default:
-        return null
+        // IMPORTANT: Return a safe fallback instead of null to prevent React error #130
+        console.warn('CustomFieldInput - Unknown field type:', field.field_type)
+        return (
+          <div className="p-4 border border-orange-200 bg-orange-50 rounded-md">
+            <p className="text-sm text-orange-700">
+              Unsupported field type: {field.field_type}
+            </p>
+          </div>
+        )
     }
+  }
+
+  const inputElement = renderInput()
+  
+  // Ensure we never return null or undefined
+  if (!inputElement) {
+    console.error('CustomFieldInput - renderInput returned null/undefined for field:', field)
+    return (
+      <div className="p-4 border border-red-200 bg-red-50 rounded-md">
+        <p className="text-sm text-red-700">
+          Error rendering field: {field.field_label}
+        </p>
+      </div>
+    )
   }
 
   if (field.field_type === 'checkbox') {
     return (
       <div className="space-y-2">
-        {renderInput()}
+        {inputElement}
         {field.help_text && (
           <p className="text-sm text-muted-foreground">{field.help_text}</p>
         )}
@@ -320,7 +346,7 @@ export function CustomFieldInput({
       required={field.is_required}
       htmlFor={field.field_name}
     >
-      {renderInput()}
+      {inputElement}
       {field.help_text && (
         <p className="text-sm text-muted-foreground mt-1">{field.help_text}</p>
       )}
