@@ -1,7 +1,9 @@
+
 import { WelcomeHeader } from '@/components/dashboard/WelcomeHeader'
 import { QuickAccess } from '@/components/dashboard/QuickAccess'
 import { JobsOverview } from '@/components/dashboard/JobsOverview'
 import { PaymentsTracker } from '@/components/dashboard/PaymentsTracker'
+import { PaymentHistory } from '@/components/dashboard/PaymentHistory'
 import { PriorityPaymentAlert } from '@/components/dashboard/PriorityPaymentAlert'
 import { RecentActivity } from '@/components/dashboard/RecentActivity'
 import { OnboardingProgress } from '@/components/dashboard/OnboardingProgress'
@@ -34,6 +36,7 @@ export default function Dashboard() {
               <div className="lg:col-span-1 xl:col-span-1 space-y-6">
                 <PermissionGate permission="canViewBilling">
                   <PaymentsTracker />
+                  <PaymentHistory />
                 </PermissionGate>
                 <JobsOverview permissions={permissions} />
               </div>
