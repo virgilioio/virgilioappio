@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
@@ -59,12 +58,25 @@ export function useOrganizations() {
 
       // For workspace owners, only fetch their organization via member relationship
       if (userType === 'workspace_owner') {
-        query = query.in('id', 
-          supabase
-            .from('members')
-            .select('organization_id')
-            .eq('user_id', user.id)
-        )
+        // First get the organization IDs this user is a member of
+        const { data: memberData, error: memberError } = await supabase
+          .from('members')
+          .select('organization_id')
+          .eq('user_id', user.id)
+
+        if (memberError) {
+          throw memberError
+        }
+
+        const orgIds = memberData?.map(m => m.organization_id).filter(Boolean) || []
+        
+        if (orgIds.length === 0) {
+          console.log('No organization found for workspace owner')
+          setOrganizations([])
+          return
+        }
+
+        query = query.in('id', orgIds)
       }
 
       const { data: orgsData, error: fetchError } = await query
@@ -82,12 +94,23 @@ export function useOrganizations() {
 
         // Apply same filtering for workspace owners
         if (userType === 'workspace_owner') {
-          basicQuery = basicQuery.in('id', 
-            supabase
-              .from('members')
-              .select('organization_id')
-              .eq('user_id', user.id)
-          )
+          const { data: memberData, error: memberError } = await supabase
+            .from('members')
+            .select('organization_id')
+            .eq('user_id', user.id)
+
+          if (memberError) {
+            throw memberError
+          }
+
+          const orgIds = memberData?.map(m => m.organization_id).filter(Boolean) || []
+          
+          if (orgIds.length === 0) {
+            setOrganizations([])
+            return
+          }
+
+          basicQuery = basicQuery.in('id', orgIds)
         }
 
         const { data: basicOrgsData, error: basicFetchError } = await basicQuery
