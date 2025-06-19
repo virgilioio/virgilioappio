@@ -1,6 +1,6 @@
 
 import { useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { ProfileTab } from '@/components/settings/ProfileTab'
@@ -16,9 +16,25 @@ import { SettingsMobileHeader } from '@/components/settings/SettingsMobileHeader
 import { InvoiceFilterProvider } from '@/utils/invoiceFilters'
 
 export default function Settings() {
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const navigate = useNavigate()
   const { canViewBilling, canManageMembers, isPlatformAdmin } = usePermissions()
   const defaultTab = searchParams.get('tab') || 'profile'
+  const [currentTab, setCurrentTab] = useState(defaultTab)
+
+  const handleTabChange = (tab: string) => {
+    setCurrentTab(tab)
+    setSearchParams({ tab })
+  }
+
+  const handleMenuToggle = () => {
+    // Handle mobile menu toggle if needed
+    console.log('Menu toggle clicked')
+  }
+
+  const handleBackToDashboard = () => {
+    navigate('/')
+  }
 
   return (
     <InvoiceFilterProvider>
@@ -27,15 +43,21 @@ export default function Settings() {
           <div className="flex flex-col lg:flex-row gap-6">
             {/* Sidebar - hidden on mobile */}
             <div className="hidden lg:block w-64 flex-shrink-0">
-              <SettingsSidebar defaultTab={defaultTab} />
+              <SettingsSidebar 
+                currentTab={currentTab} 
+                onTabChange={handleTabChange} 
+              />
             </div>
             
             {/* Main content */}
             <div className="flex-1 min-w-0">
-              <Tabs defaultValue={defaultTab} className="w-full">
+              <Tabs value={currentTab} onValueChange={handleTabChange} className="w-full">
                 {/* Mobile header */}
                 <div className="lg:hidden mb-6">
-                  <SettingsMobileHeader />
+                  <SettingsMobileHeader 
+                    onMenuToggle={handleMenuToggle}
+                    onBackToDashboard={handleBackToDashboard}
+                  />
                 </div>
 
                 <TabsContent value="profile">

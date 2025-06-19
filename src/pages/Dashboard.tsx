@@ -9,21 +9,26 @@ import { OnboardingProgress } from '@/components/dashboard/OnboardingProgress'
 import { AppContainer } from '@/components/layout/AppContainer'
 import { Section } from '@/components/layout/Section'
 import { InvoiceFilterProvider } from '@/utils/invoiceFilters'
+import { useUserProfile } from '@/hooks/useUserProfile'
+import { usePermissions } from '@/hooks/usePermissions'
 
 export default function Dashboard() {
+  const { profile, isLoading } = useUserProfile()
+  const permissions = usePermissions()
+
   return (
     <InvoiceFilterProvider>
       <Section>
         <AppContainer variant="default">
           <div className="space-y-6">
-            <WelcomeHeader />
+            <WelcomeHeader profile={profile} isLoading={isLoading} />
             <PriorityPaymentAlert />
-            <OnboardingProgress />
+            <OnboardingProgress profile={profile} isLoading={isLoading} />
             
             <div className="grid gap-6 lg:grid-cols-2">
               <div className="space-y-6">
-                <QuickAccess />
-                <JobsOverview />
+                <QuickAccess permissions={permissions} />
+                <JobsOverview permissions={permissions} />
               </div>
               
               <div className="space-y-6">
