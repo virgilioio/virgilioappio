@@ -1,3 +1,4 @@
+
 import { useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -128,6 +129,10 @@ export function BillingMetricsDashboard() {
         .filter(inv => ['pending', 'overdue'].includes(inv.status))
         .reduce((sum, inv) => sum + inv.amount, 0)
 
+      const overdueAmount = filteredInvoices
+        .filter(inv => inv.status === 'overdue')
+        .reduce((sum, inv) => sum + inv.amount, 0)
+
       const overdueCount = filteredInvoices.filter(inv => inv.status === 'overdue').length
 
       const clientsWithOverdue = new Set(
@@ -168,6 +173,13 @@ export function BillingMetricsDashboard() {
           variant: 'success' as const
         },
         {
+          title: 'Overdue Payments',
+          value: formatCurrency(overdueAmount),
+          icon: <AlertTriangle className="h-5 w-5" />,
+          tooltip: filters.selectedMonth ? 'Total overdue amount from selected period' : 'Total amount of overdue invoices',
+          variant: overdueAmount > 0 ? 'destructive' as const : 'default' as const
+        },
+        {
           title: 'Outstanding Balance',
           value: formatCurrency(outstandingBalance),
           icon: <AlertTriangle className="h-5 w-5" />,
@@ -175,10 +187,10 @@ export function BillingMetricsDashboard() {
           variant: outstandingBalance > 0 ? 'warning' as const : 'default' as const
         },
         {
-          title: 'Overdue Invoices',
+          title: 'Overdue Invoice Count',
           value: overdueCount,
           icon: <AlertTriangle className="h-5 w-5" />,
-          tooltip: filters.selectedMonth ? 'Overdue invoices from selected period' : 'Number of overdue invoices',
+          tooltip: filters.selectedMonth ? 'Number of overdue invoices from selected period' : 'Number of overdue invoices',
           variant: overdueCount > 0 ? 'destructive' as const : 'default' as const
         },
         {
@@ -209,6 +221,10 @@ export function BillingMetricsDashboard() {
         .filter(inv => ['pending', 'overdue'].includes(inv.status))
         .reduce((sum, inv) => sum + inv.amount, 0)
 
+      const overdueAmount = filteredInvoices
+        .filter(inv => inv.status === 'overdue')
+        .reduce((sum, inv) => sum + inv.amount, 0)
+
       const upcomingDueAmount = filteredInvoices
         .filter(inv => inv.due_date && getDateFromString(inv.due_date) > now && inv.status === 'pending')
         .reduce((sum, inv) => sum + inv.amount, 0)
@@ -235,6 +251,13 @@ export function BillingMetricsDashboard() {
           variant: outstandingBalance > 0 ? 'warning' as const : 'default' as const
         },
         {
+          title: 'Overdue Payments',
+          value: formatCurrency(overdueAmount),
+          icon: <AlertTriangle className="h-5 w-5" />,
+          tooltip: filters.selectedMonth ? 'Total overdue amount from selected month' : 'Total amount of overdue invoices for your organization',
+          variant: overdueAmount > 0 ? 'destructive' as const : 'default' as const
+        },
+        {
           title: 'Upcoming Due Amount',
           value: formatCurrency(upcomingDueAmount),
           icon: <Calendar className="h-5 w-5" />,
@@ -249,10 +272,10 @@ export function BillingMetricsDashboard() {
           variant: 'success' as const
         },
         {
-          title: 'Overdue Invoices',
+          title: 'Overdue Invoice Count',
           value: overdueCount,
           icon: <AlertTriangle className="h-5 w-5" />,
-          tooltip: filters.selectedMonth ? 'Overdue invoices from selected month' : 'Number of overdue invoices',
+          tooltip: filters.selectedMonth ? 'Number of overdue invoices from selected month' : 'Number of overdue invoices',
           variant: overdueCount > 0 ? 'destructive' as const : 'default' as const
         },
         // Latest Invoice Summary Card
