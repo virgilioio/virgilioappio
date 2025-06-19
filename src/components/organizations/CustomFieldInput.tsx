@@ -1,4 +1,3 @@
-
 import { useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -146,6 +145,13 @@ export function CustomFieldInput({
 
   const renderInput = (): JSX.Element => {
     console.log('CustomFieldInput - renderInput for field type:', field.field_type)
+    console.log('Available components check:', { 
+      Input: typeof Input, 
+      Textarea: typeof Textarea, 
+      Select: typeof Select,
+      Checkbox: typeof Checkbox,
+      Button: typeof Button
+    })
     
     // Validate field_type exists
     if (!field.field_type) {
@@ -162,6 +168,7 @@ export function CustomFieldInput({
     switch (field.field_type) {
       case 'text':
       case 'email':
+        console.log('Rendering Input component for type:', field.field_type)
         return (
           <Input
             type={field.field_type}
@@ -173,6 +180,7 @@ export function CustomFieldInput({
         )
 
       case 'number':
+        console.log('Rendering Input component for number type')
         return (
           <Input
             type="number"
@@ -184,6 +192,7 @@ export function CustomFieldInput({
         )
 
       case 'textarea':
+        console.log('Rendering Textarea component')
         return (
           <Textarea
             value={value}
@@ -194,6 +203,7 @@ export function CustomFieldInput({
         )
 
       case 'select':
+        console.log('Rendering Select component')
         return (
           <Select value={value} onValueChange={handleValueChange}>
             <SelectTrigger className={error ? 'border-red-500' : ''}>
@@ -214,6 +224,7 @@ export function CustomFieldInput({
         )
 
       case 'checkbox':
+        console.log('Rendering Checkbox component')
         return (
           <div className="flex items-center space-x-2">
             <Checkbox
@@ -228,6 +239,7 @@ export function CustomFieldInput({
         )
 
       case 'date':
+        console.log('Rendering Input component for date type')
         return (
           <Input
             type="date"
@@ -238,6 +250,7 @@ export function CustomFieldInput({
         )
 
       case 'file':
+        console.log('Rendering file upload component')
         return (
           <div className="space-y-4">
             {fileData ? (
