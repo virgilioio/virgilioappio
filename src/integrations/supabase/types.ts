@@ -873,6 +873,10 @@ export type Database = {
           issue_description: string
         }[]
       }
+      check_recursion_safety: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
       cleanup_expired_invitations: {
         Args: Record<PropertyKey, never>
         Returns: number
