@@ -25,13 +25,13 @@ export default function Dashboard() {
             <PriorityPaymentAlert />
             <OnboardingProgress profile={profile} isLoading={isLoading} />
             
-            <div className="grid gap-6 lg:grid-cols-2">
-              <div className="space-y-6">
+            <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-3">
+              <div className="lg:col-span-1 xl:col-span-1 space-y-6">
                 <QuickAccess permissions={permissions} />
                 <JobsOverview permissions={permissions} />
               </div>
               
-              <div className="space-y-6">
+              <div className="lg:col-span-1 xl:col-span-2 space-y-6">
                 <PaymentsTracker />
                 <RecentActivity />
               </div>
