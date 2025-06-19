@@ -4,6 +4,7 @@ import { useOrganizations } from '@/hooks/useOrganizations'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Building } from 'lucide-react'
 import { OrganizationForm } from './OrganizationForm'
+import { useAuth } from '@/contexts/AuthContext'
 
 interface OrganizationFormData {
   name: string
@@ -13,6 +14,7 @@ interface OrganizationFormData {
 
 export function OrganizationTab() {
   const { organizations, updateOrganization, isLoading, error } = useOrganizations()
+  const { userType } = useAuth()
   
   // Get the user's organization - workspace owners should have one
   const userOrganization = organizations?.[0]
@@ -88,7 +90,12 @@ export function OrganizationTab() {
             </div>
           ) : !userOrganization ? (
             <div className="text-center py-8">
-              <p className="text-muted-foreground">No organization data available</p>
+              <p className="text-muted-foreground">
+                {userType === 'workspace_owner' 
+                  ? 'No organization found. Please contact support if you believe this is an error.'
+                  : 'No organization data available'
+                }
+              </p>
             </div>
           ) : (
             <OrganizationForm

@@ -37,7 +37,7 @@ export function useOrganizations() {
   const [organizations, setOrganizations] = useState<Organization[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const { user } = useAuth()
+  const { user, userType } = useAuth()
 
   const getOrganizations = async () => {
     if (!user) return
@@ -46,10 +46,9 @@ export function useOrganizations() {
     setError(null)
 
     try {
-      console.log('Fetching organizations for user:', user.id)
+      console.log('Fetching organizations for user:', user.id, 'userType:', userType)
       
-      // Try the query with proper foreign key relationships
-      const { data: orgsData, error: fetchError } = await supabase
+      let query = supabase
         .from('organizations')
         .select(`
           *,
@@ -58,16 +57,40 @@ export function useOrganizations() {
         `)
         .order('created_at', { ascending: false })
 
+      // For workspace owners, only fetch their organization via member relationship
+      if (userType === 'workspace_owner') {
+        query = query.in('id', 
+          supabase
+            .from('members')
+            .select('organization_id')
+            .eq('user_id', user.id)
+        )
+      }
+
+      const { data: orgsData, error: fetchError } = await query
+
       if (fetchError) {
         console.error('Error fetching organizations with relationships:', fetchError)
         
         // Fallback to basic query without relationships
         console.log('Falling back to basic query without profile relationships')
         
-        const { data: basicOrgsData, error: basicFetchError } = await supabase
+        let basicQuery = supabase
           .from('organizations')
           .select('*')
           .order('created_at', { ascending: false })
+
+        // Apply same filtering for workspace owners
+        if (userType === 'workspace_owner') {
+          basicQuery = basicQuery.in('id', 
+            supabase
+              .from('members')
+              .select('organization_id')
+              .eq('user_id', user.id)
+          )
+        }
+
+        const { data: basicOrgsData, error: basicFetchError } = await basicQuery
 
         if (basicFetchError) {
           throw basicFetchError
@@ -85,8 +108,8 @@ export function useOrganizations() {
           updated_at: org.updated_at,
           created_by: org.created_by,
           owner_assigned_at: org.owner_assigned_at,
-          owner_email: null, // No profile data available
-          created_by_email: null // No profile data available
+          owner_email: null,
+          created_by_email: null
         }))
 
         setOrganizations(organizationsWithoutProfiles)
@@ -250,7 +273,7 @@ export function useOrganizations() {
     if (user) {
       getOrganizations()
     }
-  }, [user])
+  }, [user, userType])
 
   return {
     organizations,
