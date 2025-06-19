@@ -9,6 +9,45 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      activities: {
+        Row: {
+          activity_type: Database["public"]["Enums"]["activity_type"]
+          created_at: string
+          description: string | null
+          entity_id: string | null
+          entity_type: string | null
+          id: string
+          metadata: Json | null
+          organization_id: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          activity_type: Database["public"]["Enums"]["activity_type"]
+          created_at?: string
+          description?: string | null
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          metadata?: Json | null
+          organization_id?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          activity_type?: Database["public"]["Enums"]["activity_type"]
+          created_at?: string
+          description?: string | null
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          metadata?: Json | null
+          organization_id?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       candidate_comments: {
         Row: {
           author_email: string
@@ -915,6 +954,19 @@ export type Database = {
       }
     }
     Enums: {
+      activity_type:
+        | "job_created"
+        | "job_updated"
+        | "job_published"
+        | "job_archived"
+        | "member_invited"
+        | "member_joined"
+        | "job_request_created"
+        | "job_request_approved"
+        | "job_request_rejected"
+        | "candidate_added"
+        | "invoice_created"
+        | "invoice_paid"
       field_type:
         | "text"
         | "number"
@@ -1056,6 +1108,20 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      activity_type: [
+        "job_created",
+        "job_updated",
+        "job_published",
+        "job_archived",
+        "member_invited",
+        "member_joined",
+        "job_request_created",
+        "job_request_approved",
+        "job_request_rejected",
+        "candidate_added",
+        "invoice_created",
+        "invoice_paid",
+      ],
       field_type: [
         "text",
         "number",

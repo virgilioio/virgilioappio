@@ -13,10 +13,14 @@ import { InvoiceFilterProvider } from '@/utils/invoiceFilters'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { usePermissions } from '@/hooks/usePermissions'
 import { PermissionGate } from '@/components/auth/PermissionGate'
+import { useSampleActivities } from '@/hooks/useSampleActivities'
 
 export default function Dashboard() {
   const { profile, isLoading } = useUserProfile()
   const permissions = usePermissions()
+  
+  // Initialize sample activities for demonstration
+  useSampleActivities()
 
   return (
     <InvoiceFilterProvider>
