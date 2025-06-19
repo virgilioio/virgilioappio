@@ -136,32 +136,33 @@ export function RichTextEditor({
       </div>
 
       {/* Editor Content */}
-      <div
-        id="rich-text-content"
-        contentEditable
-        onInput={handleInput}
-        onFocus={handleFocus}
-        onBlur={handleBlur}
-        dangerouslySetInnerHTML={{ __html: value }}
-        className={cn(
-          "p-3 text-sm ring-offset-background placeholder:text-muted-foreground",
-          "focus-visible:outline-none",
-          "prose prose-sm max-w-none",
-          "[&_ul]:list-disc [&_ul]:pl-6",
-          "[&_ol]:list-decimal [&_ol]:pl-6",
-          "[&_p]:my-2 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0"
+      <div className="relative">
+        {!value && (
+          <div 
+            className="absolute top-3 left-3 text-muted-foreground text-sm pointer-events-none z-10"
+            style={{ minHeight }}
+          >
+            {placeholder}
+          </div>
         )}
-        style={{ minHeight }}
-        data-placeholder={placeholder}
-      />
-      
-      <style jsx>{`
-        [contenteditable]:empty:before {
-          content: attr(data-placeholder);
-          color: hsl(var(--muted-foreground));
-          pointer-events: none;
-        }
-      `}</style>
+        <div
+          id="rich-text-content"
+          contentEditable
+          onInput={handleInput}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
+          dangerouslySetInnerHTML={{ __html: value }}
+          className={cn(
+            "p-3 text-sm ring-offset-background relative z-20",
+            "focus-visible:outline-none",
+            "prose prose-sm max-w-none",
+            "[&_ul]:list-disc [&_ul]:pl-6",
+            "[&_ol]:list-decimal [&_ol]:pl-6",
+            "[&_p]:my-2 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0"
+          )}
+          style={{ minHeight }}
+        />
+      </div>
     </div>
   )
 }
