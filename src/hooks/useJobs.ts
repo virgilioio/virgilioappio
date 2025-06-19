@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
@@ -64,33 +63,42 @@ export function useJobs() {
     try {
       console.log('Fetching jobs for user:', user.id)
       
-      // With RLS enabled, the query will automatically filter by organization
-      const { data, error: fetchError } = await supabase
+      // Fetch jobs without join to avoid RLS conflicts
+      const { data: jobsData, error: fetchError } = await supabase
         .from('jobs')
-        .select(`
-          *,
-          organizations!inner(name)
-        `)
+        .select('*')
         .order('created_at', { ascending: false })
 
       if (fetchError) {
         console.error('Error fetching jobs:', fetchError)
-        // Handle RLS-related errors gracefully
-        if (fetchError.message.includes('row-level security')) {
-          console.warn('RLS policy blocked access - user may not have permission to view jobs')
-          setJobs([])
-          return
-        }
         throw fetchError
       }
 
-      console.log('Fetched jobs:', data)
-      
+      console.log('Fetched jobs data:', jobsData)
+
+      // Fetch organization names separately
+      const organizationIds = [...new Set(jobsData?.map(job => job.organization_id).filter(Boolean) || [])]
+      let organizationsMap: Record<string, string> = {}
+
+      if (organizationIds.length > 0) {
+        const { data: orgsData, error: orgsError } = await supabase
+          .from('organizations')
+          .select('id, name')
+          .in('id', organizationIds)
+
+        if (!orgsError && orgsData) {
+          organizationsMap = orgsData.reduce((acc, org) => {
+            acc[org.id] = org.name
+            return acc
+          }, {} as Record<string, string>)
+        }
+      }
+
       // Transform the data to match our Job interface
-      const transformedJobs = data?.map(job => ({
+      const transformedJobs = jobsData?.map(job => ({
         ...job,
         hiring_team: Array.isArray(job.hiring_team) ? job.hiring_team : [],
-        organization_name: job.organizations?.name || ''
+        organization_name: organizationsMap[job.organization_id] || 'Unknown Organization'
       })) || []
       
       setJobs(transformedJobs)
@@ -117,10 +125,7 @@ export function useJobs() {
       
       const { data, error: fetchError } = await supabase
         .from('jobs')
-        .select(`
-          *,
-          organizations!inner(name)
-        `)
+        .select('*')
         .eq('id', id)
         .single()
 
@@ -130,12 +135,26 @@ export function useJobs() {
       }
 
       console.log('Fetched job:', data)
+
+      // Fetch organization name separately
+      let organizationName = 'Unknown Organization'
+      if (data.organization_id) {
+        const { data: orgData } = await supabase
+          .from('organizations')
+          .select('name')
+          .eq('id', data.organization_id)
+          .single()
+        
+        if (orgData) {
+          organizationName = orgData.name
+        }
+      }
       
       // Transform the data to match our Job interface
       const transformedJob = {
         ...data,
         hiring_team: Array.isArray(data.hiring_team) ? data.hiring_team : [],
-        organization_name: data.organizations?.name || ''
+        organization_name: organizationName
       }
       
       return transformedJob

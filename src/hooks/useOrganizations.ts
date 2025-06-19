@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
@@ -60,6 +59,7 @@ export function useOrganizations() {
     try {
       console.log('Fetching organizations for user:', user.id, 'userType:', userType)
       
+      // Simple query without complex joins
       const { data: orgsData, error: fetchError } = await supabase
         .from('organizations')
         .select('*')
@@ -72,6 +72,7 @@ export function useOrganizations() {
 
       console.log('Successfully fetched organizations:', orgsData)
       
+      // Transform the data to match our Organization interface
       const organizationsWithDetails: Organization[] = (orgsData || []).map((org: any) => ({
         id: org.id,
         name: org.name,
