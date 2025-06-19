@@ -38,11 +38,11 @@ export default function Dashboard() {
                   <PaymentsTracker />
                   <PaymentHistory />
                 </PermissionGate>
-                <JobsOverview permissions={permissions} />
               </div>
               
               <div className="lg:col-span-1 xl:col-span-2 space-y-6">
                 <QuickAccess permissions={permissions} />
+                <JobsOverview permissions={permissions} />
                 <RecentActivity />
               </div>
             </div>
