@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import {
@@ -46,10 +47,11 @@ export function MemberForm({
   
   const { organizations } = useOrganizations()
   const permissions = usePermissions()
-  const { memberRole } = useAuth()
+  const { memberRole, userType: currentUserType } = useAuth()
   
-  // Check if current user is Customer Success
+  // Check if current user is Customer Success or Workspace Owner
   const isCustomerSuccess = memberRole === 'customer_success'
+  const isWorkspaceOwner = currentUserType === 'workspace_owner'
 
   useEffect(() => {
     if (member) {
@@ -79,7 +81,12 @@ export function MemberForm({
     } else if (userType === 'member' && !role) {
       setRole('client') // Default role for members
     }
-  }, [userType, role])
+    
+    // For Workspace Owners, always set role to "client" regardless of user type
+    if (isWorkspaceOwner && !member) {
+      setRole('client')
+    }
+  }, [userType, role, isWorkspaceOwner, member])
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
@@ -90,8 +97,8 @@ export function MemberForm({
       newErrors.email = "Please enter a valid email"
     }
 
-    // For Customer Success users, role is auto-assigned, so don't validate it
-    if (!isCustomerSuccess && !role) {
+    // For Customer Success users and Workspace Owners, role is auto-assigned, so don't validate it
+    if (!isCustomerSuccess && !isWorkspaceOwner && !role) {
       newErrors.role = "Role is required"
     }
 
@@ -123,7 +130,7 @@ export function MemberForm({
         // Creating new member (invitation)
         data.user_id = null
         data.email = email.trim() // Include email for invitation
-        if (permissions.isPlatformAdmin || isCustomerSuccess) {
+        if (permissions.isPlatformAdmin || isCustomerSuccess || isWorkspaceOwner) {
           data.organization_id = organizationId
         } else {
           // For workspace owners, use their organization
@@ -152,16 +159,21 @@ export function MemberForm({
     { value: 'client', label: 'Client' },
   ]
 
-  // For Customer Success users, limit user type options to workspace_owner and guest
-  const userTypeOptions = isCustomerSuccess ? [
-    { value: 'workspace_owner', label: 'Workspace Owner' },
-    { value: 'guest', label: 'Guest' },
-  ] : [
-    { value: 'guest', label: 'Guest' },
-    { value: 'member', label: 'Member' },
-    { value: 'workspace_owner', label: 'Workspace Owner' },
-    { value: 'platform_admin', label: 'Platform Admin' },
-  ]
+  // For Customer Success users and Workspace Owners, limit user type options
+  const getUserTypeOptions = () => {
+    if (isCustomerSuccess || isWorkspaceOwner) {
+      return [
+        { value: 'workspace_owner', label: 'Workspace Owner' },
+        { value: 'guest', label: 'Guest' },
+      ]
+    }
+    return [
+      { value: 'guest', label: 'Guest' },
+      { value: 'member', label: 'Member' },
+      { value: 'workspace_owner', label: 'Workspace Owner' },
+      { value: 'platform_admin', label: 'Platform Admin' },
+    ]
+  }
 
   const statusOptions = [
     { value: 'active', label: 'Active' },
@@ -181,7 +193,9 @@ export function MemberForm({
               ? 'Update member role, type and status.'
               : isCustomerSuccess 
                 ? 'Invite a new user to join an organization as either a Workspace Owner or Guest.'
-                : 'Send an invitation to join the organization.'}
+                : isWorkspaceOwner
+                  ? 'Invite a new user to your organization as either a Workspace Owner or Guest.'
+                  : 'Send an invitation to join the organization.'}
           </DialogDescription>
         </DialogHeader>
         
@@ -217,8 +231,8 @@ export function MemberForm({
               </div>
             )}
 
-            {/* User Type field - always show for platform admins and customer success */}
-            {(permissions.isPlatformAdmin || isCustomerSuccess) && (
+            {/* User Type field - always show for platform admins, customer success, and workspace owners */}
+            {(permissions.isPlatformAdmin || isCustomerSuccess || isWorkspaceOwner) && (
               <div className="grid gap-token-sm">
                 <Label htmlFor="userType">User Type</Label>
                 <Select value={userType} onValueChange={setUserType}>
@@ -226,7 +240,7 @@ export function MemberForm({
                     <SelectValue placeholder="Select user type" />
                   </SelectTrigger>
                   <SelectContent>
-                    {userTypeOptions.map((option) => (
+                    {getUserTypeOptions().map((option) => (
                       <SelectItem key={option.value} value={option.value}>
                         {option.label}
                       </SelectItem>
@@ -236,7 +250,7 @@ export function MemberForm({
                 {errors.userType && (
                   <p className="text-sm text-destructive">{errors.userType}</p>
                 )}
-                {isCustomerSuccess && (
+                {(isCustomerSuccess || isWorkspaceOwner) && (
                   <p className="text-xs text-muted-foreground">
                     {userType === 'workspace_owner' 
                       ? 'Workspace owners will have admin privileges in their organization'
@@ -246,8 +260,8 @@ export function MemberForm({
               </div>
             )}
 
-            {/* Role field - hidden for Customer Success users when creating new members */}
-            {!isCustomerSuccess && (
+            {/* Role field - hidden for Customer Success users and Workspace Owners when creating new members */}
+            {!isCustomerSuccess && !isWorkspaceOwner && (
               <div className="grid gap-token-sm">
                 <Label htmlFor="role">Role</Label>
                 <Select value={role} onValueChange={setRole}>
@@ -273,21 +287,23 @@ export function MemberForm({
               </div>
             )}
 
-            {/* Show auto-assigned role for Customer Success users */}
-            {isCustomerSuccess && !member && role && (
+            {/* Show auto-assigned role for Customer Success users and Workspace Owners */}
+            {(isCustomerSuccess || isWorkspaceOwner) && !member && role && (
               <div className="grid gap-token-sm">
                 <Label>Role (Auto-assigned)</Label>
                 <div className="px-3 py-2 bg-muted rounded-md text-sm">
                   {roleOptions.find(opt => opt.value === role)?.label}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Role is automatically assigned based on user type
+                  {isWorkspaceOwner 
+                    ? 'All invited users are automatically assigned the "Client" role'
+                    : 'Role is automatically assigned based on user type'}
                 </p>
               </div>
             )}
 
-            {/* Organization field - for platform admins and customer success */}
-            {(permissions.isPlatformAdmin || isCustomerSuccess) && (
+            {/* Organization field - for platform admins, customer success, and workspace owners */}
+            {(permissions.isPlatformAdmin || isCustomerSuccess || isWorkspaceOwner) && (
               <div className="grid gap-token-sm">
                 <Label htmlFor="organization">Organization</Label>
                 <Select value={organizationId} onValueChange={setOrganizationId}>
