@@ -51,7 +51,7 @@ export function QuickAccess({ permissions }: QuickAccessProps) {
           Quick Access
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent className="space-y-4">
         {quickActions.map((action) => {
           const Icon = action.icon
           return (
