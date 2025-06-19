@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react'
 import { useOrganizations } from '@/hooks/useOrganizations'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -144,6 +143,13 @@ export function OrganizationTab() {
   const handleSaveSuccess = () => {
     setIsEditMode(false)
     setHasUnsavedChanges(false)
+  }
+
+  // Create a wrapper function that matches the expected signature
+  const handleUpdateOrganization = async (id: string, data: OrganizationFormData): Promise<void> => {
+    await updateOrganization(id, data)
+    // The updateOrganization function returns data, but we don't need to return it
+    // This wrapper ensures the return type is Promise<void>
   }
 
   if (error) {
@@ -312,7 +318,7 @@ export function OrganizationTab() {
               organization={userOrganization}
               formData={orgFormData}
               onFormDataChange={handleFormDataChange}
-              updateOrganization={updateOrganization}
+              updateOrganization={handleUpdateOrganization}
               onSaveSuccess={handleSaveSuccess}
               isLoading={isLoading}
             />

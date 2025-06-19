@@ -17,13 +17,15 @@ interface BillingPOCSectionProps {
   data: BillingPOCData
   onChange: (data: Partial<BillingPOCData>) => void
   isReadOnly?: boolean
+  errors?: Record<string, string>
 }
 
 export function BillingPOCSection({ 
   organizationId, 
   data, 
   onChange, 
-  isReadOnly = false 
+  isReadOnly = false,
+  errors = {}
 }: BillingPOCSectionProps) {
   const { members, isLoading: membersLoading } = useBillingPOCMembers(organizationId)
 
@@ -59,13 +61,14 @@ export function BillingPOCSection({
           required 
           htmlFor="billing-poc-user"
           helpText="Select a workspace owner who will be the primary contact for billing matters"
+          error={errors.billing_poc_user_id}
         >
           <Select
             value={data.billing_poc_user_id || 'none'}
             onValueChange={handlePOCUserChange}
             disabled={isReadOnly || membersLoading}
           >
-            <SelectTrigger>
+            <SelectTrigger className={errors.billing_poc_user_id ? 'border-destructive' : ''}>
               <SelectValue placeholder={membersLoading ? "Loading users..." : "Select a user"} />
             </SelectTrigger>
             <SelectContent>
@@ -109,6 +112,7 @@ export function BillingPOCSection({
           label="Additional Email (Optional)" 
           htmlFor="billing-poc-additional-email"
           helpText="Optional secondary email for billing communications"
+          error={errors.billing_poc_additional_email}
         >
           <Input
             id="billing-poc-additional-email"
@@ -117,6 +121,7 @@ export function BillingPOCSection({
             onChange={(e) => handleAdditionalEmailChange(e.target.value)}
             placeholder="additional@company.com"
             disabled={isReadOnly}
+            className={errors.billing_poc_additional_email ? 'border-destructive' : ''}
           />
         </FormField>
 
@@ -125,6 +130,7 @@ export function BillingPOCSection({
           required 
           htmlFor="billing-poc-phone"
           helpText="Primary phone number for billing-related contact"
+          error={errors.billing_poc_phone}
         >
           <div className="relative">
             <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -134,7 +140,7 @@ export function BillingPOCSection({
               value={data.billing_poc_phone || ''}
               onChange={(e) => handlePhoneChange(e.target.value)}
               placeholder="+1 (555) 123-4567"
-              className="pl-10"
+              className={`pl-10 ${errors.billing_poc_phone ? 'border-destructive' : ''}`}
               disabled={isReadOnly}
             />
           </div>
