@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Search, Edit, UserMinus, Mail } from 'lucide-react'
 import { Member } from '@/hooks/useMembers'
 import { usePermissions } from '@/hooks/usePermissions'
+import { MemberOrgIndicator } from './MemberOrgIndicator'
 
 interface MembersTableProps {
   members: Member[]
@@ -114,6 +115,7 @@ export function MembersTable({
             <TableHeader>
               <TableRow>
                 <TableHead>Member</TableHead>
+                <TableHead>Organization</TableHead>
                 <TableHead>Role</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Joined</TableHead>
@@ -136,6 +138,14 @@ export function MembersTable({
                           <div className="text-sm text-muted-foreground">{member.invited_email}</div>
                         )}
                       </div>
+                    </TableCell>
+                    <TableCell>
+                      {member.organization_name && (
+                        <MemberOrgIndicator 
+                          organizationName={member.organization_name}
+                          currentUserOrgId={member.organization_id}
+                        />
+                      )}
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline">{member.member_role}</Badge>
