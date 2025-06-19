@@ -1,4 +1,5 @@
 
+
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -123,19 +124,23 @@ export function PaymentsTracker() {
           </div>
         )}
 
-        {/* Regular Metrics */}
+        {/* Enhanced Metrics with Rounded Boxes */}
         <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-1">
-            <p className="text-sm text-text-secondary">{totalDueLabel}</p>
-            <p className="text-2xl font-semibold text-text-primary">
-              {formatCurrency(totalReceivable)}
-            </p>
+          <div className="flex flex-col items-center space-y-2">
+            <p className="text-sm text-text-secondary text-center">{totalDueLabel}</p>
+            <div className="bg-surface-secondary rounded-xl p-4 w-full flex items-center justify-center min-h-[80px]">
+              <p className="text-3xl font-bold text-text-primary text-center">
+                {formatCurrency(totalReceivable)}
+              </p>
+            </div>
           </div>
-          <div className="space-y-1">
-            <p className="text-sm text-text-secondary">{incomingLabel}</p>
-            <p className="text-2xl font-semibold text-success">
-              {formatCurrency(totalReceivable)}
-            </p>
+          <div className="flex flex-col items-center space-y-2">
+            <p className="text-sm text-text-secondary text-center">{incomingLabel}</p>
+            <div className="bg-success/10 rounded-xl p-4 w-full flex items-center justify-center min-h-[80px]">
+              <p className="text-3xl font-bold text-success text-center">
+                {formatCurrency(totalReceivable)}
+              </p>
+            </div>
           </div>
         </div>
         
@@ -157,3 +162,4 @@ export function PaymentsTracker() {
     </Card>
   )
 }
+
