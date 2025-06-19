@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react'
 import { useOrganizations } from '@/hooks/useOrganizations'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Building, Edit, Lock, AlertTriangle } from 'lucide-react'
+import { Building, Edit, Lock, AlertTriangle, Save, Loader2 } from 'lucide-react'
 import { OrganizationForm } from './OrganizationForm'
 import { OrganizationDisplay } from './OrganizationDisplay'
 import { useAuth } from '@/contexts/AuthContext'
+import { useToast } from '@/hooks/use-toast'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,9 +30,11 @@ interface OrganizationFormData {
 export function OrganizationTab() {
   const { organizations, updateOrganization, isLoading, error } = useOrganizations()
   const { userType, user } = useAuth()
+  const { toast } = useToast()
   const [isEditMode, setIsEditMode] = useState(false)
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
   
   console.log('OrganizationTab render - organizations:', organizations, 'isLoading:', isLoading, 'error:', error, 'userType:', userType)
   
@@ -127,6 +130,7 @@ export function OrganizationTab() {
   const handleCancelEdit = () => {
     setIsEditMode(false)
     setHasUnsavedChanges(false)
+    setIsSaving(false)
     // Reset form data
     if (userOrganization) {
       setOrgFormData({
@@ -140,16 +144,43 @@ export function OrganizationTab() {
     }
   }
 
-  const handleSaveSuccess = () => {
-    setIsEditMode(false)
-    setHasUnsavedChanges(false)
+  const handleSave = async () => {
+    if (!userOrganization?.id) {
+      toast({
+        title: "Error",
+        description: "Cannot save: organization not found",
+        variant: "destructive"
+      })
+      return
+    }
+
+    setIsSaving(true)
+
+    try {
+      await updateOrganization(userOrganization.id, orgFormData)
+      
+      toast({
+        title: "Success",
+        description: "Organization settings saved successfully",
+      })
+
+      setIsEditMode(false)
+      setHasUnsavedChanges(false)
+    } catch (error) {
+      console.error('Error saving organization data:', error)
+      toast({
+        title: "Save Failed", 
+        description: "There was an error saving your changes. Please try again.",
+        variant: "destructive"
+      })
+    } finally {
+      setIsSaving(false)
+    }
   }
 
-  // Create a wrapper function that matches the expected signature
+  // Create a wrapper function that matches the expected signature for OrganizationForm
   const handleUpdateOrganization = async (id: string, data: OrganizationFormData): Promise<void> => {
     await updateOrganization(id, data)
-    // The updateOrganization function returns data, but we don't need to return it
-    // This wrapper ensures the return type is Promise<void>
   }
 
   if (error) {
@@ -300,13 +331,29 @@ export function OrganizationTab() {
                   Edit Organization
                 </Button>
               ) : (
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={handleCancelEdit}
-                >
-                  Cancel
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={handleCancelEdit}
+                    disabled={isSaving}
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    size="sm"
+                    onClick={handleSave}
+                    disabled={isLoading || isSaving}
+                    className="flex items-center gap-1"
+                  >
+                    {isSaving ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Save className="h-3 w-3" />
+                    )}
+                    {isSaving ? 'Saving...' : 'Save Changes'}
+                  </Button>
+                </div>
               )}
             </div>
           </div>
@@ -319,8 +366,9 @@ export function OrganizationTab() {
               formData={orgFormData}
               onFormDataChange={handleFormDataChange}
               updateOrganization={handleUpdateOrganization}
-              onSaveSuccess={handleSaveSuccess}
+              onSaveSuccess={() => {}} // No longer needed since save is handled here
               isLoading={isLoading}
+              hideActionButtons={true} // New prop to hide the save button in form
             />
           ) : (
             <OrganizationDisplay organization={userOrganization} />

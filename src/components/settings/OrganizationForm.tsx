@@ -1,11 +1,9 @@
-
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { FormField } from '@/components/ui/form-field'
 import { Card, CardContent } from '@/components/ui/card'
-import { Save, Loader2 } from 'lucide-react'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useCountries } from '@/hooks/useCountries'
 import { useCountryFields } from '@/hooks/useCountryFields'
@@ -43,6 +41,7 @@ interface OrganizationFormProps {
   updateOrganization: (id: string, data: OrganizationFormData) => Promise<void>
   onSaveSuccess: () => void
   isLoading: boolean
+  hideActionButtons?: boolean // New prop to hide save/cancel buttons
 }
 
 export function OrganizationForm({ 
@@ -51,7 +50,8 @@ export function OrganizationForm({
   onFormDataChange,
   updateOrganization,
   onSaveSuccess,
-  isLoading 
+  isLoading,
+  hideActionButtons = false
 }: OrganizationFormProps) {
   const permissions = usePermissions()
   const { countries } = useCountries()
@@ -67,12 +67,10 @@ export function OrganizationForm({
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, string>>({})
   const [customFieldFiles, setCustomFieldFiles] = useState<Record<string, File>>({})
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
-  const [isSaving, setIsSaving] = useState(false)
   const [billingPOCErrors, setBillingPOCErrors] = useState<Record<string, string>>({})
 
   console.log('OrganizationForm render - organization:', organization, 'formData:', formData)
 
-  // Load existing custom data when component mounts or data changes
   useEffect(() => {
     if (customData.length > 0) {
       const values: Record<string, string> = {}
@@ -247,77 +245,6 @@ export function OrganizationForm({
     }
   }
 
-  const handleSave = async () => {
-    if (!organization?.id) {
-      toast({
-        title: "Error",
-        description: "Cannot save: organization not found",
-        variant: "destructive"
-      })
-      return
-    }
-
-    // Show immediate feedback that save was triggered
-    setIsSaving(true)
-
-    try {
-      // Validate billing POC and custom fields
-      const isBillingPOCValid = validateBillingPOC()
-      const areCustomFieldsValid = validateAllCustomFields()
-      
-      if (!isBillingPOCValid || !areCustomFieldsValid) {
-        toast({
-          title: "Validation Error",
-          description: "Please fix the validation errors before saving",
-          variant: "destructive"
-        })
-        setIsSaving(false)
-        return
-      }
-
-      // Save basic organization data first
-      console.log('OrganizationForm handleSave - saving organization:', organization.id, 'data:', formData)
-      await updateOrganization(organization.id, formData)
-
-      // Save custom field data
-      for (const field of fields) {
-        const value = customFieldValues[field.id]
-        const file = customFieldFiles[field.id]
-
-        if (field.field_type === 'file' && file) {
-          // Upload file and save data
-          const fileData = await uploadFile(file, organization.id, field.field_name)
-          await saveCustomData(organization.id, field.id, undefined, fileData)
-        } else if (field.field_type !== 'file' && value !== undefined) {
-          // Save text/other field data
-          await saveCustomData(organization.id, field.id, value)
-        }
-      }
-
-      // Clear file uploads after successful save
-      setCustomFieldFiles({})
-
-      // Show success message
-      toast({
-        title: "Success",
-        description: "Organization settings saved successfully",
-      })
-
-      // Notify parent of successful save
-      onSaveSuccess()
-
-    } catch (error) {
-      console.error('Error saving organization data:', error)
-      toast({
-        title: "Save Failed",
-        description: "There was an error saving your changes. Please try again.",
-        variant: "destructive"
-      })
-    } finally {
-      setIsSaving(false)
-    }
-  }
-
   const getCustomFieldValue = (fieldId: string) => {
     return customFieldValues[fieldId] || ''
   }
@@ -475,21 +402,6 @@ export function OrganizationForm({
           </div>
         </CardContent>
       </Card>
-
-      <div className="flex justify-end">
-        <Button 
-          onClick={handleSave} 
-          disabled={isLoading || isSaving}
-          className="flex items-center gap-2"
-        >
-          {isSaving ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Save className="h-4 w-4" />
-          )}
-          {isSaving ? 'Saving...' : 'Save Changes'}
-        </Button>
-      </div>
     </div>
   )
 }
