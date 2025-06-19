@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
@@ -58,10 +57,14 @@ export function useOrganizations() {
         console.log('User permissions debug:', debugData?.[0])
       }
       
-      // Fetch organizations without the problematic foreign key joins
+      // Use a single optimized query with explicit JOINs to get all data at once
       const { data: orgsData, error: fetchError } = await supabase
         .from('organizations')
-        .select('*')
+        .select(`
+          *,
+          owner_profile:profiles!left(email),
+          creator_profile:profiles!left(email)
+        `)
         .order('created_at', { ascending: false })
 
       if (fetchError) {
@@ -69,47 +72,27 @@ export function useOrganizations() {
         throw fetchError
       }
 
-      console.log('Fetched organizations:', orgsData)
+      console.log('Fetched organizations with profiles:', orgsData)
       
-      // Now fetch profile information separately to avoid foreign key issues
-      const organizationsWithDetails: Organization[] = []
-      
-      for (const org of orgsData || []) {
-        let ownerEmail = null
-        let createdByEmail = null
-        
-        // Get owner email if owner_id exists
-        if (org.owner_id) {
-          const { data: ownerProfile } = await supabase
-            .from('profiles')
-            .select('email')
-            .eq('user_id', org.owner_id)
-            .single()
-          
-          ownerEmail = ownerProfile?.email
-        }
-        
-        // Get creator email if created_by exists
-        if (org.created_by) {
-          const { data: creatorProfile } = await supabase
-            .from('profiles')
-            .select('email')
-            .eq('user_id', org.created_by)
-            .single()
-          
-          createdByEmail = creatorProfile?.email
-        }
-        
+      // Transform the data to include email information efficiently
+      const organizationsWithDetails: Organization[] = (orgsData || []).map((org: any) => {
         const typedOrg: Organization = {
-          ...org,
+          id: org.id,
+          name: org.name,
+          country: org.country,
           status: org.status as 'active' | 'inactive',
           organization_type: org.organization_type as 'platform' | 'client',
-          owner_email: ownerEmail,
-          created_by_email: createdByEmail
+          owner_id: org.owner_id,
+          created_at: org.created_at,
+          updated_at: org.updated_at,
+          created_by: org.created_by,
+          owner_assigned_at: org.owner_assigned_at,
+          owner_email: org.owner_profile?.email || null,
+          created_by_email: org.creator_profile?.email || null
         }
         
-        organizationsWithDetails.push(typedOrg)
-      }
+        return typedOrg
+      })
 
       setOrganizations(organizationsWithDetails)
     } catch (err) {
