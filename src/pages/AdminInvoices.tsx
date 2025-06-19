@@ -11,6 +11,7 @@ import { CreateInvoiceModal } from '@/components/invoices/CreateInvoiceModal'
 import { BillingMetricsDashboard } from '@/components/invoices/BillingMetricsDashboard'
 import { MonthPicker } from '@/components/ui/month-picker'
 import { useInvoices } from '@/hooks/useInvoices'
+import { useOrganizations } from '@/hooks/useOrganizations'
 import { usePermissions } from '@/hooks/usePermissions'
 import { AppContainer } from '@/components/layout/AppContainer'
 import { Section } from '@/components/layout/Section'
@@ -18,11 +19,13 @@ import { filterInvoices, getInvoiceStats, InvoiceFilterProvider, useInvoiceFilte
 
 function AdminInvoicesContent() {
   const { invoices, isLoading } = useInvoices()
+  const { organizations } = useOrganizations()
   const { canManageInvoices } = usePermissions()
   const { filters, setFilters, setFilteredInvoices } = useInvoiceFilter()
   const [createModalOpen, setCreateModalOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [organizationFilter, setOrganizationFilter] = useState<string>('all')
   const [selectedMonth, setSelectedMonth] = useState<Date | undefined>()
 
   // Update filter context when local filters change
@@ -30,15 +33,17 @@ function AdminInvoicesContent() {
     const newFilters = {
       searchTerm,
       status: statusFilter,
+      organizationId: organizationFilter,
       selectedMonth
     }
     setFilters(newFilters)
-  }, [searchTerm, statusFilter, selectedMonth, setFilters])
+  }, [searchTerm, statusFilter, organizationFilter, selectedMonth, setFilters])
 
   // Filter invoices based on all filters
   const filteredInvoices = filterInvoices(invoices, {
     searchTerm,
     status: statusFilter,
+    organizationId: organizationFilter,
     selectedMonth
   })
 
@@ -52,10 +57,17 @@ function AdminInvoicesContent() {
   const clearFilters = () => {
     setSearchTerm('')
     setStatusFilter('all')
+    setOrganizationFilter('all')
     setSelectedMonth(undefined)
   }
 
-  const hasActiveFilters = searchTerm || statusFilter !== 'all' || selectedMonth
+  const hasActiveFilters = searchTerm || statusFilter !== 'all' || organizationFilter !== 'all' || selectedMonth
+
+  // Get organization name for display
+  const getOrganizationName = (orgId: string) => {
+    const org = organizations.find(o => o.id === orgId)
+    return org ? `${org.name} (${org.country})` : orgId
+  }
 
   if (!canManageInvoices) {
     return (
@@ -110,8 +122,9 @@ function AdminInvoicesContent() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-col gap-4 sm:flex-row">
-                <div className="relative flex-1">
+              <div className="flex flex-col gap-4">
+                {/* Search */}
+                <div className="relative">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
                     placeholder="Search invoices..."
@@ -120,23 +133,46 @@ function AdminInvoicesContent() {
                     className="pl-10"
                   />
                 </div>
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-full sm:w-[180px]">
-                    <SelectValue placeholder="Filter by status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="paid">Paid</SelectItem>
-                    <SelectItem value="overdue">Overdue</SelectItem>
-                  </SelectContent>
-                </Select>
-                <MonthPicker
-                  selected={selectedMonth}
-                  onSelect={setSelectedMonth}
-                  placeholder="Filter by month"
-                  className="w-full sm:w-[180px]"
-                />
+                
+                {/* Filter row */}
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Filter by status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Status</SelectItem>
+                      <SelectItem value="pending">Pending</SelectItem>
+                      <SelectItem value="paid">Paid</SelectItem>
+                      <SelectItem value="overdue">Overdue</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  <Select value={organizationFilter} onValueChange={setOrganizationFilter}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Filter by organization" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Organizations</SelectItem>
+                      {organizations.map(org => (
+                        <SelectItem key={org.id} value={org.id}>
+                          {org.name} ({org.country})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  <MonthPicker
+                    selected={selectedMonth}
+                    onSelect={setSelectedMonth}
+                    placeholder="Filter by month"
+                    className="w-full"
+                  />
+
+                  <Button variant="outline" onClick={clearFilters}>
+                    Clear All
+                  </Button>
+                </div>
               </div>
               
               {/* Filter summary */}
@@ -153,6 +189,11 @@ function AdminInvoicesContent() {
                     {statusFilter !== 'all' && (
                       <Badge variant="secondary">
                         Status: {statusFilter}
+                      </Badge>
+                    )}
+                    {organizationFilter !== 'all' && (
+                      <Badge variant="secondary">
+                        Org: {getOrganizationName(organizationFilter)}
                       </Badge>
                     )}
                     {searchTerm && (

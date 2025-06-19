@@ -1,4 +1,3 @@
-
 import { startOfMonth, endOfMonth, isWithinInterval } from 'date-fns'
 import { Invoice } from '@/hooks/useInvoices'
 import React, { createContext, useContext, useState, ReactNode } from 'react'
@@ -7,6 +6,7 @@ export interface InvoiceFilters {
   searchTerm?: string
   status?: string
   selectedMonth?: Date
+  organizationId?: string
 }
 
 export function filterInvoices(invoices: Invoice[], filters: InvoiceFilters): Invoice[] {
@@ -25,6 +25,11 @@ export function filterInvoices(invoices: Invoice[], filters: InvoiceFilters): In
     // Status filter
     if (filters.status && filters.status !== 'all') {
       if (invoice.status !== filters.status) return false
+    }
+
+    // Organization filter
+    if (filters.organizationId && filters.organizationId !== 'all') {
+      if (invoice.organization_id !== filters.organizationId) return false
     }
 
     // Month filter
