@@ -20,6 +20,14 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           error && "border-destructive ring-destructive focus-visible:ring-destructive",
           success && "border-success ring-success focus-visible:ring-success",
           !error && !success && "border-input hover:border-accent/50",
+          // Hide number input spinner arrows
+          type === "number" && [
+            "[appearance:textfield]", // Firefox
+            "[&::-webkit-outer-spin-button]:appearance-none", // Webkit browsers
+            "[&::-webkit-inner-spin-button]:appearance-none", // Webkit browsers
+            "[&::-webkit-outer-spin-button]:m-0", // Remove margin
+            "[&::-webkit-inner-spin-button]:m-0" // Remove margin
+          ],
           className
         )}
         ref={ref}

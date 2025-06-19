@@ -186,9 +186,16 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
                         type="number"
                         step="0.01"
                         min="0"
-                        placeholder="0.00"
+                        placeholder="1234.56"
+                        pattern="[0-9]+(\.[0-9]{1,2})?"
                         {...field}
-                        onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                        onChange={(e) => {
+                          const value = e.target.value
+                          // Only allow numbers and decimals, no commas
+                          if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                            field.onChange(parseFloat(value) || 0)
+                          }
+                        }}
                       />
                     </FormControl>
                     <FormMessage />
