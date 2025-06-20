@@ -1,5 +1,5 @@
 
-import React, { useState, useRef } from 'react'
+import React, { useState, useRef, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -177,22 +177,28 @@ function BrowserTitleEditor() {
   const { settings, isLoading, isUpdating, updateSetting, getSetting } = usePlatformSettings()
   const [browserTitle, setBrowserTitle] = useState('')
   const [hasChanges, setHasChanges] = useState(false)
+  const [isInitialized, setIsInitialized] = useState(false)
 
-  // Initialize browser title when settings load
-  React.useEffect(() => {
-    const titleSetting = getSetting('browser_title')
-    if (titleSetting && titleSetting.setting_value) {
-      setBrowserTitle(titleSetting.setting_value)
+  // Initialize browser title when settings load - only once
+  useEffect(() => {
+    if (!isInitialized && !isLoading && settings.length > 0) {
+      const titleSetting = getSetting('browser_title')
+      const initialValue = titleSetting?.setting_value || ''
+      console.log('Initializing browser title with:', initialValue)
+      setBrowserTitle(initialValue)
+      setIsInitialized(true)
     }
-  }, [settings, getSetting])
+  }, [settings, isLoading, getSetting, isInitialized])
 
   const handleTitleChange = (value: string) => {
+    console.log('Browser title changed to:', value)
     setBrowserTitle(value)
     const currentTitle = getSetting('browser_title')?.setting_value || ''
     setHasChanges(value !== currentTitle)
   }
 
   const handleSave = async () => {
+    console.log('Saving browser title:', browserTitle)
     const success = await updateSetting('browser_title', browserTitle)
     if (success) {
       setHasChanges(false)
@@ -235,10 +241,11 @@ function BrowserTitleEditor() {
               onChange={(e) => handleTitleChange(e.target.value)}
               placeholder="Enter the title that appears in browser tabs"
               className="flex-1"
+              disabled={!isInitialized}
             />
             <Button 
               onClick={handleSave}
-              disabled={!hasChanges || isUpdating}
+              disabled={!hasChanges || isUpdating || !isInitialized}
               size="sm"
             >
               {isUpdating ? (

@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 import { useToast } from '@/hooks/use-toast'
 
@@ -85,9 +85,9 @@ export function usePlatformSettings() {
     }
   }
 
-  const getSetting = (key: string) => {
+  const getSetting = useCallback((key: string) => {
     return settings.find(setting => setting.setting_key === key)
-  }
+  }, [settings])
 
   useEffect(() => {
     fetchSettings()
