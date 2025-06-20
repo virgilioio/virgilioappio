@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
@@ -157,6 +158,39 @@ export function useInvoices() {
     }
   }
 
+  // Set up real-time subscription
+  useEffect(() => {
+    if (!user) return
+
+    console.log('Setting up real-time subscription for invoices')
+    
+    // Subscribe to real-time changes on the invoices table
+    const channel = supabase
+      .channel('invoices-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
+          schema: 'public',
+          table: 'invoices'
+        },
+        (payload) => {
+          console.log('Real-time invoice change detected:', payload)
+          
+          // Refresh invoices data when any change occurs
+          // This ensures all components stay in sync
+          getInvoices()
+        }
+      )
+      .subscribe()
+
+    // Cleanup subscription on unmount
+    return () => {
+      console.log('Cleaning up invoices real-time subscription')
+      supabase.removeChannel(channel)
+    }
+  }, [user, organizationId, userType])
+
   const createInvoice = async (data: CreateInvoiceData): Promise<Invoice> => {
     if (!user) throw new Error('User not authenticated')
 
@@ -181,7 +215,7 @@ export function useInvoices() {
       }
 
       console.log('Created invoice:', invoice)
-      await getInvoices() // Refresh the list
+      // Real-time subscription will automatically refresh the list
       
       toast({
         title: 'Success',
@@ -224,7 +258,7 @@ export function useInvoices() {
       }
 
       console.log('Updated invoice:', invoice)
-      await getInvoices() // Refresh the list
+      // Real-time subscription will automatically refresh the list
       
       toast({
         title: 'Success',
@@ -292,7 +326,7 @@ export function useInvoices() {
         .from('invoices')
         .getPublicUrl(filePath)
 
-      await getInvoices() // Refresh the list
+      // Real-time subscription will automatically refresh the list
       
       toast({
         title: 'Success',
@@ -334,7 +368,7 @@ export function useInvoices() {
         throw error
       }
 
-      await getInvoices() // Refresh the list
+      // Real-time subscription will automatically refresh the list
       
       toast({
         title: 'Success',
@@ -380,7 +414,7 @@ export function useInvoices() {
         throw error
       }
 
-      await getInvoices() // Refresh the list
+      // Real-time subscription will automatically refresh the list
       
       toast({
         title: 'Success',
@@ -413,7 +447,7 @@ export function useInvoices() {
         throw error
       }
 
-      await getInvoices() // Refresh the list
+      // Real-time subscription will automatically refresh the list
       
       toast({
         title: 'Success',
