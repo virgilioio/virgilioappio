@@ -1,41 +1,88 @@
 
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AuthProvider } from "@/contexts/AuthContext";
-import { InvoiceProvider } from "@/contexts/InvoiceContext";
-import Dashboard from "@/pages/Dashboard";
-import Organizations from "@/pages/Organizations";
-import Settings from "@/pages/Settings";
-import Login from "@/pages/Login";
-import NotFound from "@/pages/NotFound";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from 'react-router-dom'
+import { AuthProvider } from './contexts/AuthContext'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { Layout } from './components/layout/Layout'
+import Dashboard from './pages/Dashboard'
+import Jobs from './pages/Jobs'
+import JobDetail from './pages/JobDetail'
+import Members from './pages/Members'
+import Organizations from './pages/Organizations'
+import JobRequests from './pages/JobRequests'
+import Settings from './pages/Settings'
+import Login from './pages/Login'
+import AcceptInvite from './pages/AcceptInvite'
+import VerifyEmail from './pages/VerifyEmail'
+import { useAuth } from './contexts/AuthContext'
+import NotFound from './pages/NotFound'
+import AdminInvoices from './pages/AdminInvoices'
+import CandidateProfile from '@/pages/CandidateProfile'
+import { useFavicon } from './hooks/useFavicon'
+import { useBrowserTitle } from './hooks/useBrowserTitle'
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient()
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <InvoiceProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
+function App() {
+  // Initialize favicon and browser title loading
+  useFavicon()
+  useBrowserTitle()
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <Router>
+          <div className="min-h-screen bg-background text-foreground">
             <Routes>
-              <Route path="/login" element={<Login />} />
-              
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/organizations" element={<Organizations />} />
-              <Route path="/settings" element={<Settings />} />
-              
-              <Route path="*" element={<NotFound />} />
+              <Route path="/auth" element={<Login />} />
+              <Route path="/accept-invite/:token" element={<AcceptInvite />} />
+              <Route path="/verify-email" element={<VerifyEmail />} />
+              <Route
+                path="/*"
+                element={
+                  <RequireAuth>
+                    <Layout />
+                  </RequireAuth>
+                }
+              >
+                <Route index element={<Dashboard />} />
+                <Route path="dashboard" element={<Dashboard />} />
+                <Route path="jobs" element={<Jobs />} />
+                <Route path="jobs/:id" element={<JobDetail />} />
+                <Route path="jobs/:jobId/candidates/:candidateId" element={<CandidateProfile />} />
+                <Route path="members" element={<Members />} />
+                <Route path="organizations" element={<Organizations />} />
+                <Route path="job-requests" element={<JobRequests />} />
+                <Route path="billing" element={<Settings />} />
+                <Route path="invoices" element={<AdminInvoices />} />
+                <Route path="settings" element={<Settings />} />
+                <Route path="*" element={<NotFound />} />
+              </Route>
             </Routes>
-          </BrowserRouter>
-        </TooltipProvider>
-      </InvoiceProvider>
-    </AuthProvider>
-  </QueryClientProvider>
-);
+          </div>
+        </Router>
+      </AuthProvider>
+    </QueryClientProvider>
+  )
+}
 
-export default App;
+function RequireAuth({ children }: { children: JSX.Element }) {
+  const { isAuthenticated, isLoading } = useAuth()
+
+  if (isLoading) {
+    return <div>Loading...</div> // Show a loading indicator while checking authentication
+  }
+
+  if (!isAuthenticated) {
+    // Redirect to the auth page if not authenticated
+    return <Navigate to="/auth" replace />
+  }
+
+  return children
+}
+
+export default App
