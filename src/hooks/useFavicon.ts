@@ -13,26 +13,35 @@ export function useFavicon() {
           .eq('is_active', true)
           .single()
 
-        if (data && !error) {
-          // Update the favicon link in the document head
-          let link = document.querySelector("link[rel*='icon']") as HTMLLinkElement
+        if (data && !error && data.file_url) {
+          // Validate URL before setting it
+          const isValidUrl = data.file_url.startsWith('http') || data.file_url.startsWith('/') || data.file_url.startsWith('data:')
           
-          if (!link) {
-            link = document.createElement('link')
-            link.rel = 'icon'
-            document.head.appendChild(link)
-          }
-          
-          link.href = data.file_url
-          
-          // Also update any shortcut icon links
-          const shortcutLink = document.querySelector("link[rel='shortcut icon']") as HTMLLinkElement
-          if (shortcutLink) {
-            shortcutLink.href = data.file_url
+          if (isValidUrl) {
+            // Update the favicon link in the document head
+            let link = document.querySelector("link[rel*='icon']") as HTMLLinkElement
+            
+            if (!link) {
+              link = document.createElement('link')
+              link.rel = 'icon'
+              document.head.appendChild(link)
+            }
+            
+            link.href = data.file_url
+            
+            // Also update any shortcut icon links
+            const shortcutLink = document.querySelector("link[rel='shortcut icon']") as HTMLLinkElement
+            if (shortcutLink) {
+              shortcutLink.href = data.file_url
+            }
+
+            console.log('Favicon updated to:', data.file_url)
+          } else {
+            console.warn('Invalid favicon URL:', data.file_url)
           }
         }
       } catch (error) {
-        console.log('Using default favicon - no custom favicon found')
+        console.log('Using default favicon - no custom favicon found:', error)
       }
     }
 

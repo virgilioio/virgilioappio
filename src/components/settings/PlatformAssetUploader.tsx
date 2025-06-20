@@ -88,7 +88,18 @@ function AssetUploader({ assetType, title, description, acceptedTypes, maxSize, 
                 <img src={currentAsset} alt="Current logo" className="h-8 w-auto" />
               ) : (
                 <div className="flex items-center gap-2">
-                  <Globe className="h-5 w-5" />
+                  <img 
+                    src={currentAsset} 
+                    alt="Current favicon" 
+                    className="h-4 w-4" 
+                    onError={(e) => {
+                      // Fallback to icon if image fails to load
+                      const target = e.target as HTMLImageElement
+                      target.style.display = 'none'
+                      target.nextElementSibling?.classList.remove('hidden')
+                    }}
+                  />
+                  <Globe className="h-4 w-4 hidden" />
                   <span className="text-sm text-muted-foreground">Active favicon</span>
                 </div>
               )}
@@ -173,8 +184,8 @@ export function PlatformAssetUploader() {
     )
   }
 
-  const logoAsset = assets.find(asset => asset.asset_type === 'logo')
-  const faviconAsset = assets.find(asset => asset.asset_type === 'favicon')
+  const logoAsset = assets.find(asset => asset.asset_type === 'logo' && asset.is_active)
+  const faviconAsset = assets.find(asset => asset.asset_type === 'favicon' && asset.is_active)
 
   return (
     <div className="space-y-6">
@@ -182,7 +193,7 @@ export function PlatformAssetUploader() {
         assetType="logo"
         title="Platform Logo"
         description="Upload the main platform logo that appears in headers and branding"
-        acceptedTypes=".png,.svg"
+        acceptedTypes=".png,.svg,.jpg,.jpeg"
         maxSize="1MB"
         currentAsset={logoAsset?.file_url}
       />
@@ -191,7 +202,7 @@ export function PlatformAssetUploader() {
         assetType="favicon"
         title="Platform Favicon"
         description="Upload the favicon that appears in browser tabs"
-        acceptedTypes=".png,.ico"
+        acceptedTypes=".png,.ico,.jpg,.jpeg"
         maxSize="500KB"
         currentAsset={faviconAsset?.file_url}
       />

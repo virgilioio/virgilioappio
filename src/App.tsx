@@ -23,12 +23,14 @@ import NotFound from './pages/NotFound'
 import AdminInvoices from './pages/AdminInvoices'
 import CandidateProfile from '@/pages/CandidateProfile'
 import { useFavicon } from './hooks/useFavicon'
+import { useBrowserTitle } from './hooks/useBrowserTitle'
 
 const queryClient = new QueryClient()
 
 function App() {
-  // Initialize favicon loading
+  // Initialize favicon and browser title loading
   useFavicon()
+  useBrowserTitle()
 
   return (
     <QueryClientProvider client={queryClient}>
