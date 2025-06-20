@@ -24,46 +24,54 @@ import AdminInvoices from './pages/AdminInvoices'
 import CandidateProfile from '@/pages/CandidateProfile'
 import { useFavicon } from './hooks/useFavicon'
 import { useBrowserTitle } from './hooks/useBrowserTitle'
+import { Toaster } from '@/components/ui/toaster'
 
 const queryClient = new QueryClient()
 
-function App() {
+function AppContent() {
   // Initialize favicon and browser title loading
   useFavicon()
   useBrowserTitle()
 
   return (
+    <div className="min-h-screen bg-background text-foreground">
+      <Routes>
+        <Route path="/auth" element={<Login />} />
+        <Route path="/accept-invite/:token" element={<AcceptInvite />} />
+        <Route path="/verify-email" element={<VerifyEmail />} />
+        <Route
+          path="/*"
+          element={
+            <RequireAuth>
+              <Layout />
+            </RequireAuth>
+          }
+        >
+          <Route index element={<Dashboard />} />
+          <Route path="dashboard" element={<Dashboard />} />
+          <Route path="jobs" element={<Jobs />} />
+          <Route path="jobs/:id" element={<JobDetail />} />
+          <Route path="jobs/:jobId/candidates/:candidateId" element={<CandidateProfile />} />
+          <Route path="members" element={<Members />} />
+          <Route path="organizations" element={<Organizations />} />
+          <Route path="job-requests" element={<JobRequests />} />
+          <Route path="billing" element={<Settings />} />
+          <Route path="invoices" element={<AdminInvoices />} />
+          <Route path="settings" element={<Settings />} />
+          <Route path="*" element={<NotFound />} />
+        </Route>
+      </Routes>
+      <Toaster />
+    </div>
+  )
+}
+
+function App() {
+  return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <Router>
-          <div className="min-h-screen bg-background text-foreground">
-            <Routes>
-              <Route path="/auth" element={<Login />} />
-              <Route path="/accept-invite/:token" element={<AcceptInvite />} />
-              <Route path="/verify-email" element={<VerifyEmail />} />
-              <Route
-                path="/*"
-                element={
-                  <RequireAuth>
-                    <Layout />
-                  </RequireAuth>
-                }
-              >
-                <Route index element={<Dashboard />} />
-                <Route path="dashboard" element={<Dashboard />} />
-                <Route path="jobs" element={<Jobs />} />
-                <Route path="jobs/:id" element={<JobDetail />} />
-                <Route path="jobs/:jobId/candidates/:candidateId" element={<CandidateProfile />} />
-                <Route path="members" element={<Members />} />
-                <Route path="organizations" element={<Organizations />} />
-                <Route path="job-requests" element={<JobRequests />} />
-                <Route path="billing" element={<Settings />} />
-                <Route path="invoices" element={<AdminInvoices />} />
-                <Route path="settings" element={<Settings />} />
-                <Route path="*" element={<NotFound />} />
-              </Route>
-            </Routes>
-          </div>
+          <AppContent />
         </Router>
       </AuthProvider>
     </QueryClientProvider>
