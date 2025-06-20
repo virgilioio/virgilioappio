@@ -5,8 +5,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import { Upload, Image, Globe, AlertCircle } from 'lucide-react'
+import { Upload, Image, Globe, AlertCircle, Settings, Save, Loader2 } from 'lucide-react'
 import { usePlatformAssets } from '@/hooks/usePlatformAssets'
+import { usePlatformSettings } from '@/hooks/usePlatformSettings'
 
 interface AssetUploaderProps {
   assetType: 'logo' | 'favicon'
@@ -172,12 +173,98 @@ function AssetUploader({ assetType, title, description, acceptedTypes, maxSize, 
   )
 }
 
+function BrowserTitleEditor() {
+  const { settings, isLoading, isUpdating, updateSetting, getSetting } = usePlatformSettings()
+  const [browserTitle, setBrowserTitle] = useState('')
+  const [hasChanges, setHasChanges] = useState(false)
+
+  // Initialize browser title when settings load
+  React.useEffect(() => {
+    const titleSetting = getSetting('browser_title')
+    if (titleSetting && titleSetting.setting_value) {
+      setBrowserTitle(titleSetting.setting_value)
+    }
+  }, [settings, getSetting])
+
+  const handleTitleChange = (value: string) => {
+    setBrowserTitle(value)
+    const currentTitle = getSetting('browser_title')?.setting_value || ''
+    setHasChanges(value !== currentTitle)
+  }
+
+  const handleSave = async () => {
+    const success = await updateSetting('browser_title', browserTitle)
+    if (success) {
+      setHasChanges(false)
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex items-center justify-center">
+            <Loader2 className="h-6 w-6 animate-spin" />
+            <span className="ml-2">Loading settings...</span>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Settings className="h-5 w-5" />
+          Browser Tab Title
+        </CardTitle>
+        <CardDescription>
+          Configure the title that appears in browser tabs across the platform
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="browser-title" className="text-sm font-medium">
+            Browser Tab Title
+          </Label>
+          <div className="flex gap-2">
+            <Input
+              id="browser-title"
+              value={browserTitle}
+              onChange={(e) => handleTitleChange(e.target.value)}
+              placeholder="Enter the title that appears in browser tabs"
+              className="flex-1"
+            />
+            <Button 
+              onClick={handleSave}
+              disabled={!hasChanges || isUpdating}
+              size="sm"
+            >
+              {isUpdating ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Save className="h-4 w-4" />
+              )}
+              Save
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            This title will appear in browser tabs across the entire platform
+          </p>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
 export function PlatformAssetUploader() {
   const { assets, isLoading } = usePlatformAssets()
 
   if (isLoading) {
     return (
       <div className="space-y-6">
+        <div className="h-48 bg-muted/50 rounded-lg animate-pulse" />
         <div className="h-48 bg-muted/50 rounded-lg animate-pulse" />
         <div className="h-48 bg-muted/50 rounded-lg animate-pulse" />
       </div>
@@ -206,6 +293,8 @@ export function PlatformAssetUploader() {
         maxSize="500KB"
         currentAsset={faviconAsset?.file_url}
       />
+
+      <BrowserTitleEditor />
     </div>
   )
 }
