@@ -1,9 +1,9 @@
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from '@/hooks/use-toast'
-import { detectOverdueInvoices } from '@/utils/invoiceUtils'
+import { useInvoiceContext } from '@/contexts/InvoiceContext'
 
 export interface Invoice {
   id: string
@@ -45,151 +45,11 @@ export interface PaymentData {
 }
 
 export function useInvoices() {
-  const [invoices, setInvoices] = useState<Invoice[]>([])
   const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const { user, organizationId, userType } = useAuth()
-
-  const getInvoices = async () => {
-    if (!user) return
-
-    setIsLoading(true)
-    setError(null)
-
-    try {
-      console.log('=== INVOICE FETCH DEBUG ===')
-      console.log('Fetching invoices for user:', user.id, 'userType:', userType, 'organizationId:', organizationId)
-      
-      let query = supabase
-        .from('invoices')
-        .select('*')
-        .order('created_at', { ascending: false })
-
-      // Filter invoices based on user type and organization context
-      if (userType === 'platform_admin') {
-        // Platform admins can see all invoices (they manage/send invoices)
-        console.log('Platform admin - fetching all invoices')
-      } else if (organizationId) {
-        // Workspace owners and other members see invoices for their organization
-        // These are invoices they need to pay (where their org is the recipient)
-        console.log('Filtering invoices for organization:', organizationId)
-        query = query.eq('organization_id', organizationId)
-      } else {
-        // Users without organization context see no invoices
-        console.log('No organization context - no invoices')
-        setInvoices([])
-        setIsLoading(false)
-        return
-      }
-
-      const { data, error: fetchError } = await query
-
-      if (fetchError) {
-        console.error('Error fetching invoices:', fetchError)
-        throw fetchError
-      }
-
-      console.log('=== RAW INVOICE DATA ===')
-      console.log('Total invoices fetched:', data?.length || 0)
-      console.log('Sample invoice data:', data?.[0])
-      console.log('All invoices:', data)
-      
-      // Auto-detect and update overdue invoices
-      const processedInvoices = detectOverdueInvoices((data || []) as Invoice[])
-      console.log('=== OVERDUE DETECTION ===')
-      console.log('Invoices after overdue detection:', processedInvoices.length)
-      
-      // Find invoices that were auto-updated to overdue status
-      const autoUpdatedOverdue = processedInvoices.filter((processed, index) => {
-        const original = data?.[index]
-        return original?.status === 'pending' && processed.status === 'overdue'
-      })
-      
-      if (autoUpdatedOverdue.length > 0) {
-        console.log('Auto-updating overdue invoices in database:', autoUpdatedOverdue.length)
-        
-        // Update overdue invoices in the database
-        for (const invoice of autoUpdatedOverdue) {
-          try {
-            await supabase
-              .from('invoices')
-              .update({ 
-                status: 'overdue',
-                updated_at: new Date().toISOString()
-              })
-              .eq('id', invoice.id)
-            
-            console.log(`Updated invoice ${invoice.id} to overdue status`)
-          } catch (updateError) {
-            console.error(`Failed to update invoice ${invoice.id}:`, updateError)
-          }
-        }
-      }
-      
-      // Additional debug logging for workspace owners
-      if (userType !== 'platform_admin' && organizationId) {
-        const relevantInvoices = processedInvoices.filter(invoice => invoice.organization_id === organizationId)
-        console.log('=== WORKSPACE OWNER DEBUG ===')
-        console.log('Organization ID:', organizationId)
-        console.log('Filtered invoices for org:', relevantInvoices.length)
-        console.log('Filtered invoice details:', relevantInvoices)
-        
-        const pendingInvoices = relevantInvoices.filter(inv => inv.status === 'pending')
-        const overdueInvoices = relevantInvoices.filter(inv => inv.status === 'overdue')
-        const totalPending = pendingInvoices.reduce((sum, inv) => sum + (inv.amount || 0), 0)
-        const totalOverdue = overdueInvoices.reduce((sum, inv) => sum + (inv.amount || 0), 0)
-        
-        console.log('Pending invoices:', pendingInvoices.length, 'Total amount:', totalPending)
-        console.log('Overdue invoices:', overdueInvoices.length, 'Total amount:', totalOverdue)
-      }
-
-      setInvoices(processedInvoices)
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch invoices'
-      console.error('Invoices fetch error:', err)
-      setError(errorMessage)
-      toast({
-        title: 'Error',
-        description: errorMessage,
-        variant: 'destructive'
-      })
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  // Set up real-time subscription
-  useEffect(() => {
-    if (!user) return
-
-    console.log('Setting up real-time subscription for invoices')
-    
-    // Subscribe to real-time changes on the invoices table
-    const channel = supabase
-      .channel('invoices-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
-          schema: 'public',
-          table: 'invoices'
-        },
-        (payload) => {
-          console.log('Real-time invoice change detected:', payload)
-          
-          // Refresh invoices data when any change occurs
-          // This ensures all components stay in sync
-          getInvoices()
-        }
-      )
-      .subscribe()
-
-    // Cleanup subscription on unmount
-    return () => {
-      console.log('Cleaning up invoices real-time subscription')
-      supabase.removeChannel(channel)
-    }
-  }, [user, organizationId, userType])
+  const { user } = useAuth()
+  
+  // Use the global invoice context for state
+  const { invoices, isLoading: contextLoading, error, refreshInvoices } = useInvoiceContext()
 
   const createInvoice = async (data: CreateInvoiceData): Promise<Invoice> => {
     if (!user) throw new Error('User not authenticated')
@@ -465,21 +325,11 @@ export function useInvoices() {
     }
   }
 
-  const refreshInvoices = () => {
-    getInvoices()
-  }
-
-  useEffect(() => {
-    if (user) {
-      getInvoices()
-    }
-  }, [user, organizationId, userType])
-
   return {
     invoices,
-    isLoading,
+    isLoading: contextLoading || isLoading,
     error,
-    getInvoices,
+    getInvoices: refreshInvoices,
     createInvoice,
     updateInvoice,
     uploadInvoicePDF,
