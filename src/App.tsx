@@ -22,10 +22,14 @@ import { useAuth } from './contexts/AuthContext'
 import NotFound from './pages/NotFound'
 import AdminInvoices from './pages/AdminInvoices'
 import CandidateProfile from '@/pages/CandidateProfile'
+import { useFavicon } from './hooks/useFavicon'
 
 const queryClient = new QueryClient()
 
 function App() {
+  // Initialize favicon loading
+  useFavicon()
+
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
