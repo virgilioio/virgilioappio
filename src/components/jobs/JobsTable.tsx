@@ -97,6 +97,11 @@ export function JobsTable({ jobs, isLoading, onView, onEdit, onArchive, onCreate
                   <CardDescription>
                     Manage job postings and track hiring progress
                   </CardDescription>
+                  {permissions.isWorkspaceOwner && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Jobs from approved requests will appear here automatically
+                    </p>
+                  )}
                 </div>
                 <div className="flex gap-2">
                   {permissions.canCreateJobs ? (
@@ -255,6 +260,11 @@ export function JobsTable({ jobs, isLoading, onView, onEdit, onArchive, onCreate
             <CardDescription>
               Manage job postings and track hiring progress
             </CardDescription>
+            {permissions.isWorkspaceOwner && (
+              <p className="text-xs text-muted-foreground mt-1">
+                Jobs from approved requests will appear here automatically
+              </p>
+            )}
           </div>
           <div className="flex gap-2">
             {permissions.canCreateJobs ? (

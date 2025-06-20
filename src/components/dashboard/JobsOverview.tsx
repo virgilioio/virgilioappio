@@ -28,6 +28,7 @@ export function JobsOverview({ permissions }: JobsOverviewProps) {
     if (jobs) {
       const activeCount = jobs.filter(job => job.status === 'open').length
       setActiveJobsCount(activeCount)
+      console.log('Jobs overview - Active jobs count:', activeCount, 'Total jobs:', jobs.length)
     }
   }, [jobs])
 
@@ -39,6 +40,7 @@ export function JobsOverview({ permissions }: JobsOverviewProps) {
       }, { pending: 0, approved: 0, rejected: 0 })
       
       setRequestsSummary(summary)
+      console.log('Jobs overview - Job requests summary:', summary)
     }
   }, [jobRequests, permissions.canViewJobRequests])
 

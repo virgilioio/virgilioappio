@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
@@ -52,7 +53,7 @@ export function useJobs() {
   const [jobs, setJobs] = useState<Job[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const { user } = useAuth()
+  const { user, userType, organizationId } = useAuth()
 
   const getJobs = async () => {
     if (!user) return
@@ -61,13 +62,23 @@ export function useJobs() {
     setError(null)
 
     try {
-      console.log('Fetching jobs for user:', user.id)
+      console.log('Fetching jobs for user:', user.id, 'userType:', userType, 'organizationId:', organizationId)
       
-      // Fetch jobs without join to avoid RLS conflicts
-      const { data: jobsData, error: fetchError } = await supabase
+      // Build query based on user type and organization
+      let query = supabase
         .from('jobs')
         .select('*')
         .order('created_at', { ascending: false })
+
+      // The RLS policy will handle filtering, but we can add additional client-side logic if needed
+      // Platform admins see all jobs, organization members see their org's jobs
+      if (userType !== 'platform_admin' && organizationId) {
+        console.log('Filtering jobs for organization:', organizationId)
+        // The RLS policy will handle this filtering, but we can be explicit for clarity
+        query = query.eq('organization_id', organizationId)
+      }
+
+      const { data: jobsData, error: fetchError } = await query
 
       if (fetchError) {
         console.error('Error fetching jobs:', fetchError)
@@ -76,7 +87,7 @@ export function useJobs() {
 
       console.log('Fetched jobs data:', jobsData)
 
-      // Fetch organization names separately
+      // Fetch organization names separately for jobs that don't belong to current user's org
       const organizationIds = [...new Set(jobsData?.map(job => job.organization_id).filter(Boolean) || [])]
       let organizationsMap: Record<string, string> = {}
 
@@ -348,7 +359,59 @@ export function useJobs() {
     if (user) {
       getJobs()
     }
-  }, [user])
+  }, [user, userType, organizationId])
+
+  // Add real-time subscriptions for jobs
+  useEffect(() => {
+    if (!user) return
+
+    console.log('Setting up real-time subscriptions for jobs')
+
+    // Subscribe to jobs changes
+    const jobsChannel = supabase
+      .channel('jobs-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen to all events (INSERT, UPDATE, DELETE)
+          schema: 'public',
+          table: 'jobs'
+        },
+        (payload) => {
+          console.log('Jobs table change detected:', payload)
+          // Refresh jobs when changes occur
+          getJobs()
+        }
+      )
+      .subscribe()
+
+    // Subscribe to job requests changes (to catch when they're approved and jobs are created)
+    const jobRequestsChannel = supabase
+      .channel('job-requests-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'job_requests',
+          filter: 'status=eq.approved'
+        },
+        (payload) => {
+          console.log('Job request approved:', payload)
+          // Refresh jobs when a job request is approved
+          setTimeout(() => {
+            getJobs()
+          }, 1000) // Small delay to ensure job creation is complete
+        }
+      )
+      .subscribe()
+
+    return () => {
+      console.log('Cleaning up real-time subscriptions')
+      supabase.removeChannel(jobsChannel)
+      supabase.removeChannel(jobRequestsChannel)
+    }
+  }, [user, userType, organizationId])
 
   return {
     jobs,
