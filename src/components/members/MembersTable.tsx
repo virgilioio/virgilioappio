@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Search, Edit, UserMinus, Mail } from 'lucide-react'
 import { Member } from '@/hooks/useMembers'
 import { usePermissions } from '@/hooks/usePermissions'
+import { useOrganizations } from '@/hooks/useOrganizations'
 import { MemberOrgIndicator } from './MemberOrgIndicator'
 
 interface MembersTableProps {
@@ -28,7 +29,9 @@ export function MembersTable({
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [roleFilter, setRoleFilter] = useState<string>('all')
+  const [organizationFilter, setOrganizationFilter] = useState<string>('all')
   const permissions = usePermissions()
+  const { organizations } = useOrganizations()
 
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
@@ -53,8 +56,9 @@ export function MembersTable({
                          fullName.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesStatus = statusFilter === 'all' || member.user_status === statusFilter
     const matchesRole = roleFilter === 'all' || member.member_role === roleFilter
+    const matchesOrganization = organizationFilter === 'all' || member.organization_id === organizationFilter
     
-    return matchesSearch && matchesStatus && matchesRole
+    return matchesSearch && matchesStatus && matchesRole && matchesOrganization
   })
 
   if (isLoading) {
@@ -102,6 +106,23 @@ export function MembersTable({
             <SelectItem value="viewer">Viewer</SelectItem>
           </SelectContent>
         </Select>
+
+        {/* Organization Filter - Only visible to platform admins */}
+        {permissions.isPlatformAdmin && (
+          <Select value={organizationFilter} onValueChange={setOrganizationFilter}>
+            <SelectTrigger className="w-full sm:w-[180px]">
+              <SelectValue placeholder="Filter by organization" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Organizations</SelectItem>
+              {organizations.map((org) => (
+                <SelectItem key={org.id} value={org.id}>
+                  {org.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       {/* Table */}
