@@ -58,35 +58,56 @@ export function useJobRequests() {
     try {
       console.log('Fetching my job requests for user:', user.id, 'organization:', organizationId)
       
-      // Fetch job requests with organization data
+      // Fetch job requests with explicit joins using raw SQL for better control
       const { data, error: fetchError } = await supabase
-        .from('job_requests')
-        .select(`
-          *,
-          organizations:organization_id (name),
-          profiles:submitted_by (first_name, last_name, email)
-        `)
-        .eq('organization_id', organizationId)
-        .order('created_at', { ascending: false })
+        .rpc('get_job_requests_with_details', { 
+          org_id: organizationId,
+          fetch_all: false 
+        })
 
       if (fetchError) {
         console.error('Error fetching my job requests:', fetchError)
-        throw fetchError
+        // Fallback to basic query without joins if RPC fails
+        const { data: basicData, error: basicError } = await supabase
+          .from('job_requests')
+          .select('*')
+          .eq('organization_id', organizationId)
+          .order('created_at', { ascending: false })
+
+        if (basicError) throw basicError
+        
+        // Transform basic data and fetch related info separately
+        const transformedData = await Promise.all((basicData || []).map(async (request: any) => {
+          // Get organization name
+          const { data: orgData } = await supabase
+            .from('organizations')
+            .select('name')
+            .eq('id', request.organization_id)
+            .single()
+
+          // Get requester info
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('first_name, last_name, email')
+            .eq('user_id', request.submitted_by)
+            .single()
+
+          return {
+            ...request,
+            organization_name: orgData?.name || 'Unknown Organization',
+            requester_name: profileData ? 
+              `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim() || 'Unknown User' : 
+              'Unknown User',
+            requester_email: profileData?.email || null
+          }
+        }))
+
+        setJobRequests(transformedData as JobRequest[])
+        return
       }
 
       console.log('Fetched my job requests:', data)
-      
-      // Transform the data to include organization and requester info
-      const transformedData = (data || []).map((request: any) => ({
-        ...request,
-        organization_name: request.organizations?.name || 'Unknown Organization',
-        requester_name: request.profiles ? 
-          `${request.profiles.first_name || ''} ${request.profiles.last_name || ''}`.trim() || 'Unknown User' : 
-          'Unknown User',
-        requester_email: request.profiles?.email || null
-      }))
-      
-      setJobRequests(transformedData as JobRequest[])
+      setJobRequests(data as JobRequest[])
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch job requests'
       console.error('My job requests fetch error:', err)
@@ -110,34 +131,56 @@ export function useJobRequests() {
     try {
       console.log('Fetching all job requests for admin/CS user:', user.id)
       
-      // Fetch all job requests with organization and user data
+      // Try RPC first, fallback to manual joins
       const { data, error: fetchError } = await supabase
-        .from('job_requests')
-        .select(`
-          *,
-          organizations:organization_id (name),
-          profiles:submitted_by (first_name, last_name, email)
-        `)
-        .order('created_at', { ascending: false })
+        .rpc('get_job_requests_with_details', { 
+          org_id: null,
+          fetch_all: true 
+        })
 
       if (fetchError) {
-        console.error('Error fetching all job requests:', fetchError)
-        throw fetchError
+        console.error('Error with RPC, falling back to manual approach:', fetchError)
+        
+        // Fallback: fetch job requests and manually join with related tables
+        const { data: requests, error: requestsError } = await supabase
+          .from('job_requests')
+          .select('*')
+          .order('created_at', { ascending: false })
+
+        if (requestsError) throw requestsError
+
+        // Transform data and fetch related info separately
+        const transformedData = await Promise.all((requests || []).map(async (request: any) => {
+          // Get organization name
+          const { data: orgData } = await supabase
+            .from('organizations')
+            .select('name')
+            .eq('id', request.organization_id)
+            .single()
+
+          // Get requester info
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('first_name, last_name, email')
+            .eq('user_id', request.submitted_by)
+            .single()
+
+          return {
+            ...request,
+            organization_name: orgData?.name || 'Unknown Organization',
+            requester_name: profileData ? 
+              `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim() || 'Unknown User' : 
+              'Unknown User',
+            requester_email: profileData?.email || null
+          }
+        }))
+
+        setJobRequests(transformedData as JobRequest[])
+        return
       }
 
       console.log('Fetched all job requests:', data)
-      
-      // Transform the data to include organization and requester info
-      const transformedData = (data || []).map((request: any) => ({
-        ...request,
-        organization_name: request.organizations?.name || 'Unknown Organization',
-        requester_name: request.profiles ? 
-          `${request.profiles.first_name || ''} ${request.profiles.last_name || ''}`.trim() || 'Unknown User' : 
-          'Unknown User',
-        requester_email: request.profiles?.email || null
-      }))
-      
-      setJobRequests(transformedData as JobRequest[])
+      setJobRequests(data as JobRequest[])
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch job requests'
       console.error('All job requests fetch error:', err)
