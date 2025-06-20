@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
@@ -24,6 +23,10 @@ export interface JobRequest {
   job_id?: string
   created_at: string
   updated_at: string
+  // New fields for display
+  organization_name?: string
+  requester_name?: string
+  requester_email?: string
 }
 
 // Level mapping from job request to job table
@@ -54,9 +57,15 @@ export function useJobRequests() {
 
     try {
       console.log('Fetching my job requests for user:', user.id, 'organization:', organizationId)
+      
+      // Fetch job requests with organization data
       const { data, error: fetchError } = await supabase
         .from('job_requests')
-        .select('*')
+        .select(`
+          *,
+          organizations:organization_id (name),
+          profiles:submitted_by (first_name, last_name, email)
+        `)
         .eq('organization_id', organizationId)
         .order('created_at', { ascending: false })
 
@@ -66,7 +75,18 @@ export function useJobRequests() {
       }
 
       console.log('Fetched my job requests:', data)
-      setJobRequests((data || []) as JobRequest[])
+      
+      // Transform the data to include organization and requester info
+      const transformedData = (data || []).map((request: any) => ({
+        ...request,
+        organization_name: request.organizations?.name || 'Unknown Organization',
+        requester_name: request.profiles ? 
+          `${request.profiles.first_name || ''} ${request.profiles.last_name || ''}`.trim() || 'Unknown User' : 
+          'Unknown User',
+        requester_email: request.profiles?.email || null
+      }))
+      
+      setJobRequests(transformedData as JobRequest[])
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch job requests'
       console.error('My job requests fetch error:', err)
@@ -89,9 +109,15 @@ export function useJobRequests() {
 
     try {
       console.log('Fetching all job requests for admin/CS user:', user.id)
+      
+      // Fetch all job requests with organization and user data
       const { data, error: fetchError } = await supabase
         .from('job_requests')
-        .select('*')
+        .select(`
+          *,
+          organizations:organization_id (name),
+          profiles:submitted_by (first_name, last_name, email)
+        `)
         .order('created_at', { ascending: false })
 
       if (fetchError) {
@@ -100,7 +126,18 @@ export function useJobRequests() {
       }
 
       console.log('Fetched all job requests:', data)
-      setJobRequests((data || []) as JobRequest[])
+      
+      // Transform the data to include organization and requester info
+      const transformedData = (data || []).map((request: any) => ({
+        ...request,
+        organization_name: request.organizations?.name || 'Unknown Organization',
+        requester_name: request.profiles ? 
+          `${request.profiles.first_name || ''} ${request.profiles.last_name || ''}`.trim() || 'Unknown User' : 
+          'Unknown User',
+        requester_email: request.profiles?.email || null
+      }))
+      
+      setJobRequests(transformedData as JobRequest[])
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch job requests'
       console.error('All job requests fetch error:', err)
@@ -153,7 +190,7 @@ export function useJobRequests() {
     }
   }
 
-  const createJobRequest = async (requestData: Omit<JobRequest, 'id' | 'submitted_by' | 'organization_id' | 'status' | 'approved_by' | 'approved_at' | 'approver_role' | 'created_at' | 'updated_at' | 'job_id'>) => {
+  const createJobRequest = async (requestData: Omit<JobRequest, 'id' | 'submitted_by' | 'organization_id' | 'status' | 'approved_by' | 'approved_at' | 'approver_role' | 'created_at' | 'updated_at' | 'job_id' | 'organization_name' | 'requester_name' | 'requester_email'>) => {
     if (!user) throw new Error('User not authenticated')
 
     const organizationId = user.user_metadata?.organization_id

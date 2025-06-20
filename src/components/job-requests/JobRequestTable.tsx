@@ -59,7 +59,9 @@ export function JobRequestTable({
 
   const filteredJobRequests = jobRequests.filter(request => {
     const matchesSearch = request.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         request.department?.toLowerCase().includes(searchTerm.toLowerCase())
+                         request.department?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         request.organization_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         request.requester_name?.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesStatus = statusFilter === 'all' || request.status === statusFilter
     const matchesLevel = levelFilter === 'all' || request.level === levelFilter
     
@@ -117,7 +119,7 @@ export function JobRequestTable({
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search job requests..."
+              placeholder="Search job requests, organizations, or requesters..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
@@ -171,6 +173,8 @@ export function JobRequestTable({
               <TableHeader>
                 <TableRow>
                   <TableHead>Title</TableHead>
+                  <TableHead>Organization</TableHead>
+                  <TableHead>Requested By</TableHead>
                   <TableHead>Level</TableHead>
                   <TableHead>Department</TableHead>
                   <TableHead>Salary</TableHead>
@@ -183,6 +187,12 @@ export function JobRequestTable({
                 {filteredJobRequests.map((request) => (
                   <TableRow key={request.id} interactive onClick={() => onView(request)}>
                     <TableCell className="font-medium">{request.title}</TableCell>
+                    <TableCell className="max-w-[200px] truncate" title={request.organization_name}>
+                      {request.organization_name || 'Unknown Organization'}
+                    </TableCell>
+                    <TableCell className="max-w-[150px] truncate" title={request.requester_email || request.requester_name}>
+                      {request.requester_name || 'Unknown User'}
+                    </TableCell>
                     <TableCell>{request.level}</TableCell>
                     <TableCell>{request.department || '-'}</TableCell>
                     <TableCell>{formatSalary(request.salary_min, request.salary_max, request.currency)}</TableCell>

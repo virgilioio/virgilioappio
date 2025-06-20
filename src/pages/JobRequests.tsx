@@ -131,6 +131,17 @@ export default function JobRequests() {
                   )}
                   
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                    <div className="sm:col-span-2">
+                      <span className="font-medium">Organization:</span> 
+                      <span className="ml-1 break-words">{selectedRequest.organization_name || 'Unknown Organization'}</span>
+                    </div>
+                    <div className="sm:col-span-2">
+                      <span className="font-medium">Requested By:</span> 
+                      <span className="ml-1 break-words">
+                        {selectedRequest.requester_name || 'Unknown User'}
+                        {selectedRequest.requester_email && ` (${selectedRequest.requester_email})`}
+                      </span>
+                    </div>
                     <div>
                       <span className="font-medium">Department:</span> 
                       <span className="ml-1 break-words">{selectedRequest.department || 'Not specified'}</span>
