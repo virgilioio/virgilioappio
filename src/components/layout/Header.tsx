@@ -1,3 +1,4 @@
+
 import { useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
@@ -34,7 +35,6 @@ export function Header() {
     canViewJobs, 
     canViewOrganizations, 
     canViewJobRequests, 
-    canViewInvoices,
     isPlatformAdmin,
     isWorkspaceOwner
   } = usePermissions()
@@ -76,7 +76,7 @@ export function Header() {
       href: '/invoices',
       icon: Receipt,
       label: 'Invoices',
-      show: canViewInvoices,
+      show: isPlatformAdmin,
     },
   ]
 
