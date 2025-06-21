@@ -107,8 +107,14 @@ function AdminInvoicesContent() {
 
           {/* 5-Column Grid Structure */}
           <div className="grid grid-cols-5 gap-6">
-            {/* Invoice Analytics Chart - Full Width */}
-            <InvoiceAnalyticsChart invoices={invoices} />
+            {/* Invoice Analytics Chart - 2 columns */}
+            <div className="col-span-2">
+              <InvoiceAnalyticsChart invoices={invoices} />
+            </div>
+            {/* Empty space for now - 3 columns */}
+            <div className="col-span-3">
+              {/* This space can be used for additional charts or metrics later */}
+            </div>
           </div>
 
           {/* Billing Metrics Dashboard */}
