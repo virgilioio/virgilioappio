@@ -170,7 +170,7 @@ export function InvoicesTable() {
             </div>
           ) : (
             <div className="space-y-4">
-              {/* Filters - moved to the top */}
+              {/* Filters - now truly at the top */}
               <Card>
                 <CardHeader>
                   <div className="flex items-center justify-between">
