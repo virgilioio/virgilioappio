@@ -107,10 +107,10 @@ function AdminInvoicesContent() {
             </Button>
           </div>
 
-          {/* Charts Grid - 3:1:1:1 ratio */}
-          <div className="grid grid-cols-6 gap-6">
-            {/* Invoice Analytics Chart - 3 columns */}
-            <div className="col-span-3">
+          {/* Charts Grid - 2:1:1:1 ratio */}
+          <div className="grid grid-cols-5 gap-6">
+            {/* Invoice Analytics Chart - 2 columns */}
+            <div className="col-span-2">
               <InvoiceAnalyticsChart invoices={invoices} />
             </div>
             {/* Total Paid Card - 1 column */}
