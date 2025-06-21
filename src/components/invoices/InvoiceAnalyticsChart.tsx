@@ -16,12 +16,12 @@ export function InvoiceAnalyticsChart({ invoices }: InvoiceAnalyticsChartProps) 
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('6months')
 
   const timePeriodOptions: { value: TimePeriod; label: string }[] = [
-    { value: '1week', label: '1 Week' },
-    { value: '1month', label: '1 Month' },
-    { value: '3months', label: '3 Months' },
-    { value: '6months', label: '6 Months' },
-    { value: '1year', label: '1 Year' },
-    { value: 'all', label: 'All Time' },
+    { value: '1week', label: '1W' },
+    { value: '1month', label: '1M' },
+    { value: '3months', label: '3M' },
+    { value: '6months', label: '6M' },
+    { value: '1year', label: '1Y' },
+    { value: 'all', label: 'All' },
   ]
 
   const chartData = useMemo(() => {
@@ -120,48 +120,59 @@ export function InvoiceAnalyticsChart({ invoices }: InvoiceAnalyticsChartProps) 
   }
 
   return (
-    <Card className="col-span-5">
-      <CardHeader className="pb-4">
-        <div className="flex items-center justify-between">
-          <div className="space-y-1">
-            <CardTitle className="flex items-center gap-2 text-xl">
-              <TrendingUp className="h-5 w-5" />
+    <Card className="h-full">
+      <CardHeader className="pb-3">
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <TrendingUp className="h-4 w-4" />
               Invoice Analytics
             </CardTitle>
-            <div className="text-2xl font-bold" style={{ color: '#0891b2' }}>
+          </div>
+          
+          <div className="space-y-2">
+            <div className="text-xl font-bold" style={{ color: '#0891b2' }}>
               {formatCurrency(totalInvoiced)}
             </div>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               Total invoiced in selected period
             </p>
           </div>
+
+          {/* Time Period Buttons */}
           <div className="flex items-center gap-1">
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground mr-2">Period:</span>
-            {timePeriodOptions.map((option) => (
-              <Button
-                key={option.value}
-                variant={selectedPeriod === option.value ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setSelectedPeriod(option.value)}
-                className={selectedPeriod === option.value ? 'bg-cyan-100 text-cyan-900 border-cyan-200' : ''}
-              >
-                {option.label}
-              </Button>
-            ))}
+            <Calendar className="h-3 w-3 text-muted-foreground" />
+            <span className="text-xs text-muted-foreground mr-2">Period:</span>
+            <div className="flex gap-1">
+              {timePeriodOptions.map((option) => (
+                <Button
+                  key={option.value}
+                  variant={selectedPeriod === option.value ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setSelectedPeriod(option.value)}
+                  className={`text-xs px-2 py-1 h-7 ${
+                    selectedPeriod === option.value 
+                      ? 'bg-cyan-100 text-cyan-900 border-cyan-200' 
+                      : ''
+                  }`}
+                >
+                  {option.label}
+                </Button>
+              ))}
+            </div>
           </div>
         </div>
       </CardHeader>
-      <CardContent>
-        <div className="h-[300px] w-full">
+      <CardContent className="pt-0">
+        <div className="h-[200px] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart
               data={chartData}
               margin={{
-                top: 10,
-                right: 30,
+                top: 5,
+                right: 20,
                 left: 20,
-                bottom: 10,
+                bottom: 5,
               }}
             >
               <CartesianGrid 
@@ -172,13 +183,13 @@ export function InvoiceAnalyticsChart({ invoices }: InvoiceAnalyticsChartProps) 
               <XAxis
                 dataKey="formattedDate"
                 stroke="#64748b"
-                fontSize={12}
+                fontSize={10}
                 tickLine={false}
                 axisLine={false}
               />
               <YAxis
                 stroke="#64748b"
-                fontSize={12}
+                fontSize={10}
                 tickLine={false}
                 axisLine={false}
                 tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
@@ -188,14 +199,14 @@ export function InvoiceAnalyticsChart({ invoices }: InvoiceAnalyticsChartProps) 
                 type="monotone"
                 dataKey="total"
                 stroke="#0891b2"
-                strokeWidth={3}
+                strokeWidth={2}
                 dot={{
                   fill: "#0891b2",
                   strokeWidth: 2,
-                  r: 4,
+                  r: 3,
                 }}
                 activeDot={{
-                  r: 6,
+                  r: 4,
                   fill: "#0891b2",
                   stroke: "#ffffff",
                   strokeWidth: 2,
