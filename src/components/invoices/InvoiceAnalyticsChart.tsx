@@ -58,40 +58,74 @@ export function InvoiceAnalyticsChart({ invoices }: InvoiceAnalyticsChartProps) 
     // Calculate total amount of all invoices issued in the selected period
     const totalAmount = filteredInvoices.reduce((sum, invoice) => sum + invoice.amount, 0)
 
-    // Group invoices by date and calculate cumulative total
-    const dateGroups: { [key: string]: number } = {}
+    // Determine grouping strategy based on period
+    const shouldGroupByMonth = ['3months', '6months', '1year', 'all'].includes(selectedPeriod)
     
-    filteredInvoices
-      .sort((a, b) => new Date(a.issued_at).getTime() - new Date(b.issued_at).getTime())
-      .forEach(invoice => {
-        const date = new Date(invoice.issued_at).toISOString().split('T')[0]
-        dateGroups[date] = (dateGroups[date] || 0) + invoice.amount
-      })
-
-    // Convert to chart data with cumulative totals
-    let cumulativeTotal = 0
-    const data = Object.entries(dateGroups).map(([date, amount]) => {
-      cumulativeTotal += amount
-      return {
-        date,
-        total: cumulativeTotal,
-        amount,
-        formattedDate: new Date(date).toLocaleDateString('en-US', { 
+    // Group invoices by period
+    const periodGroups: { [key: string]: { amount: number; date: Date; displayDate: string } } = {}
+    
+    filteredInvoices.forEach(invoice => {
+      const invoiceDate = new Date(invoice.issued_at)
+      let periodKey: string
+      let displayDate: string
+      
+      if (shouldGroupByMonth) {
+        // Group by month for longer periods
+        periodKey = `${invoiceDate.getFullYear()}-${String(invoiceDate.getMonth() + 1).padStart(2, '0')}`
+        displayDate = invoiceDate.toLocaleDateString('en-US', { 
           month: 'short', 
-          day: 'numeric',
-          ...(selectedPeriod === '1year' || selectedPeriod === 'all' ? { year: 'numeric' } : {})
+          year: selectedPeriod === '1year' || selectedPeriod === 'all' ? 'numeric' : undefined
+        })
+      } else {
+        // Group by day for shorter periods
+        periodKey = invoiceDate.toISOString().split('T')[0]
+        displayDate = invoiceDate.toLocaleDateString('en-US', { 
+          month: 'short', 
+          day: 'numeric'
         })
       }
+      
+      if (!periodGroups[periodKey]) {
+        periodGroups[periodKey] = {
+          amount: 0,
+          date: invoiceDate,
+          displayDate
+        }
+      }
+      
+      periodGroups[periodKey].amount += invoice.amount
     })
+
+    // Convert to chart data sorted by date
+    const data = Object.entries(periodGroups)
+      .map(([periodKey, { amount, date, displayDate }]) => ({
+        periodKey,
+        amount,
+        date: date.toISOString().split('T')[0],
+        displayDate,
+        fullDate: date.toLocaleDateString('en-US', { 
+          weekday: 'short',
+          year: 'numeric', 
+          month: 'short', 
+          day: 'numeric' 
+        })
+      }))
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
 
     // If no data, show at least one point at zero
     if (data.length === 0) {
       return {
         chartData: [{
-          date: now.toISOString().split('T')[0],
-          total: 0,
+          periodKey: now.toISOString().split('T')[0],
           amount: 0,
-          formattedDate: now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+          date: now.toISOString().split('T')[0],
+          displayDate: now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+          fullDate: now.toLocaleDateString('en-US', { 
+            weekday: 'short',
+            year: 'numeric', 
+            month: 'short', 
+            day: 'numeric' 
+          })
         }],
         totalInvoiced: 0
       }
@@ -114,10 +148,14 @@ export function InvoiceAnalyticsChart({ invoices }: InvoiceAnalyticsChartProps) 
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
+      const data = payload[0].payload
       return (
-        <div className="bg-black px-3 py-2 rounded-full shadow-lg">
-          <p className="text-sm text-white">
-            Total: {formatCurrency(payload[0].value)}
+        <div className="bg-black px-3 py-2 rounded-lg shadow-lg">
+          <p className="text-sm text-white mb-1">
+            {formatCurrency(payload[0].value)}
+          </p>
+          <p className="text-xs text-gray-300">
+            {data.fullDate}
           </p>
         </div>
       )
@@ -158,24 +196,12 @@ export function InvoiceAnalyticsChart({ invoices }: InvoiceAnalyticsChartProps) 
                 stroke="#e2e8f0" 
                 opacity={0.5}
               />
-              <XAxis
-                dataKey="formattedDate"
-                stroke="#64748b"
-                fontSize={10}
-                tickLine={false}
-                axisLine={false}
-              />
-              <YAxis
-                stroke="#64748b"
-                fontSize={10}
-                tickLine={false}
-                axisLine={false}
-                tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
-              />
+              <XAxis hide />
+              <YAxis hide />
               <Tooltip content={<CustomTooltip />} />
               <Line
                 type="monotone"
-                dataKey="total"
+                dataKey="amount"
                 stroke="#007c91"
                 strokeWidth={2}
                 dot={false}
