@@ -11,17 +11,8 @@ interface MetricCardProps {
 }
 
 export function MetricCard({ title, value, icon, tooltip, variant = 'default' }: MetricCardProps) {
-  const getBorderColor = () => {
-    switch (variant) {
-      case 'success': return 'border-green-200'
-      case 'warning': return 'border-orange-200'
-      case 'destructive': return 'border-red-200'
-      default: return 'border-border'
-    }
-  }
-
   const card = (
-    <Card className={`${getBorderColor()} hover:shadow-md transition-shadow`}>
+    <Card className="transition-colors">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">
           {title}
