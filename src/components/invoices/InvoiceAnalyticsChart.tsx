@@ -1,4 +1,3 @@
-
 import { useState, useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip } from 'recharts'
@@ -115,9 +114,8 @@ export function InvoiceAnalyticsChart({ invoices }: InvoiceAnalyticsChartProps) 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
-        <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
-          <p className="text-sm font-medium">{label}</p>
-          <p className="text-sm" style={{ color: '#007c91' }}>
+        <div className="bg-black px-3 py-2 rounded-full shadow-lg">
+          <p className="text-sm text-white">
             Total: {formatCurrency(payload[0].value)}
           </p>
         </div>
