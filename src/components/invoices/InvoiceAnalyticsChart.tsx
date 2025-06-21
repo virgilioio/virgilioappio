@@ -1,3 +1,4 @@
+
 import { useState, useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip } from 'recharts'
@@ -113,11 +114,10 @@ export function InvoiceAnalyticsChart({ invoices }: InvoiceAnalyticsChartProps) 
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
-      const data = payload[0].payload
       return (
         <div className="bg-black px-3 py-2 rounded-full shadow-lg">
           <p className="text-sm text-white">
-            {data.formattedDate}: {formatCurrency(payload[0].value)}
+            Total: {formatCurrency(payload[0].value)}
           </p>
         </div>
       )
@@ -164,14 +164,13 @@ export function InvoiceAnalyticsChart({ invoices }: InvoiceAnalyticsChartProps) 
                 fontSize={10}
                 tickLine={false}
                 axisLine={false}
-                tickFormatter={() => ''}
               />
               <YAxis
                 stroke="#64748b"
                 fontSize={10}
                 tickLine={false}
                 axisLine={false}
-                tickFormatter={() => ''}
+                tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
               />
               <Tooltip content={<CustomTooltip />} />
               <Line
