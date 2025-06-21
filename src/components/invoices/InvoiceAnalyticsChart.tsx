@@ -1,3 +1,4 @@
+
 import { useState, useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip } from 'recharts'
@@ -108,7 +109,7 @@ export function InvoiceAnalyticsChart({ invoices }: InvoiceAnalyticsChartProps) 
       return (
         <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
           <p className="text-sm font-medium">{label}</p>
-          <p className="text-sm" style={{ color: '#0891b2' }}>
+          <p className="text-sm" style={{ color: '#007c91' }}>
             Total: {formatCurrency(payload[0].value)}
           </p>
         </div>
@@ -127,7 +128,7 @@ export function InvoiceAnalyticsChart({ invoices }: InvoiceAnalyticsChartProps) 
           </CardTitle>
           
           <div className="space-y-1">
-            <div className="text-lg font-bold" style={{ color: '#0891b2' }}>
+            <div className="text-lg font-bold" style={{ color: '#007c91' }}>
               {formatCurrency(totalInvoiced)}
             </div>
             <p className="text-xs text-muted-foreground">
@@ -176,16 +177,16 @@ export function InvoiceAnalyticsChart({ invoices }: InvoiceAnalyticsChartProps) 
               <Line
                 type="monotone"
                 dataKey="total"
-                stroke="#c5f5fb"
+                stroke="#007c91"
                 strokeWidth={2}
                 dot={{
-                  fill: "#c5f5fb",
+                  fill: "#007c91",
                   strokeWidth: 2,
                   r: 3,
                 }}
                 activeDot={{
                   r: 4,
-                  fill: "#c5f5fb",
+                  fill: "#007c91",
                   stroke: "#ffffff",
                   strokeWidth: 2,
                 }}
