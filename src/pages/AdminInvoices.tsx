@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react'
 import { Plus, Search, Filter, Calendar, Receipt } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -106,15 +105,15 @@ function AdminInvoicesContent() {
             </Button>
           </div>
 
-          {/* Charts Grid - 1:5 ratio */}
+          {/* Charts Grid - 5:1 ratio */}
           <div className="grid grid-cols-6 gap-6">
-            {/* Total Paid Card - 1 column */}
-            <div className="col-span-1">
-              <TotalPaidCard invoices={invoices} />
-            </div>
             {/* Invoice Analytics Chart - 5 columns */}
             <div className="col-span-5">
               <InvoiceAnalyticsChart invoices={invoices} />
+            </div>
+            {/* Total Paid Card - 1 column */}
+            <div className="col-span-1">
+              <TotalPaidCard invoices={invoices} />
             </div>
           </div>
 
