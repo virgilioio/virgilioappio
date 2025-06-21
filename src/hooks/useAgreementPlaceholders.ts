@@ -12,7 +12,8 @@ interface PlaceholderItem {
 
 export function useAgreementPlaceholders(selectedCountryId?: string) {
   const { countries } = useCountries()
-  const { fields } = useCountryFields()
+  const selectedCountry = countries.find(c => c.id === selectedCountryId)
+  const { fields } = useCountryFields(selectedCountry?.code)
   
   const placeholders = useMemo(() => {
     const items: PlaceholderItem[] = []
@@ -32,11 +33,9 @@ export function useAgreementPlaceholders(selectedCountryId?: string) {
       { key: '{{billing_poc_phone}}', label: 'Billing Contact Phone', category: 'organization', description: 'Billing contact phone number' }
     )
 
-    // Country-specific field placeholders
-    if (selectedCountryId) {
-      const countryFields = fields.filter(field => field.country_id === selectedCountryId)
-      
-      countryFields.forEach(field => {
+    // Country-specific field placeholders - now properly using the fetched fields
+    if (selectedCountryId && fields.length > 0) {
+      fields.forEach(field => {
         items.push({
           key: `{{${field.field_name}}}`,
           label: field.field_label,
