@@ -1,5 +1,5 @@
 
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Toggle } from '@/components/ui/toggle'
 import { Separator } from '@/components/ui/separator'
@@ -22,6 +22,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAgreementPlaceholders } from '@/hooks/useAgreementPlaceholders'
+import { saveCursorPosition, restoreCursorPosition, type CursorPosition } from '@/lib/cursorUtils'
 
 interface AgreementRichTextEditorProps {
   value: string
@@ -41,6 +42,9 @@ export function AgreementRichTextEditor({
   minHeight = "300px"
 }: AgreementRichTextEditorProps) {
   const [isFocused, setIsFocused] = useState(false)
+  const editorRef = useRef<HTMLDivElement>(null)
+  const cursorPositionRef = useRef<CursorPosition | null>(null)
+  const isUpdatingRef = useRef(false)
   const { placeholders, getPlaceholdersByCategory } = useAgreementPlaceholders(selectedCountryId)
 
   const execCommand = useCallback((command: string, value?: string) => {
@@ -48,15 +52,20 @@ export function AgreementRichTextEditor({
   }, [])
 
   const handleCommand = useCallback((command: string, value?: string) => {
+    if (!editorRef.current) return
+    
+    // Save cursor position before command
+    cursorPositionRef.current = saveCursorPosition(editorRef.current)
+    
     execCommand(command, value)
-    const editor = document.getElementById('agreement-editor-content')
-    if (editor) {
-      onChange(editor.innerHTML)
-    }
+    
+    // Get the updated content and trigger onChange
+    const newContent = editorRef.current.innerHTML
+    onChange(newContent)
   }, [execCommand, onChange])
 
   const insertPlaceholder = useCallback((placeholderKey: string) => {
-    const editor = document.getElementById('agreement-editor-content')
+    const editor = editorRef.current
     if (editor) {
       editor.focus()
       
@@ -88,8 +97,15 @@ export function AgreementRichTextEditor({
   }, [onChange])
 
   const handleInput = useCallback((e: React.FormEvent<HTMLDivElement>) => {
+    if (isUpdatingRef.current) return
+    
     const target = e.target as HTMLDivElement
-    onChange(target.innerHTML)
+    const newContent = target.innerHTML
+    
+    // Save cursor position before triggering onChange
+    cursorPositionRef.current = saveCursorPosition(target)
+    
+    onChange(newContent)
   }, [onChange])
 
   const handleFocus = useCallback(() => {
@@ -99,6 +115,21 @@ export function AgreementRichTextEditor({
   const handleBlur = useCallback(() => {
     setIsFocused(false)
   }, [])
+
+  // Restore cursor position after content updates
+  useEffect(() => {
+    if (editorRef.current && cursorPositionRef.current && !isUpdatingRef.current) {
+      isUpdatingRef.current = true
+      
+      // Use setTimeout to ensure DOM has updated
+      setTimeout(() => {
+        if (editorRef.current && cursorPositionRef.current) {
+          restoreCursorPosition(editorRef.current, cursorPositionRef.current)
+        }
+        isUpdatingRef.current = false
+      }, 0)
+    }
+  }, [value])
 
   const renderPlaceholderSection = (title: string, icon: React.ReactNode, placeholders: any[]) => {
     if (placeholders.length === 0) return null
@@ -265,7 +296,7 @@ export function AgreementRichTextEditor({
           </div>
         )}
         <div
-          id="agreement-editor-content"
+          ref={editorRef}
           contentEditable
           onInput={handleInput}
           onFocus={handleFocus}

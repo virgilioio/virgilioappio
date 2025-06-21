@@ -1,5 +1,5 @@
 
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Toggle } from '@/components/ui/toggle'
 import { Separator } from '@/components/ui/separator'
@@ -14,6 +14,7 @@ import {
   AlignRight
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { saveCursorPosition, restoreCursorPosition, type CursorPosition } from '@/lib/cursorUtils'
 
 interface RichTextEditorProps {
   value: string
@@ -31,23 +32,37 @@ export function RichTextEditor({
   minHeight = "200px"
 }: RichTextEditorProps) {
   const [isFocused, setIsFocused] = useState(false)
+  const editorRef = useRef<HTMLDivElement>(null)
+  const cursorPositionRef = useRef<CursorPosition | null>(null)
+  const isUpdatingRef = useRef(false)
 
   const execCommand = useCallback((command: string, value?: string) => {
     document.execCommand(command, false, value)
   }, [])
 
   const handleCommand = useCallback((command: string, value?: string) => {
+    if (!editorRef.current) return
+    
+    // Save cursor position before command
+    cursorPositionRef.current = saveCursorPosition(editorRef.current)
+    
     execCommand(command, value)
-    // Trigger onChange by getting the content
-    const editor = document.getElementById('rich-text-content')
-    if (editor) {
-      onChange(editor.innerHTML)
-    }
+    
+    // Get the updated content and trigger onChange
+    const newContent = editorRef.current.innerHTML
+    onChange(newContent)
   }, [execCommand, onChange])
 
   const handleInput = useCallback((e: React.FormEvent<HTMLDivElement>) => {
+    if (isUpdatingRef.current) return
+    
     const target = e.target as HTMLDivElement
-    onChange(target.innerHTML)
+    const newContent = target.innerHTML
+    
+    // Save cursor position before triggering onChange
+    cursorPositionRef.current = saveCursorPosition(target)
+    
+    onChange(newContent)
   }, [onChange])
 
   const handleFocus = useCallback(() => {
@@ -57,6 +72,21 @@ export function RichTextEditor({
   const handleBlur = useCallback(() => {
     setIsFocused(false)
   }, [])
+
+  // Restore cursor position after content updates
+  useEffect(() => {
+    if (editorRef.current && cursorPositionRef.current && !isUpdatingRef.current) {
+      isUpdatingRef.current = true
+      
+      // Use setTimeout to ensure DOM has updated
+      setTimeout(() => {
+        if (editorRef.current && cursorPositionRef.current) {
+          restoreCursorPosition(editorRef.current, cursorPositionRef.current)
+        }
+        isUpdatingRef.current = false
+      }, 0)
+    }
+  }, [value])
 
   return (
     <div className={cn(
@@ -146,7 +176,7 @@ export function RichTextEditor({
           </div>
         )}
         <div
-          id="rich-text-content"
+          ref={editorRef}
           contentEditable
           onInput={handleInput}
           onFocus={handleFocus}
