@@ -1,5 +1,3 @@
-
-
 import { useState, useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip } from 'recharts'
@@ -178,16 +176,16 @@ export function InvoiceAnalyticsChart({ invoices }: InvoiceAnalyticsChartProps) 
               <Line
                 type="monotone"
                 dataKey="total"
-                stroke="#0891b2"
+                stroke="#c5f5fb"
                 strokeWidth={2}
                 dot={{
-                  fill: "#0891b2",
+                  fill: "#c5f5fb",
                   strokeWidth: 2,
                   r: 3,
                 }}
                 activeDot={{
                   r: 4,
-                  fill: "#0891b2",
+                  fill: "#c5f5fb",
                   stroke: "#ffffff",
                   strokeWidth: 2,
                 }}
@@ -218,4 +216,3 @@ export function InvoiceAnalyticsChart({ invoices }: InvoiceAnalyticsChartProps) 
     </Card>
   )
 }
-
