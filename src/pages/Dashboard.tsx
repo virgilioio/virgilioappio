@@ -30,8 +30,6 @@ export default function Dashboard() {
             {/* Two equal columns layout */}
             <div className="grid gap-6 lg:grid-cols-2">
               <div className="space-y-6">
-                <AdvertisingBanner />
-                <OnboardingProgress profile={profile} isLoading={isLoading} />
                 <PermissionGate permission="canViewBilling">
                   <PaymentsTracker />
                   <PaymentHistory />
@@ -39,6 +37,8 @@ export default function Dashboard() {
               </div>
               
               <div className="space-y-6">
+                <AdvertisingBanner />
+                <OnboardingProgress profile={profile} isLoading={isLoading} />
                 <QuickAccess permissions={permissions} />
                 <JobsOverview permissions={permissions} />
                 <RecentActivity />
