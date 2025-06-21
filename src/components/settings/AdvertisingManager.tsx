@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Textarea } from '@/components/ui/textarea'
+import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { Switch } from '@/components/ui/switch'
 import { Megaphone, Save, Loader2, Eye, EyeOff } from 'lucide-react'
 import { usePlatformSettings } from '@/hooks/usePlatformSettings'
@@ -93,18 +93,17 @@ export function AdvertisingManager() {
           />
         </div>
 
-        {/* Body */}
+        {/* Body - Now using RichTextEditor */}
         <div className="space-y-2">
           <Label htmlFor="ad-body" className="text-sm font-medium">
             Banner Content
           </Label>
-          <Textarea
-            id="ad-body"
+          <RichTextEditor
             value={formData.body}
-            onChange={(e) => handleChange('body', e.target.value)}
-            placeholder="Enter banner content/message"
-            className="min-h-[100px]"
-            disabled={!formData.enabled}
+            onChange={(value) => handleChange('body', value)}
+            placeholder="Enter banner content/message with rich formatting..."
+            minHeight="150px"
+            className={!formData.enabled ? "opacity-50 pointer-events-none" : ""}
           />
         </div>
 
@@ -153,12 +152,13 @@ export function AdvertisingManager() {
               <h3 className="text-lg font-medium text-white mb-2">
                 {formData.title}
               </h3>
-              <p className="text-sm text-white/90 leading-relaxed mb-4">
-                {formData.body}
-              </p>
+              <div 
+                className="text-sm text-white/90 leading-relaxed mb-4 prose prose-sm max-w-none [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6"
+                dangerouslySetInnerHTML={{ __html: formData.body }}
+              />
               {formData.buttonText && (
                 <Button
-                  className="w-full font-medium text-black"
+                  className="font-medium text-black"
                   style={{ backgroundColor: '#fffead' }}
                   disabled
                 >

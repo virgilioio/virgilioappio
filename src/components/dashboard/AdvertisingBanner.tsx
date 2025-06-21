@@ -41,9 +41,10 @@ export function AdvertisingBanner() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <p className="text-sm text-white/90 leading-relaxed">
-          {adBody}
-        </p>
+        <div 
+          className="text-sm text-white/90 leading-relaxed prose prose-sm max-w-none [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:my-2 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0"
+          dangerouslySetInnerHTML={{ __html: adBody }}
+        />
         {adButtonText && (
           <div className="flex justify-start">
             <Button
