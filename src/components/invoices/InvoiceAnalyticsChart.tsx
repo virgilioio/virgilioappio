@@ -1,3 +1,4 @@
+
 import { useState, useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip } from 'recharts'
@@ -137,7 +138,7 @@ export function InvoiceAnalyticsChart({ invoices }: InvoiceAnalyticsChartProps) 
             <div className="text-3xl font-bold text-black">
               {formatCurrency(totalInvoiced)}
             </div>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs font-poppins font-bold text-muted-foreground">
               Total invoiced in selected period
             </p>
           </div>
