@@ -13,8 +13,6 @@ import { MonthPicker } from '@/components/ui/month-picker'
 import { useInvoices } from '@/hooks/useInvoices'
 import { useOrganizations } from '@/hooks/useOrganizations'
 import { usePermissions } from '@/hooks/usePermissions'
-import { AppContainer } from '@/components/layout/AppContainer'
-import { Section } from '@/components/layout/Section'
 import { filterInvoices, getInvoiceStats, InvoiceFilterProvider, useInvoiceFilter } from '@/utils/invoiceFilters'
 
 function AdminInvoicesContent() {
@@ -71,8 +69,8 @@ function AdminInvoicesContent() {
 
   if (!canManageInvoices) {
     return (
-      <Section>
-        <AppContainer variant="sm">
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto py-6 sm:py-8 lg:py-12 px-4 sm:px-6 lg:px-8">
           <Card>
             <CardContent className="pt-6">
               <p className="text-center text-muted-foreground">
@@ -80,14 +78,14 @@ function AdminInvoicesContent() {
               </p>
             </CardContent>
           </Card>
-        </AppContainer>
-      </Section>
+        </div>
+      </div>
     )
   }
 
   return (
-    <Section>
-      <AppContainer variant="default">
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto py-6 sm:py-8 lg:py-12 px-4 sm:px-6 lg:px-8">
         <div className="space-y-6">
           {/* Header */}
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -261,8 +259,8 @@ function AdminInvoicesContent() {
             onOpenChange={setCreateModalOpen}
           />
         </div>
-      </AppContainer>
-    </Section>
+      </div>
+    </div>
   )
 }
 
