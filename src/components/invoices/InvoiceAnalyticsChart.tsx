@@ -41,7 +41,7 @@ export function InvoiceAnalyticsChart({ invoices }: InvoiceAnalyticsChartProps) 
         startDate.setMonth(now.getMonth() - 6)
         break
       case '1year':
-        startDate.setFullYear(now.getFullYear() - 1)
+        startDate.setFullYear(now.getFullYear() - 1) - 1
         break
       case 'all':
         startDate = new Date('2020-01-01') // Far back date for all time
@@ -137,9 +137,6 @@ export function InvoiceAnalyticsChart({ invoices }: InvoiceAnalyticsChartProps) 
             <div className="text-3xl font-bold text-black">
               {formatCurrency(totalInvoiced)}
             </div>
-            <p className="text-xs text-muted-foreground">
-              Total invoiced in selected period
-            </p>
           </div>
         </div>
       </CardHeader>
