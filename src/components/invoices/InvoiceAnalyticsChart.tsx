@@ -1,3 +1,4 @@
+
 import { useState, useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip } from 'recharts'
@@ -22,7 +23,7 @@ export function InvoiceAnalyticsChart({ invoices }: InvoiceAnalyticsChartProps) 
     { value: 'all', label: 'All' },
   ]
 
-  const chartData = useMemo(() => {
+  const { chartData, totalInvoiced } = useMemo(() => {
     const now = new Date()
     let startDate = new Date()
 
@@ -54,6 +55,9 @@ export function InvoiceAnalyticsChart({ invoices }: InvoiceAnalyticsChartProps) 
       return invoiceDate >= startDate && invoiceDate <= now
     })
 
+    // Calculate total amount of all invoices issued in the selected period
+    const totalAmount = filteredInvoices.reduce((sum, invoice) => sum + invoice.amount, 0)
+
     // Group invoices by date and calculate cumulative total
     const dateGroups: { [key: string]: number } = {}
     
@@ -82,18 +86,23 @@ export function InvoiceAnalyticsChart({ invoices }: InvoiceAnalyticsChartProps) 
 
     // If no data, show at least one point at zero
     if (data.length === 0) {
-      return [{
-        date: now.toISOString().split('T')[0],
-        total: 0,
-        amount: 0,
-        formattedDate: now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-      }]
+      return {
+        chartData: [{
+          date: now.toISOString().split('T')[0],
+          total: 0,
+          amount: 0,
+          formattedDate: now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+        }],
+        totalInvoiced: 0
+      }
     }
 
-    return data
+    return {
+      chartData: data,
+      totalInvoiced: totalAmount
+    }
   }, [invoices, selectedPeriod])
 
-  const totalInvoiced = chartData[chartData.length - 1]?.total || 0
   const currency = invoices[0]?.currency || 'USD'
 
   const formatCurrency = (amount: number) => {
