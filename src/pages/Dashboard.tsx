@@ -4,7 +4,6 @@ import { QuickAccess } from '@/components/dashboard/QuickAccess'
 import { JobsOverview } from '@/components/dashboard/JobsOverview'
 import { PaymentsTracker } from '@/components/dashboard/PaymentsTracker'
 import { PaymentHistory } from '@/components/dashboard/PaymentHistory'
-import { PriorityPaymentAlert } from '@/components/dashboard/PriorityPaymentAlert'
 import { RecentActivity } from '@/components/dashboard/RecentActivity'
 import { OnboardingProgress } from '@/components/dashboard/OnboardingProgress'
 import { InvoiceFilterProvider } from '@/utils/invoiceFilters'
@@ -26,10 +25,6 @@ export default function Dashboard() {
         <InvoiceFilterProvider>
           <div className="space-y-6">
             <WelcomeHeader profile={profile} isLoading={isLoading} />
-            
-            <PermissionGate permission="canViewBilling">
-              <PriorityPaymentAlert />
-            </PermissionGate>
             
             {/* Two equal columns layout */}
             <div className="grid gap-6 lg:grid-cols-2">
