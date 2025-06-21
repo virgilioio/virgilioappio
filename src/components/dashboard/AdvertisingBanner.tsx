@@ -45,13 +45,15 @@ export function AdvertisingBanner() {
           {adBody}
         </p>
         {adButtonText && (
-          <Button
-            onClick={handleButtonClick}
-            className="w-full font-medium text-black hover:bg-[#fffead]/90"
-            style={{ backgroundColor: '#fffead' }}
-          >
-            {adButtonText}
-          </Button>
+          <div className="flex justify-start">
+            <Button
+              onClick={handleButtonClick}
+              className="font-medium text-black hover:bg-[#fffead]/90"
+              style={{ backgroundColor: '#fffead' }}
+            >
+              {adButtonText}
+            </Button>
+          </div>
         )}
       </CardContent>
     </Card>
