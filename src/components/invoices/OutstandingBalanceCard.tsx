@@ -1,4 +1,3 @@
-
 import { useState, useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Invoice } from '@/hooks/useInvoices'
@@ -69,7 +68,7 @@ export function OutstandingBalanceCard({ invoices }: OutstandingBalanceCardProps
   }
 
   return (
-    <Card className="h-full" style={{ backgroundColor: '#d7c5fb' }}>
+    <Card className="h-full rounded-2xl" style={{ backgroundColor: '#d7c5fb' }}>
       <CardHeader className="pb-2">
         <div className="space-y-2">
           <CardTitle className="flex items-center gap-2 text-base">

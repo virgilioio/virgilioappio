@@ -1,4 +1,3 @@
-
 import { useState, useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Invoice } from '@/hooks/useInvoices'
@@ -70,7 +69,7 @@ export function OverduePaymentsCard({ invoices }: OverduePaymentsCardProps) {
   }
 
   return (
-    <Card className="h-full" style={{ backgroundColor: '#ffc2c2' }}>
+    <Card className="h-full rounded-2xl" style={{ backgroundColor: '#ffc2c2' }}>
       <CardHeader className="pb-2">
         <div className="space-y-2">
           <CardTitle className="flex items-center gap-2 text-base">
