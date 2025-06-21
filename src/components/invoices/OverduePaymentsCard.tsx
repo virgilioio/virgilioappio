@@ -1,3 +1,4 @@
+
 import { useState, useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Invoice } from '@/hooks/useInvoices'
@@ -86,9 +87,7 @@ export function OverduePaymentsCard({ invoices }: OverduePaymentsCardProps) {
       </CardHeader>
       <CardContent className="pt-0 pb-3">
         <div className="h-[160px] w-full mb-3 flex items-center justify-center">
-          <div className="text-6xl text-red-600 opacity-20">
-            <AlertTriangle className="h-20 w-20" />
-          </div>
+          {/* Removed the large decorative icon */}
         </div>
 
         {/* Time Period Filter - Moved to bottom */}
