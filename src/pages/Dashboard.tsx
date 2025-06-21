@@ -7,8 +7,6 @@ import { PaymentHistory } from '@/components/dashboard/PaymentHistory'
 import { PriorityPaymentAlert } from '@/components/dashboard/PriorityPaymentAlert'
 import { RecentActivity } from '@/components/dashboard/RecentActivity'
 import { OnboardingProgress } from '@/components/dashboard/OnboardingProgress'
-import { AppContainer } from '@/components/layout/AppContainer'
-import { Section } from '@/components/layout/Section'
 import { InvoiceFilterProvider } from '@/utils/invoiceFilters'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -23,9 +21,9 @@ export default function Dashboard() {
   useSampleActivities()
 
   return (
-    <InvoiceFilterProvider>
-      <Section>
-        <AppContainer variant="default">
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto py-6 sm:py-8 lg:py-12 px-4 sm:px-6 lg:px-8">
+        <InvoiceFilterProvider>
           <div className="space-y-6">
             <WelcomeHeader profile={profile} isLoading={isLoading} />
             
@@ -52,8 +50,8 @@ export default function Dashboard() {
               </div>
             </div>
           </div>
-        </AppContainer>
-      </Section>
-    </InvoiceFilterProvider>
+        </InvoiceFilterProvider>
+      </div>
+    </div>
   )
 }
