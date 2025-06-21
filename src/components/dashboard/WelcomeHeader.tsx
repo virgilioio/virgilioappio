@@ -21,7 +21,7 @@ export function WelcomeHeader({ profile, isLoading }: WelcomeHeaderProps) {
 
   return (
     <div className="p-layout-md">
-      <h1 className="text-2xl font-semibold text-text-primary mb-sm">
+      <h1 className="text-3xl font-semibold text-text-primary mb-sm">
         Hello, {firstName} 👋
       </h1>
       <p className="text-sm text-text-secondary">
