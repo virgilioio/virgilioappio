@@ -2,8 +2,7 @@
 import { useState, useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from 'recharts'
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip } from 'recharts'
 import { Invoice } from '@/hooks/useInvoices'
 import { TrendingUp, Calendar } from 'lucide-react'
 
@@ -106,6 +105,20 @@ export function InvoiceAnalyticsChart({ invoices }: InvoiceAnalyticsChartProps) 
     }).format(amount)
   }
 
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-white p-3 border border-gray-200 rounded-lg shadow-lg">
+          <p className="text-sm font-medium">{label}</p>
+          <p className="text-sm" style={{ color: '#0891b2' }}>
+            Total: {formatCurrency(payload[0].value)}
+          </p>
+        </div>
+      )
+    }
+    return null
+  }
+
   return (
     <Card className="col-span-5">
       <CardHeader className="pb-4">
@@ -141,73 +154,55 @@ export function InvoiceAnalyticsChart({ invoices }: InvoiceAnalyticsChartProps) 
       </CardHeader>
       <CardContent>
         <div className="h-[300px] w-full">
-          <ChartContainer
-            config={{
-              total: {
-                label: "Total Invoiced",
-                color: "#0891b2",
-              },
-            }}
-          >
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart
-                data={chartData}
-                margin={{
-                  top: 5,
-                  right: 30,
-                  left: 20,
-                  bottom: 5,
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart
+              data={chartData}
+              margin={{
+                top: 10,
+                right: 30,
+                left: 20,
+                bottom: 10,
+              }}
+            >
+              <CartesianGrid 
+                strokeDasharray="3 3" 
+                stroke="#e2e8f0" 
+                opacity={0.5}
+              />
+              <XAxis
+                dataKey="formattedDate"
+                stroke="#64748b"
+                fontSize={12}
+                tickLine={false}
+                axisLine={false}
+              />
+              <YAxis
+                stroke="#64748b"
+                fontSize={12}
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+              />
+              <Tooltip content={<CustomTooltip />} />
+              <Line
+                type="monotone"
+                dataKey="total"
+                stroke="#0891b2"
+                strokeWidth={3}
+                dot={{
+                  fill: "#0891b2",
+                  strokeWidth: 2,
+                  r: 4,
                 }}
-              >
-                <CartesianGrid 
-                  strokeDasharray="3 3" 
-                  stroke="#e2e8f0" 
-                  opacity={0.5}
-                />
-                <XAxis
-                  dataKey="formattedDate"
-                  stroke="#64748b"
-                  fontSize={12}
-                  tickLine={false}
-                  axisLine={false}
-                />
-                <YAxis
-                  stroke="#64748b"
-                  fontSize={12}
-                  tickLine={false}
-                  axisLine={false}
-                  tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
-                />
-                <ChartTooltip 
-                  content={
-                    <ChartTooltipContent 
-                      formatter={(value, name) => [
-                        formatCurrency(value as number),
-                        name
-                      ]}
-                    />
-                  } 
-                />
-                <Line
-                  type="monotone"
-                  dataKey="total"
-                  stroke="#0891b2"
-                  strokeWidth={3}
-                  dot={{
-                    fill: "#0891b2",
-                    strokeWidth: 2,
-                    r: 4,
-                  }}
-                  activeDot={{
-                    r: 6,
-                    fill: "#0891b2",
-                    stroke: "#ffffff",
-                    strokeWidth: 2,
-                  }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </ChartContainer>
+                activeDot={{
+                  r: 6,
+                  fill: "#0891b2",
+                  stroke: "#ffffff",
+                  strokeWidth: 2,
+                }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
         </div>
       </CardContent>
     </Card>
