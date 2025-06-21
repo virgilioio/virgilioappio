@@ -1,4 +1,3 @@
-
 import { useState, useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip } from 'recharts'
@@ -196,8 +195,18 @@ export function InvoiceAnalyticsChart({ invoices }: InvoiceAnalyticsChartProps) 
                 stroke="#e2e8f0" 
                 opacity={0.5}
               />
-              <XAxis hide />
-              <YAxis hide />
+              <XAxis 
+                dataKey="displayDate"
+                tick={{ fontSize: 10 }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <YAxis 
+                tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`}
+                tick={{ fontSize: 10 }}
+                axisLine={false}
+                tickLine={false}
+              />
               <Tooltip content={<CustomTooltip />} />
               <Line
                 type="monotone"
