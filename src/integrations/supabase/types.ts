@@ -440,6 +440,47 @@ export type Database = {
           },
         ]
       }
+      job_request_agreements: {
+        Row: {
+          agreement_content: string | null
+          country_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          agreement_content?: string | null
+          country_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          agreement_content?: string | null
+          country_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_request_agreements_country_id_fkey"
+            columns: ["country_id"]
+            isOneToOne: false
+            referencedRelation: "countries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_requests: {
         Row: {
           approved_at: string | null
