@@ -127,7 +127,7 @@ export function InvoiceAnalyticsChart({ invoices }: InvoiceAnalyticsChartProps) 
           </CardTitle>
           
           <div className="space-y-1">
-            <div className="text-lg font-bold" style={{ color: '#007c91' }}>
+            <div className="text-3xl font-bold text-black">
               {formatCurrency(totalInvoiced)}
             </div>
             <p className="text-xs text-muted-foreground">
