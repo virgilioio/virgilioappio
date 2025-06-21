@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react'
 import { Plus, Search, Filter, Calendar, Receipt } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -8,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { AdminInvoicesTable } from '@/components/invoices/AdminInvoicesTable'
 import { CreateInvoiceModal } from '@/components/invoices/CreateInvoiceModal'
 import { BillingMetricsDashboard } from '@/components/invoices/BillingMetricsDashboard'
+import { InvoiceAnalyticsChart } from '@/components/invoices/InvoiceAnalyticsChart'
 import { MonthPicker } from '@/components/ui/month-picker'
 import { useInvoices } from '@/hooks/useInvoices'
 import { useOrganizations } from '@/hooks/useOrganizations'
@@ -101,6 +103,12 @@ function AdminInvoicesContent() {
               <Plus className="h-4 w-4" />
               Create Invoice
             </Button>
+          </div>
+
+          {/* 5-Column Grid Structure */}
+          <div className="grid grid-cols-5 gap-6">
+            {/* Invoice Analytics Chart - Full Width */}
+            <InvoiceAnalyticsChart invoices={invoices} />
           </div>
 
           {/* Billing Metrics Dashboard */}
