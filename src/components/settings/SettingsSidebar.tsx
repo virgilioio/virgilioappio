@@ -83,7 +83,7 @@ export function SettingsSidebar({ currentTab, onTabChange, className }: Settings
   }
 
   return (
-    <nav className={cn("p-4", className)}>
+    <nav className={cn("fixed top-0 left-0 h-screen w-64 bg-background border-r border-border overflow-y-auto z-10 p-4", className)}>
       <div className="space-y-1">
         {navItems.map((item) => {
           const Icon = item.icon

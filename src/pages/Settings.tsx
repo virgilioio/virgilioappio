@@ -60,18 +60,18 @@ export default function Settings() {
   return (
     <InvoiceFilterProvider>
       <Section>
-        <AppContainer variant="default">
-          <div className="flex flex-col lg:flex-row gap-6">
-            {/* Sidebar - hidden on mobile */}
-            <div className="hidden lg:block w-64 flex-shrink-0">
-              <SettingsSidebar 
-                currentTab={currentTab} 
-                onTabChange={handleTabChange} 
-              />
-            </div>
-            
-            {/* Main content */}
-            <div className="flex-1 min-w-0">
+        <div className="flex">
+          {/* Fixed Sidebar - hidden on mobile */}
+          <div className="hidden lg:block">
+            <SettingsSidebar 
+              currentTab={currentTab} 
+              onTabChange={handleTabChange} 
+            />
+          </div>
+          
+          {/* Main content with left margin to account for fixed sidebar */}
+          <div className="flex-1 lg:ml-64">
+            <AppContainer variant="default">
               <Tabs value={currentTab} onValueChange={handleTabChange} className="w-full">
                 {/* Mobile header */}
                 <div className="lg:hidden mb-6">
@@ -121,9 +121,9 @@ export default function Settings() {
                   </>
                 )}
               </Tabs>
-            </div>
+            </AppContainer>
           </div>
-        </AppContainer>
+        </div>
       </Section>
     </InvoiceFilterProvider>
   )
