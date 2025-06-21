@@ -4,14 +4,16 @@ import { PlatformAssetUploader } from './PlatformAssetUploader'
 import { CountryManagement } from './CountryManagement'
 import { PlatformSettingsManager } from './PlatformSettingsManager'
 import { AdvertisingManager } from './AdvertisingManager'
+import { LegalManager } from './LegalManager'
 
 export function PlatformTab() {
   return (
     <div className="space-y-6">
       <Tabs defaultValue="settings" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="settings">Settings</TabsTrigger>
           <TabsTrigger value="advertising">Advertising</TabsTrigger>
+          <TabsTrigger value="legal">Legal</TabsTrigger>
           <TabsTrigger value="assets">Assets</TabsTrigger>
           <TabsTrigger value="countries">Countries</TabsTrigger>
         </TabsList>
@@ -22,6 +24,10 @@ export function PlatformTab() {
         
         <TabsContent value="advertising" className="space-y-6">
           <AdvertisingManager />
+        </TabsContent>
+        
+        <TabsContent value="legal" className="space-y-6">
+          <LegalManager />
         </TabsContent>
         
         <TabsContent value="assets" className="space-y-6">
