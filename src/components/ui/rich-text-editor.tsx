@@ -14,7 +14,7 @@ import {
   AlignRight
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { saveCursorPosition, restoreCursorPosition, type CursorPosition } from '@/lib/cursorUtils'
+import { saveTextCursorPosition, restoreTextCursorPosition, type TextCursorPosition } from '@/lib/cursorUtils'
 
 interface RichTextEditorProps {
   value: string
@@ -33,25 +33,43 @@ export function RichTextEditor({
 }: RichTextEditorProps) {
   const [isFocused, setIsFocused] = useState(false)
   const editorRef = useRef<HTMLDivElement>(null)
-  const cursorPositionRef = useRef<CursorPosition | null>(null)
+  const cursorPositionRef = useRef<TextCursorPosition | null>(null)
+  const lastContentRef = useRef<string>(value)
   const isUpdatingRef = useRef(false)
 
   const execCommand = useCallback((command: string, value?: string) => {
     document.execCommand(command, false, value)
   }, [])
 
+  const updateContent = useCallback((newContent: string) => {
+    if (!editorRef.current || isUpdatingRef.current) return
+    
+    // Only update if content actually changed
+    if (newContent !== lastContentRef.current) {
+      lastContentRef.current = newContent
+      onChange(newContent)
+    }
+  }, [onChange])
+
   const handleCommand = useCallback((command: string, value?: string) => {
     if (!editorRef.current) return
     
     // Save cursor position before command
-    cursorPositionRef.current = saveCursorPosition(editorRef.current)
+    cursorPositionRef.current = saveTextCursorPosition(editorRef.current)
     
     execCommand(command, value)
     
     // Get the updated content and trigger onChange
     const newContent = editorRef.current.innerHTML
-    onChange(newContent)
-  }, [execCommand, onChange])
+    updateContent(newContent)
+    
+    // Restore cursor position after a brief delay
+    setTimeout(() => {
+      if (editorRef.current && cursorPositionRef.current) {
+        restoreTextCursorPosition(editorRef.current, cursorPositionRef.current)
+      }
+    }, 0)
+  }, [execCommand, updateContent])
 
   const handleInput = useCallback((e: React.FormEvent<HTMLDivElement>) => {
     if (isUpdatingRef.current) return
@@ -60,10 +78,10 @@ export function RichTextEditor({
     const newContent = target.innerHTML
     
     // Save cursor position before triggering onChange
-    cursorPositionRef.current = saveCursorPosition(target)
+    cursorPositionRef.current = saveTextCursorPosition(target)
     
-    onChange(newContent)
-  }, [onChange])
+    updateContent(newContent)
+  }, [updateContent])
 
   const handleFocus = useCallback(() => {
     setIsFocused(true)
@@ -73,15 +91,22 @@ export function RichTextEditor({
     setIsFocused(false)
   }, [])
 
-  // Restore cursor position after content updates
+  // Update editor content when value prop changes from parent
   useEffect(() => {
-    if (editorRef.current && cursorPositionRef.current && !isUpdatingRef.current) {
+    if (editorRef.current && value !== lastContentRef.current && !isUpdatingRef.current) {
       isUpdatingRef.current = true
       
-      // Use setTimeout to ensure DOM has updated
+      // Save current cursor position
+      const savedPosition = saveTextCursorPosition(editorRef.current)
+      
+      // Update content
+      editorRef.current.innerHTML = value
+      lastContentRef.current = value
+      
+      // Restore cursor position after DOM update
       setTimeout(() => {
-        if (editorRef.current && cursorPositionRef.current) {
-          restoreCursorPosition(editorRef.current, cursorPositionRef.current)
+        if (editorRef.current && savedPosition) {
+          restoreTextCursorPosition(editorRef.current, savedPosition)
         }
         isUpdatingRef.current = false
       }, 0)
@@ -181,7 +206,7 @@ export function RichTextEditor({
           onInput={handleInput}
           onFocus={handleFocus}
           onBlur={handleBlur}
-          dangerouslySetInnerHTML={{ __html: value }}
+          suppressContentEditableWarning={true}
           className={cn(
             "p-3 text-sm ring-offset-background relative z-20",
             "focus-visible:outline-none",
