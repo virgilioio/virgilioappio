@@ -41,7 +41,7 @@ export function InvoiceAnalyticsChart({ invoices }: InvoiceAnalyticsChartProps) 
         startDate.setMonth(now.getMonth() - 6)
         break
       case '1year':
-        startDate.setFullYear(now.getFullYear() - 1) - 1
+        startDate.setFullYear(now.getFullYear() - 1)
         break
       case 'all':
         startDate = new Date('2020-01-01') // Far back date for all time

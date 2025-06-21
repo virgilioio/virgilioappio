@@ -10,6 +10,7 @@ import { AdminInvoicesTable } from '@/components/invoices/AdminInvoicesTable'
 import { CreateInvoiceModal } from '@/components/invoices/CreateInvoiceModal'
 import { BillingMetricsDashboard } from '@/components/invoices/BillingMetricsDashboard'
 import { InvoiceAnalyticsChart } from '@/components/invoices/InvoiceAnalyticsChart'
+import { TotalPaidCard } from '@/components/invoices/TotalPaidCard'
 import { MonthPicker } from '@/components/ui/month-picker'
 import { useInvoices } from '@/hooks/useInvoices'
 import { useOrganizations } from '@/hooks/useOrganizations'
@@ -105,15 +106,15 @@ function AdminInvoicesContent() {
             </Button>
           </div>
 
-          {/* 5-Column Grid Structure */}
-          <div className="grid grid-cols-5 gap-6">
-            {/* Invoice Analytics Chart - 2 columns */}
-            <div className="col-span-2">
-              <InvoiceAnalyticsChart invoices={invoices} />
+          {/* Charts Grid - 1:5 ratio */}
+          <div className="grid grid-cols-6 gap-6">
+            {/* Total Paid Card - 1 column */}
+            <div className="col-span-1">
+              <TotalPaidCard invoices={invoices} />
             </div>
-            {/* Empty space for now - 3 columns */}
-            <div className="col-span-3">
-              {/* This space can be used for additional charts or metrics later */}
+            {/* Invoice Analytics Chart - 5 columns */}
+            <div className="col-span-5">
+              <InvoiceAnalyticsChart invoices={invoices} />
             </div>
           </div>
 
