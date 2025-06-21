@@ -6,6 +6,7 @@ import { PaymentsTracker } from '@/components/dashboard/PaymentsTracker'
 import { PaymentHistory } from '@/components/dashboard/PaymentHistory'
 import { RecentActivity } from '@/components/dashboard/RecentActivity'
 import { OnboardingProgress } from '@/components/dashboard/OnboardingProgress'
+import { AdvertisingBanner } from '@/components/dashboard/AdvertisingBanner'
 import { InvoiceFilterProvider } from '@/utils/invoiceFilters'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -36,6 +37,7 @@ export default function Dashboard() {
               </div>
               
               <div className="space-y-6">
+                <AdvertisingBanner />
                 <QuickAccess permissions={permissions} />
                 <JobsOverview permissions={permissions} />
                 <OnboardingProgress profile={profile} isLoading={isLoading} />

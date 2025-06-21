@@ -2,15 +2,27 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { PlatformAssetUploader } from './PlatformAssetUploader'
 import { CountryManagement } from './CountryManagement'
+import { PlatformSettingsManager } from './PlatformSettingsManager'
+import { AdvertisingManager } from './AdvertisingManager'
 
 export function PlatformTab() {
   return (
     <div className="space-y-6">
-      <Tabs defaultValue="assets" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="assets">Platform Assets</TabsTrigger>
-          <TabsTrigger value="countries">Country Management</TabsTrigger>
+      <Tabs defaultValue="settings" className="w-full">
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="settings">Settings</TabsTrigger>
+          <TabsTrigger value="advertising">Advertising</TabsTrigger>
+          <TabsTrigger value="assets">Assets</TabsTrigger>
+          <TabsTrigger value="countries">Countries</TabsTrigger>
         </TabsList>
+        
+        <TabsContent value="settings" className="space-y-6">
+          <PlatformSettingsManager />
+        </TabsContent>
+        
+        <TabsContent value="advertising" className="space-y-6">
+          <AdvertisingManager />
+        </TabsContent>
         
         <TabsContent value="assets" className="space-y-6">
           <PlatformAssetUploader />
