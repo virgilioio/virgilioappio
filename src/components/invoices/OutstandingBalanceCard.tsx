@@ -1,6 +1,5 @@
 
-
-import { useState, useMemo } from 'react'
+import { useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Invoice } from '@/hooks/useInvoices'
 import { Clock } from 'lucide-react'
@@ -9,56 +8,21 @@ interface OutstandingBalanceCardProps {
   invoices: Invoice[]
 }
 
-type TimePeriod = '1week' | '1month' | '3months' | '6months' | '1year' | 'all'
-
 export function OutstandingBalanceCard({ invoices }: OutstandingBalanceCardProps) {
-  const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('6months')
-
-  const timePeriodOptions: { value: TimePeriod; label: string }[] = [
-    { value: '1week', label: '1W' },
-    { value: '1month', label: '1M' },
-    { value: '3months', label: '3M' },
-    { value: '6months', label: '6M' },
-    { value: '1year', label: '1Y' },
-    { value: 'all', label: 'All' },
-  ]
-
   const totalOutstanding = useMemo(() => {
     const now = new Date()
-    let startDate = new Date()
 
-    // Calculate start date based on selected period
-    switch (selectedPeriod) {
-      case '1week':
-        startDate.setDate(now.getDate() - 7)
-        break
-      case '1month':
-        startDate.setMonth(now.getMonth() - 1)
-        break
-      case '3months':
-        startDate.setMonth(now.getMonth() - 3)
-        break
-      case '6months':
-        startDate.setMonth(now.getMonth() - 6)
-        break
-      case '1year':
-        startDate.setFullYear(now.getFullYear() - 1)
-        break
-      case 'all':
-        startDate = new Date('2020-01-01') // Far back date for all time
-        break
-    }
-
-    // Filter outstanding invoices (pending + overdue) by date range
+    // Filter outstanding invoices (pending + overdue) - no time period filtering needed
     const filteredInvoices = invoices.filter(invoice => {
-      const invoiceDate = new Date(invoice.issued_at)
-      const isOutstanding = invoice.status === 'pending' || invoice.status === 'overdue'
-      return isOutstanding && invoiceDate >= startDate && invoiceDate <= now
+      const isOverdue = invoice.status === 'overdue' || 
+        (invoice.status === 'pending' && invoice.due_date && new Date(invoice.due_date) < now)
+      const isPending = invoice.status === 'pending'
+      return isOverdue || isPending
     })
 
-    // Calculate total amount of outstanding invoices in the selected period
+    // Calculate total amount of outstanding invoices
     return filteredInvoices.reduce((sum, invoice) => sum + invoice.amount, 0)
-  }, [invoices, selectedPeriod])
+  }, [invoices])
 
   const currency = invoices[0]?.currency || 'USD'
 
@@ -86,27 +50,8 @@ export function OutstandingBalanceCard({ invoices }: OutstandingBalanceCardProps
         </div>
       </CardHeader>
       <CardContent className="pt-0 pb-3">
-        <div className="h-[160px] w-full mb-3 flex items-center justify-center">
-          {/* Removed the large decorative icon */}
-        </div>
-
-        {/* Time Period Filter - Moved to bottom */}
-        <div className="flex justify-center">
-          <div className="flex gap-4">
-            {timePeriodOptions.map((option) => (
-              <button
-                key={option.value}
-                onClick={() => setSelectedPeriod(option.value)}
-                className={`text-xs px-1 py-0.5 cursor-pointer transition-colors ${
-                  selectedPeriod === option.value 
-                    ? 'text-purple-700 font-medium' 
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
+        <div className="h-[200px] w-full flex items-center justify-center">
+          
         </div>
       </CardContent>
     </Card>
