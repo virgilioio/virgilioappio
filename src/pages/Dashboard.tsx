@@ -31,9 +31,6 @@ export default function Dashboard() {
               <PriorityPaymentAlert />
             </PermissionGate>
             
-            {/* Compliance Progress - Full Width */}
-            <OnboardingProgress profile={profile} isLoading={isLoading} />
-            
             {/* Two equal columns layout */}
             <div className="grid gap-6 lg:grid-cols-2">
               <div className="space-y-6">
@@ -46,6 +43,7 @@ export default function Dashboard() {
               <div className="space-y-6">
                 <QuickAccess permissions={permissions} />
                 <JobsOverview permissions={permissions} />
+                <OnboardingProgress profile={profile} isLoading={isLoading} />
                 <RecentActivity />
               </div>
             </div>
