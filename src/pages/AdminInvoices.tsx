@@ -1,6 +1,5 @@
-
 import { useState, useEffect } from 'react'
-import { Plus, Search, Filter, Calendar } from 'lucide-react'
+import { Plus, Search, Filter, Calendar, Receipt } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -88,10 +87,13 @@ function AdminInvoicesContent() {
       <div className="container mx-auto py-6 sm:py-8 lg:py-12 px-4 sm:px-6 lg:px-8">
         <div className="space-y-6">
           {/* Header */}
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="mb-6 sm:mb-8 lg:mb-12 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h1 className="text-2xl font-bold tracking-tight">Invoice Management</h1>
-              <p className="text-muted-foreground">
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
+                <Receipt className="h-6 w-6 sm:h-7 sm:w-7" />
+                Invoice Management
+              </h1>
+              <p className="text-muted-foreground mt-2 text-sm sm:text-md">
                 Create and manage invoices for all organizations
               </p>
             </div>
