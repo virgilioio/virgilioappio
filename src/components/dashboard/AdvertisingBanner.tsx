@@ -36,7 +36,7 @@ export function AdvertisingBanner() {
       style={{ backgroundColor: '#0d0d09' }}
     >
       <CardHeader className="pb-3">
-        <CardTitle className="text-lg font-medium text-white">
+        <CardTitle className="text-2xl font-medium text-white">
           {adTitle}
         </CardTitle>
       </CardHeader>
