@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react'
 import { Plus, Search, Filter, Calendar, Receipt } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -12,6 +11,7 @@ import { BillingMetricsDashboard } from '@/components/invoices/BillingMetricsDas
 import { InvoiceAnalyticsChart } from '@/components/invoices/InvoiceAnalyticsChart'
 import { TotalPaidCard } from '@/components/invoices/TotalPaidCard'
 import { OverduePaymentsCard } from '@/components/invoices/OverduePaymentsCard'
+import { OutstandingBalanceCard } from '@/components/invoices/OutstandingBalanceCard'
 import { MonthPicker } from '@/components/ui/month-picker'
 import { useInvoices } from '@/hooks/useInvoices'
 import { useOrganizations } from '@/hooks/useOrganizations'
@@ -107,8 +107,8 @@ function AdminInvoicesContent() {
             </Button>
           </div>
 
-          {/* Charts Grid - 3:1:1 ratio */}
-          <div className="grid grid-cols-5 gap-6">
+          {/* Charts Grid - 3:1:1:1 ratio */}
+          <div className="grid grid-cols-6 gap-6">
             {/* Invoice Analytics Chart - 3 columns */}
             <div className="col-span-3">
               <InvoiceAnalyticsChart invoices={invoices} />
@@ -120,6 +120,10 @@ function AdminInvoicesContent() {
             {/* Overdue Payments Card - 1 column */}
             <div className="col-span-1">
               <OverduePaymentsCard invoices={invoices} />
+            </div>
+            {/* Outstanding Balance Card - 1 column */}
+            <div className="col-span-1">
+              <OutstandingBalanceCard invoices={invoices} />
             </div>
           </div>
 
