@@ -51,14 +51,8 @@ export function Header() {
     {
       href: '/dashboard',
       icon: Home,
-      label: 'Dashboard',
+      label: 'Home',
       show: true,
-    },
-    {
-      href: '/jobs',
-      icon: Briefcase,
-      label: 'Jobs',
-      show: canViewJobs,
     },
     {
       href: '/organizations',
@@ -71,6 +65,12 @@ export function Header() {
       icon: FileText,
       label: 'Job Requests',
       show: canViewJobRequests,
+    },
+    {
+      href: '/jobs',
+      icon: Briefcase,
+      label: 'Jobs',
+      show: canViewJobs,
     },
     {
       href: '/invoices',
