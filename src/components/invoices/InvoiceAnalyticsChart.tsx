@@ -178,11 +178,7 @@ export function InvoiceAnalyticsChart({ invoices }: InvoiceAnalyticsChartProps) 
                 dataKey="total"
                 stroke="#007c91"
                 strokeWidth={2}
-                dot={{
-                  fill: "#007c91",
-                  strokeWidth: 2,
-                  r: 3,
-                }}
+                dot={false}
                 activeDot={{
                   r: 4,
                   fill: "#007c91",
