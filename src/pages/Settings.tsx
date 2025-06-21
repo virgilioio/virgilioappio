@@ -7,7 +7,11 @@ import { ProfileTab } from '@/components/settings/ProfileTab'
 import { OrganizationTab } from '@/components/settings/OrganizationTab'
 import { BillingTab } from '@/components/settings/BillingTab'
 import { MembersTab } from '@/components/settings/MembersTab'
-import { PlatformTab } from '@/components/settings/PlatformTab'
+import { PlatformSettingsManager } from '@/components/settings/PlatformSettingsManager'
+import { AdvertisingManager } from '@/components/settings/AdvertisingManager'
+import { LegalManager } from '@/components/settings/LegalManager'
+import { PlatformAssetUploader } from '@/components/settings/PlatformAssetUploader'
+import { CountryManagement } from '@/components/settings/CountryManagement'
 import { usePermissions } from '@/hooks/usePermissions'
 import { AppContainer } from '@/components/layout/AppContainer'
 import { Section } from '@/components/layout/Section'
@@ -34,6 +38,23 @@ export default function Settings() {
 
   const handleBackToDashboard = () => {
     navigate('/')
+  }
+
+  const renderPlatformContent = () => {
+    switch (currentTab) {
+      case 'platform-settings':
+        return <PlatformSettingsManager />
+      case 'platform-advertising':
+        return <AdvertisingManager />
+      case 'platform-legal':
+        return <LegalManager />
+      case 'platform-assets':
+        return <PlatformAssetUploader />
+      case 'platform-countries':
+        return <CountryManagement />
+      default:
+        return <PlatformSettingsManager />
+    }
   }
 
   return (
@@ -81,9 +102,23 @@ export default function Settings() {
                 )}
                 
                 {isPlatformAdmin && (
-                  <TabsContent value="platform">
-                    <PlatformTab />
-                  </TabsContent>
+                  <>
+                    <TabsContent value="platform-settings">
+                      {renderPlatformContent()}
+                    </TabsContent>
+                    <TabsContent value="platform-advertising">
+                      {renderPlatformContent()}
+                    </TabsContent>
+                    <TabsContent value="platform-legal">
+                      {renderPlatformContent()}
+                    </TabsContent>
+                    <TabsContent value="platform-assets">
+                      {renderPlatformContent()}
+                    </TabsContent>
+                    <TabsContent value="platform-countries">
+                      {renderPlatformContent()}
+                    </TabsContent>
+                  </>
                 )}
               </Tabs>
             </div>
