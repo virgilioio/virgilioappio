@@ -11,7 +11,7 @@ interface WelcomeHeaderProps {
 export function WelcomeHeader({ profile, isLoading }: WelcomeHeaderProps) {
   if (isLoading) {
     return (
-      <Card>
+      <Card className="border-0 shadow-none bg-transparent">
         <CardContent className="p-layout-md">
           <Skeleton className="h-6 w-48 mb-sm" />
           <Skeleton className="h-4 w-80" />
@@ -23,7 +23,7 @@ export function WelcomeHeader({ profile, isLoading }: WelcomeHeaderProps) {
   const firstName = profile?.first_name || 'there'
 
   return (
-    <Card>
+    <Card className="border-0 shadow-none bg-transparent">
       <CardContent className="p-layout-md">
         <h1 className="text-xl font-semibold text-text-primary mb-sm">
           Hello, {firstName} 👋
