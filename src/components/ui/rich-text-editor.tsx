@@ -11,7 +11,8 @@ import {
   ListOrdered,
   AlignLeft,
   AlignCenter,
-  AlignRight
+  AlignRight,
+  Table
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { saveTextCursorPosition, restoreTextCursorPosition, type TextCursorPosition } from '@/lib/cursorUtils'
@@ -70,6 +71,62 @@ export function RichTextEditor({
       }
     }, 0)
   }, [execCommand, updateContent])
+
+  const insertTable = useCallback(() => {
+    if (!editorRef.current) return
+    
+    editorRef.current.focus()
+    
+    // Save cursor position
+    cursorPositionRef.current = saveTextCursorPosition(editorRef.current)
+    
+    // Create a basic 3x3 table
+    const tableHTML = `
+      <table style="border-collapse: collapse; width: 100%; margin: 10px 0;">
+        <tbody>
+          <tr>
+            <td style="border: 1px solid #ccc; padding: 8px;">Cell 1</td>
+            <td style="border: 1px solid #ccc; padding: 8px;">Cell 2</td>
+            <td style="border: 1px solid #ccc; padding: 8px;">Cell 3</td>
+          </tr>
+          <tr>
+            <td style="border: 1px solid #ccc; padding: 8px;">Cell 4</td>
+            <td style="border: 1px solid #ccc; padding: 8px;">Cell 5</td>
+            <td style="border: 1px solid #ccc; padding: 8px;">Cell 6</td>
+          </tr>
+          <tr>
+            <td style="border: 1px solid #ccc; padding: 8px;">Cell 7</td>
+            <td style="border: 1px solid #ccc; padding: 8px;">Cell 8</td>
+            <td style="border: 1px solid #ccc; padding: 8px;">Cell 9</td>
+          </tr>
+        </tbody>
+      </table>
+    `
+    
+    // Insert the table at cursor position
+    const selection = window.getSelection()
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0)
+      range.deleteContents()
+      
+      const tableContainer = document.createElement('div')
+      tableContainer.innerHTML = tableHTML
+      const table = tableContainer.firstElementChild
+      
+      if (table) {
+        range.insertNode(table)
+        range.setStartAfter(table)
+        range.setEndAfter(table)
+        selection.removeAllRanges()
+        selection.addRange(range)
+      }
+    } else {
+      // Fallback: append to end
+      editorRef.current.innerHTML += tableHTML
+    }
+    
+    updateContent(editorRef.current.innerHTML)
+  }, [updateContent])
 
   const handleInput = useCallback((e: React.FormEvent<HTMLDivElement>) => {
     if (isUpdatingRef.current) return
@@ -188,6 +245,17 @@ export function RichTextEditor({
         >
           <AlignRight className="h-3.5 w-3.5" />
         </Toggle>
+
+        <Separator orientation="vertical" className="mx-1 h-6" />
+
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={insertTable}
+          className="h-8 w-8 p-0"
+        >
+          <Table className="h-3.5 w-3.5" />
+        </Button>
       </div>
 
       {/* Editor Content */}
@@ -213,7 +281,10 @@ export function RichTextEditor({
             "prose prose-sm max-w-none",
             "[&_ul]:list-disc [&_ul]:pl-6",
             "[&_ol]:list-decimal [&_ol]:pl-6",
-            "[&_p]:my-2 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0"
+            "[&_p]:my-2 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0",
+            "[&_table]:border-collapse [&_table]:w-full [&_table]:my-4",
+            "[&_td]:border [&_td]:border-gray-300 [&_td]:p-2",
+            "[&_th]:border [&_th]:border-gray-300 [&_th]:p-2 [&_th]:bg-gray-50"
           )}
           style={{ minHeight }}
         />

@@ -78,9 +78,7 @@ export function restoreTextCursorPosition(element: HTMLElement, position: TextCu
 function getTextOffset(container: HTMLElement, node: Node, offset: number): number {
   const walker = document.createTreeWalker(
     container,
-    NodeFilter.SHOW_TEXT,
-    null,
-    false
+    NodeFilter.SHOW_TEXT
   )
 
   let textOffset = 0
@@ -99,9 +97,7 @@ function getTextOffset(container: HTMLElement, node: Node, offset: number): numb
 function getTextNodes(element: HTMLElement): Node[] {
   const walker = document.createTreeWalker(
     element,
-    NodeFilter.SHOW_TEXT,
-    null,
-    false
+    NodeFilter.SHOW_TEXT
   )
 
   const textNodes: Node[] = []
