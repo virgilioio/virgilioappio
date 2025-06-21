@@ -1,7 +1,5 @@
-
 import { useState, useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip } from 'recharts'
 import { Invoice } from '@/hooks/useInvoices'
 import { TrendingUp, Calendar } from 'lucide-react'
@@ -121,50 +119,25 @@ export function InvoiceAnalyticsChart({ invoices }: InvoiceAnalyticsChartProps) 
 
   return (
     <Card className="h-full">
-      <CardHeader className="pb-3">
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <TrendingUp className="h-4 w-4" />
-              Invoice Analytics
-            </CardTitle>
-          </div>
+      <CardHeader className="pb-2">
+        <div className="space-y-2">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <TrendingUp className="h-4 w-4" />
+            Invoice Analytics
+          </CardTitle>
           
-          <div className="space-y-2">
-            <div className="text-xl font-bold" style={{ color: '#0891b2' }}>
+          <div className="space-y-1">
+            <div className="text-lg font-bold" style={{ color: '#0891b2' }}>
               {formatCurrency(totalInvoiced)}
             </div>
             <p className="text-xs text-muted-foreground">
               Total invoiced in selected period
             </p>
           </div>
-
-          {/* Time Period Buttons */}
-          <div className="flex items-center gap-1">
-            <Calendar className="h-3 w-3 text-muted-foreground" />
-            <span className="text-xs text-muted-foreground mr-2">Period:</span>
-            <div className="flex gap-1">
-              {timePeriodOptions.map((option) => (
-                <Button
-                  key={option.value}
-                  variant={selectedPeriod === option.value ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setSelectedPeriod(option.value)}
-                  className={`text-xs px-2 py-1 h-7 ${
-                    selectedPeriod === option.value 
-                      ? 'bg-cyan-100 text-cyan-900 border-cyan-200' 
-                      : ''
-                  }`}
-                >
-                  {option.label}
-                </Button>
-              ))}
-            </div>
-          </div>
         </div>
       </CardHeader>
-      <CardContent className="pt-0">
-        <div className="h-[200px] w-full">
+      <CardContent className="pt-0 pb-3">
+        <div className="h-[180px] w-full mb-3">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart
               data={chartData}
@@ -214,6 +187,25 @@ export function InvoiceAnalyticsChart({ invoices }: InvoiceAnalyticsChartProps) 
               />
             </LineChart>
           </ResponsiveContainer>
+        </div>
+
+        {/* Time Period Filter - Moved to bottom */}
+        <div className="flex justify-center">
+          <div className="flex gap-4">
+            {timePeriodOptions.map((option) => (
+              <button
+                key={option.value}
+                onClick={() => setSelectedPeriod(option.value)}
+                className={`text-xs px-1 py-0.5 cursor-pointer transition-colors ${
+                  selectedPeriod === option.value 
+                    ? 'text-cyan-700 font-medium' 
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
         </div>
       </CardContent>
     </Card>
