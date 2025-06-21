@@ -145,7 +145,7 @@ export function InvoiceAnalyticsChart({ invoices }: InvoiceAnalyticsChartProps) 
             config={{
               total: {
                 label: "Total Invoiced",
-                color: "#c5f5fb",
+                color: "#0891b2",
               },
             }}
           >
@@ -153,10 +153,10 @@ export function InvoiceAnalyticsChart({ invoices }: InvoiceAnalyticsChartProps) 
               <LineChart
                 data={chartData}
                 margin={{
-                  top: 20,
+                  top: 5,
                   right: 30,
                   left: 20,
-                  bottom: 20,
+                  bottom: 5,
                 }}
               >
                 <CartesianGrid 
@@ -193,8 +193,6 @@ export function InvoiceAnalyticsChart({ invoices }: InvoiceAnalyticsChartProps) 
                   dataKey="total"
                   stroke="#0891b2"
                   strokeWidth={3}
-                  fill="#c5f5fb"
-                  fillOpacity={0.1}
                   dot={{
                     fill: "#0891b2",
                     strokeWidth: 2,
