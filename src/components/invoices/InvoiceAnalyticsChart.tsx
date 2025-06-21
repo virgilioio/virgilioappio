@@ -1,4 +1,3 @@
-
 import { useState, useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip } from 'recharts'
@@ -119,7 +118,7 @@ export function InvoiceAnalyticsChart({ invoices }: InvoiceAnalyticsChartProps) 
   }
 
   return (
-    <Card className="h-full">
+    <Card className="h-full" style={{ backgroundColor: '#c5f5fb' }}>
       <CardHeader className="pb-2">
         <div className="space-y-2">
           <CardTitle className="flex items-center gap-2 text-base">
