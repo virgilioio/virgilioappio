@@ -68,12 +68,21 @@ export function useJobRequestAgreements() {
       setIsUpdating(true)
       
       if (existingAgreementId) {
-        // Update existing agreement
+        // Get current version first
+        const { data: currentAgreement, error: fetchError } = await supabase
+          .from('job_request_agreements')
+          .select('version')
+          .eq('id', existingAgreementId)
+          .single()
+
+        if (fetchError) throw fetchError
+
+        // Update existing agreement with incremented version
         const { error } = await supabase
           .from('job_request_agreements')
           .update({
             agreement_content: content,
-            version: supabase.sql`version + 1`,
+            version: currentAgreement.version + 1,
             updated_at: new Date().toISOString()
           })
           .eq('id', existingAgreementId)
