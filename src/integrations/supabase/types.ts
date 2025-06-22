@@ -483,6 +483,7 @@ export type Database = {
       }
       job_requests: {
         Row: {
+          agreement_id: string | null
           approved_at: string | null
           approved_by: string | null
           approver_role: string | null
@@ -505,6 +506,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          agreement_id?: string | null
           approved_at?: string | null
           approved_by?: string | null
           approver_role?: string | null
@@ -527,6 +529,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          agreement_id?: string | null
           approved_at?: string | null
           approved_by?: string | null
           approver_role?: string | null
@@ -562,6 +565,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "job_requests_agreement_id_fkey"
+            columns: ["agreement_id"]
+            isOneToOne: false
+            referencedRelation: "job_request_agreements"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "job_requests_job_id_fkey"

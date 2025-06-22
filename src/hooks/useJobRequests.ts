@@ -22,6 +22,7 @@ export interface JobRequest {
   approved_at?: string
   approver_role?: string
   job_id?: string
+  agreement_id?: string
   processed_agreement_content?: string
   created_at: string
   updated_at: string

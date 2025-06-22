@@ -1,4 +1,3 @@
-
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -233,6 +232,7 @@ export function JobRequestForm({ onSubmit, onCancel, isLoading = false }: JobReq
         salary_max: parseInt(formData.salary_max),
         currency: formData.currency,
         notes: formData.notes.trim(),
+        agreement_id: agreement?.id,
         processed_agreement_content: processedAgreement
       })
       
