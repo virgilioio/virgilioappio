@@ -9,9 +9,12 @@ import { GuestRestriction } from '@/components/auth/GuestRestriction'
 import { JobsTable } from '@/components/jobs/JobsTable'
 import { JobForm } from '@/components/jobs/JobForm'
 import { JobRequestForm } from '@/components/job-requests/JobRequestForm'
+import { ComplianceCheckDialog } from '@/components/job-requests/ComplianceCheckDialog'
 import { useJobs, Job } from '@/hooks/useJobs'
 import { useJobRequests } from '@/hooks/useJobRequests'
 import { usePermissions } from '@/hooks/usePermissions'
+import { useOrganizationProgress } from '@/hooks/useOrganizationProgress'
+import { useAuth } from '@/contexts/AuthContext'
 import { Briefcase } from 'lucide-react'
 
 export default function Jobs() {
@@ -20,7 +23,10 @@ export default function Jobs() {
   const [isRequestFormOpen, setIsRequestFormOpen] = useState(false)
   const [selectedJob, setSelectedJob] = useState<Job | null>(null)
   const [archiveJobId, setArchiveJobId] = useState<string | null>(null)
+  const [showComplianceDialog, setShowComplianceDialog] = useState(false)
   const permissions = usePermissions()
+  const { userType } = useAuth()
+  const organizationProgress = useOrganizationProgress()
   
   const {
     jobs,
@@ -43,6 +49,12 @@ export default function Jobs() {
   }
 
   const handleRequestJob = () => {
+    // Check compliance for workspace owners
+    if (userType === 'workspace_owner' && !organizationProgress.isComplete) {
+      setShowComplianceDialog(true)
+      return
+    }
+    
     setIsRequestFormOpen(true)
   }
 
@@ -123,6 +135,12 @@ export default function Jobs() {
               onSubmit={handleFormSubmit}
               job={selectedJob}
               isLoading={isLoading}
+            />
+
+            <ComplianceCheckDialog
+              open={showComplianceDialog}
+              onOpenChange={setShowComplianceDialog}
+              progress={organizationProgress.progress}
             />
 
             <Dialog open={isRequestFormOpen} onOpenChange={setIsRequestFormOpen}>
