@@ -1,4 +1,3 @@
-
 import React, { useState, useCallback, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Toggle } from '@/components/ui/toggle'
@@ -19,16 +18,30 @@ import {
   Building,
   Globe,
   Settings,
-  Table
+  Table,
+  Briefcase
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAgreementPlaceholders } from '@/hooks/useAgreementPlaceholders'
 import { saveTextCursorPosition, restoreTextCursorPosition, type TextCursorPosition } from '@/lib/cursorUtils'
 
+interface JobRequestData {
+  title?: string
+  description?: string
+  department?: string
+  level?: string
+  location?: string
+  salary_min?: number
+  salary_max?: number
+  currency?: string
+  notes?: string
+}
+
 interface AgreementRichTextEditorProps {
   value: string
   onChange: (value: string) => void
   selectedCountryId?: string
+  jobRequestData?: JobRequestData
   placeholder?: string
   className?: string
   minHeight?: string
@@ -38,6 +51,7 @@ export function AgreementRichTextEditor({
   value, 
   onChange, 
   selectedCountryId,
+  jobRequestData,
   placeholder = "Start typing your agreement...", 
   className,
   minHeight = "300px"
@@ -47,7 +61,7 @@ export function AgreementRichTextEditor({
   const cursorPositionRef = useRef<TextCursorPosition | null>(null)
   const lastContentRef = useRef<string>(value)
   const isUpdatingRef = useRef(false)
-  const { placeholders, getPlaceholdersByCategory } = useAgreementPlaceholders(selectedCountryId)
+  const { placeholders, getPlaceholdersByCategory } = useAgreementPlaceholders(selectedCountryId, jobRequestData)
 
   const execCommand = useCallback((command: string, value?: string) => {
     document.execCommand(command, false, value)
@@ -362,6 +376,12 @@ export function AgreementRichTextEditor({
                   "Organization Fields", 
                   <Building className="h-3.5 w-3.5" />, 
                   getPlaceholdersByCategory('organization')
+                )}
+
+                {jobRequestData && renderPlaceholderSection(
+                  "Job Request Details", 
+                  <Briefcase className="h-3.5 w-3.5" />, 
+                  getPlaceholdersByCategory('job_request')
                 )}
                 
                 {selectedCountryId && renderPlaceholderSection(

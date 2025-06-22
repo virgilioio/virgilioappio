@@ -6,11 +6,23 @@ import { useCountryFields } from '@/hooks/useCountryFields'
 interface PlaceholderItem {
   key: string
   label: string
-  category: 'organization' | 'country_field' | 'system'
+  category: 'organization' | 'country_field' | 'system' | 'job_request'
   description?: string
 }
 
-export function useAgreementPlaceholders(selectedCountryId?: string) {
+interface JobRequestData {
+  title?: string
+  description?: string
+  department?: string
+  level?: string
+  location?: string
+  salary_min?: number
+  salary_max?: number
+  currency?: string
+  notes?: string
+}
+
+export function useAgreementPlaceholders(selectedCountryId?: string, jobRequestData?: JobRequestData) {
   const { countries } = useCountries()
   const selectedCountry = countries.find(c => c.id === selectedCountryId)
   const { fields } = useCountryFields(selectedCountry?.code)
@@ -33,7 +45,22 @@ export function useAgreementPlaceholders(selectedCountryId?: string) {
       { key: '{{billing_poc_phone}}', label: 'Billing Contact Phone', category: 'organization', description: 'Billing contact phone number' }
     )
 
-    // Country-specific field placeholders - now properly using the fetched fields
+    // Job request placeholders (if job request data is provided)
+    if (jobRequestData) {
+      items.push(
+        { key: '{{job_title}}', label: 'Job Title', category: 'job_request', description: 'The title of the job request' },
+        { key: '{{job_description}}', label: 'Job Description', category: 'job_request', description: 'Detailed job description' },
+        { key: '{{job_department}}', label: 'Department', category: 'job_request', description: 'Job department' },
+        { key: '{{job_level}}', label: 'Job Level', category: 'job_request', description: 'Job level (L1, L2, L3)' },
+        { key: '{{job_location}}', label: 'Job Location', category: 'job_request', description: 'Job location' },
+        { key: '{{job_salary_min}}', label: 'Minimum Salary', category: 'job_request', description: 'Minimum salary for the position' },
+        { key: '{{job_salary_max}}', label: 'Maximum Salary', category: 'job_request', description: 'Maximum salary for the position' },
+        { key: '{{job_currency}}', label: 'Salary Currency', category: 'job_request', description: 'Currency for salary range' },
+        { key: '{{job_notes}}', label: 'Job Notes', category: 'job_request', description: 'Additional notes about the job request' }
+      )
+    }
+
+    // Country-specific field placeholders
     if (selectedCountryId && fields.length > 0) {
       fields.forEach(field => {
         items.push({
@@ -46,7 +73,7 @@ export function useAgreementPlaceholders(selectedCountryId?: string) {
     }
 
     return items
-  }, [selectedCountryId, fields])
+  }, [selectedCountryId, fields, jobRequestData])
 
   const getPlaceholdersByCategory = (category: PlaceholderItem['category']) => {
     return placeholders.filter(p => p.category === category)
