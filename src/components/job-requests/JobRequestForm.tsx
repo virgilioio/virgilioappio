@@ -1,3 +1,4 @@
+
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -453,7 +454,11 @@ export function JobRequestForm({ onSubmit, onCancel, isLoading = false }: JobReq
                 value={agreement.agreement_content}
                 onChange={() => {}} // Read-only for review
                 selectedCountryId={organizationCountry?.id}
-                jobRequestData={formData}
+                jobRequestData={{
+                  ...formData,
+                  salary_min: parseInt(formData.salary_min) || 0,
+                  salary_max: parseInt(formData.salary_max) || 0
+                }}
                 placeholder="No agreement content available"
                 className="bg-muted/30"
               />
