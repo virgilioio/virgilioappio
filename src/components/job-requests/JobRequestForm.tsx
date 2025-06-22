@@ -1,4 +1,3 @@
-
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -89,6 +88,14 @@ export function JobRequestForm({ onSubmit, onCancel, isLoading = false }: JobReq
   const currentOrganization = organizations.find(org => org.id === organizationId)
   const organizationCountry = countries.find(country => country.code === currentOrganization?.country)
   const agreement = organizationCountry ? getAgreementByCountry(organizationCountry.id) : null
+
+  console.log('Debug agreement data:', {
+    organizationId,
+    currentOrganization,
+    organizationCountry,
+    agreement,
+    agreementContent: agreement?.agreement_content
+  })
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
@@ -234,7 +241,7 @@ export function JobRequestForm({ onSubmit, onCancel, isLoading = false }: JobReq
           </div>
         </CardTitle>
         <p className="text-sm text-muted-foreground">
-          Organization: {organizationId} | Country: {currentOrganization?.country || 'Unknown'}
+          Organization: {currentOrganization?.name || 'Unknown'} | Country: {currentOrganization?.country || 'Unknown'}
         </p>
       </CardHeader>
       <CardContent>
@@ -447,6 +454,12 @@ export function JobRequestForm({ onSubmit, onCancel, isLoading = false }: JobReq
               <p className="text-sm text-muted-foreground mb-4">
                 Please review the agreement for {currentOrganization?.country || 'your country'} before submitting your job request.
               </p>
+              {/* Debug info */}
+              <div className="text-xs text-muted-foreground mb-4 p-2 bg-muted/30 rounded">
+                Debug: Organization Country: {organizationCountry?.name} ({organizationCountry?.code}) | 
+                Agreement Found: {agreement ? 'Yes' : 'No'} | 
+                Content Length: {agreement?.agreement_content?.length || 0}
+              </div>
             </div>
 
             {agreement?.agreement_content ? (
@@ -469,6 +482,15 @@ export function JobRequestForm({ onSubmit, onCancel, isLoading = false }: JobReq
                   <br />
                   Please contact your administrator to set up the agreement template.
                 </p>
+                {/* Additional debug info */}
+                <div className="text-xs text-muted-foreground mt-4 text-left">
+                  <p>Debug details:</p>
+                  <p>- Organization ID: {organizationId}</p>
+                  <p>- Organization Name: {currentOrganization?.name}</p>
+                  <p>- Organization Country Code: {currentOrganization?.country}</p>
+                  <p>- Country Found: {organizationCountry ? `${organizationCountry.name} (${organizationCountry.id})` : 'None'}</p>
+                  <p>- Agreement Found: {agreement ? `Yes (v${agreement.version})` : 'No'}</p>
+                </div>
               </div>
             )}
 
