@@ -2,8 +2,11 @@
 import { useState } from 'react'
 import { useJobRequests } from '@/hooks/useJobRequests'
 import { usePermissions } from '@/hooks/usePermissions'
+import { useOrganizationProgress } from '@/hooks/useOrganizationProgress'
+import { useAuth } from '@/contexts/AuthContext'
 import { JobRequestTable } from '@/components/job-requests/JobRequestTable'
 import { JobRequestForm } from '@/components/job-requests/JobRequestForm'
+import { ComplianceCheckDialog } from '@/components/job-requests/ComplianceCheckDialog'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { PermissionGate } from '@/components/auth/PermissionGate'
 import { GuestRestriction } from '@/components/auth/GuestRestriction'
@@ -21,10 +24,19 @@ export default function JobRequests() {
   } = useJobRequests()
   
   const permissions = usePermissions()
+  const { userType } = useAuth()
+  const organizationProgress = useOrganizationProgress()
   const [showForm, setShowForm] = useState(false)
   const [selectedRequest, setSelectedRequest] = useState(null)
+  const [showComplianceDialog, setShowComplianceDialog] = useState(false)
 
   const handleCreateNew = () => {
+    // Check compliance for workspace owners
+    if (userType === 'workspace_owner' && !organizationProgress.isComplete) {
+      setShowComplianceDialog(true)
+      return
+    }
+    
     setShowForm(true)
   }
 
@@ -91,6 +103,12 @@ export default function JobRequests() {
             onApprove={handleApprove}
             onDelete={handleDelete}
             onCreateNew={handleCreateNew}
+          />
+
+          <ComplianceCheckDialog
+            open={showComplianceDialog}
+            onOpenChange={setShowComplianceDialog}
+            progress={organizationProgress.progress}
           />
 
           <Dialog open={showForm} onOpenChange={setShowForm}>
