@@ -1,8 +1,9 @@
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { AlertTriangle } from 'lucide-react'
+import { AlertTriangle, CheckCircle, XCircle } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { useOrganizationProgress } from '@/hooks/useOrganizationProgress'
 
 interface ComplianceCheckDialogProps {
   open: boolean
@@ -11,6 +12,8 @@ interface ComplianceCheckDialogProps {
 }
 
 export function ComplianceCheckDialog({ open, onOpenChange, progress }: ComplianceCheckDialogProps) {
+  const organizationProgress = useOrganizationProgress()
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="mx-4 max-w-md">
@@ -33,6 +36,36 @@ export function ComplianceCheckDialog({ open, onOpenChange, progress }: Complian
             <p className="text-sm text-muted-foreground mt-1">
               Please complete all required fields to reach 100% compliance.
             </p>
+          </div>
+
+          <div className="space-y-3">
+            <h4 className="text-sm font-medium">Pending Items:</h4>
+            <div className="space-y-2">
+              {organizationProgress.items
+                .filter(item => item.required && !item.completed)
+                .map((item) => (
+                  <div key={item.id} className="flex items-center gap-2 text-sm">
+                    <XCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                    <span className="text-red-700">{item.label}</span>
+                  </div>
+                ))}
+            </div>
+            
+            {organizationProgress.items.some(item => item.required && item.completed) && (
+              <>
+                <h4 className="text-sm font-medium text-green-700 mt-4">Completed Items:</h4>
+                <div className="space-y-1">
+                  {organizationProgress.items
+                    .filter(item => item.required && item.completed)
+                    .map((item) => (
+                      <div key={item.id} className="flex items-center gap-2 text-sm">
+                        <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+                        <span className="text-green-700">{item.label}</span>
+                      </div>
+                    ))}
+                </div>
+              </>
+            )}
           </div>
           
           <div className="flex gap-2 pt-2">
