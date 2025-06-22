@@ -1,4 +1,3 @@
-
 import { useState } from 'react'
 import { useJobRequests } from '@/hooks/useJobRequests'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -94,7 +93,7 @@ export default function JobRequests() {
           />
 
           <Dialog open={showForm} onOpenChange={setShowForm}>
-            <DialogContent className="mx-4 max-w-2xl">
+            <DialogContent className="mx-4 max-w-5xl max-h-[95vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Request New Job</DialogTitle>
               </DialogHeader>

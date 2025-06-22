@@ -1,4 +1,3 @@
-
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -9,10 +8,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { AlertTriangle, Check, ChevronsUpDown } from 'lucide-react'
+import { AlertTriangle, Check, ChevronsUpDown, ArrowLeft, ArrowRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { JobRequest } from '@/hooks/useJobRequests'
 import { useAuth } from '@/contexts/AuthContext'
+import { useOrganizations } from '@/hooks/useOrganizations'
+import { useJobRequestAgreements } from '@/hooks/useJobRequestAgreements'
+import { AgreementRichTextEditor } from '@/components/ui/agreement-rich-text-editor'
+import { useCountries } from '@/hooks/useCountries'
 
 interface JobRequestFormProps {
   onSubmit: (data: Omit<JobRequest, 'id' | 'submitted_by' | 'organization_id' | 'status' | 'approved_by' | 'created_at' | 'updated_at' | 'job_id'>) => Promise<void>
@@ -61,6 +64,11 @@ const currencies = [
 
 export function JobRequestForm({ onSubmit, onCancel, isLoading = false }: JobRequestFormProps) {
   const { hasOrganizationContext, organizationId } = useAuth()
+  const { organizations } = useOrganizations()
+  const { countries } = useCountries()
+  const { getAgreementByCountry } = useJobRequestAgreements()
+  
+  const [currentStep, setCurrentStep] = useState(1)
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -75,6 +83,11 @@ export function JobRequestForm({ onSubmit, onCancel, isLoading = false }: JobReq
 
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [currencyOpen, setCurrencyOpen] = useState(false)
+
+  // Get current organization and its country
+  const currentOrganization = organizations.find(org => org.id === organizationId)
+  const organizationCountry = countries.find(country => country.code === currentOrganization?.country)
+  const agreement = organizationCountry ? getAgreementByCountry(organizationCountry.id) : null
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
@@ -127,6 +140,16 @@ export function JobRequestForm({ onSubmit, onCancel, isLoading = false }: JobReq
     return Object.keys(newErrors).length === 0
   }
 
+  const handleNext = () => {
+    if (validateForm()) {
+      setCurrentStep(2)
+    }
+  }
+
+  const handleBack = () => {
+    setCurrentStep(1)
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
@@ -163,6 +186,7 @@ export function JobRequestForm({ onSubmit, onCancel, isLoading = false }: JobReq
         currency: 'USD',
         notes: ''
       })
+      setCurrentStep(1)
     } catch (error) {
       // Error handling is done in the hook
     }
@@ -195,11 +219,21 @@ export function JobRequestForm({ onSubmit, onCancel, isLoading = false }: JobReq
   }
 
   return (
-    <Card className="w-full max-w-2xl mx-auto">
+    <Card className="w-full max-w-4xl mx-auto">
       <CardHeader>
-        <CardTitle>Request New Job</CardTitle>
+        <CardTitle className="flex items-center justify-between">
+          <span>Request New Job</span>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <span className={cn("px-2 py-1 rounded", currentStep === 1 ? "bg-primary text-primary-foreground" : "bg-muted")}>
+              1. Job Details
+            </span>
+            <span className={cn("px-2 py-1 rounded", currentStep === 2 ? "bg-primary text-primary-foreground" : "bg-muted")}>
+              2. Agreement Review
+            </span>
+          </div>
+        </CardTitle>
         <p className="text-sm text-muted-foreground">
-          Organization: {organizationId}
+          Organization: {organizationId} | Country: {currentOrganization?.country || 'Unknown'}
         </p>
       </CardHeader>
       <CardContent>
@@ -210,197 +244,247 @@ export function JobRequestForm({ onSubmit, onCancel, isLoading = false }: JobReq
           </Alert>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          
-          <div className="space-y-2">
-            <Label htmlFor="title">Job Title *</Label>
-            <Input
-              id="title"
-              value={formData.title}
-              onChange={(e) => handleChange('title', e.target.value)}
-              placeholder="e.g. Senior Software Engineer"
-              className={errors.title ? 'border-destructive' : ''}
-            />
-            {errors.title && (
-              <p className="text-sm text-destructive">{errors.title}</p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="description">Description *</Label>
-            <Textarea
-              id="description"
-              value={formData.description}
-              onChange={(e) => handleChange('description', e.target.value)}
-              placeholder="Describe the role requirements and responsibilities..."
-              rows={4}
-              className={errors.description ? 'border-destructive' : ''}
-            />
-            {errors.description && (
-              <p className="text-sm text-destructive">{errors.description}</p>
-            )}
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
+        {currentStep === 1 && (
+          <form onSubmit={(e) => { e.preventDefault(); handleNext(); }} className="space-y-6">
+            
             <div className="space-y-2">
-              <Label htmlFor="department">Department *</Label>
+              <Label htmlFor="title">Job Title *</Label>
               <Input
-                id="department"
-                value={formData.department}
-                onChange={(e) => handleChange('department', e.target.value)}
-                placeholder="e.g. Engineering"
-                className={errors.department ? 'border-destructive' : ''}
+                id="title"
+                value={formData.title}
+                onChange={(e) => handleChange('title', e.target.value)}
+                placeholder="e.g. Senior Software Engineer"
+                className={errors.title ? 'border-destructive' : ''}
               />
-              {errors.department && (
-                <p className="text-sm text-destructive">{errors.department}</p>
+              {errors.title && (
+                <p className="text-sm text-destructive">{errors.title}</p>
               )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="level">Level *</Label>
-              <Select value={formData.level || ''} onValueChange={(value) => handleChange('level', value as 'L1' | 'L2' | 'L3')}>
-                <SelectTrigger className={errors.level ? 'border-destructive' : ''}>
-                  <SelectValue placeholder="Select level" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="L1">L1 - Specialists</SelectItem>
-                  <SelectItem value="L2">L2 - Managers</SelectItem>
-                  <SelectItem value="L3">L3 - Directors/VPs</SelectItem>
-                </SelectContent>
-              </Select>
-              {errors.level && (
-                <p className="text-sm text-destructive">{errors.level}</p>
+              <Label htmlFor="description">Description *</Label>
+              <Textarea
+                id="description"
+                value={formData.description}
+                onChange={(e) => handleChange('description', e.target.value)}
+                placeholder="Describe the role requirements and responsibilities..."
+                rows={4}
+                className={errors.description ? 'border-destructive' : ''}
+              />
+              {errors.description && (
+                <p className="text-sm text-destructive">{errors.description}</p>
               )}
             </div>
-          </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="location">Location *</Label>
-            <Input
-              id="location"
-              value={formData.location}
-              onChange={(e) => handleChange('location', e.target.value)}
-              placeholder="e.g. Remote, New York, London"
-              className={errors.location ? 'border-destructive' : ''}
-            />
-            {errors.location && (
-              <p className="text-sm text-destructive">{errors.location}</p>
-            )}
-          </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="department">Department *</Label>
+                <Input
+                  id="department"
+                  value={formData.department}
+                  onChange={(e) => handleChange('department', e.target.value)}
+                  placeholder="e.g. Engineering"
+                  className={errors.department ? 'border-destructive' : ''}
+                />
+                {errors.department && (
+                  <p className="text-sm text-destructive">{errors.department}</p>
+                )}
+              </div>
 
-          <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="level">Level *</Label>
+                <Select value={formData.level || ''} onValueChange={(value) => handleChange('level', value as 'L1' | 'L2' | 'L3')}>
+                  <SelectTrigger className={errors.level ? 'border-destructive' : ''}>
+                    <SelectValue placeholder="Select level" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="L1">L1 - Specialists</SelectItem>
+                    <SelectItem value="L2">L2 - Managers</SelectItem>
+                    <SelectItem value="L3">L3 - Directors/VPs</SelectItem>
+                  </SelectContent>
+                </Select>
+                {errors.level && (
+                  <p className="text-sm text-destructive">{errors.level}</p>
+                )}
+              </div>
+            </div>
+
             <div className="space-y-2">
-              <Label htmlFor="salary_min">Min Salary *</Label>
+              <Label htmlFor="location">Location *</Label>
               <Input
-                id="salary_min"
-                type="number"
-                value={formData.salary_min}
-                onChange={(e) => handleChange('salary_min', e.target.value)}
-                placeholder="50000"
-                className={errors.salary_min ? 'border-destructive' : ''}
+                id="location"
+                value={formData.location}
+                onChange={(e) => handleChange('location', e.target.value)}
+                placeholder="e.g. Remote, New York, London"
+                className={errors.location ? 'border-destructive' : ''}
               />
-              {errors.salary_min && (
-                <p className="text-sm text-destructive">{errors.salary_min}</p>
+              {errors.location && (
+                <p className="text-sm text-destructive">{errors.location}</p>
               )}
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="salary_min">Min Salary *</Label>
+                <Input
+                  id="salary_min"
+                  type="number"
+                  value={formData.salary_min}
+                  onChange={(e) => handleChange('salary_min', e.target.value)}
+                  placeholder="50000"
+                  className={errors.salary_min ? 'border-destructive' : ''}
+                />
+                {errors.salary_min && (
+                  <p className="text-sm text-destructive">{errors.salary_min}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="salary_max">Max Salary *</Label>
+                <Input
+                  id="salary_max"
+                  type="number"
+                  value={formData.salary_max}
+                  onChange={(e) => handleChange('salary_max', e.target.value)}
+                  placeholder="80000"
+                  className={errors.salary_max ? 'border-destructive' : ''}
+                />
+                {errors.salary_max && (
+                  <p className="text-sm text-destructive">{errors.salary_max}</p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="currency">Currency *</Label>
+                <Popover open={currencyOpen} onOpenChange={setCurrencyOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={currencyOpen}
+                      className={cn(
+                        "w-full justify-between",
+                        errors.currency ? 'border-destructive' : ''
+                      )}
+                    >
+                      {formData.currency
+                        ? currencies.find((currency) => currency.value === formData.currency)?.label
+                        : "Select currency..."}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-full p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Search currency..." />
+                      <CommandList>
+                        <CommandEmpty>No currency found.</CommandEmpty>
+                        <CommandGroup>
+                          {currencies.map((currency) => (
+                            <CommandItem
+                              key={currency.value}
+                              value={currency.value}
+                              onSelect={(currentValue) => {
+                                handleChange('currency', currentValue.toUpperCase())
+                                setCurrencyOpen(false)
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  formData.currency === currency.value ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                              {currency.label}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+                {errors.currency && (
+                  <p className="text-sm text-destructive">{errors.currency}</p>
+                )}
+              </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="salary_max">Max Salary *</Label>
-              <Input
-                id="salary_max"
-                type="number"
-                value={formData.salary_max}
-                onChange={(e) => handleChange('salary_max', e.target.value)}
-                placeholder="80000"
-                className={errors.salary_max ? 'border-destructive' : ''}
+              <Label htmlFor="notes">Notes *</Label>
+              <Textarea
+                id="notes"
+                value={formData.notes}
+                onChange={(e) => handleChange('notes', e.target.value)}
+                placeholder="Additional notes or requirements..."
+                rows={3}
+                className={errors.notes ? 'border-destructive' : ''}
               />
-              {errors.salary_max && (
-                <p className="text-sm text-destructive">{errors.salary_max}</p>
+              {errors.notes && (
+                <p className="text-sm text-destructive">{errors.notes}</p>
               )}
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="currency">Currency *</Label>
-              <Popover open={currencyOpen} onOpenChange={setCurrencyOpen}>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    role="combobox"
-                    aria-expanded={currencyOpen}
-                    className={cn(
-                      "w-full justify-between",
-                      errors.currency ? 'border-destructive' : ''
-                    )}
-                  >
-                    {formData.currency
-                      ? currencies.find((currency) => currency.value === formData.currency)?.label
-                      : "Select currency..."}
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-full p-0" align="start">
-                  <Command>
-                    <CommandInput placeholder="Search currency..." />
-                    <CommandList>
-                      <CommandEmpty>No currency found.</CommandEmpty>
-                      <CommandGroup>
-                        {currencies.map((currency) => (
-                          <CommandItem
-                            key={currency.value}
-                            value={currency.value}
-                            onSelect={(currentValue) => {
-                              handleChange('currency', currentValue.toUpperCase())
-                              setCurrencyOpen(false)
-                            }}
-                          >
-                            <Check
-                              className={cn(
-                                "mr-2 h-4 w-4",
-                                formData.currency === currency.value ? "opacity-100" : "opacity-0"
-                              )}
-                            />
-                            {currency.label}
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
-              {errors.currency && (
-                <p className="text-sm text-destructive">{errors.currency}</p>
-              )}
+            <div className="flex gap-4 pt-4">
+              <Button 
+                type="submit" 
+                disabled={isLoading || !hasOrganizationContext} 
+                className="flex-1"
+              >
+                <ArrowRight className="mr-2 h-4 w-4" />
+                Next: Review Agreement
+              </Button>
+              <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>
+                Cancel
+              </Button>
             </div>
-          </div>
+          </form>
+        )}
 
-          <div className="space-y-2">
-            <Label htmlFor="notes">Notes *</Label>
-            <Textarea
-              id="notes"
-              value={formData.notes}
-              onChange={(e) => handleChange('notes', e.target.value)}
-              placeholder="Additional notes or requirements..."
-              rows={3}
-              className={errors.notes ? 'border-destructive' : ''}
-            />
-            {errors.notes && (
-              <p className="text-sm text-destructive">{errors.notes}</p>
+        {currentStep === 2 && (
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-semibold mb-2">Job Request Agreement</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Please review the agreement for {currentOrganization?.country || 'your country'} before submitting your job request.
+              </p>
+            </div>
+
+            {agreement?.agreement_content ? (
+              <AgreementRichTextEditor
+                value={agreement.agreement_content}
+                onChange={() => {}} // Read-only for review
+                selectedCountryId={organizationCountry?.id}
+                jobRequestData={formData}
+                placeholder="No agreement content available"
+                className="bg-muted/30"
+              />
+            ) : (
+              <div className="p-6 border rounded-lg bg-muted/30">
+                <p className="text-muted-foreground text-center">
+                  No agreement template available for {currentOrganization?.country || 'your country'}.
+                  <br />
+                  Please contact your administrator to set up the agreement template.
+                </p>
+              </div>
             )}
-          </div>
 
-          <div className="flex gap-4 pt-4">
-            <Button 
-              type="submit" 
-              disabled={isLoading || !hasOrganizationContext} 
-              className="flex-1"
-            >
-              {isLoading ? 'Submitting...' : 'Submit Request'}
-            </Button>
-            <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>
-              Cancel
-            </Button>
+            <div className="flex gap-4 pt-4">
+              <Button type="button" variant="outline" onClick={handleBack} disabled={isLoading}>
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to Form
+              </Button>
+              <Button 
+                onClick={handleSubmit}
+                disabled={isLoading || !hasOrganizationContext} 
+                className="flex-1"
+              >
+                {isLoading ? 'Submitting...' : 'Submit Job Request'}
+              </Button>
+              <Button type="button" variant="outline" onClick={onCancel} disabled={isLoading}>
+                Cancel
+              </Button>
+            </div>
           </div>
-        </form>
+        )}
       </CardContent>
     </Card>
   )
