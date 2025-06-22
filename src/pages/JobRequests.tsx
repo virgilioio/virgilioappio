@@ -1,3 +1,4 @@
+
 import { useState } from 'react'
 import { useJobRequests } from '@/hooks/useJobRequests'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -189,6 +190,11 @@ export default function JobRequests() {
                           }}
                         />
                       </div>
+                      {selectedRequest.agreement_id && (
+                        <div className="mt-2 text-sm text-muted-foreground">
+                          <span className="font-medium">Agreement ID:</span> {selectedRequest.agreement_id}
+                        </div>
+                      )}
                     </div>
                   )}
 
