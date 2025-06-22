@@ -33,8 +33,8 @@ export function JobRequestAgreementsManager() {
   const currentAgreement = selectedCountryId ? getAgreementByCountry(selectedCountryId) : null
 
   useEffect(() => {
-    if (currentAgreement) {
-      setAgreementContent(currentAgreement.agreement_content || '')
+    if (currentAgreement && currentAgreement.agreement_content) {
+      setAgreementContent(currentAgreement.agreement_content)
     } else {
       setAgreementContent('')
     }
@@ -54,7 +54,10 @@ export function JobRequestAgreementsManager() {
   }
 
   const handleEdit = () => {
-    setOriginalContent(agreementContent)
+    // Store the current content as original before entering edit mode
+    const contentToEdit = currentAgreement?.agreement_content || ''
+    setOriginalContent(contentToEdit)
+    setAgreementContent(contentToEdit)
     setIsEditing(true)
   }
 
