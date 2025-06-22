@@ -83,8 +83,36 @@ export function JobRequestForm({ onSubmit, onCancel, isLoading = false }: JobReq
       newErrors.title = 'Title is required'
     }
 
+    if (!formData.description.trim()) {
+      newErrors.description = 'Description is required'
+    }
+
+    if (!formData.department.trim()) {
+      newErrors.department = 'Department is required'
+    }
+
     if (!formData.level) {
       newErrors.level = 'Level is required'
+    }
+
+    if (!formData.location.trim()) {
+      newErrors.location = 'Location is required'
+    }
+
+    if (!formData.salary_min.trim()) {
+      newErrors.salary_min = 'Minimum salary is required'
+    }
+
+    if (!formData.salary_max.trim()) {
+      newErrors.salary_max = 'Maximum salary is required'
+    }
+
+    if (!formData.currency) {
+      newErrors.currency = 'Currency is required'
+    }
+
+    if (!formData.notes.trim()) {
+      newErrors.notes = 'Notes are required'
     }
 
     if (formData.salary_min && formData.salary_max) {
@@ -113,14 +141,14 @@ export function JobRequestForm({ onSubmit, onCancel, isLoading = false }: JobReq
     try {
       await onSubmit({
         title: formData.title.trim(),
-        description: formData.description.trim() || undefined,
-        department: formData.department.trim() || undefined,
+        description: formData.description.trim(),
+        department: formData.department.trim(),
         level: formData.level!,
-        location: formData.location.trim() || undefined,
-        salary_min: formData.salary_min ? parseInt(formData.salary_min) : undefined,
-        salary_max: formData.salary_max ? parseInt(formData.salary_max) : undefined,
-        currency: formData.currency || undefined,
-        notes: formData.notes.trim() || undefined
+        location: formData.location.trim(),
+        salary_min: parseInt(formData.salary_min),
+        salary_max: parseInt(formData.salary_max),
+        currency: formData.currency,
+        notes: formData.notes.trim()
       })
       
       // Reset form on success
@@ -199,25 +227,33 @@ export function JobRequestForm({ onSubmit, onCancel, isLoading = false }: JobReq
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
+            <Label htmlFor="description">Description *</Label>
             <Textarea
               id="description"
               value={formData.description}
               onChange={(e) => handleChange('description', e.target.value)}
               placeholder="Describe the role requirements and responsibilities..."
               rows={4}
+              className={errors.description ? 'border-destructive' : ''}
             />
+            {errors.description && (
+              <p className="text-sm text-destructive">{errors.description}</p>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="department">Department</Label>
+              <Label htmlFor="department">Department *</Label>
               <Input
                 id="department"
                 value={formData.department}
                 onChange={(e) => handleChange('department', e.target.value)}
                 placeholder="e.g. Engineering"
+                className={errors.department ? 'border-destructive' : ''}
               />
+              {errors.department && (
+                <p className="text-sm text-destructive">{errors.department}</p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -239,29 +275,37 @@ export function JobRequestForm({ onSubmit, onCancel, isLoading = false }: JobReq
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="location">Location</Label>
+            <Label htmlFor="location">Location *</Label>
             <Input
               id="location"
               value={formData.location}
               onChange={(e) => handleChange('location', e.target.value)}
               placeholder="e.g. Remote, New York, London"
+              className={errors.location ? 'border-destructive' : ''}
             />
+            {errors.location && (
+              <p className="text-sm text-destructive">{errors.location}</p>
+            )}
           </div>
 
           <div className="grid grid-cols-3 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="salary_min">Min Salary</Label>
+              <Label htmlFor="salary_min">Min Salary *</Label>
               <Input
                 id="salary_min"
                 type="number"
                 value={formData.salary_min}
                 onChange={(e) => handleChange('salary_min', e.target.value)}
                 placeholder="50000"
+                className={errors.salary_min ? 'border-destructive' : ''}
               />
+              {errors.salary_min && (
+                <p className="text-sm text-destructive">{errors.salary_min}</p>
+              )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="salary_max">Max Salary</Label>
+              <Label htmlFor="salary_max">Max Salary *</Label>
               <Input
                 id="salary_max"
                 type="number"
@@ -276,14 +320,17 @@ export function JobRequestForm({ onSubmit, onCancel, isLoading = false }: JobReq
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="currency">Currency</Label>
+              <Label htmlFor="currency">Currency *</Label>
               <Popover open={currencyOpen} onOpenChange={setCurrencyOpen}>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
                     role="combobox"
                     aria-expanded={currencyOpen}
-                    className="w-full justify-between"
+                    className={cn(
+                      "w-full justify-between",
+                      errors.currency ? 'border-destructive' : ''
+                    )}
                   >
                     {formData.currency
                       ? currencies.find((currency) => currency.value === formData.currency)?.label
@@ -320,18 +367,25 @@ export function JobRequestForm({ onSubmit, onCancel, isLoading = false }: JobReq
                   </Command>
                 </PopoverContent>
               </Popover>
+              {errors.currency && (
+                <p className="text-sm text-destructive">{errors.currency}</p>
+              )}
             </div>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="notes">Notes</Label>
+            <Label htmlFor="notes">Notes *</Label>
             <Textarea
               id="notes"
               value={formData.notes}
               onChange={(e) => handleChange('notes', e.target.value)}
               placeholder="Additional notes or requirements..."
               rows={3}
+              className={errors.notes ? 'border-destructive' : ''}
             />
+            {errors.notes && (
+              <p className="text-sm text-destructive">{errors.notes}</p>
+            )}
           </div>
 
           <div className="flex gap-4 pt-4">
