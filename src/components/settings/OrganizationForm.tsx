@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -61,7 +60,8 @@ export function OrganizationForm({
     customData, 
     saveCustomData, 
     uploadFile, 
-    deleteFile 
+    deleteFile,
+    isLoading: customDataLoading 
   } = useOrganizationCustomData(organization?.id)
   const { toast } = useToast()
 
@@ -71,22 +71,43 @@ export function OrganizationForm({
   const [billingPOCErrors, setBillingPOCErrors] = useState<Record<string, string>>({})
   const [isSavingCustomData, setIsSavingCustomData] = useState(false)
 
-  console.log('OrganizationForm render - organization:', organization, 'formData:', formData)
-  console.log('Custom data from hook:', customData)
-  console.log('Current custom field values:', customFieldValues)
+  console.log('🔍 OrganizationForm DEBUG - Current state:', {
+    organizationId: organization?.id,
+    organizationCountry: formData.country,
+    fieldsCount: fields.length,
+    customDataCount: customData.length,
+    customFieldValues,
+    customFieldFiles: Object.keys(customFieldFiles),
+    fieldsLoading,
+    customDataLoading
+  })
 
+  // Initialize custom field values from existing data
   useEffect(() => {
+    console.log('🔄 useEffect triggered - customData changed:', customData)
     if (customData.length > 0) {
       const values: Record<string, string> = {}
       customData.forEach(data => {
         if (data.field_value) {
           values[data.country_field_id] = data.field_value
+          console.log(`📝 Setting field value: ${data.country_field_id} = ${data.field_value}`)
         }
       })
-      console.log('Setting custom field values from data:', values)
+      console.log('✅ Setting custom field values:', values)
       setCustomFieldValues(values)
+    } else {
+      console.log('❌ No custom data found, clearing values')
+      setCustomFieldValues({})
     }
   }, [customData])
+
+  // Reset custom field values when country changes
+  useEffect(() => {
+    console.log('🔄 Country changed, resetting custom field values. New country:', formData.country)
+    setCustomFieldValues({})
+    setCustomFieldFiles({})
+    setFieldErrors({})
+  }, [formData.country])
 
   const updateFormData = (field: keyof OrganizationFormData, value: string | null) => {
     onFormDataChange({ ...formData, [field]: value })
@@ -109,7 +130,7 @@ export function OrganizationForm({
 
   // Early return with safe fallback if no organization
   if (!organization) {
-    console.log('OrganizationForm - no organization provided')
+    console.log('❌ OrganizationForm - no organization provided')
     return (
       <Card className="max-w-2xl mx-auto">
         <CardContent className="text-center py-8">
@@ -309,19 +330,55 @@ export function OrganizationForm({
   }
 
   const handleCustomFieldValueChange = (fieldId: string, value: string) => {
-    console.log('Custom field value changed:', fieldId, value)
-    setCustomFieldValues(prev => ({ ...prev, [fieldId]: value }))
+    console.log('📝 Custom field value changing:', { fieldId, value, organizationId: organization?.id })
+    
+    setCustomFieldValues(prev => {
+      const updated = { ...prev, [fieldId]: value }
+      console.log('📝 Updated customFieldValues:', updated)
+      return updated
+    })
     
     // Clear error when user starts typing
     if (fieldErrors[fieldId]) {
       setFieldErrors(prev => ({ ...prev, [fieldId]: '' }))
     }
+
+    // IMMEDIATELY save the data when it changes
+    if (organization?.id && value.trim() !== '') {
+      console.log('💾 Immediately saving custom field data:', { fieldId, value })
+      saveCustomData(organization.id, fieldId, value)
+        .then(() => {
+          console.log('✅ Successfully saved custom field data immediately')
+        })
+        .catch((error) => {
+          console.error('❌ Failed to save custom field data immediately:', error)
+        })
+    }
   }
 
   const handleCustomFieldFileChange = (fieldId: string, file: File | null) => {
-    console.log('Custom field file changed:', fieldId, file?.name)
+    console.log('📁 Custom field file changing:', { fieldId, fileName: file?.name, organizationId: organization?.id })
+    
     if (file) {
       setCustomFieldFiles(prev => ({ ...prev, [fieldId]: file }))
+      
+      // IMMEDIATELY upload and save the file
+      if (organization?.id) {
+        const field = fields.find(f => f.id === fieldId)
+        if (field) {
+          console.log('💾 Immediately uploading and saving file')
+          uploadFile(file, organization.id, field.field_name)
+            .then((fileData) => {
+              return saveCustomData(organization.id, fieldId, undefined, fileData)
+            })
+            .then(() => {
+              console.log('✅ Successfully uploaded and saved file immediately')
+            })
+            .catch((error) => {
+              console.error('❌ Failed to upload and save file immediately:', error)
+            })
+        }
+      }
     } else {
       setCustomFieldFiles(prev => {
         const updated = { ...prev }
@@ -344,7 +401,7 @@ export function OrganizationForm({
 
   const getCustomFieldValue = (fieldId: string) => {
     const value = customFieldValues[fieldId] || ''
-    console.log('Getting custom field value for:', fieldId, 'value:', value)
+    console.log('🔍 Getting custom field value for:', fieldId, 'value:', value)
     return value
   }
 
@@ -446,7 +503,7 @@ export function OrganizationForm({
         <Card>
           <CardContent className="p-6">
             <h3 className="text-lg font-medium mb-4">
-              Country-Specific Information
+              Country-Specific Compliance Information
             </h3>
             
             {fieldsLoading ? (
@@ -460,22 +517,34 @@ export function OrganizationForm({
               </div>
             ) : fields.length > 0 ? (
               <div className="grid gap-4">
-                {fields.map(field => (
-                  <CustomFieldInput
-                    key={field.id}
-                    field={field}
-                    value={getCustomFieldValue(field.id)}
-                    fileData={getCustomFieldFileData(field.id)}
-                    onValueChange={(value) => handleCustomFieldValueChange(field.id, value)}
-                    onFileChange={(file) => handleCustomFieldFileChange(field.id, file)}
-                    error={fieldErrors[field.id]}
-                  />
-                ))}
+                <div className="text-sm text-muted-foreground mb-2">
+                  This information is required for compliance and will be saved automatically as you type.
+                </div>
+                {fields.map(field => {
+                  console.log('🎨 Rendering field:', field.field_name, 'with value:', getCustomFieldValue(field.id))
+                  return (
+                    <CustomFieldInput
+                      key={field.id}
+                      field={field}
+                      value={getCustomFieldValue(field.id)}
+                      fileData={getCustomFieldFileData(field.id)}
+                      onValueChange={(value) => handleCustomFieldValueChange(field.id, value)}
+                      onFileChange={(file) => handleCustomFieldFileChange(field.id, file)}
+                      error={fieldErrors[field.id]}
+                    />
+                  )
+                })}
               </div>
             ) : (
               <p className="text-muted-foreground text-sm">
-                No additional fields required for this country.
+                No additional compliance fields required for this country.
               </p>
+            )}
+            
+            {customDataLoading && (
+              <div className="text-sm text-muted-foreground mt-2">
+                Loading compliance data...
+              </div>
             )}
           </CardContent>
         </Card>
@@ -487,7 +556,27 @@ export function OrganizationForm({
           <CardContent className="p-6">
             <div className="flex justify-end">
               <Button 
-                onClick={handleSave} 
+                onClick={async () => {
+                  console.log('💾 Manual save triggered')
+                  if (!organization) return
+                  
+                  try {
+                    // Save organization data
+                    await updateOrganization(organization.id, formData)
+                    onSaveSuccess()
+                    toast({
+                      title: 'Success',
+                      description: 'Organization information saved successfully',
+                    })
+                  } catch (error) {
+                    console.error('❌ Error saving organization:', error)
+                    toast({
+                      title: 'Error',
+                      description: 'Failed to save organization information',
+                      variant: 'destructive'
+                    })
+                  }
+                }}
                 disabled={isLoading || isSavingCustomData}
                 className="min-w-[120px]"
               >
@@ -513,6 +602,17 @@ export function OrganizationForm({
               <div className="flex justify-between">
                 <span>Current Billing POC:</span>
                 <span>{organization.billing_poc_user_name} ({organization.billing_poc_user_email})</span>
+              </div>
+            )}
+            {customData.length > 0 && (
+              <div className="mt-4">
+                <span className="font-medium">Stored Compliance Data:</span>
+                {customData.map(data => (
+                  <div key={data.id} className="flex justify-between text-xs mt-1">
+                    <span>Field {data.country_field_id}:</span>
+                    <span>{data.field_value || data.file_name || 'No data'}</span>
+                  </div>
+                ))}
               </div>
             )}
           </div>

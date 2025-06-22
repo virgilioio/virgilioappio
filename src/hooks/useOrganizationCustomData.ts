@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 import { useToast } from '@/hooks/use-toast'
@@ -22,10 +21,10 @@ export function useOrganizationCustomData(organizationId?: string) {
 
   useEffect(() => {
     if (organizationId) {
-      console.log('useOrganizationCustomData: Fetching data for organization:', organizationId)
+      console.log('🔍 useOrganizationCustomData: Fetching data for organization:', organizationId)
       fetchCustomData(organizationId)
     } else {
-      console.log('useOrganizationCustomData: No organization ID provided')
+      console.log('⚠️ useOrganizationCustomData: No organization ID provided')
       setCustomData([])
       setIsLoading(false)
     }
@@ -34,7 +33,7 @@ export function useOrganizationCustomData(organizationId?: string) {
   const fetchCustomData = async (orgId: string) => {
     try {
       setIsLoading(true)
-      console.log('Fetching custom data for organization:', orgId)
+      console.log('📡 Fetching custom data for organization:', orgId)
       
       const { data, error } = await supabase
         .from('organization_custom_data')
@@ -42,17 +41,17 @@ export function useOrganizationCustomData(organizationId?: string) {
         .eq('organization_id', orgId)
 
       if (error) {
-        console.error('Error fetching custom data:', error)
+        console.error('❌ Error fetching custom data:', error)
         throw error
       }
       
-      console.log('Fetched custom data:', data)
+      console.log('✅ Fetched custom data:', data)
       setCustomData(data || [])
     } catch (error) {
-      console.error('Error fetching organization custom data:', error)
+      console.error('❌ Error fetching organization custom data:', error)
       toast({
         title: 'Error',
-        description: 'Failed to load organization data',
+        description: 'Failed to load organization compliance data',
         variant: 'destructive'
       })
     } finally {
@@ -67,11 +66,8 @@ export function useOrganizationCustomData(organizationId?: string) {
     fileData?: { url: string; name: string; size: number }
   ) => {
     try {
-      console.log('=== SAVE CUSTOM DATA START ===')
-      console.log('Organization ID:', organizationId)
-      console.log('Country Field ID:', countryFieldId)
-      console.log('Value:', value)
-      console.log('File Data:', fileData)
+      console.log('💾 === SAVE CUSTOM DATA START ===')
+      console.log('🔍 Input params:', { organizationId, countryFieldId, value, fileData })
       
       const dataToSave = {
         organization_id: organizationId,
@@ -82,7 +78,7 @@ export function useOrganizationCustomData(organizationId?: string) {
         file_size_bytes: fileData?.size || null
       }
 
-      console.log('Data to upsert:', dataToSave)
+      console.log('📝 Data to upsert:', dataToSave)
 
       const { data, error } = await supabase
         .from('organization_custom_data')
@@ -93,15 +89,15 @@ export function useOrganizationCustomData(organizationId?: string) {
         .single()
 
       if (error) {
-        console.error('Supabase error saving custom data:', error)
-        console.error('Error details:', JSON.stringify(error, null, 2))
+        console.error('❌ Supabase error saving custom data:', error)
+        console.error('❌ Error details:', JSON.stringify(error, null, 2))
         throw error
       }
 
-      console.log('Successfully saved custom data:', data)
-      console.log('=== SAVE CUSTOM DATA SUCCESS ===')
+      console.log('✅ Successfully saved custom data:', data)
+      console.log('💾 === SAVE CUSTOM DATA SUCCESS ===')
 
-      // Update local state
+      // Update local state immediately
       setCustomData(prev => {
         const existingIndex = prev.findIndex(
           item => item.organization_id === organizationId && 
@@ -111,21 +107,27 @@ export function useOrganizationCustomData(organizationId?: string) {
         if (existingIndex >= 0) {
           const updated = [...prev]
           updated[existingIndex] = data
-          console.log('Updated existing custom data in local state')
+          console.log('🔄 Updated existing custom data in local state')
           return updated
         } else {
-          console.log('Added new custom data to local state')
+          console.log('➕ Added new custom data to local state')
           return [...prev, data]
         }
       })
 
+      // Show success toast for user feedback
+      toast({
+        title: 'Success',
+        description: 'Compliance information saved automatically',
+      })
+
       return data
     } catch (error) {
-      console.error('=== SAVE CUSTOM DATA ERROR ===')
-      console.error('Error saving custom data:', error)
+      console.error('💾 === SAVE CUSTOM DATA ERROR ===')
+      console.error('❌ Error saving custom data:', error)
       toast({
         title: 'Error',
-        description: 'Failed to save custom data',
+        description: 'Failed to save compliance information',
         variant: 'destructive'
       })
       throw error
@@ -216,9 +218,83 @@ export function useOrganizationCustomData(organizationId?: string) {
     customData,
     isLoading,
     saveCustomData,
-    deleteCustomData,
-    uploadFile,
-    deleteFile,
+    deleteCustomData: async (organizationId: string, countryFieldId: string) => {
+      try {
+        const { error } = await supabase
+          .from('organization_custom_data')
+          .delete()
+          .eq('organization_id', organizationId)
+          .eq('country_field_id', countryFieldId)
+
+        if (error) throw error
+
+        setCustomData(prev => prev.filter(
+          item => !(item.organization_id === organizationId && 
+                    item.country_field_id === countryFieldId)
+        ))
+
+        toast({
+          title: 'Success',
+          description: 'Data cleared successfully'
+        })
+      } catch (error) {
+        console.error('Error deleting custom data:', error)
+        toast({
+          title: 'Error',
+          description: 'Failed to clear data',
+          variant: 'destructive'
+        })
+        throw error
+      }
+    },
+    uploadFile: async (file: File, organizationId: string, fieldName: string) => {
+      try {
+        const fileExt = file.name.split('.').pop()
+        const fileName = `${organizationId}/${fieldName}_${Date.now()}.${fileExt}`
+
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('organization-files')
+          .upload(fileName, file)
+
+        if (uploadError) throw uploadError
+
+        const { data: urlData } = supabase.storage
+          .from('organization-files')
+          .getPublicUrl(fileName)
+
+        return {
+          url: urlData.publicUrl,
+          name: file.name,
+          size: file.size
+        }
+      } catch (error) {
+        console.error('Error uploading file:', error)
+        toast({
+          title: 'Error',
+          description: 'Failed to upload file',
+          variant: 'destructive'
+        })
+        throw error
+      }
+    },
+    deleteFile: async (fileUrl: string) => {
+      try {
+        // Extract file path from URL
+        const urlParts = fileUrl.split('/organization-files/')
+        if (urlParts.length < 2) return
+
+        const filePath = urlParts[1]
+        
+        const { error } = await supabase.storage
+          .from('organization-files')
+          .remove([filePath])
+
+        if (error) throw error
+      } catch (error) {
+        console.error('Error deleting file:', error)
+        // Don't show toast for file deletion errors as it's often not critical
+      }
+    },
     refetch: () => organizationId ? fetchCustomData(organizationId) : Promise.resolve()
   }
 }
