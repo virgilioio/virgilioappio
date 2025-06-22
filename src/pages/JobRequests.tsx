@@ -178,6 +178,20 @@ export default function JobRequests() {
                     </div>
                   )}
 
+                  {selectedRequest.processed_agreement_content && (
+                    <div>
+                      <h4 className="font-medium">Agreement Content (At Time of Submission)</h4>
+                      <div className="border rounded-lg p-4 bg-muted/30 max-h-[300px] overflow-y-auto">
+                        <div 
+                          className="prose prose-sm max-w-none text-sm"
+                          dangerouslySetInnerHTML={{ 
+                            __html: selectedRequest.processed_agreement_content 
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
                   {selectedRequest.job_id && (
                     <div className="bg-green-50 p-3 rounded-lg">
                       <p className="text-sm text-green-800 break-words">

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
@@ -21,6 +22,7 @@ export interface JobRequest {
   approved_at?: string
   approver_role?: string
   job_id?: string
+  processed_agreement_content?: string
   created_at: string
   updated_at: string
   // New fields for display

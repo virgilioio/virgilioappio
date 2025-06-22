@@ -496,6 +496,7 @@ export type Database = {
           location: string | null
           notes: string | null
           organization_id: string
+          processed_agreement_content: string | null
           salary_max: number | null
           salary_min: number | null
           status: Database["public"]["Enums"]["job_request_status"]
@@ -517,6 +518,7 @@ export type Database = {
           location?: string | null
           notes?: string | null
           organization_id: string
+          processed_agreement_content?: string | null
           salary_max?: number | null
           salary_min?: number | null
           status?: Database["public"]["Enums"]["job_request_status"]
@@ -538,6 +540,7 @@ export type Database = {
           location?: string | null
           notes?: string | null
           organization_id?: string
+          processed_agreement_content?: string | null
           salary_max?: number | null
           salary_min?: number | null
           status?: Database["public"]["Enums"]["job_request_status"]

@@ -216,6 +216,11 @@ export function JobRequestForm({ onSubmit, onCancel, isLoading = false }: JobReq
     if (!validateForm()) return
 
     try {
+      // Process the agreement content with placeholders replaced
+      const processedAgreement = agreement?.agreement_content 
+        ? processAgreementContent(agreement.agreement_content)
+        : null
+
       await onSubmit({
         title: formData.title.trim(),
         description: formData.description.trim(),
@@ -225,7 +230,8 @@ export function JobRequestForm({ onSubmit, onCancel, isLoading = false }: JobReq
         salary_min: parseInt(formData.salary_min),
         salary_max: parseInt(formData.salary_max),
         currency: formData.currency,
-        notes: formData.notes.trim()
+        notes: formData.notes.trim(),
+        processed_agreement_content: processedAgreement
       })
       
       // Reset form on success
