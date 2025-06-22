@@ -72,6 +72,8 @@ export function OrganizationForm({
   const [isSavingCustomData, setIsSavingCustomData] = useState(false)
 
   console.log('OrganizationForm render - organization:', organization, 'formData:', formData)
+  console.log('Custom data from hook:', customData)
+  console.log('Current custom field values:', customFieldValues)
 
   useEffect(() => {
     if (customData.length > 0) {
@@ -81,6 +83,7 @@ export function OrganizationForm({
           values[data.country_field_id] = data.field_value
         }
       })
+      console.log('Setting custom field values from data:', values)
       setCustomFieldValues(values)
     }
   }, [customData])
@@ -220,14 +223,20 @@ export function OrganizationForm({
     
     try {
       setIsSavingCustomData(true)
+      console.log('Starting to save custom field data for fields:', fields)
+      console.log('Current custom field values:', customFieldValues)
+      console.log('Current custom field files:', customFieldFiles)
       
       // Save each field's data
       for (const field of fields) {
         const value = customFieldValues[field.id] || ''
         const file = customFieldFiles[field.id]
         
+        console.log(`Processing field ${field.field_name} (${field.id}):`, { value, hasFile: !!file, fieldType: field.field_type })
+        
         if (field.field_type === 'file') {
           if (file) {
+            console.log('Uploading file for field:', field.field_name)
             // Upload file first
             const fileData = await uploadFile(file, organization.id, field.field_name)
             await saveCustomData(organization.id, field.id, undefined, fileData)
@@ -235,10 +244,12 @@ export function OrganizationForm({
           // For file fields, we don't save empty values
         } else {
           // For non-file fields, save the value (even if empty to clear previous values)
+          console.log('Saving text value for field:', field.field_name, 'value:', value)
           await saveCustomData(organization.id, field.id, value || '')
         }
       }
       
+      console.log('Finished saving all custom field data')
       return true
     } catch (error) {
       console.error('Error saving custom field data:', error)
@@ -256,6 +267,8 @@ export function OrganizationForm({
   const handleSave = async () => {
     if (!organization) return
     
+    console.log('Starting save process...')
+    
     // Validate all fields
     const billingPOCValid = validateBillingPOC()
     const customFieldsValid = validateAllCustomFields()
@@ -271,9 +284,11 @@ export function OrganizationForm({
     
     try {
       // Save organization data first
+      console.log('Saving organization data...')
       await updateOrganization(organization.id, formData)
       
       // Save custom field data
+      console.log('Saving custom field data...')
       const customDataSaved = await saveAllCustomFieldData()
       
       if (customDataSaved) {
@@ -294,6 +309,7 @@ export function OrganizationForm({
   }
 
   const handleCustomFieldValueChange = (fieldId: string, value: string) => {
+    console.log('Custom field value changed:', fieldId, value)
     setCustomFieldValues(prev => ({ ...prev, [fieldId]: value }))
     
     // Clear error when user starts typing
@@ -303,6 +319,7 @@ export function OrganizationForm({
   }
 
   const handleCustomFieldFileChange = (fieldId: string, file: File | null) => {
+    console.log('Custom field file changed:', fieldId, file?.name)
     if (file) {
       setCustomFieldFiles(prev => ({ ...prev, [fieldId]: file }))
     } else {
@@ -326,7 +343,9 @@ export function OrganizationForm({
   }
 
   const getCustomFieldValue = (fieldId: string) => {
-    return customFieldValues[fieldId] || ''
+    const value = customFieldValues[fieldId] || ''
+    console.log('Getting custom field value for:', fieldId, 'value:', value)
+    return value
   }
 
   const getCustomFieldFileData = (fieldId: string) => {

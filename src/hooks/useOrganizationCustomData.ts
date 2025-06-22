@@ -22,8 +22,10 @@ export function useOrganizationCustomData(organizationId?: string) {
 
   useEffect(() => {
     if (organizationId) {
+      console.log('useOrganizationCustomData: Fetching data for organization:', organizationId)
       fetchCustomData(organizationId)
     } else {
+      console.log('useOrganizationCustomData: No organization ID provided')
       setCustomData([])
       setIsLoading(false)
     }
@@ -32,12 +34,19 @@ export function useOrganizationCustomData(organizationId?: string) {
   const fetchCustomData = async (orgId: string) => {
     try {
       setIsLoading(true)
+      console.log('Fetching custom data for organization:', orgId)
+      
       const { data, error } = await supabase
         .from('organization_custom_data')
         .select('*')
         .eq('organization_id', orgId)
 
-      if (error) throw error
+      if (error) {
+        console.error('Error fetching custom data:', error)
+        throw error
+      }
+      
+      console.log('Fetched custom data:', data)
       setCustomData(data || [])
     } catch (error) {
       console.error('Error fetching organization custom data:', error)
@@ -58,7 +67,11 @@ export function useOrganizationCustomData(organizationId?: string) {
     fileData?: { url: string; name: string; size: number }
   ) => {
     try {
-      console.log('Saving custom data:', { organizationId, countryFieldId, value, fileData })
+      console.log('=== SAVE CUSTOM DATA START ===')
+      console.log('Organization ID:', organizationId)
+      console.log('Country Field ID:', countryFieldId)
+      console.log('Value:', value)
+      console.log('File Data:', fileData)
       
       const dataToSave = {
         organization_id: organizationId,
@@ -69,7 +82,7 @@ export function useOrganizationCustomData(organizationId?: string) {
         file_size_bytes: fileData?.size || null
       }
 
-      console.log('Data to save:', dataToSave)
+      console.log('Data to upsert:', dataToSave)
 
       const { data, error } = await supabase
         .from('organization_custom_data')
@@ -81,10 +94,12 @@ export function useOrganizationCustomData(organizationId?: string) {
 
       if (error) {
         console.error('Supabase error saving custom data:', error)
+        console.error('Error details:', JSON.stringify(error, null, 2))
         throw error
       }
 
       console.log('Successfully saved custom data:', data)
+      console.log('=== SAVE CUSTOM DATA SUCCESS ===')
 
       // Update local state
       setCustomData(prev => {
@@ -96,14 +111,17 @@ export function useOrganizationCustomData(organizationId?: string) {
         if (existingIndex >= 0) {
           const updated = [...prev]
           updated[existingIndex] = data
+          console.log('Updated existing custom data in local state')
           return updated
         } else {
+          console.log('Added new custom data to local state')
           return [...prev, data]
         }
       })
 
       return data
     } catch (error) {
+      console.error('=== SAVE CUSTOM DATA ERROR ===')
       console.error('Error saving custom data:', error)
       toast({
         title: 'Error',
