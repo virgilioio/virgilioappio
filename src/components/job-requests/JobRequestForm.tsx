@@ -1,3 +1,4 @@
+
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -131,8 +132,9 @@ export function JobRequestForm({ onSubmit, onCancel, isLoading = false }: JobReq
       const placeholderKey = `{{${field.field_name}}}`
       const placeholderValue = customDataEntry?.field_value || `[${field.field_label}]`
       
-      // Use regex with global flag to replace all instances
-      const regex = new RegExp(placeholderKey.replace(/[{}]/g, '\\$&'), 'g')
+      // Escape special regex characters in the field name for proper matching
+      const escapedFieldName = field.field_name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      const regex = new RegExp(`{{${escapedFieldName}}}`, 'g')
       processedContent = processedContent.replace(regex, placeholderValue)
     })
     
