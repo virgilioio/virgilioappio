@@ -226,13 +226,16 @@ export function OrganizationForm({
         const value = customFieldValues[field.id] || ''
         const file = customFieldFiles[field.id]
         
-        if (field.field_type === 'file' && file) {
-          // Upload file first
-          const fileData = await uploadFile(file, organization.id, field.field_name)
-          await saveCustomData(organization.id, field.id, undefined, fileData)
-        } else if (field.field_type !== 'file' && value) {
-          // Save text/other field values
-          await saveCustomData(organization.id, field.id, value)
+        if (field.field_type === 'file') {
+          if (file) {
+            // Upload file first
+            const fileData = await uploadFile(file, organization.id, field.field_name)
+            await saveCustomData(organization.id, field.id, undefined, fileData)
+          }
+          // For file fields, we don't save empty values
+        } else {
+          // For non-file fields, save the value (even if empty to clear previous values)
+          await saveCustomData(organization.id, field.id, value || '')
         }
       }
       

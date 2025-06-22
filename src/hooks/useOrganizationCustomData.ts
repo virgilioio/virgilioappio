@@ -58,6 +58,8 @@ export function useOrganizationCustomData(organizationId?: string) {
     fileData?: { url: string; name: string; size: number }
   ) => {
     try {
+      console.log('Saving custom data:', { organizationId, countryFieldId, value, fileData })
+      
       const dataToSave = {
         organization_id: organizationId,
         country_field_id: countryFieldId,
@@ -67,6 +69,8 @@ export function useOrganizationCustomData(organizationId?: string) {
         file_size_bytes: fileData?.size || null
       }
 
+      console.log('Data to save:', dataToSave)
+
       const { data, error } = await supabase
         .from('organization_custom_data')
         .upsert(dataToSave, { 
@@ -75,7 +79,12 @@ export function useOrganizationCustomData(organizationId?: string) {
         .select()
         .single()
 
-      if (error) throw error
+      if (error) {
+        console.error('Supabase error saving custom data:', error)
+        throw error
+      }
+
+      console.log('Successfully saved custom data:', data)
 
       // Update local state
       setCustomData(prev => {
