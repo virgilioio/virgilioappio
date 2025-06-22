@@ -170,6 +170,12 @@ export default function JobRequests() {
                         <span className="ml-1">{selectedRequest.approver_role}</span>
                       </div>
                     )}
+                    {selectedRequest.agreement_id && (
+                      <div className="sm:col-span-2">
+                        <span className="font-medium">Agreement ID:</span> 
+                        <span className="ml-1 break-words font-mono text-xs">{selectedRequest.agreement_id}</span>
+                      </div>
+                    )}
                   </div>
 
                   {selectedRequest.notes && (
@@ -190,11 +196,6 @@ export default function JobRequests() {
                           }}
                         />
                       </div>
-                      {selectedRequest.agreement_id && (
-                        <div className="mt-2 text-sm text-muted-foreground">
-                          <span className="font-medium">Agreement ID:</span> {selectedRequest.agreement_id}
-                        </div>
-                      )}
                     </div>
                   )}
 
