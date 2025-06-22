@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -54,10 +53,8 @@ export function JobRequestAgreementsManager() {
   }
 
   const handleEdit = () => {
-    // Store the current content as original before entering edit mode
-    const contentToEdit = currentAgreement?.agreement_content || ''
-    setOriginalContent(contentToEdit)
-    setAgreementContent(contentToEdit)
+    // Store the current agreementContent (which is what's being displayed) as original
+    setOriginalContent(agreementContent)
     setIsEditing(true)
   }
 
