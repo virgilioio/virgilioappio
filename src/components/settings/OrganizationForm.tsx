@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -70,6 +71,7 @@ export function OrganizationForm({
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [billingPOCErrors, setBillingPOCErrors] = useState<Record<string, string>>({})
   const [isSavingCustomData, setIsSavingCustomData] = useState(false)
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
 
   console.log('🔍 OrganizationForm DEBUG - Current state:', {
     organizationId: organization?.id,
@@ -79,7 +81,8 @@ export function OrganizationForm({
     customFieldValues,
     customFieldFiles: Object.keys(customFieldFiles),
     fieldsLoading,
-    customDataLoading
+    customDataLoading,
+    hasUnsavedChanges
   })
 
   // Initialize custom field values from existing data
@@ -99,6 +102,7 @@ export function OrganizationForm({
       console.log('❌ No custom data found, clearing values')
       setCustomFieldValues({})
     }
+    setHasUnsavedChanges(false)
   }, [customData])
 
   // Reset custom field values when country changes
@@ -107,6 +111,7 @@ export function OrganizationForm({
     setCustomFieldValues({})
     setCustomFieldFiles({})
     setFieldErrors({})
+    setHasUnsavedChanges(false)
   }, [formData.country])
 
   const updateFormData = (field: keyof OrganizationFormData, value: string | null) => {
@@ -271,12 +276,17 @@ export function OrganizationForm({
       }
       
       console.log('Finished saving all custom field data')
+      setHasUnsavedChanges(false)
+      toast({
+        title: 'Success',
+        description: 'Compliance information saved successfully',
+      })
       return true
     } catch (error) {
       console.error('Error saving custom field data:', error)
       toast({
         title: 'Error',
-        description: 'Failed to save some custom field data',
+        description: 'Failed to save compliance information',
         variant: 'destructive'
       })
       return false
@@ -343,17 +353,8 @@ export function OrganizationForm({
       setFieldErrors(prev => ({ ...prev, [fieldId]: '' }))
     }
 
-    // IMMEDIATELY save the data when it changes
-    if (organization?.id && value.trim() !== '') {
-      console.log('💾 Immediately saving custom field data:', { fieldId, value })
-      saveCustomData(organization.id, fieldId, value)
-        .then(() => {
-          console.log('✅ Successfully saved custom field data immediately')
-        })
-        .catch((error) => {
-          console.error('❌ Failed to save custom field data immediately:', error)
-        })
-    }
+    // Mark as having unsaved changes
+    setHasUnsavedChanges(true)
   }
 
   const handleCustomFieldFileChange = (fieldId: string, file: File | null) => {
@@ -361,24 +362,6 @@ export function OrganizationForm({
     
     if (file) {
       setCustomFieldFiles(prev => ({ ...prev, [fieldId]: file }))
-      
-      // IMMEDIATELY upload and save the file
-      if (organization?.id) {
-        const field = fields.find(f => f.id === fieldId)
-        if (field) {
-          console.log('💾 Immediately uploading and saving file')
-          uploadFile(file, organization.id, field.field_name)
-            .then((fileData) => {
-              return saveCustomData(organization.id, fieldId, undefined, fileData)
-            })
-            .then(() => {
-              console.log('✅ Successfully uploaded and saved file immediately')
-            })
-            .catch((error) => {
-              console.error('❌ Failed to upload and save file immediately:', error)
-            })
-        }
-      }
     } else {
       setCustomFieldFiles(prev => {
         const updated = { ...prev }
@@ -397,6 +380,9 @@ export function OrganizationForm({
     if (fieldErrors[fieldId]) {
       setFieldErrors(prev => ({ ...prev, [fieldId]: '' }))
     }
+
+    // Mark as having unsaved changes
+    setHasUnsavedChanges(true)
   }
 
   const getCustomFieldValue = (fieldId: string) => {
@@ -502,9 +488,16 @@ export function OrganizationForm({
       {formData.country && (
         <Card>
           <CardContent className="p-6">
-            <h3 className="text-lg font-medium mb-4">
-              Country-Specific Compliance Information
-            </h3>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-medium">
+                Country-Specific Compliance Information
+              </h3>
+              {hasUnsavedChanges && (
+                <div className="text-sm text-orange-600 bg-orange-50 px-2 py-1 rounded">
+                  You have unsaved changes
+                </div>
+              )}
+            </div>
             
             {fieldsLoading ? (
               <div className="space-y-4">
@@ -518,7 +511,7 @@ export function OrganizationForm({
             ) : fields.length > 0 ? (
               <div className="grid gap-4">
                 <div className="text-sm text-muted-foreground mb-2">
-                  This information is required for compliance and will be saved automatically as you type.
+                  Fill out the compliance information and click "Save Compliance Data" to save your changes.
                 </div>
                 {fields.map(field => {
                   console.log('🎨 Rendering field:', field.field_name, 'with value:', getCustomFieldValue(field.id))
@@ -534,6 +527,17 @@ export function OrganizationForm({
                     />
                   )
                 })}
+                
+                {/* Save Compliance Data Button */}
+                <div className="flex justify-end pt-4 border-t">
+                  <Button 
+                    onClick={saveAllCustomFieldData}
+                    disabled={isSavingCustomData || !hasUnsavedChanges}
+                    className="min-w-[160px]"
+                  >
+                    {isSavingCustomData ? 'Saving...' : 'Save Compliance Data'}
+                  </Button>
+                </div>
               </div>
             ) : (
               <p className="text-muted-foreground text-sm">
@@ -550,7 +554,7 @@ export function OrganizationForm({
         </Card>
       )}
 
-      {/* Save button for the form */}
+      {/* Save button for the organization form */}
       {!hideActionButtons && canManageBillingPOC && (
         <Card>
           <CardContent className="p-6">
@@ -577,10 +581,10 @@ export function OrganizationForm({
                     })
                   }
                 }}
-                disabled={isLoading || isSavingCustomData}
+                disabled={isLoading}
                 className="min-w-[120px]"
               >
-                {isLoading || isSavingCustomData ? 'Saving...' : 'Save Changes'}
+                {isLoading ? 'Saving...' : 'Save Organization'}
               </Button>
             </div>
           </CardContent>

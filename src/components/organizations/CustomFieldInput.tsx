@@ -1,3 +1,4 @@
+
 import { useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -178,8 +179,6 @@ export function CustomFieldInput({
 
       case 'number':
         console.log('Rendering Input component for number type with value:', value)
-        // For number fields, we still use text input to preserve formatting like dashes
-        // but we can add pattern validation if needed
         inputElement = (
           <Input
             type="text"

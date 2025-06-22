@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 import { useToast } from '@/hooks/use-toast'
@@ -115,51 +116,10 @@ export function useOrganizationCustomData(organizationId?: string) {
         }
       })
 
-      // Show success toast for user feedback
-      toast({
-        title: 'Success',
-        description: 'Compliance information saved automatically',
-      })
-
       return data
     } catch (error) {
       console.error('💾 === SAVE CUSTOM DATA ERROR ===')
       console.error('❌ Error saving custom data:', error)
-      toast({
-        title: 'Error',
-        description: 'Failed to save compliance information',
-        variant: 'destructive'
-      })
-      throw error
-    }
-  }
-
-  const deleteCustomData = async (organizationId: string, countryFieldId: string) => {
-    try {
-      const { error } = await supabase
-        .from('organization_custom_data')
-        .delete()
-        .eq('organization_id', organizationId)
-        .eq('country_field_id', countryFieldId)
-
-      if (error) throw error
-
-      setCustomData(prev => prev.filter(
-        item => !(item.organization_id === organizationId && 
-                  item.country_field_id === countryFieldId)
-      ))
-
-      toast({
-        title: 'Success',
-        description: 'Data cleared successfully'
-      })
-    } catch (error) {
-      console.error('Error deleting custom data:', error)
-      toast({
-        title: 'Error',
-        description: 'Failed to clear data',
-        variant: 'destructive'
-      })
       throw error
     }
   }
@@ -186,11 +146,6 @@ export function useOrganizationCustomData(organizationId?: string) {
       }
     } catch (error) {
       console.error('Error uploading file:', error)
-      toast({
-        title: 'Error',
-        description: 'Failed to upload file',
-        variant: 'destructive'
-      })
       throw error
     }
   }
@@ -214,87 +169,33 @@ export function useOrganizationCustomData(organizationId?: string) {
     }
   }
 
+  const deleteCustomData = async (organizationId: string, countryFieldId: string) => {
+    try {
+      const { error } = await supabase
+        .from('organization_custom_data')
+        .delete()
+        .eq('organization_id', organizationId)
+        .eq('country_field_id', countryFieldId)
+
+      if (error) throw error
+
+      setCustomData(prev => prev.filter(
+        item => !(item.organization_id === organizationId && 
+                  item.country_field_id === countryFieldId)
+      ))
+    } catch (error) {
+      console.error('Error deleting custom data:', error)
+      throw error
+    }
+  }
+
   return {
     customData,
     isLoading,
     saveCustomData,
-    deleteCustomData: async (organizationId: string, countryFieldId: string) => {
-      try {
-        const { error } = await supabase
-          .from('organization_custom_data')
-          .delete()
-          .eq('organization_id', organizationId)
-          .eq('country_field_id', countryFieldId)
-
-        if (error) throw error
-
-        setCustomData(prev => prev.filter(
-          item => !(item.organization_id === organizationId && 
-                    item.country_field_id === countryFieldId)
-        ))
-
-        toast({
-          title: 'Success',
-          description: 'Data cleared successfully'
-        })
-      } catch (error) {
-        console.error('Error deleting custom data:', error)
-        toast({
-          title: 'Error',
-          description: 'Failed to clear data',
-          variant: 'destructive'
-        })
-        throw error
-      }
-    },
-    uploadFile: async (file: File, organizationId: string, fieldName: string) => {
-      try {
-        const fileExt = file.name.split('.').pop()
-        const fileName = `${organizationId}/${fieldName}_${Date.now()}.${fileExt}`
-
-        const { data: uploadData, error: uploadError } = await supabase.storage
-          .from('organization-files')
-          .upload(fileName, file)
-
-        if (uploadError) throw uploadError
-
-        const { data: urlData } = supabase.storage
-          .from('organization-files')
-          .getPublicUrl(fileName)
-
-        return {
-          url: urlData.publicUrl,
-          name: file.name,
-          size: file.size
-        }
-      } catch (error) {
-        console.error('Error uploading file:', error)
-        toast({
-          title: 'Error',
-          description: 'Failed to upload file',
-          variant: 'destructive'
-        })
-        throw error
-      }
-    },
-    deleteFile: async (fileUrl: string) => {
-      try {
-        // Extract file path from URL
-        const urlParts = fileUrl.split('/organization-files/')
-        if (urlParts.length < 2) return
-
-        const filePath = urlParts[1]
-        
-        const { error } = await supabase.storage
-          .from('organization-files')
-          .remove([filePath])
-
-        if (error) throw error
-      } catch (error) {
-        console.error('Error deleting file:', error)
-        // Don't show toast for file deletion errors as it's often not critical
-      }
-    },
+    deleteCustomData,
+    uploadFile,
+    deleteFile,
     refetch: () => organizationId ? fetchCustomData(organizationId) : Promise.resolve()
   }
 }
