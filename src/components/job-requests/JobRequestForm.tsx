@@ -1,3 +1,4 @@
+
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -463,18 +464,20 @@ export function JobRequestForm({ onSubmit, onCancel, isLoading = false }: JobReq
             </div>
 
             {agreement?.agreement_content ? (
-              <AgreementRichTextEditor
-                value={agreement.agreement_content}
-                onChange={() => {}} // Read-only for review
-                selectedCountryId={organizationCountry?.id}
-                jobRequestData={{
-                  ...formData,
-                  salary_min: parseInt(formData.salary_min) || 0,
-                  salary_max: parseInt(formData.salary_max) || 0
-                }}
-                placeholder="No agreement content available"
-                className="bg-muted/30"
-              />
+              <div className="border rounded-lg p-4 bg-background">
+                <AgreementRichTextEditor
+                  value={agreement.agreement_content}
+                  onChange={() => {}} // Read-only for review
+                  selectedCountryId={organizationCountry?.id}
+                  jobRequestData={{
+                    ...formData,
+                    salary_min: parseInt(formData.salary_min) || 0,
+                    salary_max: parseInt(formData.salary_max) || 0
+                  }}
+                  placeholder="No agreement content available"
+                  className="min-h-[400px]"
+                />
+              </div>
             ) : (
               <div className="p-6 border rounded-lg bg-muted/30">
                 <p className="text-muted-foreground text-center">
