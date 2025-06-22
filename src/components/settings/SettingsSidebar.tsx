@@ -3,6 +3,7 @@ import { User, Building, Receipt, Users, Shield, Settings as SettingsIcon, Megap
 import { usePermissions } from '@/hooks/usePermissions'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { ChevronDown } from 'lucide-react'
 import { useState } from 'react'
@@ -83,8 +84,8 @@ export function SettingsSidebar({ currentTab, onTabChange, className }: Settings
   }
 
   return (
-    <nav className={cn("fixed top-0 left-0 h-screen w-64 bg-background border-r border-border overflow-y-auto z-10", className)}>
-      <div className="p-4 pt-6">
+    <Card className={cn("w-64 h-fit", className)}>
+      <CardContent className="p-4">
         <div className="space-y-1">
           {navItems.map((item) => {
             const Icon = item.icon
@@ -163,7 +164,7 @@ export function SettingsSidebar({ currentTab, onTabChange, className }: Settings
             )
           })}
         </div>
-      </div>
-    </nav>
+      </CardContent>
+    </Card>
   )
 }

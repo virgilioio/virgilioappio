@@ -60,27 +60,28 @@ export default function Settings() {
   return (
     <InvoiceFilterProvider>
       <Section>
-        <div className="flex">
-          {/* Fixed Sidebar - hidden on mobile */}
-          <div className="hidden lg:block">
-            <SettingsSidebar 
-              currentTab={currentTab} 
-              onTabChange={handleTabChange} 
-            />
-          </div>
-          
-          {/* Main content with left margin to account for fixed sidebar */}
-          <div className="flex-1 lg:ml-64">
-            <AppContainer variant="default">
-              <Tabs value={currentTab} onValueChange={handleTabChange} className="w-full">
-                {/* Mobile header */}
-                <div className="lg:hidden mb-6">
-                  <SettingsMobileHeader 
-                    onMenuToggle={handleMenuToggle}
-                    onBackToDashboard={handleBackToDashboard}
-                  />
-                </div>
+        <AppContainer variant="default">
+          <Tabs value={currentTab} onValueChange={handleTabChange} className="w-full">
+            {/* Mobile header */}
+            <div className="lg:hidden mb-6">
+              <SettingsMobileHeader 
+                onMenuToggle={handleMenuToggle}
+                onBackToDashboard={handleBackToDashboard}
+              />
+            </div>
 
+            {/* Desktop layout with floating sidebar */}
+            <div className="flex gap-6">
+              {/* Floating Sidebar - hidden on mobile */}
+              <div className="hidden lg:block">
+                <SettingsSidebar 
+                  currentTab={currentTab} 
+                  onTabChange={handleTabChange} 
+                />
+              </div>
+              
+              {/* Main content */}
+              <div className="flex-1">
                 <TabsContent value="profile">
                   <ProfileTab />
                 </TabsContent>
@@ -120,10 +121,10 @@ export default function Settings() {
                     </TabsContent>
                   </>
                 )}
-              </Tabs>
-            </AppContainer>
-          </div>
-        </div>
+              </div>
+            </div>
+          </Tabs>
+        </AppContainer>
       </Section>
     </InvoiceFilterProvider>
   )
