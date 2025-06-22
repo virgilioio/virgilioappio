@@ -1,4 +1,3 @@
-
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -15,7 +14,6 @@ import { JobRequest } from '@/hooks/useJobRequests'
 import { useAuth } from '@/contexts/AuthContext'
 import { useOrganizations } from '@/hooks/useOrganizations'
 import { useJobRequestAgreements } from '@/hooks/useJobRequestAgreements'
-import { AgreementRichTextEditor } from '@/components/ui/agreement-rich-text-editor'
 import { useCountries } from '@/hooks/useCountries'
 
 interface JobRequestFormProps {
@@ -97,6 +95,34 @@ export function JobRequestForm({ onSubmit, onCancel, isLoading = false }: JobReq
     agreement,
     agreementContent: agreement?.agreement_content
   })
+
+  // Function to process agreement content with placeholders
+  const processAgreementContent = (content: string) => {
+    if (!content) return ''
+    
+    let processedContent = content
+    
+    // Replace job request placeholders
+    processedContent = processedContent.replace(/{{job_title}}/g, formData.title || '[Job Title]')
+    processedContent = processedContent.replace(/{{job_description}}/g, formData.description || '[Job Description]')
+    processedContent = processedContent.replace(/{{job_department}}/g, formData.department || '[Department]')
+    processedContent = processedContent.replace(/{{job_level}}/g, formData.level || '[Level]')
+    processedContent = processedContent.replace(/{{job_location}}/g, formData.location || '[Location]')
+    processedContent = processedContent.replace(/{{job_salary_min}}/g, formData.salary_min || '[Min Salary]')
+    processedContent = processedContent.replace(/{{job_salary_max}}/g, formData.salary_max || '[Max Salary]')
+    processedContent = processedContent.replace(/{{job_currency}}/g, formData.currency || 'USD')
+    processedContent = processedContent.replace(/{{job_notes}}/g, formData.notes || '[Notes]')
+    
+    // Replace organization placeholders
+    processedContent = processedContent.replace(/{{organization_name}}/g, currentOrganization?.name || '[Organization Name]')
+    processedContent = processedContent.replace(/{{organization_country}}/g, currentOrganization?.country || '[Country]')
+    
+    // Replace system placeholders
+    processedContent = processedContent.replace(/{{current_date}}/g, new Date().toLocaleDateString())
+    processedContent = processedContent.replace(/{{agreement_version}}/g, agreement?.version?.toString() || '1')
+    
+    return processedContent
+  }
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
@@ -455,27 +481,15 @@ export function JobRequestForm({ onSubmit, onCancel, isLoading = false }: JobReq
               <p className="text-sm text-muted-foreground mb-4">
                 Please review the agreement for {currentOrganization?.country || 'your country'} before submitting your job request.
               </p>
-              {/* Debug info */}
-              <div className="text-xs text-muted-foreground mb-4 p-2 bg-muted/30 rounded">
-                Debug: Organization Country: {organizationCountry?.name} ({organizationCountry?.code}) | 
-                Agreement Found: {agreement ? 'Yes' : 'No'} | 
-                Content Length: {agreement?.agreement_content?.length || 0}
-              </div>
             </div>
 
             {agreement?.agreement_content ? (
-              <div className="border rounded-lg p-4 bg-background">
-                <AgreementRichTextEditor
-                  value={agreement.agreement_content}
-                  onChange={() => {}} // Read-only for review
-                  selectedCountryId={organizationCountry?.id}
-                  jobRequestData={{
-                    ...formData,
-                    salary_min: parseInt(formData.salary_min) || 0,
-                    salary_max: parseInt(formData.salary_max) || 0
+              <div className="border rounded-lg p-6 bg-background max-h-[500px] overflow-y-auto">
+                <div 
+                  className="prose prose-sm max-w-none"
+                  dangerouslySetInnerHTML={{ 
+                    __html: processAgreementContent(agreement.agreement_content) 
                   }}
-                  placeholder="No agreement content available"
-                  className="min-h-[400px]"
                 />
               </div>
             ) : (
@@ -485,15 +499,6 @@ export function JobRequestForm({ onSubmit, onCancel, isLoading = false }: JobReq
                   <br />
                   Please contact your administrator to set up the agreement template.
                 </p>
-                {/* Additional debug info */}
-                <div className="text-xs text-muted-foreground mt-4 text-left">
-                  <p>Debug details:</p>
-                  <p>- Organization ID: {organizationId}</p>
-                  <p>- Organization Name: {currentOrganization?.name}</p>
-                  <p>- Organization Country Code: {currentOrganization?.country}</p>
-                  <p>- Country Found: {organizationCountry ? `${organizationCountry.name} (${organizationCountry.id})` : 'None'}</p>
-                  <p>- Agreement Found: {agreement ? `Yes (v${agreement.version})` : 'No'}</p>
-                </div>
               </div>
             )}
 
