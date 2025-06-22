@@ -15,6 +15,8 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useOrganizations } from '@/hooks/useOrganizations'
 import { useJobRequestAgreements } from '@/hooks/useJobRequestAgreements'
 import { useCountries } from '@/hooks/useCountries'
+import { useOrganizationCustomData } from '@/hooks/useOrganizationCustomData'
+import { useCountryFields } from '@/hooks/useCountryFields'
 
 interface JobRequestFormProps {
   onSubmit: (data: Omit<JobRequest, 'id' | 'submitted_by' | 'organization_id' | 'status' | 'approved_by' | 'created_at' | 'updated_at' | 'job_id'>) => Promise<void>
@@ -66,6 +68,7 @@ export function JobRequestForm({ onSubmit, onCancel, isLoading = false }: JobReq
   const { organizations } = useOrganizations()
   const { countries } = useCountries()
   const { getAgreementByCountry } = useJobRequestAgreements()
+  const { customData } = useOrganizationCustomData(organizationId)
   
   const [currentStep, setCurrentStep] = useState(1)
   const [formData, setFormData] = useState({
@@ -87,12 +90,17 @@ export function JobRequestForm({ onSubmit, onCancel, isLoading = false }: JobReq
   const currentOrganization = organizations.find(org => org.id === organizationId)
   const organizationCountry = countries.find(country => country.code === currentOrganization?.country)
   const agreement = organizationCountry ? getAgreementByCountry(organizationCountry.id) : null
+  
+  // Get country fields for the organization's country
+  const { fields } = useCountryFields(currentOrganization?.country)
 
   console.log('Debug agreement data:', {
     organizationId,
     currentOrganization,
     organizationCountry,
     agreement,
+    customData,
+    fields,
     agreementContent: agreement?.agreement_content
   })
 
@@ -116,6 +124,17 @@ export function JobRequestForm({ onSubmit, onCancel, isLoading = false }: JobReq
     // Replace organization placeholders
     processedContent = processedContent.replace(/{{organization_name}}/g, currentOrganization?.name || '[Organization Name]')
     processedContent = processedContent.replace(/{{organization_country}}/g, currentOrganization?.country || '[Country]')
+    
+    // Replace custom field placeholders with organization's compliance data
+    fields.forEach(field => {
+      const customDataEntry = customData.find(data => data.country_field_id === field.id)
+      const placeholderKey = `{{${field.field_name}}}`
+      const placeholderValue = customDataEntry?.field_value || `[${field.field_label}]`
+      
+      // Use regex with global flag to replace all instances
+      const regex = new RegExp(placeholderKey.replace(/[{}]/g, '\\$&'), 'g')
+      processedContent = processedContent.replace(regex, placeholderValue)
+    })
     
     // Replace system placeholders
     processedContent = processedContent.replace(/{{current_date}}/g, new Date().toLocaleDateString())
@@ -480,6 +499,11 @@ export function JobRequestForm({ onSubmit, onCancel, isLoading = false }: JobReq
               <h3 className="text-lg font-semibold mb-2">Job Request Agreement</h3>
               <p className="text-sm text-muted-foreground mb-4">
                 Please review the agreement for {currentOrganization?.country || 'your country'} before submitting your job request.
+                {customData.length > 0 && (
+                  <span className="block mt-1 text-green-600">
+                    ✓ Organization compliance data has been populated in the agreement.
+                  </span>
+                )}
               </p>
             </div>
 
