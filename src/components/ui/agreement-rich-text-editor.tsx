@@ -378,7 +378,7 @@ export function AgreementRichTextEditor({
                   getPlaceholdersByCategory('organization')
                 )}
 
-                {jobRequestData && renderPlaceholderSection(
+                {renderPlaceholderSection(
                   "Job Request Details", 
                   <Briefcase className="h-3.5 w-3.5" />, 
                   getPlaceholdersByCategory('job_request')

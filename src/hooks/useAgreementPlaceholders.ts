@@ -45,20 +45,18 @@ export function useAgreementPlaceholders(selectedCountryId?: string, jobRequestD
       { key: '{{billing_poc_phone}}', label: 'Billing Contact Phone', category: 'organization', description: 'Billing contact phone number' }
     )
 
-    // Job request placeholders (if job request data is provided)
-    if (jobRequestData) {
-      items.push(
-        { key: '{{job_title}}', label: 'Job Title', category: 'job_request', description: 'The title of the job request' },
-        { key: '{{job_description}}', label: 'Job Description', category: 'job_request', description: 'Detailed job description' },
-        { key: '{{job_department}}', label: 'Department', category: 'job_request', description: 'Job department' },
-        { key: '{{job_level}}', label: 'Job Level', category: 'job_request', description: 'Job level (L1, L2, L3)' },
-        { key: '{{job_location}}', label: 'Job Location', category: 'job_request', description: 'Job location' },
-        { key: '{{job_salary_min}}', label: 'Minimum Salary', category: 'job_request', description: 'Minimum salary for the position' },
-        { key: '{{job_salary_max}}', label: 'Maximum Salary', category: 'job_request', description: 'Maximum salary for the position' },
-        { key: '{{job_currency}}', label: 'Salary Currency', category: 'job_request', description: 'Currency for salary range' },
-        { key: '{{job_notes}}', label: 'Job Notes', category: 'job_request', description: 'Additional notes about the job request' }
-      )
-    }
+    // Job request placeholders (always include these for template creation)
+    items.push(
+      { key: '{{job_title}}', label: 'Job Title', category: 'job_request', description: 'The title of the job request' },
+      { key: '{{job_description}}', label: 'Job Description', category: 'job_request', description: 'Detailed job description' },
+      { key: '{{job_department}}', label: 'Department', category: 'job_request', description: 'Job department' },
+      { key: '{{job_level}}', label: 'Job Level', category: 'job_request', description: 'Job level (L1, L2, L3)' },
+      { key: '{{job_location}}', label: 'Job Location', category: 'job_request', description: 'Job location' },
+      { key: '{{job_salary_min}}', label: 'Minimum Salary', category: 'job_request', description: 'Minimum salary for the position' },
+      { key: '{{job_salary_max}}', label: 'Maximum Salary', category: 'job_request', description: 'Maximum salary for the position' },
+      { key: '{{job_currency}}', label: 'Salary Currency', category: 'job_request', description: 'Currency for salary range' },
+      { key: '{{job_notes}}', label: 'Job Notes', category: 'job_request', description: 'Additional notes about the job request' }
+    )
 
     // Country-specific field placeholders
     if (selectedCountryId && fields.length > 0) {
@@ -73,7 +71,7 @@ export function useAgreementPlaceholders(selectedCountryId?: string, jobRequestD
     }
 
     return items
-  }, [selectedCountryId, fields, jobRequestData])
+  }, [selectedCountryId, fields])
 
   const getPlaceholdersByCategory = (category: PlaceholderItem['category']) => {
     return placeholders.filter(p => p.category === category)
