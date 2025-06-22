@@ -83,84 +83,86 @@ export function SettingsSidebar({ currentTab, onTabChange, className }: Settings
   }
 
   return (
-    <nav className={cn("fixed top-0 left-0 h-screen w-64 bg-background border-r border-border overflow-y-auto z-10 p-4", className)}>
-      <div className="space-y-1">
-        {navItems.map((item) => {
-          const Icon = item.icon
-          
-          if (item.submenu) {
-            return (
-              <Collapsible key={item.id} open={platformOpen} onOpenChange={setPlatformOpen}>
-                <CollapsibleTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    className={cn(
-                      "w-full justify-between h-10 px-3 py-2",
-                      "text-sm font-medium transition-colors",
-                      platformOpen
-                        ? "bg-muted text-foreground" 
-                        : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                    )}
-                    onClick={() => handleItemClick(item.id)}
-                  >
-                    <div className="flex items-center">
-                      <Icon className="h-4 w-4 mr-3 shrink-0" />
-                      <span className="truncate">{item.label}</span>
-                    </div>
-                    <ChevronDown className={cn(
-                      "h-4 w-4 transition-transform",
-                      platformOpen && "rotate-180"
-                    )} />
-                  </Button>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="space-y-1 ml-6 mt-1">
-                  {item.submenu.filter(subItem => subItem.show).map((subItem) => {
-                    const SubIcon = subItem.icon
-                    const isActive = currentTab === subItem.id
-                    
-                    return (
-                      <Button
-                        key={subItem.id}
-                        variant={isActive ? "default" : "ghost"}
-                        className={cn(
-                          "w-full justify-start h-9 px-3 py-2",
-                          "text-sm font-medium transition-colors",
-                          isActive 
-                            ? "bg-primary text-primary-foreground shadow-sm" 
-                            : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                        )}
-                        onClick={() => onTabChange(subItem.id)}
-                      >
-                        <SubIcon className="h-3.5 w-3.5 mr-2 shrink-0" />
-                        <span className="truncate">{subItem.label}</span>
-                      </Button>
-                    )
-                  })}
-                </CollapsibleContent>
-              </Collapsible>
-            )
-          }
+    <nav className={cn("fixed top-0 left-0 h-screen w-64 bg-background border-r border-border overflow-y-auto z-10", className)}>
+      <div className="p-4 pt-6">
+        <div className="space-y-1">
+          {navItems.map((item) => {
+            const Icon = item.icon
+            
+            if (item.submenu) {
+              return (
+                <Collapsible key={item.id} open={platformOpen} onOpenChange={setPlatformOpen}>
+                  <CollapsibleTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      className={cn(
+                        "w-full justify-between h-10 px-3 py-2",
+                        "text-sm font-medium transition-colors",
+                        platformOpen
+                          ? "bg-muted text-foreground" 
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                      )}
+                      onClick={() => handleItemClick(item.id)}
+                    >
+                      <div className="flex items-center">
+                        <Icon className="h-4 w-4 mr-3 shrink-0" />
+                        <span className="truncate">{item.label}</span>
+                      </div>
+                      <ChevronDown className={cn(
+                        "h-4 w-4 transition-transform",
+                        platformOpen && "rotate-180"
+                      )} />
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="space-y-1 ml-6 mt-1">
+                    {item.submenu.filter(subItem => subItem.show).map((subItem) => {
+                      const SubIcon = subItem.icon
+                      const isActive = currentTab === subItem.id
+                      
+                      return (
+                        <Button
+                          key={subItem.id}
+                          variant={isActive ? "default" : "ghost"}
+                          className={cn(
+                            "w-full justify-start h-9 px-3 py-2",
+                            "text-sm font-medium transition-colors",
+                            isActive 
+                              ? "bg-primary text-primary-foreground shadow-sm" 
+                              : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                          )}
+                          onClick={() => onTabChange(subItem.id)}
+                        >
+                          <SubIcon className="h-3.5 w-3.5 mr-2 shrink-0" />
+                          <span className="truncate">{subItem.label}</span>
+                        </Button>
+                      )
+                    })}
+                  </CollapsibleContent>
+                </Collapsible>
+              )
+            }
 
-          const isActive = currentTab === item.id
-          
-          return (
-            <Button
-              key={item.id}
-              variant={isActive ? "default" : "ghost"}
-              className={cn(
-                "w-full justify-start h-10 px-3 py-2",
-                "text-sm font-medium transition-colors",
-                isActive 
-                  ? "bg-primary text-primary-foreground shadow-sm" 
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted"
-              )}
-              onClick={() => handleItemClick(item.id)}
-            >
-              <Icon className="h-4 w-4 mr-3 shrink-0" />
-              <span className="truncate">{item.label}</span>
-            </Button>
-          )
-        })}
+            const isActive = currentTab === item.id
+            
+            return (
+              <Button
+                key={item.id}
+                variant={isActive ? "default" : "ghost"}
+                className={cn(
+                  "w-full justify-start h-10 px-3 py-2",
+                  "text-sm font-medium transition-colors",
+                  isActive 
+                    ? "bg-primary text-primary-foreground shadow-sm" 
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                )}
+                onClick={() => handleItemClick(item.id)}
+              >
+                <Icon className="h-4 w-4 mr-3 shrink-0" />
+                <span className="truncate">{item.label}</span>
+              </Button>
+            )
+          })}
+        </div>
       </div>
     </nav>
   )
