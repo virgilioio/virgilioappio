@@ -401,38 +401,39 @@ export function AgreementRichTextEditor({
         </Popover>
       </div>
 
-      {/* Editor Content */}
-      <div className="relative">
-        {!value && (
-          <div 
-            className="absolute top-3 left-3 text-muted-foreground text-sm pointer-events-none z-10"
-            style={{ minHeight }}
-          >
-            {placeholder}
-          </div>
-        )}
-        <div
-          ref={editorRef}
-          contentEditable
-          onInput={handleInput}
-          onFocus={handleFocus}
-          onBlur={handleBlur}
-          suppressContentEditableWarning={true}
-          className={cn(
-            "p-3 text-sm ring-offset-background relative z-20",
-            "focus-visible:outline-none",
-            "prose prose-sm max-w-none",
-            "[&_ul]:list-disc [&_ul]:pl-6",
-            "[&_ol]:list-decimal [&_ol]:pl-6",
-            "[&_p]:my-2 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0",
-            "[&_.bg-blue-100]:bg-blue-100 [&_.text-blue-800]:text-blue-800",
-            "[&_table]:border-collapse [&_table]:w-full [&_table]:my-4",
-            "[&_td]:border [&_td]:border-gray-300 [&_td]:p-2",
-            "[&_th]:border [&_th]:border-gray-300 [&_th]:p-2 [&_th]:bg-gray-50"
+      {/* Editor Content with ScrollArea */}
+      <ScrollArea className="h-[500px]">
+        <div className="relative">
+          {!value && (
+            <div 
+              className="absolute top-3 left-3 text-muted-foreground text-sm pointer-events-none z-10"
+            >
+              {placeholder}
+            </div>
           )}
-          style={{ minHeight }}
-        />
-      </div>
+          <div
+            ref={editorRef}
+            contentEditable
+            onInput={handleInput}
+            onFocus={handleFocus}
+            onBlur={handleBlur}
+            suppressContentEditableWarning={true}
+            className={cn(
+              "p-3 text-sm ring-offset-background relative z-20",
+              "focus-visible:outline-none",
+              "prose prose-sm max-w-none",
+              "[&_ul]:list-disc [&_ul]:pl-6",
+              "[&_ol]:list-decimal [&_ol]:pl-6",
+              "[&_p]:my-2 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0",
+              "[&_.bg-blue-100]:bg-blue-100 [&_.text-blue-800]:text-blue-800",
+              "[&_table]:border-collapse [&_table]:w-full [&_table]:my-4",
+              "[&_td]:border [&_td]:border-gray-300 [&_td]:p-2",
+              "[&_th]:border [&_th]:border-gray-300 [&_th]:p-2 [&_th]:bg-gray-50"
+            )}
+            style={{ minHeight }}
+          />
+        </div>
+      </ScrollArea>
     </div>
   )
 }
