@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -41,7 +42,7 @@ interface OrganizationFormProps {
   updateOrganization: (id: string, data: OrganizationFormData) => Promise<void>
   onSaveSuccess: () => void
   isLoading: boolean
-  hideActionButtons?: boolean // New prop to hide save/cancel buttons
+  hideActionButtons?: boolean
 }
 
 export function OrganizationForm({ 
@@ -68,6 +69,7 @@ export function OrganizationForm({
   const [customFieldFiles, setCustomFieldFiles] = useState<Record<string, File>>({})
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
   const [billingPOCErrors, setBillingPOCErrors] = useState<Record<string, string>>({})
+  const [isSavingCustomData, setIsSavingCustomData] = useState(false)
 
   console.log('OrganizationForm render - organization:', organization, 'formData:', formData)
 
@@ -211,6 +213,81 @@ export function OrganizationForm({
 
     setFieldErrors(errors)
     return !hasErrors
+  }
+
+  const saveAllCustomFieldData = async (): Promise<boolean> => {
+    if (!organization) return false
+    
+    try {
+      setIsSavingCustomData(true)
+      
+      // Save each field's data
+      for (const field of fields) {
+        const value = customFieldValues[field.id] || ''
+        const file = customFieldFiles[field.id]
+        
+        if (field.field_type === 'file' && file) {
+          // Upload file first
+          const fileData = await uploadFile(file, organization.id, field.field_name)
+          await saveCustomData(organization.id, field.id, undefined, fileData)
+        } else if (field.field_type !== 'file' && value) {
+          // Save text/other field values
+          await saveCustomData(organization.id, field.id, value)
+        }
+      }
+      
+      return true
+    } catch (error) {
+      console.error('Error saving custom field data:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to save some custom field data',
+        variant: 'destructive'
+      })
+      return false
+    } finally {
+      setIsSavingCustomData(false)
+    }
+  }
+
+  const handleSave = async () => {
+    if (!organization) return
+    
+    // Validate all fields
+    const billingPOCValid = validateBillingPOC()
+    const customFieldsValid = validateAllCustomFields()
+    
+    if (!billingPOCValid || !customFieldsValid) {
+      toast({
+        title: 'Validation Error',
+        description: 'Please fix the errors before saving',
+        variant: 'destructive'
+      })
+      return
+    }
+    
+    try {
+      // Save organization data first
+      await updateOrganization(organization.id, formData)
+      
+      // Save custom field data
+      const customDataSaved = await saveAllCustomFieldData()
+      
+      if (customDataSaved) {
+        onSaveSuccess()
+        toast({
+          title: 'Success',
+          description: 'Organization information saved successfully',
+        })
+      }
+    } catch (error) {
+      console.error('Error saving organization:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to save organization information',
+        variant: 'destructive'
+      })
+    }
   }
 
   const handleCustomFieldValueChange = (fieldId: string, value: string) => {
@@ -378,6 +455,23 @@ export function OrganizationForm({
                 No additional fields required for this country.
               </p>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Save button for the form */}
+      {!hideActionButtons && canManageBillingPOC && (
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex justify-end">
+              <Button 
+                onClick={handleSave} 
+                disabled={isLoading || isSavingCustomData}
+                className="min-w-[120px]"
+              >
+                {isLoading || isSavingCustomData ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </div>
           </CardContent>
         </Card>
       )}
