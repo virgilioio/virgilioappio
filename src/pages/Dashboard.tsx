@@ -19,6 +19,7 @@ export default function Dashboard() {
   const hasBillingContent = permissions.canViewBilling
   const hasJobContent = permissions.canViewJobs || permissions.canCreateJobs || permissions.canRequestJobs
   const hasQuickAccess = permissions.canCreateJobs || permissions.canRequestJobs || permissions.canManageMembers
+  const canManageOrganization = permissions.canManageOrganization || permissions.isWorkspaceOwner || permissions.isPlatformAdmin
   
   return (
     <div className="min-h-screen bg-background">
@@ -40,7 +41,7 @@ export default function Dashboard() {
                 
                 <div className="space-y-6">
                   <AdvertisingBanner />
-                  <OnboardingProgress profile={profile} isLoading={isLoading} />
+                  {canManageOrganization && <OnboardingProgress profile={profile} isLoading={isLoading} />}
                   {hasQuickAccess && <QuickAccess permissions={permissions} />}
                   {hasJobContent && <JobsOverview permissions={permissions} />}
                 </div>
@@ -49,7 +50,7 @@ export default function Dashboard() {
               // Single column layout when no billing content
               <div className="max-w-4xl mx-auto space-y-6">
                 <AdvertisingBanner />
-                <OnboardingProgress profile={profile} isLoading={isLoading} />
+                {canManageOrganization && <OnboardingProgress profile={profile} isLoading={isLoading} />}
                 
                 {/* Two column grid for remaining content */}
                 <div className="grid gap-6 md:grid-cols-2">
