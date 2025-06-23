@@ -3,15 +3,13 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ArrowLeft, Archive } from 'lucide-react'
 import { AuthGate } from '@/components/auth/AuthGate'
 import { PermissionGate } from '@/components/auth/PermissionGate'
-import { useGetJob, useUpdateJob, useArchiveJob } from '@/hooks/useJobs'
-import { useJobsWithOrganization, type JobWithOrganization } from '@/hooks/useJobsWithOrganization'
+import { useJobs, Job } from '@/hooks/useJobs'
 import { usePermissions } from '@/hooks/usePermissions'
 import { JobForm } from '@/components/jobs/JobForm'
-import { useCandidates, useCreateCandidate, useUpdateCandidate, useDeleteCandidate } from '@/hooks/useCandidates'
+import { useCandidates } from '@/hooks/useCandidates'
 import { CandidateTable } from '@/components/candidates/CandidateTable'
 import { CandidateForm } from '@/components/candidates/CandidateForm'
 import { JobDetailSidebar } from '@/components/jobs/JobDetailSidebar'
@@ -28,22 +26,19 @@ export default function JobDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
-  const [job, setJob] = useState<JobWithOrganization | null>(null)
+  const [job, setJob] = useState<Job | null>(null)
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [isCandidateFormOpen, setIsCandidateFormOpen] = useState(false)
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const getJob = useGetJob()
-  const updateJobMutation = useUpdateJob()
-  const archiveJobMutation = useArchiveJob()
-  const { jobs: jobsWithOrg } = useJobsWithOrganization()
+  const { getJob, updateJob, archiveJob, isLoading } = useJobs()
   const { 
     candidates, 
-    isLoading: candidatesLoading
+    isLoading: candidatesLoading, 
+    addCandidate, 
+    updateCandidate, 
+    deleteCandidate 
   } = useCandidates(id)
-  const createCandidateMutation = useCreateCandidate()
-  const updateCandidateMutation = useUpdateCandidate()
-  const deleteCandidateMutation = useDeleteCandidate()
   const permissions = usePermissions()
 
   // Get tab from URL or default to 'overview'
@@ -57,36 +52,14 @@ export default function JobDetail() {
     if (id) {
       loadJob()
     }
-  }, [id, jobsWithOrg])
+  }, [id])
 
   const loadJob = async () => {
     if (!id) return
     
     try {
-      // First try to get the job with organization data
-      const jobWithOrg = jobsWithOrg?.find(j => j.id === id)
-      if (jobWithOrg) {
-        setJob(jobWithOrg)
-        return
-      }
-
-      // Fallback to regular job fetch
       const jobData = await getJob(id)
-      // Map the level enum to match our type
-      const mapLevel = (dbLevel: string): 'L1' | 'L2' | 'L3' => {
-        if (dbLevel.startsWith('L1')) return 'L1'
-        if (dbLevel.startsWith('L2')) return 'L2'
-        if (dbLevel.startsWith('L3')) return 'L3'
-        return 'L1' // fallback
-      }
-      
-      const jobWithOrgData: JobWithOrganization = {
-        ...jobData,
-        level: mapLevel(jobData.level),
-        organization_name: 'Unknown Organization',
-        hiring_team: Array.isArray(jobData.hiring_team) ? jobData.hiring_team : []
-      }
-      setJob(jobWithOrgData)
+      setJob(jobData)
     } catch (error) {
       console.error('Failed to load job:', error)
       navigate('/jobs')
@@ -107,7 +80,7 @@ export default function JobDetail() {
     
     if (confirm('Are you sure you want to archive this job?')) {
       try {
-        await archiveJobMutation.mutateAsync(job.id)
+        await archiveJob(job.id)
         await loadJob()
       } catch (error) {
         console.error('Failed to archive job:', error)
@@ -117,9 +90,8 @@ export default function JobDetail() {
 
   const handleFormSubmit = async (data: any) => {
     if (!job) return
-    await updateJobMutation.mutateAsync({ id: job.id, ...data })
+    await updateJob(job.id, data)
     await loadJob()
-    setIsFormOpen(false)
   }
 
   const handleAddCandidate = () => {
@@ -134,16 +106,16 @@ export default function JobDetail() {
 
   const handleCandidateFormSubmit = async (data: any) => {
     if (selectedCandidate) {
-      await updateCandidateMutation.mutateAsync({ id: selectedCandidate.id, ...data })
+      await updateCandidate(selectedCandidate.id, data)
     } else {
-      await createCandidateMutation.mutateAsync(data)
+      await addCandidate(data)
     }
     setIsCandidateFormOpen(false)
     setSelectedCandidate(null)
   }
 
   const handleDeleteCandidate = async (candidateId: string) => {
-    await deleteCandidateMutation.mutateAsync(candidateId)
+    await deleteCandidate(candidateId)
   }
 
   const handleBackToJobs = () => {
@@ -170,7 +142,7 @@ export default function JobDetail() {
         )
       case 'assignments':
         return canViewAssignments ? (
-          <JobAssignmentsPanel job={{ id: job.id, hiring_team: job.hiring_team }} />
+          <JobAssignmentsPanel jobId={job.id} jobTitle={job.title} />
         ) : (
           <div className="p-6 text-center">
             <p className="text-text-secondary">You don't have permission to view job assignments.</p>
@@ -181,7 +153,7 @@ export default function JobDetail() {
     }
   }
 
-  if (!job) {
+  if (isLoading || !job) {
     return (
       <AuthGate>
         <PermissionGate permission="canViewJobs">
@@ -275,33 +247,26 @@ export default function JobDetail() {
             </Sheet>
 
             {/* Forms */}
-            {job && (
-              <>
-                <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-                  <DialogContent className="mx-4 max-w-2xl">
-                    <DialogHeader>
-                      <DialogTitle>Edit Job</DialogTitle>
-                    </DialogHeader>
-                    <JobForm
-                      onSubmit={handleFormSubmit}
-                      onCancel={() => setIsFormOpen(false)}
-                      isLoading={false}
-                    />
-                  </DialogContent>
-                </Dialog>
+            <JobForm
+              isOpen={isFormOpen}
+              onClose={() => setIsFormOpen(false)}
+              onSubmit={handleFormSubmit}
+              job={job}
+              isLoading={isLoading}
+            />
 
-                <CandidateForm
-                  isOpen={isCandidateFormOpen}
-                  onClose={() => {
-                    setIsCandidateFormOpen(false)
-                    setSelectedCandidate(null)
-                  }}
-                  onSubmit={handleCandidateFormSubmit}
-                  candidate={selectedCandidate}
-                  jobId={job.id}
-                  isLoading={candidatesLoading}
-                />
-              </>
+            {job && (
+              <CandidateForm
+                isOpen={isCandidateFormOpen}
+                onClose={() => {
+                  setIsCandidateFormOpen(false)
+                  setSelectedCandidate(null)
+                }}
+                onSubmit={handleCandidateFormSubmit}
+                candidate={selectedCandidate}
+                jobId={job.id}
+                isLoading={candidatesLoading}
+              />
             )}
           </div>
         </JobAssignmentGuard>

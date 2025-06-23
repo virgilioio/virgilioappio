@@ -11,7 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDes
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { Organization, CreateOrganizationData, UpdateOrganizationData } from '@/hooks/useOrganizations'
 import { usePermissions } from '@/hooks/usePermissions'
-import { useMembersWithProfiles } from '@/hooks/useMembersWithProfiles'
+import { useMembers } from '@/hooks/useMembers'
 import { COUNTRIES } from '@/constants/countries'
 
 const formSchema = z.object({
@@ -39,16 +39,16 @@ export function OrganizationForm({
   isLoading 
 }: OrganizationFormProps) {
   const permissions = usePermissions()
-  const { members } = useMembersWithProfiles()
+  const { members } = useMembers()
   const isEditing = !!organization
 
   // Get workspace owners for the owner dropdown - filter out members without valid user_id
-  const workspaceOwners = members?.filter(member => 
+  const workspaceOwners = members.filter(member => 
     member.user_type === 'workspace_owner' && 
     member.user_status === 'active' &&
     member.user_id && // Only show members with actual user accounts
     member.user_id.trim() !== '' // Ensure it's not an empty string
-  ) || []
+  )
 
   // Create formatted options for the owner dropdown
   const ownerOptions = [
@@ -76,14 +76,16 @@ export function OrganizationForm({
       }
     }),
     // Also include invited workspace owners
-    ...(members?.filter(member => 
-      member.user_type === 'workspace_owner' && 
-      member.user_status === 'invited' &&
-      member.invited_email
-    ).map(member => ({
-      value: `invited_${member.id}`, // Use a different prefix for invited users
-      label: `Pending Invitation (${member.invited_email})`
-    })) || [])
+    ...members
+      .filter(member => 
+        member.user_type === 'workspace_owner' && 
+        member.user_status === 'invited' &&
+        member.invited_email
+      )
+      .map(member => ({
+        value: `invited_${member.id}`, // Use a different prefix for invited users
+        label: `Pending Invitation (${member.invited_email})`
+      }))
   ]
 
   console.log('Workspace owners for select:', workspaceOwners)

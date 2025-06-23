@@ -1,225 +1,450 @@
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useState, useEffect } from 'react'
 import { supabase } from '@/integrations/supabase/client'
-import { useToast } from '@/hooks/use-toast'
-import { useUserProfile } from './useUserProfile'
-import { useActivityLogger } from './useActivityLogger'
-import type { Database } from '@/integrations/supabase/types'
+import { useAuth } from '@/contexts/AuthContext'
+import { toast } from '@/hooks/use-toast'
 
-export type JobRequest = Database['public']['Tables']['job_requests']['Row']
-export type JobRequestInsert = Database['public']['Tables']['job_requests']['Insert']
-export type JobRequestUpdate = Database['public']['Tables']['job_requests']['Update']
+export interface JobRequest {
+  id: string
+  title: string
+  description?: string
+  department?: string
+  level: 'L1' | 'L2' | 'L3'
+  location?: string
+  salary_min?: number
+  salary_max?: number
+  currency?: string
+  notes?: string
+  submitted_by: string
+  organization_id: string
+  status: 'pending' | 'approved' | 'rejected'
+  approved_by?: string
+  approved_at?: string
+  approver_role?: string
+  job_id?: string
+  agreement_id?: string
+  processed_agreement_content?: string
+  created_at: string
+  updated_at: string
+  // New fields for display
+  organization_name?: string
+  requester_name?: string
+  requester_email?: string
+}
 
-export type CreateJobRequestData = Omit<JobRequestInsert, 'id' | 'created_at' | 'updated_at' | 'submitted_by' | 'organization_id' | 'status' | 'approved_by' | 'approved_at' | 'job_id'>
+// Level mapping from job request to job table
+const LEVEL_MAPPING = {
+  'L1': 'L1 - Specialists',
+  'L2': 'L2 - Managers',
+  'L3': 'L3 - Directors / VPs / Executive Search'
+} as const
 
 export function useJobRequests() {
-  const { profile } = useUserProfile()
+  const [jobRequests, setJobRequests] = useState<JobRequest[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const { user } = useAuth()
 
-  const query = useQuery({
-    queryKey: ['job_requests', profile?.organization_id],
-    queryFn: async () => {
-      console.log('Fetching job requests for organization:', profile?.organization_id)
+  const getMyRequests = async () => {
+    if (!user) return
+
+    const organizationId = user.user_metadata?.organization_id
+    if (!organizationId) {
+      console.log('No organization_id found in user metadata, skipping job requests fetch')
+      setJobRequests([])
+      return
+    }
+
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      console.log('Fetching my job requests for user:', user.id, 'organization:', organizationId)
       
-      const { data, error } = await supabase
+      // Try to fetch with joins first
+      const { data, error: fetchError } = await supabase
         .from('job_requests')
-        .select('*')
+        .select(`
+          *,
+          organizations!job_requests_organization_id_fkey(name),
+          profiles!job_requests_submitted_by_fkey(first_name, last_name, email)
+        `)
+        .eq('organization_id', organizationId)
         .order('created_at', { ascending: false })
 
-      if (error) {
-        console.error('Error fetching job requests:', error)
-        throw error
+      if (fetchError) {
+        console.error('Error fetching job requests with joins:', fetchError)
+        // Fallback to basic query without joins
+        const { data: basicData, error: basicError } = await supabase
+          .from('job_requests')
+          .select('*')
+          .eq('organization_id', organizationId)
+          .order('created_at', { ascending: false })
+
+        if (basicError) throw basicError
+        
+        // Transform basic data and fetch related info separately
+        const transformedData = await Promise.all((basicData || []).map(async (request: any) => {
+          // Get organization name
+          const { data: orgData } = await supabase
+            .from('organizations')
+            .select('name')
+            .eq('id', request.organization_id)
+            .single()
+
+          // Get requester info
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('first_name, last_name, email')
+            .eq('user_id', request.submitted_by)
+            .single()
+
+          return {
+            ...request,
+            organization_name: orgData?.name || 'Unknown Organization',
+            requester_name: profileData ? 
+              `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim() || 'Unknown User' : 
+              'Unknown User',
+            requester_email: profileData?.email || null
+          }
+        }))
+
+        setJobRequests(transformedData as JobRequest[])
+        return
       }
 
-      console.log('Fetched job requests:', data)
-      return data as JobRequest[]
-    },
-    enabled: !!profile?.organization_id,
-  })
+      // Transform the joined data
+      const transformedData = (data || []).map((request: any) => ({
+        ...request,
+        organization_name: request.organizations?.name || 'Unknown Organization',
+        requester_name: request.profiles ? 
+          `${request.profiles.first_name || ''} ${request.profiles.last_name || ''}`.trim() || 'Unknown User' : 
+          'Unknown User',
+        requester_email: request.profiles?.email || null
+      }))
 
-  return {
-    jobRequests: query.data,
-    isLoading: query.isLoading,
-    error: query.error,
-    refetch: query.refetch,
+      console.log('Fetched my job requests:', transformedData)
+      setJobRequests(transformedData as JobRequest[])
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch job requests'
+      console.error('My job requests fetch error:', err)
+      setError(errorMessage)
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive'
+      })
+    } finally {
+      setIsLoading(false)
+    }
   }
-}
 
-export function useCreateJobRequest() {
-  const queryClient = useQueryClient()
-  const { toast } = useToast()
-  const { profile } = useUserProfile()
-  const { logJobRequestCreated } = useActivityLogger()
+  const getAllRequests = async () => {
+    if (!user) return
 
-  return useMutation({
-    mutationFn: async (jobRequestData: CreateJobRequestData) => {
-      console.log('Creating job request:', jobRequestData)
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      console.log('Fetching all job requests for admin/CS user:', user.id)
       
-      const { data, error } = await supabase
+      // Try to fetch with joins first
+      const { data, error: fetchError } = await supabase
+        .from('job_requests')
+        .select(`
+          *,
+          organizations!job_requests_organization_id_fkey(name),
+          profiles!job_requests_submitted_by_fkey(first_name, last_name, email)
+        `)
+        .order('created_at', { ascending: false })
+
+      if (fetchError) {
+        console.error('Error fetching all job requests with joins:', fetchError)
+        
+        // Fallback: fetch job requests and manually join with related tables
+        const { data: requests, error: requestsError } = await supabase
+          .from('job_requests')
+          .select('*')
+          .order('created_at', { ascending: false })
+
+        if (requestsError) throw requestsError
+
+        // Transform data and fetch related info separately
+        const transformedData = await Promise.all((requests || []).map(async (request: any) => {
+          // Get organization name
+          const { data: orgData } = await supabase
+            .from('organizations')
+            .select('name')
+            .eq('id', request.organization_id)
+            .single()
+
+          // Get requester info
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('first_name, last_name, email')
+            .eq('user_id', request.submitted_by)
+            .single()
+
+          return {
+            ...request,
+            organization_name: orgData?.name || 'Unknown Organization',
+            requester_name: profileData ? 
+              `${profileData.first_name || ''} ${profileData.last_name || ''}`.trim() || 'Unknown User' : 
+              'Unknown User',
+            requester_email: profileData?.email || null
+          }
+        }))
+
+        setJobRequests(transformedData as JobRequest[])
+        return
+      }
+
+      // Transform the joined data
+      const transformedData = (data || []).map((request: any) => ({
+        ...request,
+        organization_name: request.organizations?.name || 'Unknown Organization',
+        requester_name: request.profiles ? 
+          `${request.profiles.first_name || ''} ${request.profiles.last_name || ''}`.trim() || 'Unknown User' : 
+          'Unknown User',
+        requester_email: request.profiles?.email || null
+      }))
+
+      console.log('Fetched all job requests:', transformedData)
+      setJobRequests(transformedData as JobRequest[])
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch job requests'
+      console.error('All job requests fetch error:', err)
+      setError(errorMessage)
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive'
+      })
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const getJobRequests = async () => {
+    if (!user) return
+
+    // Check if user is admin/CS to decide which method to use
+    const userType = user?.user_metadata?.user_type || 'guest'
+    const memberRole = user?.user_metadata?.member_role || 'member'
+    
+    const isAdmin = userType === 'platform_admin' || memberRole === 'customer_success'
+    
+    if (isAdmin) {
+      await getAllRequests()
+    } else {
+      await getMyRequests()
+    }
+  }
+
+  const getJobRequest = async (id: string) => {
+    try {
+      const { data, error: fetchError } = await supabase
+        .from('job_requests')
+        .select('*')
+        .eq('id', id)
+        .single()
+
+      if (fetchError) throw fetchError
+      return data as JobRequest
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch job request'
+      console.error('Job request fetch error:', err)
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive'
+      })
+      throw err
+    }
+  }
+
+  const createJobRequest = async (requestData: Omit<JobRequest, 'id' | 'submitted_by' | 'organization_id' | 'status' | 'approved_by' | 'approved_at' | 'approver_role' | 'created_at' | 'updated_at' | 'job_id' | 'organization_name' | 'requester_name' | 'requester_email'>) => {
+    if (!user) throw new Error('User not authenticated')
+
+    const organizationId = user.user_metadata?.organization_id
+    if (!organizationId) {
+      throw new Error('No organization found for user')
+    }
+
+    try {
+      const { data, error: insertError } = await supabase
         .from('job_requests')
         .insert({
-          ...jobRequestData,
-          submitted_by: profile?.user_id,
-          organization_id: profile?.organization_id,
+          ...requestData,
+          submitted_by: user.id,
+          organization_id: organizationId,
         })
         .select()
         .single()
 
-      if (error) {
-        console.error('Error creating job request:', error)
-        throw error
-      }
+      if (insertError) throw insertError
 
-      console.log('Created job request:', data)
-      
-      // Log activity
-      logJobRequestCreated(data.title, data.id)
-      
-      return data as JobRequest
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['job_requests'] })
       toast({
         title: 'Success',
-        description: 'Job request submitted successfully',
+        description: 'Job request created successfully',
       })
-    },
-    onError: (error) => {
-      console.error('Error creating job request:', error)
-      toast({
-        title: 'Error',
-        description: 'Failed to submit job request',
-        variant: 'destructive',
-      })
-    },
-  })
-}
 
-export function useApproveJobRequest() {
-  const queryClient = useQueryClient()
-  const { toast } = useToast()
-  const { profile } = useUserProfile()
-  const { logJobRequestApproved } = useActivityLogger()
-
-  return useMutation({
-    mutationFn: async (jobRequestId: string) => {
-      console.log('Approving job request:', jobRequestId)
-      
-      const { data, error } = await supabase
-        .from('job_requests')
-        .update({
-          status: 'approved',
-          approved_by: profile?.user_id,
-          approved_at: new Date().toISOString(),
-        })
-        .eq('id', jobRequestId)
-        .select()
-        .single()
-
-      if (error) {
-        console.error('Error approving job request:', error)
-        throw error
-      }
-
-      console.log('Approved job request:', data)
-      
-      // Log activity
-      logJobRequestApproved(data.title, data.id)
-      
+      await getJobRequests() // Refresh the list
       return data as JobRequest
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['job_requests'] })
-      toast({
-        title: 'Success',
-        description: 'Job request approved successfully',
-      })
-    },
-    onError: (error) => {
-      console.error('Error approving job request:', error)
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to create job request'
+      console.error('Job request creation error:', err)
       toast({
         title: 'Error',
-        description: 'Failed to approve job request',
-        variant: 'destructive',
+        description: errorMessage,
+        variant: 'destructive'
       })
-    },
-  })
-}
+      throw err
+    }
+  }
 
-export function useUpdateJobRequest() {
-  const queryClient = useQueryClient()
-  const { toast } = useToast()
-
-  return useMutation({
-    mutationFn: async ({ id, ...jobRequestData }: JobRequestUpdate & { id: string }) => {
-      console.log('Updating job request:', id, jobRequestData)
-      
-      const { data, error } = await supabase
+  const updateJobRequest = async (id: string, updates: Partial<JobRequest>) => {
+    try {
+      const { data, error: updateError } = await supabase
         .from('job_requests')
-        .update(jobRequestData)
+        .update(updates)
         .eq('id', id)
         .select()
         .single()
 
-      if (error) {
-        console.error('Error updating job request:', error)
-        throw error
-      }
+      if (updateError) throw updateError
 
-      console.log('Updated job request:', data)
-      return data as JobRequest
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['job_requests'] })
       toast({
         title: 'Success',
         description: 'Job request updated successfully',
       })
-    },
-    onError: (error) => {
-      console.error('Error updating job request:', error)
+
+      await getJobRequests() // Refresh the list
+      return data as JobRequest
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update job request'
+      console.error('Job request update error:', err)
       toast({
         title: 'Error',
-        description: 'Failed to update job request',
-        variant: 'destructive',
+        description: errorMessage,
+        variant: 'destructive'
       })
-    },
-  })
-}
+      throw err
+    }
+  }
 
-export function useDeleteJobRequest() {
-  const queryClient = useQueryClient()
-  const { toast } = useToast()
+  const approveJobRequest = async (id: string) => {
+    if (!user) throw new Error('User not authenticated')
 
-  return useMutation({
-    mutationFn: async (jobRequestId: string) => {
-      console.log('Deleting job request:', jobRequestId)
+    try {
+      // First get the job request details
+      const jobRequest = await getJobRequest(id)
       
-      const { error } = await supabase
-        .from('job_requests')
-        .delete()
-        .eq('id', jobRequestId)
-
-      if (error) {
-        console.error('Error deleting job request:', error)
-        throw error
+      // Check if already approved (duplicate prevention)
+      if (jobRequest.status === 'approved' || jobRequest.job_id) {
+        throw new Error('Job request has already been approved')
       }
 
-      console.log('Deleted job request:', jobRequestId)
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['job_requests'] })
+      // Get approver role for audit trail
+      const approverRole = user.user_metadata?.member_role || 'unknown'
+
+      // Create a new job from the approved request
+      const { data: newJob, error: jobInsertError } = await supabase
+        .from('jobs')
+        .insert({
+          title: jobRequest.title,
+          description: jobRequest.description,
+          department: jobRequest.department,
+          level: LEVEL_MAPPING[jobRequest.level],
+          location: jobRequest.location,
+          salary_min: jobRequest.salary_min,
+          salary_max: jobRequest.salary_max,
+          currency: jobRequest.currency,
+          organization_id: jobRequest.organization_id,
+          created_by: user.id,
+          status: 'draft'
+        })
+        .select()
+        .single()
+
+      if (jobInsertError) throw jobInsertError
+
+      // Update the job request status and link to the created job with audit trail
+      await updateJobRequest(id, {
+        status: 'approved',
+        approved_by: user.id,
+        approved_at: new Date().toISOString(),
+        approver_role: approverRole,
+        job_id: newJob.id
+      })
+
+      toast({
+        title: 'Success',
+        description: 'Job request approved and job created successfully',
+      })
+
+      await getJobRequests() // Refresh the list
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to approve job request'
+      console.error('Job request approval error:', err)
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive'
+      })
+      throw err
+    }
+  }
+
+  const deleteJobRequest = async (id: string) => {
+    try {
+      const { error: deleteError } = await supabase
+        .from('job_requests')
+        .delete()
+        .eq('id', id)
+
+      if (deleteError) throw deleteError
+
       toast({
         title: 'Success',
         description: 'Job request deleted successfully',
       })
-    },
-    onError: (error) => {
-      console.error('Error deleting job request:', error)
+
+      await getJobRequests() // Refresh the list
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to delete job request'
+      console.error('Job request deletion error:', err)
       toast({
         title: 'Error',
-        description: 'Failed to delete job request',
-        variant: 'destructive',
+        description: errorMessage,
+        variant: 'destructive'
       })
-    },
-  })
+      throw err
+    }
+  }
+
+  const refreshJobRequests = () => {
+    getJobRequests()
+  }
+
+  useEffect(() => {
+    if (user) {
+      getJobRequests()
+    }
+  }, [user])
+
+  return {
+    jobRequests,
+    isLoading,
+    error,
+    getJobRequests,
+    getMyRequests,
+    getAllRequests,
+    getJobRequest,
+    createJobRequest,
+    updateJobRequest,
+    approveJobRequest,
+    deleteJobRequest,
+    refreshJobRequests
+  }
 }

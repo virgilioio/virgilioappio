@@ -1,186 +1,224 @@
-
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useState, useEffect } from 'react'
 import { supabase } from '@/integrations/supabase/client'
-import { useToast } from '@/hooks/use-toast'
-import { useUserProfile } from './useUserProfile'
-import { useActivityLogger } from './useActivityLogger'
-import type { Database } from '@/integrations/supabase/types'
+import { useAuth } from '@/contexts/AuthContext'
+import { toast } from '@/hooks/use-toast'
 
-export type JobCandidate = Database['public']['Tables']['job_candidates']['Row']
-export type Candidate = JobCandidate
-export type JobCandidateInsert = Database['public']['Tables']['job_candidates']['Insert']
-export type JobCandidateUpdate = Database['public']['Tables']['job_candidates']['Update']
+export interface Candidate {
+  id: string
+  job_id: string
+  candidate_name: string
+  location_country: string | null
+  location_state: string | null
+  location_city: string | null
+  salary_amount: number | null
+  salary_currency: string | null
+  salary_period: string | null
+  profile_summary: string | null
+  notes: string | null
+  added_by: string | null
+  created_at: string
+  updated_at: string
+}
 
-export function useCandidates(jobId?: string) {
-  const query = useQuery({
-    queryKey: ['candidates', jobId],
-    queryFn: async () => {
+export interface CreateCandidateData {
+  candidate_name: string
+  location_country?: string | null
+  location_state?: string | null
+  location_city?: string | null
+  salary_amount?: number | null
+  salary_currency?: string | null
+  salary_period?: string | null
+  profile_summary?: string | null
+  notes?: string | null
+}
+
+export function useCandidates(jobId: string) {
+  const [candidates, setCandidates] = useState<Candidate[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const { user } = useAuth()
+
+  const getCandidates = async () => {
+    if (!user || !jobId) return
+
+    setIsLoading(true)
+    setError(null)
+
+    try {
       console.log('Fetching candidates for job:', jobId)
       
-      let query = supabase
+      // With RLS enabled, the query will automatically filter by organization through job relationship
+      const { data, error: fetchError } = await supabase
         .from('job_candidates')
         .select('*')
+        .eq('job_id', jobId)
         .order('created_at', { ascending: false })
 
-      if (jobId) {
-        query = query.eq('job_id', jobId)
-      }
-
-      const { data, error } = await query
-
-      if (error) {
-        console.error('Error fetching candidates:', error)
-        throw error
+      if (fetchError) {
+        console.error('Error fetching candidates:', fetchError)
+        // Handle RLS-related errors gracefully
+        if (fetchError.message.includes('row-level security')) {
+          console.warn('RLS policy blocked access - user may not have permission to view candidates')
+          setCandidates([])
+          return
+        }
+        throw fetchError
       }
 
       console.log('Fetched candidates:', data)
-      return data as JobCandidate[]
-    },
-    enabled: !!jobId,
-  })
-
-  return {
-    candidates: query.data,
-    isLoading: query.isLoading,
-    error: query.error,
-    refetch: query.refetch,
+      setCandidates(data || [])
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch candidates'
+      console.error('Candidates fetch error:', err)
+      setError(errorMessage)
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive'
+      })
+    } finally {
+      setIsLoading(false)
+    }
   }
-}
 
-export function useCreateCandidate() {
-  const queryClient = useQueryClient()
-  const { toast } = useToast()
-  const { profile } = useUserProfile()
-  const { logCandidateAdded } = useActivityLogger()
+  const addCandidate = async (candidateData: CreateCandidateData) => {
+    if (!user || !jobId) throw new Error('User not authenticated or job ID missing')
 
-  return useMutation({
-    mutationFn: async (candidateData: JobCandidateInsert & { job_title?: string }) => {
-      console.log('Creating candidate:', candidateData)
-      
-      const { job_title, ...insertData } = candidateData
-      
-      const { data, error } = await supabase
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      console.log('Adding candidate to job:', jobId, candidateData)
+      const { data: newCandidate, error: createError } = await supabase
         .from('job_candidates')
-        .insert({
-          ...insertData,
-          added_by: profile?.user_id,
-        })
+        .insert([{
+          ...candidateData,
+          job_id: jobId,
+          added_by: user.id,
+        }])
         .select()
         .single()
 
-      if (error) {
-        console.error('Error creating candidate:', error)
-        throw error
+      if (createError) {
+        console.error('Error adding candidate:', createError)
+        throw createError
       }
 
-      console.log('Created candidate:', data)
-      
-      // Log activity
-      logCandidateAdded(
-        data.candidate_name, 
-        job_title || 'Unknown Job', 
-        data.id
-      )
-      
-      return data as JobCandidate
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['candidates'] })
-      queryClient.invalidateQueries({ queryKey: ['candidates', data.job_id] })
+      console.log('Added candidate:', newCandidate)
       toast({
         title: 'Success',
-        description: 'Candidate added successfully',
+        description: 'Candidate added successfully'
       })
-    },
-    onError: (error) => {
-      console.error('Error creating candidate:', error)
+
+      await getCandidates() // Refresh the list
+      return newCandidate
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to add candidate'
+      console.error('Candidate creation error:', err)
+      setError(errorMessage)
       toast({
         title: 'Error',
-        description: 'Failed to add candidate',
-        variant: 'destructive',
+        description: errorMessage,
+        variant: 'destructive'
       })
-    },
-  })
-}
+      throw err
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
-export function useUpdateCandidate() {
-  const queryClient = useQueryClient()
-  const { toast } = useToast()
+  const updateCandidate = async (id: string, candidateData: Partial<CreateCandidateData>) => {
+    setIsLoading(true)
+    setError(null)
 
-  return useMutation({
-    mutationFn: async ({ id, ...candidateData }: JobCandidateUpdate & { id: string }) => {
+    try {
       console.log('Updating candidate:', id, candidateData)
-      
-      const { data, error } = await supabase
+      const { data: updatedCandidate, error: updateError } = await supabase
         .from('job_candidates')
         .update(candidateData)
         .eq('id', id)
         .select()
         .single()
 
-      if (error) {
-        console.error('Error updating candidate:', error)
-        throw error
+      if (updateError) {
+        console.error('Error updating candidate:', updateError)
+        throw updateError
       }
 
-      console.log('Updated candidate:', data)
-      return data as JobCandidate
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['candidates'] })
-      queryClient.invalidateQueries({ queryKey: ['candidates', data.job_id] })
+      console.log('Updated candidate:', updatedCandidate)
       toast({
         title: 'Success',
-        description: 'Candidate updated successfully',
+        description: 'Candidate updated successfully'
       })
-    },
-    onError: (error) => {
-      console.error('Error updating candidate:', error)
+
+      await getCandidates() // Refresh the list
+      return updatedCandidate
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to update candidate'
+      console.error('Candidate update error:', err)
+      setError(errorMessage)
       toast({
         title: 'Error',
-        description: 'Failed to update candidate',
-        variant: 'destructive',
+        description: errorMessage,
+        variant: 'destructive'
       })
-    },
-  })
-}
+      throw err
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
-export function useDeleteCandidate() {
-  const queryClient = useQueryClient()
-  const { toast } = useToast()
+  const deleteCandidate = async (id: string) => {
+    setIsLoading(true)
+    setError(null)
 
-  return useMutation({
-    mutationFn: async ({ candidateId, jobId }: { candidateId: string; jobId: string }) => {
-      console.log('Deleting candidate:', candidateId)
-      
-      const { error } = await supabase
+    try {
+      console.log('Deleting candidate:', id)
+      const { error: deleteError } = await supabase
         .from('job_candidates')
         .delete()
-        .eq('id', candidateId)
+        .eq('id', id)
 
-      if (error) {
-        console.error('Error deleting candidate:', error)
-        throw error
+      if (deleteError) {
+        console.error('Error deleting candidate:', deleteError)
+        throw deleteError
       }
 
-      console.log('Deleted candidate:', candidateId)
-      return { candidateId, jobId }
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['candidates'] })
-      queryClient.invalidateQueries({ queryKey: ['candidates', data.jobId] })
+      console.log('Deleted candidate:', id)
       toast({
         title: 'Success',
-        description: 'Candidate removed successfully',
+        description: 'Candidate deleted successfully'
       })
-    },
-    onError: (error) => {
-      console.error('Error deleting candidate:', error)
+
+      await getCandidates() // Refresh the list
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to delete candidate'
+      console.error('Candidate deletion error:', err)
+      setError(errorMessage)
       toast({
         title: 'Error',
-        description: 'Failed to remove candidate',
-        variant: 'destructive',
+        description: errorMessage,
+        variant: 'destructive'
       })
-    },
-  })
+      throw err
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (user && jobId) {
+      getCandidates()
+    }
+  }, [user, jobId])
+
+  return {
+    candidates,
+    isLoading,
+    error,
+    getCandidates,
+    addCandidate,
+    updateCandidate,
+    deleteCandidate
+  }
 }

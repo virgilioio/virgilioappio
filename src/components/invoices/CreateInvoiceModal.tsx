@@ -21,20 +21,26 @@ import {
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
-import { useCreateInvoice, CreateInvoiceData } from '@/hooks/useInvoices'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Calendar } from '@/components/ui/calendar'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { CalendarIcon } from 'lucide-react'
+import { format } from 'date-fns'
+import { cn } from '@/lib/utils'
+import { useInvoices, CreateInvoiceData } from '@/hooks/useInvoices'
 import { useOrganizations } from '@/hooks/useOrganizations'
 import { usePermissions } from '@/hooks/usePermissions'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useFormPersistence } from '@/hooks/useFormPersistence'
 
 const formSchema = z.object({
   organization_id: z.string().min(1, 'Organization is required'),
-  title: z.string().min(2, {
-    message: 'Invoice title must be at least 2 characters.',
-  }),
+  title: z.string().min(1, 'Title is required'),
   description: z.string().optional(),
-  amount: z.string().min(1, 'Amount is required'),
-  currency: z.string().default('USD'),
+  amount: z.string()
+    .min(1, 'Amount is required')
+    .refine((val) => /^\d+(\.\d{1,2})?$/.test(val), 'Please enter a valid amount (e.g., 1234.56)')
+    .refine((val) => parseFloat(val) > 0, 'Amount must be greater than 0'),
+  currency: z.string().min(1, 'Currency is required'),
   issued_at: z.date().optional(),
   due_date: z.date().optional(),
 })
@@ -47,7 +53,7 @@ interface CreateInvoiceModalProps {
 }
 
 export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalProps) {
-  const createInvoiceMutation = useCreateInvoice()
+  const { createInvoice } = useInvoices()
   const { organizations } = useOrganizations()
   const { isPlatformAdmin } = usePermissions()
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -61,16 +67,22 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
       amount: '',
       currency: 'USD',
       issued_at: new Date(),
-      due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+      due_date: undefined,
     },
   })
 
-  const { clearPersistedData } = useFormPersistence('create-invoice-form', form)
+  // Add form persistence
+  const { clearPersistedData } = useFormPersistence({
+    storageKey: 'create-invoice-form',
+    form,
+    enabled: open
+  })
 
   const onSubmit = async (data: FormData) => {
     setIsSubmitting(true)
     try {
       const invoiceData: CreateInvoiceData = {
+        organization_id: data.organization_id,
         title: data.title,
         description: data.description,
         amount: parseFloat(data.amount),
@@ -79,9 +91,9 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
         due_date: data.due_date?.toISOString(),
       }
 
-      await createInvoiceMutation.mutateAsync(invoiceData)
+      await createInvoice(invoiceData)
       form.reset()
-      clearPersistedData()
+      clearPersistedData() // Clear persisted data on successful submit
       onOpenChange(false)
     } catch (error) {
       // Error handling is done in the hook
@@ -92,40 +104,43 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
 
   const handleCancel = () => {
     form.reset()
+    clearPersistedData() // Clear persisted data on cancel
     onOpenChange(false)
   }
 
-  const availableOrganizations = isPlatformAdmin ? organizations : []
+  // Show all organizations for platform admins, otherwise show all (removing the filter for now)
+  const availableOrganizations = organizations
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="mx-4 max-w-md sm:max-w-lg">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Create New Invoice</DialogTitle>
           <DialogDescription>
-            Create a new invoice for an organization.
+            Create a new invoice for an organization
           </DialogDescription>
         </DialogHeader>
         
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            {isPlatformAdmin && (
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <div className="grid gap-4 sm:grid-cols-2">
+              {/* Organization Selection */}
               <FormField
                 control={form.control}
                 name="organization_id"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Organization</FormLabel>
+                  <FormItem className="sm:col-span-2">
+                    <FormLabel>Organization *</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select an organization" />
+                          <SelectValue placeholder="Select organization" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
                         {availableOrganizations.map((org) => (
                           <SelectItem key={org.id} value={org.id}>
-                            {org.name}
+                            {org.name} ({org.country})
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -134,98 +149,188 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
                   </FormItem>
                 )}
               />
-            )}
-            
-            <FormField
-              control={form.control}
-              name="title"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Invoice Title</FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g., Software Development Services" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Description</FormLabel>
-                  <FormControl>
-                    <Textarea placeholder="e.g., Details about the services provided" rows={3} {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="amount"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Amount</FormLabel>
-                  <FormControl>
-                    <Input type="number" placeholder="e.g., 1000.00" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="currency"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Currency</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+
+              {/* Title */}
+              <FormField
+                control={form.control}
+                name="title"
+                render={({ field }) => (
+                  <FormItem className="sm:col-span-2">
+                    <FormLabel>Invoice Title *</FormLabel>
                     <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a currency" />
-                      </SelectTrigger>
+                      <Input 
+                        placeholder="e.g., April 2025 Success Fee" 
+                        {...field} 
+                      />
                     </FormControl>
-                    <SelectContent>
-                      <SelectItem value="USD">USD</SelectItem>
-                      <SelectItem value="EUR">EUR</SelectItem>
-                      <SelectItem value="GBP">GBP</SelectItem>
-                      <SelectItem value="CAD">CAD</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="issued_at"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Issue Date</FormLabel>
-                  <FormControl>
-                    <Input type="date" {...field} value={field.value?.toISOString().split('T')[0]} onChange={(e) => field.onChange(new Date(e.target.value))} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="due_date"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Due Date</FormLabel>
-                  <FormControl>
-                    <Input type="date" {...field} value={field.value?.toISOString().split('T')[0]} onChange={(e) => field.onChange(new Date(e.target.value))} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <DialogFooter>
-              <Button type="button" variant="ghost" onClick={handleCancel}>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Description */}
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem className="sm:col-span-2">
+                    <FormLabel>Description</FormLabel>
+                    <FormControl>
+                      <Textarea 
+                        placeholder="Additional details about this invoice"
+                        rows={3}
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Amount */}
+              <FormField
+                control={form.control}
+                name="amount"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Amount *</FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="text"
+                        inputMode="decimal"
+                        placeholder="1234.56"
+                        {...field}
+                        onChange={(e) => {
+                          const value = e.target.value
+                          // Only allow numbers and one decimal point
+                          if (value === '' || /^\d*\.?\d{0,2}$/.test(value)) {
+                            field.onChange(value)
+                          }
+                        }}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Currency */}
+              <FormField
+                control={form.control}
+                name="currency"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Currency *</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select currency" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="USD">USD</SelectItem>
+                        <SelectItem value="MXN">MXN</SelectItem>
+                        <SelectItem value="EUR">EUR</SelectItem>
+                        <SelectItem value="GBP">GBP</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Issued Date */}
+              <FormField
+                control={form.control}
+                name="issued_at"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Issued Date</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              "w-full pl-3 text-left font-normal",
+                              !field.value && "text-muted-foreground"
+                            )}
+                          >
+                            {field.value ? (
+                              format(field.value, "PPP")
+                            ) : (
+                              <span>Pick a date</span>
+                            )}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={field.value}
+                          onSelect={field.onChange}
+                          disabled={(date) =>
+                            date > new Date() || date < new Date("1900-01-01")
+                          }
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Due Date */}
+              <FormField
+                control={form.control}
+                name="due_date"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Due Date</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              "w-full pl-3 text-left font-normal",
+                              !field.value && "text-muted-foreground"
+                            )}
+                          >
+                            {field.value ? (
+                              format(field.value, "PPP")
+                            ) : (
+                              <span>Pick a date</span>
+                            )}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={field.value}
+                          onSelect={field.onChange}
+                          disabled={(date) => date < new Date()}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button 
+                type="button" 
+                variant="outline" 
+                onClick={handleCancel}
+                disabled={isSubmitting}
+              >
                 Cancel
               </Button>
               <Button type="submit" disabled={isSubmitting}>

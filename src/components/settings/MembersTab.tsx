@@ -4,15 +4,13 @@ import { Button } from '@/components/ui/button'
 import { Users, Plus } from 'lucide-react'
 import { MembersTable } from '@/components/members/MembersTable'
 import { InviteSystemDebug } from '@/components/debug/InviteSystemDebug'
-import { useMembersWithProfiles } from '@/hooks/useMembersWithProfiles'
 import { useMembers } from '@/hooks/useMembers'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useState } from 'react'
 import { MemberForm } from '@/components/members/MemberForm'
 
 export function MembersTab() {
-  const { members, isLoading } = useMembersWithProfiles()
-  const { updateMember, deactivateMember, createMember, resendInvitation } = useMembers()
+  const { members, isLoading, updateMember, deactivateMember, createMember, resendInvitation } = useMembers()
   const permissions = usePermissions()
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [editingMember, setEditingMember] = useState(null)
@@ -22,7 +20,7 @@ export function MembersTab() {
   }
 
   const handleDeactivate = async (id) => {
-    await deactivateMember.mutateAsync(id)
+    await deactivateMember(id)
   }
 
   const handleCreateNew = () => {
@@ -30,19 +28,19 @@ export function MembersTab() {
   }
 
   const handleCreateSubmit = async (data) => {
-    await createMember.mutateAsync(data)
+    await createMember(data)
     setIsCreateModalOpen(false)
   }
 
   const handleEditSubmit = async (data) => {
     if (editingMember) {
-      await updateMember.mutateAsync({ id: editingMember.id, ...data })
+      await updateMember(editingMember.id, data)
       setEditingMember(null)
     }
   }
 
   const handleResendInvitation = async (memberId: string, email: string) => {
-    await resendInvitation.mutateAsync({ memberId, email })
+    await resendInvitation(memberId, email)
   }
 
   // Show debug panel in development
@@ -77,7 +75,7 @@ export function MembersTab() {
         </CardHeader>
         <CardContent>
           <MembersTable 
-            members={members || []}
+            members={members}
             isLoading={isLoading}
             onEdit={handleEdit}
             onDeactivate={handleDeactivate}

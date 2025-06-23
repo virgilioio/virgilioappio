@@ -7,14 +7,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Plus, Search, CheckCircle, Trash2, ListTodo } from 'lucide-react'
-import { useJobRequestsWithOrganization, JobRequestWithOrganization } from '@/hooks/useJobRequestsWithOrganization'
+import { JobRequest } from '@/hooks/useJobRequests'
 import { usePermissions } from '@/hooks/usePermissions'
 import { Skeleton } from '@/components/ui/skeleton'
 
 interface JobRequestTableProps {
-  jobRequests: JobRequestWithOrganization[]
+  jobRequests: JobRequest[]
   isLoading: boolean
-  onView: (jobRequest: JobRequestWithOrganization) => void
+  onView: (jobRequest: JobRequest) => void
   onApprove: (id: string) => void
   onDelete: (id: string) => void
   onCreateNew: () => void
@@ -188,10 +188,10 @@ export function JobRequestTable({
                   <TableRow key={request.id} interactive onClick={() => onView(request)}>
                     <TableCell className="font-medium">{request.title}</TableCell>
                     <TableCell className="max-w-[200px] truncate" title={request.organization_name}>
-                      {request.organization_name}
+                      {request.organization_name || 'Unknown Organization'}
                     </TableCell>
                     <TableCell className="max-w-[150px] truncate" title={request.requester_email || request.requester_name}>
-                      {request.requester_name}
+                      {request.requester_name || 'Unknown User'}
                     </TableCell>
                     <TableCell>{request.level}</TableCell>
                     <TableCell>{request.department || '-'}</TableCell>

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -23,7 +24,7 @@ import { useSortableTable } from '@/hooks/useSortableTable'
 import { SortableHeader } from '@/components/ui/sortable-header'
 
 export function InvoicesTable() {
-  const { invoices, isLoading, refetch: refreshInvoices } = useInvoices()
+  const { invoices, isLoading, refreshInvoices } = useInvoices()
   const { isPlatformAdmin, canManageInvoices } = usePermissions()
   const { filters, setFilters, setFilteredInvoices } = useInvoiceFilter()
   const [uploadModalOpen, setUploadModalOpen] = useState(false)

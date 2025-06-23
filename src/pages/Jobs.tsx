@@ -10,7 +10,7 @@ import { JobsTable } from '@/components/jobs/JobsTable'
 import { JobForm } from '@/components/jobs/JobForm'
 import { JobRequestForm } from '@/components/job-requests/JobRequestForm'
 import { ComplianceCheckDialog } from '@/components/job-requests/ComplianceCheckDialog'
-import { useJobs, useCreateJob, useUpdateJob, useArchiveJob, Job } from '@/hooks/useJobs'
+import { useJobs, Job } from '@/hooks/useJobs'
 import { useJobRequests } from '@/hooks/useJobRequests'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useOrganizationProgress } from '@/hooks/useOrganizationProgress'
@@ -28,12 +28,15 @@ export default function Jobs() {
   const { userType } = useAuth()
   const organizationProgress = useOrganizationProgress()
   
-  const { jobs, isLoading } = useJobs()
-  const createJobMutation = useCreateJob()
-  const updateJobMutation = useUpdateJob()
-  const archiveJobMutation = useArchiveJob()
+  const {
+    jobs,
+    isLoading,
+    createJob,
+    updateJob,
+    archiveJob
+  } = useJobs()
 
-  const { createJobRequest } = useJobRequests()
+  const { createJobRequest, isLoading: isRequestLoading } = useJobRequests()
 
   const handleCreateNew = () => {
     // Additional frontend check for workspace owners
@@ -70,22 +73,21 @@ export default function Jobs() {
 
   const handleConfirmArchive = async () => {
     if (archiveJobId) {
-      await archiveJobMutation.mutateAsync(archiveJobId)
+      await archiveJob(archiveJobId)
       setArchiveJobId(null)
     }
   }
 
   const handleFormSubmit = async (data: any) => {
     if (selectedJob) {
-      await updateJobMutation.mutateAsync({ id: selectedJob.id, ...data })
+      await updateJob(selectedJob.id, data)
     } else {
-      await createJobMutation.mutateAsync(data)
+      await createJob(data)
     }
-    setIsFormOpen(false)
   }
 
   const handleJobRequestSubmit = async (data: any) => {
-    await createJobRequest.mutateAsync(data)
+    await createJobRequest(data)
     setIsRequestFormOpen(false)
   }
 
@@ -127,18 +129,13 @@ export default function Jobs() {
               onRequestJob={handleRequestJob}
             />
 
-            <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-              <DialogContent className="mx-4 max-w-2xl">
-                <DialogHeader>
-                  <DialogTitle>{selectedJob ? 'Edit Job' : 'Create New Job'}</DialogTitle>
-                </DialogHeader>
-                <JobForm
-                  onSubmit={handleFormSubmit}
-                  onCancel={() => setIsFormOpen(false)}
-                  isLoading={isLoading}
-                />
-              </DialogContent>
-            </Dialog>
+            <JobForm
+              isOpen={isFormOpen}
+              onClose={() => setIsFormOpen(false)}
+              onSubmit={handleFormSubmit}
+              job={selectedJob}
+              isLoading={isLoading}
+            />
 
             <ComplianceCheckDialog
               open={showComplianceDialog}
@@ -154,7 +151,7 @@ export default function Jobs() {
                 <JobRequestForm
                   onSubmit={handleJobRequestSubmit}
                   onCancel={() => setIsRequestFormOpen(false)}
-                  isLoading={isLoading}
+                  isLoading={isRequestLoading}
                 />
               </DialogContent>
             </Dialog>

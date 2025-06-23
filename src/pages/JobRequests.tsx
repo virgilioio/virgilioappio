@@ -1,5 +1,5 @@
+
 import { useState } from 'react'
-import { useJobRequestsWithOrganization } from '@/hooks/useJobRequestsWithOrganization'
 import { useJobRequests } from '@/hooks/useJobRequests'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useOrganizationProgress } from '@/hooks/useOrganizationProgress'
@@ -15,8 +15,13 @@ import { Badge } from '@/components/ui/badge'
 import { ListTodo } from 'lucide-react'
 
 export default function JobRequests() {
-  const { jobRequests, isLoading } = useJobRequestsWithOrganization()
-  const { createJobRequest, approveJobRequest, deleteJobRequest } = useJobRequests()
+  const {
+    jobRequests,
+    isLoading,
+    createJobRequest,
+    approveJobRequest,
+    deleteJobRequest
+  } = useJobRequests()
   
   const permissions = usePermissions()
   const { userType } = useAuth()
@@ -36,7 +41,7 @@ export default function JobRequests() {
   }
 
   const handleFormSubmit = async (data: any) => {
-    await createJobRequest.mutateAsync(data)
+    await createJobRequest(data)
     setShowForm(false)
   }
 
@@ -49,12 +54,12 @@ export default function JobRequests() {
   }
 
   const handleApprove = async (id: string) => {
-    await approveJobRequest.mutateAsync(id)
+    await approveJobRequest(id)
   }
 
   const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to delete this job request?')) {
-      await deleteJobRequest.mutateAsync(id)
+      await deleteJobRequest(id)
     }
   }
 
@@ -126,7 +131,6 @@ export default function JobRequests() {
                   <DialogTitle>Job Request Details</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4">
-                  
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="min-w-0">
                       <h3 className="font-semibold text-lg truncate">{selectedRequest.title}</h3>
