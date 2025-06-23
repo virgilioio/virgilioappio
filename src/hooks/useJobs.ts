@@ -77,20 +77,6 @@ export function useJobs() {
       } else if (organizationId) {
         console.log('Filtering jobs for organization:', organizationId)
         query = query.eq('organization_id', organizationId)
-        
-        // Additional filtering for recruiters - only jobs they're in the hiring team for
-        const { data: memberData } = await supabase
-          .from('members')
-          .select('member_role')
-          .eq('user_id', user.id)
-          .eq('organization_id', organizationId)
-          .single()
-        
-        if (memberData?.member_role === 'recruiter') {
-          console.log('Recruiter detected - filtering by hiring team membership')
-          // For recruiters, we'll filter on the client side since PostgreSQL JSONB queries are complex
-          // The RLS policy will also handle this server-side for additional security
-        }
       }
 
       const { data: jobsData, error: fetchError } = await query
@@ -114,7 +100,22 @@ export function useJobs() {
           .single()
         
         if (memberData?.member_role === 'recruiter') {
-          console.log('Applying recruiter filtering for hiring team membership')
+          console.log('Applying recruiter filtering for hiring team membership and job assignments')
+          
+          // Get job assignments for this recruiter
+          const { data: jobAssignments, error: assignmentsError } = await supabase
+            .from('job_assignments')
+            .select('job_id')
+            .eq('user_id', user.id)
+            .eq('organization_id', organizationId)
+
+          if (assignmentsError) {
+            console.error('Error fetching job assignments:', assignmentsError)
+          }
+
+          const assignedJobIds = new Set(jobAssignments?.map(assignment => assignment.job_id) || [])
+          console.log('Recruiter assigned to jobs via job_assignments table:', Array.from(assignedJobIds))
+
           filteredJobs = filteredJobs.filter(job => {
             // Check if user is in hiring_team array
             const hiringTeam = Array.isArray(job.hiring_team) ? job.hiring_team : []
@@ -122,11 +123,20 @@ export function useJobs() {
               member?.user_id === user.id || member?.id === user.id || member === user.id
             )
             
-            // Also check if user is explicitly assigned to this job
-            return isInHiringTeam
+            // Check if user is assigned via job_assignments table
+            const isAssignedViaTable = assignedJobIds.has(job.id)
+            
+            const hasAccess = isInHiringTeam || isAssignedViaTable
+            
+            if (hasAccess) {
+              console.log(`Recruiter has access to job "${job.title}" via ${isInHiringTeam ? 'hiring_team' : 'job_assignments'}`)
+            }
+            
+            return hasAccess
           })
           
           console.log(`Recruiter filtered jobs: ${filteredJobs.length} out of ${jobsData?.length || 0}`)
+          console.log('Accessible job titles:', filteredJobs.map(job => job.title))
         }
       }
 
@@ -449,10 +459,29 @@ export function useJobs() {
       )
       .subscribe()
 
+    // Subscribe to job assignments changes to refresh when recruiters are assigned/unassigned
+    const jobAssignmentsChannel = supabase
+      .channel('job-assignments-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'job_assignments'
+        },
+        (payload) => {
+          console.log('Job assignments change detected:', payload)
+          // Refresh jobs when job assignments change
+          getJobs()
+        }
+      )
+      .subscribe()
+
     return () => {
       console.log('Cleaning up real-time subscriptions')
       supabase.removeChannel(jobsChannel)
       supabase.removeChannel(jobRequestsChannel)
+      supabase.removeChannel(jobAssignmentsChannel)
     }
   }, [user, userType, organizationId])
 
