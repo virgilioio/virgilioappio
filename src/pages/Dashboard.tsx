@@ -4,21 +4,16 @@ import { QuickAccess } from '@/components/dashboard/QuickAccess'
 import { JobsOverview } from '@/components/dashboard/JobsOverview'
 import { PaymentsTracker } from '@/components/dashboard/PaymentsTracker'
 import { PaymentHistory } from '@/components/dashboard/PaymentHistory'
-import { RecentActivity } from '@/components/dashboard/RecentActivity'
 import { OnboardingProgress } from '@/components/dashboard/OnboardingProgress'
 import { AdvertisingBanner } from '@/components/dashboard/AdvertisingBanner'
 import { InvoiceFilterProvider } from '@/utils/invoiceFilters'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { usePermissions } from '@/hooks/usePermissions'
 import { PermissionGate } from '@/components/auth/PermissionGate'
-import { useSampleActivities } from '@/hooks/useSampleActivities'
 
 export default function Dashboard() {
   const { profile, isLoading } = useUserProfile()
   const permissions = usePermissions()
-  
-  // Initialize sample activities for demonstration
-  useSampleActivities()
 
   return (
     <div className="min-h-screen bg-background">
@@ -41,7 +36,6 @@ export default function Dashboard() {
                 <OnboardingProgress profile={profile} isLoading={isLoading} />
                 <QuickAccess permissions={permissions} />
                 <JobsOverview permissions={permissions} />
-                <RecentActivity />
               </div>
             </div>
           </div>

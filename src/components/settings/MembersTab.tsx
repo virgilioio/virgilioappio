@@ -3,7 +3,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Users, Plus } from 'lucide-react'
 import { MembersTable } from '@/components/members/MembersTable'
-import { InviteSystemDebug } from '@/components/debug/InviteSystemDebug'
 import { useMembers } from '@/hooks/useMembers'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useState } from 'react'
@@ -43,16 +42,8 @@ export function MembersTab() {
     await resendInvitation(memberId, email)
   }
 
-  // Show debug panel in development
-  const showDebugPanel = process.env.NODE_ENV === 'development' || window.location.hostname === 'localhost'
-
   return (
     <div className="space-y-6">
-      {/* Debug Panel for Development */}
-      {showDebugPanel && (
-        <InviteSystemDebug />
-      )}
-
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
