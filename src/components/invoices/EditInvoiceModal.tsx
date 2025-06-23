@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -98,7 +99,10 @@ export function EditInvoiceModal({ open, onOpenChange, invoice }: EditInvoiceMod
         status: data.status as 'pending' | 'paid' | 'overdue',
       }
 
-      await updateInvoiceMutation.mutateAsync({ id: invoice.id, ...updateData })
+      await updateInvoiceMutation.mutateAsync({ 
+        id: invoice.id, 
+        ...updateData 
+      })
       clearPersistedData()
       onOpenChange(false)
     } catch (error) {

@@ -1,3 +1,4 @@
+
 import { useState } from 'react'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -60,7 +61,7 @@ export function JobAssignmentsPanel({ job }: JobAssignmentsPanelProps) {
                   return (
                     <div key={member.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
                       <span>{displayName}</span>
-                      <Button variant="outline" size="xs" onClick={() => handleMemberToggle(member.user_email || member.invited_email || '')}>
+                      <Button variant="outline" size="sm" onClick={() => handleMemberToggle(member.user_email || member.invited_email || '')}>
                         Remove
                       </Button>
                     </div>
@@ -86,7 +87,7 @@ export function JobAssignmentsPanel({ job }: JobAssignmentsPanelProps) {
                   return (
                     <div key={member.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
                       <span>{displayName}</span>
-                      <Button variant="outline" size="xs" onClick={() => handleMemberToggle(member.user_email || member.invited_email || '')}>
+                      <Button variant="outline" size="sm" onClick={() => handleMemberToggle(member.user_email || member.invited_email || '')}>
                         Assign
                       </Button>
                     </div>

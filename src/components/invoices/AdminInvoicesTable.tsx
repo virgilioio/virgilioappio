@@ -95,7 +95,7 @@ export function AdminInvoicesTable({ invoices, isLoading }: AdminInvoicesTablePr
     // Refresh will be handled by the parent component or hook
   }
 
-  const handlePaymentLogged = () => {
+  const handlePaymentComplete = () => {
     // Refresh will be handled by the parent component or hook
   }
 
@@ -324,13 +324,22 @@ export function AdminInvoicesTable({ invoices, isLoading }: AdminInvoicesTablePr
             open={paymentModalOpen}
             onOpenChange={setPaymentModalOpen}
             invoice={selectedInvoice}
-            onPaymentLogged={handlePaymentLogged}
+            onPaymentComplete={handlePaymentComplete}
           />
           
           <EditInvoiceModal
             open={editModalOpen}
             onOpenChange={setEditModalOpen}
-            invoice={selectedInvoice}
+            invoice={{
+              id: selectedInvoice.id,
+              title: selectedInvoice.title,
+              description: selectedInvoice.description,
+              amount: selectedInvoice.amount,
+              currency: selectedInvoice.currency,
+              issued_at: selectedInvoice.issued_at,
+              due_date: selectedInvoice.due_date,
+              status: selectedInvoice.status as 'pending' | 'paid' | 'overdue',
+            }}
           />
         </>
       )}

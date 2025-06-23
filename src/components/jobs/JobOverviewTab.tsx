@@ -5,10 +5,10 @@ import { Badge } from '@/components/ui/badge'
 import { Edit, Building, Briefcase, MapPin, DollarSign, Users, Calendar, UserCheck } from 'lucide-react'
 import { PermissionGate } from '@/components/auth/PermissionGate'
 import { usePermissions } from '@/hooks/usePermissions'
-import type { Job } from '@/hooks/useJobs'
+import type { JobWithOrganization } from '@/hooks/useJobsWithOrganization'
 
 interface JobOverviewTabProps {
-  job: Job
+  job: JobWithOrganization
   onEdit: () => void
 }
 
@@ -60,7 +60,7 @@ export function JobOverviewTab({ job, onEdit }: JobOverviewTabProps) {
             <div className="flex items-center gap-4 text-text-secondary mb-4 flex-wrap">
               <div className="flex items-center gap-2">
                 <Building className="h-5 w-5" />
-                <span className="text-md">{job.organization_name || 'Organization'}</span>
+                <span className="text-md">{job.organization_name}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Briefcase className="h-5 w-5" />

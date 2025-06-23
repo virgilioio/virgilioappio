@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Member } from "@/hooks/useMembers"
+import { MemberWithProfile } from "@/hooks/useMembersWithProfiles"
 import { useOrganizations } from "@/hooks/useOrganizations"
 import { usePermissions } from "@/hooks/usePermissions"
 import { useAuth } from "@/contexts/AuthContext"
@@ -27,7 +27,7 @@ interface MemberFormProps {
   isOpen: boolean
   onClose: () => void
   onSubmit: (data: any) => Promise<void>
-  member?: Member | null
+  member?: MemberWithProfile | null
   isLoading: boolean
 }
 
@@ -55,7 +55,7 @@ export function MemberForm({
 
   useEffect(() => {
     if (member) {
-      setEmail(member.user_email || "")
+      setEmail(member.user_email || member.invited_email || "")
       setRole(member.member_role)
       setUserType(member.user_type || "member")
       setOrganizationId(member.organization_id)
@@ -227,11 +227,11 @@ export function MemberForm({
             )}
 
             {/* Show current email for existing members */}
-            {member && member.user_email && (
+            {member && (member.user_email || member.invited_email) && (
               <div className="grid gap-token-sm">
                 <Label>Email Address</Label>
                 <div className="px-3 py-2 bg-muted rounded-md text-sm">
-                  {member.user_email}
+                  {member.user_email || member.invited_email}
                 </div>
               </div>
             )}

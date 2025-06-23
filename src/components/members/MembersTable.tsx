@@ -6,15 +6,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Search, Edit, UserMinus, Mail } from 'lucide-react'
-import { Member } from '@/hooks/useMembers'
+import { useMembersWithProfiles, MemberWithProfile } from '@/hooks/useMembersWithProfiles'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useOrganizations } from '@/hooks/useOrganizations'
 import { MemberOrgIndicator } from './MemberOrgIndicator'
 
 interface MembersTableProps {
-  members: Member[]
+  members: MemberWithProfile[]
   isLoading: boolean
-  onEdit: (member: Member) => void
+  onEdit: (member: MemberWithProfile) => void
   onDeactivate: (id: string) => void
   onResendInvitation: (id: string, email: string) => void
 }
