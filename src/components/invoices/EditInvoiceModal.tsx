@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -28,7 +27,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { CalendarIcon } from 'lucide-react'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
-import { Invoice, useInvoices } from '@/hooks/useInvoices'
+import { Invoice, useUpdateInvoice } from '@/hooks/useInvoices'
 import { useOrganizations } from '@/hooks/useOrganizations'
 import { useFormPersistence } from '@/hooks/useFormPersistence'
 
@@ -55,7 +54,7 @@ interface EditInvoiceModalProps {
 }
 
 export function EditInvoiceModal({ open, onOpenChange, invoice }: EditInvoiceModalProps) {
-  const { updateInvoice } = useInvoices()
+  const { updateInvoice } = useUpdateInvoice()
   const { organizations } = useOrganizations()
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -107,7 +106,7 @@ export function EditInvoiceModal({ open, onOpenChange, invoice }: EditInvoiceMod
         currency: data.currency,
         issued_at: data.issued_at?.toISOString(),
         due_date: data.due_date?.toISOString(),
-        status: data.status,
+        status: data.status as 'pending' | 'paid' | 'overdue',
       }
 
       await updateInvoice(invoice.id, updateData)

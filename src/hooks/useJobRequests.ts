@@ -10,6 +10,8 @@ export type JobRequest = Database['public']['Tables']['job_requests']['Row']
 export type JobRequestInsert = Database['public']['Tables']['job_requests']['Insert']
 export type JobRequestUpdate = Database['public']['Tables']['job_requests']['Update']
 
+export type CreateJobRequestData = Omit<JobRequestInsert, 'id' | 'created_at' | 'updated_at' | 'submitted_by' | 'organization_id' | 'status' | 'approved_by' | 'approved_at' | 'job_id'>
+
 export function useJobRequests() {
   const { profile } = useUserProfile()
 
@@ -49,7 +51,7 @@ export function useCreateJobRequest() {
   const { logJobRequestCreated } = useActivityLogger()
 
   return useMutation({
-    mutationFn: async (jobRequestData: JobRequestInsert) => {
+    mutationFn: async (jobRequestData: CreateJobRequestData) => {
       console.log('Creating job request:', jobRequestData)
       
       const { data, error } = await supabase

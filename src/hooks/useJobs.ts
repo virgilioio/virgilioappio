@@ -10,6 +10,9 @@ export type Job = Database['public']['Tables']['jobs']['Row']
 export type JobInsert = Database['public']['Tables']['jobs']['Insert']
 export type JobUpdate = Database['public']['Tables']['jobs']['Update']
 
+export type CreateJobData = Omit<JobInsert, 'id' | 'created_at' | 'updated_at' | 'created_by' | 'organization_id'>
+export type UpdateJobData = Partial<JobUpdate>
+
 export function useJobs() {
   const { profile } = useUserProfile()
 
@@ -49,7 +52,7 @@ export function useCreateJob() {
   const { logJobCreated } = useActivityLogger()
 
   return useMutation({
-    mutationFn: async (jobData: JobInsert) => {
+    mutationFn: async (jobData: CreateJobData) => {
       console.log('Creating job:', jobData)
       
       const { data, error } = await supabase
@@ -98,7 +101,7 @@ export function useUpdateJob() {
   const { logJobUpdated } = useActivityLogger()
 
   return useMutation({
-    mutationFn: async ({ id, ...jobData }: JobUpdate & { id: string }) => {
+    mutationFn: async ({ id, ...jobData }: UpdateJobData & { id: string }) => {
       console.log('Updating job:', id, jobData)
       
       const { data, error } = await supabase

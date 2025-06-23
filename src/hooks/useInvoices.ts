@@ -10,6 +10,14 @@ export type Invoice = Database['public']['Tables']['invoices']['Row']
 export type InvoiceInsert = Database['public']['Tables']['invoices']['Insert']
 export type InvoiceUpdate = Database['public']['Tables']['invoices']['Update']
 
+export type CreateInvoiceData = Omit<InvoiceInsert, 'id' | 'created_at' | 'updated_at' | 'created_by' | 'organization_id'>
+
+export type PaymentData = {
+  payment_method?: string
+  payment_reference?: string
+  payment_notes?: string
+}
+
 export function useInvoices() {
   const { profile } = useUserProfile()
 
@@ -39,6 +47,7 @@ export function useInvoices() {
     isLoading: query.isLoading,
     error: query.error,
     refetch: query.refetch,
+    refreshInvoices: query.refetch,
   }
 }
 
@@ -49,7 +58,7 @@ export function useCreateInvoice() {
   const { logInvoiceCreated } = useActivityLogger()
 
   return useMutation({
-    mutationFn: async (invoiceData: InvoiceInsert) => {
+    mutationFn: async (invoiceData: CreateInvoiceData) => {
       console.log('Creating invoice:', invoiceData)
       
       const { data, error } = await supabase
@@ -98,15 +107,18 @@ export function useMarkInvoicePaid() {
   const { logInvoicePaid } = useActivityLogger()
 
   return useMutation({
-    mutationFn: async (invoiceId: string) => {
+    mutationFn: async ({ invoiceId, paymentData }: { invoiceId: string; paymentData?: PaymentData }) => {
       console.log('Marking invoice as paid:', invoiceId)
       
+      const updateData = {
+        status: 'paid' as const,
+        paid_at: new Date().toISOString(),
+        ...paymentData,
+      }
+
       const { data, error } = await supabase
         .from('invoices')
-        .update({
-          status: 'paid',
-          paid_at: new Date().toISOString(),
-        })
+        .update(updateData)
         .eq('id', invoiceId)
         .select()
         .single()
@@ -146,13 +158,13 @@ export function useUpdateInvoice() {
   const { toast } = useToast()
 
   return useMutation({
-    mutationFn: async ({ id, ...invoiceData }: InvoiceUpdate & { id: string }) => {
-      console.log('Updating invoice:', id, invoiceData)
+    mutationFn: async (invoiceId: string, invoiceData: Partial<InvoiceUpdate>) => {
+      console.log('Updating invoice:', invoiceId, invoiceData)
       
       const { data, error } = await supabase
         .from('invoices')
         .update(invoiceData)
-        .eq('id', id)
+        .eq('id', invoiceId)
         .select()
         .single()
 

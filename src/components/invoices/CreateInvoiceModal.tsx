@@ -53,7 +53,7 @@ interface CreateInvoiceModalProps {
 }
 
 export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalProps) {
-  const { createInvoice } = useInvoices()
+  const { createInvoice } = useCreateInvoice()
   const { organizations } = useOrganizations()
   const { isPlatformAdmin } = usePermissions()
   const [isSubmitting, setIsSubmitting] = useState(false)

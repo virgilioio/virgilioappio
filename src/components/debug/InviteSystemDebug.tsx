@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -140,7 +139,7 @@ export function InviteSystemDebug() {
               return (
                 <div key={member.id} className="flex items-center justify-between p-1 bg-gray-50 rounded text-xs">
                   <div className="truncate">
-                    <div className="font-medium truncate">{member.user_email || 'No email'}</div>
+                    <div className="font-medium truncate">{member.invited_email || 'No email'}</div>
                   </div>
                   <Badge variant={isExpired ? "destructive" : "secondary"} className="text-xs h-4">
                     {isExpired ? 'Exp' : 'Active'}
