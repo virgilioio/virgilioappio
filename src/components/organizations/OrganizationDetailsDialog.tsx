@@ -9,7 +9,6 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { User, Mail, Users, MoreVertical, Trash2 } from 'lucide-react'
-import { Skeleton } from '@/components/ui/skeleton'
 import { UserDeletionDialog } from './UserDeletionDialog'
 import { usePermissions } from '@/hooks/usePermissions'
 
@@ -24,7 +23,7 @@ export function OrganizationDetailsDialog({
   isOpen, 
   onClose 
 }: OrganizationDetailsDialogProps) {
-  const { members, isLoading: membersLoading, refetch: refetchMembers } = useMembers()
+  const { members, isLoading: membersLoading, getMembers } = useMembers()
   const permissions = usePermissions()
   const [selectedUserForDeletion, setSelectedUserForDeletion] = useState<{
     id: string
@@ -100,7 +99,7 @@ export function OrganizationDetailsDialog({
   }
 
   const handleUserDeleted = () => {
-    refetchMembers()
+    getMembers()
   }
 
   return (
