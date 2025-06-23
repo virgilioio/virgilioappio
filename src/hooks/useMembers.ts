@@ -1,358 +1,164 @@
 
-import { useState, useEffect } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/integrations/supabase/client'
-import { useAuth } from '@/contexts/AuthContext'
-import { toast } from '@/hooks/use-toast'
+import { useToast } from '@/hooks/use-toast'
+import { useUserProfile } from './useUserProfile'
+import { useActivityLogger } from './useActivityLogger'
+import type { Database } from '@/integrations/supabase/types'
 
-export interface Member {
-  id: string
-  user_id: string | null
-  organization_id: string
-  member_role: 'recruiter' | 'customer_success' | 'billing' | 'sales' | 'admin' | 'client'
-  user_status: 'active' | 'inactive' | 'invited'
-  user_type?: 'guest' | 'member' | 'workspace_owner' | 'platform_admin'
-  created_at: string
-  updated_at: string
-  invite_token?: string | null
-  invite_expires_at?: string | null
-  invited_email?: string | null
-  user_email?: string
-  user_first_name?: string
-  user_last_name?: string
-  organization_name?: string
-}
-
-export interface CreateMemberData {
-  user_id?: string | null
-  organization_id: string
-  member_role: 'recruiter' | 'customer_success' | 'billing' | 'sales' | 'admin' | 'client'
-  user_status?: 'active' | 'inactive' | 'invited'
-  user_type?: 'guest' | 'member' | 'workspace_owner' | 'platform_admin'
-  email?: string
-}
-
-export interface UpdateMemberData {
-  member_role?: 'recruiter' | 'customer_success' | 'billing' | 'sales' | 'admin' | 'client'
-  user_status?: 'active' | 'inactive' | 'invited'
-  organization_id?: string
-}
+type Member = Database['public']['Tables']['members']['Row']
+type MemberInsert = Database['public']['Tables']['members']['Insert']
 
 export function useMembers() {
-  const [members, setMembers] = useState<Member[]>([])
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const { user } = useAuth()
+  const { profile } = useUserProfile()
 
-  const getMembers = async () => {
-    if (!user) return
-
-    setIsLoading(true)
-    setError(null)
-
-    try {
-      console.log('Fetching members for user:', user.id)
+  return useQuery({
+    queryKey: ['members', profile?.organization_id],
+    queryFn: async () => {
+      console.log('Fetching members for organization:', profile?.organization_id)
       
-      const { data: membersData, error: membersError } = await supabase
+      const { data, error } = await supabase
         .from('members')
         .select('*')
         .order('created_at', { ascending: false })
 
-      if (membersError) {
-        console.error('Error fetching members:', membersError)
-        if (membersError.message.includes('row-level security')) {
-          console.warn('RLS policy blocked access - user may not have permission to view members')
-          setMembers([])
-          return
-        }
-        throw membersError
-      }
-
-      console.log('Fetched members:', membersData)
-
-      if (!membersData || membersData.length === 0) {
-        console.log('No members found')
-        setMembers([])
-        return
-      }
-
-      // Get organization names separately
-      const orgIds = [...new Set(membersData.map(m => m.organization_id).filter(Boolean))]
-      let organizationsMap: Record<string, string> = {}
-      
-      if (orgIds.length > 0) {
-        const { data: orgsData } = await supabase
-          .from('organizations')
-          .select('id, name')
-          .in('id', orgIds)
-        
-        if (orgsData) {
-          organizationsMap = Object.fromEntries(orgsData.map(org => [org.id, org.name]))
-        }
-      }
-
-      // Get user profiles separately
-      const userIds = [...new Set(membersData.map(m => m.user_id).filter(Boolean))]
-      let profilesMap: Record<string, any> = {}
-      
-      if (userIds.length > 0) {
-        const { data: profilesData } = await supabase
-          .from('profiles')
-          .select('user_id, first_name, last_name, email')
-          .in('user_id', userIds)
-        
-        if (profilesData) {
-          profilesMap = Object.fromEntries(profilesData.map(profile => [profile.user_id, profile]))
-        }
-      }
-
-      const membersWithDetails = membersData.map((member) => {
-        const profile = profilesMap[member.user_id || '']
-        
-        const typedMember: Member = {
-          ...member,
-          member_role: member.member_role as 'recruiter' | 'customer_success' | 'billing' | 'sales' | 'admin' | 'client',
-          user_status: member.user_status as 'active' | 'inactive' | 'invited',
-          user_type: member.user_type as 'guest' | 'member' | 'workspace_owner' | 'platform_admin',
-          organization_name: organizationsMap[member.organization_id] || null,
-          user_first_name: profile?.first_name || null,
-          user_last_name: profile?.last_name || null,
-          user_email: profile?.email || member.invited_email || null
-        }
-        
-        return typedMember
-      })
-
-      console.log('Final members with details:', membersWithDetails)
-      setMembers(membersWithDetails)
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch members'
-      console.error('Members fetch error:', err)
-      setError(errorMessage)
-      toast({
-        title: 'Error',
-        description: errorMessage,
-        variant: 'destructive'
-      })
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const sendInvitationEmail = async (memberId: string, email: string) => {
-    try {
-      console.log('Sending invitation email for member:', memberId)
-      
-      const { data, error } = await supabase.functions.invoke('send-invitation', {
-        body: {
-          memberId,
-          email,
-          inviterName: user?.user_metadata?.first_name || user?.email
-        }
-      })
-
       if (error) {
-        console.error('Error sending invitation email:', error)
+        console.error('Error fetching members:', error)
         throw error
       }
 
-      console.log('Invitation email sent successfully:', data)
-      return data
-    } catch (error) {
-      console.error('Failed to send invitation email:', error)
-      throw error
-    }
-  }
+      console.log('Fetched members:', data)
+      return data as Member[]
+    },
+    enabled: !!profile?.organization_id,
+  })
+}
 
-  const createMember = async (data: CreateMemberData) => {
-    if (!user) throw new Error('User not authenticated')
-    
-    if (!data.organization_id) {
-      throw new Error('Organization is required for member creation')
-    }
+export function useInviteMember() {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+  const { profile } = useUserProfile()
+  const { logMemberInvited } = useActivityLogger()
 
-    setIsLoading(true)
-    setError(null)
-
-    try {
-      console.log('Creating member with organization_id:', data.organization_id, 'Full data:', data)
+  return useMutation({
+    mutationFn: async (memberData: MemberInsert & { invited_email: string }) => {
+      console.log('Inviting member:', memberData)
       
-      const memberData = {
-        organization_id: data.organization_id,
-        member_role: data.member_role,
-        user_status: data.user_id ? (data.user_status || 'active') : 'invited',
-        user_id: data.user_id || null,
-        user_type: data.user_type || 'member',
-        invited_email: !data.user_id && data.email ? data.email : null
-      }
-
-      console.log('Inserting member data:', memberData)
-
-      const { data: newMember, error: createError } = await supabase
+      const { data, error } = await supabase
         .from('members')
-        .insert([memberData])
-        .select()
-        .single()
-
-      if (createError) {
-        console.error('Error creating member:', createError)
-        throw createError
-      }
-
-      console.log('Created member:', newMember)
-
-      if (!data.user_id && data.email && newMember.invite_token) {
-        try {
-          await sendInvitationEmail(newMember.id, data.email)
-          toast({
-            title: 'Success',
-            description: `Invitation sent to ${data.email} successfully`
-          })
-        } catch (emailError) {
-          console.error('Failed to send invitation email:', emailError)
-          toast({
-            title: 'Member Created',
-            description: 'Member created but invitation email failed to send. You may need to resend the invitation.',
-            variant: 'destructive'
-          })
-        }
-      } else {
-        toast({
-          title: 'Success',
-          description: 'Member added successfully'
+        .insert({
+          ...memberData,
+          organization_id: profile?.organization_id,
+          user_status: 'invited',
         })
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Error inviting member:', error)
+        throw error
       }
 
-      await getMembers()
-      return newMember
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to create member'
-      console.error('Member creation error:', err)
-      setError(errorMessage)
+      console.log('Invited member:', data)
+      
+      // Log activity
+      logMemberInvited(memberData.invited_email)
+      
+      return data as Member
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['members'] })
+      toast({
+        title: 'Success',
+        description: 'Member invited successfully',
+      })
+    },
+    onError: (error) => {
+      console.error('Error inviting member:', error)
       toast({
         title: 'Error',
-        description: errorMessage,
-        variant: 'destructive'
+        description: 'Failed to invite member',
+        variant: 'destructive',
       })
-      throw err
-    } finally {
-      setIsLoading(false)
-    }
-  }
+    },
+  })
+}
 
-  const updateMember = async (id: string, data: UpdateMemberData) => {
-    setIsLoading(true)
-    setError(null)
+export function useUpdateMember() {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
 
-    try {
-      console.log('Updating member:', id, data)
-      const { data: updatedMember, error: updateError } = await supabase
+  return useMutation({
+    mutationFn: async ({ id, ...memberData }: Partial<Member> & { id: string }) => {
+      console.log('Updating member:', id, memberData)
+      
+      const { data, error } = await supabase
         .from('members')
-        .update(data)
+        .update(memberData)
         .eq('id', id)
         .select()
         .single()
 
-      if (updateError) {
-        console.error('Error updating member:', updateError)
-        throw updateError
+      if (error) {
+        console.error('Error updating member:', error)
+        throw error
       }
 
-      console.log('Updated member:', updatedMember)
+      console.log('Updated member:', data)
+      return data as Member
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['members'] })
       toast({
         title: 'Success',
-        description: 'Member updated successfully'
+        description: 'Member updated successfully',
       })
-
-      await getMembers()
-      return updatedMember
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to update member'
-      console.error('Member update error:', err)
-      setError(errorMessage)
+    },
+    onError: (error) => {
+      console.error('Error updating member:', error)
       toast({
         title: 'Error',
-        description: errorMessage,
-        variant: 'destructive'
+        description: 'Failed to update member',
+        variant: 'destructive',
       })
-      throw err
-    } finally {
-      setIsLoading(false)
-    }
-  }
+    },
+  })
+}
 
-  const deactivateMember = async (id: string) => {
-    setIsLoading(true)
-    setError(null)
+export function useDeleteMember() {
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
 
-    try {
-      console.log('Deactivating member:', id)
-      const { error: updateError } = await supabase
+  return useMutation({
+    mutationFn: async (memberId: string) => {
+      console.log('Deleting member:', memberId)
+      
+      const { error } = await supabase
         .from('members')
-        .update({ user_status: 'inactive' })
-        .eq('id', id)
+        .delete()
+        .eq('id', memberId)
 
-      if (updateError) {
-        console.error('Error deactivating member:', updateError)
-        throw updateError
+      if (error) {
+        console.error('Error deleting member:', error)
+        throw error
       }
 
-      console.log('Deactivated member:', id)
+      console.log('Deleted member:', memberId)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['members'] })
       toast({
         title: 'Success',
-        description: 'Member deactivated successfully'
+        description: 'Member removed successfully',
       })
-
-      await getMembers()
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to deactivate member'
-      console.error('Member deactivation error:', err)
-      setError(errorMessage)
+    },
+    onError: (error) => {
+      console.error('Error deleting member:', error)
       toast({
         title: 'Error',
-        description: errorMessage,
-        variant: 'destructive'
+        description: 'Failed to remove member',
+        variant: 'destructive',
       })
-      throw err
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const resendInvitation = async (memberId: string, email: string) => {
-    setIsLoading(true)
-    try {
-      await sendInvitationEmail(memberId, email)
-      toast({
-        title: 'Success',
-        description: 'Invitation resent successfully'
-      })
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to resend invitation'
-      toast({
-        title: 'Error',
-        description: errorMessage,
-        variant: 'destructive'
-      })
-      throw error
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    if (user) {
-      getMembers()
-    }
-  }, [user])
-
-  return {
-    members,
-    isLoading,
-    error,
-    getMembers,
-    createMember,
-    updateMember,
-    deactivateMember,
-    resendInvitation
-  }
+    },
+  })
 }
