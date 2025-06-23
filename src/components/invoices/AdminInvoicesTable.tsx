@@ -1,3 +1,4 @@
+
 import { useState } from 'react'
 import { MoreHorizontal, Download, Edit, Trash2, CheckCircle, FileText, Calendar, DollarSign, Search, Filter } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -48,7 +49,7 @@ export function AdminInvoicesTable({ invoices, isLoading }: AdminInvoicesTablePr
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false)
 
   // Filter invoices based on all filters
-  const filteredInvoices = filterInvoices(invoices, {
+  const filteredInvoices = filterInvoices(invoices || [], {
     searchTerm,
     status: statusFilter,
     organizationId: organizationFilter,
@@ -66,8 +67,9 @@ export function AdminInvoicesTable({ invoices, isLoading }: AdminInvoicesTablePr
   }
 
   const getOrganizationName = (orgId: string) => {
-    const org = organizations.find(o => o.id === orgId)
-    return org ? `${org.name} (${org.country})` : orgId
+    if (!organizations || !orgId) return 'Unknown Organization'
+    const org = organizations.find(o => o?.id === orgId)
+    return org ? `${org.name} (${org.country})` : 'Unknown Organization'
   }
 
   const getStatusBadge = (status: string) => {
@@ -217,7 +219,7 @@ export function AdminInvoicesTable({ invoices, isLoading }: AdminInvoicesTablePr
     )
   }
 
-  if (invoices.length === 0) {
+  if (!invoices || invoices.length === 0) {
     return (
       <Card>
         <CardHeader>

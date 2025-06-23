@@ -22,7 +22,7 @@ export function InvoiceDetailsDialog({ invoice, open, onOpenChange }: InvoiceDet
 
   if (!invoice) return null
 
-  const organization = organizations.find(org => org.id === invoice.organization_id)
+  const organization = organizations?.find(org => org.id === invoice.organization_id) || null
 
   const getStatusBadge = (status: string) => {
     const variants = {

@@ -43,7 +43,7 @@ export function WorkspaceOwnerInvoicesTable({ invoices, isLoading }: WorkspaceOw
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false)
 
   // Filter invoices based on all filters
-  const filteredInvoices = filterInvoices(invoices, {
+  const filteredInvoices = filterInvoices(invoices || [], {
     searchTerm,
     status: statusFilter,
     selectedMonth
@@ -59,8 +59,9 @@ export function WorkspaceOwnerInvoicesTable({ invoices, isLoading }: WorkspaceOw
   }
 
   const getOrganizationName = (orgId: string) => {
-    const org = organizations.find(o => o.id === orgId)
-    return org ? `${org.name} (${org.country})` : orgId
+    if (!organizations || !orgId) return 'Unknown Organization'
+    const org = organizations.find(o => o?.id === orgId)
+    return org ? `${org.name} (${org.country})` : 'Unknown Organization'
   }
 
   const getStatusBadge = (status: string) => {
@@ -172,7 +173,7 @@ export function WorkspaceOwnerInvoicesTable({ invoices, isLoading }: WorkspaceOw
     )
   }
 
-  if (invoices.length === 0) {
+  if (!invoices || invoices.length === 0) {
     return (
       <Card>
         <CardHeader>
