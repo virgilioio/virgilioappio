@@ -4,13 +4,15 @@ import { Button } from '@/components/ui/button'
 import { Users, Plus } from 'lucide-react'
 import { MembersTable } from '@/components/members/MembersTable'
 import { InviteSystemDebug } from '@/components/debug/InviteSystemDebug'
+import { useMembersWithProfiles } from '@/hooks/useMembersWithProfiles'
 import { useMembers } from '@/hooks/useMembers'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useState } from 'react'
 import { MemberForm } from '@/components/members/MemberForm'
 
 export function MembersTab() {
-  const { members, isLoading, updateMember, deactivateMember, createMember, resendInvitation } = useMembers()
+  const { members, isLoading } = useMembersWithProfiles()
+  const { updateMember, deactivateMember, createMember, resendInvitation } = useMembers()
   const permissions = usePermissions()
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [editingMember, setEditingMember] = useState(null)
@@ -75,7 +77,7 @@ export function MembersTab() {
         </CardHeader>
         <CardContent>
           <MembersTable 
-            members={members}
+            members={members || []}
             isLoading={isLoading}
             onEdit={handleEdit}
             onDeactivate={handleDeactivate}

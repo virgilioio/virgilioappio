@@ -3,7 +3,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/integrations/supabase/client'
 import { useToast } from '@/hooks/use-toast'
 import { useUserProfile } from './useUserProfile'
-import { useActivityLogger } from './useActivityLogger'
 import type { Database } from '@/integrations/supabase/types'
 
 export type Invoice = Database['public']['Tables']['invoices']['Row']
@@ -11,7 +10,7 @@ export type InvoiceInsert = Database['public']['Tables']['invoices']['Insert']
 export type InvoiceUpdate = Database['public']['Tables']['invoices']['Update']
 
 export type CreateInvoiceData = Omit<InvoiceInsert, 'id' | 'created_at' | 'updated_at' | 'created_by' | 'organization_id'>
-
+export type UpdateInvoiceData = Partial<InvoiceUpdate>
 export type PaymentData = {
   payment_method?: string
   payment_reference?: string
@@ -43,11 +42,10 @@ export function useInvoices() {
   })
 
   return {
-    invoices: query.data,
+    invoices: query.data || [],
     isLoading: query.isLoading,
     error: query.error,
     refetch: query.refetch,
-    refreshInvoices: query.refetch,
   }
 }
 
@@ -55,7 +53,6 @@ export function useCreateInvoice() {
   const queryClient = useQueryClient()
   const { toast } = useToast()
   const { profile } = useUserProfile()
-  const { logInvoiceCreated } = useActivityLogger()
 
   return useMutation({
     mutationFn: async (invoiceData: CreateInvoiceData) => {
@@ -77,10 +74,6 @@ export function useCreateInvoice() {
       }
 
       console.log('Created invoice:', data)
-      
-      // Log activity
-      logInvoiceCreated(data.title, Number(data.amount), data.id)
-      
       return data as Invoice
     },
     onSuccess: () => {
@@ -101,64 +94,12 @@ export function useCreateInvoice() {
   })
 }
 
-export function useMarkInvoicePaid() {
-  const queryClient = useQueryClient()
-  const { toast } = useToast()
-  const { logInvoicePaid } = useActivityLogger()
-
-  return useMutation({
-    mutationFn: async ({ invoiceId, paymentData }: { invoiceId: string; paymentData?: PaymentData }) => {
-      console.log('Marking invoice as paid:', invoiceId)
-      
-      const updateData = {
-        status: 'paid' as const,
-        paid_at: new Date().toISOString(),
-        ...paymentData,
-      }
-
-      const { data, error } = await supabase
-        .from('invoices')
-        .update(updateData)
-        .eq('id', invoiceId)
-        .select()
-        .single()
-
-      if (error) {
-        console.error('Error marking invoice as paid:', error)
-        throw error
-      }
-
-      console.log('Marked invoice as paid:', data)
-      
-      // Log activity
-      logInvoicePaid(data.title, Number(data.amount), data.id)
-      
-      return data as Invoice
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['invoices'] })
-      toast({
-        title: 'Success',
-        description: 'Invoice marked as paid',
-      })
-    },
-    onError: (error) => {
-      console.error('Error marking invoice as paid:', error)
-      toast({
-        title: 'Error',
-        description: 'Failed to mark invoice as paid',
-        variant: 'destructive',
-      })
-    },
-  })
-}
-
 export function useUpdateInvoice() {
   const queryClient = useQueryClient()
   const { toast } = useToast()
 
   return useMutation({
-    mutationFn: async ({ id, ...invoiceData }: { id: string } & Partial<InvoiceUpdate>) => {
+    mutationFn: async ({ id, ...invoiceData }: UpdateInvoiceData & { id: string }) => {
       console.log('Updating invoice:', id, invoiceData)
       
       const { data, error } = await supabase
@@ -194,38 +135,45 @@ export function useUpdateInvoice() {
   })
 }
 
-export function useDeleteInvoice() {
+export function useMarkInvoicePaid() {
   const queryClient = useQueryClient()
   const { toast } = useToast()
 
   return useMutation({
-    mutationFn: async (invoiceId: string) => {
-      console.log('Deleting invoice:', invoiceId)
+    mutationFn: async ({ invoiceId, paymentData }: { invoiceId: string; paymentData: PaymentData }) => {
+      console.log('Marking invoice as paid:', invoiceId, paymentData)
       
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('invoices')
-        .delete()
+        .update({
+          status: 'paid',
+          paid_at: new Date().toISOString(),
+          ...paymentData,
+        })
         .eq('id', invoiceId)
+        .select()
+        .single()
 
       if (error) {
-        console.error('Error deleting invoice:', error)
+        console.error('Error marking invoice as paid:', error)
         throw error
       }
 
-      console.log('Deleted invoice:', invoiceId)
+      console.log('Marked invoice as paid:', data)
+      return data as Invoice
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['invoices'] })
       toast({
         title: 'Success',
-        description: 'Invoice deleted successfully',
+        description: 'Invoice marked as paid successfully',
       })
     },
     onError: (error) => {
-      console.error('Error deleting invoice:', error)
+      console.error('Error marking invoice as paid:', error)
       toast({
         title: 'Error',
-        description: 'Failed to delete invoice',
+        description: 'Failed to mark invoice as paid',
         variant: 'destructive',
       })
     },

@@ -96,7 +96,7 @@ export function EditInvoiceModal({ open, onOpenChange, invoice }: EditInvoiceMod
         currency: data.currency,
         issued_at: data.issued_at?.toISOString(),
         due_date: data.due_date?.toISOString(),
-        status: data.status as 'pending' | 'paid' | 'overdue',
+        status: data.status,
       }
 
       await updateInvoiceMutation.mutateAsync({ 

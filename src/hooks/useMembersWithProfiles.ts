@@ -8,6 +8,7 @@ export type MemberWithProfile = Database['public']['Tables']['members']['Row'] &
   user_email?: string
   user_first_name?: string
   user_last_name?: string
+  organization_name?: string
 }
 
 export function useMembersWithProfiles() {
@@ -20,7 +21,10 @@ export function useMembersWithProfiles() {
       
       const { data: members, error } = await supabase
         .from('members')
-        .select('*')
+        .select(`
+          *,
+          organizations!inner(name)
+        `)
         .order('created_at', { ascending: false })
 
       if (error) {
@@ -30,7 +34,7 @@ export function useMembersWithProfiles() {
 
       // Get profile data for members who have user_id
       const membersWithProfiles: MemberWithProfile[] = await Promise.all(
-        members.map(async (member) => {
+        members.map(async (member: any) => {
           if (member.user_id) {
             const { data: profileData } = await supabase
               .from('profiles')
@@ -43,11 +47,13 @@ export function useMembersWithProfiles() {
               user_email: profileData?.email || member.invited_email,
               user_first_name: profileData?.first_name,
               user_last_name: profileData?.last_name,
+              organization_name: member.organizations?.name || 'Unknown Organization',
             }
           }
           return {
             ...member,
             user_email: member.invited_email,
+            organization_name: member.organizations?.name || 'Unknown Organization',
           }
         })
       )

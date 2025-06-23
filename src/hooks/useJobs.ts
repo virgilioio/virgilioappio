@@ -141,31 +141,31 @@ export function useUpdateJob() {
   })
 }
 
-export function usePublishJob() {
+export function useArchiveJob() {
   const queryClient = useQueryClient()
   const { toast } = useToast()
-  const { logJobPublished } = useActivityLogger()
+  const { logJobUpdated } = useActivityLogger()
 
   return useMutation({
     mutationFn: async (jobId: string) => {
-      console.log('Publishing job:', jobId)
+      console.log('Archiving job:', jobId)
       
       const { data, error } = await supabase
         .from('jobs')
-        .update({ status: 'published' })
+        .update({ status: 'archived' })
         .eq('id', jobId)
         .select()
         .single()
 
       if (error) {
-        console.error('Error publishing job:', error)
+        console.error('Error archiving job:', error)
         throw error
       }
 
-      console.log('Published job:', data)
+      console.log('Archived job:', data)
       
       // Log activity
-      logJobPublished(data.title, data.id)
+      logJobUpdated(data.title, data.id)
       
       return data as Job
     },
@@ -173,18 +173,37 @@ export function usePublishJob() {
       queryClient.invalidateQueries({ queryKey: ['jobs'] })
       toast({
         title: 'Success',
-        description: 'Job published successfully',
+        description: 'Job archived successfully',
       })
     },
     onError: (error) => {
-      console.error('Error publishing job:', error)
+      console.error('Error archiving job:', error)
       toast({
         title: 'Error',
-        description: 'Failed to publish job',
+        description: 'Failed to archive job',
         variant: 'destructive',
       })
     },
   })
+}
+
+export function useGetJob() {
+  const queryClient = useQueryClient()
+
+  return async (jobId: string): Promise<Job> => {
+    const { data, error } = await supabase
+      .from('jobs')
+      .select('*')
+      .eq('id', jobId)
+      .single()
+
+    if (error) {
+      console.error('Error fetching job:', error)
+      throw error
+    }
+
+    return data as Job
+  }
 }
 
 export function useDeleteJob() {

@@ -6,7 +6,8 @@ import { Sheet, SheetContent } from '@/components/ui/sheet'
 import { ArrowLeft, Archive } from 'lucide-react'
 import { AuthGate } from '@/components/auth/AuthGate'
 import { PermissionGate } from '@/components/auth/PermissionGate'
-import { useJobs, Job } from '@/hooks/useJobs'
+import { useGetJob, useUpdateJob, useArchiveJob } from '@/hooks/useJobs'
+import { useJobsWithOrganization, type JobWithOrganization } from '@/hooks/useJobsWithOrganization'
 import { usePermissions } from '@/hooks/usePermissions'
 import { JobForm } from '@/components/jobs/JobForm'
 import { useCandidates } from '@/hooks/useCandidates'
@@ -26,16 +27,19 @@ export default function JobDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
-  const [job, setJob] = useState<Job | null>(null)
+  const [job, setJob] = useState<JobWithOrganization | null>(null)
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [isCandidateFormOpen, setIsCandidateFormOpen] = useState(false)
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const { getJob, updateJob, archiveJob, isLoading } = useJobs()
+  const getJob = useGetJob()
+  const updateJobMutation = useUpdateJob()
+  const archiveJobMutation = useArchiveJob()
+  const { jobs: jobsWithOrg } = useJobsWithOrganization()
   const { 
     candidates, 
     isLoading: candidatesLoading, 
-    addCandidate, 
+    createCandidate, 
     updateCandidate, 
     deleteCandidate 
   } = useCandidates(id)
@@ -52,14 +56,27 @@ export default function JobDetail() {
     if (id) {
       loadJob()
     }
-  }, [id])
+  }, [id, jobsWithOrg])
 
   const loadJob = async () => {
     if (!id) return
     
     try {
+      // First try to get the job with organization data
+      const jobWithOrg = jobsWithOrg?.find(j => j.id === id)
+      if (jobWithOrg) {
+        setJob(jobWithOrg)
+        return
+      }
+
+      // Fallback to regular job fetch
       const jobData = await getJob(id)
-      setJob(jobData)
+      // Create a JobWithOrganization object with required organization_name
+      const jobWithOrgData: JobWithOrganization = {
+        ...jobData,
+        organization_name: 'Unknown Organization'
+      }
+      setJob(jobWithOrgData)
     } catch (error) {
       console.error('Failed to load job:', error)
       navigate('/jobs')
@@ -80,7 +97,7 @@ export default function JobDetail() {
     
     if (confirm('Are you sure you want to archive this job?')) {
       try {
-        await archiveJob(job.id)
+        await archiveJobMutation.mutateAsync(job.id)
         await loadJob()
       } catch (error) {
         console.error('Failed to archive job:', error)
@@ -90,7 +107,7 @@ export default function JobDetail() {
 
   const handleFormSubmit = async (data: any) => {
     if (!job) return
-    await updateJob(job.id, data)
+    await updateJobMutation.mutateAsync({ id: job.id, ...data })
     await loadJob()
   }
 
@@ -106,16 +123,16 @@ export default function JobDetail() {
 
   const handleCandidateFormSubmit = async (data: any) => {
     if (selectedCandidate) {
-      await updateCandidate(selectedCandidate.id, data)
+      await updateCandidate.mutateAsync({ id: selectedCandidate.id, ...data })
     } else {
-      await addCandidate(data)
+      await createCandidate.mutateAsync(data)
     }
     setIsCandidateFormOpen(false)
     setSelectedCandidate(null)
   }
 
   const handleDeleteCandidate = async (candidateId: string) => {
-    await deleteCandidate(candidateId)
+    await deleteCandidate.mutateAsync(candidateId)
   }
 
   const handleBackToJobs = () => {
@@ -142,7 +159,7 @@ export default function JobDetail() {
         )
       case 'assignments':
         return canViewAssignments ? (
-          <JobAssignmentsPanel jobId={job.id} jobTitle={job.title} />
+          <JobAssignmentsPanel job={{ id: job.id, hiring_team: job.hiring_team }} />
         ) : (
           <div className="p-6 text-center">
             <p className="text-text-secondary">You don't have permission to view job assignments.</p>
@@ -153,7 +170,7 @@ export default function JobDetail() {
     }
   }
 
-  if (isLoading || !job) {
+  if (!job) {
     return (
       <AuthGate>
         <PermissionGate permission="canViewJobs">
@@ -247,26 +264,26 @@ export default function JobDetail() {
             </Sheet>
 
             {/* Forms */}
-            <JobForm
-              isOpen={isFormOpen}
-              onClose={() => setIsFormOpen(false)}
-              onSubmit={handleFormSubmit}
-              job={job}
-              isLoading={isLoading}
-            />
-
             {job && (
-              <CandidateForm
-                isOpen={isCandidateFormOpen}
-                onClose={() => {
-                  setIsCandidateFormOpen(false)
-                  setSelectedCandidate(null)
-                }}
-                onSubmit={handleCandidateFormSubmit}
-                candidate={selectedCandidate}
-                jobId={job.id}
-                isLoading={candidatesLoading}
-              />
+              <>
+                <JobForm
+                  onSubmit={handleFormSubmit}
+                  onCancel={() => setIsFormOpen(false)}
+                  isLoading={false}
+                />
+
+                <CandidateForm
+                  isOpen={isCandidateFormOpen}
+                  onClose={() => {
+                    setIsCandidateFormOpen(false)
+                    setSelectedCandidate(null)
+                  }}
+                  onSubmit={handleCandidateFormSubmit}
+                  candidate={selectedCandidate}
+                  jobId={job.id}
+                  isLoading={candidatesLoading}
+                />
+              </>
             )}
           </div>
         </JobAssignmentGuard>
