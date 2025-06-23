@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ArrowLeft, Archive } from 'lucide-react'
 import { AuthGate } from '@/components/auth/AuthGate'
 import { PermissionGate } from '@/components/auth/PermissionGate'
@@ -10,7 +11,7 @@ import { useGetJob, useUpdateJob, useArchiveJob } from '@/hooks/useJobs'
 import { useJobsWithOrganization, type JobWithOrganization } from '@/hooks/useJobsWithOrganization'
 import { usePermissions } from '@/hooks/usePermissions'
 import { JobForm } from '@/components/jobs/JobForm'
-import { useCandidates } from '@/hooks/useCandidates'
+import { useCandidates, useCreateCandidate, useUpdateCandidate, useDeleteCandidate } from '@/hooks/useCandidates'
 import { CandidateTable } from '@/components/candidates/CandidateTable'
 import { CandidateForm } from '@/components/candidates/CandidateForm'
 import { JobDetailSidebar } from '@/components/jobs/JobDetailSidebar'
@@ -38,11 +39,11 @@ export default function JobDetail() {
   const { jobs: jobsWithOrg } = useJobsWithOrganization()
   const { 
     candidates, 
-    isLoading: candidatesLoading, 
-    createCandidate, 
-    updateCandidate, 
-    deleteCandidate 
+    isLoading: candidatesLoading
   } = useCandidates(id)
+  const createCandidateMutation = useCreateCandidate()
+  const updateCandidateMutation = useUpdateCandidate()
+  const deleteCandidateMutation = useDeleteCandidate()
   const permissions = usePermissions()
 
   // Get tab from URL or default to 'overview'
@@ -82,7 +83,8 @@ export default function JobDetail() {
       const jobWithOrgData: JobWithOrganization = {
         ...jobData,
         level: mapLevel(jobData.level),
-        organization_name: 'Unknown Organization'
+        organization_name: 'Unknown Organization',
+        hiring_team: Array.isArray(jobData.hiring_team) ? jobData.hiring_team : []
       }
       setJob(jobWithOrgData)
     } catch (error) {
@@ -117,6 +119,7 @@ export default function JobDetail() {
     if (!job) return
     await updateJobMutation.mutateAsync({ id: job.id, ...data })
     await loadJob()
+    setIsFormOpen(false)
   }
 
   const handleAddCandidate = () => {
@@ -131,16 +134,16 @@ export default function JobDetail() {
 
   const handleCandidateFormSubmit = async (data: any) => {
     if (selectedCandidate) {
-      await updateCandidate.mutateAsync({ id: selectedCandidate.id, ...data })
+      await updateCandidateMutation.mutateAsync({ id: selectedCandidate.id, ...data })
     } else {
-      await createCandidate.mutateAsync(data)
+      await createCandidateMutation.mutateAsync(data)
     }
     setIsCandidateFormOpen(false)
     setSelectedCandidate(null)
   }
 
   const handleDeleteCandidate = async (candidateId: string) => {
-    await deleteCandidate.mutateAsync(candidateId)
+    await deleteCandidateMutation.mutateAsync(candidateId)
   }
 
   const handleBackToJobs = () => {
@@ -274,12 +277,18 @@ export default function JobDetail() {
             {/* Forms */}
             {job && (
               <>
-                <JobForm
-                  onSubmit={handleFormSubmit}
-                  onCancel={() => setIsFormOpen(false)}
-                  job={job}
-                  isLoading={false}
-                />
+                <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+                  <DialogContent className="mx-4 max-w-2xl">
+                    <DialogHeader>
+                      <DialogTitle>Edit Job</DialogTitle>
+                    </DialogHeader>
+                    <JobForm
+                      onSubmit={handleFormSubmit}
+                      onCancel={() => setIsFormOpen(false)}
+                      isLoading={false}
+                    />
+                  </DialogContent>
+                </Dialog>
 
                 <CandidateForm
                   isOpen={isCandidateFormOpen}

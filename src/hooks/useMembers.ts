@@ -11,6 +11,9 @@ export type MemberInsert = Database['public']['Tables']['members']['Insert']
 
 export function useMembers() {
   const { profile } = useUserProfile()
+  const queryClient = useQueryClient()
+  const { toast } = useToast()
+  const { logMemberInvited } = useActivityLogger()
 
   const query = useQuery({
     queryKey: ['members', profile?.organization_id],
@@ -33,23 +36,9 @@ export function useMembers() {
     enabled: !!profile?.organization_id,
   })
 
-  return {
-    members: query.data,
-    isLoading: query.isLoading,
-    error: query.error,
-    refetch: query.refetch,
-  }
-}
-
-export function useInviteMember() {
-  const queryClient = useQueryClient()
-  const { toast } = useToast()
-  const { profile } = useUserProfile()
-  const { logMemberInvited } = useActivityLogger()
-
-  return useMutation({
+  const createMember = useMutation({
     mutationFn: async (memberData: MemberInsert & { invited_email: string }) => {
-      console.log('Inviting member:', memberData)
+      console.log('Creating member:', memberData)
       
       const { data, error } = await supabase
         .from('members')
@@ -62,11 +51,11 @@ export function useInviteMember() {
         .single()
 
       if (error) {
-        console.error('Error inviting member:', error)
+        console.error('Error creating member:', error)
         throw error
       }
 
-      console.log('Invited member:', data)
+      console.log('Created member:', data)
       
       // Log activity
       logMemberInvited(memberData.invited_email)
@@ -75,13 +64,14 @@ export function useInviteMember() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['members'] })
+      queryClient.invalidateQueries({ queryKey: ['members_with_profiles'] })
       toast({
         title: 'Success',
         description: 'Member invited successfully',
       })
     },
     onError: (error) => {
-      console.error('Error inviting member:', error)
+      console.error('Error creating member:', error)
       toast({
         title: 'Error',
         description: 'Failed to invite member',
@@ -89,13 +79,8 @@ export function useInviteMember() {
       })
     },
   })
-}
 
-export function useUpdateMember() {
-  const queryClient = useQueryClient()
-  const { toast } = useToast()
-
-  return useMutation({
+  const updateMember = useMutation({
     mutationFn: async ({ id, ...memberData }: Partial<Member> & { id: string }) => {
       console.log('Updating member:', id, memberData)
       
@@ -116,6 +101,7 @@ export function useUpdateMember() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['members'] })
+      queryClient.invalidateQueries({ queryKey: ['members_with_profiles'] })
       toast({
         title: 'Success',
         description: 'Member updated successfully',
@@ -130,42 +116,92 @@ export function useUpdateMember() {
       })
     },
   })
-}
 
-export function useDeleteMember() {
-  const queryClient = useQueryClient()
-  const { toast } = useToast()
-
-  return useMutation({
+  const deactivateMember = useMutation({
     mutationFn: async (memberId: string) => {
-      console.log('Deleting member:', memberId)
+      console.log('Deactivating member:', memberId)
       
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('members')
-        .delete()
+        .update({ user_status: 'inactive' })
         .eq('id', memberId)
+        .select()
+        .single()
 
       if (error) {
-        console.error('Error deleting member:', error)
+        console.error('Error deactivating member:', error)
         throw error
       }
 
-      console.log('Deleted member:', memberId)
+      console.log('Deactivated member:', data)
+      return data as Member
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['members'] })
+      queryClient.invalidateQueries({ queryKey: ['members_with_profiles'] })
       toast({
         title: 'Success',
-        description: 'Member removed successfully',
+        description: 'Member deactivated successfully',
       })
     },
     onError: (error) => {
-      console.error('Error deleting member:', error)
+      console.error('Error deactivating member:', error)
       toast({
         title: 'Error',
-        description: 'Failed to remove member',
+        description: 'Failed to deactivate member',
         variant: 'destructive',
       })
     },
   })
+
+  const resendInvitation = useMutation({
+    mutationFn: async ({ memberId, email }: { memberId: string; email: string }) => {
+      console.log('Resending invitation for member:', memberId, email)
+      
+      // Update the invite_expires_at to extend the invitation
+      const { data, error } = await supabase
+        .from('members')
+        .update({ 
+          invite_expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7 days from now
+        })
+        .eq('id', memberId)
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Error resending invitation:', error)
+        throw error
+      }
+
+      console.log('Resent invitation:', data)
+      return data as Member
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['members'] })
+      queryClient.invalidateQueries({ queryKey: ['members_with_profiles'] })
+      toast({
+        title: 'Success',
+        description: 'Invitation resent successfully',
+      })
+    },
+    onError: (error) => {
+      console.error('Error resending invitation:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to resend invitation',
+        variant: 'destructive',
+      })
+    },
+  })
+
+  return {
+    members: query.data,
+    isLoading: query.isLoading,
+    error: query.error,
+    refetch: query.refetch,
+    createMember,
+    updateMember,
+    deactivateMember,
+    resendInvitation,
+  }
 }

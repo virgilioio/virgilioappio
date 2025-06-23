@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -127,6 +126,7 @@ export function EditInvoiceModal({ open, onOpenChange, invoice }: EditInvoiceMod
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            
             <FormField
               control={form.control}
               name="title"

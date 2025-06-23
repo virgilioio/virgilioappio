@@ -81,6 +81,7 @@ export default function Jobs() {
     } else {
       await createJobMutation.mutateAsync(data)
     }
+    setIsFormOpen(false)
   }
 
   const handleJobRequestSubmit = async (data: any) => {
@@ -126,12 +127,18 @@ export default function Jobs() {
               onRequestJob={handleRequestJob}
             />
 
-            <JobForm
-              onSubmit={handleFormSubmit}
-              onCancel={() => setIsFormOpen(false)}
-              job={selectedJob}
-              isLoading={isLoading}
-            />
+            <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+              <DialogContent className="mx-4 max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle>{selectedJob ? 'Edit Job' : 'Create New Job'}</DialogTitle>
+                </DialogHeader>
+                <JobForm
+                  onSubmit={handleFormSubmit}
+                  onCancel={() => setIsFormOpen(false)}
+                  isLoading={isLoading}
+                />
+              </DialogContent>
+            </Dialog>
 
             <ComplianceCheckDialog
               open={showComplianceDialog}

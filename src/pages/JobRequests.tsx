@@ -1,4 +1,3 @@
-
 import { useState } from 'react'
 import { useJobRequestsWithOrganization } from '@/hooks/useJobRequestsWithOrganization'
 import { useJobRequests } from '@/hooks/useJobRequests'
@@ -127,6 +126,7 @@ export default function JobRequests() {
                   <DialogTitle>Job Request Details</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4">
+                  
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="min-w-0">
                       <h3 className="font-semibold text-lg truncate">{selectedRequest.title}</h3>

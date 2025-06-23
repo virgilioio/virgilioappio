@@ -6,29 +6,24 @@ import { AuthGate } from '@/components/auth/AuthGate'
 import { PermissionGate } from '@/components/auth/PermissionGate'
 import { MembersTable } from '@/components/members/MembersTable'
 import { MemberForm } from '@/components/members/MemberForm'
-import { useMembers, Member } from '@/hooks/useMembers'
+import { useMembers } from '@/hooks/useMembers'
+import { useMembersWithProfiles, type MemberWithProfile } from '@/hooks/useMembersWithProfiles'
 import { Users, Plus } from 'lucide-react'
 
 export default function Members() {
   const [isFormOpen, setIsFormOpen] = useState(false)
-  const [selectedMember, setSelectedMember] = useState<Member | null>(null)
+  const [selectedMember, setSelectedMember] = useState<MemberWithProfile | null>(null)
   const [deactivateMemberId, setDeactivateMemberId] = useState<string | null>(null)
   
-  const {
-    members,
-    isLoading,
-    createMember,
-    updateMember,
-    deactivateMember,
-    resendInvitation
-  } = useMembers()
+  const { members, isLoading } = useMembersWithProfiles()
+  const { createMember, updateMember, deactivateMember, resendInvitation } = useMembers()
 
   const handleCreateNew = () => {
     setSelectedMember(null)
     setIsFormOpen(true)
   }
 
-  const handleEdit = (member: Member) => {
+  const handleEdit = (member: MemberWithProfile) => {
     setSelectedMember(member)
     setIsFormOpen(true)
   }
@@ -39,21 +34,21 @@ export default function Members() {
 
   const handleConfirmDeactivate = async () => {
     if (deactivateMemberId) {
-      await deactivateMember(deactivateMemberId)
+      await deactivateMember.mutateAsync(deactivateMemberId)
       setDeactivateMemberId(null)
     }
   }
 
   const handleFormSubmit = async (data: any) => {
     if (selectedMember) {
-      await updateMember(selectedMember.id, data)
+      await updateMember.mutateAsync({ id: selectedMember.id, ...data })
     } else {
-      await createMember(data)
+      await createMember.mutateAsync(data)
     }
   }
 
   const handleResendInvitation = async (memberId: string, email: string) => {
-    await resendInvitation(memberId, email)
+    await resendInvitation.mutateAsync({ memberId, email })
   }
 
   return (
@@ -78,7 +73,7 @@ export default function Members() {
             </div>
 
             <MembersTable
-              members={members}
+              members={members || []}
               isLoading={isLoading}
               onEdit={handleEdit}
               onDeactivate={handleDeactivate}
