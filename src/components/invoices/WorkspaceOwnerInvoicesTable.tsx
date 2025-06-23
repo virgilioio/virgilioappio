@@ -45,7 +45,7 @@ export function WorkspaceOwnerInvoicesTable({ invoices, isLoading }: WorkspaceOw
   // Filter invoices based on all filters
   const filteredInvoices = filterInvoices(invoices || [], {
     searchTerm,
-    status: statusFilter,
+    statuses: statusFilter === 'all' ? [] : [statusFilter],
     selectedMonth
   })
 

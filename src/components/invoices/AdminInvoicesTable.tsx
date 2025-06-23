@@ -1,4 +1,3 @@
-
 import { useState } from 'react'
 import { MoreHorizontal, Download, Edit, Trash2, CheckCircle, FileText, Calendar, DollarSign, Search, Filter } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -51,8 +50,8 @@ export function AdminInvoicesTable({ invoices, isLoading }: AdminInvoicesTablePr
   // Filter invoices based on all filters
   const filteredInvoices = filterInvoices(invoices || [], {
     searchTerm,
-    status: statusFilter,
-    organizationId: organizationFilter,
+    statuses: statusFilter === 'all' ? [] : [statusFilter],
+    organizationIds: organizationFilter === 'all' ? [] : [organizationFilter],
     selectedMonth
   })
 
