@@ -6,14 +6,14 @@ import { useUserProfile } from './useUserProfile'
 import { useActivityLogger } from './useActivityLogger'
 import type { Database } from '@/integrations/supabase/types'
 
-type Job = Database['public']['Tables']['jobs']['Row']
-type JobInsert = Database['public']['Tables']['jobs']['Insert']
-type JobUpdate = Database['public']['Tables']['jobs']['Update']
+export type Job = Database['public']['Tables']['jobs']['Row']
+export type JobInsert = Database['public']['Tables']['jobs']['Insert']
+export type JobUpdate = Database['public']['Tables']['jobs']['Update']
 
 export function useJobs() {
   const { profile } = useUserProfile()
 
-  return useQuery({
+  const query = useQuery({
     queryKey: ['jobs', profile?.organization_id],
     queryFn: async () => {
       console.log('Fetching jobs for organization:', profile?.organization_id)
@@ -33,6 +33,13 @@ export function useJobs() {
     },
     enabled: !!profile?.organization_id,
   })
+
+  return {
+    jobs: query.data,
+    isLoading: query.isLoading,
+    error: query.error,
+    refetch: query.refetch,
+  }
 }
 
 export function useCreateJob() {

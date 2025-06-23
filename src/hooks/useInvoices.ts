@@ -6,14 +6,14 @@ import { useUserProfile } from './useUserProfile'
 import { useActivityLogger } from './useActivityLogger'
 import type { Database } from '@/integrations/supabase/types'
 
-type Invoice = Database['public']['Tables']['invoices']['Row']
-type InvoiceInsert = Database['public']['Tables']['invoices']['Insert']
-type InvoiceUpdate = Database['public']['Tables']['invoices']['Update']
+export type Invoice = Database['public']['Tables']['invoices']['Row']
+export type InvoiceInsert = Database['public']['Tables']['invoices']['Insert']
+export type InvoiceUpdate = Database['public']['Tables']['invoices']['Update']
 
 export function useInvoices() {
   const { profile } = useUserProfile()
 
-  return useQuery({
+  const query = useQuery({
     queryKey: ['invoices', profile?.organization_id],
     queryFn: async () => {
       console.log('Fetching invoices for organization:', profile?.organization_id)
@@ -33,6 +33,13 @@ export function useInvoices() {
     },
     enabled: !!profile?.organization_id,
   })
+
+  return {
+    invoices: query.data,
+    isLoading: query.isLoading,
+    error: query.error,
+    refetch: query.refetch,
+  }
 }
 
 export function useCreateInvoice() {

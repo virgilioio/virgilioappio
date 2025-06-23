@@ -6,12 +6,13 @@ import { useUserProfile } from './useUserProfile'
 import { useActivityLogger } from './useActivityLogger'
 import type { Database } from '@/integrations/supabase/types'
 
-type JobCandidate = Database['public']['Tables']['job_candidates']['Row']
-type JobCandidateInsert = Database['public']['Tables']['job_candidates']['Insert']
-type JobCandidateUpdate = Database['public']['Tables']['job_candidates']['Update']
+export type JobCandidate = Database['public']['Tables']['job_candidates']['Row']
+export type Candidate = JobCandidate
+export type JobCandidateInsert = Database['public']['Tables']['job_candidates']['Insert']
+export type JobCandidateUpdate = Database['public']['Tables']['job_candidates']['Update']
 
 export function useCandidates(jobId?: string) {
-  return useQuery({
+  const query = useQuery({
     queryKey: ['candidates', jobId],
     queryFn: async () => {
       console.log('Fetching candidates for job:', jobId)
@@ -37,6 +38,13 @@ export function useCandidates(jobId?: string) {
     },
     enabled: !!jobId,
   })
+
+  return {
+    candidates: query.data,
+    isLoading: query.isLoading,
+    error: query.error,
+    refetch: query.refetch,
+  }
 }
 
 export function useCreateCandidate() {

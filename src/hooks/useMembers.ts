@@ -6,13 +6,13 @@ import { useUserProfile } from './useUserProfile'
 import { useActivityLogger } from './useActivityLogger'
 import type { Database } from '@/integrations/supabase/types'
 
-type Member = Database['public']['Tables']['members']['Row']
-type MemberInsert = Database['public']['Tables']['members']['Insert']
+export type Member = Database['public']['Tables']['members']['Row']
+export type MemberInsert = Database['public']['Tables']['members']['Insert']
 
 export function useMembers() {
   const { profile } = useUserProfile()
 
-  return useQuery({
+  const query = useQuery({
     queryKey: ['members', profile?.organization_id],
     queryFn: async () => {
       console.log('Fetching members for organization:', profile?.organization_id)
@@ -32,6 +32,13 @@ export function useMembers() {
     },
     enabled: !!profile?.organization_id,
   })
+
+  return {
+    members: query.data,
+    isLoading: query.isLoading,
+    error: query.error,
+    refetch: query.refetch,
+  }
 }
 
 export function useInviteMember() {
