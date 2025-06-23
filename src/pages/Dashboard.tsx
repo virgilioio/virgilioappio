@@ -15,6 +15,11 @@ export default function Dashboard() {
   const { profile, isLoading } = useUserProfile()
   const permissions = usePermissions()
 
+  // Check what content will be visible
+  const hasBillingContent = permissions.canViewBilling
+  const hasJobContent = permissions.canViewJobs || permissions.canCreateJobs || permissions.canRequestJobs
+  const hasQuickAccess = permissions.canCreateJobs || permissions.canRequestJobs || permissions.canManageMembers
+  
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto py-6 sm:py-8 lg:py-12 px-4 sm:px-6 lg:px-8">
@@ -22,22 +27,57 @@ export default function Dashboard() {
           <div className="space-y-6">
             <WelcomeHeader profile={profile} isLoading={isLoading} />
             
-            {/* Two equal columns layout */}
-            <div className="grid gap-6 lg:grid-cols-2">
-              <div className="space-y-6">
-                <PermissionGate permission="canViewBilling">
-                  <PaymentsTracker />
-                  <PaymentHistory />
-                </PermissionGate>
+            {/* Adaptive layout based on available content */}
+            {hasBillingContent ? (
+              // Two column layout when billing content is available
+              <div className="grid gap-6 lg:grid-cols-2">
+                <div className="space-y-6">
+                  <PermissionGate permission="canViewBilling">
+                    <PaymentsTracker />
+                    <PaymentHistory />
+                  </PermissionGate>
+                </div>
+                
+                <div className="space-y-6">
+                  <AdvertisingBanner />
+                  <OnboardingProgress profile={profile} isLoading={isLoading} />
+                  {hasQuickAccess && <QuickAccess permissions={permissions} />}
+                  {hasJobContent && <JobsOverview permissions={permissions} />}
+                </div>
               </div>
-              
-              <div className="space-y-6">
+            ) : (
+              // Single column layout when no billing content
+              <div className="max-w-4xl mx-auto space-y-6">
                 <AdvertisingBanner />
                 <OnboardingProgress profile={profile} isLoading={isLoading} />
-                <QuickAccess permissions={permissions} />
-                <JobsOverview permissions={permissions} />
+                
+                {/* Two column grid for remaining content */}
+                <div className="grid gap-6 md:grid-cols-2">
+                  {hasQuickAccess && (
+                    <div className="space-y-6">
+                      <QuickAccess permissions={permissions} />
+                    </div>
+                  )}
+                  {hasJobContent && (
+                    <div className="space-y-6">
+                      <JobsOverview permissions={permissions} />
+                    </div>
+                  )}
+                </div>
+                
+                {/* If only one of the two components is visible, center it */}
+                {(hasQuickAccess && !hasJobContent) && (
+                  <div className="max-w-md mx-auto">
+                    {/* QuickAccess already rendered above, this is handled by the grid */}
+                  </div>
+                )}
+                {(!hasQuickAccess && hasJobContent) && (
+                  <div className="max-w-md mx-auto">
+                    {/* JobsOverview already rendered above, this is handled by the grid */}
+                  </div>
+                )}
               </div>
-            </div>
+            )}
           </div>
         </InvoiceFilterProvider>
       </div>
