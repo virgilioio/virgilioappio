@@ -22,7 +22,7 @@ export function MembersTab() {
   }
 
   const handleDeactivate = async (id) => {
-    await deactivateMember(id)
+    await deactivateMember.mutateAsync(id)
   }
 
   const handleCreateNew = () => {
@@ -30,19 +30,19 @@ export function MembersTab() {
   }
 
   const handleCreateSubmit = async (data) => {
-    await createMember(data)
+    await createMember.mutateAsync(data)
     setIsCreateModalOpen(false)
   }
 
   const handleEditSubmit = async (data) => {
     if (editingMember) {
-      await updateMember(editingMember.id, data)
+      await updateMember.mutateAsync({ id: editingMember.id, ...data })
       setEditingMember(null)
     }
   }
 
   const handleResendInvitation = async (memberId: string, email: string) => {
-    await resendInvitation(memberId, email)
+    await resendInvitation.mutateAsync({ memberId, email })
   }
 
   // Show debug panel in development

@@ -1,5 +1,6 @@
 
 import { useState } from 'react'
+import { useJobRequestsWithOrganization } from '@/hooks/useJobRequestsWithOrganization'
 import { useJobRequests } from '@/hooks/useJobRequests'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useOrganizationProgress } from '@/hooks/useOrganizationProgress'
@@ -15,13 +16,8 @@ import { Badge } from '@/components/ui/badge'
 import { ListTodo } from 'lucide-react'
 
 export default function JobRequests() {
-  const {
-    jobRequests,
-    isLoading,
-    createJobRequest,
-    approveJobRequest,
-    deleteJobRequest
-  } = useJobRequests()
+  const { jobRequests, isLoading } = useJobRequestsWithOrganization()
+  const { createJobRequest, approveJobRequest, deleteJobRequest } = useJobRequests()
   
   const permissions = usePermissions()
   const { userType } = useAuth()
@@ -41,7 +37,7 @@ export default function JobRequests() {
   }
 
   const handleFormSubmit = async (data: any) => {
-    await createJobRequest(data)
+    await createJobRequest.mutateAsync(data)
     setShowForm(false)
   }
 
@@ -54,12 +50,12 @@ export default function JobRequests() {
   }
 
   const handleApprove = async (id: string) => {
-    await approveJobRequest(id)
+    await approveJobRequest.mutateAsync(id)
   }
 
   const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to delete this job request?')) {
-      await deleteJobRequest(id)
+      await deleteJobRequest.mutateAsync(id)
     }
   }
 

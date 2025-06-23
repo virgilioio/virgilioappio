@@ -90,6 +90,7 @@ export function EditInvoiceModal({ open, onOpenChange, invoice }: EditInvoiceMod
     setIsSubmitting(true)
     try {
       const updateData = {
+        id: invoice.id,
         title: data.title,
         description: data.description,
         amount: parseFloat(data.amount),
@@ -99,10 +100,7 @@ export function EditInvoiceModal({ open, onOpenChange, invoice }: EditInvoiceMod
         status: data.status,
       }
 
-      await updateInvoiceMutation.mutateAsync({ 
-        id: invoice.id, 
-        ...updateData 
-      })
+      await updateInvoiceMutation.mutateAsync(updateData)
       clearPersistedData()
       onOpenChange(false)
     } catch (error) {

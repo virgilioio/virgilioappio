@@ -43,8 +43,16 @@ export function useJobsWithOrganization() {
         throw error
       }
 
+      const mapLevel = (dbLevel: string): 'L1' | 'L2' | 'L3' => {
+        if (dbLevel.startsWith('L1')) return 'L1'
+        if (dbLevel.startsWith('L2')) return 'L2'
+        if (dbLevel.startsWith('L3')) return 'L3'
+        return 'L1' // fallback
+      }
+
       const jobsWithOrg = data.map((job: any) => ({
         ...job,
+        level: mapLevel(job.level),
         organization_name: job.organizations?.name || 'Unknown Organization',
         hiring_team: Array.isArray(job.hiring_team) ? job.hiring_team : []
       }))

@@ -71,9 +71,17 @@ export default function JobDetail() {
 
       // Fallback to regular job fetch
       const jobData = await getJob(id)
-      // Create a JobWithOrganization object with required organization_name
+      // Map the level enum to match our type
+      const mapLevel = (dbLevel: string): 'L1' | 'L2' | 'L3' => {
+        if (dbLevel.startsWith('L1')) return 'L1'
+        if (dbLevel.startsWith('L2')) return 'L2'
+        if (dbLevel.startsWith('L3')) return 'L3'
+        return 'L1' // fallback
+      }
+      
       const jobWithOrgData: JobWithOrganization = {
         ...jobData,
+        level: mapLevel(jobData.level),
         organization_name: 'Unknown Organization'
       }
       setJob(jobWithOrgData)
@@ -269,6 +277,7 @@ export default function JobDetail() {
                 <JobForm
                   onSubmit={handleFormSubmit}
                   onCancel={() => setIsFormOpen(false)}
+                  job={job}
                   isLoading={false}
                 />
 
