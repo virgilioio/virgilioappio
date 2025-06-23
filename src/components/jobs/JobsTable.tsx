@@ -48,7 +48,8 @@ export function JobsTable({ jobs, isLoading, onView, onEdit, onArchive, onCreate
   const filteredJobs = jobs.filter(job => {
     const matchesSearch = job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          job.department?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         job.location?.toLowerCase().includes(searchTerm.toLowerCase())
+                         job.location?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         job.organization_name?.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesStatus = statusFilter === 'all' || job.status === statusFilter
     const matchesLevel = levelFilter === 'all' || job.level === levelFilter
     
@@ -201,6 +202,8 @@ export function JobsTable({ jobs, isLoading, onView, onEdit, onArchive, onCreate
                         <span>{job.department || 'No dept'}</span>
                         <span>•</span>
                         <span>{job.location || 'Remote'}</span>
+                        <span>•</span>
+                        <span>{job.organization_name || 'Unknown Org'}</span>
                       </div>
                       <div className="flex items-center gap-2 mt-3">
                         <Badge variant={getStatusBadgeVariant(job.status)} className="text-xs">
@@ -353,6 +356,7 @@ export function JobsTable({ jobs, isLoading, onView, onEdit, onArchive, onCreate
                   <TableHead className="hidden sm:table-cell">Level</TableHead>
                   <TableHead className="hidden md:table-cell">Department</TableHead>
                   <TableHead className="hidden lg:table-cell">Location</TableHead>
+                  <TableHead className="hidden xl:table-cell">Organization</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="hidden sm:table-cell">Created</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
@@ -367,6 +371,11 @@ export function JobsTable({ jobs, isLoading, onView, onEdit, onArchive, onCreate
                     <TableCell className="hidden sm:table-cell">{job.level}</TableCell>
                     <TableCell className="hidden md:table-cell">{job.department || '-'}</TableCell>
                     <TableCell className="hidden lg:table-cell">{job.location || '-'}</TableCell>
+                    <TableCell className="hidden xl:table-cell">
+                      <div className="truncate max-w-[150px]" title={job.organization_name}>
+                        {job.organization_name || 'Unknown'}
+                      </div>
+                    </TableCell>
                     <TableCell>
                       <Badge variant={getStatusBadgeVariant(job.status)}>
                         {job.status}
