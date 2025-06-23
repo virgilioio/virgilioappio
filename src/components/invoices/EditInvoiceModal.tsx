@@ -51,7 +51,7 @@ type FormData = z.infer<typeof formSchema>
 interface EditInvoiceModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  invoice: Invoice
+  invoice: Invoice | null
 }
 
 export function EditInvoiceModal({ open, onOpenChange, invoice }: EditInvoiceModalProps) {
@@ -73,11 +73,11 @@ export function EditInvoiceModal({ open, onOpenChange, invoice }: EditInvoiceMod
     },
   })
 
-  // Add form persistence
+  // Add form persistence only when invoice exists and modal is open
   const { clearPersistedData } = useFormPersistence({
-    storageKey: `edit-invoice-form-${invoice.id}`,
+    storageKey: invoice ? `edit-invoice-form-${invoice.id}` : 'edit-invoice-form-temp',
     form,
-    enabled: open
+    enabled: open && !!invoice
   })
 
   // Update form when invoice changes
@@ -97,6 +97,8 @@ export function EditInvoiceModal({ open, onOpenChange, invoice }: EditInvoiceMod
   }, [invoice, open, form])
 
   const onSubmit = async (data: FormData) => {
+    if (!invoice) return
+    
     setIsSubmitting(true)
     try {
       const updateData = {
@@ -126,6 +128,11 @@ export function EditInvoiceModal({ open, onOpenChange, invoice }: EditInvoiceMod
     onOpenChange(false)
   }
 
+  // Don't render if no invoice is provided
+  if (!invoice) {
+    return null
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
@@ -153,11 +160,11 @@ export function EditInvoiceModal({ open, onOpenChange, invoice }: EditInvoiceMod
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {organizations.map((org) => (
+                        {organizations?.map((org) => (
                           <SelectItem key={org.id} value={org.id}>
                             {org.name} ({org.country})
                           </SelectItem>
-                        ))}
+                        )) || []}
                       </SelectContent>
                     </Select>
                     <FormMessage />
