@@ -39,7 +39,7 @@ interface PaymentModalProps {
 }
 
 export function PaymentModal({ open, onOpenChange, invoice, onPaymentComplete }: PaymentModalProps) {
-  const { markInvoiceAsPaid } = useMarkInvoicePaid()
+  const markInvoiceAsPaidMutation = useMarkInvoicePaid()
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const form = useForm<FormData>({
@@ -60,7 +60,7 @@ export function PaymentModal({ open, onOpenChange, invoice, onPaymentComplete }:
         payment_notes: data.payment_notes,
       }
 
-      await markInvoiceAsPaid({ 
+      await markInvoiceAsPaidMutation.mutateAsync({ 
         invoiceId: invoice.id, 
         paymentData 
       })

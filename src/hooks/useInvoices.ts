@@ -158,13 +158,13 @@ export function useUpdateInvoice() {
   const { toast } = useToast()
 
   return useMutation({
-    mutationFn: async (invoiceId: string, invoiceData: Partial<InvoiceUpdate>) => {
-      console.log('Updating invoice:', invoiceId, invoiceData)
+    mutationFn: async ({ id, ...invoiceData }: { id: string } & Partial<InvoiceUpdate>) => {
+      console.log('Updating invoice:', id, invoiceData)
       
       const { data, error } = await supabase
         .from('invoices')
         .update(invoiceData)
-        .eq('id', invoiceId)
+        .eq('id', id)
         .select()
         .single()
 

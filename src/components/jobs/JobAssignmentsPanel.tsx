@@ -1,184 +1,114 @@
 import { useState } from 'react'
-import { Badge } from '@/components/ui/badge'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { ScrollArea } from '@/components/ui/scroll-area'
-import { Check, ChevronsUpDown, UserPlus, UserMinus, Loader2 } from 'lucide-react'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { ScrollArea } from "@/components/ui/scroll-area"
 import { Button } from '@/components/ui/button'
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-  CommandSeparator,
-} from "@/components/ui/command"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
-import { useToast } from '@/hooks/use-toast'
-import { useUpdateJob } from '@/hooks/useJobs'
 import { useMembersWithProfiles } from '@/hooks/useMembersWithProfiles'
-import type { Job } from '@/hooks/useJobs'
+import { useUpdateJob } from '@/hooks/useJobs'
 
 interface JobAssignmentsPanelProps {
-  job: Job
-}
-
-interface HiringTeamMember {
-  memberId: string
-  memberName: string
-  memberAvatar: string
+  job: {
+    id: string
+    hiring_team: string[] | null
+  }
 }
 
 export function JobAssignmentsPanel({ job }: JobAssignmentsPanelProps) {
-  const [open, setOpen] = useState(false)
-  const { toast } = useToast()
-  const { mutate: updateJob, isLoading: updatingJob } = useUpdateJob()
   const { members, isLoading: loadingMembers } = useMembersWithProfiles()
+  const updateJobMutation = useUpdateJob()
+  const [selectedMembers, setSelectedMembers] = useState<string[]>(
+    Array.isArray(job.hiring_team) ? job.hiring_team : []
+  )
 
-  const [selectedMembers, setSelectedMembers] = useState<string[]>(job.hiring_team || [])
-
-  const toggleMember = (memberId: string) => {
-    if (selectedMembers.includes(memberId)) {
-      setSelectedMembers(selectedMembers.filter(id => id !== memberId))
-    } else {
-      setSelectedMembers([...selectedMembers, memberId])
-    }
+  const handleMemberToggle = (memberId: string) => {
+    setSelectedMembers((prev) => {
+      if (prev.includes(memberId)) {
+        return prev.filter((id) => id !== memberId)
+      } else {
+        return [...prev, memberId]
+      }
+    })
   }
 
-  const handleSaveAssignments = async () => {
-    try {
-      await updateJob({
-        id: job.id,
-        hiring_team: selectedMembers,
-      })
-
-      toast({
-        title: 'Success',
-        description: 'Hiring team assignments updated successfully',
-      })
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to update hiring team assignments',
-        variant: 'destructive',
-      })
-    } finally {
-      setOpen(false)
-    }
+  const handleSave = async () => {
+    await updateJobMutation.mutateAsync({
+      id: job.id,
+      hiring_team: selectedMembers,
+    })
   }
 
-  const getMemberAvatar = (member: any) => {
-    // Assuming you have a way to get the member's avatar URL
-    return `https://avatar.vercel.sh/${member.user_email}.png`
-  }
-
-  const isMemberSelected = (memberId: string) => {
-    return selectedMembers.includes(memberId)
+  if (loadingMembers) {
+    return <div className="text-center py-4">Loading members...</div>
   }
 
   return (
-    <div className="grid gap-4">
-      <h4 className="font-medium text-sm">Hiring Team</h4>
+    <Card>
+      <CardHeader>
+        <CardTitle>Hiring Team Assignments</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div>
+          <h4 className="text-sm font-medium mb-2">Assigned Members</h4>
+          <ScrollArea className="h-[200px] w-full rounded-md border">
+            <div className="p-2 space-y-2">
+              {members
+                ?.filter((member) => selectedMembers.includes(member.user_email || member.invited_email || ''))
+                .map((member) => {
+                  const memberName = `${member.user_first_name || ''} ${member.user_last_name || ''}`.trim()
+                  const displayName = memberName || member.user_email || member.invited_email || 'Unknown Member'
 
-      <div className="rounded-md border bg-popover text-popover-foreground">
-        <Popover open={open} onOpenChange={setOpen}>
-          <PopoverTrigger asChild className="w-full">
-            <Button
-              variant="outline"
-              role="combobox"
-              aria-expanded={open}
-              className="w-full justify-between text-sm"
-            >
-              {selectedMembers.length > 0 ? (
-                <div className="flex items-center gap-1.5">
-                  {selectedMembers.slice(0, 2).map(memberId => {
-                    const member = members?.find(m => m.id === memberId)
-                    if (!member) return null
-
-                    const memberName = `${member.user_first_name || ''} ${member.user_last_name || ''}`.trim()
-                    const memberAvatar = getMemberAvatar(member)
-
-                    return (
-                      <Avatar key={memberId} className="h-5 w-5">
-                        <AvatarImage src={memberAvatar} alt={memberName} />
-                        <AvatarFallback>{memberName?.substring(0, 2).toUpperCase()}</AvatarFallback>
-                      </Avatar>
-                    )
-                  })}
-                  {selectedMembers.length > 2 && (
-                    <Badge variant="secondary" className="text-[0.7rem]">
-                      +{selectedMembers.length - 2}
-                    </Badge>
-                  )}
-                </div>
-              ) : (
-                'Select members...'
+                  return (
+                    <div key={member.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                      <span>{displayName}</span>
+                      <Button variant="outline" size="xs" onClick={() => handleMemberToggle(member.user_email || member.invited_email || '')}>
+                        Remove
+                      </Button>
+                    </div>
+                  )
+                })}
+              {selectedMembers.length === 0 && (
+                <div className="text-center py-4 text-gray-500">No members assigned</div>
               )}
-              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-[300px] p-0" align="start">
-            <Command>
-              <CommandInput placeholder="Search members..." />
-              <CommandList>
-                <CommandEmpty>No members found.</CommandEmpty>
-                <CommandGroup heading="Members">
-                  {loadingMembers ? (
-                    <CommandItem className="justify-center">
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Loading...
-                    </CommandItem>
-                  ) : (
-                    members?.map((member) => {
-                      const memberName = `${member.user_first_name || ''} ${member.user_last_name || ''}`.trim()
-                      const memberAvatar = getMemberAvatar(member)
-                      const isSelected = isMemberSelected(member.id)
+            </div>
+          </ScrollArea>
+        </div>
 
-                      return (
-                        <CommandItem
-                          key={member.id}
-                          onSelect={() => toggleMember(member.id)}
-                        >
-                          <Avatar className="mr-2 h-5 w-5">
-                            <AvatarImage src={memberAvatar} alt={memberName} />
-                            <AvatarFallback>{memberName?.substring(0, 2).toUpperCase()}</AvatarFallback>
-                          </Avatar>
-                          <span>{memberName}</span>
-                          {isSelected && (
-                            <Check className="ml-auto h-4 w-4" />
-                          )}
-                        </CommandItem>
-                      )
-                    })
-                  )}
-                </CommandGroup>
-                <CommandSeparator />
-                <div className="p-2">
-                  <Button
-                    variant="primary"
-                    className="w-full"
-                    onClick={handleSaveAssignments}
-                    disabled={updatingJob}
-                  >
-                    {updatingJob ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Updating...
-                      </>
-                    ) : (
-                      'Save Assignments'
-                    )}
-                  </Button>
-                </div>
-              </CommandList>
-            </Command>
-          </PopoverContent>
-        </Popover>
-      </div>
-    </div>
+        <div>
+          <h4 className="text-sm font-medium mb-2">Available Members</h4>
+          <ScrollArea className="h-[200px] w-full rounded-md border">
+            <div className="p-2 space-y-2">
+              {members
+                ?.filter((member) => !selectedMembers.includes(member.user_email || member.invited_email || ''))
+                .map((member) => {
+                  const memberName = `${member.user_first_name || ''} ${member.user_last_name || ''}`.trim()
+                  const displayName = memberName || member.user_email || member.invited_email || 'Unknown Member'
+
+                  return (
+                    <div key={member.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
+                      <span>{displayName}</span>
+                      <Button variant="outline" size="xs" onClick={() => handleMemberToggle(member.user_email || member.invited_email || '')}>
+                        Assign
+                      </Button>
+                    </div>
+                  )
+                })}
+              {members?.filter((member) => !selectedMembers.includes(member.user_email || member.invited_email || '')).length === 0 && (
+                <div className="text-center py-4 text-gray-500">No members available</div>
+              )}
+            </div>
+          </ScrollArea>
+        </div>
+
+        <div className="flex justify-end">
+          <Button 
+            onClick={handleSave} 
+            disabled={updateJobMutation.isPending}
+            variant="default"
+          >
+            {updateJobMutation.isPending ? 'Saving...' : 'Save Changes'}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   )
 }

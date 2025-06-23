@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
@@ -23,26 +24,11 @@ import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Card, CardContent } from '@/components/ui/card'
+import { FormDescription } from '@/components/ui/form'
 import { useToast } from '@/hooks/use-toast'
 import { useUserProfile } from '@/hooks/useUserProfile'
-import { useAgreements } from '@/hooks/useAgreements'
 import { useMembersWithProfiles } from '@/hooks/useMembersWithProfiles'
-import {
-  EditorContent,
-  FloatingMenu,
-  BubbleMenu,
-  useEditor,
-} from '@tiptap/react'
-import StarterKit from '@tiptap/starter-kit'
-import Placeholder from '@tiptap/extension-placeholder'
-import Underline from '@tiptap/extension-underline'
-import Italic from '@tiptap/extension-italic'
-import Bold from '@tiptap/extension-bold'
-import Link from '@tiptap/extension-link'
-import Image from '@tiptap/extension-image'
-import { Color } from '@tiptap/extension-color'
-import TextStyle from '@tiptap/extension-text-style'
-import { cn } from '@/lib/utils'
 
 const formSchema = z.object({
   title: z.string().min(2, {
@@ -58,7 +44,6 @@ const formSchema = z.object({
   salary_min: z.number().optional(),
   salary_max: z.number().optional(),
   currency: z.string().optional(),
-  agreement_id: z.string().optional(),
   hiring_team: z.array(z.string()).optional(),
   is_urgent: z.boolean().default(false),
   notes: z.string().optional(),
@@ -68,18 +53,15 @@ interface JobFormProps {
   onSubmit: (values: z.infer<typeof formSchema>) => Promise<void>
   onCancel: () => void
   isLoading: boolean
-  agreementContent?: string
 }
 
 export function JobForm({
   onSubmit,
   onCancel,
   isLoading,
-  agreementContent,
 }: JobFormProps) {
   const { toast } = useToast()
   const { profile } = useUserProfile()
-  const { agreements } = useAgreements()
   const { members, isLoading: loadingMembers } = useMembersWithProfiles()
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -92,34 +74,10 @@ export function JobForm({
       salary_min: 50000,
       salary_max: 100000,
       currency: 'USD',
-      agreement_id: '',
       hiring_team: [],
       is_urgent: false,
       notes: '',
     },
-  })
-
-  const hiringTeamValue = form.watch('hiring_team')
-  const currentHiringTeam = Array.isArray(hiringTeamValue) ? hiringTeamValue : []
-
-  const editor = useEditor({
-    extensions: [
-      StarterKit,
-      Underline,
-      Italic,
-      Bold,
-      Link.configure({
-        openOnClick: false,
-      }),
-      Image,
-      Color,
-      TextStyle,
-      Placeholder.configure({
-        placeholder: 'Type something here...',
-      }),
-    ],
-    content: agreementContent || '<p>No agreement content loaded</p>',
-    editable: false,
   })
 
   const handleParsedSubmit = async (values: z.infer<typeof formSchema>) => {
@@ -132,23 +90,10 @@ export function JobForm({
       return
     }
 
-    if (!editor) {
-      toast({
-        title: 'Error',
-        description: 'Could not submit job. Agreement content editor not loaded.',
-        variant: 'destructive',
-      })
-      return
-    }
-
-    const processed_agreement_content = editor.getHTML()
-
     await onSubmit({
       ...values,
       salary_min: Number(values.salary_min),
       salary_max: Number(values.salary_max),
-      agreement_id: values.agreement_id || '',
-      processed_agreement_content,
     })
   }
 
@@ -222,8 +167,8 @@ export function JobForm({
                       <Input
                         type="number"
                         placeholder="Min"
-                        defaultValue={50000}
-                        {...field}
+                        value={field.value || ''}
+                        onChange={(e) => field.onChange(Number(e.target.value))}
                       />
                     </FormControl>
                     <FormMessage />
@@ -239,8 +184,8 @@ export function JobForm({
                       <Input
                         type="number"
                         placeholder="Max"
-                        defaultValue={100000}
-                        {...field}
+                        value={field.value || ''}
+                        onChange={(e) => field.onChange(Number(e.target.value))}
                       />
                     </FormControl>
                     <FormMessage />
@@ -273,39 +218,17 @@ export function JobForm({
 
           <FormField
             control={form.control}
-            name="agreement_id"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Agreement</FormLabel>
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <FormControl>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select an agreement" />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {agreements.map((agreement) => (
-                      <SelectItem key={agreement.id} value={agreement.id}>
-                        {agreement.title}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
             name="hiring_team"
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Hiring Team</FormLabel>
                 <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                  multiple
+                  onValueChange={(value) => {
+                    const currentValues = Array.isArray(field.value) ? field.value : []
+                    if (!currentValues.includes(value)) {
+                      field.onChange([...currentValues, value])
+                    }
+                  }}
                 >
                   <FormControl>
                     <SelectTrigger>
@@ -382,111 +305,6 @@ export function JobForm({
             </FormItem>
           )}
         />
-
-        <div>
-          <FormLabel>Agreement Content</FormLabel>
-          <Card className="border-none shadow-none">
-            <CardContent>
-              <div className="border rounded-md bg-muted/50">
-                {editor && (
-                  <>
-                    <BubbleMenu editor={editor}>
-                      <div className="flex space-x-2 bg-white rounded p-1">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => editor.chain().focus().toggleBold().run()}
-                          className={cn(
-                            editor.isActive('bold') ? 'bg-accent' : '',
-                            'h-7 px-2'
-                          )}
-                        >
-                          Bold
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => editor.chain().focus().toggleItalic().run()}
-                          className={cn(
-                            editor.isActive('italic') ? 'bg-accent' : '',
-                            'h-7 px-2'
-                          )}
-                        >
-                          Italic
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => editor.chain().focus().toggleUnderline().run()}
-                          className={cn(
-                            editor.isActive('underline') ? 'bg-accent' : '',
-                            'h-7 px-2'
-                          )}
-                        >
-                          Underline
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => editor.chain().focus().unsetLink().run()}
-                          className="h-7 px-2"
-                        >
-                          Unlink
-                        </Button>
-                      </div>
-                    </BubbleMenu>
-                    <FloatingMenu editor={editor}>
-                      <div className="flex space-x-2 bg-white rounded p-1">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => editor.chain().focus().toggleBold().run()}
-                          className={cn(
-                            editor.isActive('bold') ? 'bg-accent' : '',
-                            'h-7 px-2'
-                          )}
-                        >
-                          Bold
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => editor.chain().focus().toggleItalic().run()}
-                          className={cn(
-                            editor.isActive('italic') ? 'bg-accent' : '',
-                            'h-7 px-2'
-                          )}
-                        >
-                          Italic
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => editor.chain().focus().toggleUnderline().run()}
-                          className={cn(
-                            editor.isActive('underline') ? 'bg-accent' : '',
-                            'h-7 px-2'
-                          )}
-                        >
-                          Underline
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => editor.chain().focus().unsetLink().run()}
-                          className="h-7 px-2"
-                        >
-                          Unlink
-                        </Button>
-                      </div>
-                    </FloatingMenu>
-                    <EditorContent editor={editor} className="p-4" />
-                  </>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
 
         <DialogFooter>
           <Button variant="ghost" type="button" onClick={onCancel}>
