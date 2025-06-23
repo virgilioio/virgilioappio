@@ -1036,6 +1036,14 @@ export type Database = {
         Args: { job_id_param: string; user_id_param?: string }
         Returns: boolean
       }
+      safe_delete_user: {
+        Args: { target_user_id: string }
+        Returns: {
+          success: boolean
+          message: string
+          affected_tables: Json
+        }[]
+      }
       test_get_user_organization_id: {
         Args: Record<PropertyKey, never>
         Returns: {
