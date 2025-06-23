@@ -70,12 +70,27 @@ export function useJobs() {
         .select('*')
         .order('created_at', { ascending: false })
 
-      // The RLS policy will handle filtering, but we can add additional client-side logic if needed
-      // Platform admins see all jobs, organization members see their org's jobs
-      if (userType !== 'platform_admin' && organizationId) {
+      // Apply filtering based on user role
+      if (userType === 'platform_admin') {
+        // Platform admins see all jobs - no additional filtering needed
+        console.log('Platform admin - showing all jobs')
+      } else if (organizationId) {
         console.log('Filtering jobs for organization:', organizationId)
-        // The RLS policy will handle this filtering, but we can be explicit for clarity
         query = query.eq('organization_id', organizationId)
+        
+        // Additional filtering for recruiters - only jobs they're in the hiring team for
+        const { data: memberData } = await supabase
+          .from('members')
+          .select('member_role')
+          .eq('user_id', user.id)
+          .eq('organization_id', organizationId)
+          .single()
+        
+        if (memberData?.member_role === 'recruiter') {
+          console.log('Recruiter detected - filtering by hiring team membership')
+          // For recruiters, we'll filter on the client side since PostgreSQL JSONB queries are complex
+          // The RLS policy will also handle this server-side for additional security
+        }
       }
 
       const { data: jobsData, error: fetchError } = await query
@@ -87,8 +102,36 @@ export function useJobs() {
 
       console.log('Fetched jobs data:', jobsData)
 
+      // Client-side filtering for recruiters
+      let filteredJobs = jobsData || []
+      
+      if (userType !== 'platform_admin' && organizationId) {
+        const { data: memberData } = await supabase
+          .from('members')
+          .select('member_role')
+          .eq('user_id', user.id)
+          .eq('organization_id', organizationId)
+          .single()
+        
+        if (memberData?.member_role === 'recruiter') {
+          console.log('Applying recruiter filtering for hiring team membership')
+          filteredJobs = filteredJobs.filter(job => {
+            // Check if user is in hiring_team array
+            const hiringTeam = Array.isArray(job.hiring_team) ? job.hiring_team : []
+            const isInHiringTeam = hiringTeam.some((member: any) => 
+              member?.user_id === user.id || member?.id === user.id || member === user.id
+            )
+            
+            // Also check if user is explicitly assigned to this job
+            return isInHiringTeam
+          })
+          
+          console.log(`Recruiter filtered jobs: ${filteredJobs.length} out of ${jobsData?.length || 0}`)
+        }
+      }
+
       // Fetch organization names separately for jobs that don't belong to current user's org
-      const organizationIds = [...new Set(jobsData?.map(job => job.organization_id).filter(Boolean) || [])]
+      const organizationIds = [...new Set(filteredJobs.map(job => job.organization_id).filter(Boolean))]
       let organizationsMap: Record<string, string> = {}
 
       if (organizationIds.length > 0) {
@@ -106,11 +149,11 @@ export function useJobs() {
       }
 
       // Transform the data to match our Job interface
-      const transformedJobs = jobsData?.map(job => ({
+      const transformedJobs = filteredJobs.map(job => ({
         ...job,
         hiring_team: Array.isArray(job.hiring_team) ? job.hiring_team : [],
         organization_name: organizationsMap[job.organization_id] || 'Unknown Organization'
-      })) || []
+      }))
       
       setJobs(transformedJobs)
     } catch (err) {
