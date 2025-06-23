@@ -53,7 +53,7 @@ type FormData = z.infer<typeof formSchema>
 interface PaymentModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  invoice: Invoice
+  invoice: Invoice | null
   onPaymentLogged?: () => void
 }
 
@@ -88,14 +88,16 @@ export function PaymentModal({
     },
   })
 
-  // Add form persistence
+  // Add form persistence only when invoice exists and modal is open
   const { clearPersistedData } = useFormPersistence({
-    storageKey: `payment-form-${invoice.id}`,
+    storageKey: invoice ? `payment-form-${invoice.id}` : 'payment-form-temp',
     form,
-    enabled: open
+    enabled: open && !!invoice
   })
 
   const handleSubmit = async (data: FormData) => {
+    if (!invoice) return
+    
     setIsLoading(true)
     
     try {
@@ -132,6 +134,11 @@ export function PaymentModal({
       style: 'currency',
       currency: currency
     }).format(amount)
+  }
+
+  // Don't render if no invoice is provided
+  if (!invoice) {
+    return null
   }
 
   return (
