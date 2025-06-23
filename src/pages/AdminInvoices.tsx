@@ -1,10 +1,11 @@
+
 import { useState, useEffect } from 'react'
 import { Plus, Search, Filter, Calendar, Receipt } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { MultiSelect } from '@/components/ui/multi-select'
 import { AdminInvoicesTable } from '@/components/invoices/AdminInvoicesTable'
 import { CreateInvoiceModal } from '@/components/invoices/CreateInvoiceModal'
 import { BillingMetricsDashboard } from '@/components/invoices/BillingMetricsDashboard'
@@ -25,26 +26,26 @@ function AdminInvoicesContent() {
   const { filters, setFilters, setFilteredInvoices } = useInvoiceFilter()
   const [createModalOpen, setCreateModalOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
-  const [statusFilter, setStatusFilter] = useState<string>('all')
-  const [organizationFilter, setOrganizationFilter] = useState<string>('all')
+  const [selectedStatuses, setSelectedStatuses] = useState<string[]>([])
+  const [selectedOrganizations, setSelectedOrganizations] = useState<string[]>([])
   const [selectedMonth, setSelectedMonth] = useState<Date | undefined>()
 
   // Update filter context when local filters change
   useEffect(() => {
     const newFilters = {
       searchTerm,
-      status: statusFilter,
-      organizationId: organizationFilter,
+      statuses: selectedStatuses,
+      organizationIds: selectedOrganizations,
       selectedMonth
     }
     setFilters(newFilters)
-  }, [searchTerm, statusFilter, organizationFilter, selectedMonth, setFilters])
+  }, [searchTerm, selectedStatuses, selectedOrganizations, selectedMonth, setFilters])
 
   // Filter invoices based on all filters
   const filteredInvoices = filterInvoices(invoices, {
     searchTerm,
-    status: statusFilter,
-    organizationId: organizationFilter,
+    statuses: selectedStatuses,
+    organizationIds: selectedOrganizations,
     selectedMonth
   })
 
@@ -57,12 +58,23 @@ function AdminInvoicesContent() {
 
   const clearFilters = () => {
     setSearchTerm('')
-    setStatusFilter('all')
-    setOrganizationFilter('all')
+    setSelectedStatuses([])
+    setSelectedOrganizations([])
     setSelectedMonth(undefined)
   }
 
-  const hasActiveFilters = searchTerm || statusFilter !== 'all' || organizationFilter !== 'all' || selectedMonth
+  const hasActiveFilters = searchTerm || selectedStatuses.length > 0 || selectedOrganizations.length > 0 || selectedMonth
+
+  const statusOptions = [
+    { value: 'pending', label: 'Pending' },
+    { value: 'paid', label: 'Paid' },
+    { value: 'overdue', label: 'Overdue' },
+  ]
+
+  const organizationOptions = organizations.map(org => ({
+    value: org.id,
+    label: `${org.name} (${org.country})`
+  }))
 
   // Get organization name for display
   const getOrganizationName = (orgId: string) => {
@@ -160,31 +172,19 @@ function AdminInvoicesContent() {
                 
                 {/* Filter row */}
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                  <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Filter by status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Status</SelectItem>
-                      <SelectItem value="pending">Pending</SelectItem>
-                      <SelectItem value="paid">Paid</SelectItem>
-                      <SelectItem value="overdue">Overdue</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <MultiSelect
+                    options={statusOptions}
+                    selectedValues={selectedStatuses}
+                    onSelectionChange={setSelectedStatuses}
+                    placeholder="Filter by status"
+                  />
 
-                  <Select value={organizationFilter} onValueChange={setOrganizationFilter}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Filter by organization" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Organizations</SelectItem>
-                      {organizations.map(org => (
-                        <SelectItem key={org.id} value={org.id}>
-                          {org.name} ({org.country})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <MultiSelect
+                    options={organizationOptions}
+                    selectedValues={selectedOrganizations}
+                    onSelectionChange={setSelectedOrganizations}
+                    placeholder="Filter by organization"
+                  />
 
                   <MonthPicker
                     selected={selectedMonth}
@@ -210,14 +210,14 @@ function AdminInvoicesContent() {
                         {selectedMonth.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
                       </Badge>
                     )}
-                    {statusFilter !== 'all' && (
+                    {selectedStatuses.length > 0 && (
                       <Badge variant="secondary">
-                        Status: {statusFilter}
+                        Status: {selectedStatuses.join(', ')}
                       </Badge>
                     )}
-                    {organizationFilter !== 'all' && (
+                    {selectedOrganizations.length > 0 && (
                       <Badge variant="secondary">
-                        Org: {getOrganizationName(organizationFilter)}
+                        Orgs: {selectedOrganizations.length} selected
                       </Badge>
                     )}
                     {searchTerm && (

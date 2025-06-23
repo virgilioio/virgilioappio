@@ -11,7 +11,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { MultiSelect } from '@/components/ui/multi-select'
 import { Button } from '@/components/ui/button'
 import { MonthPicker } from '@/components/ui/month-picker'
 import { useInvoices, Invoice } from '@/hooks/useInvoices'
@@ -30,23 +30,23 @@ export function InvoicesTable() {
   const [uploadModalOpen, setUploadModalOpen] = useState(false)
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
-  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [selectedStatuses, setSelectedStatuses] = useState<string[]>([])
   const [selectedMonth, setSelectedMonth] = useState<Date | undefined>()
 
   // Update filter context when local filters change
   useEffect(() => {
     const newFilters = {
       searchTerm,
-      status: statusFilter,
+      statuses: selectedStatuses,
       selectedMonth
     }
     setFilters(newFilters)
-  }, [searchTerm, statusFilter, selectedMonth, setFilters])
+  }, [searchTerm, selectedStatuses, selectedMonth, setFilters])
 
   // Filter invoices based on all filters
   const filteredInvoices = filterInvoices(invoices, {
     searchTerm,
-    status: statusFilter,
+    statuses: selectedStatuses,
     selectedMonth
   })
 
@@ -56,13 +56,19 @@ export function InvoicesTable() {
   }, [filteredInvoices, setFilteredInvoices])
 
   const stats = getInvoiceStats(filteredInvoices)
-  const hasActiveFilters = searchTerm || statusFilter !== 'all' || selectedMonth
+  const hasActiveFilters = searchTerm || selectedStatuses.length > 0 || selectedMonth
 
   const clearFilters = () => {
     setSearchTerm('')
-    setStatusFilter('all')
+    setSelectedStatuses([])
     setSelectedMonth(undefined)
   }
+
+  const statusOptions = [
+    { value: 'pending', label: 'Pending' },
+    { value: 'paid', label: 'Paid' },
+    { value: 'overdue', label: 'Overdue' },
+  ]
 
   // Add sorting functionality  
   const { sortedData: sortedInvoices, sortConfig, requestSort } = useSortableTable(
@@ -196,17 +202,13 @@ export function InvoicesTable() {
                         className="pl-10"
                       />
                     </div>
-                    <Select value={statusFilter} onValueChange={setStatusFilter}>
-                      <SelectTrigger className="w-full sm:w-[140px]">
-                        <SelectValue placeholder="Status" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Status</SelectItem>
-                        <SelectItem value="pending">Pending</SelectItem>
-                        <SelectItem value="paid">Paid</SelectItem>
-                        <SelectItem value="overdue">Overdue</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <MultiSelect
+                      options={statusOptions}
+                      selectedValues={selectedStatuses}
+                      onSelectionChange={setSelectedStatuses}
+                      placeholder="Filter by status"
+                      className="w-full sm:w-[160px]"
+                    />
                     <MonthPicker
                       selected={selectedMonth}
                       onSelect={setSelectedMonth}
@@ -226,9 +228,9 @@ export function InvoicesTable() {
                             {selectedMonth.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
                           </Badge>
                         )}
-                        {statusFilter !== 'all' && (
+                        {selectedStatuses.length > 0 && (
                           <Badge variant="secondary">
-                            Status: {statusFilter}
+                            Status: {selectedStatuses.join(', ')}
                           </Badge>
                         )}
                         {searchTerm && (

@@ -1,9 +1,9 @@
-
 import { useState } from 'react'
 import { Plus, Search, Filter } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { MultiSelect } from '@/components/ui/multi-select'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Receipt } from 'lucide-react'
 import { AdminInvoicesTable } from '@/components/invoices/AdminInvoicesTable'
@@ -20,9 +20,9 @@ export function BillingTab() {
   const { canManageInvoices, canViewBilling, isPlatformAdmin, isBillingMember } = usePermissions()
   const [createModalOpen, setCreateModalOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
-  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [selectedStatuses, setSelectedStatuses] = useState<string[]>([])
   const [monthFilter, setMonthFilter] = useState<string>('all')
-  const [organizationFilter, setOrganizationFilter] = useState<string>('all')
+  const [selectedOrganizations, setSelectedOrganizations] = useState<string[]>([])
 
   console.log('BillingTab permissions:', {
     canManageInvoices,
@@ -38,8 +38,8 @@ export function BillingTab() {
   const filteredInvoices = showAdminView ? invoices.filter(invoice => {
     const matchesSearch = invoice.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          invoice.organization_id.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesStatus = statusFilter === 'all' || invoice.status === statusFilter
-    const matchesOrganization = organizationFilter === 'all' || invoice.organization_id === organizationFilter
+    const matchesStatus = selectedStatuses.length === 0 || selectedStatuses.includes(invoice.status)
+    const matchesOrganization = selectedOrganizations.length === 0 || selectedOrganizations.includes(invoice.organization_id)
     
     // Month filter logic
     let matchesMonth = true
@@ -80,6 +80,17 @@ export function BillingTab() {
   }
 
   const monthOptions = getMonthOptions()
+
+  const statusOptions = [
+    { value: 'pending', label: 'Pending' },
+    { value: 'paid', label: 'Paid' },
+    { value: 'overdue', label: 'Overdue' },
+  ]
+
+  const organizationOptions = organizations.map(org => ({
+    value: org.id,
+    label: `${org.name} (${org.country})`
+  }))
 
   // If user doesn't have billing view permission, show no access message
   if (!canViewBilling) {
@@ -149,17 +160,19 @@ export function BillingTab() {
               
               {/* Filter selects */}
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Filter by status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="paid">Paid</SelectItem>
-                    <SelectItem value="overdue">Overdue</SelectItem>
-                  </SelectContent>
-                </Select>
+                <MultiSelect
+                  options={statusOptions}
+                  selectedValues={selectedStatuses}
+                  onSelectionChange={setSelectedStatuses}
+                  placeholder="Filter by status"
+                />
+
+                <MultiSelect
+                  options={organizationOptions}
+                  selectedValues={selectedOrganizations}
+                  onSelectionChange={setSelectedOrganizations}
+                  placeholder="Filter by organization"
+                />
 
                 <Select value={monthFilter} onValueChange={setMonthFilter}>
                   <SelectTrigger>
@@ -175,27 +188,13 @@ export function BillingTab() {
                   </SelectContent>
                 </Select>
 
-                <Select value={organizationFilter} onValueChange={setOrganizationFilter}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Filter by organization" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Organizations</SelectItem>
-                    {organizations.map(org => (
-                      <SelectItem key={org.id} value={org.id}>
-                        {org.name} ({org.country})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
                 <Button 
                   variant="outline" 
                   onClick={() => {
                     setSearchTerm('')
-                    setStatusFilter('all')
+                    setSelectedStatuses([])
+                    setSelectedOrganizations([])
                     setMonthFilter('all')
-                    setOrganizationFilter('all')
                   }}
                 >
                   Clear Filters
