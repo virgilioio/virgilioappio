@@ -56,7 +56,7 @@ const FILE_TYPES = [
 ]
 
 export function CountryFieldForm({ isOpen, onClose, countryId, countryCode, field }: CountryFieldFormProps) {
-  const { createField, updateField } = useCountryFields(countryCode)
+  const { createField, updateField, fields } = useCountryFields(countryCode)
   const [isLoading, setIsLoading] = useState(false)
   
   const [formData, setFormData] = useState({
@@ -87,6 +87,17 @@ export function CountryFieldForm({ isOpen, onClose, countryId, countryCode, fiel
         accepted_file_types: field.accepted_file_types ? JSON.parse(field.accepted_file_types) : [],
         max_file_size_mb: field.max_file_size_mb || 5
       })
+
+      // Load existing select options for this field
+      const existingField = fields.find(f => f.id === field.id)
+      if (existingField && existingField.select_options) {
+        const options = existingField.select_options.map(option => ({
+          value: option.option_value,
+          label: option.option_label
+        }))
+        console.log('Loading existing select options:', options)
+        setSelectOptions(options)
+      }
     } else {
       setFormData({
         field_name: '',
@@ -102,10 +113,26 @@ export function CountryFieldForm({ isOpen, onClose, countryId, countryCode, fiel
       setSelectOptions([])
       setValidationRules([])
     }
-  }, [field, isOpen])
+  }, [field, isOpen, fields])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Validate select fields have at least one option
+    if (formData.field_type === 'select' && selectOptions.length === 0) {
+      alert('Select fields must have at least one option')
+      return
+    }
+
+    // Validate that select options have both value and label
+    if (formData.field_type === 'select') {
+      const invalidOptions = selectOptions.some(option => !option.value.trim() || !option.label.trim())
+      if (invalidOptions) {
+        alert('All select options must have both a value and a label')
+        return
+      }
+    }
+
     setIsLoading(true)
 
     try {
@@ -124,10 +151,13 @@ export function CountryFieldForm({ isOpen, onClose, countryId, countryCode, fiel
         max_file_size_mb: formData.field_type === 'file' ? formData.max_file_size_mb : null
       }
 
+      console.log('Submitting field data:', fieldData)
+      console.log('Select options to save:', selectOptions)
+
       if (field) {
-        await updateField(field.id, fieldData)
+        await updateField(field.id, fieldData, formData.field_type === 'select' ? selectOptions : undefined)
       } else {
-        await createField(fieldData)
+        await createField(fieldData, formData.field_type === 'select' ? selectOptions : undefined)
       }
       
       onClose()
@@ -325,6 +355,7 @@ export function CountryFieldForm({ isOpen, onClose, countryId, countryCode, fiel
                         value={option.value}
                         onChange={(e) => updateSelectOption(index, 'value', e.target.value)}
                         placeholder="option_value"
+                        required
                       />
                     </FormField>
                     <FormField label="Label" className="flex-1">
@@ -332,6 +363,7 @@ export function CountryFieldForm({ isOpen, onClose, countryId, countryCode, fiel
                         value={option.label}
                         onChange={(e) => updateSelectOption(index, 'label', e.target.value)}
                         placeholder="Display Label"
+                        required
                       />
                     </FormField>
                     <Button

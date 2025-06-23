@@ -72,7 +72,40 @@ export function useCountryFields(countryCode?: string) {
     }
   }
 
-  const createField = async (fieldData: Omit<CountryField, 'id' | 'created_at' | 'updated_at' | 'created_by'>) => {
+  const saveSelectOptions = async (fieldId: string, options: { value: string; label: string }[]) => {
+    try {
+      // First, delete existing options for this field
+      const { error: deleteError } = await supabase
+        .from('field_select_options')
+        .delete()
+        .eq('country_field_id', fieldId)
+
+      if (deleteError) throw deleteError
+
+      // Then insert new options
+      if (options.length > 0) {
+        const optionsToInsert = options.map((option, index) => ({
+          country_field_id: fieldId,
+          option_value: option.value,
+          option_label: option.label,
+          display_order: index
+        }))
+
+        const { error: insertError } = await supabase
+          .from('field_select_options')
+          .insert(optionsToInsert)
+
+        if (insertError) throw insertError
+      }
+
+      console.log(`Saved ${options.length} select options for field ${fieldId}`)
+    } catch (error) {
+      console.error('Error saving select options:', error)
+      throw error
+    }
+  }
+
+  const createField = async (fieldData: Omit<CountryField, 'id' | 'created_at' | 'updated_at' | 'created_by'>, selectOptions?: { value: string; label: string }[]) => {
     try {
       const { data, error } = await supabase
         .from('country_fields')
@@ -81,6 +114,11 @@ export function useCountryFields(countryCode?: string) {
         .single()
 
       if (error) throw error
+
+      // If this is a select field and we have options, save them
+      if (fieldData.field_type === 'select' && selectOptions && selectOptions.length > 0) {
+        await saveSelectOptions(data.id, selectOptions)
+      }
 
       // Refetch to get updated list
       if (countryCode) {
@@ -103,7 +141,7 @@ export function useCountryFields(countryCode?: string) {
     }
   }
 
-  const updateField = async (id: string, updates: Partial<CountryField>) => {
+  const updateField = async (id: string, updates: Partial<CountryField>, selectOptions?: { value: string; label: string }[]) => {
     try {
       const { data, error } = await supabase
         .from('country_fields')
@@ -113,6 +151,11 @@ export function useCountryFields(countryCode?: string) {
         .single()
 
       if (error) throw error
+
+      // If this is a select field, update the options
+      if (updates.field_type === 'select' || (data && data.field_type === 'select')) {
+        await saveSelectOptions(id, selectOptions || [])
+      }
 
       // Refetch to get updated list
       if (countryCode) {
