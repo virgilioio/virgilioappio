@@ -246,21 +246,37 @@ export function useJobs() {
   const createJob = async (jobData: CreateJobData) => {
     if (!user) throw new Error('User not authenticated')
     
-    const organizationId = user.user_metadata?.organization_id
-    if (!organizationId) {
-      throw new Error('No organization found for user')
-    }
-
     setIsLoading(true)
     setError(null)
 
     try {
       console.log('Creating job:', jobData)
+      
+      // Determine which organization to use based on user type
+      let targetOrganizationId: string
+      
+      if (userType === 'platform_admin') {
+        // Platform admins can create jobs for any organization they specify
+        if (!jobData.organization_id) {
+          throw new Error('Organization must be specified for job creation')
+        }
+        targetOrganizationId = jobData.organization_id
+        console.log('Platform admin creating job for organization:', targetOrganizationId)
+      } else {
+        // Regular users can only create jobs for their own organization
+        const userOrganizationId = user.user_metadata?.organization_id || organizationId
+        if (!userOrganizationId) {
+          throw new Error('No organization found for user')
+        }
+        targetOrganizationId = userOrganizationId
+        console.log('Regular user creating job for their organization:', targetOrganizationId)
+      }
+
       const { data: newJob, error: createError } = await supabase
         .from('jobs')
         .insert([{
           ...jobData,
-          organization_id: organizationId,
+          organization_id: targetOrganizationId,
           created_by: user.id,
         }])
         .select()

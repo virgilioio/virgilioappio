@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils'
 import { Job, CreateJobData, UpdateJobData } from '@/hooks/useJobs'
 import { useOrganizations } from '@/hooks/useOrganizations'
 import { useMembers } from '@/hooks/useMembers'
+import { useAuth } from '@/contexts/AuthContext'
 
 interface JobFormProps {
   isOpen: boolean
@@ -87,9 +88,11 @@ export function JobForm({ isOpen, onClose, onSubmit, job, isLoading }: JobFormPr
 
   const { organizations } = useOrganizations()
   const { members } = useMembers()
+  const { userType, organizationId } = useAuth()
 
   useEffect(() => {
     if (job) {
+      // Editing existing job - populate all fields from job data
       setFormData({
         title: job.title,
         description: job.description || '',
@@ -103,13 +106,27 @@ export function JobForm({ isOpen, onClose, onSubmit, job, isLoading }: JobFormPr
         organization_id: job.organization_id,
         hiring_team: job.hiring_team || []
       })
-    } else if (organizations.length > 0) {
+    } else {
+      // Creating new job - set appropriate default organization
+      let defaultOrganizationId = ''
+      
+      if (userType === 'platform_admin') {
+        // Platform admins: don't auto-select, force them to choose
+        defaultOrganizationId = ''
+      } else if (organizationId) {
+        // Regular users: default to their organization
+        defaultOrganizationId = organizationId
+      } else if (organizations.length > 0) {
+        // Fallback: use first available organization
+        defaultOrganizationId = organizations[0].id
+      }
+
       setFormData(prev => ({
         ...prev,
-        organization_id: organizations[0].id
+        organization_id: defaultOrganizationId
       }))
     }
-  }, [job, organizations])
+  }, [job, organizations, userType, organizationId])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -132,6 +149,7 @@ export function JobForm({ isOpen, onClose, onSubmit, job, isLoading }: JobFormPr
       await onSubmit(submitData)
       onClose()
       // Reset form
+      const defaultOrgId = userType === 'platform_admin' ? '' : (organizationId || organizations[0]?.id || '')
       setFormData({
         title: '',
         description: '',
@@ -142,7 +160,7 @@ export function JobForm({ isOpen, onClose, onSubmit, job, isLoading }: JobFormPr
         salary_max: '',
         currency: 'USD',
         status: 'draft',
-        organization_id: organizations[0]?.id || '',
+        organization_id: defaultOrgId,
         hiring_team: []
       })
     } catch (error) {
@@ -316,7 +334,11 @@ export function JobForm({ isOpen, onClose, onSubmit, job, isLoading }: JobFormPr
 
             <div>
               <Label htmlFor="organization">Organization *</Label>
-              <Select value={formData.organization_id} onValueChange={(value) => setFormData(prev => ({ ...prev, organization_id: value }))}>
+              <Select 
+                value={formData.organization_id} 
+                onValueChange={(value) => setFormData(prev => ({ ...prev, organization_id: value }))}
+                required
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Select organization" />
                 </SelectTrigger>
