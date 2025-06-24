@@ -3,6 +3,8 @@ import React, { useState, useCallback, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Toggle } from '@/components/ui/toggle'
 import { Separator } from '@/components/ui/separator'
+import { Input } from '@/components/ui/input'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { 
   Bold, 
   Italic, 
@@ -12,7 +14,8 @@ import {
   AlignLeft,
   AlignCenter,
   AlignRight,
-  Table
+  Table,
+  Link
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { saveTextCursorPosition, restoreTextCursorPosition, type TextCursorPosition } from '@/lib/cursorUtils'
@@ -33,6 +36,9 @@ export function RichTextEditor({
   minHeight = "200px"
 }: RichTextEditorProps) {
   const [isFocused, setIsFocused] = useState(false)
+  const [linkUrl, setLinkUrl] = useState('')
+  const [linkText, setLinkText] = useState('')
+  const [isLinkPopoverOpen, setIsLinkPopoverOpen] = useState(false)
   const editorRef = useRef<HTMLDivElement>(null)
   const cursorPositionRef = useRef<TextCursorPosition | null>(null)
   const lastContentRef = useRef<string>(value)
@@ -127,6 +133,45 @@ export function RichTextEditor({
     
     updateContent(editorRef.current.innerHTML)
   }, [updateContent])
+
+  const insertLink = useCallback(() => {
+    if (!editorRef.current || !linkUrl) return
+    
+    editorRef.current.focus()
+    
+    // Save cursor position
+    cursorPositionRef.current = saveTextCursorPosition(editorRef.current)
+    
+    const displayText = linkText || linkUrl
+    const linkHTML = `<a href="${linkUrl}" target="_blank" rel="noopener noreferrer" style="color: #2563eb; text-decoration: underline;">${displayText}</a>`
+    
+    // Insert the link at cursor position
+    const selection = window.getSelection()
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0)
+      range.deleteContents()
+      
+      const linkContainer = document.createElement('div')
+      linkContainer.innerHTML = linkHTML
+      const link = linkContainer.firstElementChild
+      
+      if (link) {
+        range.insertNode(link)
+        range.setStartAfter(link)
+        range.setEndAfter(link)
+        selection.removeAllRanges()
+        selection.addRange(range)
+      }
+    } else {
+      // Fallback: append to end
+      editorRef.current.innerHTML += linkHTML
+    }
+    
+    updateContent(editorRef.current.innerHTML)
+    setLinkUrl('')
+    setLinkText('')
+    setIsLinkPopoverOpen(false)
+  }, [linkUrl, linkText, updateContent])
 
   const handleInput = useCallback((e: React.FormEvent<HTMLDivElement>) => {
     if (isUpdatingRef.current) return
@@ -256,6 +301,50 @@ export function RichTextEditor({
         >
           <Table className="h-3.5 w-3.5" />
         </Button>
+
+        <Popover open={isLinkPopoverOpen} onOpenChange={setIsLinkPopoverOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0"
+            >
+              <Link className="h-3.5 w-3.5" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-80" align="start">
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">URL</label>
+                <Input
+                  placeholder="https://example.com"
+                  value={linkUrl}
+                  onChange={(e) => setLinkUrl(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Display Text (optional)</label>
+                <Input
+                  placeholder="Link text"
+                  value={linkText}
+                  onChange={(e) => setLinkText(e.target.value)}
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button size="sm" onClick={insertLink} disabled={!linkUrl}>
+                  Insert Link
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={() => setIsLinkPopoverOpen(false)}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </PopoverContent>
+        </Popover>
       </div>
 
       {/* Editor Content */}
@@ -284,7 +373,8 @@ export function RichTextEditor({
             "[&_p]:my-2 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0",
             "[&_table]:border-collapse [&_table]:w-full [&_table]:my-4",
             "[&_td]:border [&_td]:border-gray-300 [&_td]:p-2",
-            "[&_th]:border [&_th]:border-gray-300 [&_th]:p-2 [&_th]:bg-gray-50"
+            "[&_th]:border [&_th]:border-gray-300 [&_th]:p-2 [&_th]:bg-gray-50",
+            "[&_a]:text-blue-600 [&_a]:underline [&_a:hover]:text-blue-800"
           )}
           style={{ minHeight }}
         />
