@@ -48,15 +48,24 @@ export function usePlatformSettings() {
     try {
       setIsUpdating(true)
       
+      const currentUser = await supabase.auth.getUser()
+      const userId = currentUser.data.user?.id
+
+      // Use upsert to handle both insert and update cases
       const { error } = await supabase
         .from('platform_settings')
-        .update({ 
+        .upsert({ 
+          setting_key: settingKey,
           setting_value: value,
-          updated_by: (await supabase.auth.getUser()).data.user?.id
+          updated_by: userId
+        }, {
+          onConflict: 'setting_key'
         })
-        .eq('setting_key', settingKey)
 
-      if (error) throw error
+      if (error) {
+        console.error('Upsert error:', error)
+        throw error
+      }
 
       toast({
         title: 'Success',
