@@ -70,10 +70,24 @@ export function useJobs() {
         .select('*')
         .order('created_at', { ascending: false })
 
+      // Get member role to determine if user is a recruiter
+      const { data: memberData } = await supabase
+        .from('members')
+        .select('member_role')
+        .eq('user_id', user.id)
+        .eq('organization_id', organizationId || '')
+        .single()
+
+      const isRecruiter = memberData?.member_role === 'recruiter'
+
       // Apply filtering based on user role
       if (userType === 'platform_admin') {
         // Platform admins see all jobs - no additional filtering needed
         console.log('Platform admin - showing all jobs')
+      } else if (isRecruiter) {
+        // Recruiters can see jobs across organizations if they're assigned
+        console.log('Recruiter - will filter by assignments across all organizations')
+        // Don't filter by organization here - we'll do it after getting job assignments
       } else if (organizationId) {
         console.log('Filtering jobs for organization:', organizationId)
         query = query.eq('organization_id', organizationId)
@@ -92,22 +106,14 @@ export function useJobs() {
       let filteredJobs = jobsData || []
       
       if (userType !== 'platform_admin' && organizationId) {
-        const { data: memberData } = await supabase
-          .from('members')
-          .select('member_role')
-          .eq('user_id', user.id)
-          .eq('organization_id', organizationId)
-          .single()
-        
-        if (memberData?.member_role === 'recruiter') {
-          console.log('Applying recruiter filtering for hiring team membership and job assignments')
+        if (isRecruiter) {
+          console.log('Applying recruiter filtering for hiring team membership and job assignments across all organizations')
           
-          // Get job assignments for this recruiter
+          // Get job assignments for this recruiter across ALL organizations
           const { data: jobAssignments, error: assignmentsError } = await supabase
             .from('job_assignments')
             .select('job_id')
             .eq('user_id', user.id)
-            .eq('organization_id', organizationId)
 
           if (assignmentsError) {
             console.error('Error fetching job assignments:', assignmentsError)
@@ -129,7 +135,7 @@ export function useJobs() {
             const hasAccess = isInHiringTeam || isAssignedViaTable
             
             if (hasAccess) {
-              console.log(`Recruiter has access to job "${job.title}" via ${isInHiringTeam ? 'hiring_team' : 'job_assignments'}`)
+              console.log(`Recruiter has access to job "${job.title}" from organization ${job.organization_id} via ${isInHiringTeam ? 'hiring_team' : 'job_assignments'}`)
             }
             
             return hasAccess
