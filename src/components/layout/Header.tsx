@@ -121,11 +121,6 @@ export function Header() {
           {isPlatformAdmin && (
             <ShieldCheck className="text-green-500 h-4 w-4 mr-1" />
           )}
-          {organization?.is_onboarded === false && (
-            <div className="text-orange-500 mr-2 animate-pulse">
-              Onboarding Incomplete
-            </div>
-          )}
           <Switch
             id="theme"
             checked={theme === 'dark'}
