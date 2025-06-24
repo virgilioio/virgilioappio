@@ -112,8 +112,11 @@ export function CandidateForm({
     debounceMs: 300
   })
 
+  // Effect for handling candidate data loading (when editing)
   useEffect(() => {
-    if (candidate) {
+    if (candidate && isOpen) {
+      console.log('Loading candidate data for editing:', candidate.candidate_name)
+      
       // Reset form with candidate data when editing
       const candidateData = {
         candidate_name: candidate.candidate_name || '',
@@ -129,10 +132,23 @@ export function CandidateForm({
       
       form.reset(candidateData)
       
-      // Set the rich text editor values separately
-      setProfileSummary(candidate.profile_summary || '')
-      setNotes(candidate.notes || '')
-    } else if (!isOpen && !candidate) {
+      // Set the rich text editor values separately with logging
+      const profileSummaryValue = candidate.profile_summary || ''
+      const notesValue = candidate.notes || ''
+      
+      console.log('Setting profile summary:', profileSummaryValue)
+      console.log('Setting notes:', notesValue)
+      
+      setProfileSummary(profileSummaryValue)
+      setNotes(notesValue)
+    }
+  }, [candidate, isOpen, form])
+
+  // Effect for handling form reset (when closing dialog for new candidates)
+  useEffect(() => {
+    if (!isOpen && !candidate) {
+      console.log('Resetting form for new candidate creation')
+      
       // Only reset form when dialog closes for new candidates (not when editing)
       form.reset({
         candidate_name: '',
@@ -150,7 +166,7 @@ export function CandidateForm({
       setProfileSummary('')
       setNotes('')
     }
-  }, [candidate, isOpen, form])
+  }, [isOpen, candidate, form])
 
   const handleSubmit = form.handleSubmit((data) => {
     const submitData = {
