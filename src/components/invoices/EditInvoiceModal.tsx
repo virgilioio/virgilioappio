@@ -43,7 +43,7 @@ const formSchema = z.object({
   currency: z.string().min(1, 'Currency is required'),
   issued_at: z.date().optional(),
   due_date: z.date().optional(),
-  status: z.enum(['pending', 'paid', 'overdue']),
+  status: z.enum(['pending', 'paid', 'overdue', 'partial']),
 })
 
 type FormData = z.infer<typeof formSchema>
@@ -277,6 +277,7 @@ export function EditInvoiceModal({ open, onOpenChange, invoice }: EditInvoiceMod
                         <SelectItem value="pending">Pending</SelectItem>
                         <SelectItem value="paid">Paid</SelectItem>
                         <SelectItem value="overdue">Overdue</SelectItem>
+                        <SelectItem value="partial">Partial</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />

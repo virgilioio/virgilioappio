@@ -54,11 +54,9 @@ export function InvoiceDetailsDialog({ invoice, open, onOpenChange }: InvoiceDet
 
     setLoadingPayments(true)
     try {
+      // Use a more generic query since the table might not be in types yet
       const { data, error } = await supabase
-        .from('invoice_payments')
-        .select('*')
-        .eq('invoice_id', invoice.id)
-        .order('payment_date', { ascending: false })
+        .rpc('load_invoice_payments', { invoice_id_param: invoice.id })
 
       if (error) {
         console.error('Error loading payment history:', error)
@@ -68,6 +66,8 @@ export function InvoiceDetailsDialog({ invoice, open, onOpenChange }: InvoiceDet
       setPayments(data || [])
     } catch (error) {
       console.error('Error loading payment history:', error)
+      // If the table doesn't exist yet, just show empty payments
+      setPayments([])
     } finally {
       setLoadingPayments(false)
     }
