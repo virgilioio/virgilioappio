@@ -1,5 +1,4 @@
 
-
 import { useState, useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Invoice } from '@/hooks/useInvoices'
@@ -49,14 +48,21 @@ export function TotalPaidCard({ invoices }: TotalPaidCardProps) {
         break
     }
 
-    // Filter paid invoices by date range
+    // Filter invoices by date range and calculate total paid amount
     const filteredInvoices = invoices.filter(invoice => {
       const invoiceDate = new Date(invoice.issued_at)
-      return invoice.status === 'paid' && invoiceDate >= startDate && invoiceDate <= now
+      return invoiceDate >= startDate && invoiceDate <= now
     })
 
-    // Calculate total amount of paid invoices in the selected period
-    return filteredInvoices.reduce((sum, invoice) => sum + invoice.amount, 0)
+    // Calculate total amount paid (including partial payments)
+    return filteredInvoices.reduce((sum, invoice) => {
+      if (invoice.status === 'paid') {
+        return sum + invoice.amount
+      } else if (invoice.status === 'partial' && invoice.total_paid) {
+        return sum + invoice.total_paid
+      }
+      return sum
+    }, 0)
   }, [invoices, selectedPeriod])
 
   const currency = invoices[0]?.currency || 'USD'

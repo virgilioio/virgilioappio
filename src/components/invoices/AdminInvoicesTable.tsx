@@ -1,5 +1,6 @@
+
 import { useState } from 'react'
-import { MoreHorizontal, Download, Edit, Trash2, CheckCircle, FileText, Calendar, DollarSign, Search, Filter, Upload } from 'lucide-react'
+import { MoreHorizontal, Download, Edit, Trash2, CheckCircle, FileText, Calendar, DollarSign, Search, Filter, Upload, CreditCard } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -23,6 +24,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { MonthPicker } from '@/components/ui/month-picker'
 import { EditInvoiceModal } from './EditInvoiceModal'
 import { PaymentModal } from './PaymentModal'
+import { PartialPaymentModal } from './PartialPaymentModal'
 import { InvoiceUploadModal } from './InvoiceUploadModal'
 import { supabase } from '@/integrations/supabase/client'
 import { toast } from '@/hooks/use-toast'
@@ -40,6 +42,7 @@ export function AdminInvoicesTable({ invoices, isLoading }: AdminInvoicesTablePr
   const { organizations } = useOrganizations()
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [paymentModalOpen, setPaymentModalOpen] = useState(false)
+  const [partialPaymentModalOpen, setPartialPaymentModalOpen] = useState(false)
   const [uploadModalOpen, setUploadModalOpen] = useState(false)
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null)
   const [downloadingFiles, setDownloadingFiles] = useState<Set<string>>(new Set())
@@ -78,6 +81,7 @@ export function AdminInvoicesTable({ invoices, isLoading }: AdminInvoicesTablePr
       pending: 'warning',
       paid: 'success',
       overdue: 'destructive',
+      partial: 'secondary',
     } as const
 
     return (
@@ -110,6 +114,11 @@ export function AdminInvoicesTable({ invoices, isLoading }: AdminInvoicesTablePr
   const handlePayment = (invoice: Invoice) => {
     setSelectedInvoice(invoice)
     setPaymentModalOpen(true)
+  }
+
+  const handlePartialPayment = (invoice: Invoice) => {
+    setSelectedInvoice(invoice)
+    setPartialPaymentModalOpen(true)
   }
 
   const handleDeleteInvoice = async (invoice: Invoice) => {
@@ -300,9 +309,25 @@ export function AdminInvoicesTable({ invoices, isLoading }: AdminInvoicesTablePr
                         )}
                       </div>
                     </TableCell>
-                    <TableCell>{getStatusBadge(invoice.status)}</TableCell>
+                    <TableCell>
+                      <div className="space-y-1">
+                        {getStatusBadge(invoice.status)}
+                        {invoice.status === 'partial' && invoice.total_paid && (
+                          <div className="text-xs text-muted-foreground">
+                            {formatCurrency(invoice.total_paid, invoice.currency)} paid
+                          </div>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell className="font-mono">
-                      {formatCurrency(invoice.amount, invoice.currency)}
+                      <div>
+                        {formatCurrency(invoice.amount, invoice.currency)}
+                        {invoice.status === 'partial' && invoice.remaining_amount && (
+                          <div className="text-xs text-muted-foreground">
+                            {formatCurrency(invoice.remaining_amount, invoice.currency)} remaining
+                          </div>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>
                       {invoice.due_date ? (
@@ -332,10 +357,18 @@ export function AdminInvoicesTable({ invoices, isLoading }: AdminInvoicesTablePr
                             <Edit className="h-4 w-4 mr-2" />
                             Edit
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handlePayment(invoice) }}>
-                            <CheckCircle className="h-4 w-4 mr-2" />
-                            Mark as Paid
-                          </DropdownMenuItem>
+                          {invoice.status !== 'paid' && (
+                            <>
+                              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handlePartialPayment(invoice) }}>
+                                <CreditCard className="h-4 w-4 mr-2" />
+                                Record Partial Payment
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handlePayment(invoice) }}>
+                                <CheckCircle className="h-4 w-4 mr-2" />
+                                Mark as Paid
+                              </DropdownMenuItem>
+                            </>
+                          )}
                           <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleUploadPdf(invoice) }}>
                             <Upload className="h-4 w-4 mr-2" />
                             Upload PDF
@@ -386,13 +419,27 @@ export function AdminInvoicesTable({ invoices, isLoading }: AdminInvoicesTablePr
                         {getOrganizationName(invoice.organization_id)}
                       </p>
                     </div>
-                    {getStatusBadge(invoice.status)}
+                    <div className="space-y-1">
+                      {getStatusBadge(invoice.status)}
+                      {invoice.status === 'partial' && invoice.total_paid && (
+                        <div className="text-xs text-muted-foreground text-right">
+                          {formatCurrency(invoice.total_paid, invoice.currency)} paid
+                        </div>
+                      )}
+                    </div>
                   </div>
                   
                   <div className="grid grid-cols-2 gap-3 text-sm">
                     <div className="flex items-center gap-2">
                       <DollarSign className="h-3 w-3 text-text-secondary" />
-                      <span className="font-mono">{formatCurrency(invoice.amount, invoice.currency)}</span>
+                      <div>
+                        <span className="font-mono">{formatCurrency(invoice.amount, invoice.currency)}</span>
+                        {invoice.status === 'partial' && invoice.remaining_amount && (
+                          <div className="text-xs text-muted-foreground">
+                            {formatCurrency(invoice.remaining_amount, invoice.currency)} remaining
+                          </div>
+                        )}
+                      </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <Calendar className="h-3 w-3 text-text-secondary" />
@@ -431,6 +478,13 @@ export function AdminInvoicesTable({ invoices, isLoading }: AdminInvoicesTablePr
       <PaymentModal
         open={paymentModalOpen}
         onOpenChange={setPaymentModalOpen}
+        invoice={selectedInvoice}
+      />
+
+      {/* Partial Payment Modal */}
+      <PartialPaymentModal
+        open={partialPaymentModalOpen}
+        onOpenChange={setPartialPaymentModalOpen}
         invoice={selectedInvoice}
       />
 

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
@@ -11,7 +12,7 @@ export interface Invoice {
   description?: string
   amount: number
   currency: string
-  status: 'pending' | 'paid' | 'overdue'
+  status: 'pending' | 'paid' | 'overdue' | 'partial'
   invoice_url?: string
   issued_at: string
   due_date?: string
@@ -24,6 +25,9 @@ export interface Invoice {
   payment_method?: string
   payment_reference?: string
   payment_notes?: string
+  // New partial payment fields
+  total_paid?: number
+  remaining_amount?: number
 }
 
 export interface CreateInvoiceData {
@@ -41,6 +45,15 @@ export interface PaymentData {
   payment_method: string
   payment_reference?: string
   payment_notes?: string
+}
+
+export interface PartialPaymentData {
+  amount: number
+  currency?: string
+  payment_method: string
+  payment_reference?: string
+  payment_notes?: string
+  payment_date?: string
 }
 
 export function useInvoices() {
@@ -201,7 +214,7 @@ export function useInvoices() {
     }
   }
 
-  const updateInvoice = async (invoiceId: string, data: Partial<CreateInvoiceData & { status: 'pending' | 'paid' | 'overdue' }>): Promise<Invoice> => {
+  const updateInvoice = async (invoiceId: string, data: Partial<CreateInvoiceData & { status: 'pending' | 'paid' | 'overdue' | 'partial' }>): Promise<Invoice> => {
     if (!user) throw new Error('User not authenticated')
 
     try {
@@ -312,6 +325,47 @@ export function useInvoices() {
     }
   }
 
+  const addPartialPayment = async (invoiceId: string, paymentData: PartialPaymentData): Promise<void> => {
+    if (!user) throw new Error('User not authenticated')
+
+    try {
+      console.log('Adding partial payment:', invoiceId, paymentData)
+      const { error } = await supabase
+        .from('invoice_payments')
+        .insert({
+          invoice_id: invoiceId,
+          amount: paymentData.amount,
+          currency: paymentData.currency || 'USD',
+          payment_method: paymentData.payment_method,
+          payment_reference: paymentData.payment_reference || null,
+          payment_notes: paymentData.payment_notes || null,
+          payment_date: paymentData.payment_date || new Date().toISOString(),
+          recorded_by: user.id
+        })
+
+      if (error) {
+        console.error('Error adding partial payment:', error)
+        throw error
+      }
+
+      await getInvoices() // Refresh the list
+      
+      toast({
+        title: 'Success',
+        description: 'Partial payment recorded successfully'
+      })
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to record partial payment'
+      console.error('Add partial payment error:', err)
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive'
+      })
+      throw err
+    }
+  }
+
   const markInvoiceAsPaid = async (invoiceId: string, paymentData: PaymentData): Promise<void> => {
     if (!user) throw new Error('User not authenticated')
 
@@ -352,7 +406,7 @@ export function useInvoices() {
     }
   }
 
-  const updateInvoiceStatus = async (invoiceId: string, status: 'pending' | 'paid' | 'overdue'): Promise<void> => {
+  const updateInvoiceStatus = async (invoiceId: string, status: 'pending' | 'paid' | 'overdue' | 'partial'): Promise<void> => {
     if (!user) throw new Error('User not authenticated')
 
     try {
@@ -449,6 +503,7 @@ export function useInvoices() {
     createInvoice,
     updateInvoice,
     uploadInvoicePDF,
+    addPartialPayment,
     markInvoiceAsPaid,
     updateInvoiceStatus,
     deleteInvoice,

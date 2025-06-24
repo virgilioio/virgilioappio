@@ -1,14 +1,16 @@
+
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
-import { Download, Calendar, DollarSign, FileText, Building2, User, Upload } from 'lucide-react'
+import { Download, Calendar, DollarSign, FileText, Building2, User, Upload, CreditCard } from 'lucide-react'
 import { Invoice } from '@/hooks/useInvoices'
 import { useOrganizations } from '@/hooks/useOrganizations'
 import { supabase } from '@/integrations/supabase/client'
 import { toast } from '@/hooks/use-toast'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { InvoiceUploadModal } from './InvoiceUploadModal'
+import { PartialPaymentModal } from './PartialPaymentModal'
 
 interface InvoiceDetailsDialogProps {
   invoice: Invoice | null
@@ -16,20 +18,67 @@ interface InvoiceDetailsDialogProps {
   onOpenChange: (open: boolean) => void
 }
 
+interface InvoicePayment {
+  id: string
+  amount: number
+  currency: string
+  payment_date: string
+  payment_method: string
+  payment_reference?: string
+  payment_notes?: string
+}
+
 export function InvoiceDetailsDialog({ invoice, open, onOpenChange }: InvoiceDetailsDialogProps) {
   const { organizations } = useOrganizations()
   const [downloadingFile, setDownloadingFile] = useState(false)
   const [uploadModalOpen, setUploadModalOpen] = useState(false)
+  const [partialPaymentModalOpen, setPartialPaymentModalOpen] = useState(false)
+  const [payments, setPayments] = useState<InvoicePayment[]>([])
+  const [loadingPayments, setLoadingPayments] = useState(false)
 
   if (!invoice) return null
 
   const organization = organizations?.find(org => org.id === invoice.organization_id) || null
+
+  // Load payment history when invoice changes
+  useEffect(() => {
+    if (invoice && invoice.status === 'partial') {
+      loadPaymentHistory()
+    } else {
+      setPayments([])
+    }
+  }, [invoice])
+
+  const loadPaymentHistory = async () => {
+    if (!invoice) return
+
+    setLoadingPayments(true)
+    try {
+      const { data, error } = await supabase
+        .from('invoice_payments')
+        .select('*')
+        .eq('invoice_id', invoice.id)
+        .order('payment_date', { ascending: false })
+
+      if (error) {
+        console.error('Error loading payment history:', error)
+        return
+      }
+
+      setPayments(data || [])
+    } catch (error) {
+      console.error('Error loading payment history:', error)
+    } finally {
+      setLoadingPayments(false)
+    }
+  }
 
   const getStatusBadge = (status: string) => {
     const variants = {
       pending: 'warning',
       paid: 'success',
       overdue: 'destructive',
+      partial: 'secondary',
     } as const
 
     return (
@@ -59,6 +108,15 @@ export function InvoiceDetailsDialog({ invoice, open, onOpenChange }: InvoiceDet
     toast({
       title: 'Upload completed',
       description: 'The invoice PDF has been uploaded successfully.'
+    })
+  }
+
+  const handlePartialPaymentAdded = () => {
+    setPartialPaymentModalOpen(false)
+    loadPaymentHistory() // Reload payment history
+    toast({
+      title: 'Payment recorded',
+      description: 'The partial payment has been recorded successfully.'
     })
   }
 
@@ -137,13 +195,33 @@ export function InvoiceDetailsDialog({ invoice, open, onOpenChange }: InvoiceDet
 
             <Separator />
 
-            {/* Amount and currency */}
-            <div className="flex items-center gap-2">
-              <DollarSign className="h-5 w-5 text-muted-foreground" />
-              <div>
-                <p className="text-sm text-muted-foreground">Amount</p>
-                <p className="text-2xl font-bold">{formatCurrency(invoice.amount, invoice.currency)}</p>
+            {/* Amount and payment status */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <DollarSign className="h-5 w-5 text-muted-foreground" />
+                <div>
+                  <p className="text-sm text-muted-foreground">Invoice Amount</p>
+                  <p className="text-2xl font-bold">{formatCurrency(invoice.amount, invoice.currency)}</p>
+                </div>
               </div>
+
+              {/* Partial payment status */}
+              {invoice.status === 'partial' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div>
+                    <p className="text-sm text-blue-700">Amount Paid</p>
+                    <p className="text-lg font-semibold text-blue-700">
+                      {formatCurrency(invoice.total_paid || 0, invoice.currency)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-blue-700">Remaining</p>
+                    <p className="text-lg font-semibold text-blue-700">
+                      {formatCurrency(invoice.remaining_amount || 0, invoice.currency)}
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
 
             <Separator />
@@ -184,7 +262,40 @@ export function InvoiceDetailsDialog({ invoice, open, onOpenChange }: InvoiceDet
               )}
             </div>
 
-            {/* Payment info */}
+            {/* Payment history for partial payments */}
+            {invoice.status === 'partial' && payments.length > 0 && (
+              <>
+                <Separator />
+                <div>
+                  <h4 className="font-medium mb-3">Payment History</h4>
+                  <div className="space-y-3">
+                    {payments.map((payment) => (
+                      <div key={payment.id} className="p-3 border rounded-lg">
+                        <div className="flex justify-between items-start mb-2">
+                          <span className="font-medium">
+                            {formatCurrency(payment.amount, payment.currency)}
+                          </span>
+                          <span className="text-sm text-muted-foreground">
+                            {formatDate(payment.payment_date)}
+                          </span>
+                        </div>
+                        <div className="text-sm text-muted-foreground space-y-1">
+                          <div>Method: {payment.payment_method}</div>
+                          {payment.payment_reference && (
+                            <div>Reference: {payment.payment_reference}</div>
+                          )}
+                          {payment.payment_notes && (
+                            <div>Notes: {payment.payment_notes}</div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Payment info for fully paid invoices */}
             {invoice.status === 'paid' && (
               <>
                 <Separator />
@@ -230,6 +341,17 @@ export function InvoiceDetailsDialog({ invoice, open, onOpenChange }: InvoiceDet
                 <Upload className="h-4 w-4" />
                 Upload PDF
               </Button>
+
+              {invoice.status !== 'paid' && (
+                <Button 
+                  onClick={() => setPartialPaymentModalOpen(true)}
+                  variant="outline"
+                  className="flex items-center gap-2"
+                >
+                  <CreditCard className="h-4 w-4" />
+                  Record Payment
+                </Button>
+              )}
               
               {invoice.invoice_url ? (
                 <Button 
@@ -257,6 +379,14 @@ export function InvoiceDetailsDialog({ invoice, open, onOpenChange }: InvoiceDet
         onOpenChange={setUploadModalOpen}
         invoice={invoice}
         onUploadComplete={handleUploadComplete}
+      />
+
+      {/* Partial Payment Modal */}
+      <PartialPaymentModal
+        open={partialPaymentModalOpen}
+        onOpenChange={setPartialPaymentModalOpen}
+        invoice={invoice}
+        onPaymentAdded={handlePartialPaymentAdded}
       />
     </>
   )
