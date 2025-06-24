@@ -39,7 +39,7 @@ export function InvoiceDetailsDialog({ invoice, open, onOpenChange }: InvoiceDet
 
   const organization = organizations?.find(org => org.id === invoice.organization_id) || null
 
-  // Load payment history when invoice changes
+  // Load payment history when invoice changes - ALWAYS call useEffect, move conditions inside
   useEffect(() => {
     if (invoice && invoice.status === 'partial') {
       loadPaymentHistory()
