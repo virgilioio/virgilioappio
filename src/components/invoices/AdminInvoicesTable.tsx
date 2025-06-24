@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { MoreHorizontal, Download, Edit, Trash2, CheckCircle, FileText, Calendar, DollarSign, Search, Filter } from 'lucide-react'
+import { MoreHorizontal, Download, Edit, Trash2, CheckCircle, FileText, Calendar, DollarSign, Search, Filter, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -23,6 +23,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { MonthPicker } from '@/components/ui/month-picker'
 import { EditInvoiceModal } from './EditInvoiceModal'
 import { PaymentModal } from './PaymentModal'
+import { InvoiceUploadModal } from './InvoiceUploadModal'
 import { supabase } from '@/integrations/supabase/client'
 import { toast } from '@/hooks/use-toast'
 import { Invoice } from '@/hooks/useInvoices'
@@ -39,6 +40,7 @@ export function AdminInvoicesTable({ invoices, isLoading }: AdminInvoicesTablePr
   const { organizations } = useOrganizations()
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [paymentModalOpen, setPaymentModalOpen] = useState(false)
+  const [uploadModalOpen, setUploadModalOpen] = useState(false)
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null)
   const [downloadingFiles, setDownloadingFiles] = useState<Set<string>>(new Set())
   const [searchTerm, setSearchTerm] = useState('')
@@ -194,6 +196,22 @@ export function AdminInvoicesTable({ invoices, isLoading }: AdminInvoicesTablePr
     setDetailsDialogOpen(true)
   }
 
+  const handleUploadPdf = (invoice: Invoice) => {
+    setSelectedInvoice(invoice)
+    setUploadModalOpen(true)
+  }
+
+  const handleUploadComplete = () => {
+    // This will trigger a refetch of the invoices data
+    // The parent component should handle this by refetching the invoices
+    setUploadModalOpen(false)
+    setSelectedInvoice(null)
+    toast({
+      title: 'Upload completed',
+      description: 'The invoice PDF has been uploaded successfully.'
+    })
+  }
+
   const sortedInvoices = [...filteredInvoices].sort((a, b) => {
     const dateA = new Date(a.due_date || a.issued_at)
     const dateB = new Date(b.due_date || b.issued_at)
@@ -318,6 +336,10 @@ export function AdminInvoicesTable({ invoices, isLoading }: AdminInvoicesTablePr
                             <CheckCircle className="h-4 w-4 mr-2" />
                             Mark as Paid
                           </DropdownMenuItem>
+                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleUploadPdf(invoice) }}>
+                            <Upload className="h-4 w-4 mr-2" />
+                            Upload PDF
+                          </DropdownMenuItem>
                           {invoice.invoice_url ? (
                             <DropdownMenuItem 
                               onClick={(e) => { e.stopPropagation(); handleDownloadInvoice(invoice); }}
@@ -411,6 +433,16 @@ export function AdminInvoicesTable({ invoices, isLoading }: AdminInvoicesTablePr
         onOpenChange={setPaymentModalOpen}
         invoice={selectedInvoice}
       />
+
+      {/* Upload Invoice Modal */}
+      {selectedInvoice && (
+        <InvoiceUploadModal
+          open={uploadModalOpen}
+          onOpenChange={setUploadModalOpen}
+          invoice={selectedInvoice}
+          onUploadComplete={handleUploadComplete}
+        />
+      )}
     </>
   )
 }
