@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
@@ -34,6 +33,7 @@ export interface CreateJobData {
   currency?: string
   status?: 'draft' | 'open' | 'closed' | 'archived'
   hiring_team?: any[]
+  organization_id?: string
 }
 
 export interface UpdateJobData {
