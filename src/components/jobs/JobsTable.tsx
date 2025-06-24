@@ -1,4 +1,3 @@
-
 import { useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -14,6 +13,8 @@ import { useOrganizations } from '@/hooks/useOrganizations'
 import { useAuth } from '@/contexts/AuthContext'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useSortableTable } from '@/hooks/useSortableTable'
+import { SortableHeader } from '@/components/ui/sortable-header'
 
 interface JobsTableProps {
   jobs: Job[]
@@ -61,6 +62,12 @@ export function JobsTable({ jobs, isLoading, onView, onEdit, onArchive, onCreate
     
     return matchesSearch && matchesStatus && matchesLevel && matchesOrganization
   })
+
+  // Add sorting functionality
+  const { sortedData: sortedJobs, sortConfig, requestSort } = useSortableTable(
+    filteredJobs,
+    { key: 'created_at', direction: 'desc' }
+  )
 
   if (isLoading) {
     return (
@@ -184,7 +191,7 @@ export function JobsTable({ jobs, isLoading, onView, onEdit, onArchive, onCreate
           </CardHeader>
         </Card>
 
-        {filteredJobs.length === 0 ? (
+        {sortedJobs.length === 0 ? (
           <Card>
             <CardContent className="py-8">
               <div className="text-center">
@@ -213,7 +220,7 @@ export function JobsTable({ jobs, isLoading, onView, onEdit, onArchive, onCreate
           </Card>
         ) : (
           <div className="space-y-3">
-            {filteredJobs.map((job) => (
+            {sortedJobs.map((job) => (
               <Card key={job.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => onView(job)}>
                 <CardContent className="p-4">
                   <div className="flex items-start justify-between gap-3">
@@ -362,7 +369,7 @@ export function JobsTable({ jobs, isLoading, onView, onEdit, onArchive, onCreate
       </CardHeader>
       
       <CardContent>
-        {filteredJobs.length === 0 ? (
+        {sortedJobs.length === 0 ? (
           <div className="text-center py-8">
             <Briefcase className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-semibold mb-2">No jobs yet</h3>
@@ -390,18 +397,74 @@ export function JobsTable({ jobs, isLoading, onView, onEdit, onArchive, onCreate
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Title</TableHead>
-                  <TableHead className="hidden sm:table-cell">Level</TableHead>
-                  <TableHead className="hidden md:table-cell">Department</TableHead>
-                  <TableHead className="hidden lg:table-cell">Location</TableHead>
-                  <TableHead className="hidden xl:table-cell">Organization</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="hidden sm:table-cell">Created</TableHead>
+                  <TableHead>
+                    <SortableHeader 
+                      sortKey="title" 
+                      currentSort={sortConfig} 
+                      onSort={requestSort}
+                    >
+                      Title
+                    </SortableHeader>
+                  </TableHead>
+                  <TableHead className="hidden sm:table-cell">
+                    <SortableHeader 
+                      sortKey="level" 
+                      currentSort={sortConfig} 
+                      onSort={requestSort}
+                    >
+                      Level
+                    </SortableHeader>
+                  </TableHead>
+                  <TableHead className="hidden md:table-cell">
+                    <SortableHeader 
+                      sortKey="department" 
+                      currentSort={sortConfig} 
+                      onSort={requestSort}
+                    >
+                      Department
+                    </SortableHeader>
+                  </TableHead>
+                  <TableHead className="hidden lg:table-cell">
+                    <SortableHeader 
+                      sortKey="location" 
+                      currentSort={sortConfig} 
+                      onSort={requestSort}
+                    >
+                      Location
+                    </SortableHeader>
+                  </TableHead>
+                  <TableHead className="hidden xl:table-cell">
+                    <SortableHeader 
+                      sortKey="organization_name" 
+                      currentSort={sortConfig} 
+                      onSort={requestSort}
+                    >
+                      Organization
+                    </SortableHeader>
+                  </TableHead>
+                  <TableHead>
+                    <SortableHeader 
+                      sortKey="status" 
+                      currentSort={sortConfig} 
+                      onSort={requestSort}
+                    >
+                      Status
+                    </SortableHeader>
+                  </TableHead>
+                  <TableHead className="hidden sm:table-cell">
+                    <SortableHeader 
+                      sortKey="created_at" 
+                      currentSort={sortConfig} 
+                      onSort={requestSort}
+                    >
+                      Created
+                    </SortableHeader>
+                  </TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredJobs.map((job) => (
+                {sortedJobs.map((job) => (
                   <TableRow key={job.id} interactive onClick={() => onView(job)}>
                     <TableCell className="font-medium">
                       <div className="truncate max-w-[200px]">{job.title}</div>
