@@ -1109,6 +1109,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      get_user_type_secure: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       is_user_assigned_to_job: {
         Args: { job_id_param: string; user_id_param?: string }
         Returns: boolean
