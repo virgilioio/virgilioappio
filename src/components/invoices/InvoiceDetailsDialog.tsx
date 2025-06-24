@@ -189,7 +189,7 @@ export function InvoiceDetailsDialog({ invoice, open, onOpenChange }: InvoiceDet
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
@@ -201,31 +201,89 @@ export function InvoiceDetailsDialog({ invoice, open, onOpenChange }: InvoiceDet
           </DialogHeader>
 
           <div className="space-y-6">
-            {/* Header with title and status */}
-            <div className="flex items-start justify-between">
-              <div>
-                <h3 className="text-lg font-semibold">{invoice.title}</h3>
-                {invoice.description && (
-                  <p className="text-sm text-muted-foreground mt-1">{invoice.description}</p>
+            {/* Two-column layout for main content */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Left Column - Core Invoice Information */}
+              <div className="space-y-4">
+                {/* Title and Status */}
+                <div>
+                  <div className="flex items-start justify-between mb-2">
+                    <h3 className="text-lg font-semibold">{invoice.title}</h3>
+                    {getStatusBadge(invoice.status)}
+                  </div>
+                  {invoice.description && (
+                    <p className="text-sm text-muted-foreground">{invoice.description}</p>
+                  )}
+                </div>
+
+                <Separator />
+
+                {/* Amount */}
+                <div className="flex items-center gap-3">
+                  <DollarSign className="h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">Invoice Amount</p>
+                    <p className="text-2xl font-bold">{formatCurrency(invoice.amount, invoice.currency)}</p>
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Organization info */}
+                {organization && (
+                  <div className="flex items-start gap-3">
+                    <Building2 className="h-5 w-5 text-muted-foreground mt-1" />
+                    <div>
+                      <p className="text-sm text-muted-foreground">Organization</p>
+                      <p className="font-medium">{organization.name}</p>
+                      <p className="text-sm text-muted-foreground">{organization.country}</p>
+                    </div>
+                  </div>
                 )}
               </div>
-              {getStatusBadge(invoice.status)}
-            </div>
 
-            <Separator />
+              {/* Right Column - Dates and Payment Info */}
+              <div className="space-y-4">
+                {/* Dates */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <p className="text-sm text-muted-foreground">Issued Date</p>
+                      <p className="font-medium">{formatDate(invoice.issued_at)}</p>
+                    </div>
+                  </div>
 
-            {/* Amount and payment status */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <DollarSign className="h-5 w-5 text-muted-foreground" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Invoice Amount</p>
-                  <p className="text-2xl font-bold">{formatCurrency(invoice.amount, invoice.currency)}</p>
+                  {invoice.due_date && (
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <p className="text-sm text-muted-foreground">Due Date</p>
+                        <p className="font-medium">{formatDate(invoice.due_date)}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <Separator />
+
+                {/* File Status */}
+                <div className="flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <p className="text-sm text-muted-foreground">PDF Status</p>
+                    <p className="font-medium">
+                      {invoice.invoice_url ? 'File Available' : 'No file uploaded'}
+                    </p>
+                  </div>
                 </div>
               </div>
+            </div>
 
-              {/* Partial payment status */}
-              {invoice.status === 'partial' && (
+            {/* Partial payment status - Full width */}
+            {invoice.status === 'partial' && (
+              <>
+                <Separator />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                   <div>
                     <p className="text-sm text-blue-700">Amount Paid</p>
@@ -240,48 +298,10 @@ export function InvoiceDetailsDialog({ invoice, open, onOpenChange }: InvoiceDet
                     </p>
                   </div>
                 </div>
-              )}
-            </div>
-
-            <Separator />
-
-            {/* Organization info */}
-            {organization && (
-              <>
-                <div className="flex items-center gap-2">
-                  <Building2 className="h-5 w-5 text-muted-foreground" />
-                  <div>
-                    <p className="text-sm text-muted-foreground">Organization</p>
-                    <p className="font-medium">{organization.name}</p>
-                    <p className="text-sm text-muted-foreground">{organization.country}</p>
-                  </div>
-                </div>
-                <Separator />
               </>
             )}
 
-            {/* Dates */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-muted-foreground" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Issued Date</p>
-                  <p className="font-medium">{formatDate(invoice.issued_at)}</p>
-                </div>
-              </div>
-
-              {invoice.due_date && (
-                <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <div>
-                    <p className="text-sm text-muted-foreground">Due Date</p>
-                    <p className="font-medium">{formatDate(invoice.due_date)}</p>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Payment history for partial payments */}
+            {/* Payment history for partial payments - Full width */}
             {invoice.status === 'partial' && payments.length > 0 && (
               <>
                 <Separator />
@@ -314,7 +334,7 @@ export function InvoiceDetailsDialog({ invoice, open, onOpenChange }: InvoiceDet
               </>
             )}
 
-            {/* Payment info for fully paid invoices */}
+            {/* Payment info for fully paid invoices - Full width */}
             {invoice.status === 'paid' && (
               <>
                 <Separator />
@@ -350,8 +370,8 @@ export function InvoiceDetailsDialog({ invoice, open, onOpenChange }: InvoiceDet
               </>
             )}
 
-            {/* Actions */}
-            <div className="flex justify-end gap-2">
+            {/* Actions - Full width */}
+            <div className="flex justify-end gap-2 pt-4 border-t">
               <Button 
                 onClick={() => setUploadModalOpen(true)}
                 variant="outline"
