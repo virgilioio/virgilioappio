@@ -77,20 +77,6 @@ export function usePermissions(): PermissionsState {
   // Guests are users without membership or org context
   const isGuest = (memberRole === 'guest' || !hasOrganizationContext) && !isPlatformAdmin && !isWorkspaceOwner
 
-  // Enhanced debug logging to help troubleshoot permission issues
-  console.log('Permission Debug:', {
-    userType,
-    memberRole,
-    isPlatformAdmin,
-    isWorkspaceOwner,
-    isBillingMember,
-    hasOrganizationContext,
-    isClient,
-    isMember,
-    isGuest,
-    userId: user?.id
-  })
-  
   return {
     // Job permissions - Platform admins can manage everything
     canViewJobs: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin', 'client', 'customer_success'].includes(memberRole || ''),
