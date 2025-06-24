@@ -272,6 +272,56 @@ export type Database = {
           },
         ]
       }
+      invoice_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          id: string
+          invoice_id: string
+          payment_date: string
+          payment_method: string
+          payment_notes: string | null
+          payment_reference: string | null
+          recorded_by: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          currency?: string
+          id?: string
+          invoice_id: string
+          payment_date?: string
+          payment_method: string
+          payment_notes?: string | null
+          payment_reference?: string | null
+          recorded_by?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          id?: string
+          invoice_id?: string
+          payment_date?: string
+          payment_method?: string
+          payment_notes?: string | null
+          payment_reference?: string | null
+          recorded_by?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_payments_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invoices: {
         Row: {
           amount: number
@@ -289,8 +339,10 @@ export type Database = {
           payment_method: string | null
           payment_notes: string | null
           payment_reference: string | null
+          remaining_amount: number | null
           status: string
           title: string
+          total_paid: number | null
           updated_at: string
         }
         Insert: {
@@ -309,8 +361,10 @@ export type Database = {
           payment_method?: string | null
           payment_notes?: string | null
           payment_reference?: string | null
+          remaining_amount?: number | null
           status?: string
           title: string
+          total_paid?: number | null
           updated_at?: string
         }
         Update: {
@@ -329,8 +383,10 @@ export type Database = {
           payment_method?: string | null
           payment_notes?: string | null
           payment_reference?: string | null
+          remaining_amount?: number | null
           status?: string
           title?: string
+          total_paid?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -1080,6 +1136,10 @@ export type Database = {
           members_table_org_id: string
           test_result: string
         }[]
+      }
+      update_invoice_payment_totals: {
+        Args: { invoice_id_param: string }
+        Returns: undefined
       }
       validate_invite_token: {
         Args: { token_input: string }
