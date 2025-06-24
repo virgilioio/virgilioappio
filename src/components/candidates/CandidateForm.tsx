@@ -132,8 +132,8 @@ export function CandidateForm({
       // Set the rich text editor values separately
       setProfileSummary(candidate.profile_summary || '')
       setNotes(candidate.notes || '')
-    } else if (!isOpen) {
-      // Reset form when dialog closes for new candidates
+    } else if (!isOpen && !candidate) {
+      // Only reset form when dialog closes for new candidates (not when editing)
       form.reset({
         candidate_name: '',
         location_country: '',
@@ -146,7 +146,7 @@ export function CandidateForm({
         notes: ''
       })
       
-      // Reset rich text editor values
+      // Reset rich text editor values only for new candidates
       setProfileSummary('')
       setNotes('')
     }
