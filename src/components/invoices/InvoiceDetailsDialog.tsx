@@ -1,4 +1,3 @@
-
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -54,19 +53,21 @@ export function InvoiceDetailsDialog({ invoice, open, onOpenChange }: InvoiceDet
 
     setLoadingPayments(true)
     try {
-      // Use a more generic query since the table might not be in types yet
-      const { data, error } = await supabase
-        .rpc('load_invoice_payments', { invoice_id_param: invoice.id })
+      // Use RPC function with proper type casting
+      const { data, error } = await supabase.rpc('load_invoice_payments' as any, { 
+        invoice_id_param: invoice.id 
+      })
 
       if (error) {
         console.error('Error loading payment history:', error)
         return
       }
 
-      setPayments(data || [])
+      // Cast the data to the expected type
+      setPayments((data as InvoicePayment[]) || [])
     } catch (error) {
       console.error('Error loading payment history:', error)
-      // If the table doesn't exist yet, just show empty payments
+      // If the function doesn't exist yet, just show empty payments
       setPayments([])
     } finally {
       setLoadingPayments(false)

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
@@ -331,18 +330,17 @@ export function useInvoices() {
     try {
       console.log('Adding partial payment:', invoiceId, paymentData)
       
-      // Use RPC function to add payment since the table might not be in types yet
-      const { error } = await supabase
-        .rpc('add_invoice_payment', {
-          invoice_id_param: invoiceId,
-          amount_param: paymentData.amount,
-          currency_param: paymentData.currency || 'USD',
-          payment_method_param: paymentData.payment_method,
-          payment_reference_param: paymentData.payment_reference || null,
-          payment_notes_param: paymentData.payment_notes || null,
-          payment_date_param: paymentData.payment_date || new Date().toISOString(),
-          recorded_by_param: user.id
-        })
+      // Use RPC function with proper type casting
+      const { error } = await supabase.rpc('add_invoice_payment' as any, {
+        invoice_id_param: invoiceId,
+        amount_param: paymentData.amount,
+        currency_param: paymentData.currency || 'USD',
+        payment_method_param: paymentData.payment_method,
+        payment_reference_param: paymentData.payment_reference || null,
+        payment_notes_param: paymentData.payment_notes || null,
+        payment_date_param: paymentData.payment_date || new Date().toISOString(),
+        recorded_by_param: user.id
+      })
 
       if (error) {
         console.error('Error adding partial payment:', error)

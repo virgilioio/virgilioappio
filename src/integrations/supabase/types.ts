@@ -965,6 +965,19 @@ export type Database = {
         Args: { new_asset_id: string; asset_type_param: string }
         Returns: undefined
       }
+      add_invoice_payment: {
+        Args: {
+          invoice_id_param: string
+          amount_param: number
+          currency_param: string
+          payment_method_param: string
+          payment_reference_param?: string
+          payment_notes_param?: string
+          payment_date_param?: string
+          recorded_by_param?: string
+        }
+        Returns: undefined
+      }
       audit_platform_admin_access: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -1035,6 +1048,18 @@ export type Database = {
       is_user_assigned_to_job: {
         Args: { job_id_param: string; user_id_param?: string }
         Returns: boolean
+      }
+      load_invoice_payments: {
+        Args: { invoice_id_param: string }
+        Returns: {
+          id: string
+          amount: number
+          currency: string
+          payment_date: string
+          payment_method: string
+          payment_reference: string
+          payment_notes: string
+        }[]
       }
       safe_delete_user: {
         Args: { target_user_id: string }
