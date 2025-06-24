@@ -1085,6 +1085,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      get_member_role_safe: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       get_user_member_data: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -1098,6 +1102,10 @@ export type Database = {
         Returns: string
       }
       get_user_type: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      get_user_type_safe: {
         Args: Record<PropertyKey, never>
         Returns: string
       }
