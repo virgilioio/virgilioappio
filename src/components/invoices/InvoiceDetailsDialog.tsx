@@ -1,3 +1,4 @@
+
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -35,9 +36,7 @@ export function InvoiceDetailsDialog({ invoice, open, onOpenChange }: InvoiceDet
   const [payments, setPayments] = useState<InvoicePayment[]>([])
   const [loadingPayments, setLoadingPayments] = useState(false)
 
-  if (!invoice) return null
-
-  const organization = organizations?.find(org => org.id === invoice.organization_id) || null
+  const organization = organizations?.find(org => org.id === invoice?.organization_id) || null
 
   // Load payment history when invoice changes - ALWAYS call useEffect, move conditions inside
   useEffect(() => {
@@ -72,6 +71,25 @@ export function InvoiceDetailsDialog({ invoice, open, onOpenChange }: InvoiceDet
     } finally {
       setLoadingPayments(false)
     }
+  }
+
+  // Handle the case where invoice is null
+  if (!invoice) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Invoice Details
+            </DialogTitle>
+            <DialogDescription>
+              No invoice selected
+            </DialogDescription>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>
+    )
   }
 
   const getStatusBadge = (status: string) => {
