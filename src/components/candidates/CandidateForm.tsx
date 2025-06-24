@@ -86,6 +86,8 @@ export function CandidateForm({
   isLoading 
 }: CandidateFormProps) {
   const [currencyOpen, setCurrencyOpen] = useState(false)
+  const [profileSummary, setProfileSummary] = useState('')
+  const [notes, setNotes] = useState('')
   const { user } = useAuth()
 
   const form = useForm<FormData>({
@@ -113,7 +115,7 @@ export function CandidateForm({
   useEffect(() => {
     if (candidate) {
       // Reset form with candidate data when editing
-      form.reset({
+      const candidateData = {
         candidate_name: candidate.candidate_name || '',
         location_country: candidate.location_country || '',
         location_state: candidate.location_state || '',
@@ -123,7 +125,13 @@ export function CandidateForm({
         salary_period: candidate.salary_period || 'annually',
         profile_summary: candidate.profile_summary || '',
         notes: candidate.notes || ''
-      })
+      }
+      
+      form.reset(candidateData)
+      
+      // Set the rich text editor values separately
+      setProfileSummary(candidate.profile_summary || '')
+      setNotes(candidate.notes || '')
     } else if (!isOpen) {
       // Reset form when dialog closes for new candidates
       form.reset({
@@ -137,6 +145,10 @@ export function CandidateForm({
         profile_summary: '',
         notes: ''
       })
+      
+      // Reset rich text editor values
+      setProfileSummary('')
+      setNotes('')
     }
   }, [candidate, isOpen, form])
 
@@ -144,6 +156,8 @@ export function CandidateForm({
     const submitData = {
       ...data,
       salary_amount: data.salary_amount ? Number(data.salary_amount) : null,
+      profile_summary: profileSummary,
+      notes: notes,
       job_id: jobId
     }
     
@@ -349,8 +363,8 @@ export function CandidateForm({
                 helpText="Brief overview of candidate's experience and skills"
               >
                 <RichTextEditor
-                  value={form.watch('profile_summary')}
-                  onChange={(value) => form.setValue('profile_summary', value)}
+                  value={profileSummary}
+                  onChange={setProfileSummary}
                   placeholder="Brief summary of candidate's background, experience, and key skills..."
                   minHeight="150px"
                   className="mt-1"
@@ -363,8 +377,8 @@ export function CandidateForm({
                 helpText="Private notes visible only to internal team"
               >
                 <RichTextEditor
-                  value={form.watch('notes')}
-                  onChange={(value) => form.setValue('notes', value)}
+                  value={notes}
+                  onChange={setNotes}
                   placeholder="Add any additional internal notes about this candidate..."
                   minHeight="120px"
                   className="mt-1"
