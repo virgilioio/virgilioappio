@@ -1,223 +1,253 @@
-
 import { useState } from 'react'
-import { Link, useNavigate, useLocation } from 'react-router-dom'
+import { Link } from 'react-router-dom'
+import { useAuth } from '@/contexts/AuthContext'
+import { useTheme } from '@/contexts/ThemeContext'
+import { Switch } from '@/components/ui/switch'
 import { Button } from '@/components/ui/button'
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Badge } from '@/components/ui/badge'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
-import {
-  Menu,
-  Home,
-  Briefcase,
-  Building2,
-  FileText,
-  Settings,
-  Receipt,
-  LogOut,
-  User,
-} from 'lucide-react'
-import { useAuth } from '@/contexts/AuthContext'
-import { usePermissions } from '@/hooks/usePermissions'
+import { useToast } from '@/components/ui/use-toast'
+import { cn } from '@/lib/utils'
+import { useOrganization } from '@/hooks/useOrganization'
+import { useIsMounted } from '@/hooks/useIsMounted'
+import { useAdminChecker } from '@/hooks/useAdminChecker'
 import { VirgilioLogo } from '@/components/VirgilioLogo'
-import { AdminModeIndicator } from '@/components/admin/AdminModeIndicator'
+import { OrganizationDebug } from '@/components/debug/OrganizationDebug'
+import {
+  SunMedium,
+  MoonStar,
+  Menu,
+  Settings,
+  CreditCard,
+  LogOut,
+  ShieldCheck,
+  Plus,
+} from 'lucide-react'
+import { SidebarTrigger } from '@/components/ui/sidebar'
 
 export function Header() {
-  const { user, logout } = useAuth()
-  const { 
-    canViewJobs, 
-    canViewOrganizations, 
-    canViewJobRequests, 
-    isPlatformAdmin,
-    isWorkspaceOwner
-  } = usePermissions()
-  const navigate = useNavigate()
-  const location = useLocation()
-  const [isSheetOpen, setIsSheetOpen] = useState(false)
+  const { user, signOut } = useAuth()
+  const { theme, setTheme } = useTheme()
+  const { toast } = useToast()
+  const { organization } = useOrganization()
+  const { isPlatformAdmin, isWorkspaceOwner } = useAdminChecker()
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const isMounted = useIsMounted()
 
-  const handleLogout = async () => {
-    await logout()
-    navigate('/auth')
+  const handleSignOut = async () => {
+    try {
+      await signOut()
+    } catch (error: any) {
+      toast({
+        title: 'Error signing out',
+        description: error.message,
+        variant: 'destructive',
+      })
+    }
   }
 
-  const navigationItems = [
-    {
-      href: '/dashboard',
-      icon: Home,
-      label: 'Home',
-      show: true,
-    },
-    {
-      href: '/organizations',
-      icon: Building2,
-      label: 'Organizations',
-      show: canViewOrganizations,
-    },
-    {
-      href: '/job-requests',
-      icon: FileText,
-      label: 'Job Requests',
-      show: canViewJobRequests,
-    },
-    {
-      href: '/jobs',
-      icon: Briefcase,
-      label: 'Jobs',
-      show: canViewJobs,
-    },
-    {
-      href: '/invoices',
-      icon: Receipt,
-      label: 'Invoices',
-      show: isPlatformAdmin,
-    },
-  ]
+  const toggleTheme = () => {
+    setTheme(theme === 'light' ? 'dark' : 'light')
+  }
 
-  const userDisplayName = user?.user_metadata?.first_name || user?.email?.split('@')[0] || 'User'
-  const userInitials = user?.user_metadata?.first_name && user?.user_metadata?.last_name
-    ? `${user.user_metadata.first_name[0]}${user.user_metadata.last_name[0]}`
-    : user?.email?.[0]?.toUpperCase() || 'U'
-
-  const NavigationContent = () => (
-    <>
-      {isPlatformAdmin && <AdminModeIndicator />}
-      <nav className="space-y-1">
-        {navigationItems
-          .filter(item => item.show)
-          .map((item) => {
-            const Icon = item.icon
-            const isActive = location.pathname === item.href || 
-              (item.href === '/dashboard' && location.pathname === '/')
-            
-            return (
-              <Link
-                key={item.href}
-                to={item.href}
-                onClick={() => setIsSheetOpen(false)}
-                className={`flex items-center gap-2 px-2 py-1 text-sm font-medium rounded-md transition-colors ${
-                  isActive
-                    ? 'bg-primary text-primary-foreground'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                }`}
-              >
-                <Icon className="h-3.5 w-3.5" />
-                {item.label}
-              </Link>
-            )
-          })}
-      </nav>
-    </>
-  )
+  const closeMobileMenu = () => {
+    setIsMobileMenuOpen(false)
+  }
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border">
-      <div className="flex items-center justify-between px-md py-2 sm:px-lg">
-        {/* Logo and Desktop Navigation */}
-        <div className="flex items-center gap-6">
-          <Link to="/dashboard" className="flex items-center gap-sm">
-            <VirgilioLogo className="h-6 w-auto" />
-          </Link>
+    <header className="fixed top-0 right-0 left-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
+      <div className="flex h-12 sm:h-14 items-center justify-between px-4 sm:px-6">
+        <div className="flex items-center gap-3">
+          <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
           
-          {/* Desktop Navigation */}
-          <nav className="hidden lg:flex items-center gap-1">
-            {navigationItems
-              .filter(item => item.show)
-              .map((item) => {
-                const Icon = item.icon
-                const isActive = location.pathname === item.href || 
-                  (item.href === '/dashboard' && location.pathname === '/')
-                
-                return (
-                  <Link
-                    key={item.href}
-                    to={item.href}
-                    className={`flex items-center gap-2 px-2 py-1 text-sm font-medium rounded-md transition-colors ${
-                      isActive
-                        ? 'bg-primary text-primary-foreground'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                    }`}
-                  >
-                    <Icon className="h-3.5 w-3.5" />
-                    {item.label}
-                  </Link>
-                )
-              })}
-          </nav>
+          <Link to="/" className="flex items-center gap-2">
+            <VirgilioLogo className="h-6 w-6 sm:h-8 sm:w-8" />
+            <span className="font-bold text-lg sm:text-xl hidden sm:block">Virgilio</span>
+          </Link>
         </div>
 
-        {/* User Menu and Mobile Navigation */}
-        <div className="flex items-center gap-sm">
-          {/* User Role Badge */}
-          {(isPlatformAdmin || isWorkspaceOwner) && (
-            <Badge variant="outline" className="hidden sm:inline-flex text-xs">
-              {isPlatformAdmin ? 'Platform Admin' : 'Workspace Owner'}
-            </Badge>
+        {/* Desktop Navigation */}
+        <nav className="hidden md:flex items-center space-x-1">
+          {isPlatformAdmin && (
+            <Link to="/organizations">
+              <Button variant="ghost" size="sm">
+                Organizations
+              </Button>
+            </Link>
           )}
+          {isPlatformAdmin && (
+            <Link to="/invoices">
+              <Button variant="ghost" size="sm">
+                Invoices
+              </Button>
+            </Link>
+          )}
+          {isWorkspaceOwner && (
+            <Link to="/job-requests">
+              <Button variant="ghost" size="sm">
+                Job Requests
+              </Button>
+            </Link>
+          )}
+          <Link to="/jobs">
+            <Button variant="ghost" size="sm">
+              Jobs
+            </Button>
+          </Link>
+          <Link to="/members">
+            <Button variant="ghost" size="sm">
+              Members
+            </Button>
+          </Link>
+        </nav>
 
-          {/* User Menu */}
+        {/* Right side */}
+        <div className="flex items-center gap-2">
+          {isPlatformAdmin && (
+            <ShieldCheck className="text-green-500 h-4 w-4 mr-1" />
+          )}
+          {organization?.is_onboarded === false && (
+            <div className="text-orange-500 mr-2 animate-pulse">
+              Onboarding Incomplete
+            </div>
+          )}
+          <Switch
+            id="theme"
+            checked={theme === 'dark'}
+            onCheckedChange={toggleTheme}
+          />
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="relative h-7 w-7 rounded-full">
-                <Avatar className="h-7 w-7">
-                  <AvatarImage src={user?.user_metadata?.avatar_url} alt={userDisplayName} />
-                  <AvatarFallback className="text-xs">{userInitials}</AvatarFallback>
+              <Button variant="ghost" className="h-8 w-8 p-0 rounded-full">
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={user?.user_metadata?.avatar_url} alt={user?.email || 'Avatar'} />
+                  <AvatarFallback>{user?.email?.[0]?.toUpperCase() || '?'}</AvatarFallback>
                 </Avatar>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-52" align="end" forceMount>
-              <DropdownMenuLabel className="font-normal">
-                <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium leading-none">{userDisplayName}</p>
-                  <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
+            <DropdownMenuContent align="end">
+              <div className="px-4 py-2">
+                <div className="font-bold text-sm">{user?.email}</div>
+                <div className="text-muted-foreground text-xs">
+                  {user?.user_metadata?.full_name || 'No Name'}
                 </div>
-              </DropdownMenuLabel>
+              </div>
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
-                <Link to="/settings" className="flex items-center gap-2 w-full">
-                  <User className="h-3.5 w-3.5" />
-                  Profile
+                <Link to="/settings">
+                  <Settings className="h-4 w-4 mr-2" />
+                  <span>Settings</span>
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/settings" className="flex items-center gap-2 w-full">
-                  <Settings className="h-3.5 w-3.5" />
-                  Settings
-                </Link>
-              </DropdownMenuItem>
+              {isWorkspaceOwner && (
+                <DropdownMenuItem asChild>
+                  <Link to="/billing">
+                    <CreditCard className="h-4 w-4 mr-2" />
+                    <span>Billing</span>
+                  </Link>
+                </DropdownMenuItem>
+              )}
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleLogout} className="text-red-600 focus:text-red-600">
-                <LogOut className="h-3.5 w-3.5 mr-2" />
-                Log out
+              <DropdownMenuItem onSelect={handleSignOut}>
+                <LogOut className="h-4 w-4 mr-2" />
+                <span>Log out</span>
               </DropdownMenuItem>
+              {process.env.NODE_ENV === 'development' && isMounted && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem>
+                    <OrganizationDebug />
+                  </DropdownMenuItem>
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
-
-          {/* Mobile Navigation */}
-          <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="lg:hidden h-7 w-7">
-                <Menu className="h-4 w-4" />
-                <span className="sr-only">Toggle navigation menu</span>
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left" className="w-64">
-              <div className="flex flex-col gap-md">
-                <Link to="/dashboard" className="flex items-center gap-sm" onClick={() => setIsSheetOpen(false)}>
-                  <VirgilioLogo className="h-6 w-auto" />
-                </Link>
-                <NavigationContent />
-              </div>
-            </SheetContent>
-          </Sheet>
         </div>
       </div>
+
+      {/* Mobile Navigation Sheet */}
+      <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+        <SheetTrigger asChild>
+          <Button
+            variant="ghost"
+            className="md:hidden h-8 w-8 p-0 rounded-full"
+          >
+            <Menu className="h-6 w-6" />
+            <span className="sr-only">Open mobile menu</span>
+          </Button>
+        </SheetTrigger>
+        <SheetContent side="left" className="sm:max-w-sm">
+          <SheetHeader>
+            <SheetTitle>Menu</SheetTitle>
+            <SheetDescription>
+              Explore the platform and manage your organization.
+            </SheetDescription>
+          </SheetHeader>
+          <div className="grid gap-4 py-4">
+            <Link to="/jobs" onClick={closeMobileMenu}>
+              <Button variant="ghost" className="justify-start">
+                Jobs
+              </Button>
+            </Link>
+            <Link to="/members" onClick={closeMobileMenu}>
+              <Button variant="ghost" className="justify-start">
+                Members
+              </Button>
+            </Link>
+            {isPlatformAdmin && (
+              <Link to="/organizations" onClick={closeMobileMenu}>
+                <Button variant="ghost" className="justify-start">
+                  Organizations
+                </Button>
+              </Link>
+            )}
+            {isPlatformAdmin && (
+              <Link to="/invoices" onClick={closeMobileMenu}>
+                <Button variant="ghost" className="justify-start">
+                  Invoices
+                </Button>
+              </Link>
+            )}
+            {isWorkspaceOwner && (
+              <Link to="/job-requests" onClick={closeMobileMenu}>
+                <Button variant="ghost" className="justify-start">
+                  Job Requests
+                </Button>
+              </Link>
+            )}
+            <Link to="/settings" onClick={closeMobileMenu}>
+              <Button variant="ghost" className="justify-start">
+                Settings
+              </Button>
+            </Link>
+            {isWorkspaceOwner && (
+              <Link to="/billing" onClick={closeMobileMenu}>
+                <Button variant="ghost" className="justify-start">
+                  Billing
+                </Button>
+              </Link>
+            )}
+            <Button variant="ghost" className="justify-start" onClick={handleSignOut}>
+              Log out
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
     </header>
   )
 }

@@ -47,7 +47,7 @@ function AppContent() {
             </RequireAuth>
           }
         >
-          <Route index element={<Dashboard />} />
+          <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="jobs" element={<Jobs />} />
           <Route path="jobs/:id" element={<JobDetail />} />
