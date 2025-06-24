@@ -10,6 +10,8 @@ import { Plus, Search, Edit, Archive, MoreHorizontal, FileText, Briefcase } from
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Job } from '@/hooks/useJobs'
 import { usePermissions } from '@/hooks/usePermissions'
+import { useOrganizations } from '@/hooks/useOrganizations'
+import { useAuth } from '@/contexts/AuthContext'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { Skeleton } from '@/components/ui/skeleton'
 
@@ -27,7 +29,10 @@ export function JobsTable({ jobs, isLoading, onView, onEdit, onArchive, onCreate
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [levelFilter, setLevelFilter] = useState<string>('all')
+  const [organizationFilter, setOrganizationFilter] = useState<string>('all')
   const permissions = usePermissions()
+  const { userType } = useAuth()
+  const { organizations } = useOrganizations()
   const isMobile = useIsMobile()
 
   const getStatusBadgeVariant = (status: string) => {
@@ -52,8 +57,9 @@ export function JobsTable({ jobs, isLoading, onView, onEdit, onArchive, onCreate
                          job.organization_name?.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesStatus = statusFilter === 'all' || job.status === statusFilter
     const matchesLevel = levelFilter === 'all' || job.level === levelFilter
+    const matchesOrganization = organizationFilter === 'all' || job.organization_id === organizationFilter
     
-    return matchesSearch && matchesStatus && matchesLevel
+    return matchesSearch && matchesStatus && matchesLevel && matchesOrganization
   })
 
   if (isLoading) {
@@ -157,6 +163,22 @@ export function JobsTable({ jobs, isLoading, onView, onEdit, onArchive, onCreate
                     </SelectContent>
                   </Select>
                 </div>
+
+                {userType === 'platform_admin' && (
+                  <Select value={organizationFilter} onValueChange={setOrganizationFilter}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Organization" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Organizations</SelectItem>
+                      {organizations.map((org) => (
+                        <SelectItem key={org.id} value={org.id}>
+                          {org.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
             </div>
           </CardHeader>
@@ -320,6 +342,22 @@ export function JobsTable({ jobs, isLoading, onView, onEdit, onArchive, onCreate
               <SelectItem value="L4 - C-Level">L4 - C-Level</SelectItem>
             </SelectContent>
           </Select>
+
+          {userType === 'platform_admin' && (
+            <Select value={organizationFilter} onValueChange={setOrganizationFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Filter by organization" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Organizations</SelectItem>
+                {organizations.map((org) => (
+                  <SelectItem key={org.id} value={org.id}>
+                    {org.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
       </CardHeader>
       
