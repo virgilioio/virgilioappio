@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react'
+import { useForm } from 'react-hook-form'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
@@ -12,6 +13,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Check, ChevronsUpDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/AuthContext'
+import { useFormPersistence } from '@/hooks/useFormPersistence'
 import { CandidateComments } from './CandidateComments'
 import type { Candidate } from '@/hooks/useCandidates'
 
@@ -22,6 +24,18 @@ interface CandidateFormProps {
   candidate?: Candidate | null
   jobId: string
   isLoading: boolean
+}
+
+interface FormData {
+  candidate_name: string
+  location_country: string
+  location_state: string
+  location_city: string
+  salary_amount: string
+  salary_currency: string
+  salary_period: string
+  profile_summary: string
+  notes: string
 }
 
 const currencies = [
@@ -71,24 +85,35 @@ export function CandidateForm({
   jobId, 
   isLoading 
 }: CandidateFormProps) {
-  const [formData, setFormData] = useState({
-    candidate_name: '',
-    location_country: '',
-    location_state: '',
-    location_city: '',
-    salary_amount: '',
-    salary_currency: 'USD',
-    salary_period: 'annually',
-    profile_summary: '',
-    notes: ''
-  })
-  const [errors, setErrors] = useState<Record<string, string>>({})
   const [currencyOpen, setCurrencyOpen] = useState(false)
   const { user } = useAuth()
 
+  const form = useForm<FormData>({
+    defaultValues: {
+      candidate_name: '',
+      location_country: '',
+      location_state: '',
+      location_city: '',
+      salary_amount: '',
+      salary_currency: 'USD',
+      salary_period: 'annually',
+      profile_summary: '',
+      notes: ''
+    }
+  })
+
+  // Setup form persistence - only enable for new candidates (not editing existing ones)
+  const { clearPersistedData } = useFormPersistence({
+    storageKey: `candidate-form-${jobId}`,
+    form,
+    enabled: isOpen && !candidate, // Only persist for new candidates
+    debounceMs: 300
+  })
+
   useEffect(() => {
     if (candidate) {
-      setFormData({
+      // Reset form with candidate data when editing
+      form.reset({
         candidate_name: candidate.candidate_name || '',
         location_country: candidate.location_country || '',
         location_state: candidate.location_state || '',
@@ -99,8 +124,9 @@ export function CandidateForm({
         profile_summary: candidate.profile_summary || '',
         notes: candidate.notes || ''
       })
-    } else {
-      setFormData({
+    } else if (!isOpen) {
+      // Reset form when dialog closes for new candidates
+      form.reset({
         candidate_name: '',
         location_country: '',
         location_state: '',
@@ -112,66 +138,32 @@ export function CandidateForm({
         notes: ''
       })
     }
-    setErrors({})
-  }, [candidate, isOpen])
+  }, [candidate, isOpen, form])
 
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {}
-    
-    if (!formData.candidate_name.trim()) {
-      newErrors.candidate_name = 'Name is required'
-    }
-    
-    if (formData.salary_amount && isNaN(Number(formData.salary_amount))) {
-      newErrors.salary_amount = 'Please enter a valid number'
-    }
-    
-    if (formData.salary_amount && Number(formData.salary_amount) <= 0) {
-      newErrors.salary_amount = 'Salary must be greater than 0'
-    }
-    
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    
-    if (!validateForm()) return
-    
+  const handleSubmit = form.handleSubmit((data) => {
     const submitData = {
-      ...formData,
-      salary_amount: formData.salary_amount ? Number(formData.salary_amount) : null,
+      ...data,
+      salary_amount: data.salary_amount ? Number(data.salary_amount) : null,
       job_id: jobId
     }
+    
     onSubmit(submitData)
     
+    // Clear persisted data after successful submission
     if (!candidate) {
-      setFormData({
-        candidate_name: '',
-        location_country: '',
-        location_state: '',
-        location_city: '',
-        salary_amount: '',
-        salary_currency: 'USD',
-        salary_period: 'annually',
-        profile_summary: '',
-        notes: ''
-      })
+      clearPersistedData()
     }
-  }
+  })
 
-  const handleChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }))
-    if (errors[field]) {
-      setErrors(prev => ({ ...prev, [field]: '' }))
-    }
+  const handleClose = () => {
+    // Don't clear persisted data when closing - let it persist for later use
+    onClose()
   }
 
   if (!user) return null
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-surface-primary">
         <DialogHeader className="pb-6">
           <DialogTitle className="text-xl font-semibold text-text-primary">
@@ -191,15 +183,12 @@ export function CandidateForm({
               <FormField 
                 label="Name or Alias" 
                 required 
-                error={errors.candidate_name}
+                error={form.formState.errors.candidate_name?.message}
                 htmlFor="candidate_name"
               >
                 <Input
                   id="candidate_name"
-                  name="candidate_name"
-                  value={formData.candidate_name}
-                  onChange={(e) => handleChange('candidate_name', e.target.value)}
-                  error={!!errors.candidate_name}
+                  {...form.register('candidate_name', { required: 'Name is required' })}
                   placeholder="Enter candidate name or alias"
                   className="h-[44px]"
                 />
@@ -218,9 +207,7 @@ export function CandidateForm({
               >
                 <Input
                   id="location_country"
-                  name="location_country"
-                  value={formData.location_country}
-                  onChange={(e) => handleChange('location_country', e.target.value)}
+                  {...form.register('location_country')}
                   placeholder="Country"
                   className="h-[44px]"
                 />
@@ -233,9 +220,7 @@ export function CandidateForm({
                 >
                   <Input
                     id="location_state"
-                    name="location_state"
-                    value={formData.location_state}
-                    onChange={(e) => handleChange('location_state', e.target.value)}
+                    {...form.register('location_state')}
                     placeholder="State/Province"
                     className="h-[44px]"
                   />
@@ -247,9 +232,7 @@ export function CandidateForm({
                 >
                   <Input
                     id="location_city"
-                    name="location_city"
-                    value={formData.location_city}
-                    onChange={(e) => handleChange('location_city', e.target.value)}
+                    {...form.register('location_city')}
                     placeholder="City"
                     className="h-[44px]"
                   />
@@ -265,16 +248,19 @@ export function CandidateForm({
               
               <FormField 
                 label="Amount"
-                error={errors.salary_amount}
+                error={form.formState.errors.salary_amount?.message}
                 htmlFor="salary_amount"
               >
                 <Input
                   id="salary_amount"
-                  name="salary_amount"
                   type="number"
-                  value={formData.salary_amount}
-                  onChange={(e) => handleChange('salary_amount', e.target.value)}
-                  error={!!errors.salary_amount}
+                  {...form.register('salary_amount', {
+                    validate: (value) => {
+                      if (value && isNaN(Number(value))) return 'Please enter a valid number'
+                      if (value && Number(value) <= 0) return 'Salary must be greater than 0'
+                      return true
+                    }
+                  })}
                   placeholder="50000"
                   className="h-[44px]"
                 />
@@ -293,8 +279,8 @@ export function CandidateForm({
                         aria-expanded={currencyOpen}
                         className="w-full justify-between h-[44px]"
                       >
-                        {formData.salary_currency
-                          ? currencies.find((currency) => currency.value === formData.salary_currency)?.label
+                        {form.watch('salary_currency')
+                          ? currencies.find((currency) => currency.value === form.watch('salary_currency'))?.label
                           : "Select currency..."}
                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                       </Button>
@@ -310,14 +296,14 @@ export function CandidateForm({
                                 key={currency.value}
                                 value={currency.value}
                                 onSelect={(currentValue) => {
-                                  handleChange('salary_currency', currentValue.toUpperCase())
+                                  form.setValue('salary_currency', currentValue.toUpperCase())
                                   setCurrencyOpen(false)
                                 }}
                               >
                                 <Check
                                   className={cn(
                                     "mr-2 h-4 w-4",
-                                    formData.salary_currency === currency.value ? "opacity-100" : "opacity-0"
+                                    form.watch('salary_currency') === currency.value ? "opacity-100" : "opacity-0"
                                   )}
                                 />
                                 {currency.label}
@@ -335,8 +321,8 @@ export function CandidateForm({
                   htmlFor="salary_period"
                 >
                   <Select 
-                    value={formData.salary_period} 
-                    onValueChange={(value) => handleChange('salary_period', value)}
+                    value={form.watch('salary_period')} 
+                    onValueChange={(value) => form.setValue('salary_period', value)}
                   >
                     <SelectTrigger className="h-[44px]">
                       <SelectValue placeholder="Period" />
@@ -363,8 +349,8 @@ export function CandidateForm({
                 helpText="Brief overview of candidate's experience and skills"
               >
                 <RichTextEditor
-                  value={formData.profile_summary}
-                  onChange={(value) => handleChange('profile_summary', value)}
+                  value={form.watch('profile_summary')}
+                  onChange={(value) => form.setValue('profile_summary', value)}
                   placeholder="Brief summary of candidate's background, experience, and key skills..."
                   minHeight="150px"
                   className="mt-1"
@@ -377,8 +363,8 @@ export function CandidateForm({
                 helpText="Private notes visible only to internal team"
               >
                 <RichTextEditor
-                  value={formData.notes}
-                  onChange={(value) => handleChange('notes', value)}
+                  value={form.watch('notes')}
+                  onChange={(value) => form.setValue('notes', value)}
                   placeholder="Add any additional internal notes about this candidate..."
                   minHeight="120px"
                   className="mt-1"
@@ -398,7 +384,7 @@ export function CandidateForm({
               <Button 
                 type="button" 
                 variant="outline" 
-                onClick={onClose}
+                onClick={handleClose}
                 className="h-[44px] sm:w-auto"
               >
                 Cancel
