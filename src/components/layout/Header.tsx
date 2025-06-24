@@ -1,3 +1,4 @@
+
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
@@ -40,7 +41,7 @@ import {
 import { SidebarTrigger } from '@/components/ui/sidebar'
 
 export function Header() {
-  const { user, signOut } = useAuth()
+  const { user, logout } = useAuth()
   const { theme, setTheme } = useTheme()
   const { toast } = useToast()
   const { organization } = useOrganization()
@@ -50,7 +51,7 @@ export function Header() {
 
   const handleSignOut = async () => {
     try {
-      await signOut()
+      await logout()
     } catch (error: any) {
       toast({
         title: 'Error signing out',
