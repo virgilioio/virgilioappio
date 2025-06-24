@@ -1,4 +1,5 @@
 
+
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 import { useToast } from '@/hooks/use-toast'
@@ -51,20 +52,39 @@ export function usePlatformSettings() {
       const currentUser = await supabase.auth.getUser()
       const userId = currentUser.data.user?.id
 
-      // Use upsert to handle both insert and update cases
-      const { error } = await supabase
-        .from('platform_settings')
-        .upsert({ 
-          setting_key: settingKey,
-          setting_value: value,
-          updated_by: userId
-        }, {
-          onConflict: 'setting_key'
-        })
+      // Check if setting exists
+      const existingSetting = settings.find(s => s.setting_key === settingKey)
+      
+      if (existingSetting) {
+        // Update existing setting
+        const { error } = await supabase
+          .from('platform_settings')
+          .update({ 
+            setting_value: value,
+            updated_by: userId
+          })
+          .eq('setting_key', settingKey)
 
-      if (error) {
-        console.error('Upsert error:', error)
-        throw error
+        if (error) {
+          console.error('Update error:', error)
+          throw error
+        }
+      } else {
+        // Insert new setting - this shouldn't happen with our current setup but adding as fallback
+        const { error } = await supabase
+          .from('platform_settings')
+          .insert({
+            setting_key: settingKey,
+            setting_value: value,
+            setting_type: 'html',
+            display_name: settingKey.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+            updated_by: userId
+          })
+
+        if (error) {
+          console.error('Insert error:', error)
+          throw error
+        }
       }
 
       toast({
@@ -111,3 +131,4 @@ export function usePlatformSettings() {
     refetchSettings: fetchSettings
   }
 }
+
