@@ -38,6 +38,9 @@ export interface PermissionsState {
   canDeleteCandidates: boolean
   canManageCandidates: boolean
   
+  // Navigation permissions
+  canViewCandidatesNavigation: boolean
+  
   // Job assignment permissions
   canViewJobAssignments: boolean
   canManageJobAssignments: boolean
@@ -77,6 +80,9 @@ export function usePermissions(): PermissionsState {
   // Guests are users without membership or org context
   const isGuest = (memberRole === 'guest' || !hasOrganizationContext) && !isPlatformAdmin && !isWorkspaceOwner
 
+  // Check if user is a Virgilio (platform organization) recruiter
+  const isVirgilioRecruiter = memberRole === 'recruiter' && hasOrganizationContext
+
   return {
     // Job permissions - Platform admins can manage everything
     canViewJobs: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin', 'client', 'customer_success'].includes(memberRole || ''),
@@ -112,6 +118,9 @@ export function usePermissions(): PermissionsState {
     canEditCandidates: isPlatformAdmin || ['recruiter', 'admin', 'customer_success'].includes(memberRole || ''),
     canDeleteCandidates: isPlatformAdmin || memberRole === 'admin',
     canManageCandidates: isPlatformAdmin || ['recruiter', 'admin', 'customer_success'].includes(memberRole || ''),
+    
+    // Navigation permissions - Show candidates in header for Platform Admins and Virgilio recruiters
+    canViewCandidatesNavigation: isPlatformAdmin || isVirgilioRecruiter,
     
     // Job assignment permissions
     canViewJobAssignments: isPlatformAdmin || ['recruiter', 'admin', 'customer_success'].includes(memberRole || ''),

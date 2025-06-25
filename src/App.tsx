@@ -14,6 +14,7 @@ import JobDetail from './pages/JobDetail'
 import Members from './pages/Members'
 import Organizations from './pages/Organizations'
 import JobRequests from './pages/JobRequests'
+import Candidates from './pages/Candidates'
 import Settings from './pages/Settings'
 import Login from './pages/Login'
 import AcceptInvite from './pages/AcceptInvite'
@@ -52,6 +53,7 @@ function AppContent() {
           <Route path="jobs" element={<Jobs />} />
           <Route path="jobs/:id" element={<JobDetail />} />
           <Route path="jobs/:jobId/candidates/:candidateId" element={<CandidateProfile />} />
+          <Route path="candidates" element={<Candidates />} />
           <Route path="members" element={<Members />} />
           <Route path="organizations" element={<Organizations />} />
           <Route path="job-requests" element={<JobRequests />} />

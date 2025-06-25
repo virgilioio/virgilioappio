@@ -1,4 +1,3 @@
-
 import { useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
@@ -23,6 +22,7 @@ import {
   Receipt,
   LogOut,
   User,
+  Users,
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -35,6 +35,7 @@ export function Header() {
     canViewJobs, 
     canViewOrganizations, 
     canViewJobRequests, 
+    canViewCandidatesNavigation,
     isPlatformAdmin,
     isWorkspaceOwner
   } = usePermissions()
@@ -71,6 +72,12 @@ export function Header() {
       icon: Briefcase,
       label: 'Jobs',
       show: canViewJobs,
+    },
+    {
+      href: '/candidates',
+      icon: Users,
+      label: 'Candidates',
+      show: canViewCandidatesNavigation,
     },
     {
       href: '/invoices',
