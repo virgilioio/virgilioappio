@@ -15,11 +15,11 @@ export default function Dashboard() {
   const { profile, isLoading } = useUserProfile()
   const permissions = usePermissions()
 
-  // Check what content will be visible
-  const hasBillingContent = permissions.canViewBilling
+  // Check what content will be visible - exclude guest users from billing
+  const hasBillingContent = permissions.canViewBilling && !permissions.isGuest
   const hasJobContent = permissions.canViewJobs || permissions.canCreateJobs || permissions.canRequestJobs
   const hasQuickAccess = permissions.canCreateJobs || permissions.canRequestJobs || permissions.canManageMembers
-  const canManageOrganization = permissions.canManageOrganization || permissions.isWorkspaceOwner || permissions.isPlatformAdmin
+  const canManageOrganization = (permissions.canManageOrganization || permissions.isWorkspaceOwner || permissions.isPlatformAdmin) && !permissions.isGuest
   
   return (
     <div className="min-h-screen bg-background">
@@ -30,7 +30,7 @@ export default function Dashboard() {
             
             {/* Adaptive layout based on available content */}
             {hasBillingContent ? (
-              // Two column layout when billing content is available
+              // Two column layout when billing content is available (never for guests)
               <div className="grid gap-6 lg:grid-cols-2">
                 <div className="space-y-6">
                   <PermissionGate permission="canViewBilling">
@@ -47,7 +47,7 @@ export default function Dashboard() {
                 </div>
               </div>
             ) : (
-              // Single column layout when no billing content
+              // Single column layout when no billing content (including for guests)
               <div className="max-w-4xl mx-auto space-y-6">
                 <AdvertisingBanner />
                 {canManageOrganization && <OnboardingProgress profile={profile} isLoading={isLoading} />}

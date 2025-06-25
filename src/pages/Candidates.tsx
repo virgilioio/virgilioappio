@@ -34,36 +34,87 @@ interface CandidateWithJob {
 }
 
 export default function Candidates() {
-  const { user } = useAuth()
-  const { canViewCandidates } = usePermissions()
+  const { user, userType } = useAuth()
+  const { canViewCandidates, isGuest } = usePermissions()
   const [searchTerm, setSearchTerm] = useState('')
 
   const { data: candidates = [], isLoading, error } = useQuery({
-    queryKey: ['global-candidates'],
+    queryKey: ['global-candidates', userType],
     queryFn: async () => {
-      console.log('Fetching all candidates for global view')
+      console.log('Fetching candidates for user type:', userType)
       
-      const { data, error } = await supabase
-        .from('job_candidates')
-        .select(`
-          *,
-          job:jobs!inner (
-            id,
-            title,
-            organization:organizations!inner (
-              name
+      if (isGuest) {
+        // Guest users can only see candidates for jobs they are assigned to
+        console.log('Guest user - fetching candidates only for assigned jobs')
+        
+        // First get the jobs this guest user is assigned to
+        const { data: jobAssignments, error: assignmentsError } = await supabase
+          .from('job_assignments')
+          .select('job_id')
+          .eq('user_id', user?.id)
+
+        if (assignmentsError) {
+          console.error('Error fetching job assignments for guest:', assignmentsError)
+          throw assignmentsError
+        }
+
+        const assignedJobIds = jobAssignments?.map(assignment => assignment.job_id) || []
+        console.log('Guest user assigned job IDs:', assignedJobIds)
+
+        if (assignedJobIds.length === 0) {
+          console.log('Guest user has no assigned jobs, returning empty candidates list')
+          return []
+        }
+
+        // Now fetch candidates only for those assigned jobs
+        const { data, error } = await supabase
+          .from('job_candidates')
+          .select(`
+            *,
+            job:jobs!inner (
+              id,
+              title,
+              organization:organizations!inner (
+                name
+              )
             )
-          )
-        `)
-        .order('created_at', { ascending: false })
+          `)
+          .in('job_id', assignedJobIds)
+          .order('created_at', { ascending: false })
 
-      if (error) {
-        console.error('Error fetching candidates:', error)
-        throw error
+        if (error) {
+          console.error('Error fetching candidates for guest:', error)
+          throw error
+        }
+
+        console.log('Fetched candidates for guest user:', data)
+        return data as CandidateWithJob[]
+      } else {
+        // Non-guest users see all candidates they have access to
+        console.log('Non-guest user - fetching all accessible candidates')
+        
+        const { data, error } = await supabase
+          .from('job_candidates')
+          .select(`
+            *,
+            job:jobs!inner (
+              id,
+              title,
+              organization:organizations!inner (
+                name
+              )
+            )
+          `)
+          .order('created_at', { ascending: false })
+
+        if (error) {
+          console.error('Error fetching candidates:', error)
+          throw error
+        }
+
+        console.log('Fetched candidates:', data)
+        return data as CandidateWithJob[]
       }
-
-      console.log('Fetched candidates:', data)
-      return data as CandidateWithJob[]
     },
     enabled: !!user && canViewCandidates,
   })
@@ -108,8 +159,8 @@ export default function Candidates() {
     <PermissionGate permission="canViewCandidates">
       <div className="container mx-auto px-4 py-8">
         <PageHeader 
-          title="All Candidates" 
-          subtitle="Manage candidates across all jobs and organizations"
+          title={isGuest ? "My Assigned Job Candidates" : "All Candidates"}
+          subtitle={isGuest ? "View candidates for jobs you are assigned to" : "Manage candidates across all jobs and organizations"}
         />
 
         <div className="mb-6">
@@ -141,7 +192,12 @@ export default function Candidates() {
                 <TableRow>
                   <TableCell colSpan={6} className="text-center py-8">
                     <div className="text-gray-500">
-                      {searchTerm ? 'No candidates found matching your search.' : 'No candidates found.'}
+                      {searchTerm 
+                        ? 'No candidates found matching your search.' 
+                        : isGuest 
+                          ? 'No candidates found for your assigned jobs.'
+                          : 'No candidates found.'
+                      }
                     </div>
                   </TableCell>
                 </TableRow>

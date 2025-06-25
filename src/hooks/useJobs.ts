@@ -70,7 +70,7 @@ export function useJobs() {
         .select('*')
         .order('created_at', { ascending: false })
 
-      // Get member role to determine if user is a recruiter
+      // Get member role to determine filtering strategy
       const { data: memberData } = await supabase
         .from('members')
         .select('member_role')
@@ -78,12 +78,18 @@ export function useJobs() {
         .eq('organization_id', organizationId || '')
         .single()
 
-      const isRecruiter = memberData?.member_role === 'recruiter'
+      const memberRole = memberData?.member_role
+      const isRecruiter = memberRole === 'recruiter'
+      const isGuest = userType === 'guest'
 
       // Apply filtering based on user role
       if (userType === 'platform_admin') {
         // Platform admins see all jobs - no additional filtering needed
         console.log('Platform admin - showing all jobs')
+      } else if (isGuest) {
+        // Guest users can ONLY see jobs they are specifically assigned to via job_assignments
+        console.log('Guest user - will filter to only assigned jobs across all organizations')
+        // Don't filter by organization here - we'll do it after getting job assignments
       } else if (isRecruiter) {
         // Recruiters can see jobs across organizations if they're assigned
         console.log('Recruiter - will filter by assignments across all organizations')
@@ -102,11 +108,40 @@ export function useJobs() {
 
       console.log('Fetched jobs data:', jobsData)
 
-      // Client-side filtering for recruiters
+      // Client-side filtering based on user type and role
       let filteredJobs = jobsData || []
       
       if (userType !== 'platform_admin' && organizationId) {
-        if (isRecruiter) {
+        if (isGuest) {
+          console.log('Applying STRICT guest filtering - only assigned jobs via job_assignments table')
+          
+          // Get job assignments for this guest user across ALL organizations
+          const { data: jobAssignments, error: assignmentsError } = await supabase
+            .from('job_assignments')
+            .select('job_id')
+            .eq('user_id', user.id)
+
+          if (assignmentsError) {
+            console.error('Error fetching job assignments:', assignmentsError)
+          }
+
+          const assignedJobIds = new Set(jobAssignments?.map(assignment => assignment.job_id) || [])
+          console.log('Guest user assigned to jobs via job_assignments table:', Array.from(assignedJobIds))
+
+          // Guest users can ONLY see jobs they are explicitly assigned to
+          filteredJobs = filteredJobs.filter(job => {
+            const isAssignedViaTable = assignedJobIds.has(job.id)
+            
+            if (isAssignedViaTable) {
+              console.log(`Guest has access to job "${job.title}" from organization ${job.organization_id} via job_assignments`)
+            }
+            
+            return isAssignedViaTable
+          })
+          
+          console.log(`Guest filtered jobs: ${filteredJobs.length} out of ${jobsData?.length || 0}`)
+          console.log('Accessible job titles for guest:', filteredJobs.map(job => job.title))
+        } else if (isRecruiter) {
           console.log('Applying recruiter filtering for hiring team membership and job assignments across all organizations')
           
           // Get job assignments for this recruiter across ALL organizations

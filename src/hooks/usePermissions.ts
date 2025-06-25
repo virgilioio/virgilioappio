@@ -59,6 +59,7 @@ export interface PermissionsState {
   isMember: boolean
   isClient: boolean
   isGuest: boolean
+  isGuestClient: boolean
   hasOrganizationContext: boolean
 }
 
@@ -77,43 +78,46 @@ export function usePermissions(): PermissionsState {
   // Members are users with specific member roles and org context
   const isMember = ['recruiter', 'admin', 'billing', 'client', 'customer_success'].includes(memberRole || '') && hasOrganizationContext
   
-  // Guests are users without membership or org context
-  const isGuest = (memberRole === 'guest' || !hasOrganizationContext) && !isPlatformAdmin && !isWorkspaceOwner
+  // Guests are users with userType === 'guest' - this is the key fix
+  const isGuest = userType === 'guest'
+  
+  // Guest clients specifically - users with guest userType and client memberRole
+  const isGuestClient = userType === 'guest' && memberRole === 'client'
 
   // Check if user is a Virgilio (platform organization) recruiter
   const isVirgilioRecruiter = memberRole === 'recruiter' && hasOrganizationContext
 
   return {
-    // Job permissions - Platform admins can manage everything
-    canViewJobs: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin', 'client', 'customer_success'].includes(memberRole || ''),
+    // Job permissions - Guest users can only view jobs (restricted to assigned jobs in useJobs hook)
+    canViewJobs: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin', 'client', 'customer_success'].includes(memberRole || '') || isGuest,
     canCreateJobs: isPlatformAdmin || memberRole === 'admin' || memberRole === 'customer_success',
     canEditJobs: isPlatformAdmin || memberRole === 'admin' || memberRole === 'customer_success',
     canDeleteJobs: isPlatformAdmin || memberRole === 'admin',
     canArchiveJobs: isPlatformAdmin || memberRole === 'admin',
     
-    // Member permissions - Platform admins can manage all members
-    canViewMembers: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin' || memberRole === 'customer_success',
-    canCreateMembers: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin' || memberRole === 'customer_success',
-    canEditMembers: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin' || memberRole === 'customer_success',
-    canDeleteMembers: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin',
-    canManageMembers: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin' || memberRole === 'customer_success',
+    // Member permissions - Guest users cannot manage members
+    canViewMembers: isPlatformAdmin || isWorkspaceOwner || (memberRole === 'admin' || memberRole === 'customer_success') && !isGuest,
+    canCreateMembers: isPlatformAdmin || isWorkspaceOwner || (memberRole === 'admin' || memberRole === 'customer_success') && !isGuest,
+    canEditMembers: isPlatformAdmin || isWorkspaceOwner || (memberRole === 'admin' || memberRole === 'customer_success') && !isGuest,
+    canDeleteMembers: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin' && !isGuest,
+    canManageMembers: isPlatformAdmin || isWorkspaceOwner || (memberRole === 'admin' || memberRole === 'customer_success') && !isGuest,
     
-    // Organization permissions - Platform admins can see and manage all organizations
-    canViewOrganizations: isPlatformAdmin || memberRole === 'customer_success',
-    canCreateOrganizations: isPlatformAdmin || memberRole === 'customer_success',
-    canEditOrganizations: isPlatformAdmin || isWorkspaceOwner || memberRole === 'customer_success',
-    canDeleteOrganizations: isPlatformAdmin,
-    canManageOrganization: isPlatformAdmin || isWorkspaceOwner || memberRole === 'customer_success',
+    // Organization permissions - Guest users cannot manage organizations
+    canViewOrganizations: isPlatformAdmin || memberRole === 'customer_success' && !isGuest,
+    canCreateOrganizations: isPlatformAdmin || memberRole === 'customer_success' && !isGuest,
+    canEditOrganizations: isPlatformAdmin || isWorkspaceOwner || memberRole === 'customer_success' && !isGuest,
+    canDeleteOrganizations: isPlatformAdmin && !isGuest,
+    canManageOrganization: isPlatformAdmin || isWorkspaceOwner || memberRole === 'customer_success' && !isGuest,
     
-    // Job request permissions
-    canViewJobRequests: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin', 'client', 'customer_success'].includes(memberRole || ''),
-    canCreateJobRequests: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin', 'client', 'customer_success'].includes(memberRole || ''),
+    // Job request permissions - Guest users can view and create job requests
+    canViewJobRequests: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin', 'client', 'customer_success'].includes(memberRole || '') || isGuest,
+    canCreateJobRequests: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin', 'client', 'customer_success'].includes(memberRole || '') || isGuest,
     canApproveJobRequests: isPlatformAdmin || memberRole === 'admin' || memberRole === 'customer_success',
     canManageJobRequests: isPlatformAdmin || memberRole === 'admin' || memberRole === 'customer_success',
-    canRequestJobs: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin', 'client', 'customer_success'].includes(memberRole || ''),
+    canRequestJobs: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin', 'client', 'customer_success'].includes(memberRole || '') || isGuest,
     
-    // Candidate permissions
-    canViewCandidates: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin', 'client', 'customer_success'].includes(memberRole || ''),
+    // Candidate permissions - Guest users can view candidates for their assigned jobs
+    canViewCandidates: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin', 'client', 'customer_success'].includes(memberRole || '') || isGuest,
     canCreateCandidates: isPlatformAdmin || ['recruiter', 'admin', 'customer_success'].includes(memberRole || ''),
     canEditCandidates: isPlatformAdmin || ['recruiter', 'admin', 'customer_success'].includes(memberRole || ''),
     canDeleteCandidates: isPlatformAdmin || memberRole === 'admin',
@@ -122,16 +126,16 @@ export function usePermissions(): PermissionsState {
     // Navigation permissions - Show candidates in header for Platform Admins and Virgilio recruiters
     canViewCandidatesNavigation: isPlatformAdmin || isVirgilioRecruiter,
     
-    // Job assignment permissions
-    canViewJobAssignments: isPlatformAdmin || ['recruiter', 'admin', 'customer_success'].includes(memberRole || ''),
-    canManageJobAssignments: isPlatformAdmin || ['recruiter', 'admin', 'customer_success'].includes(memberRole || ''),
+    // Job assignment permissions - Guest users cannot manage job assignments
+    canViewJobAssignments: isPlatformAdmin || ['recruiter', 'admin', 'customer_success'].includes(memberRole || '') && !isGuest,
+    canManageJobAssignments: isPlatformAdmin || ['recruiter', 'admin', 'customer_success'].includes(memberRole || '') && !isGuest,
     
-    // Updated billing & Invoice permissions - workspace owners can now view invoices
-    canViewInvoices: isPlatformAdmin || isBillingMember || isWorkspaceOwner,
-    canCreateInvoices: isPlatformAdmin || isBillingMember,
-    canManageInvoices: isPlatformAdmin || isBillingMember,
-    canUploadInvoicePDFs: isPlatformAdmin || isBillingMember,
-    canViewBilling: isPlatformAdmin || isBillingMember || isWorkspaceOwner,
+    // Billing & Invoice permissions - Guest users are COMPLETELY EXCLUDED from all billing access
+    canViewInvoices: (isPlatformAdmin || isBillingMember || isWorkspaceOwner) && !isGuest,
+    canCreateInvoices: (isPlatformAdmin || isBillingMember) && !isGuest,
+    canManageInvoices: (isPlatformAdmin || isBillingMember) && !isGuest,
+    canUploadInvoicePDFs: (isPlatformAdmin || isBillingMember) && !isGuest,
+    canViewBilling: (isPlatformAdmin || isBillingMember || isWorkspaceOwner) && !isGuest,
     
     // Admin flags
     isWorkspaceOwner,
@@ -140,6 +144,7 @@ export function usePermissions(): PermissionsState {
     isMember,
     isClient,
     isGuest,
+    isGuestClient,
     hasOrganizationContext,
   }
 }

@@ -22,7 +22,7 @@ import { InvoiceFilterProvider } from '@/utils/invoiceFilters'
 export default function Settings() {
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
-  const { canViewBilling, canManageMembers, isPlatformAdmin } = usePermissions()
+  const { canViewBilling, canManageMembers, isPlatformAdmin, isGuest } = usePermissions()
   const defaultTab = searchParams.get('tab') || 'profile'
   const [currentTab, setCurrentTab] = useState(defaultTab)
 
@@ -57,6 +57,9 @@ export default function Settings() {
     }
   }
 
+  // Guest users should not have access to billing tab
+  const canAccessBilling = canViewBilling && !isGuest
+
   return (
     <InvoiceFilterProvider>
       <Section>
@@ -90,7 +93,7 @@ export default function Settings() {
                   <OrganizationTab />
                 </TabsContent>
                 
-                {canViewBilling && (
+                {canAccessBilling && (
                   <TabsContent value="billing">
                     <BillingTab />
                   </TabsContent>
