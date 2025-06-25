@@ -150,11 +150,6 @@ export default function Candidates() {
                   <TableRow key={candidate.id} className="hover:bg-muted/50">
                     <TableCell className="font-medium">
                       {candidate.candidate_name}
-                      {candidate.profile_summary && (
-                        <div className="text-sm text-gray-500 mt-1 max-w-xs truncate">
-                          {candidate.profile_summary}
-                        </div>
-                      )}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
