@@ -109,7 +109,7 @@ export default function Candidates() {
       <div className="container mx-auto px-4 py-8">
         <PageHeader 
           title="All Candidates" 
-          description="Manage candidates across all jobs and organizations"
+          subtitle="Manage candidates across all jobs and organizations"
         />
 
         <div className="mb-6">
