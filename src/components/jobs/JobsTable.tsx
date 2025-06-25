@@ -54,10 +54,10 @@ export function JobsTable({ jobs, isLoading, onView, onEdit, onArchive, onCreate
               const memberDetails = members.find(m => m.user_id === id || m.id === id)
               
               const name = memberDetails 
-                ? `${memberDetails.first_name || ''} ${memberDetails.last_name || ''}`.trim()
+                ? `${memberDetails.user_first_name || ''} ${memberDetails.user_last_name || ''}`.trim()
                 : teamMember.name || 'Unknown'
               
-              const email = memberDetails?.email || teamMember.email || ''
+              const email = memberDetails?.user_email || teamMember.email || ''
               const role = memberDetails?.member_role || teamMember.role || ''
               
               const displayName = email 
