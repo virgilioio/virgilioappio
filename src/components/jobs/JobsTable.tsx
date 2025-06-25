@@ -44,8 +44,13 @@ export function JobsTable({ jobs, isLoading, onView, onEdit, onArchive, onCreate
   const hiringTeamOptions = useMemo(() => {
     const uniqueMembers = new Map()
     
+    console.log('JobsTable: Processing jobs for hiring team options:', jobs.length)
+    console.log('JobsTable: User type:', userType)
+    console.log('JobsTable: Available members:', members.length)
+    
     jobs.forEach(job => {
       if (Array.isArray(job.hiring_team)) {
+        console.log('JobsTable: Job hiring team:', job.hiring_team)
         job.hiring_team.forEach((teamMember: any) => {
           if (teamMember && typeof teamMember === 'object') {
             const id = teamMember.user_id || teamMember.id
@@ -74,8 +79,18 @@ export function JobsTable({ jobs, isLoading, onView, onEdit, onArchive, onCreate
       }
     })
     
-    return Array.from(uniqueMembers.values()).sort((a, b) => a.label.localeCompare(b.label))
+    const options = Array.from(uniqueMembers.values()).sort((a, b) => a.label.localeCompare(b.label))
+    console.log('JobsTable: Hiring team options generated:', options.length, options)
+    return options
   }, [jobs, members])
+
+  // Add debug log for filter visibility
+  console.log('JobsTable: Should show hiring team filter?', {
+    userType,
+    isPlatformAdmin: userType === 'platform_admin',
+    hiringTeamOptionsLength: hiringTeamOptions.length,
+    shouldShow: userType === 'platform_admin' && hiringTeamOptions.length > 0
+  })
 
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
