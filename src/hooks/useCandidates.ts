@@ -89,6 +89,25 @@ export function useCandidates(jobId: string) {
 
     try {
       console.log('Adding candidate to job:', jobId, candidateData)
+      
+      // First, verify the user has access to this job by trying to fetch it
+      const { data: jobData, error: jobError } = await supabase
+        .from('jobs')
+        .select('id, organization_id, title')
+        .eq('id', jobId)
+        .single()
+
+      if (jobError) {
+        console.error('Error verifying job access:', jobError)
+        throw new Error('Unable to verify job access. You may not have permission to add candidates to this job.')
+      }
+
+      if (!jobData) {
+        throw new Error('Job not found or you do not have access to this job.')
+      }
+
+      console.log('Job verification successful:', jobData)
+
       const { data: newCandidate, error: createError } = await supabase
         .from('job_candidates')
         .insert([{
@@ -101,7 +120,15 @@ export function useCandidates(jobId: string) {
 
       if (createError) {
         console.error('Error adding candidate:', createError)
-        throw createError
+        
+        // Provide more specific error messages based on the error type
+        if (createError.message.includes('row-level security')) {
+          throw new Error('You do not have permission to add candidates to this job. Please contact your administrator.')
+        } else if (createError.message.includes('foreign key')) {
+          throw new Error('Invalid job reference. Please refresh the page and try again.')
+        } else {
+          throw createError
+        }
       }
 
       console.log('Added candidate:', newCandidate)
