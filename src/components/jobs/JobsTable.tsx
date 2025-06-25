@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -7,9 +7,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge'
 import { Plus, Search, Edit, Archive, MoreHorizontal, FileText, Briefcase } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { MultiSelect } from '@/components/ui/multi-select'
 import { Job } from '@/hooks/useJobs'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useOrganizations } from '@/hooks/useOrganizations'
+import { useMembers } from '@/hooks/useMembers'
 import { useAuth } from '@/contexts/AuthContext'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -31,10 +33,49 @@ export function JobsTable({ jobs, isLoading, onView, onEdit, onArchive, onCreate
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [levelFilter, setLevelFilter] = useState<string>('all')
   const [organizationFilter, setOrganizationFilter] = useState<string>('all')
+  const [hiringTeamFilter, setHiringTeamFilter] = useState<string[]>([])
   const permissions = usePermissions()
   const { userType } = useAuth()
   const { organizations } = useOrganizations()
+  const { members } = useMembers()
   const isMobile = useIsMobile()
+
+  // Extract unique hiring team members from all jobs
+  const hiringTeamOptions = useMemo(() => {
+    const uniqueMembers = new Map()
+    
+    jobs.forEach(job => {
+      if (Array.isArray(job.hiring_team)) {
+        job.hiring_team.forEach((teamMember: any) => {
+          if (teamMember && typeof teamMember === 'object') {
+            const id = teamMember.user_id || teamMember.id
+            if (id && !uniqueMembers.has(id)) {
+              // Try to find member details from members list
+              const memberDetails = members.find(m => m.user_id === id || m.id === id)
+              
+              const name = memberDetails 
+                ? `${memberDetails.first_name || ''} ${memberDetails.last_name || ''}`.trim()
+                : teamMember.name || 'Unknown'
+              
+              const email = memberDetails?.email || teamMember.email || ''
+              const role = memberDetails?.member_role || teamMember.role || ''
+              
+              const displayName = email 
+                ? `${name} (${email})${role ? ` - ${role}` : ''}`
+                : name
+              
+              uniqueMembers.set(id, {
+                value: id,
+                label: displayName || `Member ${id.slice(0, 8)}`
+              })
+            }
+          }
+        })
+      }
+    })
+    
+    return Array.from(uniqueMembers.values()).sort((a, b) => a.label.localeCompare(b.label))
+  }, [jobs, members])
 
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
@@ -60,7 +101,14 @@ export function JobsTable({ jobs, isLoading, onView, onEdit, onArchive, onCreate
     const matchesLevel = levelFilter === 'all' || job.level === levelFilter
     const matchesOrganization = organizationFilter === 'all' || job.organization_id === organizationFilter
     
-    return matchesSearch && matchesStatus && matchesLevel && matchesOrganization
+    // Hiring team filter logic
+    const matchesHiringTeam = hiringTeamFilter.length === 0 || 
+      (Array.isArray(job.hiring_team) && job.hiring_team.some((teamMember: any) => {
+        const memberId = teamMember?.user_id || teamMember?.id
+        return memberId && hiringTeamFilter.includes(memberId)
+      }))
+    
+    return matchesSearch && matchesStatus && matchesLevel && matchesOrganization && matchesHiringTeam
   })
 
   // Add sorting functionality
@@ -172,19 +220,32 @@ export function JobsTable({ jobs, isLoading, onView, onEdit, onArchive, onCreate
                 </div>
 
                 {userType === 'platform_admin' && (
-                  <Select value={organizationFilter} onValueChange={setOrganizationFilter}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Organization" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Organizations</SelectItem>
-                      {organizations.map((org) => (
-                        <SelectItem key={org.id} value={org.id}>
-                          {org.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <>
+                    <Select value={organizationFilter} onValueChange={setOrganizationFilter}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Organization" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Organizations</SelectItem>
+                        {organizations.map((org) => (
+                          <SelectItem key={org.id} value={org.id}>
+                            {org.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    {hiringTeamOptions.length > 0 && (
+                      <MultiSelect
+                        options={hiringTeamOptions}
+                        selectedValues={hiringTeamFilter}
+                        onSelectionChange={setHiringTeamFilter}
+                        placeholder="Filter by hiring team"
+                        searchable={true}
+                        emptyMessage="No team members found"
+                      />
+                    )}
+                  </>
                 )}
               </div>
             </div>
@@ -313,8 +374,8 @@ export function JobsTable({ jobs, isLoading, onView, onEdit, onArchive, onCreate
           </div>
         </div>
         
-        <div className="flex gap-4 mt-4">
-          <div className="relative flex-1">
+        <div className="flex gap-4 mt-4 flex-wrap">
+          <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search jobs..."
@@ -351,19 +412,34 @@ export function JobsTable({ jobs, isLoading, onView, onEdit, onArchive, onCreate
           </Select>
 
           {userType === 'platform_admin' && (
-            <Select value={organizationFilter} onValueChange={setOrganizationFilter}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Filter by organization" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Organizations</SelectItem>
-                {organizations.map((org) => (
-                  <SelectItem key={org.id} value={org.id}>
-                    {org.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <>
+              <Select value={organizationFilter} onValueChange={setOrganizationFilter}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Filter by organization" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Organizations</SelectItem>
+                  {organizations.map((org) => (
+                    <SelectItem key={org.id} value={org.id}>
+                      {org.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {hiringTeamOptions.length > 0 && (
+                <div className="w-[220px]">
+                  <MultiSelect
+                    options={hiringTeamOptions}
+                    selectedValues={hiringTeamFilter}
+                    onSelectionChange={setHiringTeamFilter}
+                    placeholder="Filter by hiring team"
+                    searchable={true}
+                    emptyMessage="No team members found"
+                  />
+                </div>
+              )}
+            </>
           )}
         </div>
       </CardHeader>
