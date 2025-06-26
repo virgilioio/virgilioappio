@@ -1,10 +1,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Edit, Building, Briefcase, MapPin, DollarSign, Users, Calendar, UserCheck } from 'lucide-react'
-import { PermissionGate } from '@/components/auth/PermissionGate'
-import { usePermissions } from '@/hooks/usePermissions'
+import { Building, Briefcase, MapPin, DollarSign, Users, Calendar, UserCheck } from 'lucide-react'
 import type { Job } from '@/hooks/useJobs'
 
 interface JobOverviewTabProps {
@@ -13,8 +10,6 @@ interface JobOverviewTabProps {
 }
 
 export function JobOverviewTab({ job, onEdit }: JobOverviewTabProps) {
-  const permissions = usePermissions()
-
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
       case 'open':
@@ -47,12 +42,12 @@ export function JobOverviewTab({ job, onEdit }: JobOverviewTabProps) {
   }
 
   return (
-    <Card hover>
+    <Card className="border shadow-sm">
       <CardHeader>
         <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-3 mb-2 flex-wrap">
-              <h1 className="text-2xl font-poppins font-semibold text-text-primary">{job.title}</h1>
+              <h2 className="text-xl font-poppins font-semibold text-text-primary">{job.title}</h2>
               <Badge variant={getStatusBadgeVariant(job.status)} className="shrink-0">
                 {job.status}
               </Badge>
@@ -68,13 +63,6 @@ export function JobOverviewTab({ job, onEdit }: JobOverviewTabProps) {
               </div>
             </div>
           </div>
-          
-          {permissions.canEditJobs && (
-            <Button variant="outline" onClick={onEdit} className="min-h-[44px] gap-2">
-              <Edit className="h-5 w-5" />
-              Edit Job
-            </Button>
-          )}
         </div>
       </CardHeader>
       <CardContent>
