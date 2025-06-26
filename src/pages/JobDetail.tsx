@@ -36,8 +36,8 @@ export default function JobDetail() {
   // Job assignments hook
   const {
     assignments,
-    assignUserToJob: addAssignment,
-    removeUserFromJob: removeAssignment,
+    assignUserToJob,
+    removeUserFromJob,
     isLoading: assignmentsLoading
   } = useJobAssignments(id!)
 
@@ -233,10 +233,13 @@ export default function JobDetail() {
                   </TabsList>
                   
                   <TabsContent value="overview" className="mt-6">
-                    <JobOverviewTab job={{
-                      ...job,
-                      hiring_team: job.hiring_team as any[]
-                    }} />
+                    <JobOverviewTab 
+                      job={{
+                        ...job,
+                        hiring_team: job.hiring_team as any[]
+                      }} 
+                      onEdit={handleEditJob}
+                    />
                   </TabsContent>
                   
                   <TabsContent value="candidates" className="mt-6">
@@ -255,7 +258,7 @@ export default function JobDetail() {
                     <TabsContent value="assignments" className="mt-6">
                       <JobAssignmentsPanel
                         jobId={id!}
-                        isLoading={assignmentsLoading}
+                        jobTitle={job.title}
                       />
                     </TabsContent>
                   )}
@@ -263,10 +266,15 @@ export default function JobDetail() {
               ) : (
                 // Desktop: Show content based on active tab
                 <>
-                  {activeTab === 'overview' && <JobOverviewTab job={{
-                    ...job,
-                    hiring_team: job.hiring_team as any[]
-                  }} />}
+                  {activeTab === 'overview' && (
+                    <JobOverviewTab 
+                      job={{
+                        ...job,
+                        hiring_team: job.hiring_team as any[]
+                      }} 
+                      onEdit={handleEditJob}
+                    />
+                  )}
                   {activeTab === 'candidates' && (
                     <CandidateTable
                       candidates={candidates}
@@ -281,7 +289,7 @@ export default function JobDetail() {
                   {activeTab === 'assignments' && userType === 'platform_admin' && (
                     <JobAssignmentsPanel
                       jobId={id!}
-                      isLoading={assignmentsLoading}
+                      jobTitle={job.title}
                     />
                   )}
                 </>
@@ -298,7 +306,11 @@ export default function JobDetail() {
             <DialogTitle>Add New Candidate</DialogTitle>
           </DialogHeader>
           <CandidateForm
+            isOpen={showAddCandidate}
+            onClose={() => setShowAddCandidate(false)}
             onSubmit={handleAddCandidate}
+            jobId={id!}
+            isLoading={candidatesLoading}
           />
         </DialogContent>
       </Dialog>
@@ -310,7 +322,12 @@ export default function JobDetail() {
             <DialogTitle>Edit Candidate</DialogTitle>
           </DialogHeader>
           <CandidateForm
+            isOpen={!!editingCandidate}
+            onClose={() => setEditingCandidate(null)}
             onSubmit={handleUpdateCandidate}
+            candidate={editingCandidate}
+            jobId={id!}
+            isLoading={candidatesLoading}
           />
         </DialogContent>
       </Dialog>
