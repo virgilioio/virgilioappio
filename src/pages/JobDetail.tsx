@@ -7,6 +7,8 @@ import { useAuth } from '@/contexts/AuthContext'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useCandidates } from '@/hooks/useCandidates'
 import { useJobAssignments } from '@/hooks/useJobAssignments'
+import { JobDetailSidebar } from '@/components/jobs/JobDetailSidebar'
+import { JobDetailMobileHeader } from '@/components/jobs/JobDetailMobileHeader'
 import { JobOverviewTab } from '@/components/jobs/JobOverviewTab'
 import { CandidateTable } from '@/components/candidates/CandidateTable'
 import { CandidateForm } from '@/components/candidates/CandidateForm'
@@ -14,8 +16,10 @@ import { JobAssignmentsPanel } from '@/components/jobs/JobAssignmentsPanel'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Edit, ArrowLeft } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
-import { ArrowLeft, Archive } from 'lucide-react'
+import { useIsMobile } from '@/hooks/use-mobile'
+import { Skeleton } from '@/components/ui/skeleton'
 import { JobAssignmentGuard } from '@/components/auth/JobAssignmentGuard'
 import { toast } from '@/hooks/use-toast'
 
@@ -24,6 +28,7 @@ export default function JobDetail() {
   const navigate = useNavigate()
   const { user, userType } = useAuth()
   const permissions = usePermissions()
+  const isMobile = useIsMobile()
   const [showAddCandidate, setShowAddCandidate] = useState(false)
   const [editingCandidate, setEditingCandidate] = useState<any>(null)
   const [activeTab, setActiveTab] = useState('overview')
@@ -77,10 +82,6 @@ export default function JobDetail() {
     },
     enabled: !!id && !!user,
   })
-
-  const handleBackToJobs = () => {
-    navigate('/jobs')
-  }
 
   const handleEditJob = () => {
     navigate(`/jobs/${id}/edit`)
@@ -155,7 +156,7 @@ export default function JobDetail() {
               <p className="text-muted-foreground mb-4">
                 The job you're looking for doesn't exist or you don't have permission to view it.
               </p>
-              <Button onClick={handleBackToJobs}>
+              <Button onClick={() => navigate('/jobs')}>
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back to Jobs
               </Button>
@@ -168,12 +169,22 @@ export default function JobDetail() {
 
   if (jobLoading) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-gray-200 rounded w-64"></div>
+      <div className="h-screen flex">
+        {!isMobile && (
+          <div className="w-80 border-r bg-muted/20 p-6">
+            <Skeleton className="h-8 w-full mb-6" />
+            <div className="space-y-4">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <Skeleton key={i} className="h-6 w-full" />
+              ))}
+            </div>
+          </div>
+        )}
+        <div className="flex-1 p-6">
+          <Skeleton className="h-8 w-64 mb-6" />
           <div className="space-y-4">
             {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="h-12 bg-gray-200 rounded"></div>
+              <Skeleton key={i} className="h-12 w-full" />
             ))}
           </div>
         </div>
@@ -185,68 +196,107 @@ export default function JobDetail() {
 
   return (
     <JobAssignmentGuard>
-      <div className="container mx-auto px-4 py-6">
-        {/* Header with Navigation */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
-            <Button variant="outline" onClick={handleBackToJobs}>
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Jobs
-            </Button>
-            <h1 className="text-2xl font-bold text-text-primary">{job.title}</h1>
-          </div>
+      <div className="h-screen flex">
+        {/* Desktop Sidebar */}
+        {!isMobile && (
+          <JobDetailSidebar
+            currentTab={activeTab}
+            onTabChange={setActiveTab}
+            jobTitle={job.title}
+            canViewAssignments={userType === 'platform_admin'}
+          />
+        )}
+        
+        {/* Main Content */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Mobile Header */}
+          {isMobile && (
+            <JobDetailMobileHeader
+              jobTitle={job.title}
+              onMenuToggle={() => {}}
+              onBackToJobs={() => navigate('/jobs')}
+            />
+          )}
           
-          <div className="flex items-center gap-3">
-            {permissions.canEditJobs && job.status !== 'archived' && (
-              <Button variant="outline" onClick={handleArchiveJob}>
-                <Archive className="h-4 w-4 mr-2" />
-                Archive Job
-              </Button>
-            )}
+          {/* Content Area */}
+          <div className="flex-1 overflow-auto">
+            <div className="p-6">
+              {isMobile ? (
+                // Mobile: Tabs
+                <Tabs value={activeTab} onValueChange={setActiveTab}>
+                  <TabsList className="grid w-full grid-cols-3">
+                    <TabsTrigger value="overview">Overview</TabsTrigger>
+                    <TabsTrigger value="candidates">Candidates</TabsTrigger>
+                    {userType === 'platform_admin' && (
+                      <TabsTrigger value="assignments">Access</TabsTrigger>
+                    )}
+                  </TabsList>
+                  
+                  <TabsContent value="overview" className="mt-6">
+                    <JobOverviewTab 
+                      job={{
+                        ...job,
+                        hiring_team: job.hiring_team as any[]
+                      }} 
+                      onEdit={handleEditJob}
+                    />
+                  </TabsContent>
+                  
+                  <TabsContent value="candidates" className="mt-6">
+                    <CandidateTable
+                      candidates={candidates}
+                      isLoading={candidatesLoading}
+                      onEdit={handleEditCandidate}
+                      onDelete={handleDeleteCandidate}
+                      onAddNew={() => setShowAddCandidate(true)}
+                      markCandidateAsViewed={markCandidateAsViewed}
+                      isCandidateNewForUser={isCandidateNewForUser}
+                    />
+                  </TabsContent>
+                  
+                  {userType === 'platform_admin' && (
+                    <TabsContent value="assignments" className="mt-6">
+                      <JobAssignmentsPanel
+                        jobId={id!}
+                        jobTitle={job.title}
+                      />
+                    </TabsContent>
+                  )}
+                </Tabs>
+              ) : (
+                // Desktop: Show content based on active tab
+                <>
+                  {activeTab === 'overview' && (
+                    <JobOverviewTab 
+                      job={{
+                        ...job,
+                        hiring_team: job.hiring_team as any[]
+                      }} 
+                      onEdit={handleEditJob}
+                    />
+                  )}
+                  {activeTab === 'candidates' && (
+                    <CandidateTable
+                      candidates={candidates}
+                      isLoading={candidatesLoading}
+                      onEdit={handleEditCandidate}
+                      onDelete={handleDeleteCandidate}
+                      onAddNew={() => setShowAddCandidate(true)}
+                      markCandidateAsViewed={markCandidateAsViewed}
+                      isCandidateNewForUser={isCandidateNewForUser}
+                    />
+                  )}
+                  {activeTab === 'assignments' && userType === 'platform_admin' && (
+                    <JobAssignmentsPanel
+                      jobId={id!}
+                      jobTitle={job.title}
+                    />
+                  )}
+                </>
+              )}
+            </div>
           </div>
         </div>
-
-        {/* Main Content */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="candidates">Candidates</TabsTrigger>
-            {userType === 'platform_admin' && (
-              <TabsTrigger value="assignments">Access</TabsTrigger>
-            )}
-          </TabsList>
-          
-          <TabsContent value="overview">
-            <JobOverviewTab 
-              job={{
-                ...job,
-                hiring_team: job.hiring_team as any[]
-              }} 
-              onEdit={handleEditJob}
-            />
-          </TabsContent>
-          
-          <TabsContent value="candidates">
-            <CandidateTable
-              candidates={candidates}
-              isLoading={candidatesLoading}
-              onEdit={handleEditCandidate}
-              onDelete={handleDeleteCandidate}
-              onAddNew={() => setShowAddCandidate(true)}
-              markCandidateAsViewed={markCandidateAsViewed}
-              isCandidateNewForUser={isCandidateNewForUser}
-            />
-          </TabsContent>
-          
-          {userType === 'platform_admin' && (
-            <TabsContent value="assignments">
-              <JobAssignmentsPanel
-                jobId={id!}
-                jobTitle={job.title}
-              />
-            </TabsContent>
-          )}
-        </Tabs>
       </div>
 
       {/* Add Candidate Dialog */}
