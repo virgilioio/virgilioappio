@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
@@ -31,7 +30,7 @@ export function OrganizationsTable({
   const [selectedOrganization, setSelectedOrganization] = useState<Organization | null>(null)
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
-  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [statusFilter, setStatusFilter] = useState<string>('active')
   const [countryFilter, setCountryFilter] = useState<string>('all')
   const [typeFilter, setTypeFilter] = useState<string>('all')
   
