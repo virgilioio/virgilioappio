@@ -1,4 +1,3 @@
-
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
@@ -213,113 +212,108 @@ export default function JobDetail() {
           </div>
         )}
 
+        {/* Desktop Header with Back and Archive buttons - separate from content */}
+        {!isMobile && (
+          <div className="flex items-center justify-between mb-6">
+            <Button variant="outline" onClick={handleBackToJobs} className="gap-2">
+              <ArrowLeft className="h-4 w-4" />
+              Back to Jobs
+            </Button>
+            {permissions.canEditJobs && job.status !== 'archived' && (
+              <Button variant="outline" onClick={handleArchiveJob} className="gap-2">
+                <Archive className="h-4 w-4" />
+                Archive Job
+              </Button>
+            )}
+          </div>
+        )}
+
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <div className="flex gap-6">
-            {/* Desktop Floating Sidebar - hidden on mobile */}
-            {!isMobile && (
+          {isMobile ? (
+            // Mobile: Tabs
+            <>
+              <TabsList className="grid w-full grid-cols-3 mb-6">
+                <TabsTrigger value="overview">Overview</TabsTrigger>
+                <TabsTrigger value="candidates">Candidates</TabsTrigger>
+                {userType === 'platform_admin' && (
+                  <TabsTrigger value="assignments">Access</TabsTrigger>
+                )}
+              </TabsList>
+              
+              <TabsContent value="overview">
+                <JobOverviewTab 
+                  job={{
+                    ...job,
+                    hiring_team: job.hiring_team as any[]
+                  }} 
+                  onEdit={handleEditJob}
+                />
+              </TabsContent>
+              
+              <TabsContent value="candidates">
+                <CandidateTable
+                  candidates={candidates}
+                  isLoading={candidatesLoading}
+                  onEdit={handleEditCandidate}
+                  onDelete={handleDeleteCandidate}
+                  onAddNew={() => setShowAddCandidate(true)}
+                  markCandidateAsViewed={markCandidateAsViewed}
+                  isCandidateNewForUser={isCandidateNewForUser}
+                />
+              </TabsContent>
+              
+              {userType === 'platform_admin' && (
+                <TabsContent value="assignments">
+                  <JobAssignmentsPanel
+                    jobId={id!}
+                    jobTitle={job.title}
+                  />
+                </TabsContent>
+              )}
+            </>
+          ) : (
+            // Desktop: Floating sidebar at same level as content
+            <div className="flex gap-6">
               <JobDetailFloatingSidebar
                 currentTab={activeTab}
                 onTabChange={setActiveTab}
                 jobTitle={job.title}
                 canViewAssignments={userType === 'platform_admin'}
               />
-            )}
-            
-            {/* Main content */}
-            <div className="flex-1">
-              {/* Desktop Header with Back and Archive buttons */}
-              {!isMobile && (
-                <div className="flex items-center justify-between mb-6">
-                  <Button variant="outline" onClick={handleBackToJobs} className="gap-2">
-                    <ArrowLeft className="h-4 w-4" />
-                    Back to Jobs
-                  </Button>
-                  {permissions.canEditJobs && job.status !== 'archived' && (
-                    <Button variant="outline" onClick={handleArchiveJob} className="gap-2">
-                      <Archive className="h-4 w-4" />
-                      Archive Job
-                    </Button>
-                  )}
-                </div>
-              )}
-
-              {isMobile ? (
-                // Mobile: Tabs
-                <>
-                  <TabsList className="grid w-full grid-cols-3 mb-6">
-                    <TabsTrigger value="overview">Overview</TabsTrigger>
-                    <TabsTrigger value="candidates">Candidates</TabsTrigger>
-                    {userType === 'platform_admin' && (
-                      <TabsTrigger value="assignments">Access</TabsTrigger>
-                    )}
-                  </TabsList>
-                  
-                  <TabsContent value="overview">
-                    <JobOverviewTab 
-                      job={{
-                        ...job,
-                        hiring_team: job.hiring_team as any[]
-                      }} 
-                      onEdit={handleEditJob}
+              
+              {/* Main content */}
+              <div className="flex-1">
+                <TabsContent value="overview">
+                  <JobOverviewTab 
+                    job={{
+                      ...job,
+                      hiring_team: job.hiring_team as any[]
+                    }} 
+                    onEdit={handleEditJob}
+                  />
+                </TabsContent>
+                <TabsContent value="candidates">
+                  <CandidateTable
+                    candidates={candidates}
+                    isLoading={candidatesLoading}
+                    onEdit={handleEditCandidate}
+                    onDelete={handleDeleteCandidate}
+                    onAddNew={() => setShowAddCandidate(true)}
+                    markCandidateAsViewed={markCandidateAsViewed}
+                    isCandidateNewForUser={isCandidateNewForUser}
+                  />
+                </TabsContent>
+                {activeTab === 'assignments' && userType === 'platform_admin' && (
+                  <TabsContent value="assignments">
+                    <JobAssignmentsPanel
+                      jobId={id!}
+                      jobTitle={job.title}
                     />
                   </TabsContent>
-                  
-                  <TabsContent value="candidates">
-                    <CandidateTable
-                      candidates={candidates}
-                      isLoading={candidatesLoading}
-                      onEdit={handleEditCandidate}
-                      onDelete={handleDeleteCandidate}
-                      onAddNew={() => setShowAddCandidate(true)}
-                      markCandidateAsViewed={markCandidateAsViewed}
-                      isCandidateNewForUser={isCandidateNewForUser}
-                    />
-                  </TabsContent>
-                  
-                  {userType === 'platform_admin' && (
-                    <TabsContent value="assignments">
-                      <JobAssignmentsPanel
-                        jobId={id!}
-                        jobTitle={job.title}
-                      />
-                    </TabsContent>
-                  )}
-                </>
-              ) : (
-                // Desktop: Show content based on active tab without visible tabs
-                <>
-                  <TabsContent value="overview">
-                    <JobOverviewTab 
-                      job={{
-                        ...job,
-                        hiring_team: job.hiring_team as any[]
-                      }} 
-                      onEdit={handleEditJob}
-                    />
-                  </TabsContent>
-                  <TabsContent value="candidates">
-                    <CandidateTable
-                      candidates={candidates}
-                      isLoading={candidatesLoading}
-                      onEdit={handleEditCandidate}
-                      onDelete={handleDeleteCandidate}
-                      onAddNew={() => setShowAddCandidate(true)}
-                      markCandidateAsViewed={markCandidateAsViewed}
-                      isCandidateNewForUser={isCandidateNewForUser}
-                    />
-                  </TabsContent>
-                  {activeTab === 'assignments' && userType === 'platform_admin' && (
-                    <TabsContent value="assignments">
-                      <JobAssignmentsPanel
-                        jobId={id!}
-                        jobTitle={job.title}
-                      />
-                    </TabsContent>
-                  )}
-                </>
-              )}
+                )}
+              </div>
             </div>
-          </div>
+          )}
         </Tabs>
 
         {/* Add Candidate Dialog */}
