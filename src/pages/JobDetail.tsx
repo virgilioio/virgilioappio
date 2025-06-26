@@ -1,3 +1,4 @@
+
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
@@ -338,7 +339,10 @@ export default function JobDetail() {
           isOpen={showEditJobModal}
           onClose={() => setShowEditJobModal(false)}
           onSubmit={handleJobFormSubmit}
-          job={job}
+          job={job ? {
+            ...job,
+            hiring_team: Array.isArray(job.hiring_team) ? job.hiring_team : []
+          } : null}
           isLoading={jobUpdateLoading}
         />
 
