@@ -1,4 +1,3 @@
-
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
@@ -57,18 +56,20 @@ export default function JobDetail() {
     isCandidateNewForUser
   } = useCandidates(id!)
 
-  // Job query
+  // Job query with improved error handling for assigned recruiters
   const { data: job, isLoading: jobLoading, error, refetch } = useQuery({
     queryKey: ['job', id],
     queryFn: async () => {
       if (!id) throw new Error('No job ID provided')
       
       console.log('Fetching job details for ID:', id)
+      
+      // Try the main query first with left join to prevent failures
       const { data, error } = await supabase
         .from('jobs')
         .select(`
           *,
-          organization:organizations!inner(
+          organization:organizations(
             id,
             name,
             country
@@ -78,11 +79,36 @@ export default function JobDetail() {
         .single()
 
       if (error) {
-        console.error('Error fetching job:', error)
-        throw error
+        console.error('Error fetching job with organization:', error)
+        
+        // If the main query fails, try to fetch just the job data
+        // This handles cases where recruiters are assigned to jobs from organizations they can't access
+        console.log('Attempting fallback query for job data only')
+        const { data: jobOnly, error: jobOnlyError } = await supabase
+          .from('jobs')
+          .select('*')
+          .eq('id', id)
+          .single()
+
+        if (jobOnlyError) {
+          console.error('Fallback job query also failed:', jobOnlyError)
+          throw jobOnlyError
+        }
+
+        console.log('Fallback job query succeeded:', jobOnly)
+        
+        // If we can access the job but not the organization, return job with unknown organization
+        return {
+          ...jobOnly,
+          organization: {
+            id: jobOnly.organization_id,
+            name: 'Organization',
+            country: 'Unknown'
+          }
+        }
       }
 
-      console.log('Fetched job:', data)
+      console.log('Fetched job with organization:', data)
       return data
     },
     enabled: !!id && !!user,
