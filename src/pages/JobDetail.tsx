@@ -1,3 +1,4 @@
+
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
@@ -20,8 +21,6 @@ import { Card, CardContent } from '@/components/ui/card'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from '@/hooks/use-toast'
-import { AppContainer } from '@/components/layout/AppContainer'
-import { Section } from '@/components/layout/Section'
 
 export default function JobDetail() {
   const { id } = useParams<{ id: string }>()
@@ -152,8 +151,8 @@ export default function JobDetail() {
 
   if (error) {
     return (
-      <Section>
-        <AppContainer>
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto py-6 sm:py-8 lg:py-12 px-4 sm:px-6 lg:px-8">
           <Card>
             <CardContent className="py-8">
               <div className="text-center">
@@ -168,15 +167,15 @@ export default function JobDetail() {
               </div>
             </CardContent>
           </Card>
-        </AppContainer>
-      </Section>
+        </div>
+      </div>
     )
   }
 
   if (jobLoading) {
     return (
-      <Section>
-        <AppContainer>
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto py-6 sm:py-8 lg:py-12 px-4 sm:px-6 lg:px-8">
           <div className="flex gap-6">
             {!isMobile && (
               <div className="w-64">
@@ -191,16 +190,16 @@ export default function JobDetail() {
               </div>
             </div>
           </div>
-        </AppContainer>
-      </Section>
+        </div>
+      </div>
     )
   }
 
   if (!job) return null
 
   return (
-    <Section>
-      <AppContainer>
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto py-6 sm:py-8 lg:py-12 px-4 sm:px-6 lg:px-8">
         {/* Mobile Header */}
         {isMobile && (
           <div className="mb-6">
@@ -348,7 +347,7 @@ export default function JobDetail() {
             />
           </DialogContent>
         </Dialog>
-      </AppContainer>
-    </Section>
+      </div>
+    </div>
   )
 }
