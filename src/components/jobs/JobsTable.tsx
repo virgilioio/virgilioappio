@@ -7,8 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious, PaginationEllipsis } from '@/components/ui/pagination'
-import { Plus, Search, Edit, Archive, FileText, Building, MapPin, DollarSign, Eye, UserPlus } from 'lucide-react'
+import { Plus, Search, Edit, Archive, FileText, Building, MapPin, DollarSign, Eye, UserPlus, ChevronLeft, ChevronRight, MoreHorizontal } from 'lucide-react'
 import { PermissionGate } from '@/components/auth/PermissionGate'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useOrganizations } from '@/hooks/useOrganizations'
@@ -77,7 +76,6 @@ export function JobsTable({
     return 'Not specified'
   }
 
-  // Get unique hiring team members across all jobs
   const getAllHiringTeamMembers = () => {
     const members = new Set<string>()
     jobs.forEach(job => {
@@ -216,7 +214,6 @@ export function JobsTable({
               </SelectContent>
             </Select>
 
-            {/* Organization Filter - Only visible to platform admins */}
             {permissions.isPlatformAdmin && (
               <Select value={organizationFilter} onValueChange={setOrganizationFilter}>
                 <SelectTrigger className="w-full sm:w-[180px]">
@@ -467,64 +464,122 @@ export function JobsTable({
               </div>
             </div>
 
-            {/* Pagination Controls */}
+            {/* Beautiful Enhanced Pagination Controls */}
             {totalPages > 1 && (
-              <div className="mt-6 space-y-4">
-                {/* Results Info */}
-                <div className="text-sm text-muted-foreground text-center">
-                  Showing {startIndex + 1}-{Math.min(endIndex, filteredJobs.length)} of {filteredJobs.length} jobs
+              <div className="mt-8 space-y-6">
+                {/* Results Summary Card */}
+                <div className="flex justify-center">
+                  <div className="inline-flex items-center gap-2 px-4 py-2 bg-surface-secondary/50 border border-border/50 rounded-brand text-sm text-text-secondary backdrop-blur-sm">
+                    <FileText className="h-4 w-4 opacity-60" />
+                    <span className="font-medium">
+                      Showing {startIndex + 1}-{Math.min(endIndex, filteredJobs.length)} of {filteredJobs.length} jobs
+                    </span>
+                  </div>
                 </div>
                 
-                {/* Pagination */}
-                <Pagination>
-                  <PaginationContent>
-                    <PaginationItem>
-                      <PaginationPrevious 
-                        href="#"
-                        onClick={(e) => {
-                          e.preventDefault()
-                          if (currentPage > 1) {
-                            setCurrentPage(currentPage - 1)
-                          }
-                        }}
-                        className={currentPage === 1 ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}
-                      />
-                    </PaginationItem>
+                {/* Enhanced Pagination Navigation */}
+                <div className="flex justify-center">
+                  <div className="inline-flex items-center bg-surface-primary border border-border/80 rounded-brand shadow-sm p-1 gap-1">
+                    {/* Previous Button */}
+                    <button
+                      onClick={() => currentPage > 1 && setCurrentPage(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      className={`
+                        inline-flex items-center gap-2 px-3 py-2 rounded-brand text-sm font-medium transition-all duration-200 ease-out
+                        ${currentPage === 1 
+                          ? 'text-text-tertiary cursor-not-allowed opacity-50' 
+                          : 'text-text-secondary hover:text-text-primary hover:bg-surface-secondary hover:-translate-y-0.5 hover:shadow-sm active:scale-95'
+                        }
+                      `}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      <span className="hidden sm:inline">Previous</span>
+                    </button>
+
+                    {/* Page Numbers */}
+                    <div className="flex items-center gap-1 px-2">
+                      {getPageNumbers().map((page, index) => (
+                        <div key={index}>
+                          {page === 'ellipsis' ? (
+                            <div className="flex items-center justify-center w-8 h-8 text-text-tertiary">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => setCurrentPage(page)}
+                              className={`
+                                w-8 h-8 rounded-brand text-sm font-medium transition-all duration-200 ease-out
+                                ${currentPage === page
+                                  ? 'bg-accent text-accent-foreground shadow-sm scale-105 font-semibold'
+                                  : 'text-text-secondary hover:text-text-primary hover:bg-surface-secondary hover:-translate-y-0.5 hover:shadow-sm active:scale-95'
+                                }
+                              `}
+                            >
+                              {page}
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Next Button */}
+                    <button
+                      onClick={() => currentPage < totalPages && setCurrentPage(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                      className={`
+                        inline-flex items-center gap-2 px-3 py-2 rounded-brand text-sm font-medium transition-all duration-200 ease-out
+                        ${currentPage === totalPages 
+                          ? 'text-text-tertiary cursor-not-allowed opacity-50' 
+                          : 'text-text-secondary hover:text-text-primary hover:bg-surface-secondary hover:-translate-y-0.5 hover:shadow-sm active:scale-95'
+                        }
+                      `}
+                    >
+                      <span className="hidden sm:inline">Next</span>
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Mobile Simplified Pagination */}
+                <div className="sm:hidden flex justify-center">
+                  <div className="inline-flex items-center gap-4 px-4 py-2 bg-surface-secondary/30 border border-border/50 rounded-brand backdrop-blur-sm">
+                    <button
+                      onClick={() => currentPage > 1 && setCurrentPage(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      className={`
+                        p-2 rounded-brand transition-all duration-200
+                        ${currentPage === 1 
+                          ? 'text-text-tertiary cursor-not-allowed opacity-50' 
+                          : 'text-text-secondary hover:text-text-primary hover:bg-surface-secondary hover:scale-105 active:scale-95'
+                        }
+                      `}
+                    >
+                      <ChevronLeft className="h-5 w-5" />
+                    </button>
                     
-                    {getPageNumbers().map((page, index) => (
-                      <PaginationItem key={index}>
-                        {page === 'ellipsis' ? (
-                          <PaginationEllipsis />
-                        ) : (
-                          <PaginationLink
-                            href="#"
-                            onClick={(e) => {
-                              e.preventDefault()
-                              setCurrentPage(page)
-                            }}
-                            isActive={currentPage === page}
-                            className="cursor-pointer"
-                          >
-                            {page}
-                          </PaginationLink>
-                        )}
-                      </PaginationItem>
-                    ))}
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="text-text-secondary">Page</span>
+                      <span className="font-medium text-text-primary bg-accent/20 px-2 py-1 rounded-brand">
+                        {currentPage}
+                      </span>
+                      <span className="text-text-secondary">of {totalPages}</span>
+                    </div>
                     
-                    <PaginationItem>
-                      <PaginationNext 
-                        href="#"
-                        onClick={(e) => {
-                          e.preventDefault()
-                          if (currentPage < totalPages) {
-                            setCurrentPage(currentPage + 1)
-                          }
-                        }}
-                        className={currentPage === totalPages ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}
-                      />
-                    </PaginationItem>
-                  </PaginationContent>
-                </Pagination>
+                    <button
+                      onClick={() => currentPage < totalPages && setCurrentPage(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                      className={`
+                        p-2 rounded-brand transition-all duration-200
+                        ${currentPage === totalPages 
+                          ? 'text-text-tertiary cursor-not-allowed opacity-50' 
+                          : 'text-text-secondary hover:text-text-primary hover:bg-surface-secondary hover:scale-105 active:scale-95'
+                        }
+                      `}
+                    >
+                      <ChevronRight className="h-5 w-5" />
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
           </>
