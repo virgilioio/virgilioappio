@@ -2,9 +2,11 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Edit, Building, Briefcase, MapPin, DollarSign, Users, Calendar, UserCheck } from 'lucide-react'
+import { Edit, Building, Briefcase, MapPin, DollarSign, Users, Calendar, UserCheck, User } from 'lucide-react'
 import { PermissionGate } from '@/components/auth/PermissionGate'
 import { usePermissions } from '@/hooks/usePermissions'
+import { useQuery } from '@tanstack/react-query'
+import { supabase } from '@/integrations/supabase/client'
 import type { Job } from '@/hooks/useJobs'
 
 interface JobOverviewTabProps {
@@ -14,6 +16,28 @@ interface JobOverviewTabProps {
 
 export function JobOverviewTab({ job, onEdit }: JobOverviewTabProps) {
   const permissions = usePermissions()
+
+  // Fetch creator information
+  const { data: creator } = useQuery({
+    queryKey: ['job-creator', job.created_by],
+    queryFn: async () => {
+      if (!job.created_by) return null
+      
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('first_name, last_name, email')
+        .eq('user_id', job.created_by)
+        .single()
+
+      if (error) {
+        console.error('Error fetching creator:', error)
+        return null
+      }
+
+      return data
+    },
+    enabled: !!job.created_by,
+  })
 
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
@@ -44,6 +68,13 @@ export function JobOverviewTab({ job, onEdit }: JobOverviewTabProps) {
       return `Up to ${curr} ${max.toLocaleString()}`
     }
     return 'Not specified'
+  }
+
+  const formatCreatorName = () => {
+    if (!creator) return 'Unknown'
+    
+    const fullName = [creator.first_name, creator.last_name].filter(Boolean).join(' ')
+    return fullName || creator.email || 'Unknown'
   }
 
   return (
@@ -141,7 +172,16 @@ export function JobOverviewTab({ job, onEdit }: JobOverviewTabProps) {
 
           {/* Timeline Information */}
           <div className="mt-8 pt-6 border-t border-border">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="flex items-start gap-3">
+                <User className="h-5 w-5 text-text-secondary mt-0.5 shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-text-secondary mb-1">Created By</p>
+                  <p className="text-md text-text-primary">
+                    {formatCreatorName()}
+                  </p>
+                </div>
+              </div>
               <div className="flex items-start gap-3">
                 <Calendar className="h-5 w-5 text-text-secondary mt-0.5 shrink-0" />
                 <div className="min-w-0">
