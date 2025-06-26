@@ -1,16 +1,12 @@
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Users, Plus } from 'lucide-react'
+import { Card, CardContent } from '@/components/ui/card'
 import { MembersTable } from '@/components/members/MembersTable'
 import { useMembers } from '@/hooks/useMembers'
-import { usePermissions } from '@/hooks/usePermissions'
 import { useState } from 'react'
 import { MemberForm } from '@/components/members/MemberForm'
 
 export function MembersTab() {
   const { members, isLoading, updateMember, deactivateMember, createMember, resendInvitation } = useMembers()
-  const permissions = usePermissions()
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [editingMember, setEditingMember] = useState(null)
 
@@ -44,36 +40,14 @@ export function MembersTab() {
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-3">
-                <Users className="h-5 w-5" />
-                Team Members
-              </CardTitle>
-              <CardDescription>
-                Manage your organization's team members and their roles
-              </CardDescription>
-            </div>
-            {permissions.canManageMembers && (
-              <Button onClick={handleCreateNew}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Member
-              </Button>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent>
-          <MembersTable 
-            members={members}
-            isLoading={isLoading}
-            onEdit={handleEdit}
-            onDeactivate={handleDeactivate}
-            onResendInvitation={handleResendInvitation}
-          />
-        </CardContent>
-      </Card>
+      <MembersTable 
+        members={members}
+        isLoading={isLoading}
+        onEdit={handleEdit}
+        onDeactivate={handleDeactivate}
+        onResendInvitation={handleResendInvitation}
+        onAddNew={handleCreateNew}
+      />
 
       <MemberForm
         isOpen={isCreateModalOpen}

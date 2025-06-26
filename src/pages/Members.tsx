@@ -1,13 +1,12 @@
 
 import { useState } from 'react'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
-import { Button } from '@/components/ui/button'
 import { AuthGate } from '@/components/auth/AuthGate'
 import { PermissionGate } from '@/components/auth/PermissionGate'
 import { MembersTable } from '@/components/members/MembersTable'
 import { MemberForm } from '@/components/members/MemberForm'
 import { useMembers, Member } from '@/hooks/useMembers'
-import { Users, Plus } from 'lucide-react'
+import { Users } from 'lucide-react'
 
 export default function Members() {
   const [isFormOpen, setIsFormOpen] = useState(false)
@@ -61,20 +60,14 @@ export default function Members() {
       <PermissionGate permission="canManageMembers">
         <div className="min-h-screen bg-background">
           <div className="container mx-auto py-6 sm:py-8 lg:py-12 px-4 sm:px-6 lg:px-8">
-            <div className="mb-6 sm:mb-8 lg:mb-12 flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
-                  <Users className="h-6 w-6 sm:h-7 sm:w-7" />
-                  Team Members
-                </h1>
-                <p className="text-muted-foreground mt-2 text-sm sm:text-md">
-                  Manage team members and their roles within your organization
-                </p>
-              </div>
-              <Button onClick={handleCreateNew}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Member
-              </Button>
+            <div className="mb-6 sm:mb-8 lg:mb-12">
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
+                <Users className="h-6 w-6 sm:h-7 sm:w-7" />
+                Team Members
+              </h1>
+              <p className="text-muted-foreground mt-2 text-sm sm:text-md">
+                Manage team members and their roles within your organization
+              </p>
             </div>
 
             <MembersTable
@@ -83,6 +76,7 @@ export default function Members() {
               onEdit={handleEdit}
               onDeactivate={handleDeactivate}
               onResendInvitation={handleResendInvitation}
+              onAddNew={handleCreateNew}
             />
 
             <MemberForm
