@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardDescription, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -136,14 +136,8 @@ export function JobsTable({ jobs, isLoading, onView, onEdit, onArchive, onCreate
     return (
       <Card>
         <CardHeader>
-          <div className="flex items-start justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <Briefcase className="h-5 w-5" />
-                Jobs
-              </CardTitle>
-              <CardDescription>Manage job postings and track hiring progress</CardDescription>
-            </div>
+          <div className="flex gap-4">
+            <Skeleton className="h-10 flex-1" />
             <Skeleton className="h-10 w-32" />
           </div>
         </CardHeader>
@@ -165,20 +159,15 @@ export function JobsTable({ jobs, isLoading, onView, onEdit, onArchive, onCreate
         <Card>
           <CardHeader>
             <div className="flex flex-col gap-4">
-              <div className="flex items-start justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <Briefcase className="h-5 w-5" />
-                    Jobs
-                  </CardTitle>
-                  <CardDescription>
-                    Manage job postings and track hiring progress
-                  </CardDescription>
-                  {permissions.isWorkspaceOwner && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Jobs from approved requests will appear here automatically
-                    </p>
-                  )}
+              <div className="flex items-center justify-between">
+                <div className="relative flex-1 mr-4">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search jobs..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10"
+                  />
                 </div>
                 <div className="flex gap-2">
                   {permissions.canCreateJobs ? (
@@ -195,74 +184,62 @@ export function JobsTable({ jobs, isLoading, onView, onEdit, onArchive, onCreate
                 </div>
               </div>
               
-              <div className="space-y-3">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search jobs..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Statuses</SelectItem>
+                    <SelectItem value="draft">Draft</SelectItem>
+                    <SelectItem value="open">Open</SelectItem>
+                    <SelectItem value="closed">Closed</SelectItem>
+                    <SelectItem value="archived">Archived</SelectItem>
+                  </SelectContent>
+                </Select>
                 
-                <div className="grid grid-cols-2 gap-3">
-                  <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Status" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Statuses</SelectItem>
-                      <SelectItem value="draft">Draft</SelectItem>
-                      <SelectItem value="open">Open</SelectItem>
-                      <SelectItem value="closed">Closed</SelectItem>
-                      <SelectItem value="archived">Archived</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  
-                  <Select value={levelFilter} onValueChange={setLevelFilter}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Level" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Levels</SelectItem>
-                      <SelectItem value="L1 - Specialists">L1 - Specialists</SelectItem>
-                      <SelectItem value="L2 - Managers">L2 - Managers</SelectItem>
-                      <SelectItem value="L3 - Directors / VPs / Executive Search">L3 - Directors / VPs / Executive Search</SelectItem>
-                      <SelectItem value="L4 - C-Level">L4 - C-Level</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {userType === 'platform_admin' && (
-                  <>
-                    <Select value={organizationFilter} onValueChange={setOrganizationFilter}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Organization" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Organizations</SelectItem>
-                        {organizations.map((org) => (
-                          <SelectItem key={org.id} value={org.id}>
-                            {org.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-
-                    {hiringTeamOptions.length > 0 && (
-                      <MultiSelect
-                        options={hiringTeamOptions}
-                        selectedValues={hiringTeamFilter}
-                        onSelectionChange={setHiringTeamFilter}
-                        placeholder="Filter by hiring team"
-                        searchable={true}
-                        emptyMessage="No team members found"
-                      />
-                    )}
-                  </>
-                )}
+                <Select value={levelFilter} onValueChange={setLevelFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Level" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Levels</SelectItem>
+                    <SelectItem value="L1 - Specialists">L1 - Specialists</SelectItem>
+                    <SelectItem value="L2 - Managers">L2 - Managers</SelectItem>
+                    <SelectItem value="L3 - Directors / VPs / Executive Search">L3 - Directors / VPs / Executive Search</SelectItem>
+                    <SelectItem value="L4 - C-Level">L4 - C-Level</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
+
+              {userType === 'platform_admin' && (
+                <>
+                  <Select value={organizationFilter} onValueChange={setOrganizationFilter}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Organization" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Organizations</SelectItem>
+                      {organizations.map((org) => (
+                        <SelectItem key={org.id} value={org.id}>
+                          {org.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  {hiringTeamOptions.length > 0 && (
+                    <MultiSelect
+                      options={hiringTeamOptions}
+                      selectedValues={hiringTeamFilter}
+                      onSelectionChange={setHiringTeamFilter}
+                      placeholder="Filter by hiring team"
+                      searchable={true}
+                      emptyMessage="No team members found"
+                    />
+                  )}
+                </>
+              )}
             </div>
           </CardHeader>
         </Card>
@@ -359,37 +336,7 @@ export function JobsTable({ jobs, isLoading, onView, onEdit, onArchive, onCreate
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-start justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <Briefcase className="h-5 w-5" />
-              Jobs
-            </CardTitle>
-            <CardDescription>
-              Manage job postings and track hiring progress
-            </CardDescription>
-            {permissions.isWorkspaceOwner && (
-              <p className="text-xs text-muted-foreground mt-1">
-                Jobs from approved requests will appear here automatically
-              </p>
-            )}
-          </div>
-          <div className="flex gap-2">
-            {permissions.canCreateJobs ? (
-              <Button onClick={onCreateNew} className="gap-2">
-                <Plus className="h-4 w-4" />
-                Create Job
-              </Button>
-            ) : permissions.canRequestJobs ? (
-              <Button onClick={onRequestJob} className="gap-2">
-                <Plus className="h-4 w-4" />
-                Request Job
-              </Button>
-            ) : null}
-          </div>
-        </div>
-        
-        <div className="flex gap-4 mt-4 flex-wrap">
+        <div className="flex gap-4 flex-wrap">
           <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -456,6 +403,20 @@ export function JobsTable({ jobs, isLoading, onView, onEdit, onArchive, onCreate
               )}
             </>
           )}
+
+          <div className="flex gap-2 ml-auto">
+            {permissions.canCreateJobs ? (
+              <Button onClick={onCreateNew} className="gap-2">
+                <Plus className="h-4 w-4" />
+                Create Job
+              </Button>
+            ) : permissions.canRequestJobs ? (
+              <Button onClick={onRequestJob} className="gap-2">
+                <Plus className="h-4 w-4" />
+                Request Job
+              </Button>
+            ) : null}
+          </div>
         </div>
       </CardHeader>
       

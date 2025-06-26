@@ -1,6 +1,6 @@
 
 import { useState } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -72,14 +72,8 @@ export function JobRequestTable({
     return (
       <Card>
         <CardHeader>
-          <div className="flex items-start justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <ListTodo className="h-5 w-5" />
-                Job Requests
-              </CardTitle>
-              <CardDescription>Manage job requests and approvals</CardDescription>
-            </div>
+          <div className="flex gap-4">
+            <Skeleton className="h-10 flex-1" />
             <Skeleton className="h-10 w-32" />
           </div>
         </CardHeader>
@@ -97,26 +91,8 @@ export function JobRequestTable({
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-start justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <ListTodo className="h-5 w-5" />
-              Job Requests
-            </CardTitle>
-            <CardDescription>
-              Manage job requests and approvals
-            </CardDescription>
-          </div>
-          {permissions.canRequestJobs && (
-            <Button onClick={onCreateNew} className="gap-2">
-              <Plus className="h-4 w-4" />
-              Request Job
-            </Button>
-          )}
-        </div>
-        
-        <div className="flex gap-4 mt-4">
-          <div className="relative flex-1">
+        <div className="flex gap-4 flex-wrap">
+          <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search job requests, organizations, or requesters..."
@@ -149,6 +125,15 @@ export function JobRequestTable({
               <SelectItem value="L3">L3</SelectItem>
             </SelectContent>
           </Select>
+
+          {permissions.canRequestJobs && (
+            <div className="ml-auto">
+              <Button onClick={onCreateNew} className="gap-2">
+                <Plus className="h-4 w-4" />
+                Request Job
+              </Button>
+            </div>
+          )}
         </div>
       </CardHeader>
       
