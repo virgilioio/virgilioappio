@@ -122,11 +122,14 @@ export function MembersTable({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Organizations</SelectItem>
-                {organizations.map((org) => (
-                  <SelectItem key={org.id} value={org.id}>
-                    {org.name}
-                  </SelectItem>
-                ))}
+                {organizations
+                  .sort((a, b) => a.name.localeCompare(b.name))
+                  .map((org) => (
+                    <SelectItem key={org.id} value={org.id}>
+                      {org.name}
+                    </SelectItem>
+                  ))
+                }
               </SelectContent>
             </Select>
           )}

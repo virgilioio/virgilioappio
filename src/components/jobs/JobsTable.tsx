@@ -1,22 +1,18 @@
-import { useState, useMemo } from 'react'
-import { Card, CardContent, CardHeader, CardDescription, CardTitle } from '@/components/ui/card'
+
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Search, Edit, Archive, MoreHorizontal, FileText, Briefcase } from 'lucide-react'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { MultiSelect } from '@/components/ui/multi-select'
-import { Job } from '@/hooks/useJobs'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Plus, Search, Edit, Archive, FileText, Building, MapPin, DollarSign, Eye, UserPlus } from 'lucide-react'
+import { PermissionGate } from '@/components/auth/PermissionGate'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useOrganizations } from '@/hooks/useOrganizations'
-import { useMembers } from '@/hooks/useMembers'
-import { useAuth } from '@/contexts/AuthContext'
-import { useIsMobile } from '@/hooks/use-mobile'
-import { Skeleton } from '@/components/ui/skeleton'
-import { useSortableTable } from '@/hooks/useSortableTable'
-import { SortableHeader } from '@/components/ui/sortable-header'
+import { Job } from '@/hooks/useJobs'
 
 interface JobsTableProps {
   jobs: Job[]
@@ -28,69 +24,23 @@ interface JobsTableProps {
   onRequestJob: () => void
 }
 
-export function JobsTable({ jobs, isLoading, onView, onEdit, onArchive, onCreateNew, onRequestJob }: JobsTableProps) {
+export function JobsTable({ 
+  jobs, 
+  isLoading, 
+  onView, 
+  onEdit, 
+  onArchive, 
+  onCreateNew,
+  onRequestJob
+}: JobsTableProps) {
+  const navigate = useNavigate()
+  const permissions = usePermissions()
+  const { organizations } = useOrganizations()
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [levelFilter, setLevelFilter] = useState<string>('all')
   const [organizationFilter, setOrganizationFilter] = useState<string>('all')
-  const [hiringTeamFilter, setHiringTeamFilter] = useState<string[]>([])
-  const permissions = usePermissions()
-  const { userType } = useAuth()
-  const { organizations } = useOrganizations()
-  const { members } = useMembers()
-  const isMobile = useIsMobile()
-
-  // Extract unique hiring team members from all jobs
-  const hiringTeamOptions = useMemo(() => {
-    const uniqueMembers = new Map()
-    
-    console.log('JobsTable: Processing jobs for hiring team options:', jobs.length)
-    console.log('JobsTable: User type:', userType)
-    console.log('JobsTable: Available members:', members.length)
-    
-    jobs.forEach(job => {
-      if (Array.isArray(job.hiring_team)) {
-        console.log('JobsTable: Job hiring team:', job.hiring_team)
-        job.hiring_team.forEach((teamMember: any) => {
-          if (teamMember && typeof teamMember === 'object') {
-            const id = teamMember.user_id || teamMember.id
-            if (id && !uniqueMembers.has(id)) {
-              // Try to find member details from members list
-              const memberDetails = members.find(m => m.user_id === id || m.id === id)
-              
-              const name = memberDetails 
-                ? `${memberDetails.user_first_name || ''} ${memberDetails.user_last_name || ''}`.trim()
-                : teamMember.name || 'Unknown'
-              
-              const email = memberDetails?.user_email || teamMember.email || ''
-              const role = memberDetails?.member_role || teamMember.role || ''
-              
-              const displayName = email 
-                ? `${name} (${email})${role ? ` - ${role}` : ''}`
-                : name
-              
-              uniqueMembers.set(id, {
-                value: id,
-                label: displayName || `Member ${id.slice(0, 8)}`
-              })
-            }
-          }
-        })
-      }
-    })
-    
-    const options = Array.from(uniqueMembers.values()).sort((a, b) => a.label.localeCompare(b.label))
-    console.log('JobsTable: Hiring team options generated:', options.length, options)
-    return options
-  }, [jobs, members])
-
-  // Add debug log for filter visibility
-  console.log('JobsTable: Should show hiring team filter?', {
-    userType,
-    isPlatformAdmin: userType === 'platform_admin',
-    hiringTeamOptionsLength: hiringTeamOptions.length,
-    shouldShow: userType === 'platform_admin' && hiringTeamOptions.length > 0
-  })
+  const [hiringTeamFilter, setHiringTeamFilter] = useState<string>('all')
 
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
@@ -107,237 +57,76 @@ export function JobsTable({ jobs, isLoading, onView, onEdit, onArchive, onCreate
     }
   }
 
+  const formatSalary = (min: number | null, max: number | null, currency: string | null) => {
+    if (!min && !max) return 'Not specified'
+    
+    const curr = currency || 'USD'
+    if (min && max) {
+      return `${curr} ${min.toLocaleString()} - ${max.toLocaleString()}`
+    }
+    if (min) {
+      return `${curr} ${min.toLocaleString()}+`
+    }
+    if (max) {
+      return `Up to ${curr} ${max.toLocaleString()}`
+    }
+    return 'Not specified'
+  }
+
+  // Get unique hiring team members across all jobs
+  const getAllHiringTeamMembers = () => {
+    const members = new Set<string>()
+    jobs.forEach(job => {
+      if (job.hiring_team && Array.isArray(job.hiring_team)) {
+        job.hiring_team.forEach((member: any) => {
+          if (member?.name) {
+            members.add(member.name)
+          }
+        })
+      }
+    })
+    return Array.from(members).sort()
+  }
+
   const filteredJobs = jobs.filter(job => {
     const matchesSearch = job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         job.department?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         job.location?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         job.organization_name?.toLowerCase().includes(searchTerm.toLowerCase())
+                         job.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         job.department?.toLowerCase().includes(searchTerm.toLowerCase())
+    
     const matchesStatus = statusFilter === 'all' || job.status === statusFilter
     const matchesLevel = levelFilter === 'all' || job.level === levelFilter
     const matchesOrganization = organizationFilter === 'all' || job.organization_id === organizationFilter
     
-    // Hiring team filter logic
-    const matchesHiringTeam = hiringTeamFilter.length === 0 || 
-      (Array.isArray(job.hiring_team) && job.hiring_team.some((teamMember: any) => {
-        const memberId = teamMember?.user_id || teamMember?.id
-        return memberId && hiringTeamFilter.includes(memberId)
-      }))
+    const matchesHiringTeam = hiringTeamFilter === 'all' || 
+      (job.hiring_team && Array.isArray(job.hiring_team) && 
+       job.hiring_team.some((member: any) => member?.name === hiringTeamFilter))
     
     return matchesSearch && matchesStatus && matchesLevel && matchesOrganization && matchesHiringTeam
   })
 
-  // Add sorting functionality
-  const { sortedData: sortedJobs, sortConfig, requestSort } = useSortableTable(
-    filteredJobs,
-    { key: 'created_at', direction: 'desc' }
-  )
-
   if (isLoading) {
     return (
-      <Card>
+      <Card className="bg-surface-primary border-border">
         <CardHeader>
           <div className="flex gap-4">
             <Skeleton className="h-10 flex-1" />
             <Skeleton className="h-10 w-32" />
           </div>
         </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {[...Array(3)].map((_, i) => (
-              <Skeleton key={i} className="h-16 w-full" />
-            ))}
-          </div>
+        <CardContent className="space-y-md">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="h-[52px] bg-surface-secondary rounded-brand animate-pulse" />
+          ))}
         </CardContent>
       </Card>
     )
   }
 
-  // Mobile Card Layout
-  if (isMobile) {
-    return (
-      <div className="space-y-6">
-        <Card>
-          <CardHeader>
-            <div className="flex flex-col gap-4">
-              <div className="flex items-center justify-between">
-                <div className="relative flex-1 mr-4">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Search jobs..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-                <div className="flex gap-2">
-                  {permissions.canCreateJobs ? (
-                    <Button onClick={onCreateNew} size="sm" className="gap-1">
-                      <Plus className="h-4 w-4" />
-                      Create
-                    </Button>
-                  ) : permissions.canRequestJobs ? (
-                    <Button onClick={onRequestJob} size="sm" className="gap-1">
-                      <Plus className="h-4 w-4" />
-                      Request
-                    </Button>
-                  ) : null}
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-3">
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Statuses</SelectItem>
-                    <SelectItem value="draft">Draft</SelectItem>
-                    <SelectItem value="open">Open</SelectItem>
-                    <SelectItem value="closed">Closed</SelectItem>
-                    <SelectItem value="archived">Archived</SelectItem>
-                  </SelectContent>
-                </Select>
-                
-                <Select value={levelFilter} onValueChange={setLevelFilter}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Level" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Levels</SelectItem>
-                    <SelectItem value="L1 - Specialists">L1 - Specialists</SelectItem>
-                    <SelectItem value="L2 - Managers">L2 - Managers</SelectItem>
-                    <SelectItem value="L3 - Directors / VPs / Executive Search">L3 - Directors / VPs / Executive Search</SelectItem>
-                    <SelectItem value="L4 - C-Level">L4 - C-Level</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {userType === 'platform_admin' && (
-                <>
-                  <Select value={organizationFilter} onValueChange={setOrganizationFilter}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Organization" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Organizations</SelectItem>
-                      {organizations.map((org) => (
-                        <SelectItem key={org.id} value={org.id}>
-                          {org.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-
-                  {hiringTeamOptions.length > 0 && (
-                    <MultiSelect
-                      options={hiringTeamOptions}
-                      selectedValues={hiringTeamFilter}
-                      onSelectionChange={setHiringTeamFilter}
-                      placeholder="Filter by hiring team"
-                      searchable={true}
-                      emptyMessage="No team members found"
-                    />
-                  )}
-                </>
-              )}
-            </div>
-          </CardHeader>
-        </Card>
-
-        {sortedJobs.length === 0 ? (
-          <Card>
-            <CardContent className="py-8">
-              <div className="text-center">
-                <Briefcase className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No jobs yet</h3>
-                <p className="text-muted-foreground mb-4">
-                  {jobs.length === 0 ? 'Create your first job to get started.' : 'No jobs match your filters.'}
-                </p>
-                {jobs.length === 0 && (permissions.canCreateJobs || permissions.canRequestJobs) && (
-                  <div className="flex gap-2 justify-center">
-                    {permissions.canCreateJobs ? (
-                      <Button onClick={onCreateNew} className="gap-2">
-                        <Plus className="h-4 w-4" />
-                        Create Job
-                      </Button>
-                    ) : permissions.canRequestJobs ? (
-                      <Button onClick={onRequestJob} className="gap-2">
-                        <Plus className="h-4 w-4" />
-                        Request Job
-                      </Button>
-                    ) : null}
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="space-y-3">
-            {sortedJobs.map((job) => (
-              <Card key={job.id} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => onView(job)}>
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <h3 className="font-semibold text-md truncate">{job.title}</h3>
-                      <p className="text-sm text-muted-foreground mt-1">{job.level}</p>
-                      <div className="flex flex-wrap gap-2 mt-2 text-sm text-muted-foreground">
-                        <span>{job.department || 'No dept'}</span>
-                        <span>•</span>
-                        <span>{job.location || 'Remote'}</span>
-                        <span>•</span>
-                        <span>{job.organization_name || 'Unknown Org'}</span>
-                      </div>
-                      <div className="flex items-center gap-2 mt-3">
-                        <Badge variant={getStatusBadgeVariant(job.status)} className="text-xs">
-                          {job.status}
-                        </Badge>
-                        <span className="text-xs text-muted-foreground">
-                          {new Date(job.created_at).toLocaleDateString()}
-                        </span>
-                      </div>
-                    </div>
-                    
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onView(job); }}>
-                          <FileText className="h-4 w-4 mr-2" />
-                          View
-                        </DropdownMenuItem>
-                        {permissions.canEditJobs && (
-                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(job); }}>
-                            <Edit className="h-4 w-4 mr-2" />
-                            Edit
-                          </DropdownMenuItem>
-                        )}
-                        {permissions.canArchiveJobs && job.status !== 'archived' && (
-                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onArchive(job.id); }}>
-                            <Archive className="h-4 w-4 mr-2" />
-                            Archive
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-      </div>
-    )
-  }
-
-  // Desktop Table Layout
   return (
-    <Card>
+    <Card className="bg-surface-primary border-border">
       <CardHeader>
-        <div className="flex gap-4 flex-wrap">
-          <div className="relative flex-1 min-w-[200px]">
+        <div className="flex flex-col lg:flex-row gap-4">
+          <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search jobs..."
@@ -347,212 +136,281 @@ export function JobsTable({ jobs, isLoading, onView, onEdit, onArchive, onCreate
             />
           </div>
           
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[150px]">
-              <SelectValue placeholder="Filter by status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="draft">Draft</SelectItem>
-              <SelectItem value="open">Open</SelectItem>
-              <SelectItem value="closed">Closed</SelectItem>
-              <SelectItem value="archived">Archived</SelectItem>
-            </SelectContent>
-          </Select>
-          
-          <Select value={levelFilter} onValueChange={setLevelFilter}>
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Filter by level" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Levels</SelectItem>
-              <SelectItem value="L1 - Specialists">L1 - Specialists</SelectItem>
-              <SelectItem value="L2 - Managers">L2 - Managers</SelectItem>
-              <SelectItem value="L3 - Directors / VPs / Executive Search">L3 - Directors / VPs / Executive Search</SelectItem>
-              <SelectItem value="L4 - C-Level">L4 - C-Level</SelectItem>
-            </SelectContent>
-          </Select>
+          <div className="flex flex-col sm:flex-row gap-4">
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-full sm:w-[140px]">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="draft">Draft</SelectItem>
+                <SelectItem value="open">Open</SelectItem>
+                <SelectItem value="closed">Closed</SelectItem>
+                <SelectItem value="archived">Archived</SelectItem>
+              </SelectContent>
+            </Select>
+            
+            <Select value={levelFilter} onValueChange={setLevelFilter}>
+              <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectValue placeholder="Level" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Levels</SelectItem>
+                <SelectItem value="L1">L1 - Specialists</SelectItem>
+                <SelectItem value="L2">L2 - Managers</SelectItem>
+                <SelectItem value="L3">L3 - Directors / VPs / Executive Search</SelectItem>
+                <SelectItem value="L4">L4 - C-Level</SelectItem>
+              </SelectContent>
+            </Select>
 
-          {userType === 'platform_admin' && (
-            <>
+            {/* Organization Filter - Only visible to platform admins */}
+            {permissions.isPlatformAdmin && (
               <Select value={organizationFilter} onValueChange={setOrganizationFilter}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Filter by organization" />
+                <SelectTrigger className="w-full sm:w-[180px]">
+                  <SelectValue placeholder="Organization" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Organizations</SelectItem>
-                  {organizations.map((org) => (
-                    <SelectItem key={org.id} value={org.id}>
-                      {org.name}
-                    </SelectItem>
-                  ))}
+                  {organizations
+                    .sort((a, b) => a.name.localeCompare(b.name))
+                    .map((org) => (
+                      <SelectItem key={org.id} value={org.id}>
+                        {org.name}
+                      </SelectItem>
+                    ))
+                  }
                 </SelectContent>
               </Select>
+            )}
 
-              {hiringTeamOptions.length > 0 && (
-                <div className="w-[220px]">
-                  <MultiSelect
-                    options={hiringTeamOptions}
-                    selectedValues={hiringTeamFilter}
-                    onSelectionChange={setHiringTeamFilter}
-                    placeholder="Filter by hiring team"
-                    searchable={true}
-                    emptyMessage="No team members found"
-                  />
-                </div>
-              )}
-            </>
-          )}
+            <Select value={hiringTeamFilter} onValueChange={setHiringTeamFilter}>
+              <SelectTrigger className="w-full sm:w-[160px]">
+                <SelectValue placeholder="Hiring Team" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Team Members</SelectItem>
+                {getAllHiringTeamMembers().map((member) => (
+                  <SelectItem key={member} value={member}>
+                    {member}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-          <div className="flex gap-2 ml-auto">
-            {permissions.canCreateJobs ? (
-              <Button onClick={onCreateNew} className="gap-2">
-                <Plus className="h-4 w-4" />
-                Create Job
-              </Button>
-            ) : permissions.canRequestJobs ? (
-              <Button onClick={onRequestJob} className="gap-2">
-                <Plus className="h-4 w-4" />
-                Request Job
-              </Button>
-            ) : null}
+            <div className="flex gap-2">
+              <PermissionGate permission="canCreateJobs">
+                <Button onClick={onCreateNew} size="sm" className="gap-sm whitespace-nowrap">
+                  <Plus className="h-4 w-4" />
+                  Create Job
+                </Button>
+              </PermissionGate>
+              
+              <PermissionGate permission="canRequestJobs">
+                <Button onClick={onRequestJob} variant="outline" size="sm" className="gap-sm whitespace-nowrap">
+                  <UserPlus className="h-4 w-4" />
+                  Request Job
+                </Button>
+              </PermissionGate>
+            </div>
           </div>
         </div>
       </CardHeader>
-      
       <CardContent>
-        {sortedJobs.length === 0 ? (
-          <div className="text-center py-8">
-            <Briefcase className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No jobs yet</h3>
-            <p className="text-muted-foreground mb-4">
-              {jobs.length === 0 ? 'Create your first job to get started.' : 'No jobs match your filters.'}
+        {filteredJobs.length === 0 ? (
+          <div className="text-center py-xl bg-surface-secondary rounded-brand border border-border/50">
+            <FileText className="h-12 w-12 mx-auto mb-md text-text-secondary opacity-50" />
+            <p className="text-md font-medium text-text-primary mb-sm">
+              {jobs.length === 0 ? 'No jobs yet' : 'No jobs match your filters'}
             </p>
-            {jobs.length === 0 && (permissions.canCreateJobs || permissions.canRequestJobs) && (
-              <div className="flex gap-2 justify-center">
-                {permissions.canCreateJobs ? (
-                  <Button onClick={onCreateNew} className="gap-2">
-                    <Plus className="h-4 w-4" />
-                    Create Job
-                  </Button>
-                ) : permissions.canRequestJobs ? (
-                  <Button onClick={onRequestJob} className="gap-2">
-                    <Plus className="h-4 w-4" />
-                    Request Job
-                  </Button>
-                ) : null}
-              </div>
-            )}
+            <p className="text-sm text-text-secondary">
+              {jobs.length === 0 ? 'Create your first job posting' : 'Try adjusting your search or filters'}
+            </p>
           </div>
         ) : (
-          <div className="rounded-md border overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>
-                    <SortableHeader 
-                      sortKey="title" 
-                      currentSort={sortConfig} 
-                      onSort={requestSort}
+          <div className="space-y-sm">
+            {/* Desktop Table View */}
+            <div className="hidden lg:block">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Job Title</TableHead>
+                    <TableHead>Organization</TableHead>
+                    <TableHead>Department</TableHead>
+                    <TableHead>Location</TableHead>
+                    <TableHead>Level</TableHead>
+                    <TableHead>Salary Range</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredJobs.map((job) => (
+                    <TableRow 
+                      key={job.id} 
+                      interactive
+                      className="cursor-pointer"
+                      onClick={() => onView(job)}
                     >
-                      Title
-                    </SortableHeader>
-                  </TableHead>
-                  <TableHead className="hidden sm:table-cell">
-                    <SortableHeader 
-                      sortKey="level" 
-                      currentSort={sortConfig} 
-                      onSort={requestSort}
+                      <TableCell className="font-medium">{job.title}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Building className="h-4 w-4 text-muted-foreground" />
+                          {job.organization_name || 'Organization'}
+                        </div>
+                      </TableCell>
+                      <TableCell>{job.department || 'Not specified'}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <MapPin className="h-4 w-4 text-muted-foreground" />
+                          {job.location || 'Not specified'}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{job.level}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <DollarSign className="h-4 w-4 text-muted-foreground" />
+                          {formatSalary(job.salary_min, job.salary_max, job.currency)}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={getStatusBadgeVariant(job.status)}>
+                          {job.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              onView(job)
+                            }}
+                            className="h-8 w-8 p-0"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <PermissionGate permission="canEditJobs">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                onEdit(job)
+                              }}
+                              className="h-8 w-8 p-0"
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                          </PermissionGate>
+                          <PermissionGate permission="canArchiveJobs">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                onArchive(job.id)
+                              }}
+                              className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10"
+                            >
+                              <Archive className="h-4 w-4" />
+                            </Button>
+                          </PermissionGate>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Mobile Card View */}
+            <div className="lg:hidden space-y-sm">
+              {filteredJobs.map((job) => (
+                <Card key={job.id} className="bg-background border-border hover:shadow-sm transition-all duration-150">
+                  <CardContent className="p-sm">
+                    <div 
+                      className="cursor-pointer" 
+                      onClick={() => onView(job)}
                     >
-                      Level
-                    </SortableHeader>
-                  </TableHead>
-                  <TableHead className="hidden md:table-cell">
-                    <SortableHeader 
-                      sortKey="department" 
-                      currentSort={sortConfig} 
-                      onSort={requestSort}
-                    >
-                      Department
-                    </SortableHeader>
-                  </TableHead>
-                  <TableHead className="hidden lg:table-cell">
-                    <SortableHeader 
-                      sortKey="location" 
-                      currentSort={sortConfig} 
-                      onSort={requestSort}
-                    >
-                      Location
-                    </SortableHeader>
-                  </TableHead>
-                  <TableHead className="hidden xl:table-cell">
-                    <SortableHeader 
-                      sortKey="organization_name" 
-                      currentSort={sortConfig} 
-                      onSort={requestSort}
-                    >
-                      Organization
-                    </SortableHeader>
-                  </TableHead>
-                  <TableHead>
-                    <SortableHeader 
-                      sortKey="status" 
-                      currentSort={sortConfig} 
-                      onSort={requestSort}
-                    >
-                      Status
-                    </SortableHeader>
-                  </TableHead>
-                  <TableHead className="hidden sm:table-cell">
-                    <SortableHeader 
-                      sortKey="created_at" 
-                      currentSort={sortConfig} 
-                      onSort={requestSort}
-                    >
-                      Created
-                    </SortableHeader>
-                  </TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sortedJobs.map((job) => (
-                  <TableRow key={job.id} interactive onClick={() => onView(job)}>
-                    <TableCell className="font-medium">
-                      <div className="truncate max-w-[200px]">{job.title}</div>
-                    </TableCell>
-                    <TableCell className="hidden sm:table-cell">{job.level}</TableCell>
-                    <TableCell className="hidden md:table-cell">{job.department || '-'}</TableCell>
-                    <TableCell className="hidden lg:table-cell">{job.location || '-'}</TableCell>
-                    <TableCell className="hidden xl:table-cell">
-                      <div className="truncate max-w-[150px]" title={job.organization_name}>
-                        {job.organization_name || 'Unknown'}
+                      <div className="flex items-start justify-between mb-sm">
+                        <div className="min-w-0 flex-1">
+                          <h4 className="font-medium text-text-primary mb-1">{job.title}</h4>
+                          <div className="flex items-center gap-2 text-sm text-text-secondary mb-2">
+                            <Building className="h-4 w-4" />
+                            {job.organization_name || 'Organization'}
+                          </div>
+                        </div>
+                        <Badge variant={getStatusBadgeVariant(job.status)} className="shrink-0">
+                          {job.status}
+                        </Badge>
                       </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={getStatusBadgeVariant(job.status)}>
-                        {job.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="hidden sm:table-cell">{new Date(job.created_at).toLocaleDateString()}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center justify-end gap-1">
-                        {permissions.canEditJobs && (
-                          <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onEdit(job); }}>
+
+                      <div className="space-y-2 text-sm text-text-secondary">
+                        <div className="flex items-center gap-1">
+                          <MapPin className="h-4 w-4" />
+                          {job.location || 'Not specified'}
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <DollarSign className="h-4 w-4" />
+                          {formatSalary(job.salary_min, job.salary_max, job.currency)}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="text-xs">
+                            {job.level}
+                          </Badge>
+                          {job.department && (
+                            <span className="text-xs">{job.department}</span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-end gap-2 mt-sm pt-sm border-t border-border">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            onView(job)
+                          }}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <PermissionGate permission="canEditJobs">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              onEdit(job)
+                            }}
+                            className="h-8 w-8 p-0"
+                          >
                             <Edit className="h-4 w-4" />
                           </Button>
-                        )}
-                        {permissions.canArchiveJobs && job.status !== 'archived' && (
-                          <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onArchive(job.id); }}>
+                        </PermissionGate>
+                        <PermissionGate permission="canArchiveJobs">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              onArchive(job.id)
+                            }}
+                            className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10"
+                          >
                             <Archive className="h-4 w-4" />
                           </Button>
-                        )}
+                        </PermissionGate>
                       </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           </div>
         )}
       </CardContent>
