@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
@@ -67,7 +68,14 @@ export function useCandidates(jobId: string) {
       }
 
       console.log('Fetched candidates:', data)
-      setCandidates(data || [])
+      
+      // Transform the data to ensure proper typing
+      const transformedCandidates: Candidate[] = (data || []).map(candidate => ({
+        ...candidate,
+        first_viewed_by: candidate.first_viewed_by as Record<string, string> | null
+      }))
+      
+      setCandidates(transformedCandidates)
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch candidates'
       console.error('Candidates fetch error:', err)
@@ -98,7 +106,7 @@ export function useCandidates(jobId: string) {
         return
       }
 
-      const currentViews = candidate?.first_viewed_by || {}
+      const currentViews = (candidate?.first_viewed_by as Record<string, string>) || {}
       
       // If user hasn't viewed this candidate yet, add them
       if (!currentViews[user.id]) {

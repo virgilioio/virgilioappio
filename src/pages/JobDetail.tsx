@@ -36,8 +36,8 @@ export default function JobDetail() {
   // Job assignments hook
   const {
     assignments,
-    addAssignment,
-    removeAssignment,
+    assignUserToJob: addAssignment,
+    removeUserFromJob: removeAssignment,
     isLoading: assignmentsLoading
   } = useJobAssignments(id!)
 
@@ -195,16 +195,15 @@ export default function JobDetail() {
   if (!job) return null
 
   return (
-    <JobAssignmentGuard jobId={id!}>
+    <JobAssignmentGuard>
       <div className="h-screen flex">
         {/* Desktop Sidebar */}
         {!isMobile && (
           <JobDetailSidebar
-            job={job}
-            activeTab={activeTab}
+            currentTab={activeTab}
             onTabChange={setActiveTab}
-            onEdit={handleEditJob}
-            onArchive={handleArchiveJob}
+            jobTitle={job.title}
+            canViewAssignments={userType === 'platform_admin'}
           />
         )}
         
@@ -213,11 +212,9 @@ export default function JobDetail() {
           {/* Mobile Header */}
           {isMobile && (
             <JobDetailMobileHeader
-              job={job}
-              activeTab={activeTab}
-              onTabChange={setActiveTab}
-              onEdit={handleEditJob}
-              onArchive={handleArchiveJob}
+              jobTitle={job.title}
+              onMenuToggle={() => {}}
+              onBackToJobs={() => navigate('/jobs')}
             />
           )}
           
@@ -236,7 +233,10 @@ export default function JobDetail() {
                   </TabsList>
                   
                   <TabsContent value="overview" className="mt-6">
-                    <JobOverviewTab job={job} />
+                    <JobOverviewTab job={{
+                      ...job,
+                      hiring_team: job.hiring_team as any[]
+                    }} />
                   </TabsContent>
                   
                   <TabsContent value="candidates" className="mt-6">
@@ -255,9 +255,6 @@ export default function JobDetail() {
                     <TabsContent value="assignments" className="mt-6">
                       <JobAssignmentsPanel
                         jobId={id!}
-                        assignments={assignments}
-                        onAddAssignment={addAssignment}
-                        onRemoveAssignment={removeAssignment}
                         isLoading={assignmentsLoading}
                       />
                     </TabsContent>
@@ -266,7 +263,10 @@ export default function JobDetail() {
               ) : (
                 // Desktop: Show content based on active tab
                 <>
-                  {activeTab === 'overview' && <JobOverviewTab job={job} />}
+                  {activeTab === 'overview' && <JobOverviewTab job={{
+                    ...job,
+                    hiring_team: job.hiring_team as any[]
+                  }} />}
                   {activeTab === 'candidates' && (
                     <CandidateTable
                       candidates={candidates}
@@ -281,9 +281,6 @@ export default function JobDetail() {
                   {activeTab === 'assignments' && userType === 'platform_admin' && (
                     <JobAssignmentsPanel
                       jobId={id!}
-                      assignments={assignments}
-                      onAddAssignment={addAssignment}
-                      onRemoveAssignment={removeAssignment}
                       isLoading={assignmentsLoading}
                     />
                   )}
@@ -302,7 +299,6 @@ export default function JobDetail() {
           </DialogHeader>
           <CandidateForm
             onSubmit={handleAddCandidate}
-            onCancel={() => setShowAddCandidate(false)}
           />
         </DialogContent>
       </Dialog>
@@ -314,9 +310,7 @@ export default function JobDetail() {
             <DialogTitle>Edit Candidate</DialogTitle>
           </DialogHeader>
           <CandidateForm
-            initialData={editingCandidate}
             onSubmit={handleUpdateCandidate}
-            onCancel={() => setEditingCandidate(null)}
           />
         </DialogContent>
       </Dialog>

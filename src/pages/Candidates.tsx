@@ -90,7 +90,14 @@ export default function Candidates() {
         }
 
         console.log('Fetched candidates for guest user:', data)
-        return data as CandidateWithJob[]
+        
+        // Transform the data to ensure proper typing
+        const transformedCandidates: CandidateWithJob[] = (data || []).map(candidate => ({
+          ...candidate,
+          first_viewed_by: candidate.first_viewed_by as Record<string, string> | null
+        }))
+        
+        return transformedCandidates
       } else {
         // Non-guest users see all candidates they have access to
         console.log('Non-guest user - fetching all accessible candidates')
@@ -115,7 +122,14 @@ export default function Candidates() {
         }
 
         console.log('Fetched candidates:', data)
-        return data as CandidateWithJob[]
+        
+        // Transform the data to ensure proper typing
+        const transformedCandidates: CandidateWithJob[] = (data || []).map(candidate => ({
+          ...candidate,
+          first_viewed_by: candidate.first_viewed_by as Record<string, string> | null
+        }))
+        
+        return transformedCandidates
       }
     },
     enabled: !!user && canViewCandidates,
