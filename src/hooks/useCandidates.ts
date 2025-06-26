@@ -18,6 +18,7 @@ export interface Candidate {
   added_by: string | null
   created_at: string
   updated_at: string
+  first_viewed_by: Record<string, string> | null
 }
 
 export interface CreateCandidateData {
@@ -79,6 +80,58 @@ export function useCandidates(jobId: string) {
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const markCandidateAsViewed = async (candidateId: string) => {
+    if (!user) return
+
+    try {
+      // First get the current first_viewed_by data
+      const { data: candidate, error: fetchError } = await supabase
+        .from('job_candidates')
+        .select('first_viewed_by')
+        .eq('id', candidateId)
+        .single()
+
+      if (fetchError) {
+        console.error('Error fetching candidate for view update:', fetchError)
+        return
+      }
+
+      const currentViews = candidate?.first_viewed_by || {}
+      
+      // If user hasn't viewed this candidate yet, add them
+      if (!currentViews[user.id]) {
+        const updatedViews = {
+          ...currentViews,
+          [user.id]: new Date().toISOString()
+        }
+
+        const { error: updateError } = await supabase
+          .from('job_candidates')
+          .update({ first_viewed_by: updatedViews })
+          .eq('id', candidateId)
+
+        if (updateError) {
+          console.error('Error marking candidate as viewed:', updateError)
+          return
+        }
+
+        // Update local state optimistically
+        setCandidates(prev => prev.map(c => 
+          c.id === candidateId 
+            ? { ...c, first_viewed_by: updatedViews }
+            : c
+        ))
+      }
+    } catch (err) {
+      console.error('Error in markCandidateAsViewed:', err)
+    }
+  }
+
+  const isCandidateNewForUser = (candidate: Candidate): boolean => {
+    if (!user || !candidate.first_viewed_by) return true
+    return !candidate.first_viewed_by[user.id]
   }
 
   const addCandidate = async (candidateData: CreateCandidateData) => {
@@ -246,6 +299,8 @@ export function useCandidates(jobId: string) {
     getCandidates,
     addCandidate,
     updateCandidate,
-    deleteCandidate
+    deleteCandidate,
+    markCandidateAsViewed,
+    isCandidateNewForUser
   }
 }

@@ -9,6 +9,7 @@ import { Link, useParams } from 'react-router-dom'
 import { Candidate } from '@/hooks/useCandidates'
 import { PermissionGate } from '@/components/auth/PermissionGate'
 import { usePermissions } from '@/hooks/usePermissions'
+import { NewBadge } from '@/components/ui/new-badge'
 
 interface CandidateTableProps {
   candidates: Candidate[]
@@ -16,9 +17,19 @@ interface CandidateTableProps {
   onEdit: (candidate: Candidate) => void
   onDelete: (candidateId: string) => void
   onAddNew: () => void
+  markCandidateAsViewed: (candidateId: string) => void
+  isCandidateNewForUser: (candidate: Candidate) => boolean
 }
 
-export function CandidateTable({ candidates, isLoading, onEdit, onDelete, onAddNew }: CandidateTableProps) {
+export function CandidateTable({ 
+  candidates, 
+  isLoading, 
+  onEdit, 
+  onDelete, 
+  onAddNew, 
+  markCandidateAsViewed,
+  isCandidateNewForUser 
+}: CandidateTableProps) {
   const { id: jobId } = useParams<{ id: string }>()
   const permissions = usePermissions()
 
@@ -26,6 +37,10 @@ export function CandidateTable({ candidates, isLoading, onEdit, onDelete, onAddN
     if (confirm('Are you sure you want to delete this candidate?')) {
       onDelete(candidateId)
     }
+  }
+
+  const handleCandidateClick = (candidate: Candidate) => {
+    markCandidateAsViewed(candidate.id)
   }
 
   const formatLocation = (candidate: Candidate) => {
@@ -153,9 +168,11 @@ export function CandidateTable({ candidates, isLoading, onEdit, onDelete, onAddN
                         <Link 
                           to={`/jobs/${jobId}/candidates/${candidate.id}`}
                           className="block w-full h-full"
+                          onClick={() => handleCandidateClick(candidate)}
                         >
-                          <div className="font-medium text-text-primary">
+                          <div className="font-medium text-text-primary flex items-center">
                             {candidate.candidate_name}
+                            <NewBadge show={isCandidateNewForUser(candidate)} />
                           </div>
                         </Link>
                       </TableCell>
@@ -163,6 +180,7 @@ export function CandidateTable({ candidates, isLoading, onEdit, onDelete, onAddN
                         <Link 
                           to={`/jobs/${jobId}/candidates/${candidate.id}`}
                           className="block w-full h-full"
+                          onClick={() => handleCandidateClick(candidate)}
                         >
                           <div className="flex items-center gap-1 text-sm text-text-secondary">
                             <MapPin className="h-3 w-3 shrink-0" />
@@ -174,6 +192,7 @@ export function CandidateTable({ candidates, isLoading, onEdit, onDelete, onAddN
                         <Link 
                           to={`/jobs/${jobId}/candidates/${candidate.id}`}
                           className="block w-full h-full"
+                          onClick={() => handleCandidateClick(candidate)}
                         >
                           <div className="flex items-center gap-1 text-sm text-text-secondary">
                             <DollarSign className="h-3 w-3 shrink-0" />
@@ -185,6 +204,7 @@ export function CandidateTable({ candidates, isLoading, onEdit, onDelete, onAddN
                         <Link 
                           to={`/jobs/${jobId}/candidates/${candidate.id}`}
                           className="block w-full h-full"
+                          onClick={() => handleCandidateClick(candidate)}
                         >
                           <div className="text-sm text-text-secondary">
                             {new Date(candidate.created_at).toLocaleDateString()}
@@ -220,11 +240,18 @@ export function CandidateTable({ candidates, isLoading, onEdit, onDelete, onAddN
               {candidates.map((candidate) => (
                 <Card key={candidate.id} className="bg-background border-border hover:shadow-sm transition-all duration-150">
                   <CardContent className="p-sm">
-                    <Link to={`/jobs/${jobId}/candidates/${candidate.id}`} className="block">
+                    <Link 
+                      to={`/jobs/${jobId}/candidates/${candidate.id}`} 
+                      className="block"
+                      onClick={() => handleCandidateClick(candidate)}
+                    >
                       <div className="space-y-sm">
                         <div className="flex items-start justify-between">
                           <div>
-                            <h4 className="font-medium text-text-primary">{candidate.candidate_name}</h4>
+                            <h4 className="font-medium text-text-primary flex items-center">
+                              {candidate.candidate_name}
+                              <NewBadge show={isCandidateNewForUser(candidate)} />
+                            </h4>
                             <div className="flex items-center gap-1 text-sm text-text-secondary mt-1">
                               <MapPin className="h-3 w-3" />
                               {formatLocation(candidate)}

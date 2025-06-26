@@ -12,6 +12,7 @@ import { Search, MapPin, DollarSign, Calendar, Briefcase } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { PermissionGate } from '@/components/auth/PermissionGate'
+import { NewBadge } from '@/components/ui/new-badge'
 
 interface CandidateWithJob {
   id: string
@@ -24,6 +25,7 @@ interface CandidateWithJob {
   salary_period: string | null
   profile_summary: string | null
   created_at: string
+  first_viewed_by: Record<string, string> | null
   job: {
     id: string
     title: string
@@ -119,6 +121,38 @@ export default function Candidates() {
     enabled: !!user && canViewCandidates,
   })
 
+  const markCandidateAsViewed = async (candidateId: string) => {
+    if (!user) return
+
+    try {
+      // Find the candidate in our local data
+      const candidate = candidates.find(c => c.id === candidateId)
+      if (!candidate) return
+
+      const currentViews = candidate.first_viewed_by || {}
+      
+      // If user hasn't viewed this candidate yet, add them
+      if (!currentViews[user.id]) {
+        await supabase
+          .from('job_candidates')
+          .update({ 
+            first_viewed_by: {
+              ...currentViews,
+              [user.id]: new Date().toISOString()
+            }
+          })
+          .eq('id', candidateId)
+      }
+    } catch (err) {
+      console.error('Error marking candidate as viewed:', err)
+    }
+  }
+
+  const isCandidateNewForUser = (candidate: CandidateWithJob): boolean => {
+    if (!user || !candidate.first_viewed_by) return true
+    return !candidate.first_viewed_by[user.id]
+  }
+
   const filteredCandidates = candidates.filter(candidate =>
     candidate.candidate_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     candidate.job.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -205,7 +239,10 @@ export default function Candidates() {
                 filteredCandidates.map((candidate) => (
                   <TableRow key={candidate.id} className="hover:bg-muted/50">
                     <TableCell className="font-medium">
-                      {candidate.candidate_name}
+                      <div className="flex items-center">
+                        {candidate.candidate_name}
+                        <NewBadge show={isCandidateNewForUser(candidate)} />
+                      </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
@@ -250,7 +287,11 @@ export default function Candidates() {
                     </TableCell>
                     <TableCell className="text-right">
                       <Link to={`/jobs/${candidate.job.id}/candidates/${candidate.id}`}>
-                        <Button variant="outline" size="sm">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => markCandidateAsViewed(candidate.id)}
+                        >
                           View Details
                         </Button>
                       </Link>

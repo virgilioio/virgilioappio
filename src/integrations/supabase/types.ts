@@ -442,6 +442,7 @@ export type Database = {
           added_by: string | null
           candidate_name: string
           created_at: string
+          first_viewed_by: Json | null
           id: string
           job_id: string
           location_city: string | null
@@ -458,6 +459,7 @@ export type Database = {
           added_by?: string | null
           candidate_name: string
           created_at?: string
+          first_viewed_by?: Json | null
           id?: string
           job_id: string
           location_city?: string | null
@@ -474,6 +476,7 @@ export type Database = {
           added_by?: string | null
           candidate_name?: string
           created_at?: string
+          first_viewed_by?: Json | null
           id?: string
           job_id?: string
           location_city?: string | null
