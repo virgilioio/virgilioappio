@@ -156,10 +156,10 @@ export function JobsTable({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Levels</SelectItem>
-                <SelectItem value="L1">L1 - Specialists</SelectItem>
-                <SelectItem value="L2">L2 - Managers</SelectItem>
-                <SelectItem value="L3">L3 - Directors / VPs / Executive Search</SelectItem>
-                <SelectItem value="L4">L4 - C-Level</SelectItem>
+                <SelectItem value="L1 - Specialists">L1 - Specialists</SelectItem>
+                <SelectItem value="L2 - Managers">L2 - Managers</SelectItem>
+                <SelectItem value="L3 - Directors / VPs / Executive Search">L3 - Directors / VPs / Executive Search</SelectItem>
+                <SelectItem value="L4 - C-Level">L4 - C-Level</SelectItem>
               </SelectContent>
             </Select>
 
