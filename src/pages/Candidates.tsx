@@ -216,6 +216,7 @@ export default function Candidates() {
               onAddNew={handleAddNew}
               markCandidateAsViewed={markCandidateAsViewed}
               isCandidateNewForUser={isCandidateNewForUser}
+              showJobInfo={true}
             />
           </div>
         </div>

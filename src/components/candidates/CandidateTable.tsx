@@ -9,19 +9,53 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Trash2, UserPlus, MapPin, DollarSign, FileText, Search } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
-import { Candidate } from '@/hooks/useCandidates'
 import { PermissionGate } from '@/components/auth/PermissionGate'
 import { usePermissions } from '@/hooks/usePermissions'
 import { NewBadge } from '@/components/ui/new-badge'
 
+// Support both local job candidates and global candidates with job info
+interface BaseCandidate {
+  id: string
+  candidate_name: string
+  location_country: string | null
+  location_state: string | null
+  location_city: string | null
+  salary_amount: number | null
+  salary_currency: string | null
+  salary_period: string | null
+  profile_summary: string | null
+  created_at: string
+  first_viewed_by: Record<string, string> | null
+}
+
+interface LocalCandidate extends BaseCandidate {
+  job_id: string
+  notes: string | null
+  added_by: string | null
+  updated_at: string
+}
+
+interface GlobalCandidate extends BaseCandidate {
+  job: {
+    id: string
+    title: string
+    organization: {
+      name: string
+    }
+  }
+}
+
+type CandidateTableCandidate = LocalCandidate | GlobalCandidate
+
 interface CandidateTableProps {
-  candidates: Candidate[]
+  candidates: CandidateTableCandidate[]
   isLoading: boolean
-  onEdit: (candidate: Candidate) => void
+  onEdit: (candidate: CandidateTableCandidate) => void
   onDelete: (candidateId: string) => void
   onAddNew: () => void
   markCandidateAsViewed: (candidateId: string) => void
-  isCandidateNewForUser: (candidate: Candidate) => boolean
+  isCandidateNewForUser: (candidate: CandidateTableCandidate) => boolean
+  showJobInfo?: boolean // Whether to show job/organization columns
 }
 
 export function CandidateTable({ 
@@ -31,7 +65,8 @@ export function CandidateTable({
   onDelete, 
   onAddNew, 
   markCandidateAsViewed,
-  isCandidateNewForUser 
+  isCandidateNewForUser,
+  showJobInfo = false
 }: CandidateTableProps) {
   const { id: jobId } = useParams<{ id: string }>()
   const permissions = usePermissions()
@@ -45,11 +80,11 @@ export function CandidateTable({
     }
   }
 
-  const handleCandidateClick = (candidate: Candidate) => {
+  const handleCandidateClick = (candidate: CandidateTableCandidate) => {
     markCandidateAsViewed(candidate.id)
   }
 
-  const formatLocation = (candidate: Candidate) => {
+  const formatLocation = (candidate: CandidateTableCandidate) => {
     const parts = []
     if (candidate.location_city) parts.push(candidate.location_city)
     if (candidate.location_state) parts.push(candidate.location_state)
@@ -76,7 +111,7 @@ export function CandidateTable({
     return abbreviations[country] || country
   }
 
-  const formatSalary = (candidate: Candidate) => {
+  const formatSalary = (candidate: CandidateTableCandidate) => {
     if (!candidate.salary_amount) return 'Not specified'
     
     const currency = candidate.salary_currency || 'USD'
@@ -109,6 +144,16 @@ export function CandidateTable({
       'annually': '/yr'
     }
     return abbreviations[period] || '/yr'
+  }
+
+  const getCandidateLink = (candidate: CandidateTableCandidate) => {
+    if ('job' in candidate) {
+      // Global candidate with job info
+      return `/jobs/${candidate.job.id}/candidates/${candidate.id}`
+    } else {
+      // Local candidate
+      return `/jobs/${jobId}/candidates/${candidate.id}`
+    }
   }
 
   // Filter logic
@@ -213,6 +258,8 @@ export function CandidateTable({
                 <TableHeader>
                   <TableRow>
                     <TableHead>Name</TableHead>
+                    {showJobInfo && <TableHead>Job</TableHead>}
+                    {showJobInfo && <TableHead>Organization</TableHead>}
                     <TableHead>Location</TableHead>
                     <TableHead>Salary Expectations</TableHead>
                     <TableHead>Added</TableHead>
@@ -228,7 +275,7 @@ export function CandidateTable({
                     >
                       <TableCell>
                         <Link 
-                          to={`/jobs/${jobId}/candidates/${candidate.id}`}
+                          to={getCandidateLink(candidate)}
                           className="block w-full h-full"
                           onClick={() => handleCandidateClick(candidate)}
                         >
@@ -238,9 +285,35 @@ export function CandidateTable({
                           </div>
                         </Link>
                       </TableCell>
+                      {showJobInfo && 'job' in candidate && (
+                        <TableCell>
+                          <Link 
+                            to={getCandidateLink(candidate)}
+                            className="block w-full h-full"
+                            onClick={() => handleCandidateClick(candidate)}
+                          >
+                            <div className="text-sm text-text-secondary">
+                              {candidate.job.title}
+                            </div>
+                          </Link>
+                        </TableCell>
+                      )}
+                      {showJobInfo && 'job' in candidate && (
+                        <TableCell>
+                          <Link 
+                            to={getCandidateLink(candidate)}
+                            className="block w-full h-full"
+                            onClick={() => handleCandidateClick(candidate)}
+                          >
+                            <div className="text-sm text-text-secondary">
+                              {candidate.job.organization.name}
+                            </div>
+                          </Link>
+                        </TableCell>
+                      )}
                       <TableCell>
                         <Link 
-                          to={`/jobs/${jobId}/candidates/${candidate.id}`}
+                          to={getCandidateLink(candidate)}
                           className="block w-full h-full"
                           onClick={() => handleCandidateClick(candidate)}
                         >
@@ -252,7 +325,7 @@ export function CandidateTable({
                       </TableCell>
                       <TableCell>
                         <Link 
-                          to={`/jobs/${jobId}/candidates/${candidate.id}`}
+                          to={getCandidateLink(candidate)}
                           className="block w-full h-full"
                           onClick={() => handleCandidateClick(candidate)}
                         >
@@ -264,7 +337,7 @@ export function CandidateTable({
                       </TableCell>
                       <TableCell>
                         <Link 
-                          to={`/jobs/${jobId}/candidates/${candidate.id}`}
+                          to={getCandidateLink(candidate)}
                           className="block w-full h-full"
                           onClick={() => handleCandidateClick(candidate)}
                         >
@@ -303,7 +376,7 @@ export function CandidateTable({
                 <Card key={candidate.id} className="bg-background border-border hover:shadow-sm transition-all duration-150">
                   <CardContent className="p-sm">
                     <Link 
-                      to={`/jobs/${jobId}/candidates/${candidate.id}`} 
+                      to={getCandidateLink(candidate)} 
                       className="block"
                       onClick={() => handleCandidateClick(candidate)}
                     >
@@ -314,6 +387,11 @@ export function CandidateTable({
                               {candidate.candidate_name}
                               <NewBadge show={isCandidateNewForUser(candidate)} />
                             </h4>
+                            {showJobInfo && 'job' in candidate && (
+                              <div className="text-sm text-text-secondary mt-1">
+                                {candidate.job.title} at {candidate.job.organization.name}
+                              </div>
+                            )}
                             <div className="flex items-center gap-1 text-sm text-text-secondary mt-1">
                               <MapPin className="h-3 w-3" />
                               {formatLocation(candidate)}
