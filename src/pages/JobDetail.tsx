@@ -7,7 +7,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useCandidates } from '@/hooks/useCandidates'
 import { useJobAssignments } from '@/hooks/useJobAssignments'
-import { JobDetailSidebar } from '@/components/jobs/JobDetailSidebar'
+import { JobDetailFloatingSidebar } from '@/components/jobs/JobDetailFloatingSidebar'
 import { JobDetailMobileHeader } from '@/components/jobs/JobDetailMobileHeader'
 import { JobOverviewTab } from '@/components/jobs/JobOverviewTab'
 import { CandidateTable } from '@/components/candidates/CandidateTable'
@@ -16,12 +16,13 @@ import { JobAssignmentsPanel } from '@/components/jobs/JobAssignmentsPanel'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Edit, ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Archive } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { Skeleton } from '@/components/ui/skeleton'
-import { JobAssignmentGuard } from '@/components/auth/JobAssignmentGuard'
 import { toast } from '@/hooks/use-toast'
+import { AppContainer } from '@/components/layout/AppContainer'
+import { Section } from '@/components/layout/Section'
 
 export default function JobDetail() {
   const { id } = useParams<{ id: string }>()
@@ -82,6 +83,10 @@ export default function JobDetail() {
     },
     enabled: !!id && !!user,
   })
+
+  const handleBackToJobs = () => {
+    navigate('/jobs')
+  }
 
   const handleEditJob = () => {
     navigate(`/jobs/${id}/edit`)
@@ -148,83 +153,100 @@ export default function JobDetail() {
 
   if (error) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <Card>
-          <CardContent className="py-8">
-            <div className="text-center">
-              <h2 className="text-2xl font-bold text-red-600 mb-4">Job Not Found</h2>
-              <p className="text-muted-foreground mb-4">
-                The job you're looking for doesn't exist or you don't have permission to view it.
-              </p>
-              <Button onClick={() => navigate('/jobs')}>
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Jobs
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <Section>
+        <AppContainer>
+          <Card>
+            <CardContent className="py-8">
+              <div className="text-center">
+                <h2 className="text-2xl font-bold text-red-600 mb-4">Job Not Found</h2>
+                <p className="text-muted-foreground mb-4">
+                  The job you're looking for doesn't exist or you don't have permission to view it.
+                </p>
+                <Button onClick={handleBackToJobs}>
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Back to Jobs
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </AppContainer>
+      </Section>
     )
   }
 
   if (jobLoading) {
     return (
-      <div className="h-screen flex">
-        {!isMobile && (
-          <div className="w-80 border-r bg-muted/20 p-6">
-            <Skeleton className="h-8 w-full mb-6" />
-            <div className="space-y-4">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <Skeleton key={i} className="h-6 w-full" />
-              ))}
+      <Section>
+        <AppContainer>
+          <div className="flex gap-6">
+            {!isMobile && (
+              <div className="w-64">
+                <Skeleton className="h-40 w-full" />
+              </div>
+            )}
+            <div className="flex-1">
+              <div className="space-y-4">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <Skeleton key={i} className="h-12 w-full" />
+                ))}
+              </div>
             </div>
           </div>
-        )}
-        <div className="flex-1 p-6">
-          <Skeleton className="h-8 w-64 mb-6" />
-          <div className="space-y-4">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <Skeleton key={i} className="h-12 w-full" />
-            ))}
-          </div>
-        </div>
-      </div>
+        </AppContainer>
+      </Section>
     )
   }
 
   if (!job) return null
 
   return (
-    <JobAssignmentGuard>
-      <div className="h-screen flex">
-        {/* Desktop Sidebar */}
-        {!isMobile && (
-          <JobDetailSidebar
-            currentTab={activeTab}
-            onTabChange={setActiveTab}
-            jobTitle={job.title}
-            canViewAssignments={userType === 'platform_admin'}
-          />
-        )}
-        
-        {/* Main Content */}
-        <div className="flex-1 flex flex-col overflow-hidden">
-          {/* Mobile Header */}
-          {isMobile && (
+    <Section>
+      <AppContainer>
+        {/* Mobile Header */}
+        {isMobile && (
+          <div className="mb-6">
             <JobDetailMobileHeader
               jobTitle={job.title}
               onMenuToggle={() => {}}
-              onBackToJobs={() => navigate('/jobs')}
+              onBackToJobs={handleBackToJobs}
             />
-          )}
-          
-          {/* Content Area */}
-          <div className="flex-1 overflow-auto">
-            <div className="p-6">
+          </div>
+        )}
+
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <div className="flex gap-6">
+            {/* Desktop Floating Sidebar - hidden on mobile */}
+            {!isMobile && (
+              <JobDetailFloatingSidebar
+                currentTab={activeTab}
+                onTabChange={setActiveTab}
+                jobTitle={job.title}
+                canViewAssignments={userType === 'platform_admin'}
+              />
+            )}
+            
+            {/* Main content */}
+            <div className="flex-1">
+              {/* Desktop Header with Back and Archive buttons */}
+              {!isMobile && (
+                <div className="flex items-center justify-between mb-6">
+                  <Button variant="outline" onClick={handleBackToJobs} className="gap-2">
+                    <ArrowLeft className="h-4 w-4" />
+                    Back to Jobs
+                  </Button>
+                  {permissions.canEditJobs && job.status !== 'archived' && (
+                    <Button variant="outline" onClick={handleArchiveJob} className="gap-2">
+                      <Archive className="h-4 w-4" />
+                      Archive Job
+                    </Button>
+                  )}
+                </div>
+              )}
+
               {isMobile ? (
                 // Mobile: Tabs
-                <Tabs value={activeTab} onValueChange={setActiveTab}>
-                  <TabsList className="grid w-full grid-cols-3">
+                <>
+                  <TabsList className="grid w-full grid-cols-3 mb-6">
                     <TabsTrigger value="overview">Overview</TabsTrigger>
                     <TabsTrigger value="candidates">Candidates</TabsTrigger>
                     {userType === 'platform_admin' && (
@@ -232,7 +254,7 @@ export default function JobDetail() {
                     )}
                   </TabsList>
                   
-                  <TabsContent value="overview" className="mt-6">
+                  <TabsContent value="overview">
                     <JobOverviewTab 
                       job={{
                         ...job,
@@ -242,7 +264,7 @@ export default function JobDetail() {
                     />
                   </TabsContent>
                   
-                  <TabsContent value="candidates" className="mt-6">
+                  <TabsContent value="candidates">
                     <CandidateTable
                       candidates={candidates}
                       isLoading={candidatesLoading}
@@ -255,18 +277,18 @@ export default function JobDetail() {
                   </TabsContent>
                   
                   {userType === 'platform_admin' && (
-                    <TabsContent value="assignments" className="mt-6">
+                    <TabsContent value="assignments">
                       <JobAssignmentsPanel
                         jobId={id!}
                         jobTitle={job.title}
                       />
                     </TabsContent>
                   )}
-                </Tabs>
+                </>
               ) : (
-                // Desktop: Show content based on active tab
+                // Desktop: Show content based on active tab without visible tabs
                 <>
-                  {activeTab === 'overview' && (
+                  <TabsContent value="overview">
                     <JobOverviewTab 
                       job={{
                         ...job,
@@ -274,8 +296,8 @@ export default function JobDetail() {
                       }} 
                       onEdit={handleEditJob}
                     />
-                  )}
-                  {activeTab === 'candidates' && (
+                  </TabsContent>
+                  <TabsContent value="candidates">
                     <CandidateTable
                       candidates={candidates}
                       isLoading={candidatesLoading}
@@ -285,52 +307,54 @@ export default function JobDetail() {
                       markCandidateAsViewed={markCandidateAsViewed}
                       isCandidateNewForUser={isCandidateNewForUser}
                     />
-                  )}
+                  </TabsContent>
                   {activeTab === 'assignments' && userType === 'platform_admin' && (
-                    <JobAssignmentsPanel
-                      jobId={id!}
-                      jobTitle={job.title}
-                    />
+                    <TabsContent value="assignments">
+                      <JobAssignmentsPanel
+                        jobId={id!}
+                        jobTitle={job.title}
+                      />
+                    </TabsContent>
                   )}
                 </>
               )}
             </div>
           </div>
-        </div>
-      </div>
+        </Tabs>
 
-      {/* Add Candidate Dialog */}
-      <Dialog open={showAddCandidate} onOpenChange={setShowAddCandidate}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Add New Candidate</DialogTitle>
-          </DialogHeader>
-          <CandidateForm
-            isOpen={showAddCandidate}
-            onClose={() => setShowAddCandidate(false)}
-            onSubmit={handleAddCandidate}
-            jobId={id!}
-            isLoading={candidatesLoading}
-          />
-        </DialogContent>
-      </Dialog>
+        {/* Add Candidate Dialog */}
+        <Dialog open={showAddCandidate} onOpenChange={setShowAddCandidate}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Add New Candidate</DialogTitle>
+            </DialogHeader>
+            <CandidateForm
+              isOpen={showAddCandidate}
+              onClose={() => setShowAddCandidate(false)}
+              onSubmit={handleAddCandidate}
+              jobId={id!}
+              isLoading={candidatesLoading}
+            />
+          </DialogContent>
+        </Dialog>
 
-      {/* Edit Candidate Dialog */}
-      <Dialog open={!!editingCandidate} onOpenChange={() => setEditingCandidate(null)}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Edit Candidate</DialogTitle>
-          </DialogHeader>
-          <CandidateForm
-            isOpen={!!editingCandidate}
-            onClose={() => setEditingCandidate(null)}
-            onSubmit={handleUpdateCandidate}
-            candidate={editingCandidate}
-            jobId={id!}
-            isLoading={candidatesLoading}
-          />
-        </DialogContent>
-      </Dialog>
-    </JobAssignmentGuard>
+        {/* Edit Candidate Dialog */}
+        <Dialog open={!!editingCandidate} onOpenChange={() => setEditingCandidate(null)}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Edit Candidate</DialogTitle>
+            </DialogHeader>
+            <CandidateForm
+              isOpen={!!editingCandidate}
+              onClose={() => setEditingCandidate(null)}
+              onSubmit={handleUpdateCandidate}
+              candidate={editingCandidate}
+              jobId={id!}
+              isLoading={candidatesLoading}
+            />
+          </DialogContent>
+        </Dialog>
+      </AppContainer>
+    </Section>
   )
 }
