@@ -36,7 +36,7 @@ export function JobsTable({
   const permissions = usePermissions()
   const { organizations } = useOrganizations()
   const [searchTerm, setSearchTerm] = useState('')
-  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [statusFilter, setStatusFilter] = useState<string>('open')
   const [levelFilter, setLevelFilter] = useState<string>('all')
   const [organizationFilter, setOrganizationFilter] = useState<string>('all')
   const [hiringTeamFilter, setHiringTeamFilter] = useState<string>('all')
