@@ -84,6 +84,8 @@ export default function Jobs() {
     } else {
       await createJob(data)
     }
+    setIsFormOpen(false)
+    setSelectedJob(null)
   }
 
   const handleJobRequestSubmit = async (data: any) => {
@@ -131,7 +133,10 @@ export default function Jobs() {
 
             <JobForm
               isOpen={isFormOpen}
-              onClose={() => setIsFormOpen(false)}
+              onClose={() => {
+                setIsFormOpen(false)
+                setSelectedJob(null)
+              }}
               onSubmit={handleFormSubmit}
               job={selectedJob}
               isLoading={isLoading}

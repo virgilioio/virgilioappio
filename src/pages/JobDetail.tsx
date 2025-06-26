@@ -1,4 +1,3 @@
-
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
@@ -7,12 +6,14 @@ import { useAuth } from '@/contexts/AuthContext'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useCandidates } from '@/hooks/useCandidates'
 import { useJobAssignments } from '@/hooks/useJobAssignments'
+import { useJobs } from '@/hooks/useJobs'
 import { JobDetailFloatingSidebar } from '@/components/jobs/JobDetailFloatingSidebar'
 import { JobDetailMobileHeader } from '@/components/jobs/JobDetailMobileHeader'
 import { JobOverviewTab } from '@/components/jobs/JobOverviewTab'
 import { CandidateTable } from '@/components/candidates/CandidateTable'
 import { CandidateForm } from '@/components/candidates/CandidateForm'
 import { JobAssignmentsPanel } from '@/components/jobs/JobAssignmentsPanel'
+import { JobForm } from '@/components/jobs/JobForm'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -31,6 +32,10 @@ export default function JobDetail() {
   const [showAddCandidate, setShowAddCandidate] = useState(false)
   const [editingCandidate, setEditingCandidate] = useState<any>(null)
   const [activeTab, setActiveTab] = useState('overview')
+  const [showEditJobModal, setShowEditJobModal] = useState(false)
+
+  // Jobs hook for updating
+  const { updateJob, isLoading: jobUpdateLoading } = useJobs()
 
   // Job assignments hook
   const {
@@ -52,7 +57,7 @@ export default function JobDetail() {
   } = useCandidates(id!)
 
   // Job query
-  const { data: job, isLoading: jobLoading, error } = useQuery({
+  const { data: job, isLoading: jobLoading, error, refetch } = useQuery({
     queryKey: ['job', id],
     queryFn: async () => {
       if (!id) throw new Error('No job ID provided')
@@ -87,7 +92,20 @@ export default function JobDetail() {
   }
 
   const handleEditJob = () => {
-    navigate(`/jobs/${id}/edit`)
+    setShowEditJobModal(true)
+  }
+
+  const handleJobFormSubmit = async (jobData: any) => {
+    if (!id) return
+    
+    try {
+      await updateJob(id, jobData)
+      setShowEditJobModal(false)
+      // Refetch job data to show updated information
+      refetch()
+    } catch (error) {
+      console.error('Error updating job:', error)
+    }
   }
 
   const handleArchiveJob = async () => {
@@ -314,6 +332,15 @@ export default function JobDetail() {
             </div>
           )}
         </Tabs>
+
+        {/* Edit Job Modal */}
+        <JobForm
+          isOpen={showEditJobModal}
+          onClose={() => setShowEditJobModal(false)}
+          onSubmit={handleJobFormSubmit}
+          job={job}
+          isLoading={jobUpdateLoading}
+        />
 
         {/* Add Candidate Dialog */}
         <Dialog open={showAddCandidate} onOpenChange={setShowAddCandidate}>
