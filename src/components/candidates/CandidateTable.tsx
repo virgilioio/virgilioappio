@@ -1,5 +1,5 @@
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Trash2, UserPlus, MapPin, DollarSign, FileText, Search } from 'lucide-react'
+import { Trash2, UserPlus, MapPin, DollarSign, FileText, Search, ChevronLeft, ChevronRight, MoreHorizontal } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
 import { PermissionGate } from '@/components/auth/PermissionGate'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -73,6 +73,10 @@ export function CandidateTable({
   const [searchTerm, setSearchTerm] = useState('')
   const [locationFilter, setLocationFilter] = useState<string>('all')
   const [salaryFilter, setSalaryFilter] = useState<string>('all')
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 10
 
   const handleDelete = (candidateId: string) => {
     if (confirm('Are you sure you want to delete this candidate?')) {
@@ -172,6 +176,55 @@ export function CandidateTable({
     return matchesSearch && matchesLocation && matchesSalary
   })
 
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredCandidates.length / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = startIndex + itemsPerPage
+  const paginatedCandidates = filteredCandidates.slice(startIndex, endIndex)
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm, locationFilter, salaryFilter])
+
+  // Generate page numbers for pagination
+  const getPageNumbers = () => {
+    const pages: (number | 'ellipsis')[] = []
+    
+    if (totalPages <= 7) {
+      // Show all pages if 7 or fewer
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i)
+      }
+    } else {
+      // Show first page
+      pages.push(1)
+      
+      if (currentPage > 4) {
+        pages.push('ellipsis')
+      }
+      
+      // Show pages around current page
+      const start = Math.max(2, currentPage - 1)
+      const end = Math.min(totalPages - 1, currentPage + 1)
+      
+      for (let i = start; i <= end; i++) {
+        pages.push(i)
+      }
+      
+      if (currentPage < totalPages - 3) {
+        pages.push('ellipsis')
+      }
+      
+      // Show last page
+      if (totalPages > 1) {
+        pages.push(totalPages)
+      }
+    }
+    
+    return pages
+  }
+
   if (isLoading) {
     return (
       <Card className="bg-surface-primary border-border">
@@ -251,179 +304,300 @@ export function CandidateTable({
             </p>
           </div>
         ) : (
-          <div className="space-y-sm">
-            {/* Desktop Table View */}
-            <div className="hidden md:block">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    {showJobInfo && <TableHead>Job</TableHead>}
-                    {showJobInfo && <TableHead>Organization</TableHead>}
-                    <TableHead>Location</TableHead>
-                    <TableHead>Salary Expectations</TableHead>
-                    <TableHead>Added</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredCandidates.map((candidate) => (
-                    <TableRow 
-                      key={candidate.id}
-                      interactive
-                      className="cursor-pointer"
-                    >
-                      <TableCell>
-                        <Link 
-                          to={getCandidateLink(candidate)}
-                          className="block w-full h-full"
-                          onClick={() => handleCandidateClick(candidate)}
-                        >
-                          <div className="font-medium text-text-primary flex items-center">
-                            {candidate.candidate_name}
-                            <NewBadge show={isCandidateNewForUser(candidate)} />
-                          </div>
-                        </Link>
-                      </TableCell>
-                      {showJobInfo && 'job' in candidate && (
-                        <TableCell>
-                          <Link 
-                            to={getCandidateLink(candidate)}
-                            className="block w-full h-full"
-                            onClick={() => handleCandidateClick(candidate)}
-                          >
-                            <div className="text-sm text-text-secondary">
-                              {candidate.job.title}
-                            </div>
-                          </Link>
-                        </TableCell>
-                      )}
-                      {showJobInfo && 'job' in candidate && (
-                        <TableCell>
-                          <Link 
-                            to={getCandidateLink(candidate)}
-                            className="block w-full h-full"
-                            onClick={() => handleCandidateClick(candidate)}
-                          >
-                            <div className="text-sm text-text-secondary">
-                              {candidate.job.organization.name}
-                            </div>
-                          </Link>
-                        </TableCell>
-                      )}
-                      <TableCell>
-                        <Link 
-                          to={getCandidateLink(candidate)}
-                          className="block w-full h-full"
-                          onClick={() => handleCandidateClick(candidate)}
-                        >
-                          <div className="flex items-center gap-1 text-sm text-text-secondary">
-                            <MapPin className="h-3 w-3 shrink-0" />
-                            <span>{formatLocation(candidate)}</span>
-                          </div>
-                        </Link>
-                      </TableCell>
-                      <TableCell>
-                        <Link 
-                          to={getCandidateLink(candidate)}
-                          className="block w-full h-full"
-                          onClick={() => handleCandidateClick(candidate)}
-                        >
-                          <div className="flex items-center gap-1 text-sm text-text-secondary">
-                            <DollarSign className="h-3 w-3 shrink-0" />
-                            <span>{formatSalary(candidate)}</span>
-                          </div>
-                        </Link>
-                      </TableCell>
-                      <TableCell>
-                        <Link 
-                          to={getCandidateLink(candidate)}
-                          className="block w-full h-full"
-                          onClick={() => handleCandidateClick(candidate)}
-                        >
-                          <div className="text-sm text-text-secondary">
-                            {new Date(candidate.created_at).toLocaleDateString()}
-                          </div>
-                        </Link>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center justify-end gap-1">
-                          <PermissionGate permission="canManageCandidates">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => {
-                                e.preventDefault()
-                                e.stopPropagation()
-                                handleDelete(candidate.id)
-                              }}
-                              className="h-[36px] w-[36px] p-0 text-destructive hover:bg-destructive/10 hover:scale-110 transition-all duration-150"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </PermissionGate>
-                        </div>
-                      </TableCell>
+          <>
+            <div className="space-y-sm">
+              {/* Desktop Table View */}
+              <div className="hidden md:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      {showJobInfo && <TableHead>Job</TableHead>}
+                      {showJobInfo && <TableHead>Organization</TableHead>}
+                      <TableHead>Location</TableHead>
+                      <TableHead>Salary Expectations</TableHead>
+                      <TableHead>Added</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-
-            {/* Mobile Card View */}
-            <div className="md:hidden space-y-sm">
-              {filteredCandidates.map((candidate) => (
-                <Card key={candidate.id} className="bg-background border-border hover:shadow-sm transition-all duration-150">
-                  <CardContent className="p-sm">
-                    <Link 
-                      to={getCandidateLink(candidate)} 
-                      className="block"
-                      onClick={() => handleCandidateClick(candidate)}
-                    >
-                      <div className="space-y-sm">
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <h4 className="font-medium text-text-primary flex items-center">
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedCandidates.map((candidate) => (
+                      <TableRow 
+                        key={candidate.id}
+                        interactive
+                        className="cursor-pointer"
+                      >
+                        <TableCell>
+                          <Link 
+                            to={getCandidateLink(candidate)}
+                            className="block w-full h-full"
+                            onClick={() => handleCandidateClick(candidate)}
+                          >
+                            <div className="font-medium text-text-primary flex items-center">
                               {candidate.candidate_name}
                               <NewBadge show={isCandidateNewForUser(candidate)} />
-                            </h4>
-                            {showJobInfo && 'job' in candidate && (
-                              <div className="text-sm text-text-secondary mt-1">
-                                {candidate.job.title} at {candidate.job.organization.name}
-                              </div>
-                            )}
-                            <div className="flex items-center gap-1 text-sm text-text-secondary mt-1">
-                              <MapPin className="h-3 w-3" />
-                              {formatLocation(candidate)}
                             </div>
-                          </div>
-                          <PermissionGate permission="canManageCandidates">
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              onClick={(e) => {
-                                e.preventDefault()
-                                e.stopPropagation()
-                                handleDelete(candidate.id)
-                              }}
-                              className="h-[40px] w-[40px] p-0 text-destructive hover:bg-destructive/10"
+                          </Link>
+                        </TableCell>
+                        {showJobInfo && 'job' in candidate && (
+                          <TableCell>
+                            <Link 
+                              to={getCandidateLink(candidate)}
+                              className="block w-full h-full"
+                              onClick={() => handleCandidateClick(candidate)}
                             >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </PermissionGate>
-                        </div>
+                              <div className="text-sm text-text-secondary">
+                                {candidate.job.title}
+                              </div>
+                            </Link>
+                          </TableCell>
+                        )}
+                        {showJobInfo && 'job' in candidate && (
+                          <TableCell>
+                            <Link 
+                              to={getCandidateLink(candidate)}
+                              className="block w-full h-full"
+                              onClick={() => handleCandidateClick(candidate)}
+                            >
+                              <div className="text-sm text-text-secondary">
+                                {candidate.job.organization.name}
+                              </div>
+                            </Link>
+                          </TableCell>
+                        )}
+                        <TableCell>
+                          <Link 
+                            to={getCandidateLink(candidate)}
+                            className="block w-full h-full"
+                            onClick={() => handleCandidateClick(candidate)}
+                          >
+                            <div className="flex items-center gap-1 text-sm text-text-secondary">
+                              <MapPin className="h-3 w-3 shrink-0" />
+                              <span>{formatLocation(candidate)}</span>
+                            </div>
+                          </Link>
+                        </TableCell>
+                        <TableCell>
+                          <Link 
+                            to={getCandidateLink(candidate)}
+                            className="block w-full h-full"
+                            onClick={() => handleCandidateClick(candidate)}
+                          >
+                            <div className="flex items-center gap-1 text-sm text-text-secondary">
+                              <DollarSign className="h-3 w-3 shrink-0" />
+                              <span>{formatSalary(candidate)}</span>
+                            </div>
+                          </Link>
+                        </TableCell>
+                        <TableCell>
+                          <Link 
+                            to={getCandidateLink(candidate)}
+                            className="block w-full h-full"
+                            onClick={() => handleCandidateClick(candidate)}
+                          >
+                            <div className="text-sm text-text-secondary">
+                              {new Date(candidate.created_at).toLocaleDateString()}
+                            </div>
+                          </Link>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center justify-end gap-1">
+                            <PermissionGate permission="canManageCandidates">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.preventDefault()
+                                  e.stopPropagation()
+                                  handleDelete(candidate.id)
+                                }}
+                                className="h-[36px] w-[36px] p-0 text-destructive hover:bg-destructive/10 hover:scale-110 transition-all duration-150"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </PermissionGate>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
 
-                        <div className="flex items-center gap-1 text-sm text-text-secondary">
-                          <DollarSign className="h-3 w-3" />
-                          {formatSalary(candidate)}
+              {/* Mobile Card View */}
+              <div className="md:hidden space-y-sm">
+                {paginatedCandidates.map((candidate) => (
+                  <Card key={candidate.id} className="bg-background border-border hover:shadow-sm transition-all duration-150">
+                    <CardContent className="p-sm">
+                      <Link 
+                        to={getCandidateLink(candidate)} 
+                        className="block"
+                        onClick={() => handleCandidateClick(candidate)}
+                      >
+                        <div className="space-y-sm">
+                          <div className="flex items-start justify-between">
+                            <div>
+                              <h4 className="font-medium text-text-primary flex items-center">
+                                {candidate.candidate_name}
+                                <NewBadge show={isCandidateNewForUser(candidate)} />
+                              </h4>
+                              {showJobInfo && 'job' in candidate && (
+                                <div className="text-sm text-text-secondary mt-1">
+                                  {candidate.job.title} at {candidate.job.organization.name}
+                                </div>
+                              )}
+                              <div className="flex items-center gap-1 text-sm text-text-secondary mt-1">
+                                <MapPin className="h-3 w-3" />
+                                {formatLocation(candidate)}
+                              </div>
+                            </div>
+                            <PermissionGate permission="canManageCandidates">
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                onClick={(e) => {
+                                  e.preventDefault()
+                                  e.stopPropagation()
+                                  handleDelete(candidate.id)
+                                }}
+                                className="h-[40px] w-[40px] p-0 text-destructive hover:bg-destructive/10"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </PermissionGate>
+                          </div>
+
+                          <div className="flex items-center gap-1 text-sm text-text-secondary">
+                            <DollarSign className="h-3 w-3" />
+                            {formatSalary(candidate)}
+                          </div>
                         </div>
-                      </div>
-                    </Link>
-                  </CardContent>
-                </Card>
-              ))}
+                      </Link>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
             </div>
-          </div>
+
+            {/* Beautiful Enhanced Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="mt-8 space-y-6">
+                {/* Results Summary Card */}
+                <div className="flex justify-center">
+                  <div className="inline-flex items-center gap-2 px-4 py-2 bg-surface-secondary/50 border border-border/50 rounded-brand text-sm text-text-secondary backdrop-blur-sm">
+                    <FileText className="h-4 w-4 opacity-60" />
+                    <span className="font-medium">
+                      Showing {startIndex + 1}-{Math.min(endIndex, filteredCandidates.length)} of {filteredCandidates.length} candidates
+                    </span>
+                  </div>
+                </div>
+                
+                {/* Enhanced Pagination Navigation */}
+                <div className="flex justify-center">
+                  <div className="inline-flex items-center bg-surface-primary border border-border/80 rounded-brand shadow-sm p-1 gap-1">
+                    {/* Previous Button */}
+                    <button
+                      onClick={() => currentPage > 1 && setCurrentPage(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      className={`
+                        inline-flex items-center gap-2 px-3 py-2 rounded-brand text-sm font-medium transition-all duration-200 ease-out
+                        ${currentPage === 1 
+                          ? 'text-text-tertiary cursor-not-allowed opacity-50' 
+                          : 'text-text-secondary hover:text-text-primary hover:bg-surface-secondary hover:-translate-y-0.5 hover:shadow-sm active:scale-95'
+                        }
+                      `}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      <span className="hidden sm:inline">Previous</span>
+                    </button>
+
+                    {/* Page Numbers */}
+                    <div className="flex items-center gap-1 px-2">
+                      {getPageNumbers().map((page, index) => (
+                        <div key={index}>
+                          {page === 'ellipsis' ? (
+                            <div className="flex items-center justify-center w-8 h-8 text-text-tertiary">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => setCurrentPage(page)}
+                              className={`
+                                w-8 h-8 rounded-brand text-sm font-medium transition-all duration-200 ease-out
+                                ${currentPage === page
+                                  ? 'bg-accent text-accent-foreground shadow-sm scale-105 font-semibold'
+                                  : 'text-text-secondary hover:text-text-primary hover:bg-surface-secondary hover:-translate-y-0.5 hover:shadow-sm active:scale-95'
+                                }
+                              `}
+                            >
+                              {page}
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Next Button */}
+                    <button
+                      onClick={() => currentPage < totalPages && setCurrentPage(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                      className={`
+                        inline-flex items-center gap-2 px-3 py-2 rounded-brand text-sm font-medium transition-all duration-200 ease-out
+                        ${currentPage === totalPages 
+                          ? 'text-text-tertiary cursor-not-allowed opacity-50' 
+                          : 'text-text-secondary hover:text-text-primary hover:bg-surface-secondary hover:-translate-y-0.5 hover:shadow-sm active:scale-95'
+                        }
+                      `}
+                    >
+                      <span className="hidden sm:inline">Next</span>
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Mobile Simplified Pagination */}
+                <div className="sm:hidden flex justify-center">
+                  <div className="inline-flex items-center gap-4 px-4 py-2 bg-surface-secondary/30 border border-border/50 rounded-brand backdrop-blur-sm">
+                    <button
+                      onClick={() => currentPage > 1 && setCurrentPage(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      className={`
+                        p-2 rounded-brand transition-all duration-200
+                        ${currentPage === 1 
+                          ? 'text-text-tertiary cursor-not-allowed opacity-50' 
+                          : 'text-text-secondary hover:text-text-primary hover:bg-surface-secondary hover:scale-105 active:scale-95'
+                        }
+                      `}
+                    >
+                      <ChevronLeft className="h-5 w-5" />
+                    </button>
+                    
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="text-text-secondary">Page</span>
+                      <span className="font-medium text-text-primary bg-accent/20 px-2 py-1 rounded-brand">
+                        {currentPage}
+                      </span>
+                      <span className="text-text-secondary">of {totalPages}</span>
+                    </div>
+                    
+                    <button
+                      onClick={() => currentPage < totalPages && setCurrentPage(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                      className={`
+                        p-2 rounded-brand transition-all duration-200
+                        ${currentPage === totalPages 
+                          ? 'text-text-tertiary cursor-not-allowed opacity-50' 
+                          : 'text-text-secondary hover:text-text-primary hover:bg-surface-secondary hover:scale-105 active:scale-95'
+                        }
+                      `}
+                    >
+                      <ChevronRight className="h-5 w-5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </CardContent>
     </Card>
