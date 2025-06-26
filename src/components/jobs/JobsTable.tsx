@@ -1,5 +1,4 @@
-
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
@@ -8,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious, PaginationEllipsis } from '@/components/ui/pagination'
 import { Plus, Search, Edit, Archive, FileText, Building, MapPin, DollarSign, Eye, UserPlus } from 'lucide-react'
 import { PermissionGate } from '@/components/auth/PermissionGate'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -41,6 +41,10 @@ export function JobsTable({
   const [levelFilter, setLevelFilter] = useState<string>('all')
   const [organizationFilter, setOrganizationFilter] = useState<string>('all')
   const [hiringTeamFilter, setHiringTeamFilter] = useState<string>('all')
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 10
 
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
@@ -103,6 +107,55 @@ export function JobsTable({
     
     return matchesSearch && matchesStatus && matchesLevel && matchesOrganization && matchesHiringTeam
   })
+
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredJobs.length / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = startIndex + itemsPerPage
+  const paginatedJobs = filteredJobs.slice(startIndex, endIndex)
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm, statusFilter, levelFilter, organizationFilter, hiringTeamFilter])
+
+  // Generate page numbers for pagination
+  const getPageNumbers = () => {
+    const pages: (number | 'ellipsis')[] = []
+    
+    if (totalPages <= 7) {
+      // Show all pages if 7 or fewer
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i)
+      }
+    } else {
+      // Show first page
+      pages.push(1)
+      
+      if (currentPage > 4) {
+        pages.push('ellipsis')
+      }
+      
+      // Show pages around current page
+      const start = Math.max(2, currentPage - 1)
+      const end = Math.min(totalPages - 1, currentPage + 1)
+      
+      for (let i = start; i <= end; i++) {
+        pages.push(i)
+      }
+      
+      if (currentPage < totalPages - 3) {
+        pages.push('ellipsis')
+      }
+      
+      // Show last page
+      if (totalPages > 1) {
+        pages.push(totalPages)
+      }
+    }
+    
+    return pages
+  }
 
   if (isLoading) {
     return (
@@ -227,60 +280,148 @@ export function JobsTable({
             </p>
           </div>
         ) : (
-          <div className="space-y-sm">
-            {/* Desktop Table View */}
-            <div className="hidden lg:block">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Job Title</TableHead>
-                    <TableHead>Organization</TableHead>
-                    <TableHead>Department</TableHead>
-                    <TableHead>Location</TableHead>
-                    <TableHead>Level</TableHead>
-                    <TableHead>Salary Range</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredJobs.map((job) => (
-                    <TableRow 
-                      key={job.id} 
-                      interactive
-                      className="cursor-pointer"
-                      onClick={() => onView(job)}
-                    >
-                      <TableCell className="font-medium">{job.title}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Building className="h-4 w-4 text-muted-foreground" />
-                          {job.organization_name || 'Organization'}
+          <>
+            <div className="space-y-sm">
+              {/* Desktop Table View */}
+              <div className="hidden lg:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Job Title</TableHead>
+                      <TableHead>Organization</TableHead>
+                      <TableHead>Department</TableHead>
+                      <TableHead>Location</TableHead>
+                      <TableHead>Level</TableHead>
+                      <TableHead>Salary Range</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedJobs.map((job) => (
+                      <TableRow 
+                        key={job.id} 
+                        interactive
+                        className="cursor-pointer"
+                        onClick={() => onView(job)}
+                      >
+                        <TableCell className="font-medium">{job.title}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Building className="h-4 w-4 text-muted-foreground" />
+                            {job.organization_name || 'Organization'}
+                          </div>
+                        </TableCell>
+                        <TableCell>{job.department || 'Not specified'}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <MapPin className="h-4 w-4 text-muted-foreground" />
+                            {job.location || 'Not specified'}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{job.level}</Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <DollarSign className="h-4 w-4 text-muted-foreground" />
+                            {formatSalary(job.salary_min, job.salary_max, job.currency)}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={getStatusBadgeVariant(job.status)}>
+                            {job.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center justify-end gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                onView(job)
+                              }}
+                              className="h-8 w-8 p-0"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <PermissionGate permission="canEditJobs">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  onEdit(job)
+                                }}
+                                className="h-8 w-8 p-0"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                            </PermissionGate>
+                            <PermissionGate permission="canArchiveJobs">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  onArchive(job.id)
+                                }}
+                                className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10"
+                              >
+                                <Archive className="h-4 w-4" />
+                              </Button>
+                            </PermissionGate>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {/* Mobile Card View */}
+              <div className="lg:hidden space-y-sm">
+                {paginatedJobs.map((job) => (
+                  <Card key={job.id} className="bg-background border-border hover:shadow-sm transition-all duration-150">
+                    <CardContent className="p-sm">
+                      <div 
+                        className="cursor-pointer" 
+                        onClick={() => onView(job)}
+                      >
+                        <div className="flex items-start justify-between mb-sm">
+                          <div className="min-w-0 flex-1">
+                            <h4 className="font-medium text-text-primary mb-1">{job.title}</h4>
+                            <div className="flex items-center gap-2 text-sm text-text-secondary mb-2">
+                              <Building className="h-4 w-4" />
+                              {job.organization_name || 'Organization'}
+                            </div>
+                          </div>
+                          <Badge variant={getStatusBadgeVariant(job.status)} className="shrink-0">
+                            {job.status}
+                          </Badge>
                         </div>
-                      </TableCell>
-                      <TableCell>{job.department || 'Not specified'}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <MapPin className="h-4 w-4 text-muted-foreground" />
-                          {job.location || 'Not specified'}
+
+                        <div className="space-y-2 text-sm text-text-secondary">
+                          <div className="flex items-center gap-1">
+                            <MapPin className="h-4 w-4" />
+                            {job.location || 'Not specified'}
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <DollarSign className="h-4 w-4" />
+                            {formatSalary(job.salary_min, job.salary_max, job.currency)}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Badge variant="outline" className="text-xs">
+                              {job.level}
+                            </Badge>
+                            {job.department && (
+                              <span className="text-xs">{job.department}</span>
+                            )}
+                          </div>
                         </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{job.level}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <DollarSign className="h-4 w-4 text-muted-foreground" />
-                          {formatSalary(job.salary_min, job.salary_max, job.currency)}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={getStatusBadgeVariant(job.status)}>
-                          {job.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center justify-end gap-2">
+
+                        <div className="flex items-center justify-end gap-2 mt-sm pt-sm border-t border-border">
                           <Button
                             variant="ghost"
                             size="sm"
@@ -319,99 +460,74 @@ export function JobsTable({
                             </Button>
                           </PermissionGate>
                         </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
             </div>
 
-            {/* Mobile Card View */}
-            <div className="lg:hidden space-y-sm">
-              {filteredJobs.map((job) => (
-                <Card key={job.id} className="bg-background border-border hover:shadow-sm transition-all duration-150">
-                  <CardContent className="p-sm">
-                    <div 
-                      className="cursor-pointer" 
-                      onClick={() => onView(job)}
-                    >
-                      <div className="flex items-start justify-between mb-sm">
-                        <div className="min-w-0 flex-1">
-                          <h4 className="font-medium text-text-primary mb-1">{job.title}</h4>
-                          <div className="flex items-center gap-2 text-sm text-text-secondary mb-2">
-                            <Building className="h-4 w-4" />
-                            {job.organization_name || 'Organization'}
-                          </div>
-                        </div>
-                        <Badge variant={getStatusBadgeVariant(job.status)} className="shrink-0">
-                          {job.status}
-                        </Badge>
-                      </div>
-
-                      <div className="space-y-2 text-sm text-text-secondary">
-                        <div className="flex items-center gap-1">
-                          <MapPin className="h-4 w-4" />
-                          {job.location || 'Not specified'}
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <DollarSign className="h-4 w-4" />
-                          {formatSalary(job.salary_min, job.salary_max, job.currency)}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="text-xs">
-                            {job.level}
-                          </Badge>
-                          {job.department && (
-                            <span className="text-xs">{job.department}</span>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-end gap-2 mt-sm pt-sm border-t border-border">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            onView(job)
-                          }}
-                          className="h-8 w-8 p-0"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        <PermissionGate permission="canEditJobs">
-                          <Button
-                            variant="ghost"
-                            size="sm"
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="mt-6 space-y-4">
+                {/* Results Info */}
+                <div className="text-sm text-muted-foreground text-center">
+                  Showing {startIndex + 1}-{Math.min(endIndex, filteredJobs.length)} of {filteredJobs.length} jobs
+                </div>
+                
+                {/* Pagination */}
+                <Pagination>
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious 
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          if (currentPage > 1) {
+                            setCurrentPage(currentPage - 1)
+                          }
+                        }}
+                        className={currentPage === 1 ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}
+                      />
+                    </PaginationItem>
+                    
+                    {getPageNumbers().map((page, index) => (
+                      <PaginationItem key={index}>
+                        {page === 'ellipsis' ? (
+                          <PaginationEllipsis />
+                        ) : (
+                          <PaginationLink
+                            href="#"
                             onClick={(e) => {
-                              e.stopPropagation()
-                              onEdit(job)
+                              e.preventDefault()
+                              setCurrentPage(page)
                             }}
-                            className="h-8 w-8 p-0"
+                            isActive={currentPage === page}
+                            className="cursor-pointer"
                           >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                        </PermissionGate>
-                        <PermissionGate permission="canArchiveJobs">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              onArchive(job.id)
-                            }}
-                            className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10"
-                          >
-                            <Archive className="h-4 w-4" />
-                          </Button>
-                        </PermissionGate>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
+                            {page}
+                          </PaginationLink>
+                        )}
+                      </PaginationItem>
+                    ))}
+                    
+                    <PaginationItem>
+                      <PaginationNext 
+                        href="#"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          if (currentPage < totalPages) {
+                            setCurrentPage(currentPage + 1)
+                          }
+                        }}
+                        className={currentPage === totalPages ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}
+                      />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              </div>
+            )}
+          </>
         )}
       </CardContent>
     </Card>
