@@ -35,7 +35,7 @@ export function TotalPaidCard({ invoices }: TotalPaidCardProps) {
     { value: 'all', label: 'All' },
   ]
 
-  const totalPaid = useMemo(() => {
+  const filteredPaidInvoices = useMemo(() => {
     const now = new Date()
     let startDate = new Date()
 
@@ -61,45 +61,73 @@ export function TotalPaidCard({ invoices }: TotalPaidCardProps) {
         break
     }
 
-    // Filter invoices by date range
+    // Filter invoices by date range and get paid/partial invoices
     const filteredInvoices = invoices.filter(invoice => {
       const invoiceDate = new Date(invoice.issued_at)
       return invoiceDate >= startDate && invoiceDate <= now
     })
 
-    // Calculate total amount paid (including partial payments)
-    return filteredInvoices.reduce((sum, invoice) => {
-      if (invoice.status === 'paid') {
-        return sum + invoice.amount
-      } else if (invoice.status === 'partial' && invoice.total_paid) {
-        return sum + invoice.total_paid
-      }
-      return sum
-    }, 0)
+    const paidInvoices = filteredInvoices.filter(invoice => invoice.status === 'paid')
+    const partialInvoices = filteredInvoices.filter(invoice => invoice.status === 'partial' && invoice.total_paid)
+
+    console.log('=== TOTAL PAID CARD CALCULATION ===')
+    console.log('Period:', selectedPeriod)
+    console.log('Paid invoices:', paidInvoices.length, paidInvoices.map(i => ({ id: i.id, amount: i.amount, currency: i.currency, total_paid: i.total_paid })))
+    console.log('Partial invoices with payments:', partialInvoices.length, partialInvoices.map(i => ({ id: i.id, amount: i.amount, currency: i.currency, total_paid: i.total_paid })))
+
+    return [...paidInvoices, ...partialInvoices]
   }, [invoices, selectedPeriod])
 
-  // Convert total to organization's default currency
+  // Convert total to organization's default currency with per-invoice conversion
   useEffect(() => {
     const convertTotal = async () => {
-      if (totalPaid === 0) {
+      if (filteredPaidInvoices.length === 0) {
         setConvertedTotal(0)
         setShowCurrencyIndicator(false)
         return
       }
 
+      console.log('=== TOTAL PAID CURRENCY CONVERSION ===')
+      console.log('Target currency:', defaultCurrency)
+
+      let totalConverted = 0
+      let showIndicator = false
+
       try {
-        const conversion = await convertCurrency(totalPaid, 'USD', defaultCurrency, organizationId)
-        setConvertedTotal(conversion.convertedAmount)
-        setShowCurrencyIndicator(conversion.exchangeRate !== 1.0)
+        for (const invoice of filteredPaidInvoices) {
+          // Use total_paid if available (for partial payments), otherwise use full amount
+          const amountToConvert = invoice.total_paid || invoice.amount
+          
+          const conversion = await convertCurrency(
+            amountToConvert,
+            invoice.currency || 'USD',
+            defaultCurrency,
+            organizationId
+          )
+          
+          totalConverted += conversion.convertedAmount
+          if (conversion.exchangeRate !== 1.0) showIndicator = true
+          
+          console.log(`Invoice ${invoice.id}: ${amountToConvert} ${invoice.currency} -> ${conversion.convertedAmount} ${defaultCurrency} (rate: ${conversion.exchangeRate})`)
+        }
+
+        console.log('Final total converted:', totalConverted)
+
+        setConvertedTotal(totalConverted)
+        setShowCurrencyIndicator(showIndicator)
       } catch (error) {
-        console.error('Error converting currency:', error)
-        setConvertedTotal(totalPaid)
+        console.error('Error converting currency in TotalPaidCard:', error)
+        // Fallback to original amounts without conversion
+        const fallbackTotal = filteredPaidInvoices.reduce((sum, invoice) => {
+          return sum + (invoice.total_paid || invoice.amount)
+        }, 0)
+        setConvertedTotal(fallbackTotal)
         setShowCurrencyIndicator(false)
       }
     }
 
     convertTotal()
-  }, [totalPaid, defaultCurrency, organizationId])
+  }, [filteredPaidInvoices, defaultCurrency, organizationId])
 
   const formatCurrency = (amount: number) => {
     return formatCurrencyAmount(amount, defaultCurrency, currencySymbol)

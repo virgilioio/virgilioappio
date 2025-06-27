@@ -48,60 +48,118 @@ export function useClientMetrics(invoices: Invoice[], filters: InvoiceFilters): 
       })
     }
 
+    // Categorize invoices with proper status handling
     const pendingInvoices = filteredInvoices.filter(inv => inv.status === 'pending')
+    const partialInvoices = filteredInvoices.filter(inv => inv.status === 'partial')
     const overdueInvoices = filteredInvoices.filter(inv => 
       inv.status === 'overdue' || 
       (inv.status === 'pending' && inv.due_date && new Date(inv.due_date) < now)
     )
 
-    const totalOwed = pendingInvoices.reduce((sum, inv) => sum + inv.amount, 0)
-    const overdueAmount = overdueInvoices.reduce((sum, inv) => sum + inv.amount, 0)
+    console.log('=== CLIENT METRICS BASE CALCULATION ===')
+    console.log('Filtered invoices:', filteredInvoices.length)
+    console.log('Pending invoices:', pendingInvoices.length, pendingInvoices.map(i => ({ id: i.id, amount: i.amount, currency: i.currency })))
+    console.log('Partial invoices:', partialInvoices.length, partialInvoices.map(i => ({ id: i.id, amount: i.amount, currency: i.currency, remaining: i.remaining_amount })))
+    console.log('Overdue invoices:', overdueInvoices.length, overdueInvoices.map(i => ({ id: i.id, amount: i.amount, currency: i.currency })))
 
     return {
       totalInvoices: filteredInvoices.length,
-      totalOwed,
-      overdueAmount,
+      pendingInvoices,
+      partialInvoices,
+      overdueInvoices,
       pendingCount: pendingInvoices.length,
       overdueCount: overdueInvoices.length
     }
   }, [invoices, filters])
 
-  // Convert amounts to display currency
+  // Convert amounts to display currency with proper per-invoice conversion
   useEffect(() => {
     const convertAmounts = async () => {
-      if (baseMetrics.totalOwed === 0 && baseMetrics.overdueAmount === 0) {
-        setConvertedMetrics({
-          totalOwed: 0,
-          overdueAmount: 0,
-          showCurrencyIndicator: false
-        })
-        return
-      }
+      console.log('=== CLIENT METRICS CURRENCY CONVERSION ===')
+      console.log('Target currency:', defaultCurrency)
+      
+      let totalOwed = 0
+      let overdueAmount = 0
+      let showCurrencyIndicator = false
 
       try {
-        const conversions = await Promise.all([
-          convertCurrency(baseMetrics.totalOwed, 'USD', defaultCurrency, organizationId),
-          convertCurrency(baseMetrics.overdueAmount, 'USD', defaultCurrency, organizationId)
-        ])
+        // Convert pending invoice amounts
+        for (const invoice of baseMetrics.pendingInvoices) {
+          const conversion = await convertCurrency(
+            invoice.amount,
+            invoice.currency || 'USD',
+            defaultCurrency,
+            organizationId
+          )
+          totalOwed += conversion.convertedAmount
+          if (conversion.exchangeRate !== 1.0) showCurrencyIndicator = true
+          
+          console.log(`Pending invoice ${invoice.id}: ${invoice.amount} ${invoice.currency} -> ${conversion.convertedAmount} ${defaultCurrency} (rate: ${conversion.exchangeRate})`)
+        }
 
-        const showIndicator = conversions.some(c => c.exchangeRate !== 1.0)
+        // Convert partial invoice remaining amounts
+        for (const invoice of baseMetrics.partialInvoices) {
+          const amountToConvert = invoice.remaining_amount || invoice.amount
+          const conversion = await convertCurrency(
+            amountToConvert,
+            invoice.currency || 'USD',
+            defaultCurrency,
+            organizationId
+          )
+          totalOwed += conversion.convertedAmount
+          if (conversion.exchangeRate !== 1.0) showCurrencyIndicator = true
+          
+          console.log(`Partial invoice ${invoice.id}: ${amountToConvert} ${invoice.currency} -> ${conversion.convertedAmount} ${defaultCurrency} (rate: ${conversion.exchangeRate})`)
+        }
+
+        // Convert overdue invoice amounts
+        for (const invoice of baseMetrics.overdueInvoices) {
+          const conversion = await convertCurrency(
+            invoice.amount,
+            invoice.currency || 'USD',
+            defaultCurrency,
+            organizationId
+          )
+          overdueAmount += conversion.convertedAmount
+          if (conversion.exchangeRate !== 1.0) showCurrencyIndicator = true
+          
+          console.log(`Overdue invoice ${invoice.id}: ${invoice.amount} ${invoice.currency} -> ${conversion.convertedAmount} ${defaultCurrency} (rate: ${conversion.exchangeRate})`)
+        }
+
+        console.log('Final totals:', { totalOwed, overdueAmount, showCurrencyIndicator })
 
         setConvertedMetrics({
-          totalOwed: conversions[0].convertedAmount,
-          overdueAmount: conversions[1].convertedAmount,
-          showCurrencyIndicator: showIndicator
+          totalOwed,
+          overdueAmount,
+          showCurrencyIndicator
         })
       } catch (error) {
-        console.error('Error converting currencies:', error)
+        console.error('Error converting currencies in client metrics:', error)
+        // Fallback to original amounts without conversion
+        const fallbackTotalOwed = [
+          ...baseMetrics.pendingInvoices.map(inv => inv.amount),
+          ...baseMetrics.partialInvoices.map(inv => inv.remaining_amount || inv.amount)
+        ].reduce((sum, amount) => sum + amount, 0)
+        
+        const fallbackOverdueAmount = baseMetrics.overdueInvoices.reduce((sum, inv) => sum + inv.amount, 0)
+
         setConvertedMetrics({
-          totalOwed: baseMetrics.totalOwed,
-          overdueAmount: baseMetrics.overdueAmount,
+          totalOwed: fallbackTotalOwed,
+          overdueAmount: fallbackOverdueAmount,
           showCurrencyIndicator: false
         })
       }
     }
 
-    convertAmounts()
+    if (baseMetrics.pendingInvoices.length > 0 || baseMetrics.partialInvoices.length > 0 || baseMetrics.overdueInvoices.length > 0) {
+      convertAmounts()
+    } else {
+      setConvertedMetrics({
+        totalOwed: 0,
+        overdueAmount: 0,
+        showCurrencyIndicator: false
+      })
+    }
   }, [baseMetrics, defaultCurrency, organizationId])
 
   const formatCurrency = (amount: number) => {
