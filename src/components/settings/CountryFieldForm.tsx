@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -7,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox'
 import { FormField } from '@/components/ui/form-field'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 import { Plus, Trash2 } from 'lucide-react'
 import { useCountryFields } from '@/hooks/useCountryFields'
 import { CountryField } from '@/hooks/useCountries'
