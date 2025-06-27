@@ -1,4 +1,3 @@
-
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap');
 @tailwind base;
 @tailwind components;
@@ -44,8 +43,8 @@
     --info: 180 100% 88%; /* #c5f5fb */
     --info-foreground: 180 100% 20%;
 
-    --border: 0 0% 91%;
-    --input: 0 0% 91%;
+    --border: 0 0% 100%; /* Remove border visibility */
+    --input: 0 0% 100%; /* Remove input border visibility */
     --ring: 60 100% 85%;
 
     --radius: 8px;
@@ -125,7 +124,7 @@
     --sidebar-primary-foreground: 0 0% 98%;
     --sidebar-accent: 240 4.8% 95.9%;
     --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
+    --sidebar-border: 0 0% 100%; /* Remove sidebar border visibility */
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
 
@@ -164,8 +163,8 @@
     --info: 180 100% 88%;
     --info-foreground: 180 100% 20%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
+    --border: 0 0% 0% / 0; /* Remove border visibility in dark mode */
+    --input: 0 0% 0% / 0; /* Remove input border visibility in dark mode */
     --ring: 60 100% 85%;
 
     /* Dark mode surface colors - maintain depth hierarchy */
@@ -191,14 +190,14 @@
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 240 3.7% 15.9%;
     --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-border: 0 0% 0% / 0; /* Remove sidebar border visibility in dark mode */
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
 }
 
 @layer base {
   * {
-    @apply border-border;
+    @apply border-0; /* Remove all borders by default */
   }
 
   body {
@@ -443,6 +442,20 @@
   
   .heading-4 { 
     font-size: var(--font-size-lg); 
+    line-height: var(--line-height-tight); 
+    @apply font-poppins font-medium;
+    margin-bottom: var(--spacing-xs);
+  }
+  
+  .heading-5 { 
+    font-size: var(--font-size-md); 
+    line-height: var(--line-height-tight); 
+    @apply font-poppins font-medium;
+    margin-bottom: var(--spacing-xs);
+  }
+  
+  .heading-6 { 
+    font-size: var(--font-size-sm); 
     line-height: var(--line-height-tight); 
     @apply font-poppins font-medium;
     margin-bottom: var(--spacing-xs);
