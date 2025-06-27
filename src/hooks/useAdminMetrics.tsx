@@ -1,146 +1,171 @@
 
-import { useMemo } from 'react'
-import { DollarSign, Calendar, AlertTriangle } from 'lucide-react'
-import { Invoice } from '@/hooks/useInvoices'
+import { useMemo, useEffect, useState } from 'react'
+import { Invoice } from './useInvoices'
 import { InvoiceFilters } from '@/utils/invoiceFilters'
-import { startOfMonth, endOfMonth, isWithinInterval } from 'date-fns'
+import { DollarSign, AlertTriangle, Clock, Receipt, TrendingUp, CheckCircle } from 'lucide-react'
+import { useOrganizationCurrency } from './useOrganizationCurrency'
+import { useAuth } from '@/contexts/AuthContext'
+import { convertCurrency, formatCurrencyAmount, getCurrencySymbol } from '@/utils/currencyUtils'
 
-interface AdminMetric {
+export interface AdminMetric {
   title: string
-  value: string | number
+  value: string
   icon: React.ReactNode
-  tooltip: string
-  variant: 'default' | 'success' | 'warning' | 'destructive'
+  tooltip?: string
+  variant?: 'default' | 'success' | 'warning' | 'destructive'
+  showCurrencyIndicator?: boolean
+  currency?: string
 }
 
 export function useAdminMetrics(invoices: Invoice[], filters: InvoiceFilters): AdminMetric[] {
-  return useMemo(() => {
+  const { defaultCurrency } = useOrganizationCurrency()
+  const { organizationId } = useAuth()
+  const [currencySymbol, setCurrencySymbol] = useState('$')
+  const [convertedMetrics, setConvertedMetrics] = useState({
+    totalRevenue: 0,
+    totalPending: 0,
+    totalOverdue: 0,
+    showCurrencyIndicator: false
+  })
+
+  // Fetch currency symbol
+  useEffect(() => {
+    getCurrencySymbol(defaultCurrency).then(setCurrencySymbol)
+  }, [defaultCurrency])
+
+  const baseMetrics = useMemo(() => {
     const now = new Date()
-    const referenceMonth = filters.selectedMonth || now
-    const monthStart = startOfMonth(referenceMonth)
-    const monthEnd = endOfMonth(referenceMonth)
+    let filteredInvoices = invoices
 
-    // Filter invoices by issue date for display purposes
-    const displayFilteredInvoices = invoices.filter(invoice => {
-      const invoiceDate = new Date(invoice.issued_at)
-      return isWithinInterval(invoiceDate, { start: monthStart, end: monthEnd })
-    })
-
-    // Helper functions
-    const formatCurrency = (amount: number) => {
-      return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD'
-      }).format(amount)
+    // Apply month filter if specified
+    if (filters.selectedMonth) {
+      const { startOfMonth, endOfMonth, isWithinInterval } = require('date-fns')
+      const monthStart = startOfMonth(filters.selectedMonth)
+      const monthEnd = endOfMonth(filters.selectedMonth)
+      
+      filteredInvoices = filteredInvoices.filter(invoice => {
+        const invoiceDate = new Date(invoice.issued_at)
+        return isWithinInterval(invoiceDate, { start: monthStart, end: monthEnd })
+      })
     }
 
-    const formatDays = (days: number) => {
-      return `${days.toFixed(1)} days`
+    const totalInvoices = filteredInvoices.length
+    const paidInvoices = filteredInvoices.filter(inv => inv.status === 'paid')
+    const pendingInvoices = filteredInvoices.filter(inv => inv.status === 'pending')
+    const overdueInvoices = filteredInvoices.filter(inv => 
+      inv.status === 'overdue' || 
+      (inv.status === 'pending' && inv.due_date && new Date(inv.due_date) < now)
+    )
+
+    const totalRevenue = paidInvoices.reduce((sum, inv) => sum + inv.amount, 0)
+    const totalPending = pendingInvoices.reduce((sum, inv) => sum + inv.amount, 0)
+    const totalOverdue = overdueInvoices.reduce((sum, inv) => sum + inv.amount, 0)
+
+    return {
+      totalInvoices,
+      totalRevenue,
+      totalPending,
+      totalOverdue,
+      paidCount: paidInvoices.length,
+      pendingCount: pendingInvoices.length,
+      overdueCount: overdueInvoices.length
+    }
+  }, [invoices, filters])
+
+  // Convert amounts to display currency
+  useEffect(() => {
+    const convertAmounts = async () => {
+      if (baseMetrics.totalRevenue === 0 && baseMetrics.totalPending === 0 && baseMetrics.totalOverdue === 0) {
+        setConvertedMetrics({
+          totalRevenue: 0,
+          totalPending: 0,
+          totalOverdue: 0,
+          showCurrencyIndicator: false
+        })
+        return
+      }
+
+      try {
+        const conversions = await Promise.all([
+          convertCurrency(baseMetrics.totalRevenue, 'USD', defaultCurrency, organizationId),
+          convertCurrency(baseMetrics.totalPending, 'USD', defaultCurrency, organizationId),
+          convertCurrency(baseMetrics.totalOverdue, 'USD', defaultCurrency, organizationId)
+        ])
+
+        const showIndicator = conversions.some(c => c.exchangeRate !== 1.0)
+
+        setConvertedMetrics({
+          totalRevenue: conversions[0].convertedAmount,
+          totalPending: conversions[1].convertedAmount,
+          totalOverdue: conversions[2].convertedAmount,
+          showCurrencyIndicator: showIndicator
+        })
+      } catch (error) {
+        console.error('Error converting currencies:', error)
+        setConvertedMetrics({
+          totalRevenue: baseMetrics.totalRevenue,
+          totalPending: baseMetrics.totalPending,
+          totalOverdue: baseMetrics.totalOverdue,
+          showCurrencyIndicator: false
+        })
+      }
     }
 
-    const getDateFromString = (dateString: string) => new Date(dateString)
+    convertAmounts()
+  }, [baseMetrics, defaultCurrency, organizationId])
 
-    // Total Invoiced - filtered by ISSUE date
-    const totalInvoicedThisMonth = displayFilteredInvoices
-      .reduce((sum, inv) => sum + inv.amount, 0)
+  const formatCurrency = (amount: number) => {
+    return formatCurrencyAmount(amount, defaultCurrency, currencySymbol)
+  }
 
-    // Total Paid - filtered by PAYMENT date
-    const totalPaidThisMonth = invoices
-      .filter(inv => inv.status === 'paid' && inv.paid_at && 
-        isWithinInterval(getDateFromString(inv.paid_at), { start: monthStart, end: monthEnd }))
-      .reduce((sum, inv) => sum + inv.amount, 0)
-
-    // Outstanding/overdue calculations
-    const outstandingBalance = displayFilteredInvoices
-      .filter(inv => ['pending', 'overdue'].includes(inv.status))
-      .reduce((sum, inv) => sum + inv.amount, 0)
-
-    const overdueAmount = displayFilteredInvoices
-      .filter(inv => inv.status === 'overdue')
-      .reduce((sum, inv) => sum + inv.amount, 0)
-
-    const overdueCount = displayFilteredInvoices.filter(inv => inv.status === 'overdue').length
-
-    const clientsWithOverdue = new Set(
-      displayFilteredInvoices
-        .filter(inv => inv.status === 'overdue')
-        .map(inv => inv.organization_id)
-    ).size
-
-    const invoicesInPeriod = displayFilteredInvoices.length
-
-    // Payment delay calculation
-    const paidInvoices = invoices.filter(inv => inv.status === 'paid' && inv.paid_at)
-    const avgPaymentDelay = paidInvoices.length > 0
-      ? paidInvoices.reduce((sum, inv) => {
-          const issueDate = getDateFromString(inv.issued_at)
-          const paidDate = getDateFromString(inv.paid_at!)
-          const diffInDays = (paidDate.getTime() - issueDate.getTime()) / (1000 * 60 * 60 * 24)
-          return sum + diffInDays
-        }, 0) / paidInvoices.length
-      : 0
-
-    const periodLabel = filters.selectedMonth 
-      ? referenceMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
-      : 'This Month'
-
-    return [
+  return useMemo(() => {
+    const metrics: AdminMetric[] = [
       {
-        title: `Total Invoiced (${periodLabel})`,
-        value: formatCurrency(totalInvoicedThisMonth),
-        icon: <DollarSign className="h-5 w-5" />,
-        tooltip: `Invoices issued in ${periodLabel.toLowerCase()}`,
-        variant: 'default'
+        title: 'Total Invoices',
+        value: baseMetrics.totalInvoices.toString(),
+        icon: <Receipt className="h-4 w-4" />,
+        tooltip: 'Total number of invoices in the system'
       },
       {
-        title: `Total Paid (${periodLabel})`,
-        value: formatCurrency(totalPaidThisMonth),
-        icon: <DollarSign className="h-5 w-5" />,
-        tooltip: `Payments received in ${periodLabel.toLowerCase()}, regardless of issue date`,
-        variant: 'success'
+        title: 'Total Revenue',
+        value: formatCurrency(convertedMetrics.totalRevenue),
+        icon: <TrendingUp className="h-4 w-4" />,
+        tooltip: 'Total amount from paid invoices',
+        variant: 'success' as const,
+        showCurrencyIndicator: convertedMetrics.showCurrencyIndicator,
+        currency: defaultCurrency
+      },
+      {
+        title: 'Pending Payments',
+        value: formatCurrency(convertedMetrics.totalPending),
+        icon: <Clock className="h-4 w-4" />,
+        tooltip: `${baseMetrics.pendingCount} invoices awaiting payment`,
+        variant: 'warning' as const,
+        showCurrencyIndicator: convertedMetrics.showCurrencyIndicator,
+        currency: defaultCurrency
       },
       {
         title: 'Overdue Payments',
-        value: formatCurrency(overdueAmount),
-        icon: <AlertTriangle className="h-5 w-5" />,
-        tooltip: filters.selectedMonth ? 'Total overdue amount from selected period' : 'Total overdue amount from this month',
-        variant: overdueAmount > 0 ? 'destructive' : 'default'
-      },
-      {
-        title: 'Outstanding Balance',
-        value: formatCurrency(outstandingBalance),
-        icon: <AlertTriangle className="h-5 w-5" />,
-        tooltip: filters.selectedMonth ? 'Unpaid invoices from selected period' : 'Unpaid invoices from this month',
-        variant: outstandingBalance > 0 ? 'warning' : 'default'
-      },
-      {
-        title: 'Overdue Invoice Count',
-        value: overdueCount,
-        icon: <AlertTriangle className="h-5 w-5" />,
-        tooltip: filters.selectedMonth ? 'Number of overdue invoices from selected period' : 'Number of overdue invoices from this month',
-        variant: overdueCount > 0 ? 'destructive' : 'default'
-      },
-      {
-        title: 'Clients with Overdue',
-        value: clientsWithOverdue,
-        icon: <AlertTriangle className="h-5 w-5" />,
-        tooltip: filters.selectedMonth ? 'Organizations with overdue invoices from selected period' : 'Organizations with overdue invoices from this month',
-        variant: clientsWithOverdue > 0 ? 'destructive' : 'default'
-      },
-      {
-        title: filters.selectedMonth ? `Invoices (${periodLabel})` : 'Invoices (This Month)',
-        value: invoicesInPeriod,
-        icon: <Calendar className="h-5 w-5" />,
-        tooltip: filters.selectedMonth ? `Invoices from ${periodLabel.toLowerCase()}` : 'Invoices issued this month',
-        variant: 'default'
-      },
-      {
-        title: 'Avg Payment Delay',
-        value: formatDays(avgPaymentDelay),
-        icon: <Calendar className="h-5 w-5" />,
-        tooltip: 'Average time between invoice issue and payment across all invoices',
-        variant: 'default'
+        value: formatCurrency(convertedMetrics.totalOverdue),
+        icon: <AlertTriangle className="h-4 w-4" />,
+        tooltip: `${baseMetrics.overdueCount} invoices past due date`,
+        variant: 'destructive' as const,
+        showCurrencyIndicator: convertedMetrics.showCurrencyIndicator,
+        currency: defaultCurrency
       }
     ]
-  }, [invoices, filters])
+
+    // Add paid invoices metric if there are any
+    if (baseMetrics.paidCount > 0) {
+      metrics.push({
+        title: 'Paid Invoices',
+        value: baseMetrics.paidCount.toString(),
+        icon: <CheckCircle className="h-4 w-4" />,
+        tooltip: 'Number of successfully paid invoices',
+        variant: 'success' as const
+      })
+    }
+
+    return metrics
+  }, [baseMetrics, convertedMetrics, defaultCurrency, formatCurrency])
 }

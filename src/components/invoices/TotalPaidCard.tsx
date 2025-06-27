@@ -1,8 +1,11 @@
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Invoice } from '@/hooks/useInvoices'
-import { DollarSign } from 'lucide-react'
+import { DollarSign, Globe } from 'lucide-react'
+import { useOrganizationCurrency } from '@/hooks/useOrganizationCurrency'
+import { useAuth } from '@/contexts/AuthContext'
+import { convertCurrency, formatCurrencyAmount, getCurrencySymbol } from '@/utils/currencyUtils'
 
 interface TotalPaidCardProps {
   invoices: Invoice[]
@@ -12,6 +15,16 @@ type TimePeriod = '1week' | '1month' | '3months' | '6months' | '1year' | 'all'
 
 export function TotalPaidCard({ invoices }: TotalPaidCardProps) {
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('6months')
+  const { defaultCurrency } = useOrganizationCurrency()
+  const { organizationId } = useAuth()
+  const [currencySymbol, setCurrencySymbol] = useState('$')
+  const [convertedTotal, setConvertedTotal] = useState(0)
+  const [showCurrencyIndicator, setShowCurrencyIndicator] = useState(false)
+
+  // Fetch currency symbol
+  useEffect(() => {
+    getCurrencySymbol(defaultCurrency).then(setCurrencySymbol)
+  }, [defaultCurrency])
 
   const timePeriodOptions: { value: TimePeriod; label: string }[] = [
     { value: '1week', label: '1W' },
@@ -48,7 +61,7 @@ export function TotalPaidCard({ invoices }: TotalPaidCardProps) {
         break
     }
 
-    // Filter invoices by date range and calculate total paid amount
+    // Filter invoices by date range
     const filteredInvoices = invoices.filter(invoice => {
       const invoiceDate = new Date(invoice.issued_at)
       return invoiceDate >= startDate && invoiceDate <= now
@@ -65,13 +78,31 @@ export function TotalPaidCard({ invoices }: TotalPaidCardProps) {
     }, 0)
   }, [invoices, selectedPeriod])
 
-  const currency = invoices[0]?.currency || 'USD'
+  // Convert total to organization's default currency
+  useEffect(() => {
+    const convertTotal = async () => {
+      if (totalPaid === 0) {
+        setConvertedTotal(0)
+        setShowCurrencyIndicator(false)
+        return
+      }
+
+      try {
+        const conversion = await convertCurrency(totalPaid, 'USD', defaultCurrency, organizationId)
+        setConvertedTotal(conversion.convertedAmount)
+        setShowCurrencyIndicator(conversion.exchangeRate !== 1.0)
+      } catch (error) {
+        console.error('Error converting currency:', error)
+        setConvertedTotal(totalPaid)
+        setShowCurrencyIndicator(false)
+      }
+    }
+
+    convertTotal()
+  }, [totalPaid, defaultCurrency, organizationId])
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency
-    }).format(amount)
+    return formatCurrencyAmount(amount, defaultCurrency, currencySymbol)
   }
 
   return (
@@ -80,13 +111,19 @@ export function TotalPaidCard({ invoices }: TotalPaidCardProps) {
         <div className="space-y-2">
           <div className="space-y-1">
             <div className="text-3xl font-bold text-black">
-              {formatCurrency(totalPaid)}
+              {formatCurrency(convertedTotal)}
             </div>
           </div>
           
           <CardTitle className="flex items-center gap-2 text-base">
             <DollarSign className="h-4 w-4" />
             Total Paid
+            {showCurrencyIndicator && (
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Globe className="h-3 w-3" />
+                {defaultCurrency}
+              </div>
+            )}
           </CardTitle>
         </div>
       </CardHeader>

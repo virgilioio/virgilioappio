@@ -43,6 +43,8 @@ export function BillingMetricsDashboard() {
             icon={metric.icon}
             tooltip={metric.tooltip}
             variant={metric.variant}
+            showCurrencyIndicator={metric.showCurrencyIndicator}
+            currency={metric.currency}
           />
         ))}
       </div>

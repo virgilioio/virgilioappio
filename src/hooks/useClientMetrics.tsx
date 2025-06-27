@@ -1,136 +1,145 @@
 
-import { useMemo } from 'react'
-import { DollarSign, Calendar, AlertTriangle } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
-import { Invoice } from '@/hooks/useInvoices'
+import { useMemo, useEffect, useState } from 'react'
+import { Invoice } from './useInvoices'
 import { InvoiceFilters } from '@/utils/invoiceFilters'
-import { startOfMonth, endOfMonth, isWithinInterval } from 'date-fns'
+import { DollarSign, AlertTriangle, Clock, Receipt } from 'lucide-react'
+import { useOrganizationCurrency } from './useOrganizationCurrency'
+import { useAuth } from '@/contexts/AuthContext'
+import { convertCurrency, formatCurrencyAmount, getCurrencySymbol } from '@/utils/currencyUtils'
 
-interface ClientMetric {
+export interface ClientMetric {
   title: string
-  value: string | number | React.ReactNode
+  value: string
   icon: React.ReactNode
-  tooltip: string
-  variant: 'default' | 'success' | 'warning' | 'destructive'
+  tooltip?: string
+  variant?: 'default' | 'success' | 'warning' | 'destructive'
+  showCurrencyIndicator?: boolean
+  currency?: string
 }
 
 export function useClientMetrics(invoices: Invoice[], filters: InvoiceFilters): ClientMetric[] {
-  return useMemo(() => {
+  const { defaultCurrency } = useOrganizationCurrency()
+  const { organizationId } = useAuth()
+  const [currencySymbol, setCurrencySymbol] = useState('$')
+  const [convertedMetrics, setConvertedMetrics] = useState({
+    totalOwed: 0,
+    overdueAmount: 0,
+    showCurrencyIndicator: false
+  })
+
+  // Fetch currency symbol
+  useEffect(() => {
+    getCurrencySymbol(defaultCurrency).then(setCurrencySymbol)
+  }, [defaultCurrency])
+
+  const baseMetrics = useMemo(() => {
     const now = new Date()
-    const referenceMonth = filters.selectedMonth || now
-    const monthStart = startOfMonth(referenceMonth)
-    const monthEnd = endOfMonth(referenceMonth)
+    let filteredInvoices = invoices
 
-    // Filter invoices by issue date for display purposes
-    const displayFilteredInvoices = invoices.filter(invoice => {
-      const invoiceDate = new Date(invoice.issued_at)
-      return isWithinInterval(invoiceDate, { start: monthStart, end: monthEnd })
-    })
-
-    // Helper functions
-    const formatCurrency = (amount: number) => {
-      return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD'
-      }).format(amount)
+    // Apply month filter if specified
+    if (filters.selectedMonth) {
+      const { startOfMonth, endOfMonth, isWithinInterval } = require('date-fns')
+      const monthStart = startOfMonth(filters.selectedMonth)
+      const monthEnd = endOfMonth(filters.selectedMonth)
+      
+      filteredInvoices = filteredInvoices.filter(invoice => {
+        const invoiceDate = new Date(invoice.issued_at)
+        return isWithinInterval(invoiceDate, { start: monthStart, end: monthEnd })
+      })
     }
 
-    const getDateFromString = (dateString: string) => new Date(dateString)
+    const pendingInvoices = filteredInvoices.filter(inv => inv.status === 'pending')
+    const overdueInvoices = filteredInvoices.filter(inv => 
+      inv.status === 'overdue' || 
+      (inv.status === 'pending' && inv.due_date && new Date(inv.due_date) < now)
+    )
 
-    const outstandingBalance = displayFilteredInvoices
-      .filter(inv => ['pending', 'overdue'].includes(inv.status))
-      .reduce((sum, inv) => sum + inv.amount, 0)
+    const totalOwed = pendingInvoices.reduce((sum, inv) => sum + inv.amount, 0)
+    const overdueAmount = overdueInvoices.reduce((sum, inv) => sum + inv.amount, 0)
 
-    const overdueAmount = displayFilteredInvoices
-      .filter(inv => inv.status === 'overdue')
-      .reduce((sum, inv) => sum + inv.amount, 0)
+    return {
+      totalInvoices: filteredInvoices.length,
+      totalOwed,
+      overdueAmount,
+      pendingCount: pendingInvoices.length,
+      overdueCount: overdueInvoices.length
+    }
+  }, [invoices, filters])
 
-    const upcomingDueAmount = displayFilteredInvoices
-      .filter(inv => inv.due_date && getDateFromString(inv.due_date) > now && inv.status === 'pending')
-      .reduce((sum, inv) => sum + inv.amount, 0)
+  // Convert amounts to display currency
+  useEffect(() => {
+    const convertAmounts = async () => {
+      if (baseMetrics.totalOwed === 0 && baseMetrics.overdueAmount === 0) {
+        setConvertedMetrics({
+          totalOwed: 0,
+          overdueAmount: 0,
+          showCurrencyIndicator: false
+        })
+        return
+      }
 
-    // Paid invoices calculation - filter by payment date
-    const paidInPeriod = invoices
-      .filter(inv => inv.status === 'paid' && inv.paid_at && 
-        isWithinInterval(getDateFromString(inv.paid_at), { start: monthStart, end: monthEnd }))
-      .reduce((sum, inv) => sum + inv.amount, 0)
+      try {
+        const conversions = await Promise.all([
+          convertCurrency(baseMetrics.totalOwed, 'USD', defaultCurrency, organizationId),
+          convertCurrency(baseMetrics.overdueAmount, 'USD', defaultCurrency, organizationId)
+        ])
 
-    const overdueCount = displayFilteredInvoices.filter(inv => inv.status === 'overdue').length
+        const showIndicator = conversions.some(c => c.exchangeRate !== 1.0)
 
-    const latestInvoice = displayFilteredInvoices
-      .sort((a, b) => getDateFromString(b.issued_at).getTime() - getDateFromString(a.issued_at).getTime())[0]
+        setConvertedMetrics({
+          totalOwed: conversions[0].convertedAmount,
+          overdueAmount: conversions[1].convertedAmount,
+          showCurrencyIndicator: showIndicator
+        })
+      } catch (error) {
+        console.error('Error converting currencies:', error)
+        setConvertedMetrics({
+          totalOwed: baseMetrics.totalOwed,
+          overdueAmount: baseMetrics.overdueAmount,
+          showCurrencyIndicator: false
+        })
+      }
+    }
 
-    const periodLabel = filters.selectedMonth 
-      ? filters.selectedMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
-      : 'This Month'
+    convertAmounts()
+  }, [baseMetrics, defaultCurrency, organizationId])
 
+  const formatCurrency = (amount: number) => {
+    return formatCurrencyAmount(amount, defaultCurrency, currencySymbol)
+  }
+
+  return useMemo(() => {
     const metrics: ClientMetric[] = [
       {
-        title: 'Outstanding Balance',
-        value: formatCurrency(outstandingBalance),
-        icon: <DollarSign className="h-5 w-5" />,
-        tooltip: filters.selectedMonth ? 'Unpaid invoices from selected month' : 'Unpaid invoices from this month',
-        variant: outstandingBalance > 0 ? 'warning' : 'default'
+        title: 'Total Invoices',
+        value: baseMetrics.totalInvoices.toString(),
+        icon: <Receipt className="h-4 w-4" />,
+        tooltip: 'Total number of invoices for your organization'
       },
       {
-        title: 'Overdue Payments',
-        value: formatCurrency(overdueAmount),
-        icon: <AlertTriangle className="h-5 w-5" />,
-        tooltip: filters.selectedMonth ? 'Total overdue amount from selected month' : 'Total overdue amount from this month',
-        variant: overdueAmount > 0 ? 'destructive' : 'default'
-      },
-      {
-        title: 'Upcoming Due Amount',
-        value: formatCurrency(upcomingDueAmount),
-        icon: <Calendar className="h-5 w-5" />,
-        tooltip: filters.selectedMonth ? 'Pending invoices due from selected month' : 'Pending invoices due from this month',
-        variant: 'default'
-      },
-      {
-        title: `Paid Invoices (${periodLabel})`,
-        value: formatCurrency(paidInPeriod),
-        icon: <DollarSign className="h-5 w-5" />,
-        tooltip: filters.selectedMonth ? 'Paid invoices from selected month (by payment date)' : 'Invoices paid this month',
-        variant: 'success'
-      },
-      {
-        title: 'Overdue Invoice Count',
-        value: overdueCount,
-        icon: <AlertTriangle className="h-5 w-5" />,
-        tooltip: filters.selectedMonth ? 'Number of overdue invoices from selected month' : 'Number of overdue invoices from this month',
-        variant: overdueCount > 0 ? 'destructive' : 'default'
+        title: 'Amount Owed',
+        value: formatCurrency(convertedMetrics.totalOwed),
+        icon: <DollarSign className="h-4 w-4" />,
+        tooltip: `${baseMetrics.pendingCount} pending invoices`,
+        variant: 'warning' as const,
+        showCurrencyIndicator: convertedMetrics.showCurrencyIndicator,
+        currency: defaultCurrency
       }
     ]
 
-    // Add latest invoice card if exists
-    if (latestInvoice) {
+    // Add overdue metric if there are overdue invoices
+    if (baseMetrics.overdueCount > 0) {
       metrics.push({
-        title: 'Latest Invoice',
-        value: (
-          <div className="space-y-1">
-            <div className="text-sm font-medium truncate">{latestInvoice.title}</div>
-            <div className="flex items-center gap-2">
-              <span className="text-lg font-bold">{formatCurrency(latestInvoice.amount)}</span>
-              <Badge 
-                variant={latestInvoice.status === 'paid' ? 'default' : latestInvoice.status === 'overdue' ? 'destructive' : 'secondary'}
-                className="text-xs"
-              >
-                {latestInvoice.status}
-              </Badge>
-            </div>
-            {latestInvoice.due_date && (
-              <div className="text-xs text-muted-foreground">
-                Due: {getDateFromString(latestInvoice.due_date).toLocaleDateString()}
-              </div>
-            )}
-          </div>
-        ),
-        icon: <DollarSign className="h-5 w-5" />,
-        tooltip: 'Most recently issued invoice',
-        variant: 'default'
+        title: 'Overdue Amount',
+        value: formatCurrency(convertedMetrics.overdueAmount),
+        icon: <AlertTriangle className="h-4 w-4" />,
+        tooltip: `${baseMetrics.overdueCount} overdue invoices`,
+        variant: 'destructive' as const,
+        showCurrencyIndicator: convertedMetrics.showCurrencyIndicator,
+        currency: defaultCurrency
       })
     }
 
     return metrics
-  }, [invoices, filters])
+  }, [baseMetrics, convertedMetrics, defaultCurrency, formatCurrency])
 }
