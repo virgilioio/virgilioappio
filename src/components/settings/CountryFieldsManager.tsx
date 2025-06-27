@@ -1,4 +1,3 @@
-
 import { useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -16,7 +15,7 @@ interface CountryFieldsManagerProps {
 export function CountryFieldsManager({ countryId }: CountryFieldsManagerProps) {
   const { countries } = useCountries()
   const country = countries.find(c => c.id === countryId)
-  const { fields, isLoading, deleteField } = useCountryFields(country?.code)
+  const { fields, isLoading, deleteField, refetch } = useCountryFields(country?.code)
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingField, setEditingField] = useState<CountryField | null>(null)
 
@@ -33,6 +32,11 @@ export function CountryFieldsManager({ countryId }: CountryFieldsManagerProps) {
   const handleCloseForm = () => {
     setIsFormOpen(false)
     setEditingField(null)
+  }
+
+  const handleFieldChange = async () => {
+    // Refetch the fields data to update the UI
+    await refetch()
   }
 
   const handleDelete = async (fieldId: string) => {
@@ -185,6 +189,7 @@ export function CountryFieldsManager({ countryId }: CountryFieldsManagerProps) {
         countryId={countryId}
         countryCode={country.code}
         field={editingField}
+        onFieldChange={handleFieldChange}
       />
     </>
   )

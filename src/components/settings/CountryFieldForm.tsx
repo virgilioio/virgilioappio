@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -8,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox'
 import { FormField } from '@/components/ui/form-field'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
+import { Badge } from 'lucide-react'
 import { Plus, Trash2 } from 'lucide-react'
 import { useCountryFields } from '@/hooks/useCountryFields'
 import { CountryField } from '@/hooks/useCountries'
@@ -19,6 +18,7 @@ interface CountryFieldFormProps {
   countryId: string
   countryCode: string
   field?: CountryField | null
+  onFieldChange?: () => void
 }
 
 interface SelectOption {
@@ -55,7 +55,7 @@ const FILE_TYPES = [
   { value: 'text/plain', label: 'Text File' }
 ]
 
-export function CountryFieldForm({ isOpen, onClose, countryId, countryCode, field }: CountryFieldFormProps) {
+export function CountryFieldForm({ isOpen, onClose, countryId, countryCode, field, onFieldChange }: CountryFieldFormProps) {
   const { createField, updateField, fields } = useCountryFields(countryCode)
   const [isLoading, setIsLoading] = useState(false)
   
@@ -158,6 +158,11 @@ export function CountryFieldForm({ isOpen, onClose, countryId, countryCode, fiel
         await updateField(field.id, fieldData, formData.field_type === 'select' ? selectOptions : undefined)
       } else {
         await createField(fieldData, formData.field_type === 'select' ? selectOptions : undefined)
+      }
+      
+      // Call the callback to refresh the parent component
+      if (onFieldChange) {
+        await onFieldChange()
       }
       
       onClose()
