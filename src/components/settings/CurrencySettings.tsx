@@ -1,5 +1,5 @@
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -9,7 +9,17 @@ import { Globe, Coins, RefreshCw } from 'lucide-react'
 import { useCurrencies, useExchangeRates } from '@/hooks/useCurrencies'
 import { useOrganizationCurrency } from '@/hooks/useOrganizationCurrency'
 import { usePermissions } from '@/hooks/usePermissions'
+import { useAuth } from '@/contexts/AuthContext'
 import { formatCurrencyAmount } from '@/utils/currencyUtils'
+import { supabase } from '@/integrations/supabase/client'
+
+interface OrganizationRate {
+  target_currency: string
+  target_currency_name: string
+  target_currency_symbol: string
+  rate: number
+  rate_date: string
+}
 
 export function CurrencySettings() {
   const { currencies } = useCurrencies()
@@ -20,7 +30,45 @@ export function CurrencySettings() {
     isLoading: currencyLoading 
   } = useOrganizationCurrency()
   const { canManageInvoices } = usePermissions()
+  const { organizationId } = useAuth()
   const [selectedCurrency, setSelectedCurrency] = useState(defaultCurrency)
+  const [organizationRates, setOrganizationRates] = useState<OrganizationRate[]>([])
+  const [orgRatesLoading, setOrgRatesLoading] = useState(false)
+
+  // Fetch organization-specific exchange rates
+  const fetchOrganizationRates = async () => {
+    if (!organizationId) return
+
+    setOrgRatesLoading(true)
+    try {
+      const { data, error } = await supabase
+        .from('organization_exchange_rates')
+        .select('target_currency, target_currency_name, target_currency_symbol, rate, rate_date')
+        .eq('organization_id', organizationId)
+        .order('target_currency')
+        .limit(5)
+
+      if (error) {
+        console.error('Error fetching organization rates:', error)
+      } else {
+        setOrganizationRates(data || [])
+      }
+    } catch (error) {
+      console.error('Error fetching organization rates:', error)
+    } finally {
+      setOrgRatesLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    setSelectedCurrency(defaultCurrency)
+  }, [defaultCurrency])
+
+  useEffect(() => {
+    if (organizationId && defaultCurrency) {
+      fetchOrganizationRates()
+    }
+  }, [organizationId, defaultCurrency])
 
   const handleSaveCurrency = async () => {
     if (selectedCurrency !== defaultCurrency) {
@@ -31,14 +79,18 @@ export function CurrencySettings() {
   const handleUpdateRates = async () => {
     try {
       await updateExchangeRates()
+      // Refresh organization-specific rates after update
+      setTimeout(() => {
+        fetchOrganizationRates()
+      }, 1000)
     } catch (error) {
       console.error('Failed to update exchange rates:', error)
     }
   }
 
-  // Get recent rates for display
+  // Get recent rates for display (fallback to old behavior)
   const recentRates = rates.filter(rate => rate.base_currency === 'USD').slice(0, 5)
-  const lastUpdate = recentRates[0]?.rate_date
+  const lastUpdate = organizationRates[0]?.rate_date || recentRates[0]?.rate_date
 
   return (
     <div className="space-y-6">
@@ -98,6 +150,11 @@ export function CurrencySettings() {
               <CardTitle className="flex items-center gap-2">
                 <Coins className="h-5 w-5" />
                 Exchange Rates
+                {defaultCurrency !== 'USD' && (
+                  <span className="text-sm font-normal text-muted-foreground">
+                    (from {defaultCurrency})
+                  </span>
+                )}
               </CardTitle>
               <Button
                 onClick={handleUpdateRates}
@@ -117,8 +174,33 @@ export function CurrencySettings() {
               </p>
             )}
             
-            {recentRates.length > 0 ? (
+            {organizationRates.length > 0 ? (
               <div className="space-y-2">
+                <div className="grid grid-cols-3 gap-4 text-sm font-medium text-muted-foreground pb-2 border-b">
+                  <span>Currency</span>
+                  <span>Rate (from {defaultCurrency})</span>
+                  <span>Example</span>
+                </div>
+                {organizationRates.map((rate) => (
+                  <div key={rate.target_currency} className="grid grid-cols-3 gap-4 text-sm py-2">
+                    <span className="font-mono">{rate.target_currency}</span>
+                    <span>{rate.rate.toFixed(6)}</span>
+                    <span className="text-muted-foreground">
+                      1 {defaultCurrency} = {formatCurrencyAmount(rate.rate, rate.target_currency, rate.target_currency_symbol)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : orgRatesLoading ? (
+              <div className="text-center py-8">
+                <RefreshCw className="h-8 w-8 text-muted-foreground mx-auto mb-3 animate-spin" />
+                <p className="text-muted-foreground">Loading exchange rates...</p>
+              </div>
+            ) : recentRates.length > 0 ? (
+              <div className="space-y-2">
+                <div className="text-sm text-amber-600 mb-3 p-2 bg-amber-50 rounded">
+                  Showing USD-based rates. Organization-specific rates will appear after the next update.
+                </div>
                 <div className="grid grid-cols-3 gap-4 text-sm font-medium text-muted-foreground pb-2 border-b">
                   <span>Currency</span>
                   <span>Rate (from USD)</span>

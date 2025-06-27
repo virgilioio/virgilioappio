@@ -36,41 +36,14 @@ serve(async (req) => {
       throw new Error('Exchange Rate API key not configured')
     }
 
-    // Base currency is USD for simplicity
-    const baseCurrency = 'USD'
-    const apiUrl = `https://v6.exchangerate-api.com/v6/${exchangeRateApiKey}/latest/${baseCurrency}`
+    // Get all unique organization default currencies
+    const { data: orgCurrencies, error: orgCurrenciesError } = await supabase
+      .rpc('get_active_organization_currencies')
 
-    console.log('Fetching exchange rates from API...')
-
-    // Fetch rates from Exchange Rates API
-    const response = await fetch(apiUrl)
-    console.log('API Response status:', response.status)
-    
-    if (!response.ok) {
-      const responseText = await response.text()
-      console.error('API Response error:', responseText)
-      
-      try {
-        const errorData = JSON.parse(responseText)
-        console.error('Parsed error data:', errorData)
-        throw new Error(`Exchange Rate API error: ${response.status} - ${errorData['error-type'] || 'Unknown error'}: ${errorData['extra-info'] || responseText}`)
-      } catch (parseError) {
-        throw new Error(`Exchange Rate API error: ${response.status} ${response.statusText} - ${responseText}`)
-      }
+    if (orgCurrenciesError) {
+      console.error('Failed to fetch organization currencies:', orgCurrenciesError)
+      throw new Error(`Failed to fetch organization currencies: ${orgCurrenciesError.message}`)
     }
-
-    const data = await response.json()
-    console.log('API Response result:', data.result)
-    
-    if (data.result !== 'success') {
-      console.error('API returned error result:', data)
-      throw new Error(`Exchange Rate API returned error: ${data['error-type']} - ${data['error-message'] || 'Unknown error'}`)
-    }
-
-    const rates = data.conversion_rates
-    const rateDate = new Date().toISOString().split('T')[0] // Today's date
-
-    console.log('Received rates for', Object.keys(rates).length, 'currencies')
 
     // Get supported currencies from our database
     const { data: supportedCurrencies, error: currenciesError } = await supabase
@@ -90,81 +63,142 @@ serve(async (req) => {
 
     const supportedCodes = supportedCurrencies.map(c => c.code)
     console.log('Supported currencies:', supportedCodes)
-    
-    let insertedCount = 0
-    let updatedCount = 0
-    let errorCount = 0
 
-    // Insert/update rates for supported currencies
-    for (const currency of supportedCodes) {
-      if (currency === baseCurrency) continue // Skip base currency
+    // Always include USD as a base currency for triangulation
+    const baseCurrencies = new Set(['USD'])
+    
+    // Add organization default currencies as base currencies
+    if (orgCurrencies && orgCurrencies.length > 0) {
+      orgCurrencies.forEach(org => {
+        if (org.currency_code && supportedCodes.includes(org.currency_code)) {
+          baseCurrencies.add(org.currency_code)
+        }
+      })
+    }
+
+    console.log('Base currencies to fetch:', Array.from(baseCurrencies))
+    
+    let totalInserted = 0
+    let totalUpdated = 0
+    let totalErrors = 0
+    const rateDate = new Date().toISOString().split('T')[0]
+
+    // Fetch rates for each base currency
+    for (const baseCurrency of baseCurrencies) {
+      console.log(`\n--- Fetching rates for base currency: ${baseCurrency} ---`)
       
-      const rate = rates[currency]
-      if (!rate) {
-        console.warn(`No rate found for currency: ${currency}`)
-        errorCount++
-        continue
-      }
+      const apiUrl = `https://v6.exchangerate-api.com/v6/${exchangeRateApiKey}/latest/${baseCurrency}`
 
       try {
-        // Check if record exists for today
-        const { data: existingRate } = await supabase
-          .from('currency_exchange_rates')
-          .select('id')
-          .eq('base_currency', baseCurrency)
-          .eq('target_currency', currency)
-          .eq('rate_date', rateDate)
-          .maybeSingle()
-
-        if (existingRate) {
-          // Update existing rate
-          const { error: updateError } = await supabase
-            .from('currency_exchange_rates')
-            .update({ rate: rate, updated_at: new Date().toISOString() })
-            .eq('id', existingRate.id)
-
-          if (updateError) {
-            console.error(`Failed to update rate for ${currency}:`, updateError)
-            errorCount++
-            continue
-          }
-          updatedCount++
-          console.log(`Updated rate for ${currency}: ${rate}`)
-        } else {
-          // Insert new rate
-          const { error: insertError } = await supabase
-            .from('currency_exchange_rates')
-            .insert({
-              base_currency: baseCurrency,
-              target_currency: currency,
-              rate: rate,
-              rate_date: rateDate
-            })
-
-          if (insertError) {
-            console.error(`Failed to insert rate for ${currency}:`, insertError)
-            errorCount++
-            continue
-          }
-          insertedCount++
-          console.log(`Inserted new rate for ${currency}: ${rate}`)
+        console.log('Fetching exchange rates from API...')
+        const response = await fetch(apiUrl)
+        console.log('API Response status:', response.status)
+        
+        if (!response.ok) {
+          const responseText = await response.text()
+          console.error(`API Response error for ${baseCurrency}:`, responseText)
+          totalErrors++
+          continue
         }
-      } catch (dbError) {
-        console.error(`Database error for ${currency}:`, dbError)
-        errorCount++
+
+        const data = await response.json()
+        console.log('API Response result:', data.result)
+        
+        if (data.result !== 'success') {
+          console.error(`API returned error result for ${baseCurrency}:`, data)
+          totalErrors++
+          continue
+        }
+
+        const rates = data.conversion_rates
+        console.log(`Received rates for ${Object.keys(rates).length} currencies from ${baseCurrency}`)
+
+        let insertedCount = 0
+        let updatedCount = 0
+        let errorCount = 0
+
+        // Insert/update rates for supported currencies
+        for (const targetCurrency of supportedCodes) {
+          if (targetCurrency === baseCurrency) continue // Skip base currency
+          
+          const rate = rates[targetCurrency]
+          if (!rate) {
+            console.warn(`No rate found for ${baseCurrency} -> ${targetCurrency}`)
+            errorCount++
+            continue
+          }
+
+          try {
+            // Check if record exists for today
+            const { data: existingRate } = await supabase
+              .from('currency_exchange_rates')
+              .select('id')
+              .eq('base_currency', baseCurrency)
+              .eq('target_currency', targetCurrency)
+              .eq('rate_date', rateDate)
+              .maybeSingle()
+
+            if (existingRate) {
+              // Update existing rate
+              const { error: updateError } = await supabase
+                .from('currency_exchange_rates')
+                .update({ rate: rate, updated_at: new Date().toISOString() })
+                .eq('id', existingRate.id)
+
+              if (updateError) {
+                console.error(`Failed to update rate for ${baseCurrency} -> ${targetCurrency}:`, updateError)
+                errorCount++
+                continue
+              }
+              updatedCount++
+              console.log(`Updated rate for ${baseCurrency} -> ${targetCurrency}: ${rate}`)
+            } else {
+              // Insert new rate
+              const { error: insertError } = await supabase
+                .from('currency_exchange_rates')
+                .insert({
+                  base_currency: baseCurrency,
+                  target_currency: targetCurrency,
+                  rate: rate,
+                  rate_date: rateDate
+                })
+
+              if (insertError) {
+                console.error(`Failed to insert rate for ${baseCurrency} -> ${targetCurrency}:`, insertError)
+                errorCount++
+                continue
+              }
+              insertedCount++
+              console.log(`Inserted new rate for ${baseCurrency} -> ${targetCurrency}: ${rate}`)
+            }
+          } catch (dbError) {
+            console.error(`Database error for ${baseCurrency} -> ${targetCurrency}:`, dbError)
+            errorCount++
+          }
+        }
+
+        totalInserted += insertedCount
+        totalUpdated += updatedCount
+        totalErrors += errorCount
+
+        console.log(`Base currency ${baseCurrency} completed: ${insertedCount} inserted, ${updatedCount} updated, ${errorCount} errors`)
+
+      } catch (fetchError) {
+        console.error(`Failed to fetch rates for base currency ${baseCurrency}:`, fetchError)
+        totalErrors++
       }
     }
 
     const result = {
       success: true,
-      message: `Exchange rates updated successfully`,
+      message: `Exchange rates updated successfully for ${baseCurrencies.size} base currencies`,
       stats: {
-        inserted: insertedCount,
-        updated: updatedCount,
-        errors: errorCount,
-        total_currencies: supportedCodes.length,
-        rate_date: rateDate,
-        base_currency: baseCurrency
+        inserted: totalInserted,
+        updated: totalUpdated,
+        errors: totalErrors,
+        base_currencies_processed: baseCurrencies.size,
+        supported_currencies: supportedCodes.length,
+        rate_date: rateDate
       }
     }
 

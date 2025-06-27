@@ -101,6 +101,13 @@ export type Database = {
             foreignKeyName: "candidate_comments_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
+            referencedRelation: "organization_exchange_rates"
+            referencedColumns: ["organization_id"]
+          },
+          {
+            foreignKeyName: "candidate_comments_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
@@ -477,6 +484,13 @@ export type Database = {
             foreignKeyName: "invoices_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
+            referencedRelation: "organization_exchange_rates"
+            referencedColumns: ["organization_id"]
+          },
+          {
+            foreignKeyName: "invoices_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
@@ -726,6 +740,13 @@ export type Database = {
             foreignKeyName: "job_requests_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
+            referencedRelation: "organization_exchange_rates"
+            referencedColumns: ["organization_id"]
+          },
+          {
+            foreignKeyName: "job_requests_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
@@ -788,6 +809,13 @@ export type Database = {
             foreignKeyName: "jobs_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
+            referencedRelation: "organization_exchange_rates"
+            referencedColumns: ["organization_id"]
+          },
+          {
+            foreignKeyName: "jobs_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
@@ -845,6 +873,13 @@ export type Database = {
             foreignKeyName: "members_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
+            referencedRelation: "organization_exchange_rates"
+            referencedColumns: ["organization_id"]
+          },
+          {
+            foreignKeyName: "members_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
@@ -891,6 +926,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "country_fields"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_custom_data_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization_exchange_rates"
+            referencedColumns: ["organization_id"]
           },
           {
             foreignKeyName: "organization_custom_data_organization_id_fkey"
@@ -1122,7 +1164,19 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      organization_exchange_rates: {
+        Row: {
+          base_currency: string | null
+          organization_id: string | null
+          organization_name: string | null
+          rate: number | null
+          rate_date: string | null
+          target_currency: string | null
+          target_currency_name: string | null
+          target_currency_symbol: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       accept_invitation: {
@@ -1188,6 +1242,13 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      get_active_organization_currencies: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          currency_code: string
+          organization_count: number
+        }[]
+      }
       get_invite_expiry: {
         Args: Record<PropertyKey, never>
         Returns: string
@@ -1210,6 +1271,14 @@ export type Database = {
       }
       get_member_role_safe: {
         Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      get_organization_currency_rate: {
+        Args: { from_currency: string; to_currency: string; org_id?: string }
+        Returns: number
+      }
+      get_organization_default_currency: {
+        Args: { org_id: string }
         Returns: string
       }
       get_user_member_data: {

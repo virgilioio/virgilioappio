@@ -53,57 +53,48 @@ export const getCurrencySymbol = async (currencyCode: string): Promise<string> =
   }
 }
 
-export const getLatestExchangeRate = async (
+export const getOrganizationCurrencyRate = async (
   fromCurrency: string, 
-  toCurrency: string
+  toCurrency: string,
+  organizationId?: string
 ): Promise<number> => {
   if (fromCurrency === toCurrency) {
     return 1.0
   }
 
   try {
-    // Try direct rate first
-    const { data: directRate, error: directError } = await supabase
-      .from('currency_exchange_rates')
-      .select('rate, rate_date')
-      .eq('base_currency', fromCurrency)
-      .eq('target_currency', toCurrency)
-      .order('rate_date', { ascending: false })
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single()
+    const { data, error } = await supabase
+      .rpc('get_organization_currency_rate', {
+        from_currency: fromCurrency,
+        to_currency: toCurrency,
+        org_id: organizationId || null
+      })
 
-    if (!directError && directRate) {
-      return directRate.rate
+    if (error) {
+      console.error('Error fetching organization currency rate:', error)
+      return 1.0
     }
 
-    // Try inverse rate
-    const { data: inverseRate, error: inverseError } = await supabase
-      .from('currency_exchange_rates')
-      .select('rate, rate_date')
-      .eq('base_currency', toCurrency)
-      .eq('target_currency', fromCurrency)
-      .order('rate_date', { ascending: false })
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .single()
-
-    if (!inverseError && inverseRate) {
-      return 1.0 / inverseRate.rate
-    }
-
-    console.warn(`No exchange rate found for ${fromCurrency} to ${toCurrency}`)
-    return 1.0
+    return data || 1.0
   } catch (error) {
-    console.error('Error fetching exchange rate:', error)
+    console.error('Error fetching organization currency rate:', error)
     return 1.0
   }
+}
+
+export const getLatestExchangeRate = async (
+  fromCurrency: string, 
+  toCurrency: string,
+  organizationId?: string
+): Promise<number> => {
+  return getOrganizationCurrencyRate(fromCurrency, toCurrency, organizationId)
 }
 
 export const convertCurrency = async (
   amount: number,
   fromCurrency: string,
-  toCurrency: string
+  toCurrency: string,
+  organizationId?: string
 ): Promise<ConversionResult> => {
   if (fromCurrency === toCurrency) {
     return {
@@ -114,17 +105,17 @@ export const convertCurrency = async (
     }
   }
 
-  const rate = await getLatestExchangeRate(fromCurrency, toCurrency)
+  const rate = await getOrganizationCurrencyRate(fromCurrency, toCurrency, organizationId)
   const convertedAmount = amount * rate
 
-  // Get rate date for transparency
+  // Get rate date for transparency - try to find the most recent rate used
   const { data: rateData } = await supabase
     .from('currency_exchange_rates')
     .select('rate_date')
     .or(`and(base_currency.eq.${fromCurrency},target_currency.eq.${toCurrency}),and(base_currency.eq.${toCurrency},target_currency.eq.${fromCurrency})`)
     .order('rate_date', { ascending: false })
     .limit(1)
-    .single()
+    .maybeSingle()
 
   return {
     convertedAmount,

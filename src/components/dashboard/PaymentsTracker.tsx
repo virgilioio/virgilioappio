@@ -49,13 +49,13 @@ export function PaymentsTracker() {
       
       console.log('PaymentsTracker: Base metrics calculated:', baseMetrics)
 
-      // Convert amounts to display currency if needed
+      // Convert amounts to display currency if needed using organization-aware conversion
       const convertMetrics = async () => {
         let needsConversion = false
         const conversions = await Promise.all([
-          convertCurrency(baseMetrics.totalPending, 'USD', defaultCurrency),
-          convertCurrency(baseMetrics.overdueAmount, 'USD', defaultCurrency),
-          convertCurrency(baseMetrics.urgentAmount, 'USD', defaultCurrency),
+          convertCurrency(baseMetrics.totalPending, 'USD', defaultCurrency, organizationId),
+          convertCurrency(baseMetrics.overdueAmount, 'USD', defaultCurrency, organizationId),
+          convertCurrency(baseMetrics.urgentAmount, 'USD', defaultCurrency, organizationId),
         ])
 
         // Check if any conversion happened (rate != 1.0)
