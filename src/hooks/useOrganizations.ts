@@ -23,6 +23,7 @@ export interface Organization {
   billing_poc_updated_at?: string | null
   billing_poc_user_email?: string | null
   billing_poc_user_name?: string | null
+  default_currency?: string | null
 }
 
 export interface CreateOrganizationData {
@@ -92,7 +93,8 @@ export function useOrganizations() {
         billing_poc_updated_by: org.billing_poc_updated_by,
         billing_poc_updated_at: org.billing_poc_updated_at,
         billing_poc_user_email: null,
-        billing_poc_user_name: null
+        billing_poc_user_name: null,
+        default_currency: org.default_currency
       }))
 
       setOrganizations(organizationsWithDetails)
