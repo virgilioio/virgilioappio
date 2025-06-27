@@ -1,5 +1,5 @@
 
-import { Building, Lock, User, Mail, Phone, Globe, Calendar, Shield, FileText, Download } from 'lucide-react'
+import { Building, Lock, User, Mail, Phone, Globe, Calendar, Shield, FileText, Download, CheckCircle } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -22,6 +22,50 @@ interface Organization {
 
 interface OrganizationDisplayProps {
   organization: Organization
+}
+
+// Enhanced Security Header Component
+function SecurityHeader({ title, icon: Icon, subtitle }: { title: string; icon: any; subtitle?: string }) {
+  return (
+    <div className="flex items-start justify-between">
+      <div className="flex-1">
+        <div className="flex items-center gap-2 mb-1">
+          <Icon className="h-4 w-4 text-primary" />
+          <h3 className="text-lg font-medium text-text-primary">{title}</h3>
+        </div>
+        {subtitle && (
+          <p className="text-xs text-text-secondary">{subtitle}</p>
+        )}
+      </div>
+      <div className="flex items-center gap-2">
+        <Badge variant="secondary" className="text-xs flex items-center gap-1">
+          <Shield className="h-3 w-3" />
+          Protected
+        </Badge>
+        <Lock className="h-4 w-4 text-muted-foreground" />
+      </div>
+    </div>
+  )
+}
+
+// Enhanced Info Row Component
+function InfoRow({ label, value, icon: Icon, isLast = false }: { 
+  label: string; 
+  value: React.ReactNode; 
+  icon?: any; 
+  isLast?: boolean;
+}) {
+  return (
+    <div className={`flex items-center justify-between py-3 ${!isLast ? 'border-b border-border/30' : ''}`}>
+      <div className="space-y-1 flex-1">
+        <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+          {Icon && <Icon className="h-3 w-3" />}
+          {label}
+        </p>
+        <div className="text-sm font-medium text-text-primary">{value}</div>
+      </div>
+    </div>
+  )
 }
 
 export function OrganizationDisplay({ organization }: OrganizationDisplayProps) {
@@ -59,110 +103,111 @@ export function OrganizationDisplay({ organization }: OrganizationDisplayProps) 
 
   return (
     <div className="space-y-6">
-      {/* Basic Organization Information */}
-      <Card className="border-l-4 border-l-primary">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Building className="h-4 w-4" />
-            Organization Information
-            <Lock className="h-3 w-3 text-muted-foreground ml-auto" />
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="grid gap-3">
-            <div className="flex items-center justify-between py-2 border-b border-border/50">
-              <div className="space-y-0.5">
-                <p className="text-xs font-medium text-muted-foreground">Organization Name</p>
-                <p className="text-sm font-medium">{organization.name}</p>
-              </div>
-            </div>
-            
-            <div className="flex items-center justify-between py-2 border-b border-border/50">
-              <div className="space-y-0.5">
-                <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                  <Globe className="h-3 w-3" />
-                  Country
-                </p>
-                <p className="text-sm font-medium">{organization.country}</p>
-              </div>
-            </div>
-            
-            <div className="flex items-center justify-between py-2 border-b border-border/50">
-              <div className="space-y-0.5">
-                <p className="text-xs font-medium text-muted-foreground">Status</p>
-                <Badge 
-                  variant={organization.status === 'active' ? 'success' : 'secondary'}
-                  className="text-xs"
-                >
-                  {organization.status === 'active' ? 'Active' : 'Inactive'}
-                </Badge>
-              </div>
-            </div>
-            
-            <div className="flex items-center justify-between py-2">
-              <div className="space-y-0.5">
-                <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                  <Calendar className="h-3 w-3" />
-                  Created
-                </p>
-                <p className="text-sm font-medium">
-                  {new Date(organization.created_at).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  })}
-                </p>
-              </div>
-            </div>
+      {/* Enhanced Security Notice */}
+      <div className="bg-gradient-to-r from-accent/10 to-accent/5 border border-accent/20 rounded-brand p-4">
+        <div className="flex items-center gap-3">
+          <div className="flex-shrink-0">
+            <Shield className="h-5 w-5 text-accent-foreground" />
           </div>
+          <div>
+            <p className="text-sm font-medium text-accent-foreground">Protected Organization Information</p>
+            <p className="text-xs text-accent-foreground/80 mt-0.5">
+              All organization data is securely stored and encrypted. Only authorized users can view this information.
+            </p>
+          </div>
+          <CheckCircle className="h-4 w-4 text-success ml-auto flex-shrink-0" />
+        </div>
+      </div>
+
+      {/* Enhanced Basic Organization Information */}
+      <Card className="border-l-4 border-l-primary bg-gradient-to-br from-surface-primary to-surface-secondary/20 shadow-neumorphic hover:shadow-neumorphic-hover transition-all duration-200">
+        <CardHeader className="pb-4 bg-gradient-to-r from-surface-primary/50 to-transparent">
+          <SecurityHeader 
+            title="Organization Information" 
+            icon={Building}
+            subtitle="Core organizational details and registration information"
+          />
+        </CardHeader>
+        <CardContent className="space-y-0 bg-surface-primary/30">
+          <InfoRow 
+            label="Organization Name" 
+            value={organization.name}
+          />
+          
+          <InfoRow 
+            label="Country" 
+            value={organization.country}
+            icon={Globe}
+          />
+          
+          <InfoRow 
+            label="Status" 
+            value={
+              <Badge 
+                variant={organization.status === 'active' ? 'success' : 'secondary'}
+                className="text-xs flex items-center gap-1"
+              >
+                <CheckCircle className="h-3 w-3" />
+                {organization.status === 'active' ? 'Active' : 'Inactive'}
+              </Badge>
+            }
+          />
+          
+          <InfoRow 
+            label="Created" 
+            value={new Date(organization.created_at).toLocaleDateString('en-US', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric'
+            })}
+            icon={Calendar}
+            isLast={true}
+          />
         </CardContent>
       </Card>
 
-      {/* Country-Specific Information */}
-      <Card className="border-l-4 border-l-blue-500">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <FileText className="h-4 w-4" />
-            Country-Specific Information
-            <Lock className="h-3 w-3 text-muted-foreground ml-auto" />
-          </CardTitle>
-          <p className="text-xs text-muted-foreground">
-            Additional information required for {organization.country}
-          </p>
+      {/* Enhanced Country-Specific Information */}
+      <Card className="border-l-4 border-l-blue-500 bg-gradient-to-br from-surface-primary to-blue-50/10 shadow-neumorphic hover:shadow-neumorphic-hover transition-all duration-200">
+        <CardHeader className="pb-4 bg-gradient-to-r from-blue-50/20 to-transparent">
+          <SecurityHeader 
+            title="Country-Specific Information" 
+            icon={FileText}
+            subtitle={`Additional information required for ${organization.country}`}
+          />
         </CardHeader>
-        <CardContent>
+        <CardContent className="bg-surface-primary/30">
           {fieldsLoading || customDataLoading ? (
-            <div className="space-y-3">
+            <div className="space-y-4">
               {[1, 2].map(i => (
                 <div key={i} className="animate-pulse">
-                  <div className="h-3 bg-gray-200 rounded w-1/4 mb-2"></div>
-                  <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                  <div className="h-3 bg-muted/40 rounded w-1/4 mb-2"></div>
+                  <div className="h-4 bg-muted/40 rounded w-3/4"></div>
                 </div>
               ))}
             </div>
           ) : fields.length > 0 ? (
-            <div className="space-y-3">
-              {fields.map(field => {
+            <div className="space-y-0">
+              {fields.map((field, index) => {
                 const value = getCustomFieldValue(field.id)
                 const fileData = getCustomFieldFileData(field.id)
+                const isLast = index === fields.length - 1
                 
                 return (
-                  <div key={field.id} className="flex items-center justify-between py-2 border-b border-border/50 last:border-b-0">
-                    <div className="space-y-0.5 flex-1">
-                      <p className="text-xs font-medium text-muted-foreground">
-                        {field.field_label}
-                        {field.is_required && <span className="text-red-500 ml-1">*</span>}
-                      </p>
-                      
-                      {field.field_type === 'file' ? (
+                  <InfoRow 
+                    key={field.id}
+                    label={`${field.field_label}${field.is_required ? ' *' : ''}`}
+                    value={
+                      field.field_type === 'file' ? (
                         fileData ? (
-                          <div className="flex items-center gap-2">
-                            <FileText className="h-4 w-4 text-muted-foreground" />
-                            <div className="flex flex-col">
-                              <span className="text-sm font-medium">{fileData.name}</span>
-                              <span className="text-xs text-muted-foreground">
-                                {formatFileSize(fileData.size)}
-                              </span>
+                          <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2">
+                              <FileText className="h-4 w-4 text-muted-foreground" />
+                              <div className="flex flex-col">
+                                <span className="text-sm font-medium">{fileData.name}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  {formatFileSize(fileData.size)}
+                                </span>
+                              </div>
                             </div>
                             <Button
                               variant="outline"
@@ -175,28 +220,25 @@ export function OrganizationDisplay({ organization }: OrganizationDisplayProps) 
                             </Button>
                           </div>
                         ) : (
-                          <p className="text-sm text-muted-foreground">No file uploaded</p>
+                          <span className="text-muted-foreground">No file uploaded</span>
                         )
                       ) : field.field_type === 'select' ? (
-                        <p className="text-sm font-medium">
-                          {value ? (
-                            field.select_options?.find(opt => opt.option_value === value)?.option_label || value
-                          ) : (
-                            <span className="text-muted-foreground">Not specified</span>
-                          )}
-                        </p>
+                        value ? (
+                          field.select_options?.find(opt => opt.option_value === value)?.option_label || value
+                        ) : (
+                          <span className="text-muted-foreground">Not specified</span>
+                        )
                       ) : (
-                        <p className="text-sm font-medium">
-                          {value || <span className="text-muted-foreground">Not provided</span>}
-                        </p>
-                      )}
-                    </div>
-                  </div>
+                        value || <span className="text-muted-foreground">Not provided</span>
+                      )
+                    }
+                    isLast={isLast}
+                  />
                 )
               })}
             </div>
           ) : (
-            <div className="text-center py-6">
+            <div className="text-center py-8">
               <FileText className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
               <p className="text-muted-foreground text-sm">
                 No additional fields required for this country.
@@ -206,67 +248,47 @@ export function OrganizationDisplay({ organization }: OrganizationDisplayProps) 
         </CardContent>
       </Card>
 
-      {/* Billing POC Information */}
-      <Card className="border-l-4 border-l-warning">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Shield className="h-4 w-4" />
-            Billing Point of Contact
-            <Lock className="h-3 w-3 text-muted-foreground ml-auto" />
-          </CardTitle>
-          <p className="text-xs text-muted-foreground">
-            Designated contact for billing and compliance matters
-          </p>
+      {/* Enhanced Billing POC Information */}
+      <Card className="border-l-4 border-l-warning bg-gradient-to-br from-surface-primary to-warning/5 shadow-neumorphic hover:shadow-neumorphic-hover transition-all duration-200">
+        <CardHeader className="pb-4 bg-gradient-to-r from-warning/10 to-transparent">
+          <SecurityHeader 
+            title="Billing Point of Contact" 
+            icon={Shield}
+            subtitle="Designated contact for billing and compliance matters"
+          />
         </CardHeader>
-        <CardContent>
+        <CardContent className="bg-surface-primary/30">
           {organization.billing_poc_user_id && billingPOCMember ? (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between py-2 border-b border-border/50">
-                <div className="space-y-0.5">
-                  <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                    <User className="h-3 w-3" />
-                    Primary Contact
-                  </p>
-                  <p className="text-sm font-medium">
-                    {`${billingPOCMember.first_name || ''} ${billingPOCMember.last_name || ''}`.trim() || 'Unknown User'}
-                  </p>
-                </div>
-              </div>
+            <div className="space-y-0">
+              <InfoRow 
+                label="Primary Contact" 
+                value={`${billingPOCMember.first_name || ''} ${billingPOCMember.last_name || ''}`.trim() || 'Unknown User'}
+                icon={User}
+              />
               
-              <div className="flex items-center justify-between py-2 border-b border-border/50">
-                <div className="space-y-0.5">
-                  <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                    <Mail className="h-3 w-3" />
-                    Primary Email
-                  </p>
-                  <p className="text-sm font-medium">{billingPOCMember.email || 'Not provided'}</p>
-                </div>
-              </div>
+              <InfoRow 
+                label="Primary Email" 
+                value={billingPOCMember.email || 'Not provided'}
+                icon={Mail}
+              />
               
               {organization.billing_poc_additional_email && (
-                <div className="flex items-center justify-between py-2 border-b border-border/50">
-                  <div className="space-y-0.5">
-                    <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                      <Mail className="h-3 w-3" />
-                      Additional Email
-                    </p>
-                    <p className="text-sm font-medium">{organization.billing_poc_additional_email}</p>
-                  </div>
-                </div>
+                <InfoRow 
+                  label="Additional Email" 
+                  value={organization.billing_poc_additional_email}
+                  icon={Mail}
+                />
               )}
               
-              <div className="flex items-center justify-between py-2">
-                <div className="space-y-0.5">
-                  <p className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                    <Phone className="h-3 w-3" />
-                    Phone Number
-                  </p>
-                  <p className="text-sm font-medium">{organization.billing_poc_phone || 'Not provided'}</p>
-                </div>
-              </div>
+              <InfoRow 
+                label="Phone Number" 
+                value={organization.billing_poc_phone || 'Not provided'}
+                icon={Phone}
+                isLast={true}
+              />
             </div>
           ) : (
-            <div className="text-center py-6">
+            <div className="text-center py-8">
               <Shield className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
               <p className="text-muted-foreground text-sm">No billing point of contact assigned</p>
               <p className="text-xs text-muted-foreground mt-1">
@@ -277,16 +299,17 @@ export function OrganizationDisplay({ organization }: OrganizationDisplayProps) 
         </CardContent>
       </Card>
 
-      {/* System Information */}
-      <Card className="bg-muted/20">
+      {/* Enhanced System Information */}
+      <Card className="bg-gradient-to-r from-muted/20 to-muted/10 border border-muted/30">
         <CardContent className="pt-4">
-          <div className="grid gap-1 text-xs text-muted-foreground">
-            <div className="flex justify-between items-center">
-              <span>Organization ID:</span>
-              <code className="text-xs bg-muted px-1.5 py-0.5 rounded font-mono">
-                {organization.id}
-              </code>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Lock className="h-3 w-3 text-muted-foreground" />
+              <span className="text-xs text-muted-foreground">Organization ID:</span>
             </div>
+            <code className="text-xs bg-muted px-2 py-1 rounded font-mono text-muted-foreground">
+              {organization.id}
+            </code>
           </div>
         </CardContent>
       </Card>
