@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react'
 import { Plus, Search, Filter, Calendar, Receipt } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -69,6 +68,7 @@ function AdminInvoicesContent() {
     { value: 'pending', label: 'Pending' },
     { value: 'paid', label: 'Paid' },
     { value: 'overdue', label: 'Overdue' },
+    { value: 'partial', label: 'Partial' }
   ]
 
   const organizationOptions = organizations.map(org => ({
@@ -231,7 +231,7 @@ function AdminInvoicesContent() {
             </CardContent>
           </Card>
 
-          {/* Summary Stats for Filtered Results */}
+          {/* Summary Stats for Filtered Results - Updated with proper outstanding balance calculation */}
           {hasActiveFilters && (
             <Card>
               <CardHeader>
@@ -245,7 +245,7 @@ function AdminInvoicesContent() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid gap-4 md:grid-cols-4">
+                <div className="grid gap-4 md:grid-cols-5">
                   <div className="bg-muted/50 rounded-lg p-4">
                     <div className="text-sm text-muted-foreground mb-1">Total Invoices</div>
                     <div className="text-lg font-semibold">{stats.totalInvoices}</div>
@@ -263,9 +263,15 @@ function AdminInvoicesContent() {
                     </div>
                   </div>
                   <div className="bg-muted/50 rounded-lg p-4">
-                    <div className="text-sm text-muted-foreground mb-1">Paid</div>
-                    <div className="text-lg font-semibold text-green-600">
-                      {stats.paidCount} (${stats.totalPaid.toLocaleString()})
+                    <div className="text-sm text-muted-foreground mb-1">Partial</div>
+                    <div className="text-lg font-semibold text-blue-600">
+                      {stats.partialCount} (${stats.totalPartial.toLocaleString()})
+                    </div>
+                  </div>
+                  <div className="bg-muted/50 rounded-lg p-4">
+                    <div className="text-sm text-muted-foreground mb-1">Outstanding</div>
+                    <div className="text-lg font-semibold text-purple-600">
+                      ${stats.totalOutstanding.toLocaleString()}
                     </div>
                   </div>
                 </div>

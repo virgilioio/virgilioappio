@@ -63,6 +63,7 @@ export function getUrgentInvoices(invoices: Invoice[], daysAhead: number = 7): I
 
 /**
  * Calculates payment metrics with unified overdue logic and optional filtering
+ * Updated to properly handle partial payments and outstanding balances
  */
 export function calculatePaymentMetrics(invoices: Invoice[], organizationId?: string, filters?: InvoiceFilters) {
   console.log('=== PAYMENT METRICS CALCULATION ===')
@@ -98,11 +99,16 @@ export function calculatePaymentMetrics(invoices: Invoice[], organizationId?: st
   const pendingInvoices = processedInvoices.filter(inv => inv.status === 'pending')
   const overdueInvoices = getOverdueInvoices(processedInvoices)
   const urgentInvoices = getUrgentInvoices(processedInvoices)
+  const partialInvoices = processedInvoices.filter(inv => inv.status === 'partial')
   
   // Calculate amounts
   const totalPending = pendingInvoices.reduce((sum, inv) => sum + inv.amount, 0)
   const overdueAmount = overdueInvoices.reduce((sum, inv) => sum + inv.amount, 0)
   const urgentAmount = urgentInvoices.reduce((sum, inv) => sum + inv.amount, 0)
+  const partialAmount = partialInvoices.reduce((sum, inv) => sum + (inv.remaining_amount || inv.amount), 0)
+  
+  // Outstanding balance includes pending + overdue + remaining partial amounts
+  const totalOutstanding = totalPending + overdueAmount + partialAmount
   
   console.log('Payment metrics calculated:', {
     pendingCount: pendingInvoices.length,
@@ -110,7 +116,10 @@ export function calculatePaymentMetrics(invoices: Invoice[], organizationId?: st
     overdueCount: overdueInvoices.length,
     overdueAmount,
     urgentCount: urgentInvoices.length,
-    urgentAmount
+    urgentAmount,
+    partialCount: partialInvoices.length,
+    partialAmount,
+    totalOutstanding
   })
   
   return {
@@ -118,11 +127,15 @@ export function calculatePaymentMetrics(invoices: Invoice[], organizationId?: st
     pendingInvoices,
     overdueInvoices,
     urgentInvoices,
+    partialInvoices,
     totalPending,
     overdueAmount,
     urgentAmount,
+    partialAmount,
+    totalOutstanding,
     pendingCount: pendingInvoices.length,
     overdueCount: overdueInvoices.length,
-    urgentCount: urgentInvoices.length
+    urgentCount: urgentInvoices.length,
+    partialCount: partialInvoices.length
   }
 }

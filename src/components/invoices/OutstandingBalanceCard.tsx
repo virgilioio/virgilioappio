@@ -5,7 +5,8 @@ import { Invoice } from '@/hooks/useInvoices'
 import { Clock, Globe } from 'lucide-react'
 import { useOrganizationCurrency } from '@/hooks/useOrganizationCurrency'
 import { useAuth } from '@/contexts/AuthContext'
-import { convertCurrency, formatCurrencyAmount, getCurrencySymbol } from '@/utils/currencyUtils'
+import { formatCurrencyAmount, getCurrencySymbol } from '@/utils/currencyUtils'
+import { calculateOutstandingBalance } from '@/utils/outstandingBalanceUtils'
 
 interface OutstandingBalanceCardProps {
   invoices: Invoice[]
@@ -15,51 +16,59 @@ export function OutstandingBalanceCard({ invoices }: OutstandingBalanceCardProps
   const { defaultCurrency } = useOrganizationCurrency()
   const { organizationId } = useAuth()
   const [currencySymbol, setCurrencySymbol] = useState('$')
-  const [convertedTotal, setConvertedTotal] = useState(0)
-  const [showCurrencyIndicator, setShowCurrencyIndicator] = useState(false)
+  const [outstandingData, setOutstandingData] = useState({
+    totalOutstanding: 0,
+    showCurrencyIndicator: false
+  })
 
   // Fetch currency symbol
   useEffect(() => {
     getCurrencySymbol(defaultCurrency).then(setCurrencySymbol)
   }, [defaultCurrency])
 
-  const totalOutstanding = useMemo(() => {
-    const now = new Date()
-
-    // Filter outstanding invoices (pending + overdue) - no time period filtering needed
-    const filteredInvoices = invoices.filter(invoice => {
-      const isOverdue = invoice.status === 'overdue' || 
-        (invoice.status === 'pending' && invoice.due_date && new Date(invoice.due_date) < now)
-      const isPending = invoice.status === 'pending'
-      return isOverdue || isPending
-    })
-
-    // Calculate total amount of outstanding invoices
-    return filteredInvoices.reduce((sum, invoice) => sum + invoice.amount, 0)
-  }, [invoices])
-
-  // Convert total to organization's default currency
+  // Calculate outstanding balance with proper currency conversion
   useEffect(() => {
-    const convertTotal = async () => {
-      if (totalOutstanding === 0) {
-        setConvertedTotal(0)
-        setShowCurrencyIndicator(false)
-        return
-      }
-
+    const calculateOutstanding = async () => {
       try {
-        const conversion = await convertCurrency(totalOutstanding, 'USD', defaultCurrency, organizationId)
-        setConvertedTotal(conversion.convertedAmount)
-        setShowCurrencyIndicator(conversion.exchangeRate !== 1.0)
+        const result = await calculateOutstandingBalance(
+          invoices,
+          organizationId,
+          undefined, // no date filter for this card
+          defaultCurrency
+        )
+        
+        setOutstandingData({
+          totalOutstanding: result.totalOutstanding,
+          showCurrencyIndicator: result.showCurrencyIndicator
+        })
       } catch (error) {
-        console.error('Error converting currency:', error)
-        setConvertedTotal(totalOutstanding)
-        setShowCurrencyIndicator(false)
+        console.error('Error calculating outstanding balance:', error)
+        // Fallback calculation
+        const now = new Date()
+        const fallbackTotal = invoices
+          .filter(invoice => {
+            const isOverdue = invoice.status === 'overdue' || 
+              (invoice.status === 'pending' && invoice.due_date && new Date(invoice.due_date) < now)
+            const isPending = invoice.status === 'pending'
+            const isPartial = invoice.status === 'partial'
+            return isOverdue || isPending || isPartial
+          })
+          .reduce((sum, invoice) => {
+            if (invoice.status === 'partial') {
+              return sum + (invoice.remaining_amount || invoice.amount)
+            }
+            return sum + invoice.amount
+          }, 0)
+        
+        setOutstandingData({
+          totalOutstanding: fallbackTotal,
+          showCurrencyIndicator: false
+        })
       }
     }
 
-    convertTotal()
-  }, [totalOutstanding, defaultCurrency, organizationId])
+    calculateOutstanding()
+  }, [invoices, defaultCurrency, organizationId])
 
   const formatCurrency = (amount: number) => {
     return formatCurrencyAmount(amount, defaultCurrency, currencySymbol)
@@ -71,14 +80,14 @@ export function OutstandingBalanceCard({ invoices }: OutstandingBalanceCardProps
         <div className="space-y-2">
           <div className="space-y-1">
             <div className="text-3xl font-bold text-black">
-              {formatCurrency(convertedTotal)}
+              {formatCurrency(outstandingData.totalOutstanding)}
             </div>
           </div>
           
           <CardTitle className="flex items-center gap-2 text-base">
             <Clock className="h-4 w-4" />
             Outstanding Balance
-            {showCurrencyIndicator && (
+            {outstandingData.showCurrencyIndicator && (
               <div className="flex items-center gap-1 text-xs text-muted-foreground">
                 <Globe className="h-3 w-3" />
                 {defaultCurrency}

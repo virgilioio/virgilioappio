@@ -49,23 +49,42 @@ export function filterInvoices(invoices: Invoice[], filters: InvoiceFilters): In
 }
 
 export function getInvoiceStats(invoices: Invoice[]) {
+  const now = new Date()
   const totalInvoices = invoices.length
-  const pendingInvoices = invoices.filter(inv => inv.status === 'pending')
-  const overdueInvoices = invoices.filter(inv => inv.status === 'overdue')
-  const paidInvoices = invoices.filter(inv => inv.status === 'paid')
   
+  // Filter invoices by status including auto-detected overdue
+  const pendingInvoices = invoices.filter(inv => inv.status === 'pending')
+  const paidInvoices = invoices.filter(inv => inv.status === 'paid')
+  const partialInvoices = invoices.filter(inv => inv.status === 'partial')
+  
+  // Calculate overdue invoices (both marked as overdue and auto-detected)
+  const overdueInvoices = invoices.filter(inv => 
+    inv.status === 'overdue' || 
+    (inv.status === 'pending' && inv.due_date && new Date(inv.due_date) < now)
+  )
+  
+  // Calculate amounts
   const totalPending = pendingInvoices.reduce((sum, inv) => sum + inv.amount, 0)
-  const totalOverdue = overdueInvoices.reduce((sum, inv) => sum + inv.amount, 0)
   const totalPaid = paidInvoices.reduce((sum, inv) => sum + inv.amount, 0)
+  const totalOverdue = overdueInvoices.reduce((sum, inv) => sum + inv.amount, 0)
+  
+  // Calculate partial payments - use remaining_amount if available, otherwise full amount
+  const totalPartial = partialInvoices.reduce((sum, inv) => sum + (inv.remaining_amount || inv.amount), 0)
+  
+  // Outstanding balance includes pending + overdue + remaining partial amounts
+  const totalOutstanding = totalPending + totalOverdue + totalPartial
 
   return {
     totalInvoices,
     pendingCount: pendingInvoices.length,
     overdueCount: overdueInvoices.length,
     paidCount: paidInvoices.length,
+    partialCount: partialInvoices.length,
     totalPending,
     totalOverdue,
-    totalPaid
+    totalPaid,
+    totalPartial,
+    totalOutstanding
   }
 }
 
