@@ -25,12 +25,17 @@ import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { CalendarIcon } from 'lucide-react'
+import { CalendarIcon, RefreshCw } from 'lucide-react'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
 import { Invoice, useInvoices } from '@/hooks/useInvoices'
 import { useOrganizations } from '@/hooks/useOrganizations'
 import { useFormPersistence } from '@/hooks/useFormPersistence'
+import { useCurrencies } from '@/hooks/useCurrencies'
+import { useOrganizationCurrency } from '@/hooks/useOrganizationCurrency'
+import { convertCurrency, formatCurrencyAmount, getCurrencySymbol } from '@/utils/currencyUtils'
+import { useAuth } from '@/contexts/AuthContext'
+import { Card, CardContent } from '@/components/ui/card'
 
 const formSchema = z.object({
   organization_id: z.string().min(1, 'Organization is required'),
@@ -57,7 +62,17 @@ interface EditInvoiceModalProps {
 export function EditInvoiceModal({ open, onOpenChange, invoice }: EditInvoiceModalProps) {
   const { updateInvoice } = useInvoices()
   const { organizations } = useOrganizations()
+  const { currencies } = useCurrencies()
+  const { defaultCurrency } = useOrganizationCurrency()
+  const { organizationId } = useAuth()
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [conversionPreview, setConversionPreview] = useState<{
+    convertedAmount: number
+    exchangeRate: number
+    rateDate: string
+    isEstimate: boolean
+  } | null>(null)
+  const [isLoadingConversion, setIsLoadingConversion] = useState(false)
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -66,7 +81,7 @@ export function EditInvoiceModal({ open, onOpenChange, invoice }: EditInvoiceMod
       title: '',
       description: '',
       amount: '',
-      currency: 'USD',
+      currency: defaultCurrency,
       issued_at: new Date(),
       due_date: undefined,
       status: 'pending',
@@ -95,6 +110,66 @@ export function EditInvoiceModal({ open, onOpenChange, invoice }: EditInvoiceMod
       })
     }
   }, [invoice, open, form])
+
+  // Watch for amount and currency changes to update conversion preview
+  const watchedAmount = form.watch('amount')
+  const watchedCurrency = form.watch('currency')
+
+  // Update conversion preview when amount or currency changes
+  useEffect(() => {
+    const updateConversionPreview = async () => {
+      if (!watchedAmount || !watchedCurrency || watchedCurrency === defaultCurrency) {
+        setConversionPreview(null)
+        return
+      }
+
+      const amount = parseFloat(watchedAmount)
+      if (isNaN(amount) || amount <= 0) {
+        setConversionPreview(null)
+        return
+      }
+
+      setIsLoadingConversion(true)
+      try {
+        const result = await convertCurrency(
+          amount,
+          watchedCurrency,
+          defaultCurrency,
+          organizationId
+        )
+        setConversionPreview(result)
+      } catch (error) {
+        console.error('Error converting currency:', error)
+        setConversionPreview(null)
+      } finally {
+        setIsLoadingConversion(false)
+      }
+    }
+
+    updateConversionPreview()
+  }, [watchedAmount, watchedCurrency, defaultCurrency, organizationId])
+
+  const refreshConversionRate = async () => {
+    if (!watchedAmount || !watchedCurrency || watchedCurrency === defaultCurrency) return
+
+    const amount = parseFloat(watchedAmount)
+    if (isNaN(amount) || amount <= 0) return
+
+    setIsLoadingConversion(true)
+    try {
+      const result = await convertCurrency(
+        amount,
+        watchedCurrency,
+        defaultCurrency,
+        organizationId
+      )
+      setConversionPreview(result)
+    } catch (error) {
+      console.error('Error refreshing conversion rate:', error)
+    } finally {
+      setIsLoadingConversion(false)
+    }
+  }
 
   const onSubmit = async (data: FormData) => {
     if (!invoice) return
@@ -125,6 +200,7 @@ export function EditInvoiceModal({ open, onOpenChange, invoice }: EditInvoiceMod
   const handleCancel = () => {
     form.reset()
     clearPersistedData()
+    setConversionPreview(null)
     onOpenChange(false)
   }
 
@@ -249,16 +325,54 @@ export function EditInvoiceModal({ open, onOpenChange, invoice }: EditInvoiceMod
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="USD">USD</SelectItem>
-                        <SelectItem value="MXN">MXN</SelectItem>
-                        <SelectItem value="EUR">EUR</SelectItem>
-                        <SelectItem value="GBP">GBP</SelectItem>
+                        {currencies?.map((currency) => (
+                          <SelectItem key={currency.code} value={currency.code}>
+                            {currency.code} - {currency.name}
+                          </SelectItem>
+                        )) || []}
                       </SelectContent>
                     </Select>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+
+              {/* Currency Conversion Preview */}
+              {conversionPreview && watchedCurrency !== defaultCurrency && (
+                <div className="sm:col-span-2">
+                  <Card className="bg-blue-50 border-blue-200">
+                    <CardContent className="pt-4">
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-1">
+                          <div className="text-sm font-medium text-blue-900">
+                            Conversion Preview
+                          </div>
+                          <div className="text-lg font-semibold text-blue-700">
+                            {formatCurrencyAmount(conversionPreview.convertedAmount, defaultCurrency)} {defaultCurrency}
+                          </div>
+                          <div className="text-xs text-blue-600">
+                            Rate: 1 {watchedCurrency} = {conversionPreview.exchangeRate.toFixed(6)} {defaultCurrency}
+                          </div>
+                          <div className="text-xs text-blue-500">
+                            Rate from: {new Date(conversionPreview.rateDate).toLocaleDateString()}
+                            {conversionPreview.isEstimate && ' (estimated)'}
+                          </div>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={refreshConversionRate}
+                          disabled={isLoadingConversion}
+                          className="text-blue-600 hover:text-blue-700"
+                        >
+                          <RefreshCw className={cn("h-4 w-4", isLoadingConversion && "animate-spin")} />
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
 
               {/* Status */}
               <FormField
