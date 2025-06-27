@@ -1,3 +1,4 @@
+
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -24,13 +25,16 @@ import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { CalendarIcon } from 'lucide-react'
+import { CalendarIcon, RefreshCw } from 'lucide-react'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
 import { useInvoices, CreateInvoiceData } from '@/hooks/useInvoices'
 import { useOrganizations } from '@/hooks/useOrganizations'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useFormPersistence } from '@/hooks/useFormPersistence'
+import { useCurrencies } from '@/hooks/useCurrencies'
+import { useOrganizationCurrency } from '@/hooks/useOrganizationCurrency'
+import { convertCurrency, formatCurrencyAmount } from '@/utils/currencyUtils'
 
 const formSchema = z.object({
   organization_id: z.string().min(1, 'Organization is required'),
@@ -56,7 +60,16 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
   const { createInvoice } = useInvoices()
   const { organizations } = useOrganizations()
   const { isPlatformAdmin } = usePermissions()
+  const { currencies } = useCurrencies()
+  const { defaultCurrency } = useOrganizationCurrency()
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [conversionPreview, setConversionPreview] = useState<{
+    amount: number
+    fromCurrency: string
+    toCurrency: string
+    convertedAmount: number
+    exchangeRate: number
+  } | null>(null)
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -65,7 +78,7 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
       title: '',
       description: '',
       amount: '',
-      currency: 'USD',
+      currency: defaultCurrency,
       issued_at: new Date(),
       due_date: undefined,
     },
@@ -77,6 +90,49 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
     form,
     enabled: open
   })
+
+  const watchedAmount = form.watch('amount')
+  const watchedCurrency = form.watch('currency')
+  const watchedOrganization = form.watch('organization_id')
+
+  // Get organization's preferred currency for conversion preview
+  const selectedOrganization = organizations.find(org => org.id === watchedOrganization)
+  const orgCurrency = selectedOrganization?.default_currency || defaultCurrency
+
+  // Show conversion preview when currency differs from org currency
+  const showConversion = watchedCurrency && orgCurrency && watchedCurrency !== orgCurrency && watchedAmount
+
+  const updateConversionPreview = async () => {
+    if (!showConversion) {
+      setConversionPreview(null)
+      return
+    }
+
+    try {
+      const amount = parseFloat(watchedAmount)
+      if (isNaN(amount)) return
+
+      const result = await convertCurrency(amount, watchedCurrency, orgCurrency)
+      setConversionPreview({
+        amount,
+        fromCurrency: watchedCurrency,
+        toCurrency: orgCurrency,
+        convertedAmount: result.convertedAmount,
+        exchangeRate: result.exchangeRate
+      })
+    } catch (error) {
+      console.error('Conversion preview error:', error)
+      setConversionPreview(null)
+    }
+  }
+
+  // Update conversion preview when relevant fields change
+  React.useEffect(() => {
+    if (showConversion) {
+      const timeoutId = setTimeout(updateConversionPreview, 500)
+      return () => clearTimeout(timeoutId)
+    }
+  }, [watchedAmount, watchedCurrency, orgCurrency, showConversion])
 
   const onSubmit = async (data: FormData) => {
     setIsSubmitting(true)
@@ -93,7 +149,7 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
 
       await createInvoice(invoiceData)
       form.reset()
-      clearPersistedData() // Clear persisted data on successful submit
+      clearPersistedData()
       onOpenChange(false)
     } catch (error) {
       // Error handling is done in the hook
@@ -104,11 +160,10 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
 
   const handleCancel = () => {
     form.reset()
-    clearPersistedData() // Clear persisted data on cancel
+    clearPersistedData()
     onOpenChange(false)
   }
 
-  // Show all organizations for platform admins, otherwise show all (removing the filter for now)
   const availableOrganizations = organizations
 
   return (
@@ -202,7 +257,6 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
                         {...field}
                         onChange={(e) => {
                           const value = e.target.value
-                          // Only allow numbers and one decimal point
                           if (value === '' || /^\d*\.?\d{0,2}$/.test(value)) {
                             field.onChange(value)
                           }
@@ -221,23 +275,50 @@ export function CreateInvoiceModal({ open, onOpenChange }: CreateInvoiceModalPro
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Currency *</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select currency" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="USD">USD</SelectItem>
-                        <SelectItem value="MXN">MXN</SelectItem>
-                        <SelectItem value="EUR">EUR</SelectItem>
-                        <SelectItem value="GBP">GBP</SelectItem>
+                        {currencies.map((currency) => (
+                          <SelectItem key={currency.code} value={currency.code}>
+                            {currency.code} - {currency.name}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+
+              {/* Conversion Preview */}
+              {conversionPreview && (
+                <div className="sm:col-span-2 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-blue-900">Currency Conversion Preview</p>
+                      <p className="text-sm text-blue-700">
+                        {formatCurrencyAmount(conversionPreview.amount, conversionPreview.fromCurrency)} = {' '}
+                        {formatCurrencyAmount(conversionPreview.convertedAmount, conversionPreview.toCurrency)}
+                      </p>
+                      <p className="text-xs text-blue-600">
+                        Exchange rate: 1 {conversionPreview.fromCurrency} = {conversionPreview.exchangeRate.toFixed(6)} {conversionPreview.toCurrency}
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={updateConversionPreview}
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
 
               {/* Issued Date */}
               <FormField

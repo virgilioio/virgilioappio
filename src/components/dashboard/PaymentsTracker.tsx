@@ -1,22 +1,25 @@
 
-
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { DollarSign, TrendingUp, ExternalLink, AlertTriangle, Clock } from 'lucide-react'
+import { DollarSign, TrendingUp, ExternalLink, AlertTriangle, Clock, Globe } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useInvoices } from '@/hooks/useInvoices'
 import { useAuth } from '@/contexts/AuthContext'
+import { useOrganizationCurrency } from '@/hooks/useOrganizationCurrency'
 import { calculatePaymentMetrics } from '@/utils/invoiceUtils'
 import { useInvoiceFilter } from '@/utils/invoiceFilters'
+import { convertCurrency, formatCurrencyAmount, getCurrencySymbol } from '@/utils/currencyUtils'
 
 export function PaymentsTracker() {
   const { invoices, isLoading } = useInvoices()
   const { userType, organizationId } = useAuth()
+  const { defaultCurrency } = useOrganizationCurrency()
   const { filters } = useInvoiceFilter()
-  const [paymentMetrics, setPaymentMetrics] = useState({
+  const [currencySymbol, setCurrencySymbol] = useState('$')
+  const [convertedMetrics, setConvertedMetrics] = useState({
     totalPending: 0,
     overdueAmount: 0,
     urgentAmount: 0,
@@ -24,38 +27,57 @@ export function PaymentsTracker() {
     overdueCount: 0,
     urgentCount: 0
   })
+  const [showCurrencyIndicator, setShowCurrencyIndicator] = useState(false)
+
+  // Fetch currency symbol
+  useEffect(() => {
+    getCurrencySymbol(defaultCurrency).then(setCurrencySymbol)
+  }, [defaultCurrency])
 
   useEffect(() => {
     if (invoices) {
-      console.log('=== PAYMENTS TRACKER DEBUG ===')
+      console.log('=== PAYMENTS TRACKER MULTI-CURRENCY DEBUG ===')
       console.log('PaymentsTracker: Processing invoices for context:', { userType, organizationId, invoiceCount: invoices.length })
-      console.log('All invoices received:', invoices)
+      console.log('Display currency:', defaultCurrency)
       
       // Use unified payment metrics calculation with month filter
-      const metrics = calculatePaymentMetrics(
+      const baseMetrics = calculatePaymentMetrics(
         invoices,
         userType !== 'platform_admin' ? organizationId : undefined,
         filters
       )
       
-      console.log('PaymentsTracker: Using calculated metrics:', metrics)
-      
-      setPaymentMetrics({
-        totalPending: metrics.totalPending,
-        overdueAmount: metrics.overdueAmount,
-        urgentAmount: metrics.urgentAmount,
-        pendingCount: metrics.pendingCount,
-        overdueCount: metrics.overdueCount,
-        urgentCount: metrics.urgentCount
-      })
+      console.log('PaymentsTracker: Base metrics calculated:', baseMetrics)
+
+      // Convert amounts to display currency if needed
+      const convertMetrics = async () => {
+        let needsConversion = false
+        const conversions = await Promise.all([
+          convertCurrency(baseMetrics.totalPending, 'USD', defaultCurrency),
+          convertCurrency(baseMetrics.overdueAmount, 'USD', defaultCurrency),
+          convertCurrency(baseMetrics.urgentAmount, 'USD', defaultCurrency),
+        ])
+
+        // Check if any conversion happened (rate != 1.0)
+        needsConversion = conversions.some(c => c.exchangeRate !== 1.0)
+        setShowCurrencyIndicator(needsConversion)
+
+        setConvertedMetrics({
+          totalPending: conversions[0].convertedAmount,
+          overdueAmount: conversions[1].convertedAmount,
+          urgentAmount: conversions[2].convertedAmount,
+          pendingCount: baseMetrics.pendingCount,
+          overdueCount: baseMetrics.overdueCount,
+          urgentCount: baseMetrics.urgentCount
+        })
+      }
+
+      convertMetrics()
     }
-  }, [invoices, userType, organizationId, filters])
+  }, [invoices, userType, organizationId, filters, defaultCurrency])
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD'
-    }).format(amount)
+    return formatCurrencyAmount(amount, defaultCurrency, currencySymbol)
   }
 
   // Determine labels based on user type
@@ -76,7 +98,7 @@ export function PaymentsTracker() {
   const { totalDueLabel, incomingLabel } = getLabels()
 
   // Calculate total receivable/expected income including overdue amounts
-  const totalReceivable = paymentMetrics.totalPending + paymentMetrics.overdueAmount
+  const totalReceivable = convertedMetrics.totalPending + convertedMetrics.overdueAmount
 
   return (
     <Card>
@@ -84,40 +106,46 @@ export function PaymentsTracker() {
         <CardTitle className="flex items-center gap-2">
           <DollarSign className="h-5 w-5" />
           Payments Tracker
+          {showCurrencyIndicator && (
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <Globe className="h-3 w-3" />
+              {defaultCurrency}
+            </div>
+          )}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Priority Section - Overdue & Urgent */}
-        {(paymentMetrics.overdueCount > 0 || paymentMetrics.urgentCount > 0) && (
+        {(convertedMetrics.overdueCount > 0 || convertedMetrics.urgentCount > 0) && (
           <div className="space-y-3 pb-4 border-b border-border">
-            {paymentMetrics.overdueCount > 0 && (
+            {convertedMetrics.overdueCount > 0 && (
               <div className="flex items-center justify-between p-3 rounded-lg border-destructive border bg-destructive/5">
                 <div className="flex items-center gap-2">
                   <AlertTriangle className="h-4 w-4 text-destructive" />
                   <div>
                     <p className="text-sm font-medium text-destructive">Overdue</p>
                     <p className="text-lg font-bold text-destructive">
-                      {formatCurrency(paymentMetrics.overdueAmount)}
+                      {formatCurrency(convertedMetrics.overdueAmount)}
                     </p>
                   </div>
                 </div>
-                <Badge variant="destructive">{paymentMetrics.overdueCount} invoice{paymentMetrics.overdueCount > 1 ? 's' : ''}</Badge>
+                <Badge variant="destructive">{convertedMetrics.overdueCount} invoice{convertedMetrics.overdueCount > 1 ? 's' : ''}</Badge>
               </div>
             )}
             
-            {paymentMetrics.urgentCount > 0 && (
+            {convertedMetrics.urgentCount > 0 && (
               <div className="flex items-center justify-between p-3 rounded-lg border-orange-200 border bg-orange-50">
                 <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4 text-orange-600" />
                   <div>
                     <p className="text-sm font-medium text-orange-700">Due Soon (7 days)</p>
                     <p className="text-lg font-bold text-orange-700">
-                      {formatCurrency(paymentMetrics.urgentAmount)}
+                      {formatCurrency(convertedMetrics.urgentAmount)}
                     </p>
                   </div>
                 </div>
                 <Badge variant="secondary" className="bg-orange-100 text-orange-700">
-                  {paymentMetrics.urgentCount} invoice{paymentMetrics.urgentCount > 1 ? 's' : ''}
+                  {convertedMetrics.urgentCount} invoice{convertedMetrics.urgentCount > 1 ? 's' : ''}
                 </Badge>
               </div>
             )}
@@ -144,10 +172,10 @@ export function PaymentsTracker() {
           </div>
         </div>
         
-        {(paymentMetrics.pendingCount > 0 || paymentMetrics.overdueCount > 0) && (
+        {(convertedMetrics.pendingCount > 0 || convertedMetrics.overdueCount > 0) && (
           <div className="flex items-center justify-between pt-2 border-t">
             <div className="flex items-center gap-2">
-              <Badge variant="secondary">{paymentMetrics.pendingCount + paymentMetrics.overdueCount}</Badge>
+              <Badge variant="secondary">{convertedMetrics.pendingCount + convertedMetrics.overdueCount}</Badge>
               <span className="text-sm text-text-secondary">total outstanding invoices</span>
             </div>
             <Link to="/settings?tab=billing">
@@ -162,4 +190,3 @@ export function PaymentsTracker() {
     </Card>
   )
 }
-

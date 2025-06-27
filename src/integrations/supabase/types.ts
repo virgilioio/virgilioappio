@@ -202,6 +202,80 @@ export type Database = {
           },
         ]
       }
+      currency_conversions: {
+        Row: {
+          conversion_date: string
+          converted_amount: number
+          converted_currency: string
+          created_at: string
+          exchange_rate: number
+          id: string
+          invoice_id: string
+          original_amount: number
+          original_currency: string
+        }
+        Insert: {
+          conversion_date?: string
+          converted_amount: number
+          converted_currency: string
+          created_at?: string
+          exchange_rate: number
+          id?: string
+          invoice_id: string
+          original_amount: number
+          original_currency: string
+        }
+        Update: {
+          conversion_date?: string
+          converted_amount?: number
+          converted_currency?: string
+          created_at?: string
+          exchange_rate?: number
+          id?: string
+          invoice_id?: string
+          original_amount?: number
+          original_currency?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "currency_conversions_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      currency_exchange_rates: {
+        Row: {
+          base_currency: string
+          created_at: string
+          id: string
+          rate: number
+          rate_date: string
+          target_currency: string
+          updated_at: string
+        }
+        Insert: {
+          base_currency?: string
+          created_at?: string
+          id?: string
+          rate: number
+          rate_date: string
+          target_currency: string
+          updated_at?: string
+        }
+        Update: {
+          base_currency?: string
+          created_at?: string
+          id?: string
+          rate?: number
+          rate_date?: string
+          target_currency?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       field_select_options: {
         Row: {
           country_field_id: string
@@ -325,11 +399,14 @@ export type Database = {
       invoices: {
         Row: {
           amount: number
+          base_currency_amount: number | null
+          conversion_date: string | null
           created_at: string
           created_by: string | null
           currency: string
           description: string | null
           due_date: string | null
+          exchange_rate_used: number | null
           file_name: string | null
           id: string
           invoice_url: string | null
@@ -347,11 +424,14 @@ export type Database = {
         }
         Insert: {
           amount: number
+          base_currency_amount?: number | null
+          conversion_date?: string | null
           created_at?: string
           created_by?: string | null
           currency?: string
           description?: string | null
           due_date?: string | null
+          exchange_rate_used?: number | null
           file_name?: string | null
           id?: string
           invoice_url?: string | null
@@ -369,11 +449,14 @@ export type Database = {
         }
         Update: {
           amount?: number
+          base_currency_amount?: number | null
+          conversion_date?: string | null
           created_at?: string
           created_by?: string | null
           currency?: string
           description?: string | null
           due_date?: string | null
+          exchange_rate_used?: number | null
           file_name?: string | null
           id?: string
           invoice_url?: string | null
@@ -828,6 +911,7 @@ export type Database = {
           country: string
           created_at: string
           created_by: string | null
+          default_currency: string | null
           id: string
           name: string
           organization_type: string
@@ -845,6 +929,7 @@ export type Database = {
           country: string
           created_at?: string
           created_by?: string | null
+          default_currency?: string | null
           id?: string
           name: string
           organization_type?: string
@@ -862,6 +947,7 @@ export type Database = {
           country?: string
           created_at?: string
           created_by?: string | null
+          default_currency?: string | null
           id?: string
           name?: string
           organization_type?: string
@@ -1004,6 +1090,36 @@ export type Database = {
         }
         Relationships: []
       }
+      supported_currencies: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          symbol: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          symbol: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          symbol?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -1075,6 +1191,10 @@ export type Database = {
       get_invite_expiry: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      get_latest_exchange_rate: {
+        Args: { from_currency: string; to_currency: string }
+        Returns: number
       }
       get_member_display_info: {
         Args: { member_user_id: string }
