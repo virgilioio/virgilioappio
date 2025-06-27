@@ -1,3 +1,4 @@
+
 import { useState } from 'react'
 import { Plus, Search, Filter } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -9,7 +10,6 @@ import { Receipt } from 'lucide-react'
 import { AdminInvoicesTable } from '@/components/invoices/AdminInvoicesTable'
 import { WorkspaceOwnerInvoicesTable } from '@/components/invoices/WorkspaceOwnerInvoicesTable'
 import { CreateInvoiceModal } from '@/components/invoices/CreateInvoiceModal'
-import { BillingMetricsDashboard } from '@/components/invoices/BillingMetricsDashboard'
 import { useInvoices } from '@/hooks/useInvoices'
 import { useOrganizations } from '@/hooks/useOrganizations'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -132,9 +132,6 @@ export function BillingTab() {
           </div>
         </CardHeader>
       </Card>
-
-      {/* Billing Metrics Dashboard */}
-      <BillingMetricsDashboard />
 
       {/* Filters - Only show for admin view */}
       {showAdminView && (

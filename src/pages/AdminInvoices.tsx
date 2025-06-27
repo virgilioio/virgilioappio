@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react'
 import { Plus, Search, Filter, Calendar, Receipt } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -7,7 +8,6 @@ import { Badge } from '@/components/ui/badge'
 import { MultiSelect } from '@/components/ui/multi-select'
 import { AdminInvoicesTable } from '@/components/invoices/AdminInvoicesTable'
 import { CreateInvoiceModal } from '@/components/invoices/CreateInvoiceModal'
-import { BillingMetricsDashboard } from '@/components/invoices/BillingMetricsDashboard'
 import { InvoiceAnalyticsChart } from '@/components/invoices/InvoiceAnalyticsChart'
 import { TotalPaidCard } from '@/components/invoices/TotalPaidCard'
 import { OverduePaymentsCard } from '@/components/invoices/OverduePaymentsCard'
@@ -138,9 +138,6 @@ function AdminInvoicesContent() {
               <OutstandingBalanceCard invoices={invoices} />
             </div>
           </div>
-
-          {/* Billing Metrics Dashboard */}
-          <BillingMetricsDashboard />
 
           {/* Filters */}
           <Card>
