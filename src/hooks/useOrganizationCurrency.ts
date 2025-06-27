@@ -2,111 +2,88 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
-import { toast } from '@/hooks/use-toast'
+import { useToast } from '@/hooks/use-toast'
 
 export function useOrganizationCurrency() {
-  const { organizationId, userType } = useAuth()
-  const [defaultCurrency, setDefaultCurrency] = useState<string>('USD')
+  const [defaultCurrency, setDefaultCurrency] = useState('USD')
   const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const { user } = useAuth()
+  const { toast } = useToast()
 
   const fetchOrganizationCurrency = async () => {
-    if (!organizationId) return
-
-    setIsLoading(true)
-    setError(null)
+    if (!user) return
 
     try {
-      const { data, error: fetchError } = await supabase
-        .from('organizations')
-        .select('default_currency')
-        .eq('id', organizationId)
+      const { data: member } = await supabase
+        .from('members')
+        .select('organization_id')
+        .eq('user_id', user.id)
         .single()
 
-      if (fetchError) {
-        throw fetchError
-      }
+      if (member?.organization_id) {
+        const { data: organization } = await supabase
+          .from('organizations')
+          .select('default_currency')
+          .eq('id', member.organization_id)
+          .single()
 
-      setDefaultCurrency(data?.default_currency || 'USD')
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch organization currency'
-      setError(errorMessage)
-      console.error('Error fetching organization currency:', err)
-    } finally {
-      setIsLoading(false)
+        if (organization?.default_currency) {
+          setDefaultCurrency(organization.default_currency)
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching organization currency:', error)
     }
   }
 
-  const updateOrganizationCurrency = async (currency: string) => {
-    if (!organizationId) {
-      throw new Error('No organization context available')
-    }
+  const updateOrganizationCurrency = async (currencyCode: string) => {
+    if (!user) return false
 
     setIsLoading(true)
     try {
-      const { error: updateError } = await supabase
-        .from('organizations')
-        .update({ default_currency: currency })
-        .eq('id', organizationId)
+      const { data: member } = await supabase
+        .from('members')
+        .select('organization_id')
+        .eq('user_id', user.id)
+        .single()
 
-      if (updateError) {
-        throw updateError
+      if (member?.organization_id) {
+        const { error } = await supabase
+          .from('organizations')
+          .update({ default_currency: currencyCode })
+          .eq('id', member.organization_id)
+
+        if (error) {
+          throw error
+        }
+
+        setDefaultCurrency(currencyCode)
+        toast({
+          title: 'Success',
+          description: 'Default currency updated successfully'
+        })
+        return true
       }
-
-      setDefaultCurrency(currency)
-      toast({
-        title: 'Success',
-        description: 'Organization default currency updated successfully'
-      })
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to update organization currency'
-      setError(errorMessage)
+    } catch (error) {
+      console.error('Error updating organization currency:', error)
       toast({
         title: 'Error',
-        description: errorMessage,
+        description: 'Failed to update default currency',
         variant: 'destructive'
       })
-      throw err
+      return false
     } finally {
       setIsLoading(false)
-    }
-  }
-
-  const getPlatformDefaultCurrency = async (): Promise<string> => {
-    try {
-      const { data, error } = await supabase
-        .from('platform_settings')
-        .select('setting_value')
-        .eq('setting_key', 'default_currency')
-        .single()
-
-      if (error) {
-        console.error('Error fetching platform default currency:', error)
-        return 'USD'
-      }
-
-      return data?.setting_value || 'USD'
-    } catch (error) {
-      console.error('Error fetching platform default currency:', error)
-      return 'USD'
     }
   }
 
   useEffect(() => {
-    if (organizationId) {
-      fetchOrganizationCurrency()
-    } else if (userType === 'platform_admin') {
-      // For platform admins without org context, get platform default
-      getPlatformDefaultCurrency().then(setDefaultCurrency)
-    }
-  }, [organizationId, userType])
+    fetchOrganizationCurrency()
+  }, [user])
 
   return {
     defaultCurrency,
-    isLoading,
-    error,
     updateOrganizationCurrency,
-    getPlatformDefaultCurrency,
-    refetch: fetchOrganizationCurrency
+    isLoading
   }
 }
