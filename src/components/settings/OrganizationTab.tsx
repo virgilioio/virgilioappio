@@ -2,9 +2,11 @@ import { useState, useEffect } from 'react'
 import { useOrganizations } from '@/hooks/useOrganizations'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Building, Edit, Lock, AlertTriangle, Save, Loader2 } from 'lucide-react'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Building, Edit, Lock, AlertTriangle, Save, Loader2, Coins } from 'lucide-react'
 import { OrganizationForm } from './OrganizationForm'
 import { OrganizationDisplay } from './OrganizationDisplay'
+import { CurrencySettings } from './CurrencySettings'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/hooks/use-toast'
 import {
@@ -35,10 +37,10 @@ export function OrganizationTab() {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [activeTab, setActiveTab] = useState('details')
   
   console.log('OrganizationTab render - organizations:', organizations, 'isLoading:', isLoading, 'error:', error, 'userType:', userType)
   
-  // Get the user's organization - prioritize owned organizations for both workspace owners and platform admins
   const getUserOrganization = () => {
     if (!organizations || organizations.length === 0) {
       console.log('OrganizationTab getUserOrganization - no organizations available')
@@ -297,7 +299,7 @@ export function OrganizationTab() {
     )
   }
 
-  // Render the main content
+  // Render the main content with tabs
   console.log('OrganizationTab - rendering content with organization:', userOrganization.name, 'editMode:', isEditMode)
   return (
     <div className="space-y-6">
@@ -319,60 +321,81 @@ export function OrganizationTab() {
               </CardDescription>
             </div>
             
-            <div className="flex items-center gap-2">
-              {!isEditMode ? (
-                <Button 
-                  onClick={handleEditModeToggle}
-                  variant="outline"
-                  size="sm"
-                  className="flex items-center gap-1"
-                >
-                  <Edit className="h-3 w-3" />
-                  Edit Organization
-                </Button>
-              ) : (
-                <div className="flex items-center gap-2">
+            {activeTab === 'details' && (
+              <div className="flex items-center gap-2">
+                {!isEditMode ? (
                   <Button 
-                    variant="outline" 
+                    onClick={handleEditModeToggle}
+                    variant="outline"
                     size="sm"
-                    onClick={handleCancelEdit}
-                    disabled={isSaving}
-                  >
-                    Cancel
-                  </Button>
-                  <Button 
-                    size="sm"
-                    onClick={handleSave}
-                    disabled={isLoading || isSaving}
                     className="flex items-center gap-1"
                   >
-                    {isSaving ? (
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                    ) : (
-                      <Save className="h-3 w-3" />
-                    )}
-                    {isSaving ? 'Saving...' : 'Save Changes'}
+                    <Edit className="h-3 w-3" />
+                    Edit Organization
                   </Button>
-                </div>
-              )}
-            </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={handleCancelEdit}
+                      disabled={isSaving}
+                    >
+                      Cancel
+                    </Button>
+                    <Button 
+                      size="sm"
+                      onClick={handleSave}
+                      disabled={isLoading || isSaving}
+                      className="flex items-center gap-1"
+                    >
+                      {isSaving ? (
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                      ) : (
+                        <Save className="h-3 w-3" />
+                      )}
+                      {isSaving ? 'Saving...' : 'Save Changes'}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </CardHeader>
         
         <CardContent>
-          {isEditMode ? (
-            <OrganizationForm
-              organization={userOrganization}
-              formData={orgFormData}
-              onFormDataChange={handleFormDataChange}
-              updateOrganization={handleUpdateOrganization}
-              onSaveSuccess={() => {}} // No longer needed since save is handled here
-              isLoading={isLoading}
-              hideActionButtons={true} // New prop to hide the save button in form
-            />
-          ) : (
-            <OrganizationDisplay organization={userOrganization} />
-          )}
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="details" className="flex items-center gap-2">
+                <Building className="h-4 w-4" />
+                Details
+              </TabsTrigger>
+              <TabsTrigger value="currency" className="flex items-center gap-2">
+                <Coins className="h-4 w-4" />
+                Currency
+              </TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="details" className="mt-6">
+              {isEditMode ? (
+                <OrganizationForm
+                  organization={userOrganization}
+                  formData={orgFormData}
+                  onFormDataChange={handleFormDataChange}
+                  updateOrganization={handleUpdateOrganization}
+                  onSaveSuccess={() => {}} // No longer needed since save is handled here
+                  isLoading={isLoading}
+                  hideActionButtons={true} // New prop to hide the save button in form
+                />
+              ) : (
+                <OrganizationDisplay organization={userOrganization} />
+              )}
+            </TabsContent>
+            
+            <TabsContent value="currency" className="mt-6">
+              <CurrencySettings />
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
 
