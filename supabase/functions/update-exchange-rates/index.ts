@@ -21,9 +21,15 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
+    // Check environment variables
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
     const exchangeRateApiKey = Deno.env.get('EXCHANGE_RATE_API_KEY')
-    console.log('Exchange Rate API Key present:', !!exchangeRateApiKey)
-    console.log('Exchange Rate API Key length:', exchangeRateApiKey?.length ?? 0)
+    
+    console.log('Environment check:')
+    console.log('- SUPABASE_URL present:', !!supabaseUrl)
+    console.log('- SUPABASE_SERVICE_ROLE_KEY present:', !!supabaseKey)
+    console.log('- EXCHANGE_RATE_API_KEY present:', !!exchangeRateApiKey)
     
     if (!exchangeRateApiKey) {
       console.error('EXCHANGE_RATE_API_KEY environment variable is not set')
@@ -35,30 +41,25 @@ serve(async (req) => {
     const apiUrl = `https://v6.exchangerate-api.com/v6/${exchangeRateApiKey}/latest/${baseCurrency}`
 
     console.log('Fetching exchange rates from API...')
-    console.log('API URL (without key):', `https://v6.exchangerate-api.com/v6/[HIDDEN]/latest/${baseCurrency}`)
 
     // Fetch rates from Exchange Rates API
     const response = await fetch(apiUrl)
     console.log('API Response status:', response.status)
-    console.log('API Response status text:', response.statusText)
-    console.log('API Response headers:', Object.fromEntries(response.headers.entries()))
     
     if (!response.ok) {
       const responseText = await response.text()
-      console.error('API Response error body:', responseText)
+      console.error('API Response error:', responseText)
       
-      // Try to parse as JSON to get more details
       try {
         const errorData = JSON.parse(responseText)
         console.error('Parsed error data:', errorData)
-        throw new Error(`Exchange Rate API error: ${response.status} ${response.statusText} - ${errorData['error-type'] || 'Unknown error'}: ${errorData['extra-info'] || responseText}`)
+        throw new Error(`Exchange Rate API error: ${response.status} - ${errorData['error-type'] || 'Unknown error'}: ${errorData['extra-info'] || responseText}`)
       } catch (parseError) {
         throw new Error(`Exchange Rate API error: ${response.status} ${response.statusText} - ${responseText}`)
       }
     }
 
     const data = await response.json()
-    console.log('API Response data keys:', Object.keys(data))
     console.log('API Response result:', data.result)
     
     if (data.result !== 'success') {
@@ -80,6 +81,11 @@ serve(async (req) => {
     if (currenciesError) {
       console.error('Failed to fetch supported currencies:', currenciesError)
       throw new Error(`Failed to fetch supported currencies: ${currenciesError.message}`)
+    }
+
+    if (!supportedCurrencies || supportedCurrencies.length === 0) {
+      console.error('No supported currencies found in database')
+      throw new Error('No supported currencies found')
     }
 
     const supportedCodes = supportedCurrencies.map(c => c.code)
@@ -108,7 +114,7 @@ serve(async (req) => {
           .eq('base_currency', baseCurrency)
           .eq('target_currency', currency)
           .eq('rate_date', rateDate)
-          .single()
+          .maybeSingle()
 
         if (existingRate) {
           // Update existing rate
@@ -178,9 +184,6 @@ serve(async (req) => {
   } catch (error) {
     console.error('=== Exchange rates update failed ===')
     console.error('Error details:', error)
-    console.error('Error name:', error.name)
-    console.error('Error message:', error.message)
-    console.error('Error stack:', error.stack)
     
     return new Response(
       JSON.stringify({ 
