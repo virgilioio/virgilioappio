@@ -8,7 +8,6 @@ import { AlertTriangle } from 'lucide-react'
 import { TotalPaidCard } from './TotalPaidCard'
 import { OverduePaymentsCard } from './OverduePaymentsCard'
 import { OutstandingBalanceCard } from './OutstandingBalanceCard'
-import { CurrencyDebugPanel } from '../debug/CurrencyDebugPanel'
 
 export function BillingMetricsDashboard() {
   const { invoices, isLoading, error } = useInvoices()
@@ -60,8 +59,6 @@ export function BillingMetricsDashboard() {
 
   return (
     <div className="space-y-6">
-      <CurrencyDebugPanel />
-      
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <TotalPaidCard invoices={invoices} />
         <OverduePaymentsCard invoices={invoices} />
