@@ -58,7 +58,12 @@ export const getOrganizationCurrencyRate = async (
   toCurrency: string,
   organizationId?: string
 ): Promise<number> => {
+  console.log('=== CURRENCY RATE LOOKUP ===')
+  console.log(`Converting ${fromCurrency} -> ${toCurrency}`)
+  console.log('Organization ID:', organizationId)
+
   if (fromCurrency === toCurrency) {
+    console.log('Same currency, returning rate 1.0')
     return 1.0
   }
 
@@ -75,7 +80,9 @@ export const getOrganizationCurrencyRate = async (
       return 1.0
     }
 
-    return data || 1.0
+    const rate = data || 1.0
+    console.log(`Rate found: ${rate}`)
+    return rate
   } catch (error) {
     console.error('Error fetching organization currency rate:', error)
     return 1.0
@@ -96,7 +103,12 @@ export const convertCurrency = async (
   toCurrency: string,
   organizationId?: string
 ): Promise<ConversionResult> => {
+  console.log('=== CURRENCY CONVERSION ===')
+  console.log(`Converting ${amount} ${fromCurrency} -> ${toCurrency}`)
+  console.log('Organization ID:', organizationId)
+
   if (fromCurrency === toCurrency) {
+    console.log('Same currency, no conversion needed')
     return {
       convertedAmount: amount,
       exchangeRate: 1.0,
@@ -107,6 +119,8 @@ export const convertCurrency = async (
 
   const rate = await getOrganizationCurrencyRate(fromCurrency, toCurrency, organizationId)
   const convertedAmount = amount * rate
+
+  console.log(`Conversion result: ${amount} ${fromCurrency} * ${rate} = ${convertedAmount} ${toCurrency}`)
 
   // Get rate date for transparency - try to find the most recent rate used
   const { data: rateData } = await supabase

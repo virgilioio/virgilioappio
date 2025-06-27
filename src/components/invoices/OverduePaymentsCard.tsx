@@ -115,6 +115,9 @@ export function OverduePaymentsCard({ invoices }: OverduePaymentsCardProps) {
             <div className="text-3xl font-bold text-black">
               {formatCurrency(convertedTotal)}
             </div>
+            <div className="text-xs text-muted-foreground">
+              Subset of Outstanding Balance
+            </div>
           </div>
           
           <CardTitle className="flex items-center gap-2 text-base">

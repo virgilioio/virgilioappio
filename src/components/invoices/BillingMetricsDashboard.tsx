@@ -1,52 +1,71 @@
 
+import React from 'react'
 import { useInvoices } from '@/hooks/useInvoices'
 import { usePermissions } from '@/hooks/usePermissions'
-import { useAuth } from '@/contexts/AuthContext'
-import { useInvoiceFilter } from '@/utils/invoiceFilters'
-import { useAdminMetrics } from '@/hooks/useAdminMetrics'
-import { useClientMetrics } from '@/hooks/useClientMetrics'
-import { MetricCard } from './MetricCard'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { AlertTriangle } from 'lucide-react'
+import { TotalPaidCard } from './TotalPaidCard'
+import { OverduePaymentsCard } from './OverduePaymentsCard'
+import { OutstandingBalanceCard } from './OutstandingBalanceCard'
+import { CurrencyDebugPanel } from '../debug/CurrencyDebugPanel'
 
 export function BillingMetricsDashboard() {
-  const { invoices } = useInvoices()
-  const { canManageInvoices, canViewBilling } = usePermissions()
-  const { organizationId } = useAuth()
-  const { filters } = useInvoiceFilter()
+  const { invoices, isLoading, error } = useInvoices()
+  const { canViewBilling } = usePermissions()
 
-  // Don't render if user can't view billing
   if (!canViewBilling) {
-    return null
+    return (
+      <Alert>
+        <AlertTriangle className="h-4 w-4" />
+        <AlertDescription>
+          You don't have permission to view billing information.
+        </AlertDescription>
+      </Alert>
+    )
   }
 
-  // Base filtering based on role
-  const baseInvoices = canManageInvoices 
-    ? invoices // Admin/Billing sees all
-    : invoices.filter(invoice => invoice.organization_id === organizationId) // Scoped to org
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <Skeleton className="h-64" />
+          <Skeleton className="h-64" />
+          <Skeleton className="h-64" />
+        </div>
+      </div>
+    )
+  }
 
-  const adminMetrics = useAdminMetrics(baseInvoices, filters)
-  const clientMetrics = useClientMetrics(baseInvoices, filters)
+  if (error) {
+    return (
+      <Alert variant="destructive">
+        <AlertTriangle className="h-4 w-4" />
+        <AlertDescription>
+          Failed to load billing metrics. Please try again.
+        </AlertDescription>
+      </Alert>
+    )
+  }
 
-  const metrics = canManageInvoices ? adminMetrics : clientMetrics
-
-  if (metrics.length === 0) {
-    return null
+  if (!invoices || invoices.length === 0) {
+    return (
+      <Alert>
+        <AlertDescription>
+          No invoices found. Create your first invoice to see billing metrics.
+        </AlertDescription>
+      </Alert>
+    )
   }
 
   return (
-    <div className="space-y-4">
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {metrics.map((metric, index) => (
-          <MetricCard
-            key={index}
-            title={metric.title}
-            value={metric.value}
-            icon={metric.icon}
-            tooltip={metric.tooltip}
-            variant={metric.variant}
-            showCurrencyIndicator={metric.showCurrencyIndicator}
-            currency={metric.currency}
-          />
-        ))}
+    <div className="space-y-6">
+      <CurrencyDebugPanel />
+      
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <TotalPaidCard invoices={invoices} />
+        <OverduePaymentsCard invoices={invoices} />
+        <OutstandingBalanceCard invoices={invoices} />
       </div>
     </div>
   )
