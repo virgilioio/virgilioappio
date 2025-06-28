@@ -45,6 +45,47 @@ export interface UpdateOrganizationData {
   billing_poc_updated_at?: string | null
 }
 
+// Helper function to fetch user display info
+const fetchUserDisplayInfo = async (userId: string | null): Promise<{ email: string; name: string } | null> => {
+  if (!userId) return null
+  
+  try {
+    // Try to get user info from profiles table first
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('first_name, last_name, email')
+      .eq('user_id', userId)
+      .single()
+    
+    if (profileData && !profileError) {
+      const name = [profileData.first_name, profileData.last_name].filter(Boolean).join(' ')
+      return {
+        email: profileData.email || '',
+        name: name || profileData.email || 'Unknown User'
+      }
+    }
+    
+    // Fallback: try to use the get_member_display_info function
+    const { data: memberData, error: memberError } = await supabase
+      .rpc('get_member_display_info', { member_user_id: userId })
+    
+    if (memberData && memberData.length > 0 && !memberError) {
+      const member = memberData[0]
+      const name = [member.first_name, member.last_name].filter(Boolean).join(' ')
+      return {
+        email: member.email || '',
+        name: name || member.email || 'Unknown User'
+      }
+    }
+    
+    console.warn(`Could not fetch user info for user ID: ${userId}`)
+    return null
+  } catch (error) {
+    console.error('Error fetching user display info:', error)
+    return null
+  }
+}
+
 export function useOrganizations() {
   const [organizations, setOrganizations] = useState<Organization[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -73,29 +114,42 @@ export function useOrganizations() {
 
       console.log('Successfully fetched organizations:', orgsData)
       
-      // Transform the data to match our Organization interface
-      const organizationsWithDetails: Organization[] = (orgsData || []).map((org: any) => ({
-        id: org.id,
-        name: org.name,
-        country: org.country,
-        status: org.status as 'active' | 'inactive',
-        organization_type: org.organization_type as 'platform' | 'client',
-        owner_id: org.owner_id,
-        created_at: org.created_at,
-        updated_at: org.updated_at,
-        created_by: org.created_by,
-        owner_assigned_at: org.owner_assigned_at,
-        owner_email: null,
-        created_by_email: null,
-        billing_poc_user_id: org.billing_poc_user_id,
-        billing_poc_additional_email: org.billing_poc_additional_email,
-        billing_poc_phone: org.billing_poc_phone,
-        billing_poc_updated_by: org.billing_poc_updated_by,
-        billing_poc_updated_at: org.billing_poc_updated_at,
-        billing_poc_user_email: null,
-        billing_poc_user_name: null,
-        default_currency: org.default_currency
-      }))
+      // Fetch user information for created_by and owner_id fields
+      const organizationsWithDetails: Organization[] = []
+      
+      for (const org of orgsData || []) {
+        // Fetch created_by user info
+        const createdByInfo = await fetchUserDisplayInfo(org.created_by)
+        
+        // Fetch owner user info
+        const ownerInfo = await fetchUserDisplayInfo(org.owner_id)
+        
+        // Fetch billing POC user info
+        const billingPocInfo = await fetchUserDisplayInfo(org.billing_poc_user_id)
+        
+        organizationsWithDetails.push({
+          id: org.id,
+          name: org.name,
+          country: org.country,
+          status: org.status as 'active' | 'inactive',
+          organization_type: org.organization_type as 'platform' | 'client',
+          owner_id: org.owner_id,
+          created_at: org.created_at,
+          updated_at: org.updated_at,
+          created_by: org.created_by,
+          owner_assigned_at: org.owner_assigned_at,
+          owner_email: ownerInfo?.email || null,
+          created_by_email: createdByInfo?.email || null,
+          billing_poc_user_id: org.billing_poc_user_id,
+          billing_poc_additional_email: org.billing_poc_additional_email,
+          billing_poc_phone: org.billing_poc_phone,
+          billing_poc_updated_by: org.billing_poc_updated_by,
+          billing_poc_updated_at: org.billing_poc_updated_at,
+          billing_poc_user_email: billingPocInfo?.email || null,
+          billing_poc_user_name: billingPocInfo?.name || null,
+          default_currency: org.default_currency
+        })
+      }
 
       setOrganizations(organizationsWithDetails)
     } catch (err) {
