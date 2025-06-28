@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
@@ -48,8 +49,18 @@ export function OrganizationsTable({
     setSelectedOrganization(null)
   }
 
-  // Helper function to display owner information with fallback
+  // Helper function to display owner information with improved fallback
   const displayOwnerInfo = (org: Organization) => {
+    // Prioritize showing name over email
+    if (org.owner_name) {
+      return (
+        <div className="flex items-center gap-1 text-sm">
+          <User className="h-3 w-3" />
+          {org.owner_name}
+        </div>
+      )
+    }
+    
     if (org.owner_email) {
       return (
         <div className="flex items-center gap-1 text-sm">
@@ -71,8 +82,13 @@ export function OrganizationsTable({
     return <span className="text-muted-foreground text-sm">No owner</span>
   }
 
-  // Helper function to display creator information with fallback
+  // Helper function to display creator information with improved fallback
   const displayCreatorInfo = (org: Organization) => {
+    // Prioritize showing name over email
+    if (org.created_by_name) {
+      return <span className="text-sm">{org.created_by_name}</span>
+    }
+    
     if (org.created_by_email) {
       return <span className="text-sm">{org.created_by_email}</span>
     }

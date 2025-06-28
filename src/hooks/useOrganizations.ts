@@ -14,8 +14,10 @@ export interface Organization {
   updated_at: string
   created_by: string | null
   owner_assigned_at: string | null
-  owner_email?: string
-  created_by_email?: string
+  owner_email?: string | null
+  owner_name?: string | null
+  created_by_email?: string | null
+  created_by_name?: string | null
   billing_poc_user_id?: string | null
   billing_poc_additional_email?: string | null
   billing_poc_phone?: string | null
@@ -61,7 +63,7 @@ const fetchUserDisplayInfo = async (userId: string | null): Promise<{ email: str
       const name = [profileData.first_name, profileData.last_name].filter(Boolean).join(' ')
       return {
         email: profileData.email || '',
-        name: name || profileData.email || 'Unknown User'
+        name: name || 'Unnamed User'
       }
     }
     
@@ -74,7 +76,7 @@ const fetchUserDisplayInfo = async (userId: string | null): Promise<{ email: str
       const name = [member.first_name, member.last_name].filter(Boolean).join(' ')
       return {
         email: member.email || '',
-        name: name || member.email || 'Unknown User'
+        name: name || 'Unnamed User'
       }
     }
     
@@ -139,7 +141,9 @@ export function useOrganizations() {
           created_by: org.created_by,
           owner_assigned_at: org.owner_assigned_at,
           owner_email: ownerInfo?.email || null,
+          owner_name: ownerInfo?.name || null,
           created_by_email: createdByInfo?.email || null,
+          created_by_name: createdByInfo?.name || null,
           billing_poc_user_id: org.billing_poc_user_id,
           billing_poc_additional_email: org.billing_poc_additional_email,
           billing_poc_phone: org.billing_poc_phone,
