@@ -18,6 +18,7 @@ import { Section } from '@/components/layout/Section'
 import { SettingsSidebar } from '@/components/settings/SettingsSidebar'
 import { SettingsMobileHeader } from '@/components/settings/SettingsMobileHeader'
 import { InvoiceFilterProvider } from '@/utils/invoiceFilters'
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 
 export default function Settings() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -25,15 +26,16 @@ export default function Settings() {
   const { canViewBilling, canManageMembers, isPlatformAdmin, isGuest } = usePermissions()
   const defaultTab = searchParams.get('tab') || 'profile'
   const [currentTab, setCurrentTab] = useState(defaultTab)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   const handleTabChange = (tab: string) => {
     setCurrentTab(tab)
     setSearchParams({ tab })
+    setMobileMenuOpen(false) // Close mobile menu when tab changes
   }
 
   const handleMenuToggle = () => {
-    // Handle mobile menu toggle if needed
-    console.log('Menu toggle clicked')
+    setMobileMenuOpen(!mobileMenuOpen)
   }
 
   const handleBackToDashboard = () => {
@@ -65,12 +67,22 @@ export default function Settings() {
       <Section>
         <AppContainer variant="default">
           <Tabs value={currentTab} onValueChange={handleTabChange} className="w-full">
-            {/* Mobile header */}
+            {/* Mobile header with sheet for sidebar */}
             <div className="lg:hidden mb-6">
-              <SettingsMobileHeader 
-                onMenuToggle={handleMenuToggle}
-                onBackToDashboard={handleBackToDashboard}
-              />
+              <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+                <SettingsMobileHeader 
+                  onMenuToggle={handleMenuToggle}
+                  onBackToDashboard={handleBackToDashboard}
+                />
+                <SheetContent side="left" className="w-80 p-0">
+                  <div className="p-4">
+                    <SettingsSidebar 
+                      currentTab={currentTab} 
+                      onTabChange={handleTabChange}
+                    />
+                  </div>
+                </SheetContent>
+              </Sheet>
             </div>
 
             {/* Desktop layout with floating sidebar */}
