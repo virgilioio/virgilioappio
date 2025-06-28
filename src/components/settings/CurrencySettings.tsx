@@ -5,13 +5,14 @@ import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
-import { Globe, Coins, RefreshCw } from 'lucide-react'
+import { Globe, Coins, RefreshCw, AlertCircle } from 'lucide-react'
 import { useCurrencies, useExchangeRates } from '@/hooks/useCurrencies'
 import { useOrganizationCurrency } from '@/hooks/useOrganizationCurrency'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useAuth } from '@/contexts/AuthContext'
 import { formatCurrencyAmount } from '@/utils/currencyUtils'
 import { supabase } from '@/integrations/supabase/client'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 
 interface OrganizationRate {
   target_currency: string
@@ -34,13 +35,17 @@ export function CurrencySettings() {
   const [selectedCurrency, setSelectedCurrency] = useState(defaultCurrency)
   const [organizationRates, setOrganizationRates] = useState<OrganizationRate[]>([])
   const [orgRatesLoading, setOrgRatesLoading] = useState(false)
+  const [orgRatesError, setOrgRatesError] = useState<string | null>(null)
 
   // Fetch organization-specific exchange rates
   const fetchOrganizationRates = async () => {
     if (!organizationId) return
 
     setOrgRatesLoading(true)
+    setOrgRatesError(null)
     try {
+      console.log('Fetching organization exchange rates for org:', organizationId)
+      
       const { data, error } = await supabase
         .from('organization_exchange_rates')
         .select('target_currency, target_currency_name, target_currency_symbol, rate, rate_date')
@@ -50,11 +55,14 @@ export function CurrencySettings() {
 
       if (error) {
         console.error('Error fetching organization rates:', error)
+        setOrgRatesError(`Failed to load exchange rates: ${error.message}`)
       } else {
+        console.log('Successfully fetched organization rates:', data)
         setOrganizationRates(data || [])
       }
     } catch (error) {
-      console.error('Error fetching organization rates:', error)
+      console.error('Unexpected error fetching organization rates:', error)
+      setOrgRatesError('An unexpected error occurred while loading exchange rates')
     } finally {
       setOrgRatesLoading(false)
     }
@@ -172,6 +180,15 @@ export function CurrencySettings() {
               <p className="text-sm text-muted-foreground mb-4">
                 Last updated: {new Date(lastUpdate).toLocaleDateString()}
               </p>
+            )}
+
+            {orgRatesError && (
+              <Alert className="mb-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  {orgRatesError}
+                </AlertDescription>
+              </Alert>
             )}
             
             {organizationRates.length > 0 ? (
