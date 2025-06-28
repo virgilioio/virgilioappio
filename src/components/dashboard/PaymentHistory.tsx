@@ -39,7 +39,7 @@ export function PaymentHistory() {
 
   const paidInvoices = invoices
     ?.filter(invoice => invoice.status === 'paid')
-    ?.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    ?.sort((a, b) => new Date(b.paid_at || b.created_at).getTime() - new Date(a.paid_at || a.created_at).getTime())
     ?.slice(0, 3) || []
 
   const formatCurrency = (amount: number) => {
