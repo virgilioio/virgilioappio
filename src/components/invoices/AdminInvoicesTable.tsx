@@ -1,3 +1,4 @@
+
 import { useState } from 'react'
 import { MoreHorizontal, Download, Edit, Trash2, CheckCircle, FileText, Calendar, DollarSign, Search, Filter, Upload, CreditCard } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -53,7 +54,7 @@ export function AdminInvoicesTable({ invoices, isLoading }: AdminInvoicesTablePr
   const [selectedMonth, setSelectedMonth] = useState<Date | undefined>()
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false)
 
-  // Filter invoices based on all filters
+  // Filter invoices based on all filters - single declaration
   const filteredInvoices = filterInvoices(invoices || [], {
     searchTerm,
     statuses: statusFilter === 'all' ? [] : [statusFilter],
@@ -212,8 +213,6 @@ export function AdminInvoicesTable({ invoices, isLoading }: AdminInvoicesTablePr
   }
 
   const handleUploadComplete = () => {
-    // This will trigger a refetch of the invoices data
-    // The parent component should handle this by refetching the invoices
     setUploadModalOpen(false)
     setSelectedInvoice(null)
     toast({
@@ -221,14 +220,6 @@ export function AdminInvoicesTable({ invoices, isLoading }: AdminInvoicesTablePr
       description: 'The invoice PDF has been uploaded successfully.'
     })
   }
-
-  // Filter invoices based on all filters
-  const filteredInvoices = filterInvoices(invoices || [], {
-    searchTerm,
-    statuses: statusFilter === 'all' ? [] : [statusFilter],
-    organizationIds: organizationFilter === 'all' ? [] : [organizationFilter],
-    selectedMonth
-  })
 
   const sortedInvoices = [...filteredInvoices].sort((a, b) => {
     const dateA = new Date(a.due_date || a.issued_at)
