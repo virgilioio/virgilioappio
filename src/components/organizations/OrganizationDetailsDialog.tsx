@@ -2,13 +2,14 @@
 import { useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { OrganizationDisplay } from '@/components/settings/OrganizationDisplay'
+import { OrganizationComplianceEditor } from './OrganizationComplianceEditor'
 import { Organization } from '@/hooks/useOrganizations'
 import { useMembers } from '@/hooks/useMembers'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { User, Mail, Users, MoreVertical, Trash2 } from 'lucide-react'
+import { User, Mail, Users, MoreVertical, Trash2, Edit, Eye } from 'lucide-react'
 import { UserDeletionDialog } from './UserDeletionDialog'
 import { usePermissions } from '@/hooks/usePermissions'
 
@@ -33,6 +34,7 @@ export function OrganizationDetailsDialog({
   } | null>(null)
   const [isDeletionDialogOpen, setIsDeletionDialogOpen] = useState(false)
   const [userIsBillingPoc, setUserIsBillingPoc] = useState(false)
+  const [isEditingCompliance, setIsEditingCompliance] = useState(false)
   
   if (!organization) return null
 
@@ -102,20 +104,59 @@ export function OrganizationDetailsDialog({
     getMembers()
   }
 
+  const handleComplianceSave = () => {
+    setIsEditingCompliance(false)
+    // The compliance data will be automatically refreshed by the hooks
+  }
+
+  const handleComplianceCancel = () => {
+    setIsEditingCompliance(false)
+  }
+
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-xl">
-              Organization Details: {organization.name}
-            </DialogTitle>
+            <div className="flex items-center justify-between">
+              <DialogTitle className="text-xl">
+                Organization Details: {organization.name}
+              </DialogTitle>
+              {permissions.isPlatformAdmin && (
+                <Button
+                  variant={isEditingCompliance ? "outline" : "default"}
+                  size="sm"
+                  onClick={() => setIsEditingCompliance(!isEditingCompliance)}
+                  className="flex items-center gap-2"
+                >
+                  {isEditingCompliance ? (
+                    <>
+                      <Eye className="h-4 w-4" />
+                      View Mode
+                    </>
+                  ) : (
+                    <>
+                      <Edit className="h-4 w-4" />
+                      Edit Compliance
+                    </>
+                  )}
+                </Button>
+              )}
+            </div>
           </DialogHeader>
           
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-4">
             {/* Organization Information - Takes 2 columns */}
             <div className="lg:col-span-2">
-              <OrganizationDisplay organization={organization} />
+              {isEditingCompliance ? (
+                <OrganizationComplianceEditor
+                  organization={organization}
+                  onSave={handleComplianceSave}
+                  onCancel={handleComplianceCancel}
+                />
+              ) : (
+                <OrganizationDisplay organization={organization} />
+              )}
             </div>
             
             {/* Members Section - Takes 1 column */}
