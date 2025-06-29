@@ -1,10 +1,9 @@
+
 import { useState, useEffect } from 'react'
-import { MoreHorizontal, Download, Edit, Trash2, CheckCircle, FileText, Calendar, DollarSign, Search, Filter, Upload, CreditCard, ChevronLeft, ChevronRight } from 'lucide-react'
+import { MoreHorizontal, Download, FileText, Search, Filter, ChevronLeft, ChevronRight, Edit, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import {
   Table,
   TableBody,
@@ -20,27 +19,9 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Skeleton } from '@/components/ui/skeleton'
-import { MonthPicker } from '@/components/ui/month-picker'
-import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from '@/components/ui/pagination'
 import { useIsMobile } from '@/hooks/use-mobile'
-import { EditInvoiceModal } from './EditInvoiceModal'
-import { PaymentModal } from './PaymentModal'
-import { PartialPaymentModal } from './PartialPaymentModal'
-import { InvoiceUploadModal } from './InvoiceUploadModal'
-import { supabase } from '@/integrations/supabase/client'
-import { toast } from '@/hooks/use-toast'
 import { Invoice } from '@/hooks/useInvoices'
 import { useOrganizations } from '@/hooks/useOrganizations'
-import { filterInvoices, getInvoiceStats } from '@/utils/invoiceFilters'
-import { InvoiceDetailsDialog } from './InvoiceDetailsDialog'
 
 interface AdminInvoicesTableProps {
   invoices: Invoice[]
@@ -50,42 +31,15 @@ interface AdminInvoicesTableProps {
 export function AdminInvoicesTable({ invoices, isLoading }: AdminInvoicesTableProps) {
   const { organizations } = useOrganizations()
   const isMobile = useIsMobile()
-  const [editModalOpen, setEditModalOpen] = useState(false)
-  const [paymentModalOpen, setPaymentModalOpen] = useState(false)
-  const [partialPaymentModalOpen, setPartialPaymentModalOpen] = useState(false)
-  const [uploadModalOpen, setUploadModalOpen] = useState(false)
-  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null)
-  const [downloadingFiles, setDownloadingFiles] = useState<Set<string>>(new Set())
-  const [searchTerm, setSearchTerm] = useState('')
-  const [statusFilter, setStatusFilter] = useState<string>('all')
-  const [organizationFilter, setOrganizationFilter] = useState<string>('all')
-  const [selectedMonth, setSelectedMonth] = useState<Date | undefined>()
-  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false)
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
 
-  // Filter invoices based on all filters - single declaration
-  const filteredInvoices = filterInvoices(invoices || [], {
-    searchTerm,
-    statuses: statusFilter === 'all' ? [] : [statusFilter],
-    organizationIds: organizationFilter === 'all' ? [] : [organizationFilter],
-    selectedMonth
-  })
-
-  const stats = getInvoiceStats(filteredInvoices)
-  const hasActiveFilters = searchTerm || statusFilter !== 'all' || organizationFilter !== 'all' || selectedMonth
-
-  // Reset pagination when filters change
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [searchTerm, statusFilter, organizationFilter, selectedMonth])
-
-  // Sort invoices
-  const sortedInvoices = [...filteredInvoices].sort((a, b) => {
-    const dateA = new Date(a.due_date || a.issued_at)
-    const dateB = new Date(b.due_date || b.issued_at)
+  // Sort invoices by date (newest first)
+  const sortedInvoices = [...invoices].sort((a, b) => {
+    const dateA = new Date(a.issued_at)
+    const dateB = new Date(b.issued_at)
     return dateB.getTime() - dateA.getTime()
   })
 
@@ -95,11 +49,42 @@ export function AdminInvoicesTable({ invoices, isLoading }: AdminInvoicesTablePr
   const endIndex = startIndex + itemsPerPage
   const paginatedInvoices = sortedInvoices.slice(startIndex, endIndex)
 
-  const clearFilters = () => {
-    setSearchTerm('')
-    setStatusFilter('all')
-    setOrganizationFilter('all')
-    setSelectedMonth(undefined)
+  // Generate page numbers for pagination - exact same logic as JobsTable
+  const getPageNumbers = () => {
+    const pages: (number | 'ellipsis')[] = []
+    
+    if (totalPages <= 7) {
+      // Show all pages if 7 or fewer
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i)
+      }
+    } else {
+      // Show first page
+      pages.push(1)
+      
+      if (currentPage > 4) {
+        pages.push('ellipsis')
+      }
+      
+      // Show pages around current page
+      const start = Math.max(2, currentPage - 1)
+      const end = Math.min(totalPages - 1, currentPage + 1)
+      
+      for (let i = start; i <= end; i++) {
+        pages.push(i)
+      }
+      
+      if (currentPage < totalPages - 3) {
+        pages.push('ellipsis')
+      }
+      
+      // Show last page
+      if (totalPages > 1) {
+        pages.push(totalPages)
+      }
+    }
+    
+    return pages
   }
 
   const getOrganizationName = (orgId: string) => {
@@ -138,244 +123,12 @@ export function AdminInvoicesTable({ invoices, isLoading }: AdminInvoicesTablePr
     })
   }
 
-  const handleEditInvoice = (invoice: Invoice) => {
-    setSelectedInvoice(invoice)
-    setEditModalOpen(true)
-  }
-
-  const handlePayment = (invoice: Invoice) => {
-    setSelectedInvoice(invoice)
-    setPaymentModalOpen(true)
-  }
-
-  const handlePartialPayment = (invoice: Invoice) => {
-    setSelectedInvoice(invoice)
-    setPartialPaymentModalOpen(true)
-  }
-
-  const handleDeleteInvoice = async (invoice: Invoice) => {
-    const confirmDelete = window.confirm(`Are you sure you want to delete invoice "${invoice.title}"?`)
-    if (!confirmDelete) return
-
-    try {
-      const { error } = await supabase
-        .from('invoices')
-        .delete()
-        .eq('id', invoice.id)
-
-      if (error) {
-        throw error
-      }
-
-      toast({
-        title: 'Invoice deleted',
-        description: `Invoice "${invoice.title}" has been successfully deleted.`,
-      })
-    } catch (error) {
-      console.error('Delete error:', error)
-      toast({
-        title: 'Error deleting invoice',
-        description: 'Failed to delete the invoice. Please try again.',
-        variant: 'destructive'
-      })
-    }
-  }
-
-  const handleDownloadInvoice = async (invoice: Invoice) => {
-    if (!invoice.invoice_url) {
-      toast({
-        title: 'No file available',
-        description: 'This invoice does not have a PDF file attached.',
-        variant: 'destructive'
-      })
-      return
-    }
-
-    setDownloadingFiles(prev => new Set(prev).add(invoice.id))
-
-    try {
-      const { data, error } = await supabase.storage
-        .from('invoices')
-        .download(invoice.invoice_url)
-
-      if (error) {
-        throw error
-      }
-
-      // Create download link
-      const url = URL.createObjectURL(data)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = invoice.file_name || `invoice-${invoice.title}.pdf`
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      URL.revokeObjectURL(url)
-
-      toast({
-        title: 'Download started',
-        description: 'Your invoice file is being downloaded.'
-      })
-    } catch (error) {
-      console.error('Download error:', error)
-      toast({
-        title: 'Download failed',
-        description: 'Unable to download the invoice file. Please try again.',
-        variant: 'destructive'
-      })
-    } finally {
-      setDownloadingFiles(prev => {
-        const newSet = new Set(prev)
-        newSet.delete(invoice.id)
-        return newSet
-      })
-    }
-  }
-
-  const handleRowClick = (invoice: Invoice) => {
-    setSelectedInvoice(invoice)
-    setDetailsDialogOpen(true)
-  }
-
-  const handleUploadPdf = (invoice: Invoice) => {
-    setSelectedInvoice(invoice)
-    setUploadModalOpen(true)
-  }
-
-  const handleUploadComplete = () => {
-    setUploadModalOpen(false)
-    setSelectedInvoice(null)
-    toast({
-      title: 'Upload completed',
-      description: 'The invoice PDF has been uploaded successfully.'
-    })
-  }
-
-  // Updated pagination logic to match other tables
-  const getPageNumbers = (currentPage: number, totalPages: number) => {
-    const pages = []
-    const showEllipsis = totalPages > 7
-
-    if (!showEllipsis) {
-      for (let i = 1; i <= totalPages; i++) {
-        pages.push(i)
-      }
-    } else {
-      if (currentPage <= 4) {
-        for (let i = 1; i <= 5; i++) {
-          pages.push(i)
-        }
-        pages.push('...')
-        pages.push(totalPages)
-      } else if (currentPage >= totalPages - 3) {
-        pages.push(1)
-        pages.push('...')
-        for (let i = totalPages - 4; i <= totalPages; i++) {
-          pages.push(i)
-        }
-      } else {
-        pages.push(1)
-        pages.push('...')
-        for (let i = currentPage - 1; i <= currentPage + 1; i++) {
-          pages.push(i)
-        }
-        pages.push('...')
-        pages.push(totalPages)
-      }
-    }
-    return pages
-  }
-
-  // Updated pagination component to match other tables
-  const PaginationComponent = () => {
-    if (totalPages <= 1) return null
-
-    const pageNumbers = getPageNumbers(currentPage, totalPages)
-
-    if (isMobile) {
-      return (
-        <div className="flex items-center justify-between gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-            disabled={currentPage === 1}
-            className="flex items-center gap-1"
-          >
-            <ChevronLeft className="h-4 w-4" />
-            Previous
-          </Button>
-          
-          <div className="flex items-center gap-1 text-sm text-muted-foreground bg-muted/50 px-3 py-1 rounded-md">
-            Page {currentPage} of {totalPages}
-          </div>
-          
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-            disabled={currentPage === totalPages}
-            className="flex items-center gap-1"
-          >
-            Next
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-      )
-    }
-
-    return (
-      <div className="flex items-center gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-          disabled={currentPage === 1}
-          className="flex items-center gap-1 hover:scale-105 transition-all duration-200"
-        >
-          <ChevronLeft className="h-4 w-4" />
-          Previous
-        </Button>
-        
-        <div className="flex items-center gap-1">
-          {pageNumbers.map((pageNum, index) => (
-            <Button
-              key={index}
-              variant={currentPage === pageNum ? "default" : "outline"}
-              size="sm"
-              onClick={() => typeof pageNum === 'number' && setCurrentPage(pageNum)}
-              disabled={typeof pageNum !== 'number'}
-              className={`min-w-[40px] transition-all duration-200 ${
-                currentPage === pageNum 
-                  ? 'bg-primary text-primary-foreground shadow-md' 
-                  : 'hover:scale-105 hover:shadow-sm'
-              } ${typeof pageNum !== 'number' ? 'cursor-default' : ''}`}
-            >
-              {pageNum}
-            </Button>
-          ))}
-        </div>
-        
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-          disabled={currentPage === totalPages}
-          className="flex items-center gap-1 hover:scale-105 transition-all duration-200"
-        >
-          Next
-          <ChevronRight className="h-4 w-4" />
-        </Button>
-      </div>
-    )
-  }
-
   if (isLoading) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-base sm:text-lg">Invoices</CardTitle>
-          <CardDescription>Manage invoices for all organizations</CardDescription>
+          <CardTitle>Invoices</CardTitle>
+          <CardDescription>Loading invoices...</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
@@ -392,18 +145,18 @@ export function AdminInvoicesTable({ invoices, isLoading }: AdminInvoicesTablePr
     return (
       <Card>
         <CardHeader>
-          <CardTitle className="text-base sm:text-lg">Invoices</CardTitle>
-          <CardDescription>Manage invoices for all organizations</CardDescription>
+          <CardTitle>Invoices</CardTitle>
+          <CardDescription>No invoices found</CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-col items-center justify-center py-8 sm:py-12">
+        <CardContent className="flex flex-col items-center justify-center py-12">
           <div className="text-center space-y-4">
-            <div className="w-12 h-12 sm:w-16 sm:h-16 mx-auto bg-accent/10 rounded-full flex items-center justify-center mb-4">
-              <FileText className="w-6 h-6 sm:w-8 sm:h-8 text-accent" />
+            <div className="w-16 h-16 mx-auto bg-accent/10 rounded-full flex items-center justify-center">
+              <FileText className="w-8 h-8 text-accent" />
             </div>
             <div>
-              <h3 className="text-base sm:text-lg font-medium text-text-primary">No invoices yet</h3>
-              <p className="text-text-secondary mt-1 text-sm">
-                Invoices created for organizations will appear here.
+              <h3 className="text-lg font-medium">No invoices found</h3>
+              <p className="text-muted-foreground mt-1">
+                Create your first invoice to get started.
               </p>
             </div>
           </div>
@@ -413,329 +166,237 @@ export function AdminInvoicesTable({ invoices, isLoading }: AdminInvoicesTablePr
   }
 
   return (
-    <>
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base sm:text-lg">Invoices</CardTitle>
-          <CardDescription>
-            Manage invoices for all organizations ({invoices.length} invoice{invoices.length !== 1 ? 's' : ''})
-            {filteredInvoices.length !== invoices.length && (
-              <span className="text-muted-foreground ml-1">
-                • Showing {filteredInvoices.length} filtered
-              </span>
-            )}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {/* Desktop Table - Hidden on mobile */}
-          <div className="hidden lg:block">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Organization</TableHead>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Due Date</TableHead>
-                  <TableHead>Issued Date</TableHead>
-                  <TableHead className="w-[100px]">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paginatedInvoices.map((invoice) => (
-                  <TableRow 
-                    key={invoice.id} 
-                    className="h-[52px] cursor-pointer hover:bg-muted/50 transition-colors"
-                    onClick={() => handleRowClick(invoice)}
-                  >
-                    <TableCell className="font-medium">{getOrganizationName(invoice.organization_id)}</TableCell>
-                    <TableCell className="font-medium">
-                      <div>
-                        <div className="font-medium text-text-primary">{invoice.title}</div>
-                        {invoice.description && (
-                          <div className="text-sm text-text-secondary mt-1">{invoice.description}</div>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="space-y-1">
-                        {getStatusBadge(invoice.status)}
-                        {invoice.status === 'partial' && invoice.total_paid && (
-                          <div className="text-xs text-muted-foreground">
-                            {formatCurrency(invoice.total_paid, invoice.currency)} paid
-                          </div>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="font-mono">
-                      <div>
-                        {formatCurrency(invoice.amount, invoice.currency)}
-                        {invoice.status === 'partial' && invoice.remaining_amount && (
-                          <div className="text-xs text-muted-foreground">
-                            {formatCurrency(invoice.remaining_amount, invoice.currency)} remaining
-                          </div>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      {invoice.due_date ? (
-                        <div className="flex items-center gap-2">
-                          <Calendar className="h-3 w-3 text-text-secondary" />
-                          {formatDate(invoice.due_date)}
-                        </div>
-                      ) : (
-                        <span className="text-text-secondary">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-3 w-3 text-text-secondary" />
-                        {formatDate(invoice.issued_at)}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleEditInvoice(invoice) }}>
-                            <Edit className="h-4 w-4 mr-2" />
-                            Edit
-                          </DropdownMenuItem>
-                          {invoice.status !== 'paid' && (
-                            <>
-                              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handlePartialPayment(invoice) }}>
-                                <CreditCard className="h-4 w-4 mr-2" />
-                                Record Partial Payment
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handlePayment(invoice) }}>
-                                <CheckCircle className="h-4 w-4 mr-2" />
-                                Mark as Paid
-                              </DropdownMenuItem>
-                            </>
-                          )}
-                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleUploadPdf(invoice) }}>
-                            <Upload className="h-4 w-4 mr-2" />
-                            Upload PDF
-                          </DropdownMenuItem>
-                          {invoice.invoice_url ? (
-                            <DropdownMenuItem 
-                              onClick={(e) => { e.stopPropagation(); handleDownloadInvoice(invoice); }}
-                              disabled={downloadingFiles.has(invoice.id)}
-                            >
-                              <Download className="h-4 w-4 mr-2" />
-                              {downloadingFiles.has(invoice.id) ? 'Downloading...' : 'View Invoice'}
-                            </DropdownMenuItem>
-                          ) : (
-                            <DropdownMenuItem disabled>
-                              <FileText className="h-4 w-4 mr-2" />
-                              No file available
-                            </DropdownMenuItem>
-                          )}
-                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleDeleteInvoice(invoice) }}>
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-
-          {/* Mobile Card Layout - Shown on mobile and tablet */}
-          <div className="lg:hidden space-y-3 sm:space-y-4">
-            {paginatedInvoices.map((invoice) => (
-              <Card 
-                key={invoice.id} 
-                className="p-4 cursor-pointer hover:shadow-md transition-all duration-200"
-                onClick={() => handleRowClick(invoice)}
-              >
-                <div className="space-y-3">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-medium text-text-primary truncate text-sm sm:text-base">
-                        {invoice.title}
-                      </h3>
+    <Card>
+      <CardHeader>
+        <CardTitle>Invoices</CardTitle>
+        <CardDescription>
+          Manage all organization invoices ({invoices.length} total)
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {/* Desktop Table */}
+        <div className="hidden md:block">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Invoice</TableHead>
+                <TableHead>Organization</TableHead>
+                <TableHead>Amount</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Issued Date</TableHead>
+                <TableHead>Due Date</TableHead>
+                <TableHead className="w-[100px]">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {paginatedInvoices.map((invoice) => (
+                <TableRow key={invoice.id} className="h-[52px]">
+                  <TableCell className="font-medium">
+                    <div>
+                      <div className="font-medium">{invoice.title}</div>
                       {invoice.description && (
-                        <p className="text-xs sm:text-sm text-text-secondary mt-1 line-clamp-2">
-                          {invoice.description}
-                        </p>
-                      )}
-                      <p className="text-xs sm:text-sm text-text-secondary mt-1 truncate">
-                        {getOrganizationName(invoice.organization_id)}
-                      </p>
-                    </div>
-                    <div className="flex flex-col items-end gap-1">
-                      {getStatusBadge(invoice.status)}
-                      {invoice.status === 'partial' && invoice.total_paid && (
-                        <div className="text-xs text-muted-foreground">
-                          {formatCurrency(invoice.total_paid, invoice.currency)} paid
-                        </div>
+                        <div className="text-sm text-muted-foreground mt-1">{invoice.description}</div>
                       )}
                     </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-3 text-sm">
-                    <div className="flex items-center gap-2">
-                      <DollarSign className="h-3 w-3 text-text-secondary flex-shrink-0" />
-                      <div className="min-w-0">
-                        <span className="font-mono text-xs sm:text-sm">
-                          {formatCurrency(invoice.amount, invoice.currency)}
-                        </span>
-                        {invoice.status === 'partial' && invoice.remaining_amount && (
-                          <div className="text-xs text-muted-foreground">
-                            {formatCurrency(invoice.remaining_amount, invoice.currency)} remaining
-                          </div>
+                  </TableCell>
+                  <TableCell>
+                    {getOrganizationName(invoice.organization_id)}
+                  </TableCell>
+                  <TableCell className="font-mono">
+                    {formatCurrency(invoice.amount, invoice.currency)}
+                  </TableCell>
+                  <TableCell>{getStatusBadge(invoice.status)}</TableCell>
+                  <TableCell>{formatDate(invoice.issued_at)}</TableCell>
+                  <TableCell>
+                    {invoice.due_date ? formatDate(invoice.due_date) : 'No due date'}
+                  </TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem>
+                          <Edit className="h-4 w-4 mr-2" />
+                          Edit Invoice
+                        </DropdownMenuItem>
+                        {invoice.invoice_url && (
+                          <DropdownMenuItem>
+                            <Download className="h-4 w-4 mr-2" />
+                            Download PDF
+                          </DropdownMenuItem>
                         )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-3 w-3 text-text-secondary flex-shrink-0" />
-                      <span className="text-xs sm:text-sm truncate">
-                        {formatDate(invoice.issued_at)}
-                      </span>
-                    </div>
+                        <DropdownMenuItem className="text-destructive">
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete Invoice
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+
+        {/* Mobile Card Layout */}
+        <div className="md:hidden space-y-4">
+          {paginatedInvoices.map((invoice) => (
+            <Card key={invoice.id} className="p-4">
+              <div className="space-y-3">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-medium truncate">{invoice.title}</h3>
+                    <p className="text-sm text-muted-foreground">
+                      {getOrganizationName(invoice.organization_id)}
+                    </p>
                   </div>
-
-                  {invoice.due_date && (
-                    <div className="flex items-center gap-2 text-sm pt-1 border-t">
-                      <Calendar className="h-3 w-3 text-text-secondary" />
-                      <span className="text-xs sm:text-sm">
-                        Due: <span className={invoice.status === 'overdue' ? 'text-red-600 font-medium' : ''}>
-                          {formatDate(invoice.due_date)}
-                        </span>
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Mobile Action Buttons */}
-                  <div className="flex flex-wrap gap-2 pt-2 border-t">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={(e) => { e.stopPropagation(); handleEditInvoice(invoice); }}
-                      className="text-xs flex-1 min-w-0"
-                    >
-                      <Edit className="h-3 w-3 mr-1" />
-                      Edit
-                    </Button>
-                    
-                    {invoice.status !== 'paid' && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={(e) => { e.stopPropagation(); handlePayment(invoice); }}
-                        className="text-xs flex-1 min-w-0"
-                      >
-                        <CheckCircle className="h-3 w-3 mr-1" />
-                        Mark Paid
-                      </Button>
-                    )}
-                    
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={(e) => { e.stopPropagation(); handleUploadPdf(invoice); }}
-                      className="text-xs"
-                    >
-                      <Upload className="h-3 w-3 mr-1" />
-                      Upload
-                    </Button>
-                    
-                    {invoice.invoice_url && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={(e) => { e.stopPropagation(); handleDownloadInvoice(invoice); }}
-                        disabled={downloadingFiles.has(invoice.id)}
-                        className="text-xs"
-                      >
-                        <Download className="h-3 w-3 mr-1" />
-                        {downloadingFiles.has(invoice.id) ? 'Loading...' : 'View'}
-                      </Button>
-                    )}
+                  {getStatusBadge(invoice.status)}
+                </div>
+                
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Amount:</span>
+                    <div className="font-mono">{formatCurrency(invoice.amount, invoice.currency)}</div>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Issued:</span>
+                    <div>{formatDate(invoice.issued_at)}</div>
                   </div>
                 </div>
-              </Card>
-            ))}
-          </div>
 
-          {/* Enhanced Pagination Controls */}
-          {totalPages > 1 && (
-            <div className="space-y-4">
-              {/* Results Summary Card */}
-              <Card className="bg-gradient-to-r from-muted/50 to-muted/30 border-muted/50 backdrop-blur-sm">
-                <CardContent className="py-3">
-                  <div className="flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
-                      <span>
-                        Showing <span className="font-medium text-foreground">{startIndex + 1}-{Math.min(endIndex, sortedInvoices.length)}</span> of{' '}
-                        <span className="font-medium text-foreground">{sortedInvoices.length}</span> invoices
-                      </span>
-                    </div>
-                    <div className="text-muted-foreground">
-                      Page <span className="font-medium text-foreground">{currentPage}</span> of{' '}
-                      <span className="font-medium text-foreground">{totalPages}</span>
-                    </div>
+                {invoice.due_date && (
+                  <div className="text-sm">
+                    <span className="text-muted-foreground">Due:</span>
+                    <span className="ml-2">{formatDate(invoice.due_date)}</span>
                   </div>
-                </CardContent>
-              </Card>
+                )}
+              </div>
+            </Card>
+          ))}
+        </div>
 
-              {/* Pagination Controls */}
-              <div className="flex justify-center">
-                <div className="bg-background/80 backdrop-blur-sm border border-muted/50 rounded-lg p-2 shadow-lg">
-                  <PaginationComponent />
-                </div>
+        {/* Enhanced Pagination Controls - Matching JobsTable exactly */}
+        {totalPages > 1 && (
+          <div className="mt-8 space-y-6">
+            {/* Results Summary Card */}
+            <div className="flex justify-center">
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-surface-secondary/50 border border-border/50 rounded-brand text-sm text-text-secondary backdrop-blur-sm">
+                <FileText className="h-4 w-4 opacity-60" />
+                <span className="font-medium">
+                  Showing {startIndex + 1}-{Math.min(endIndex, sortedInvoices.length)} of {sortedInvoices.length} invoices
+                </span>
               </div>
             </div>
-          )}
-        </CardContent>
-      </Card>
+            
+            {/* Enhanced Pagination Navigation */}
+            <div className="flex justify-center">
+              <div className="inline-flex items-center bg-surface-primary border border-border/80 rounded-brand shadow-sm p-1 gap-1">
+                {/* Previous Button */}
+                <button
+                  onClick={() => currentPage > 1 && setCurrentPage(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className={`
+                    inline-flex items-center gap-2 px-3 py-2 rounded-brand text-sm font-medium transition-all duration-200 ease-out
+                    ${currentPage === 1 
+                      ? 'text-text-tertiary cursor-not-allowed opacity-50' 
+                      : 'text-text-secondary hover:text-text-primary hover:bg-surface-secondary hover:-translate-y-0.5 hover:shadow-sm active:scale-95'
+                    }
+                  `}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  <span className="hidden sm:inline">Previous</span>
+                </button>
 
-      {/* Invoice Details Dialog */}
-      <InvoiceDetailsDialog
-        invoice={selectedInvoice}
-        open={detailsDialogOpen}
-        onOpenChange={setDetailsDialogOpen}
-      />
+                {/* Page Numbers */}
+                <div className="flex items-center gap-1 px-2">
+                  {getPageNumbers().map((page, index) => (
+                    <div key={index}>
+                      {page === 'ellipsis' ? (
+                        <div className="flex items-center justify-center w-8 h-8 text-text-tertiary">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setCurrentPage(page)}
+                          className={`
+                            w-8 h-8 rounded-brand text-sm font-medium transition-all duration-200 ease-out
+                            ${currentPage === page
+                              ? 'bg-accent text-accent-foreground shadow-sm scale-105 font-semibold'
+                              : 'text-text-secondary hover:text-text-primary hover:bg-surface-secondary hover:-translate-y-0.5 hover:shadow-sm active:scale-95'
+                            }
+                          `}
+                        >
+                          {page}
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
 
-      {/* Edit Invoice Modal */}
-      <EditInvoiceModal
-        open={editModalOpen}
-        onOpenChange={setEditModalOpen}
-        invoice={selectedInvoice}
-      />
+                {/* Next Button */}
+                <button
+                  onClick={() => currentPage < totalPages && setCurrentPage(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className={`
+                    inline-flex items-center gap-2 px-3 py-2 rounded-brand text-sm font-medium transition-all duration-200 ease-out
+                    ${currentPage === totalPages 
+                      ? 'text-text-tertiary cursor-not-allowed opacity-50' 
+                      : 'text-text-secondary hover:text-text-primary hover:bg-surface-secondary hover:-translate-y-0.5 hover:shadow-sm active:scale-95'
+                    }
+                  `}
+                >
+                  <span className="hidden sm:inline">Next</span>
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
 
-      {/* Payment Modal */}
-      <PaymentModal
-        open={paymentModalOpen}
-        onOpenChange={setPaymentModalOpen}
-        invoice={selectedInvoice}
-      />
-
-      {/* Partial Payment Modal */}
-      <PartialPaymentModal
-        open={partialPaymentModalOpen}
-        onOpenChange={setPartialPaymentModalOpen}
-        invoice={selectedInvoice}
-      />
-
-      {/* Upload Invoice Modal */}
-      {selectedInvoice && (
-        <InvoiceUploadModal
-          open={uploadModalOpen}
-          onOpenChange={setUploadModalOpen}
-          invoice={selectedInvoice}
-          onUploadComplete={handleUploadComplete}
-        />
-      )}
-    </>
+            {/* Mobile Simplified Pagination */}
+            <div className="sm:hidden flex justify-center">
+              <div className="inline-flex items-center gap-4 px-4 py-2 bg-surface-secondary/30 border border-border/50 rounded-brand backdrop-blur-sm">
+                <button
+                  onClick={() => currentPage > 1 && setCurrentPage(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  className={`
+                    p-2 rounded-brand transition-all duration-200
+                    ${currentPage === 1 
+                      ? 'text-text-tertiary cursor-not-allowed opacity-50' 
+                      : 'text-text-secondary hover:text-text-primary hover:bg-surface-secondary hover:scale-105 active:scale-95'
+                    }
+                  `}
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+                
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="text-text-secondary">Page</span>
+                  <span className="font-medium text-text-primary bg-accent/20 px-2 py-1 rounded-brand">
+                    {currentPage}
+                  </span>
+                  <span className="text-text-secondary">of {totalPages}</span>
+                </div>
+                
+                <button
+                  onClick={() => currentPage < totalPages && setCurrentPage(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  className={`
+                    p-2 rounded-brand transition-all duration-200
+                    ${currentPage === totalPages 
+                      ? 'text-text-tertiary cursor-not-allowed opacity-50' 
+                      : 'text-text-secondary hover:text-text-primary hover:bg-surface-secondary hover:scale-105 active:scale-95'
+                    }
+                  `}
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   )
 }

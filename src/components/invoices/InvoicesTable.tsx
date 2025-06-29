@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -13,19 +14,10 @@ import { Input } from '@/components/ui/input'
 import { MultiSelect } from '@/components/ui/multi-select'
 import { Button } from '@/components/ui/button'
 import { MonthPicker } from '@/components/ui/month-picker'
-import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from '@/components/ui/pagination'
 import { useInvoices, Invoice } from '@/hooks/useInvoices'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useIsMobile } from '@/hooks/use-mobile'
-import { Receipt, Download, FileText, Search, Filter, Calendar, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Receipt, Download, FileText, Search, Filter, Calendar, ChevronLeft, ChevronRight, MoreHorizontal } from 'lucide-react'
 import { InvoiceUploadModal } from './InvoiceUploadModal'
 import { getInvoicePdfUrl } from '@/lib/invoiceStorage'
 import { filterInvoices, getInvoiceStats, useInvoiceFilter } from '@/utils/invoiceFilters'
@@ -101,6 +93,44 @@ export function InvoicesTable() {
   const endIndex = startIndex + itemsPerPage
   const paginatedInvoices = sortedInvoices.slice(startIndex, endIndex)
 
+  // Generate page numbers for pagination - exact same logic as JobsTable
+  const getPageNumbers = () => {
+    const pages: (number | 'ellipsis')[] = []
+    
+    if (totalPages <= 7) {
+      // Show all pages if 7 or fewer
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i)
+      }
+    } else {
+      // Show first page
+      pages.push(1)
+      
+      if (currentPage > 4) {
+        pages.push('ellipsis')
+      }
+      
+      // Show pages around current page
+      const start = Math.max(2, currentPage - 1)
+      const end = Math.min(totalPages - 1, currentPage + 1)
+      
+      for (let i = start; i <= end; i++) {
+        pages.push(i)
+      }
+      
+      if (currentPage < totalPages - 3) {
+        pages.push('ellipsis')
+      }
+      
+      // Show last page
+      if (totalPages > 1) {
+        pages.push(totalPages)
+      }
+    }
+    
+    return pages
+  }
+
   const getStatusBadgeVariant = (status: Invoice['status']) => {
     switch (status) {
       case 'paid':
@@ -159,125 +189,6 @@ export function InvoicesTable() {
       default:
         return 'text-gray-600'
     }
-  }
-
-  // Updated pagination logic to match other tables
-  const getPageNumbers = (currentPage: number, totalPages: number) => {
-    const pages = []
-    const showEllipsis = totalPages > 7
-
-    if (!showEllipsis) {
-      for (let i = 1; i <= totalPages; i++) {
-        pages.push(i)
-      }
-    } else {
-      if (currentPage <= 4) {
-        for (let i = 1; i <= 5; i++) {
-          pages.push(i)
-        }
-        pages.push('...')
-        pages.push(totalPages)
-      } else if (currentPage >= totalPages - 3) {
-        pages.push(1)
-        pages.push('...')
-        for (let i = totalPages - 4; i <= totalPages; i++) {
-          pages.push(i)
-        }
-      } else {
-        pages.push(1)
-        pages.push('...')
-        for (let i = currentPage - 1; i <= currentPage + 1; i++) {
-          pages.push(i)
-        }
-        pages.push('...')
-        pages.push(totalPages)
-      }
-    }
-    return pages
-  }
-
-  // Updated pagination component to match other tables
-  const PaginationComponent = () => {
-    if (totalPages <= 1) return null
-
-    const pageNumbers = getPageNumbers(currentPage, totalPages)
-
-    if (isMobile) {
-      return (
-        <div className="flex items-center justify-between gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-            disabled={currentPage === 1}
-            className="flex items-center gap-1"
-          >
-            <ChevronLeft className="h-4 w-4" />
-            Previous
-          </Button>
-          
-          <div className="flex items-center gap-1 text-sm text-muted-foreground bg-muted/50 px-3 py-1 rounded-md">
-            Page {currentPage} of {totalPages}
-          </div>
-          
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-            disabled={currentPage === totalPages}
-            className="flex items-center gap-1"
-          >
-            Next
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-      )
-    }
-
-    return (
-      <div className="flex items-center gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-          disabled={currentPage === 1}
-          className="flex items-center gap-1 hover:scale-105 transition-all duration-200"
-        >
-          <ChevronLeft className="h-4 w-4" />
-          Previous
-        </Button>
-        
-        <div className="flex items-center gap-1">
-          {pageNumbers.map((pageNum, index) => (
-            <Button
-              key={index}
-              variant={currentPage === pageNum ? "default" : "outline"}
-              size="sm"
-              onClick={() => typeof pageNum === 'number' && setCurrentPage(pageNum)}
-              disabled={typeof pageNum !== 'number'}
-              className={`min-w-[40px] transition-all duration-200 ${
-                currentPage === pageNum 
-                  ? 'bg-primary text-primary-foreground shadow-md' 
-                  : 'hover:scale-105 hover:shadow-sm'
-              } ${typeof pageNum !== 'number' ? 'cursor-default' : ''}`}
-            >
-              {pageNum}
-            </Button>
-          ))}
-        </div>
-        
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-          disabled={currentPage === totalPages}
-          className="flex items-center gap-1 hover:scale-105 transition-all duration-200"
-        >
-          Next
-          <ChevronRight className="h-4 w-4" />
-        </Button>
-      </div>
-    )
   }
 
   if (isLoading) {
@@ -568,32 +479,120 @@ export function InvoicesTable() {
                 </Table>
               </div>
 
-              {/* Enhanced Pagination Controls */}
+              {/* Enhanced Pagination Controls - Matching JobsTable exactly */}
               {totalPages > 1 && (
-                <div className="space-y-4">
+                <div className="mt-8 space-y-6">
                   {/* Results Summary Card */}
-                  <Card className="bg-gradient-to-r from-muted/50 to-muted/30 border-muted/50 backdrop-blur-sm">
-                    <CardContent className="py-3">
-                      <div className="flex items-center justify-between text-sm">
-                        <div className="flex items-center gap-2 text-muted-foreground">
-                          <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
-                          <span>
-                            Showing <span className="font-medium text-foreground">{startIndex + 1}-{Math.min(endIndex, sortedInvoices.length)}</span> of{' '}
-                            <span className="font-medium text-foreground">{sortedInvoices.length}</span> invoices
-                          </span>
-                        </div>
-                        <div className="text-muted-foreground">
-                          Page <span className="font-medium text-foreground">{currentPage}</span> of{' '}
-                          <span className="font-medium text-foreground">{totalPages}</span>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* Pagination Controls */}
                   <div className="flex justify-center">
-                    <div className="bg-background/80 backdrop-blur-sm border border-muted/50 rounded-lg p-2 shadow-lg">
-                      <PaginationComponent />
+                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-surface-secondary/50 border border-border/50 rounded-brand text-sm text-text-secondary backdrop-blur-sm">
+                      <FileText className="h-4 w-4 opacity-60" />
+                      <span className="font-medium">
+                        Showing {startIndex + 1}-{Math.min(endIndex, sortedInvoices.length)} of {sortedInvoices.length} invoices
+                      </span>
+                    </div>
+                  </div>
+                  
+                  {/* Enhanced Pagination Navigation */}
+                  <div className="flex justify-center">
+                    <div className="inline-flex items-center bg-surface-primary border border-border/80 rounded-brand shadow-sm p-1 gap-1">
+                      {/* Previous Button */}
+                      <button
+                        onClick={() => currentPage > 1 && setCurrentPage(currentPage - 1)}
+                        disabled={currentPage === 1}
+                        className={`
+                          inline-flex items-center gap-2 px-3 py-2 rounded-brand text-sm font-medium transition-all duration-200 ease-out
+                          ${currentPage === 1 
+                            ? 'text-text-tertiary cursor-not-allowed opacity-50' 
+                            : 'text-text-secondary hover:text-text-primary hover:bg-surface-secondary hover:-translate-y-0.5 hover:shadow-sm active:scale-95'
+                          }
+                        `}
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                        <span className="hidden sm:inline">Previous</span>
+                      </button>
+
+                      {/* Page Numbers */}
+                      <div className="flex items-center gap-1 px-2">
+                        {getPageNumbers().map((page, index) => (
+                          <div key={index}>
+                            {page === 'ellipsis' ? (
+                              <div className="flex items-center justify-center w-8 h-8 text-text-tertiary">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </div>
+                            ) : (
+                              <button
+                                onClick={() => setCurrentPage(page)}
+                                className={`
+                                  w-8 h-8 rounded-brand text-sm font-medium transition-all duration-200 ease-out
+                                  ${currentPage === page
+                                    ? 'bg-accent text-accent-foreground shadow-sm scale-105 font-semibold'
+                                    : 'text-text-secondary hover:text-text-primary hover:bg-surface-secondary hover:-translate-y-0.5 hover:shadow-sm active:scale-95'
+                                  }
+                                `}
+                              >
+                                {page}
+                              </button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Next Button */}
+                      <button
+                        onClick={() => currentPage < totalPages && setCurrentPage(currentPage + 1)}
+                        disabled={currentPage === totalPages}
+                        className={`
+                          inline-flex items-center gap-2 px-3 py-2 rounded-brand text-sm font-medium transition-all duration-200 ease-out
+                          ${currentPage === totalPages 
+                            ? 'text-text-tertiary cursor-not-allowed opacity-50' 
+                            : 'text-text-secondary hover:text-text-primary hover:bg-surface-secondary hover:-translate-y-0.5 hover:shadow-sm active:scale-95'
+                          }
+                        `}
+                      >
+                        <span className="hidden sm:inline">Next</span>
+                        <ChevronRight className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Mobile Simplified Pagination */}
+                  <div className="sm:hidden flex justify-center">
+                    <div className="inline-flex items-center gap-4 px-4 py-2 bg-surface-secondary/30 border border-border/50 rounded-brand backdrop-blur-sm">
+                      <button
+                        onClick={() => currentPage > 1 && setCurrentPage(currentPage - 1)}
+                        disabled={currentPage === 1}
+                        className={`
+                          p-2 rounded-brand transition-all duration-200
+                          ${currentPage === 1 
+                            ? 'text-text-tertiary cursor-not-allowed opacity-50' 
+                            : 'text-text-secondary hover:text-text-primary hover:bg-surface-secondary hover:scale-105 active:scale-95'
+                          }
+                        `}
+                      >
+                        <ChevronLeft className="h-5 w-5" />
+                      </button>
+                      
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className="text-text-secondary">Page</span>
+                        <span className="font-medium text-text-primary bg-accent/20 px-2 py-1 rounded-brand">
+                          {currentPage}
+                        </span>
+                        <span className="text-text-secondary">of {totalPages}</span>
+                      </div>
+                      
+                      <button
+                        onClick={() => currentPage < totalPages && setCurrentPage(currentPage + 1)}
+                        disabled={currentPage === totalPages}
+                        className={`
+                          p-2 rounded-brand transition-all duration-200
+                          ${currentPage === totalPages 
+                            ? 'text-text-tertiary cursor-not-allowed opacity-50' 
+                            : 'text-text-secondary hover:text-text-primary hover:bg-surface-secondary hover:scale-105 active:scale-95'
+                          }
+                        `}
+                      >
+                        <ChevronRight className="h-5 w-5" />
+                      </button>
                     </div>
                   </div>
                 </div>
