@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { MoreHorizontal, Download, Edit, Trash2, CheckCircle, FileText, Calendar, DollarSign, Search, Filter, Upload, CreditCard } from 'lucide-react'
+import { MoreHorizontal, Download, Edit, Trash2, CheckCircle, FileText, Calendar, DollarSign, Search, Filter, Upload, CreditCard, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -251,118 +251,122 @@ export function AdminInvoicesTable({ invoices, isLoading }: AdminInvoicesTablePr
     })
   }
 
-  // Pagination component
-  const PaginationComponent = () => {
-    if (totalPages <= 1) return null
+  // Updated pagination logic to match other tables
+  const getPageNumbers = (currentPage: number, totalPages: number) => {
+    const pages = []
+    const showEllipsis = totalPages > 7
 
-    const getVisiblePages = () => {
-      const pages = []
-      const showEllipsis = totalPages > 7
-
-      if (!showEllipsis) {
-        for (let i = 1; i <= totalPages; i++) {
+    if (!showEllipsis) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i)
+      }
+    } else {
+      if (currentPage <= 4) {
+        for (let i = 1; i <= 5; i++) {
+          pages.push(i)
+        }
+        pages.push('...')
+        pages.push(totalPages)
+      } else if (currentPage >= totalPages - 3) {
+        pages.push(1)
+        pages.push('...')
+        for (let i = totalPages - 4; i <= totalPages; i++) {
           pages.push(i)
         }
       } else {
-        if (currentPage <= 4) {
-          for (let i = 1; i <= 5; i++) {
-            pages.push(i)
-          }
-          pages.push('ellipsis')
-          pages.push(totalPages)
-        } else if (currentPage >= totalPages - 3) {
-          pages.push(1)
-          pages.push('ellipsis')
-          for (let i = totalPages - 4; i <= totalPages; i++) {
-            pages.push(i)
-          }
-        } else {
-          pages.push(1)
-          pages.push('ellipsis')
-          for (let i = currentPage - 1; i <= currentPage + 1; i++) {
-            pages.push(i)
-          }
-          pages.push('ellipsis')
-          pages.push(totalPages)
+        pages.push(1)
+        pages.push('...')
+        for (let i = currentPage - 1; i <= currentPage + 1; i++) {
+          pages.push(i)
         }
+        pages.push('...')
+        pages.push(totalPages)
       }
-
-      return pages
     }
+    return pages
+  }
 
-    const visiblePages = getVisiblePages()
+  // Updated pagination component to match other tables
+  const PaginationComponent = () => {
+    if (totalPages <= 1) return null
+
+    const pageNumbers = getPageNumbers(currentPage, totalPages)
 
     if (isMobile) {
       return (
-        <div className="flex items-center justify-between px-2">
+        <div className="flex items-center justify-between gap-2">
           <Button
             variant="outline"
             size="sm"
             onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
             disabled={currentPage === 1}
+            className="flex items-center gap-1"
           >
+            <ChevronLeft className="h-4 w-4" />
             Previous
           </Button>
-          <span className="text-sm text-muted-foreground">
+          
+          <div className="flex items-center gap-1 text-sm text-muted-foreground bg-muted/50 px-3 py-1 rounded-md">
             Page {currentPage} of {totalPages}
-          </span>
+          </div>
+          
           <Button
             variant="outline"
             size="sm"
             onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
             disabled={currentPage === totalPages}
+            className="flex items-center gap-1"
           >
             Next
+            <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
       )
     }
 
     return (
-      <Pagination>
-        <PaginationContent>
-          <PaginationItem>
-            <PaginationPrevious
-              href="#"
-              onClick={(e) => {
-                e.preventDefault()
-                if (currentPage > 1) setCurrentPage(currentPage - 1)
-              }}
-              className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''}
-            />
-          </PaginationItem>
-          
-          {visiblePages.map((page, index) => (
-            <PaginationItem key={index}>
-              {page === 'ellipsis' ? (
-                <PaginationEllipsis />
-              ) : (
-                <PaginationLink
-                  href="#"
-                  onClick={(e) => {
-                    e.preventDefault()
-                    setCurrentPage(page as number)
-                  }}
-                  isActive={currentPage === page}
-                >
-                  {page}
-                </PaginationLink>
-              )}
-            </PaginationItem>
+      <div className="flex items-center gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+          disabled={currentPage === 1}
+          className="flex items-center gap-1 hover:scale-105 transition-all duration-200"
+        >
+          <ChevronLeft className="h-4 w-4" />
+          Previous
+        </Button>
+        
+        <div className="flex items-center gap-1">
+          {pageNumbers.map((pageNum, index) => (
+            <Button
+              key={index}
+              variant={currentPage === pageNum ? "default" : "outline"}
+              size="sm"
+              onClick={() => typeof pageNum === 'number' && setCurrentPage(pageNum)}
+              disabled={typeof pageNum !== 'number'}
+              className={`min-w-[40px] transition-all duration-200 ${
+                currentPage === pageNum 
+                  ? 'bg-primary text-primary-foreground shadow-md' 
+                  : 'hover:scale-105 hover:shadow-sm'
+              } ${typeof pageNum !== 'number' ? 'cursor-default' : ''}`}
+            >
+              {pageNum}
+            </Button>
           ))}
-          
-          <PaginationItem>
-            <PaginationNext
-              href="#"
-              onClick={(e) => {
-                e.preventDefault()
-                if (currentPage < totalPages) setCurrentPage(currentPage + 1)
-              }}
-              className={currentPage === totalPages ? 'pointer-events-none opacity-50' : ''}
-            />
-          </PaginationItem>
-        </PaginationContent>
-      </Pagination>
+        </div>
+        
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+          disabled={currentPage === totalPages}
+          className="flex items-center gap-1 hover:scale-105 transition-all duration-200"
+        >
+          Next
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
     )
   }
 
@@ -662,18 +666,34 @@ export function AdminInvoicesTable({ invoices, isLoading }: AdminInvoicesTablePr
             ))}
           </div>
 
-          {/* Pagination Controls */}
+          {/* Enhanced Pagination Controls */}
           {totalPages > 1 && (
-            <div className="mt-6 space-y-4">
-              <div className="flex items-center justify-between text-sm text-muted-foreground">
-                <div>
-                  Showing {startIndex + 1}-{Math.min(endIndex, sortedInvoices.length)} of {sortedInvoices.length} invoices
-                </div>
-                <div>
-                  Page {currentPage} of {totalPages}
+            <div className="space-y-4">
+              {/* Results Summary Card */}
+              <Card className="bg-gradient-to-r from-muted/50 to-muted/30 border-muted/50 backdrop-blur-sm">
+                <CardContent className="py-3">
+                  <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
+                      <span>
+                        Showing <span className="font-medium text-foreground">{startIndex + 1}-{Math.min(endIndex, sortedInvoices.length)}</span> of{' '}
+                        <span className="font-medium text-foreground">{sortedInvoices.length}</span> invoices
+                      </span>
+                    </div>
+                    <div className="text-muted-foreground">
+                      Page <span className="font-medium text-foreground">{currentPage}</span> of{' '}
+                      <span className="font-medium text-foreground">{totalPages}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Pagination Controls */}
+              <div className="flex justify-center">
+                <div className="bg-background/80 backdrop-blur-sm border border-muted/50 rounded-lg p-2 shadow-lg">
+                  <PaginationComponent />
                 </div>
               </div>
-              <PaginationComponent />
             </div>
           )}
         </CardContent>
