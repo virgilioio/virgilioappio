@@ -13,11 +13,13 @@ import { CreateInvoiceModal } from '@/components/invoices/CreateInvoiceModal'
 import { useInvoices } from '@/hooks/useInvoices'
 import { useOrganizations } from '@/hooks/useOrganizations'
 import { usePermissions } from '@/hooks/usePermissions'
+import { useIsMobile } from '@/hooks/use-mobile'
 
 export function BillingTab() {
   const { invoices, isLoading } = useInvoices()
   const { organizations } = useOrganizations()
   const { canManageInvoices, canViewBilling, isPlatformAdmin, isBillingMember } = usePermissions()
+  const isMobile = useIsMobile()
   const [createModalOpen, setCreateModalOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>([])
@@ -106,17 +108,17 @@ export function BillingTab() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header */}
       <Card>
-        <CardHeader className="pb-4">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <CardHeader className="pb-3 sm:pb-4">
+          <div className="flex flex-col gap-3 sm:gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <CardTitle className="flex items-center gap-3">
-                <Receipt className="h-5 w-5" />
+              <CardTitle className="flex items-center gap-2 sm:gap-3 text-base sm:text-lg">
+                <Receipt className="h-4 w-4 sm:h-5 sm:w-5" />
                 Billing & Invoices
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-sm">
                 {showAdminView 
                   ? "Manage billing information and invoice history across organizations"
                   : "View your organization's billing information and invoice history"
@@ -124,7 +126,11 @@ export function BillingTab() {
               </CardDescription>
             </div>
             {canManageInvoices && (
-              <Button onClick={() => setCreateModalOpen(true)} className="flex items-center gap-2">
+              <Button 
+                onClick={() => setCreateModalOpen(true)} 
+                className="flex items-center gap-2 w-full sm:w-auto"
+                size={isMobile ? "default" : "default"}
+              >
                 <Plus className="h-4 w-4" />
                 Create Invoice
               </Button>
@@ -137,7 +143,7 @@ export function BillingTab() {
       {showAdminView && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+            <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
               <Filter className="h-4 w-4" />
               Filters
             </CardTitle>
@@ -155,8 +161,8 @@ export function BillingTab() {
                 />
               </div>
               
-              {/* Filter selects */}
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {/* Filter selects - Stack on mobile */}
+              <div className="grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
                 <MultiSelect
                   options={statusOptions}
                   selectedValues={selectedStatuses}
@@ -193,6 +199,7 @@ export function BillingTab() {
                     setSelectedOrganizations([])
                     setMonthFilter('all')
                   }}
+                  className="w-full"
                 >
                   Clear Filters
                 </Button>

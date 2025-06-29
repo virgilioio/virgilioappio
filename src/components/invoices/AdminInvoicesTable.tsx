@@ -1,4 +1,3 @@
-
 import { useState } from 'react'
 import { MoreHorizontal, Download, Edit, Trash2, CheckCircle, FileText, Calendar, DollarSign, Search, Filter, Upload, CreditCard } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -22,6 +21,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Skeleton } from '@/components/ui/skeleton'
 import { MonthPicker } from '@/components/ui/month-picker'
+import { useIsMobile } from '@/hooks/use-mobile'
 import { EditInvoiceModal } from './EditInvoiceModal'
 import { PaymentModal } from './PaymentModal'
 import { PartialPaymentModal } from './PartialPaymentModal'
@@ -40,6 +40,7 @@ interface AdminInvoicesTableProps {
 
 export function AdminInvoicesTable({ invoices, isLoading }: AdminInvoicesTableProps) {
   const { organizations } = useOrganizations()
+  const isMobile = useIsMobile()
   const [editModalOpen, setEditModalOpen] = useState(false)
   const [paymentModalOpen, setPaymentModalOpen] = useState(false)
   const [partialPaymentModalOpen, setPartialPaymentModalOpen] = useState(false)
@@ -221,6 +222,14 @@ export function AdminInvoicesTable({ invoices, isLoading }: AdminInvoicesTablePr
     })
   }
 
+  // Filter invoices based on all filters
+  const filteredInvoices = filterInvoices(invoices || [], {
+    searchTerm,
+    statuses: statusFilter === 'all' ? [] : [statusFilter],
+    organizationIds: organizationFilter === 'all' ? [] : [organizationFilter],
+    selectedMonth
+  })
+
   const sortedInvoices = [...filteredInvoices].sort((a, b) => {
     const dateA = new Date(a.due_date || a.issued_at)
     const dateB = new Date(b.due_date || b.issued_at)
@@ -231,7 +240,7 @@ export function AdminInvoicesTable({ invoices, isLoading }: AdminInvoicesTablePr
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Invoices</CardTitle>
+          <CardTitle className="text-base sm:text-lg">Invoices</CardTitle>
           <CardDescription>Manage invoices for all organizations</CardDescription>
         </CardHeader>
         <CardContent>
@@ -249,17 +258,17 @@ export function AdminInvoicesTable({ invoices, isLoading }: AdminInvoicesTablePr
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Invoices</CardTitle>
+          <CardTitle className="text-base sm:text-lg">Invoices</CardTitle>
           <CardDescription>Manage invoices for all organizations</CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-col items-center justify-center py-12">
+        <CardContent className="flex flex-col items-center justify-center py-8 sm:py-12">
           <div className="text-center space-y-4">
-            <div className="w-16 h-16 mx-auto bg-accent/10 rounded-full flex items-center justify-center">
-              <FileText className="w-8 h-8 text-accent" />
+            <div className="w-12 h-12 sm:w-16 sm:h-16 mx-auto bg-accent/10 rounded-full flex items-center justify-center mb-4">
+              <FileText className="w-6 h-6 sm:w-8 sm:h-8 text-accent" />
             </div>
             <div>
-              <h3 className="text-lg font-medium text-text-primary">No invoices yet</h3>
-              <p className="text-text-secondary mt-1">
+              <h3 className="text-base sm:text-lg font-medium text-text-primary">No invoices yet</h3>
+              <p className="text-text-secondary mt-1 text-sm">
                 Invoices created for organizations will appear here.
               </p>
             </div>
@@ -273,14 +282,14 @@ export function AdminInvoicesTable({ invoices, isLoading }: AdminInvoicesTablePr
     <>
       <Card>
         <CardHeader>
-          <CardTitle>Invoices</CardTitle>
+          <CardTitle className="text-base sm:text-lg">Invoices</CardTitle>
           <CardDescription>
             Manage invoices for all organizations ({invoices.length} invoice{invoices.length !== 1 ? 's' : ''})
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {/* Desktop Table */}
-          <div className="hidden md:block">
+          {/* Desktop Table - Hidden on mobile */}
+          <div className="hidden lg:block">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -400,29 +409,33 @@ export function AdminInvoicesTable({ invoices, isLoading }: AdminInvoicesTablePr
             </Table>
           </div>
 
-          {/* Mobile Card Layout */}
-          <div className="md:hidden space-y-4">
+          {/* Mobile Card Layout - Shown on mobile and tablet */}
+          <div className="lg:hidden space-y-3 sm:space-y-4">
             {sortedInvoices.map((invoice) => (
               <Card 
                 key={invoice.id} 
-                className="p-4 cursor-pointer hover:shadow-md transition-shadow"
+                className="p-4 cursor-pointer hover:shadow-md transition-all duration-200"
                 onClick={() => handleRowClick(invoice)}
               >
                 <div className="space-y-3">
-                  <div className="flex items-start justify-between">
+                  <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-medium text-text-primary truncate">{invoice.title}</h3>
+                      <h3 className="font-medium text-text-primary truncate text-sm sm:text-base">
+                        {invoice.title}
+                      </h3>
                       {invoice.description && (
-                        <p className="text-sm text-text-secondary mt-1">{invoice.description}</p>
+                        <p className="text-xs sm:text-sm text-text-secondary mt-1 line-clamp-2">
+                          {invoice.description}
+                        </p>
                       )}
-                      <p className="text-sm text-text-secondary mt-1">
+                      <p className="text-xs sm:text-sm text-text-secondary mt-1 truncate">
                         {getOrganizationName(invoice.organization_id)}
                       </p>
                     </div>
-                    <div className="space-y-1">
+                    <div className="flex flex-col items-end gap-1">
                       {getStatusBadge(invoice.status)}
                       {invoice.status === 'partial' && invoice.total_paid && (
-                        <div className="text-xs text-muted-foreground text-right">
+                        <div className="text-xs text-muted-foreground">
                           {formatCurrency(invoice.total_paid, invoice.currency)} paid
                         </div>
                       )}
@@ -431,9 +444,11 @@ export function AdminInvoicesTable({ invoices, isLoading }: AdminInvoicesTablePr
                   
                   <div className="grid grid-cols-2 gap-3 text-sm">
                     <div className="flex items-center gap-2">
-                      <DollarSign className="h-3 w-3 text-text-secondary" />
-                      <div>
-                        <span className="font-mono">{formatCurrency(invoice.amount, invoice.currency)}</span>
+                      <DollarSign className="h-3 w-3 text-text-secondary flex-shrink-0" />
+                      <div className="min-w-0">
+                        <span className="font-mono text-xs sm:text-sm">
+                          {formatCurrency(invoice.amount, invoice.currency)}
+                        </span>
                         {invoice.status === 'partial' && invoice.remaining_amount && (
                           <div className="text-xs text-muted-foreground">
                             {formatCurrency(invoice.remaining_amount, invoice.currency)} remaining
@@ -442,17 +457,71 @@ export function AdminInvoicesTable({ invoices, isLoading }: AdminInvoicesTablePr
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Calendar className="h-3 w-3 text-text-secondary" />
-                      <span>{formatDate(invoice.issued_at)}</span>
+                      <Calendar className="h-3 w-3 text-text-secondary flex-shrink-0" />
+                      <span className="text-xs sm:text-sm truncate">
+                        {formatDate(invoice.issued_at)}
+                      </span>
                     </div>
                   </div>
 
                   {invoice.due_date && (
-                    <div className="flex items-center gap-2 text-sm">
+                    <div className="flex items-center gap-2 text-sm pt-1 border-t">
                       <Calendar className="h-3 w-3 text-text-secondary" />
-                      <span>Due: {formatDate(invoice.due_date)}</span>
+                      <span className="text-xs sm:text-sm">
+                        Due: <span className={invoice.status === 'overdue' ? 'text-red-600 font-medium' : ''}>
+                          {formatDate(invoice.due_date)}
+                        </span>
+                      </span>
                     </div>
                   )}
+
+                  {/* Mobile Action Buttons */}
+                  <div className="flex flex-wrap gap-2 pt-2 border-t">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => { e.stopPropagation(); handleEditInvoice(invoice); }}
+                      className="text-xs flex-1 min-w-0"
+                    >
+                      <Edit className="h-3 w-3 mr-1" />
+                      Edit
+                    </Button>
+                    
+                    {invoice.status !== 'paid' && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => { e.stopPropagation(); handlePayment(invoice); }}
+                        className="text-xs flex-1 min-w-0"
+                      >
+                        <CheckCircle className="h-3 w-3 mr-1" />
+                        Mark Paid
+                      </Button>
+                    )}
+                    
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => { e.stopPropagation(); handleUploadPdf(invoice); }}
+                      className="text-xs"
+                    >
+                      <Upload className="h-3 w-3 mr-1" />
+                      Upload
+                    </Button>
+                    
+                    {invoice.invoice_url && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={(e) => { e.stopPropagation(); handleDownloadInvoice(invoice); }}
+                        disabled={downloadingFiles.has(invoice.id)}
+                        className="text-xs"
+                      >
+                        <Download className="h-3 w-3 mr-1" />
+                        {downloadingFiles.has(invoice.id) ? 'Loading...' : 'View'}
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </Card>
             ))}
