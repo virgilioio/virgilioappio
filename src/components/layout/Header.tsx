@@ -19,13 +19,13 @@ import { VirgilioLogo } from '@/components/VirgilioLogo'
 import { AdminModeIndicator } from '@/components/admin/AdminModeIndicator'
 
 export function Header() {
-  const { signOut } = useAuth()
+  const { logout } = useAuth()
   const { profile } = useUserProfile()
   const permissions = usePermissions()
   const navigate = useNavigate()
 
   const handleSignOut = async () => {
-    await signOut()
+    await logout()
     navigate('/auth')
   }
 
@@ -37,6 +37,15 @@ export function Header() {
       .toUpperCase()
       .slice(0, 2)
   }
+
+  const getFullName = () => {
+    if (profile?.first_name && profile?.last_name) {
+      return `${profile.first_name} ${profile.last_name}`
+    }
+    return profile?.first_name || profile?.last_name || 'User'
+  }
+
+  const fullName = getFullName()
 
   return (
     <div className="flex items-center justify-between w-full">
@@ -50,9 +59,9 @@ export function Header() {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-8 w-8 rounded-full">
               <Avatar className="h-8 w-8">
-                <AvatarImage src={profile?.avatar_url || undefined} alt={profile?.full_name || 'User'} />
+                <AvatarImage src={profile?.avatar_url || undefined} alt={fullName} />
                 <AvatarFallback>
-                  {profile?.full_name ? getInitials(profile.full_name) : 'U'}
+                  {getInitials(fullName)}
                 </AvatarFallback>
               </Avatar>
             </Button>
@@ -61,7 +70,7 @@ export function Header() {
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col space-y-1">
                 <p className="text-sm font-medium leading-none">
-                  {profile?.full_name || 'User'}
+                  {fullName}
                 </p>
                 <p className="text-xs leading-none text-muted-foreground">
                   {profile?.email}
