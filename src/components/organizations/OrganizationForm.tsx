@@ -12,7 +12,7 @@ import { SearchableSelect } from '@/components/ui/searchable-select'
 import { Organization, CreateOrganizationData, UpdateOrganizationData } from '@/hooks/useOrganizations'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useMembers } from '@/hooks/useMembers'
-import { COUNTRIES } from '@/constants/countries'
+import { useCountries } from '@/hooks/useCountries'
 
 const formSchema = z.object({
   name: z.string().min(1, 'Organization name is required'),
@@ -40,7 +40,14 @@ export function OrganizationForm({
 }: OrganizationFormProps) {
   const permissions = usePermissions()
   const { members } = useMembers()
+  const { countries, isLoading: countriesLoading } = useCountries()
   const isEditing = !!organization
+
+  // Transform countries data for SearchableSelect format
+  const countryOptions = countries.map(country => ({
+    value: country.code,
+    label: country.name
+  }))
 
   // Get workspace owners for the owner dropdown - filter out members without valid user_id
   const workspaceOwners = members.filter(member => 
@@ -172,14 +179,18 @@ export function OrganizationForm({
                   <FormLabel>Country</FormLabel>
                   <FormControl>
                     <SearchableSelect
-                      options={COUNTRIES}
+                      options={countryOptions}
                       value={field.value}
                       onValueChange={field.onChange}
-                      placeholder="Select a country"
+                      placeholder={countriesLoading ? "Loading countries..." : "Select a country"}
                       searchPlaceholder="Search countries..."
-                      emptyMessage="No countries found."
+                      emptyMessage={countriesLoading ? "Loading..." : "No countries found."}
+                      disabled={countriesLoading}
                     />
                   </FormControl>
+                  <FormDescription>
+                    Only countries with compliance support are available for selection.
+                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -238,7 +249,7 @@ export function OrganizationForm({
               <Button type="button" variant="outline" onClick={handleClose}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={isLoading}>
+              <Button type="submit" disabled={isLoading || countriesLoading}>
                 {isLoading ? 'Saving...' : (isEditing ? 'Update' : 'Create')}
               </Button>
             </DialogFooter>
