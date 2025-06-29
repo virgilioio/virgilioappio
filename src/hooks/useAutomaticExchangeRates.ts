@@ -65,7 +65,18 @@ export function useAutomaticExchangeRates() {
         throw error
       }
 
-      setUpdateLogs(data || [])
+      // Type-safe conversion of the data
+      const typedLogs: UpdateLog[] = (data || []).map(log => ({
+        id: log.id,
+        update_type: log.update_type as 'automatic' | 'manual',
+        status: log.status as 'success' | 'error' | 'pending',
+        message: log.message,
+        stats: log.stats,
+        created_at: log.created_at,
+        updated_at: log.updated_at
+      }))
+
+      setUpdateLogs(typedLogs)
     } catch (error: any) {
       console.error('Failed to fetch update logs:', error)
       // Don't show toast for logs as it's less critical
