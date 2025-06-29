@@ -13,6 +13,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { formatCurrencyAmount } from '@/utils/currencyUtils'
 import { supabase } from '@/integrations/supabase/client'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { AutomaticExchangeRateSettings } from './AutomaticExchangeRateSettings'
 
 interface OrganizationRate {
   target_currency: string
@@ -30,7 +31,7 @@ export function CurrencySettings() {
     updateOrganizationCurrency, 
     isLoading: currencyLoading 
   } = useOrganizationCurrency()
-  const { canManageInvoices } = usePermissions()
+  const { canManageInvoices, isPlatformAdmin } = usePermissions()
   const { organizationId } = useAuth()
   const [selectedCurrency, setSelectedCurrency] = useState(defaultCurrency)
   const [organizationRates, setOrganizationRates] = useState<OrganizationRate[]>([])
@@ -245,6 +246,9 @@ export function CurrencySettings() {
           </CardContent>
         </Card>
       )}
+
+      {/* Automatic Exchange Rate Updates - Platform Admin Only */}
+      {isPlatformAdmin && <AutomaticExchangeRateSettings />}
     </div>
   )
 }

@@ -283,6 +283,36 @@ export type Database = {
         }
         Relationships: []
       }
+      exchange_rate_update_logs: {
+        Row: {
+          created_at: string | null
+          id: string
+          message: string | null
+          stats: Json | null
+          status: string
+          update_type: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          message?: string | null
+          stats?: Json | null
+          status: string
+          update_type: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          message?: string | null
+          stats?: Json | null
+          status?: string
+          update_type?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       field_select_options: {
         Row: {
           country_field_id: string
@@ -1238,6 +1268,10 @@ export type Database = {
           can_see_all_orgs: boolean
         }[]
       }
+      execute_automatic_exchange_rate_update: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       generate_invite_token: {
         Args: Record<PropertyKey, never>
         Returns: string
@@ -1247,6 +1281,15 @@ export type Database = {
         Returns: {
           currency_code: string
           organization_count: number
+        }[]
+      }
+      get_exchange_rate_cron_status: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          is_enabled: boolean
+          next_run: string
+          last_automatic_update: string
+          last_update_status: string
         }[]
       }
       get_invite_expiry: {
@@ -1320,6 +1363,10 @@ export type Database = {
           payment_reference: string
           payment_notes: string
         }[]
+      }
+      manage_exchange_rate_cron: {
+        Args: { enable_cron: boolean }
+        Returns: string
       }
       safe_delete_user: {
         Args: { target_user_id: string }
