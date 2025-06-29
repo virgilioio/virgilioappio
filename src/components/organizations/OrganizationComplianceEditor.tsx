@@ -1,17 +1,20 @@
-
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
+import { format } from 'date-fns'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { FileText, Upload, Download, X, Save, Shield } from 'lucide-react'
+import { Calendar } from '@/components/ui/calendar'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { FileText, Upload, Download, X, Save, Shield, CalendarIcon } from 'lucide-react'
 import { useCountryFields } from '@/hooks/useCountryFields'
 import { useOrganizationCustomData } from '@/hooks/useOrganizationCustomData'
 import { toast } from '@/hooks/use-toast'
+import { cn } from '@/lib/utils'
 
 interface Organization {
   id: string
@@ -51,24 +54,53 @@ export function OrganizationComplianceEditor({
           } else {
             schemaObject[field.id] = z.string().optional()
           }
+        } else if (field.field_type === 'date') {
+          schemaObject[field.id] = z.date({ required_error: `${field.field_label} is required` })
         } else {
           schemaObject[field.id] = z.string().min(1, `${field.field_label} is required`)
         }
       } else {
-        schemaObject[field.id] = z.string().optional()
+        if (field.field_type === 'date') {
+          schemaObject[field.id] = z.date().optional()
+        } else {
+          schemaObject[field.id] = z.string().optional()
+        }
       }
     })
 
     return z.object(schemaObject)
   }
 
+  // Create default values with proper date conversion
+  const createDefaultValues = () => {
+    const defaultValues: Record<string, any> = {}
+    
+    fields.forEach(field => {
+      const existingData = customData.find(data => data.country_field_id === field.id)
+      
+      if (field.field_type === 'date') {
+        // Convert ISO string to Date object for the form
+        if (existingData?.field_value) {
+          try {
+            defaultValues[field.id] = new Date(existingData.field_value)
+          } catch (error) {
+            console.error('Error parsing date:', existingData.field_value)
+            defaultValues[field.id] = undefined
+          }
+        } else {
+          defaultValues[field.id] = undefined
+        }
+      } else {
+        defaultValues[field.id] = existingData?.field_value || ''
+      }
+    })
+    
+    return defaultValues
+  }
+
   const form = useForm({
     resolver: zodResolver(createFormSchema()),
-    defaultValues: fields.reduce((acc, field) => {
-      const existingData = customData.find(data => data.country_field_id === field.id)
-      acc[field.id] = existingData?.field_value || ''
-      return acc
-    }, {} as Record<string, string>)
+    defaultValues: createDefaultValues()
   })
 
   const getCustomFieldValue = (fieldId: string) => {
@@ -134,15 +166,19 @@ export function OrganizationComplianceEditor({
     }
   }
 
-  const handleSubmit = async (data: Record<string, string>) => {
+  const handleSubmit = async (data: Record<string, any>) => {
     setIsSaving(true)
     try {
-      // Save all text field values
+      // Save all field values with proper date conversion
       await Promise.all(
         Object.entries(data).map(([fieldId, value]) => {
           const field = fields.find(f => f.id === fieldId)
           if (field && field.field_type !== 'file') {
-            return saveCustomData(organization.id, fieldId, value)
+            // Convert Date objects to ISO strings for storage
+            const finalValue = field.field_type === 'date' && value instanceof Date
+              ? value.toISOString().split('T')[0] // Store as YYYY-MM-DD
+              : value
+            return saveCustomData(organization.id, fieldId, finalValue)
           }
           return Promise.resolve()
         })
@@ -328,6 +364,52 @@ export function OrganizationComplianceEditor({
                         <FormDescription>{field.help_text}</FormDescription>
                       )}
                     </FormItem>
+                  ) : field.field_type === 'date' ? (
+                    <FormField
+                      control={form.control}
+                      name={field.id}
+                      render={({ field: formField }) => (
+                        <FormItem className="flex flex-col">
+                          <FormLabel>
+                            {field.field_label}
+                            {field.is_required && <span className="text-destructive ml-1">*</span>}
+                          </FormLabel>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button
+                                  variant="outline"
+                                  className={cn(
+                                    "w-full pl-3 text-left font-normal",
+                                    !formField.value && "text-muted-foreground"
+                                  )}
+                                >
+                                  {formField.value ? (
+                                    format(formField.value, "PPP")
+                                  ) : (
+                                    <span>{field.placeholder_text || `Select ${field.field_label}`}</span>
+                                  )}
+                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={formField.value}
+                                onSelect={formField.onChange}
+                                initialFocus
+                                className={cn("p-3 pointer-events-auto")}
+                              />
+                            </PopoverContent>
+                          </Popover>
+                          {field.help_text && (
+                            <FormDescription>{field.help_text}</FormDescription>
+                          )}
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                   ) : field.field_type === 'select' ? (
                     <FormField
                       control={form.control}
