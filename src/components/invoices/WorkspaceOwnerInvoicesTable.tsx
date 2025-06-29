@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { MoreHorizontal, Download, FileText, Calendar, DollarSign, Search, Filter } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -21,6 +21,16 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Skeleton } from '@/components/ui/skeleton'
 import { MonthPicker } from '@/components/ui/month-picker'
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination'
+import { useIsMobile } from '@/hooks/use-mobile'
 import { supabase } from '@/integrations/supabase/client'
 import { toast } from '@/hooks/use-toast'
 import { Invoice } from '@/hooks/useInvoices'
@@ -35,12 +45,17 @@ interface WorkspaceOwnerInvoicesTableProps {
 
 export function WorkspaceOwnerInvoicesTable({ invoices, isLoading }: WorkspaceOwnerInvoicesTableProps) {
   const { organizations } = useOrganizations()
+  const isMobile = useIsMobile()
   const [downloadingFiles, setDownloadingFiles] = useState<Set<string>>(new Set())
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [selectedMonth, setSelectedMonth] = useState<Date | undefined>()
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null)
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false)
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 10
 
   // Filter invoices based on all filters
   const filteredInvoices = filterInvoices(invoices || [], {
@@ -51,6 +66,24 @@ export function WorkspaceOwnerInvoicesTable({ invoices, isLoading }: WorkspaceOw
 
   const stats = getInvoiceStats(filteredInvoices)
   const hasActiveFilters = searchTerm || statusFilter !== 'all' || selectedMonth
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm, statusFilter, selectedMonth])
+
+  // Sort invoices
+  const sortedInvoices = [...filteredInvoices].sort((a, b) => {
+    const dateA = new Date(a.due_date || a.issued_at)
+    const dateB = new Date(b.due_date || b.issued_at)
+    return dateB.getTime() - dateA.getTime()
+  })
+
+  // Pagination calculations
+  const totalPages = Math.ceil(sortedInvoices.length / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = startIndex + itemsPerPage
+  const paginatedInvoices = sortedInvoices.slice(startIndex, endIndex)
 
   const clearFilters = () => {
     setSearchTerm('')
@@ -149,11 +182,120 @@ export function WorkspaceOwnerInvoicesTable({ invoices, isLoading }: WorkspaceOw
     }
   }
 
-  const sortedInvoices = [...filteredInvoices].sort((a, b) => {
-    const dateA = new Date(a.due_date || a.issued_at)
-    const dateB = new Date(b.due_date || b.issued_at)
-    return dateB.getTime() - dateA.getTime()
-  })
+  // Pagination component
+  const PaginationComponent = () => {
+    if (totalPages <= 1) return null
+
+    const getVisiblePages = () => {
+      const pages = []
+      const showEllipsis = totalPages > 7
+
+      if (!showEllipsis) {
+        for (let i = 1; i <= totalPages; i++) {
+          pages.push(i)
+        }
+      } else {
+        if (currentPage <= 4) {
+          for (let i = 1; i <= 5; i++) {
+            pages.push(i)
+          }
+          pages.push('ellipsis')
+          pages.push(totalPages)
+        } else if (currentPage >= totalPages - 3) {
+          pages.push(1)
+          pages.push('ellipsis')
+          for (let i = totalPages - 4; i <= totalPages; i++) {
+            pages.push(i)
+          }
+        } else {
+          pages.push(1)
+          pages.push('ellipsis')
+          for (let i = currentPage - 1; i <= currentPage + 1; i++) {
+            pages.push(i)
+          }
+          pages.push('ellipsis')
+          pages.push(totalPages)
+        }
+      }
+
+      return pages
+    }
+
+    const visiblePages = getVisiblePages()
+
+    if (isMobile) {
+      return (
+        <div className="flex items-center justify-between px-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+            disabled={currentPage === 1}
+          >
+            Previous
+          </Button>
+          <span className="text-sm text-muted-foreground">
+            Page {currentPage} of {totalPages}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+            disabled={currentPage === totalPages}
+          >
+            Next
+          </Button>
+        </div>
+      )
+    }
+
+    return (
+      <Pagination>
+        <PaginationContent>
+          <PaginationItem>
+            <PaginationPrevious
+              href="#"
+              onClick={(e) => {
+                e.preventDefault()
+                if (currentPage > 1) setCurrentPage(currentPage - 1)
+              }}
+              className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''}
+            />
+          </PaginationItem>
+          
+          {visiblePages.map((page, index) => (
+            <PaginationItem key={index}>
+              {page === 'ellipsis' ? (
+                <PaginationEllipsis />
+              ) : (
+                <PaginationLink
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    setCurrentPage(page as number)
+                  }}
+                  isActive={currentPage === page}
+                >
+                  {page}
+                </PaginationLink>
+              )}
+            </PaginationItem>
+          ))}
+          
+          <PaginationItem>
+            <PaginationNext
+              href="#"
+              onClick={(e) => {
+                e.preventDefault()
+                if (currentPage < totalPages) setCurrentPage(currentPage + 1)
+              }}
+              className={currentPage === totalPages ? 'pointer-events-none opacity-50' : ''}
+            />
+          </PaginationItem>
+        </PaginationContent>
+      </Pagination>
+    )
+  }
 
   if (isLoading) {
     return (
@@ -204,6 +346,11 @@ export function WorkspaceOwnerInvoicesTable({ invoices, isLoading }: WorkspaceOw
           <CardTitle>Invoices</CardTitle>
           <CardDescription>
             Your organization's billing history ({invoices.length} invoice{invoices.length !== 1 ? 's' : ''})
+            {filteredInvoices.length !== invoices.length && (
+              <span className="text-muted-foreground ml-1">
+                • Showing {filteredInvoices.length} filtered
+              </span>
+            )}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -321,7 +468,7 @@ export function WorkspaceOwnerInvoicesTable({ invoices, isLoading }: WorkspaceOw
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {sortedInvoices.map((invoice) => (
+                {paginatedInvoices.map((invoice) => (
                   <TableRow 
                     key={invoice.id} 
                     className="h-[52px] cursor-pointer hover:bg-muted/50 transition-colors"
@@ -388,7 +535,7 @@ export function WorkspaceOwnerInvoicesTable({ invoices, isLoading }: WorkspaceOw
 
           {/* Mobile Card Layout */}
           <div className="md:hidden space-y-4">
-            {sortedInvoices.map((invoice) => (
+            {paginatedInvoices.map((invoice) => (
               <Card 
                 key={invoice.id} 
                 className="p-4 cursor-pointer hover:shadow-md transition-shadow"
@@ -439,6 +586,21 @@ export function WorkspaceOwnerInvoicesTable({ invoices, isLoading }: WorkspaceOw
               </Card>
             ))}
           </div>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="mt-6 space-y-4">
+              <div className="flex items-center justify-between text-sm text-muted-foreground">
+                <div>
+                  Showing {startIndex + 1}-{Math.min(endIndex, sortedInvoices.length)} of {sortedInvoices.length} invoices
+                </div>
+                <div>
+                  Page {currentPage} of {totalPages}
+                </div>
+              </div>
+              <PaginationComponent />
+            </div>
+          )}
         </CardContent>
       </Card>
 

@@ -14,8 +14,18 @@ import { Input } from '@/components/ui/input'
 import { MultiSelect } from '@/components/ui/multi-select'
 import { Button } from '@/components/ui/button'
 import { MonthPicker } from '@/components/ui/month-picker'
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination'
 import { useInvoices, Invoice } from '@/hooks/useInvoices'
 import { usePermissions } from '@/hooks/usePermissions'
+import { useIsMobile } from '@/hooks/use-mobile'
 import { Receipt, Download, FileText, Search, Filter, Calendar } from 'lucide-react'
 import { InvoiceUploadModal } from './InvoiceUploadModal'
 import { getInvoicePdfUrl } from '@/lib/invoiceStorage'
@@ -27,11 +37,16 @@ export function InvoicesTable() {
   const { invoices, isLoading, refreshInvoices } = useInvoices()
   const { isPlatformAdmin, canManageInvoices } = usePermissions()
   const { filters, setFilters, setFilteredInvoices } = useInvoiceFilter()
+  const isMobile = useIsMobile()
   const [uploadModalOpen, setUploadModalOpen] = useState(false)
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>([])
   const [selectedMonth, setSelectedMonth] = useState<Date | undefined>()
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 10
 
   // Update filter context when local filters change
   useEffect(() => {
@@ -58,6 +73,11 @@ export function InvoicesTable() {
   const stats = getInvoiceStats(filteredInvoices)
   const hasActiveFilters = searchTerm || selectedStatuses.length > 0 || selectedMonth
 
+  // Reset pagination when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchTerm, selectedStatuses, selectedMonth])
+
   const clearFilters = () => {
     setSearchTerm('')
     setSelectedStatuses([])
@@ -75,6 +95,12 @@ export function InvoicesTable() {
     filteredInvoices, 
     { key: 'issued_at', direction: 'desc' }
   )
+
+  // Pagination calculations
+  const totalPages = Math.ceil(sortedInvoices.length / itemsPerPage)
+  const startIndex = (currentPage - 1) * itemsPerPage
+  const endIndex = startIndex + itemsPerPage
+  const paginatedInvoices = sortedInvoices.slice(startIndex, endIndex)
 
   const getStatusBadgeVariant = (status: Invoice['status']) => {
     switch (status) {
@@ -136,6 +162,121 @@ export function InvoicesTable() {
     }
   }
 
+  // Pagination component
+  const PaginationComponent = () => {
+    if (totalPages <= 1) return null
+
+    const getVisiblePages = () => {
+      const pages = []
+      const showEllipsis = totalPages > 7
+
+      if (!showEllipsis) {
+        for (let i = 1; i <= totalPages; i++) {
+          pages.push(i)
+        }
+      } else {
+        if (currentPage <= 4) {
+          for (let i = 1; i <= 5; i++) {
+            pages.push(i)
+          }
+          pages.push('ellipsis')
+          pages.push(totalPages)
+        } else if (currentPage >= totalPages - 3) {
+          pages.push(1)
+          pages.push('ellipsis')
+          for (let i = totalPages - 4; i <= totalPages; i++) {
+            pages.push(i)
+          }
+        } else {
+          pages.push(1)
+          pages.push('ellipsis')
+          for (let i = currentPage - 1; i <= currentPage + 1; i++) {
+            pages.push(i)
+          }
+          pages.push('ellipsis')
+          pages.push(totalPages)
+        }
+      }
+
+      return pages
+    }
+
+    const visiblePages = getVisiblePages()
+
+    if (isMobile) {
+      return (
+        <div className="flex items-center justify-between px-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+            disabled={currentPage === 1}
+          >
+            Previous
+          </Button>
+          <span className="text-sm text-muted-foreground">
+            Page {currentPage} of {totalPages}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+            disabled={currentPage === totalPages}
+          >
+            Next
+          </Button>
+        </div>
+      )
+    }
+
+    return (
+      <Pagination>
+        <PaginationContent>
+          <PaginationItem>
+            <PaginationPrevious
+              href="#"
+              onClick={(e) => {
+                e.preventDefault()
+                if (currentPage > 1) setCurrentPage(currentPage - 1)
+              }}
+              className={currentPage === 1 ? 'pointer-events-none opacity-50' : ''}
+            />
+          </PaginationItem>
+          
+          {visiblePages.map((page, index) => (
+            <PaginationItem key={index}>
+              {page === 'ellipsis' ? (
+                <PaginationEllipsis />
+              ) : (
+                <PaginationLink
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    setCurrentPage(page as number)
+                  }}
+                  isActive={currentPage === page}
+                >
+                  {page}
+                </PaginationLink>
+              )}
+            </PaginationItem>
+          ))}
+          
+          <PaginationItem>
+            <PaginationNext
+              href="#"
+              onClick={(e) => {
+                e.preventDefault()
+                if (currentPage < totalPages) setCurrentPage(currentPage + 1)
+              }}
+              className={currentPage === totalPages ? 'pointer-events-none opacity-50' : ''}
+            />
+          </PaginationItem>
+        </PaginationContent>
+      </Pagination>
+    )
+  }
+
   if (isLoading) {
     return (
       <Card>
@@ -160,6 +301,11 @@ export function InvoicesTable() {
           </CardTitle>
           <CardDescription>
             Your organization's billing history and current invoices
+            {filteredInvoices.length !== invoices.length && (
+              <span className="text-muted-foreground ml-1">
+                • Showing {filteredInvoices.length} of {invoices.length} filtered
+              </span>
+            )}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -329,7 +475,7 @@ export function InvoicesTable() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {sortedInvoices.map((invoice) => (
+                    {paginatedInvoices.map((invoice) => (
                       <TableRow 
                         key={invoice.id} 
                         interactive={!!invoice.invoice_url}
@@ -418,6 +564,21 @@ export function InvoicesTable() {
                   </TableBody>
                 </Table>
               </div>
+
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="mt-6 space-y-4">
+                  <div className="flex items-center justify-between text-sm text-muted-foreground">
+                    <div>
+                      Showing {startIndex + 1}-{Math.min(endIndex, sortedInvoices.length)} of {sortedInvoices.length} invoices
+                    </div>
+                    <div>
+                      Page {currentPage} of {totalPages}
+                    </div>
+                  </div>
+                  <PaginationComponent />
+                </div>
+              )}
             </div>
           )}
         </CardContent>
