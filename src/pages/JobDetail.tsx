@@ -1,3 +1,4 @@
+
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
@@ -100,6 +101,7 @@ export default function JobDetail() {
         // If we can access the job but not the organization, return job with unknown organization
         return {
           ...jobOnly,
+          hiring_team_names: [], // Add missing property
           organization: {
             id: jobOnly.organization_id,
             name: 'Organization',
@@ -109,7 +111,10 @@ export default function JobDetail() {
       }
 
       console.log('Fetched job with organization:', data)
-      return data
+      return {
+        ...data,
+        hiring_team_names: [] // Add missing property
+      }
     },
     enabled: !!id && !!user,
   })
