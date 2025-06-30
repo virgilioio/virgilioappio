@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
@@ -78,13 +77,21 @@ export function JobsTable({
   }
 
   const getAllHiringTeamMembers = () => {
+    console.log('Getting all hiring team members from jobs:', jobs.length)
     const members = new Set<string>()
+    
     jobs.forEach(job => {
-      // Use the resolved hiring_team_names if available
+      console.log(`Processing job "${job.title}":`, {
+        hiring_team: job.hiring_team,
+        hiring_team_names: job.hiring_team_names
+      })
+      
+      // First try to use the resolved hiring_team_names
       if (job.hiring_team_names && Array.isArray(job.hiring_team_names)) {
         job.hiring_team_names.forEach(name => {
           if (name && name.trim()) {
             members.add(name.trim())
+            console.log(`Added hiring team member: ${name}`)
           }
         })
       }
@@ -93,11 +100,19 @@ export function JobsTable({
         job.hiring_team.forEach((member: any) => {
           if (member?.name) {
             members.add(member.name)
+            console.log(`Added hiring team member from legacy format: ${member.name}`)
+          } else if (typeof member === 'string') {
+            // Handle case where hiring_team contains raw user IDs
+            members.add(`User ${member.substring(0, 8)}...`)
+            console.log(`Added hiring team member from user ID: ${member}`)
           }
         })
       }
     })
-    return Array.from(members).sort()
+    
+    const membersList = Array.from(members).sort()
+    console.log('Final hiring team members list:', membersList)
+    return membersList
   }
 
   const filteredJobs = jobs.filter(job => {
@@ -248,21 +263,25 @@ export function JobsTable({
               </Select>
             )}
 
-            {getAllHiringTeamMembers().length > 0 && (
-              <Select value={hiringTeamFilter} onValueChange={setHiringTeamFilter}>
-                <SelectTrigger className="w-full sm:w-[160px]">
-                  <SelectValue placeholder="Hiring Team" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Team Members</SelectItem>
-                  {getAllHiringTeamMembers().map((member) => (
-                    <SelectItem key={member} value={member}>
-                      {member}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
+            {(() => {
+              const hiringTeamMembers = getAllHiringTeamMembers()
+              console.log('Hiring team members for filter:', hiringTeamMembers)
+              return hiringTeamMembers.length > 0 ? (
+                <Select value={hiringTeamFilter} onValueChange={setHiringTeamFilter}>
+                  <SelectTrigger className="w-full sm:w-[160px]">
+                    <SelectValue placeholder="Hiring Team" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Team Members</SelectItem>
+                    {hiringTeamMembers.map((member) => (
+                      <SelectItem key={member} value={member}>
+                        {member}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : null
+            })()}
 
             <div className="flex gap-2">
               <PermissionGate permission="canCreateJobs">

@@ -57,40 +57,53 @@ export function useJobs() {
   const { user, userType, organizationId } = useAuth()
 
   const resolveHiringTeamNames = async (jobs: any[]) => {
+    console.log('Starting hiring team name resolution for', jobs.length, 'jobs')
+    
     // Collect all unique user IDs from hiring teams
     const userIds = new Set<string>()
     jobs.forEach(job => {
       if (job.hiring_team && Array.isArray(job.hiring_team)) {
+        console.log(`Job "${job.title}" has hiring team:`, job.hiring_team)
         job.hiring_team.forEach((member: any) => {
           if (typeof member === 'string') {
             userIds.add(member)
+            console.log(`Found user ID string: ${member}`)
           } else if (member?.user_id) {
             userIds.add(member.user_id)
+            console.log(`Found user ID in object: ${member.user_id}`)
           } else if (member?.id) {
             userIds.add(member.id)
+            console.log(`Found ID in object: ${member.id}`)
           }
         })
       }
     })
 
+    console.log('All collected user IDs:', Array.from(userIds))
+
     // Fetch profiles for all user IDs
     let profilesMap: Record<string, string> = {}
     if (userIds.size > 0) {
+      console.log('Fetching profiles for user IDs:', Array.from(userIds))
       const { data: profiles, error } = await supabase
         .from('profiles')
         .select('user_id, first_name, last_name')
         .in('user_id', Array.from(userIds))
 
-      if (!error && profiles) {
+      if (error) {
+        console.error('Error fetching profiles:', error)
+      } else {
+        console.log('Fetched profiles:', profiles)
         profilesMap = profiles.reduce((acc, profile) => {
           const fullName = [profile.first_name, profile.last_name].filter(Boolean).join(' ')
           acc[profile.user_id] = fullName || 'Unknown User'
           return acc
         }, {} as Record<string, string>)
+        console.log('Profiles map:', profilesMap)
       }
     }
 
-    // Update jobs with resolved names
+    // Update jobs with resolved names and fallbacks
     return jobs.map(job => {
       const hiringTeamNames: string[] = []
       if (job.hiring_team && Array.isArray(job.hiring_team)) {
@@ -114,10 +127,15 @@ export function useJobs() {
             hiringTeamNames.push(existingName)
           } else if (userId && profilesMap[userId]) {
             hiringTeamNames.push(profilesMap[userId])
+          } else if (userId) {
+            // Fallback: show the user ID when name resolution fails
+            hiringTeamNames.push(`User ${userId.substring(0, 8)}...`)
+            console.log(`No profile found for user ID ${userId}, using fallback`)
           }
         })
       }
 
+      console.log(`Job "${job.title}" resolved hiring team names:`, hiringTeamNames)
       return {
         ...job,
         hiring_team_names: hiringTeamNames
