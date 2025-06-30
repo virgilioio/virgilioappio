@@ -15,6 +15,7 @@ export interface Job {
   currency: string | null
   status: 'draft' | 'open' | 'closed' | 'archived'
   hiring_team: any[] | null
+  hiring_team_names: string[] | null // Add resolved names for filtering
   organization_id: string
   organization_name?: string
   created_by: string | null
@@ -54,6 +55,75 @@ export function useJobs() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const { user, userType, organizationId } = useAuth()
+
+  const resolveHiringTeamNames = async (jobs: any[]) => {
+    // Collect all unique user IDs from hiring teams
+    const userIds = new Set<string>()
+    jobs.forEach(job => {
+      if (job.hiring_team && Array.isArray(job.hiring_team)) {
+        job.hiring_team.forEach((member: any) => {
+          if (typeof member === 'string') {
+            userIds.add(member)
+          } else if (member?.user_id) {
+            userIds.add(member.user_id)
+          } else if (member?.id) {
+            userIds.add(member.id)
+          }
+        })
+      }
+    })
+
+    // Fetch profiles for all user IDs
+    let profilesMap: Record<string, string> = {}
+    if (userIds.size > 0) {
+      const { data: profiles, error } = await supabase
+        .from('profiles')
+        .select('user_id, first_name, last_name')
+        .in('user_id', Array.from(userIds))
+
+      if (!error && profiles) {
+        profilesMap = profiles.reduce((acc, profile) => {
+          const fullName = [profile.first_name, profile.last_name].filter(Boolean).join(' ')
+          acc[profile.user_id] = fullName || 'Unknown User'
+          return acc
+        }, {} as Record<string, string>)
+      }
+    }
+
+    // Update jobs with resolved names
+    return jobs.map(job => {
+      const hiringTeamNames: string[] = []
+      if (job.hiring_team && Array.isArray(job.hiring_team)) {
+        job.hiring_team.forEach((member: any) => {
+          let userId: string | null = null
+          let existingName: string | null = null
+
+          if (typeof member === 'string') {
+            userId = member
+          } else if (member?.user_id) {
+            userId = member.user_id
+            existingName = member.name
+          } else if (member?.id) {
+            userId = member.id
+            existingName = member.name
+          } else if (member?.name) {
+            existingName = member.name
+          }
+
+          if (existingName) {
+            hiringTeamNames.push(existingName)
+          } else if (userId && profilesMap[userId]) {
+            hiringTeamNames.push(profilesMap[userId])
+          }
+        })
+      }
+
+      return {
+        ...job,
+        hiring_team_names: hiringTeamNames
+      }
+    })
+  }
 
   const getJobs = async () => {
     if (!user) return
@@ -199,8 +269,11 @@ export function useJobs() {
         }
       }
 
+      // Resolve hiring team member names
+      const jobsWithResolvedNames = await resolveHiringTeamNames(filteredJobs)
+
       // Transform the data to match our Job interface
-      const transformedJobs = filteredJobs.map(job => ({
+      const transformedJobs = jobsWithResolvedNames.map(job => ({
         ...job,
         hiring_team: Array.isArray(job.hiring_team) ? job.hiring_team : [],
         organization_name: organizationsMap[job.organization_id] || 'Unknown Organization'
@@ -254,10 +327,14 @@ export function useJobs() {
           organizationName = orgData.name
         }
       }
+
+      // Resolve hiring team names for single job
+      const jobsWithResolvedNames = await resolveHiringTeamNames([data])
+      const jobWithResolvedNames = jobsWithResolvedNames[0]
       
       // Transform the data to match our Job interface
       const transformedJob = {
-        ...data,
+        ...jobWithResolvedNames,
         hiring_team: Array.isArray(data.hiring_team) ? data.hiring_team : [],
         organization_name: organizationName
       }

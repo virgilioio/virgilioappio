@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
@@ -79,7 +80,16 @@ export function JobsTable({
   const getAllHiringTeamMembers = () => {
     const members = new Set<string>()
     jobs.forEach(job => {
-      if (job.hiring_team && Array.isArray(job.hiring_team)) {
+      // Use the resolved hiring_team_names if available
+      if (job.hiring_team_names && Array.isArray(job.hiring_team_names)) {
+        job.hiring_team_names.forEach(name => {
+          if (name && name.trim()) {
+            members.add(name.trim())
+          }
+        })
+      }
+      // Fallback to original hiring_team structure for backward compatibility
+      else if (job.hiring_team && Array.isArray(job.hiring_team)) {
         job.hiring_team.forEach((member: any) => {
           if (member?.name) {
             members.add(member.name)
@@ -97,9 +107,14 @@ export function JobsTable({
     
     const matchesStatus = statusFilter === 'all' || job.status === statusFilter
     const matchesLevel = levelFilter === 'all' || job.level === levelFilter
-    const matchesOrganization = organizationFilter === 'all' || job.organization_id === organizationFilter
+    
+    // Check if user can view organizations for the organization filter
+    const canViewOrganizations = permissions.canViewOrganizations || permissions.isPlatformAdmin
+    const matchesOrganization = !canViewOrganizations || organizationFilter === 'all' || job.organization_id === organizationFilter
     
     const matchesHiringTeam = hiringTeamFilter === 'all' || 
+      (job.hiring_team_names && Array.isArray(job.hiring_team_names) && 
+       job.hiring_team_names.includes(hiringTeamFilter)) ||
       (job.hiring_team && Array.isArray(job.hiring_team) && 
        job.hiring_team.some((member: any) => member?.name === hiringTeamFilter))
     
@@ -214,7 +229,7 @@ export function JobsTable({
               </SelectContent>
             </Select>
 
-            {permissions.isPlatformAdmin && (
+            {(permissions.canViewOrganizations || permissions.isPlatformAdmin) && organizations.length > 0 && (
               <Select value={organizationFilter} onValueChange={setOrganizationFilter}>
                 <SelectTrigger className="w-full sm:w-[180px]">
                   <SelectValue placeholder="Organization" />
@@ -233,19 +248,21 @@ export function JobsTable({
               </Select>
             )}
 
-            <Select value={hiringTeamFilter} onValueChange={setHiringTeamFilter}>
-              <SelectTrigger className="w-full sm:w-[160px]">
-                <SelectValue placeholder="Hiring Team" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Team Members</SelectItem>
-                {getAllHiringTeamMembers().map((member) => (
-                  <SelectItem key={member} value={member}>
-                    {member}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            {getAllHiringTeamMembers().length > 0 && (
+              <Select value={hiringTeamFilter} onValueChange={setHiringTeamFilter}>
+                <SelectTrigger className="w-full sm:w-[160px]">
+                  <SelectValue placeholder="Hiring Team" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Team Members</SelectItem>
+                  {getAllHiringTeamMembers().map((member) => (
+                    <SelectItem key={member} value={member}>
+                      {member}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
 
             <div className="flex gap-2">
               <PermissionGate permission="canCreateJobs">
