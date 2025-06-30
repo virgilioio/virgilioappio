@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
@@ -57,7 +58,7 @@ export function useJobs() {
   const { user, userType, organizationId } = useAuth()
 
   const resolveHiringTeamNames = async (jobs: any[]) => {
-    console.log('Starting hiring team name resolution for', jobs.length, 'jobs')
+    console.log('Starting enhanced hiring team name resolution for', jobs.length, 'jobs')
     
     // Collect all unique user IDs from hiring teams
     const userIds = new Set<string>()
@@ -81,29 +82,89 @@ export function useJobs() {
 
     console.log('All collected user IDs:', Array.from(userIds))
 
-    // Fetch profiles for all user IDs
-    let profilesMap: Record<string, string> = {}
+    // Create a comprehensive names map using multiple data sources
+    let namesMap: Record<string, string> = {}
+    
     if (userIds.size > 0) {
-      console.log('Fetching profiles for user IDs:', Array.from(userIds))
-      const { data: profiles, error } = await supabase
+      const userIdsArray = Array.from(userIds)
+      
+      // First: Try to get names from profiles table
+      console.log('Fetching profiles for user IDs:', userIdsArray)
+      const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select('user_id, first_name, last_name')
-        .in('user_id', Array.from(userIds))
+        .select('user_id, first_name, last_name, email')
+        .in('user_id', userIdsArray)
 
-      if (error) {
-        console.error('Error fetching profiles:', error)
+      if (profilesError) {
+        console.error('Error fetching profiles:', profilesError)
       } else {
         console.log('Fetched profiles:', profiles)
-        profilesMap = profiles.reduce((acc, profile) => {
+        profiles?.forEach(profile => {
           const fullName = [profile.first_name, profile.last_name].filter(Boolean).join(' ')
-          acc[profile.user_id] = fullName || 'Unknown User'
-          return acc
-        }, {} as Record<string, string>)
-        console.log('Profiles map:', profilesMap)
+          if (fullName.trim()) {
+            namesMap[profile.user_id] = fullName
+          } else if (profile.email) {
+            namesMap[profile.user_id] = profile.email
+          }
+        })
       }
+
+      // Second: For remaining unresolved IDs, try members table
+      const unresolvedIds = userIdsArray.filter(id => !namesMap[id])
+      if (unresolvedIds.length > 0) {
+        console.log('Fetching member data for unresolved IDs:', unresolvedIds)
+        const { data: members, error: membersError } = await supabase
+          .from('members')
+          .select(`
+            user_id, 
+            invited_email,
+            profiles!inner(first_name, last_name, email)
+          `)
+          .in('user_id', unresolvedIds)
+
+        if (membersError) {
+          console.error('Error fetching members:', membersError)
+        } else {
+          console.log('Fetched members with profiles:', members)
+          members?.forEach(member => {
+            if (member.user_id && member.profiles) {
+              const profile = Array.isArray(member.profiles) ? member.profiles[0] : member.profiles
+              const fullName = [profile.first_name, profile.last_name].filter(Boolean).join(' ')
+              if (fullName.trim()) {
+                namesMap[member.user_id] = fullName
+              } else if (profile.email) {
+                namesMap[member.user_id] = profile.email
+              } else if (member.invited_email) {
+                namesMap[member.user_id] = member.invited_email
+              }
+            }
+          })
+        }
+      }
+
+      // Third: For still unresolved IDs, try to get email from members table
+      const stillUnresolvedIds = userIdsArray.filter(id => !namesMap[id])
+      if (stillUnresolvedIds.length > 0) {
+        console.log('Fetching member emails for still unresolved IDs:', stillUnresolvedIds)
+        const { data: memberEmails, error: memberEmailsError } = await supabase
+          .from('members')
+          .select('user_id, invited_email')
+          .in('user_id', stillUnresolvedIds)
+
+        if (!memberEmailsError && memberEmails) {
+          console.log('Fetched member emails:', memberEmails)
+          memberEmails.forEach(member => {
+            if (member.user_id && member.invited_email) {
+              namesMap[member.user_id] = member.invited_email
+            }
+          })
+        }
+      }
+
+      console.log('Final names map:', namesMap)
     }
 
-    // Update jobs with resolved names and fallbacks
+    // Update jobs with resolved names and improved fallbacks
     return jobs.map(job => {
       const hiringTeamNames: string[] = []
       if (job.hiring_team && Array.isArray(job.hiring_team)) {
@@ -125,12 +186,12 @@ export function useJobs() {
 
           if (existingName) {
             hiringTeamNames.push(existingName)
-          } else if (userId && profilesMap[userId]) {
-            hiringTeamNames.push(profilesMap[userId])
+          } else if (userId && namesMap[userId]) {
+            hiringTeamNames.push(namesMap[userId])
           } else if (userId) {
-            // Fallback: show the user ID when name resolution fails
-            hiringTeamNames.push(`User ${userId.substring(0, 8)}...`)
-            console.log(`No profile found for user ID ${userId}, using fallback`)
+            // Better fallback: show abbreviated ID
+            hiringTeamNames.push(`User ${userId.substring(0, 8)}`)
+            console.log(`No name found for user ID ${userId}, using fallback`)
           }
         })
       }
