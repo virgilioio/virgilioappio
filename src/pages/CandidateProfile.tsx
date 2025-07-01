@@ -203,99 +203,111 @@ export default function CandidateProfile() {
                   </div>
 
                   {/* Tabbed Content */}
-                  <Card className="bg-surface-primary border-border">
-                    <CardContent className="p-layout-md">
-                      <TabsContent value="overview" className="space-y-6 mt-0">
-                        {/* Candidate Information */}
-                        <div>
-                          <h3 className="text-lg font-medium text-text-primary mb-4">Candidate Information</h3>
-                          <div className="space-y-2xl">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2xl">
-                              <div className="space-y-xl">
-                                <div className="flex items-start gap-md text-text-secondary">
-                                  <MapPin className="h-5 w-5 mt-1 flex-shrink-0" />
-                                  <div className="space-y-1">
-                                    <span className="text-sm font-medium block">Location</span>
-                                    <p className="text-text-primary text-base">{formatLocation(candidate)}</p>
-                                  </div>
-                                </div>
-
-                                <div className="flex items-start gap-md text-text-secondary">
-                                  <DollarSign className="h-5 w-5 mt-1 flex-shrink-0" />
-                                  <div className="space-y-1">
-                                    <span className="text-sm font-medium block">Salary Expectations</span>
-                                    <p className="text-text-primary text-base">{formatSalary(candidate)}</p>
-                                  </div>
+                  <TabsContent value="overview" className="space-y-md mt-0">
+                    {/* Candidate Information Card */}
+                    <Card className="bg-surface-primary border-border">
+                      <CardHeader>
+                        <CardTitle className="text-lg font-medium text-text-primary">Candidate Information</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-2xl">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2xl">
+                            <div className="space-y-xl">
+                              <div className="flex items-start gap-md text-text-secondary">
+                                <MapPin className="h-5 w-5 mt-1 flex-shrink-0" />
+                                <div className="space-y-1">
+                                  <span className="text-sm font-medium block">Location</span>
+                                  <p className="text-text-primary text-base">{formatLocation(candidate)}</p>
                                 </div>
                               </div>
 
-                              <div className="space-y-xl">
-                                <div className="flex items-start gap-md text-text-secondary">
-                                  <Calendar className="h-5 w-5 mt-1 flex-shrink-0" />
-                                  <div className="space-y-1">
-                                    <span className="text-sm font-medium block">Added</span>
-                                    <p className="text-text-primary text-base">
-                                      {new Date(candidate.created_at).toLocaleDateString('en-US', {
-                                        year: 'numeric',
-                                        month: 'long',
-                                        day: 'numeric'
-                                      })}
-                                    </p>
-                                  </div>
+                              <div className="flex items-start gap-md text-text-secondary">
+                                <DollarSign className="h-5 w-5 mt-1 flex-shrink-0" />
+                                <div className="space-y-1">
+                                  <span className="text-sm font-medium block">Salary Expectations</span>
+                                  <p className="text-text-primary text-base">{formatSalary(candidate)}</p>
                                 </div>
+                              </div>
+                            </div>
 
-                                <div className="flex items-start gap-md text-text-secondary">
-                                  <User className="h-5 w-5 mt-1 flex-shrink-0" />
-                                  <div className="space-y-1">
-                                    <span className="text-sm font-medium block">Added By</span>
-                                    <p className="text-text-primary text-base">Internal Team</p>
-                                  </div>
+                            <div className="space-y-xl">
+                              <div className="flex items-start gap-md text-text-secondary">
+                                <Calendar className="h-5 w-5 mt-1 flex-shrink-0" />
+                                <div className="space-y-1">
+                                  <span className="text-sm font-medium block">Added</span>
+                                  <p className="text-text-primary text-base">
+                                    {new Date(candidate.created_at).toLocaleDateString('en-US', {
+                                      year: 'numeric',
+                                      month: 'long',
+                                      day: 'numeric'
+                                    })}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <div className="flex items-start gap-md text-text-secondary">
+                                <User className="h-5 w-5 mt-1 flex-shrink-0" />
+                                <div className="space-y-1">
+                                  <span className="text-sm font-medium block">Added By</span>
+                                  <p className="text-text-primary text-base">Internal Team</p>
                                 </div>
                               </div>
                             </div>
                           </div>
                         </div>
+                      </CardContent>
+                    </Card>
 
-                        {/* Profile Summary */}
-                        {candidate.profile_summary && (
-                          <div>
-                            <h3 className="text-lg font-medium text-text-primary mb-4">Profile Summary</h3>
-                            <div className="prose prose-sm max-w-none text-text-primary">
-                              <div 
-                                className="leading-relaxed [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:my-2 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0"
-                                dangerouslySetInnerHTML={{ __html: candidate.profile_summary }}
-                              />
-                            </div>
+                    {/* Profile Summary Card */}
+                    {candidate.profile_summary && (
+                      <Card className="bg-surface-primary border-border">
+                        <CardHeader>
+                          <CardTitle className="text-lg font-medium text-text-primary">Profile Summary</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="prose prose-sm max-w-none text-text-primary">
+                            <div 
+                              className="leading-relaxed [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:my-2 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0"
+                              dangerouslySetInnerHTML={{ __html: candidate.profile_summary }}
+                            />
                           </div>
-                        )}
-                      </TabsContent>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </TabsContent>
 
-                      <TabsContent value="notes" className="space-y-6 mt-0">
-                        {/* Internal Notes */}
-                        {candidate.notes && (
-                          <div>
-                            <h3 className="text-lg font-medium text-text-primary mb-4">Internal Notes</h3>
-                            <div className="prose prose-sm max-w-none text-text-primary">
-                              <div 
-                                className="leading-relaxed [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:my-2 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0"
-                                dangerouslySetInnerHTML={{ __html: candidate.notes }}
-                              />
-                            </div>
+                  <TabsContent value="notes" className="space-y-md mt-0">
+                    {/* Internal Notes Card */}
+                    {candidate.notes && (
+                      <Card className="bg-surface-primary border-border">
+                        <CardHeader>
+                          <CardTitle className="text-lg font-medium text-text-primary">Internal Notes</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="prose prose-sm max-w-none text-text-primary">
+                            <div 
+                              className="leading-relaxed [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:my-2 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0"
+                              dangerouslySetInnerHTML={{ __html: candidate.notes }}
+                            />
                           </div>
-                        )}
+                        </CardContent>
+                      </Card>
+                    )}
 
-                        {/* Comments Section */}
-                        <div>
-                          <h3 className="text-lg font-medium text-text-primary mb-4">Comments</h3>
-                          <CandidateComments
-                            candidateId={candidate.id}
-                            jobId={candidate.job_id}
-                            organizationId={user?.user_metadata?.organization_id || 'default-org'}
-                          />
-                        </div>
-                      </TabsContent>
-                    </CardContent>
-                  </Card>
+                    {/* Comments Card */}
+                    <Card className="bg-surface-primary border-border">
+                      <CardHeader>
+                        <CardTitle className="text-lg font-medium text-text-primary">Comments</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <CandidateComments
+                          candidateId={candidate.id}
+                          jobId={candidate.job_id}
+                          organizationId={user?.user_metadata?.organization_id || 'default-org'}
+                        />
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
                 </Tabs>
               </div>
 
