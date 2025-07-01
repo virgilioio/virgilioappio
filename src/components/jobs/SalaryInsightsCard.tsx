@@ -1,8 +1,7 @@
 
 import { useMemo } from 'react'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { MetricCard } from '@/components/invoices/MetricCard'
-import { ChartContainer, ChartTooltipContent, ChartTooltip } from '@/components/ui/chart'
 import { TrendingUp } from 'lucide-react'
 
 interface Candidate {
@@ -56,7 +55,7 @@ export function SalaryInsightsCard({ candidates, jobCurrency = 'USD', className 
     const maxSalary = Math.max(...annualSalaries)
     const avgSalary = annualSalaries.reduce((sum, salary) => sum + salary, 0) / annualSalaries.length
 
-    // Format data for chart with better structure
+    // Format data for chart
     const chartData = [
       {
         name: 'Minimum',
@@ -90,6 +89,21 @@ export function SalaryInsightsCard({ candidates, jobCurrency = 'USD', className 
     }).format(value)
   }
 
+  // Custom tooltip component
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-background border border-border rounded-lg p-3 shadow-lg">
+          <p className="font-medium text-foreground">{label}</p>
+          <p className="text-primary">
+            {formatCurrency(payload[0].value)}
+          </p>
+        </div>
+      )
+    }
+    return null
+  }
+
   if (!salaryData) {
     return (
       <MetricCard
@@ -113,21 +127,14 @@ export function SalaryInsightsCard({ candidates, jobCurrency = 'USD', className 
         </div>
       </div>
 
-      <div className="h-64 w-full mb-6">
-        <ChartContainer
-          config={{
-            salary: {
-              label: "Annual Salary",
-              color: "hsl(var(--primary))",
-            },
-          }}
-        >
+      <div className="h-64 w-full mb-6 overflow-hidden">
+        <ResponsiveContainer width="100%" height="100%">
           <BarChart 
             data={salaryData.chartData} 
-            margin={{ top: 20, right: 20, left: 20, bottom: 20 }}
+            margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
             barCategoryGap="30%"
           >
-            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
             <XAxis 
               dataKey="name" 
               tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
@@ -140,10 +147,7 @@ export function SalaryInsightsCard({ candidates, jobCurrency = 'USD', className 
               axisLine={false}
               tickFormatter={(value) => `${jobCurrency} ${(value / 1000).toFixed(0)}k`}
             />
-            <ChartTooltip
-              content={<ChartTooltipContent />}
-              formatter={(value: number) => [formatCurrency(value), "Annual Salary"]}
-            />
+            <Tooltip content={<CustomTooltip />} />
             <Bar 
               dataKey="salary" 
               fill="hsl(var(--primary))" 
@@ -151,7 +155,7 @@ export function SalaryInsightsCard({ candidates, jobCurrency = 'USD', className 
               maxBarSize={80}
             />
           </BarChart>
-        </ChartContainer>
+        </ResponsiveContainer>
       </div>
 
       <div className="grid grid-cols-3 gap-4 text-center">
