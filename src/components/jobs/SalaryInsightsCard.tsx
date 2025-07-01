@@ -210,12 +210,12 @@ export function SalaryInsightsCard({ candidates, jobCurrency = 'USD', className 
           </div>
         </CollapsibleTrigger>
 
-        <CollapsibleContent className="space-y-6">
+        <CollapsibleContent className="space-y-4">
           <div className="h-64 w-full overflow-hidden">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart 
                 data={salaryData.chartData} 
-                margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+                margin={{ top: 20, right: 30, left: 20, bottom: 30 }}
                 barCategoryGap="20%"
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
@@ -224,7 +224,7 @@ export function SalaryInsightsCard({ candidates, jobCurrency = 'USD', className 
                   tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
                   tickLine={false}
                   axisLine={false}
-                  height={60}
+                  height={40}
                 />
                 <YAxis 
                   tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
