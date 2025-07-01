@@ -215,7 +215,7 @@ export function SalaryInsightsCard({ candidates, jobCurrency = 'USD', className 
             <ResponsiveContainer width="100%" height="100%">
               <BarChart 
                 data={salaryData.chartData} 
-                margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
+                margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
                 barCategoryGap="20%"
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
@@ -224,9 +224,7 @@ export function SalaryInsightsCard({ candidates, jobCurrency = 'USD', className 
                   tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
                   tickLine={false}
                   axisLine={false}
-                  angle={-45}
-                  textAnchor="end"
-                  height={80}
+                  height={60}
                 />
                 <YAxis 
                   tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
