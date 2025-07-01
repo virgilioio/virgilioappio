@@ -15,6 +15,7 @@ import { useJobs } from '@/hooks/useJobs'
 import { useAuth } from '@/contexts/AuthContext'
 import { CandidateComments } from '@/components/candidates/CandidateComments'
 import { CandidateForm } from '@/components/candidates/CandidateForm'
+import { cn } from '@/lib/utils'
 
 export default function CandidateProfile() {
   const { jobId, candidateId } = useParams<{ jobId: string; candidateId: string }>()
@@ -145,7 +146,7 @@ export default function CandidateProfile() {
               {/* Left Column - Header Card and Tabbed Content */}
               <div className="lg:col-span-2 space-y-md">
                 {/* Header Card */}
-                <Card className="bg-white border-border">
+                <Card className={cn("border-border", "bg-white")}>
                   <CardContent className="p-layout-md">
                     <div className="flex items-center justify-between">
                       <div>
