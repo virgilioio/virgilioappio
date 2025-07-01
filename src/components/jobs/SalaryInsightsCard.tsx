@@ -100,7 +100,6 @@ export function SalaryInsightsCard({ candidates, jobCurrency = 'USD', className 
         value="No salary data available"
         icon={<TrendingUp />}
         tooltip="Add candidate salary expectations to see insights"
-        className={className}
       />
     )
   }
