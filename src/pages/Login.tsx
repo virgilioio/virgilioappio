@@ -1,3 +1,4 @@
+
 import { useState } from 'react'
 import { Navigate, useNavigate, Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
@@ -123,7 +124,8 @@ export default function Login() {
                 <div className="flex justify-start">
                   <Link 
                     to="/forgot-password" 
-                    className="text-sm text-primary hover:text-primary/80 transition-colors"
+                    className="text-sm transition-colors"
+                    style={{ color: 'rgb(31, 116, 179)' }}
                   >
                     Forgot password?
                   </Link>
