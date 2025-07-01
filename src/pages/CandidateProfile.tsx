@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { ArrowLeft, MapPin, DollarSign, Calendar, User, Edit, Zap } from 'lucide-react'
+import { ArrowLeft, MapPin, DollarSign, Calendar, User, Edit, Zap, Linkedin } from 'lucide-react'
 import { AuthGate } from '@/components/auth/AuthGate'
 import { PermissionGate } from '@/components/auth/PermissionGate'
 import { JobAssignmentGuard } from '@/components/auth/JobAssignmentGuard'
@@ -142,13 +142,23 @@ export default function CandidateProfile() {
             {/* Header Card */}
             <Card className="bg-surface-primary border-border mb-lg">
               <CardContent className="p-layout-md">
-                <div>
-                  <h1 className="text-2xl font-semibold text-text-primary mb-2">{candidate.candidate_name}</h1>
-                  {job && (
-                    <p className="text-text-secondary">
-                      Candidate for <span className="font-medium text-text-primary">{job.title}</span>
-                    </p>
-                  )}
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h1 className="text-2xl font-semibold text-text-primary mb-2">{candidate.candidate_name}</h1>
+                    {job && (
+                      <p className="text-text-secondary">
+                        Candidate for <span className="font-medium text-text-primary">{job.title}</span>
+                      </p>
+                    )}
+                  </div>
+                  
+                  <Button 
+                    variant="outline" 
+                    className="gap-sm h-[44px] border-[#0078c7] text-[#0078c7] hover:bg-[#0078c7] hover:text-white"
+                  >
+                    <Linkedin className="h-4 w-4" />
+                    LinkedIn Account
+                  </Button>
                 </div>
               </CardContent>
             </Card>
