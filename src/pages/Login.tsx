@@ -1,4 +1,3 @@
-
 import { useState } from 'react'
 import { Navigate, useNavigate, Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
@@ -108,17 +107,9 @@ export default function Login() {
               </div>
 
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="password" className="text-base font-medium">
-                    Password
-                  </Label>
-                  <Link 
-                    to="/forgot-password" 
-                    className="text-sm text-primary hover:text-primary/80 transition-colors"
-                  >
-                    Forgot password?
-                  </Link>
-                </div>
+                <Label htmlFor="password" className="text-base font-medium">
+                  Password
+                </Label>
                 <Input
                   id="password"
                   type="password"
@@ -129,6 +120,14 @@ export default function Login() {
                   disabled={isSubmitting}
                   className="h-12 text-base"
                 />
+                <div className="flex justify-start">
+                  <Link 
+                    to="/forgot-password" 
+                    className="text-sm text-primary hover:text-primary/80 transition-colors"
+                  >
+                    Forgot password?
+                  </Link>
+                </div>
               </div>
 
               {error && (
