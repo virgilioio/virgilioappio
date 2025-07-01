@@ -1,3 +1,4 @@
+
 import { useMemo, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { MetricCard } from '@/components/invoices/MetricCard';
@@ -221,7 +222,7 @@ export function SalaryInsightsCard({
                 position: 'insideLeft'
               }} />
                 <Tooltip content={<CustomTooltip />} />
-                <Bar dataKey="count" fill="#9c3fff" radius={[4, 4, 0, 0]} maxBarSize={60} />
+                <Bar dataKey="count" fill="#7e3eff" radius={[4, 4, 0, 0]} maxBarSize={60} />
               </BarChart>
             </ResponsiveContainer>
           </div>
