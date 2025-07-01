@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
@@ -163,14 +162,81 @@ export default function CandidateProfile() {
 
             {/* Main Content */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-lg">
-              {/* Left Column - Main Info */}
+              {/* Left Column - Profile Summary and Notes */}
               <div className="lg:col-span-2 space-y-md">
+                {/* Profile Summary */}
+                {candidate.profile_summary && (
+                  <Card className="bg-surface-primary border-border">
+                    <CardHeader>
+                      <CardTitle className="text-text-primary">Profile Summary</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="prose prose-sm max-w-none text-text-primary">
+                        <div 
+                          className="leading-relaxed [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:my-2 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0"
+                          dangerouslySetInnerHTML={{ __html: candidate.profile_summary }}
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Notes */}
+                {candidate.notes && (
+                  <Card className="bg-surface-primary border-border">
+                    <CardHeader>
+                      <CardTitle className="text-text-primary">Internal Notes</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="prose prose-sm max-w-none text-text-primary">
+                        <div 
+                          className="leading-relaxed [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:my-2 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0"
+                          dangerouslySetInnerHTML={{ __html: candidate.notes }}
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+
+              {/* Right Column - Job Info, Candidate Info & Comments */}
+              <div className="space-y-md">
+                {/* Job Information */}
+                {job && (
+                  <Card className="bg-surface-primary border-border">
+                    <CardHeader>
+                      <CardTitle className="text-text-primary">Job Information</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-sm">
+                      <div>
+                        <p className="text-sm font-medium text-text-secondary">Position</p>
+                        <p className="text-text-primary">{job.title}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-text-secondary">Department</p>
+                        <p className="text-text-primary">{job.department || 'Not specified'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-text-secondary">Location</p>
+                        <p className="text-text-primary">{job.location || 'Not specified'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-text-secondary">Status</p>
+                        <Badge variant={job.status === 'active' ? 'default' : 'secondary'}>
+                          {job.status}
+                        </Badge>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Candidate Information */}
                 <Card className="bg-surface-primary border-border">
                   <CardHeader>
                     <CardTitle className="text-text-primary">Candidate Information</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-md">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-md">
+                    <div className="grid grid-cols-1 gap-md">
                       <div className="space-y-sm">
                         <div className="flex items-center gap-sm text-text-secondary">
                           <MapPin className="h-4 w-4" />
@@ -211,72 +277,6 @@ export default function CandidateProfile() {
                     </div>
                   </CardContent>
                 </Card>
-
-                {/* Profile Summary */}
-                {candidate.profile_summary && (
-                  <Card className="bg-surface-primary border-border">
-                    <CardHeader>
-                      <CardTitle className="text-text-primary">Profile Summary</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="prose prose-sm max-w-none text-text-primary">
-                        <div 
-                          className="leading-relaxed [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:my-2 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0"
-                          dangerouslySetInnerHTML={{ __html: candidate.profile_summary }}
-                        />
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Notes */}
-                {candidate.notes && (
-                  <Card className="bg-surface-primary border-border">
-                    <CardHeader>
-                      <CardTitle className="text-text-primary">Internal Notes</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="prose prose-sm max-w-none text-text-primary">
-                        <div 
-                          className="leading-relaxed [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:my-2 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0"
-                          dangerouslySetInnerHTML={{ __html: candidate.notes }}
-                        />
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-
-              {/* Right Column - Comments & Job Info */}
-              <div className="space-y-md">
-                {/* Job Information */}
-                {job && (
-                  <Card className="bg-surface-primary border-border">
-                    <CardHeader>
-                      <CardTitle className="text-text-primary">Job Information</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-sm">
-                      <div>
-                        <p className="text-sm font-medium text-text-secondary">Position</p>
-                        <p className="text-text-primary">{job.title}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-text-secondary">Department</p>
-                        <p className="text-text-primary">{job.department || 'Not specified'}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-text-secondary">Location</p>
-                        <p className="text-text-primary">{job.location || 'Not specified'}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-text-secondary">Status</p>
-                        <Badge variant={job.status === 'active' ? 'default' : 'secondary'}>
-                          {job.status}
-                        </Badge>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
 
                 {/* Comments Section */}
                 <Card className="bg-surface-primary border-border">
