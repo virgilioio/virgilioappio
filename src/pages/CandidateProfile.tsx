@@ -183,9 +183,19 @@ export default function CandidateProfile() {
                 <Card className="bg-surface-primary border-border">
                   <Tabs defaultValue="overview" className="w-full">
                     <CardHeader className="pb-2">
-                      <TabsList className="grid w-full grid-cols-2">
-                        <TabsTrigger value="overview">Overview</TabsTrigger>
-                        <TabsTrigger value="notes">Notes</TabsTrigger>
+                      <TabsList className="inline-flex h-auto items-center justify-start rounded-xl bg-transparent p-1 text-muted-foreground shadow-lg">
+                        <TabsTrigger 
+                          value="overview" 
+                          className="inline-flex items-center justify-center whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-accent data-[state=active]:text-accent-foreground data-[state=active]:shadow-sm hover:bg-muted/50"
+                        >
+                          Overview
+                        </TabsTrigger>
+                        <TabsTrigger 
+                          value="notes"
+                          className="inline-flex items-center justify-center whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-accent data-[state=active]:text-accent-foreground data-[state=active]:shadow-sm hover:bg-muted/50"
+                        >
+                          Notes
+                        </TabsTrigger>
                       </TabsList>
                     </CardHeader>
                     
