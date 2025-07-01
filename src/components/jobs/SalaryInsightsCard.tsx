@@ -1,3 +1,4 @@
+
 import { useMemo, useState } from 'react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { MetricCard } from '@/components/invoices/MetricCard'
@@ -16,6 +17,13 @@ interface SalaryInsightsCardProps {
   candidates: Candidate[]
   jobCurrency?: string
   className?: string
+}
+
+interface SalaryBand {
+  min: number
+  max: number
+  label: string
+  count: number
 }
 
 export function SalaryInsightsCard({ candidates, jobCurrency = 'USD', className }: SalaryInsightsCardProps) {
@@ -52,29 +60,86 @@ export function SalaryInsightsCard({ candidates, jobCurrency = 'USD', className 
       return annualAmount
     })
 
-    // Calculate insights
+    // Calculate basic stats for reference
     const minSalary = Math.min(...annualSalaries)
     const maxSalary = Math.max(...annualSalaries)
     const avgSalary = annualSalaries.reduce((sum, salary) => sum + salary, 0) / annualSalaries.length
 
-    // Format data for chart
-    const chartData = [
-      {
-        name: 'Minimum',
-        salary: Math.round(minSalary),
-      },
-      {
-        name: 'Average',
-        salary: Math.round(avgSalary),
-      },
-      {
-        name: 'Maximum',
-        salary: Math.round(maxSalary),
+    // Create salary bands
+    const salaryRange = maxSalary - minSalary
+    let bandSize: number
+
+    // Determine appropriate band size based on salary range
+    if (salaryRange <= 50000) {
+      bandSize = 10000 // $10k bands for smaller ranges
+    } else if (salaryRange <= 150000) {
+      bandSize = 20000 // $20k bands for medium ranges
+    } else {
+      bandSize = 25000 // $25k bands for larger ranges
+    }
+
+    // If all candidates have the same salary, create a single band
+    if (salaryRange === 0) {
+      const salary = minSalary
+      return {
+        chartData: [{
+          name: formatCurrency(salary),
+          count: candidatesWithSalary.length
+        }],
+        bands: [{
+          min: salary,
+          max: salary,
+          label: formatCurrency(salary),
+          count: candidatesWithSalary.length
+        }],
+        count: candidatesWithSalary.length,
+        minSalary: Math.round(minSalary),
+        maxSalary: Math.round(maxSalary),
+        avgSalary: Math.round(avgSalary)
       }
-    ]
+    }
+
+    // Create salary bands
+    const bands: SalaryBand[] = []
+    const startSalary = Math.floor(minSalary / bandSize) * bandSize
+    const endSalary = Math.ceil(maxSalary / bandSize) * bandSize
+
+    for (let salary = startSalary; salary < endSalary; salary += bandSize) {
+      const bandMin = salary
+      const bandMax = salary + bandSize
+      
+      // Count candidates in this band
+      const candidatesInBand = annualSalaries.filter(
+        candidateSalary => candidateSalary >= bandMin && candidateSalary < bandMax
+      ).length
+
+      // Only include bands with candidates (except for the last band which should include the max)
+      if (candidatesInBand > 0 || salary + bandSize >= maxSalary) {
+        // For the last band, include candidates at exactly the max salary
+        const actualCount = salary + bandSize >= maxSalary 
+          ? annualSalaries.filter(candidateSalary => candidateSalary >= bandMin && candidateSalary <= bandMax).length
+          : candidatesInBand
+
+        if (actualCount > 0) {
+          bands.push({
+            min: bandMin,
+            max: bandMax,
+            label: `${formatCurrencyShort(bandMin)}-${formatCurrencyShort(bandMax)}`,
+            count: actualCount
+          })
+        }
+      }
+    }
+
+    // Format data for chart
+    const chartData = bands.map(band => ({
+      name: band.label,
+      count: band.count
+    }))
 
     return {
       chartData,
+      bands,
       count: candidatesWithSalary.length,
       minSalary: Math.round(minSalary),
       maxSalary: Math.round(maxSalary),
@@ -91,14 +156,22 @@ export function SalaryInsightsCard({ candidates, jobCurrency = 'USD', className 
     }).format(value)
   }
 
+  const formatCurrencyShort = (value: number) => {
+    if (value >= 1000) {
+      return `${jobCurrency}${(value / 1000).toFixed(0)}k`
+    }
+    return formatCurrency(value)
+  }
+
   // Custom tooltip component
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
+      const count = payload[0].value
       return (
         <div className="bg-background border border-border rounded-lg p-3 shadow-lg">
           <p className="font-medium text-foreground">{label}</p>
           <p className="text-primary">
-            {formatCurrency(payload[0].value)}
+            {count} candidate{count !== 1 ? 's' : ''}
           </p>
         </div>
       )
@@ -123,7 +196,7 @@ export function SalaryInsightsCard({ candidates, jobCurrency = 'USD', className 
         <CollapsibleTrigger className="flex items-center justify-between w-full mb-6 hover:opacity-80 transition-opacity cursor-pointer">
           <div className="flex items-center gap-2">
             <TrendingUp className="h-5 w-5 text-muted-foreground" />
-            <h3 className="text-sm font-medium text-muted-foreground">Salary Insights</h3>
+            <h3 className="text-sm font-medium text-muted-foreground">Salary Distribution</h3>
           </div>
           <div className="flex items-center gap-2">
             <div className="text-xs text-muted-foreground">
@@ -143,27 +216,31 @@ export function SalaryInsightsCard({ candidates, jobCurrency = 'USD', className 
               <BarChart 
                 data={salaryData.chartData} 
                 margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
-                barCategoryGap="30%"
+                barCategoryGap="20%"
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis 
                   dataKey="name" 
-                  tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
+                  tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
                   tickLine={false}
                   axisLine={false}
+                  angle={-45}
+                  textAnchor="end"
+                  height={80}
                 />
                 <YAxis 
                   tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
                   tickLine={false}
                   axisLine={false}
-                  tickFormatter={(value) => `${jobCurrency} ${(value / 1000).toFixed(0)}k`}
+                  allowDecimals={false}
+                  label={{ value: 'Candidates', angle: -90, position: 'insideLeft' }}
                 />
                 <Tooltip content={<CustomTooltip />} />
                 <Bar 
-                  dataKey="salary" 
+                  dataKey="count" 
                   fill="hsl(var(--primary))" 
                   radius={[4, 4, 0, 0]}
-                  maxBarSize={80}
+                  maxBarSize={60}
                 />
               </BarChart>
             </ResponsiveContainer>
