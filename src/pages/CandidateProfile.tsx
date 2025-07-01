@@ -142,7 +142,7 @@ export default function CandidateProfile() {
 
             {/* Main Content */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-lg">
-              {/* Left Column - Header Card, Profile Summary and Notes */}
+              {/* Left Column - Header Card, Candidate Information, Profile Summary and Notes */}
               <div className="lg:col-span-2 space-y-md">
                 {/* Header Card */}
                 <Card className="bg-surface-primary border-border">
@@ -163,6 +163,58 @@ export default function CandidateProfile() {
                         <Linkedin className="h-4 w-4" fill="white" />
                         LinkedIn Account
                       </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Candidate Information */}
+                <Card className="bg-surface-primary border-border">
+                  <CardHeader>
+                    <CardTitle className="text-text-primary">Candidate Information</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-lg">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-lg">
+                      <div className="space-y-md">
+                        <div className="flex items-start gap-md text-text-secondary">
+                          <MapPin className="h-5 w-5 mt-1 flex-shrink-0" />
+                          <div className="space-y-1">
+                            <span className="text-sm font-medium block">Location</span>
+                            <p className="text-text-primary text-base">{formatLocation(candidate)}</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-start gap-md text-text-secondary">
+                          <DollarSign className="h-5 w-5 mt-1 flex-shrink-0" />
+                          <div className="space-y-1">
+                            <span className="text-sm font-medium block">Salary Expectations</span>
+                            <p className="text-text-primary text-base">{formatSalary(candidate)}</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="space-y-md">
+                        <div className="flex items-start gap-md text-text-secondary">
+                          <Calendar className="h-5 w-5 mt-1 flex-shrink-0" />
+                          <div className="space-y-1">
+                            <span className="text-sm font-medium block">Added</span>
+                            <p className="text-text-primary text-base">
+                              {new Date(candidate.created_at).toLocaleDateString('en-US', {
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric'
+                              })}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-start gap-md text-text-secondary">
+                          <User className="h-5 w-5 mt-1 flex-shrink-0" />
+                          <div className="space-y-1">
+                            <span className="text-sm font-medium block">Added By</span>
+                            <p className="text-text-primary text-base">Internal Team</p>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -202,7 +254,7 @@ export default function CandidateProfile() {
                 )}
               </div>
 
-              {/* Right Column - Quick Actions, Job Info, Candidate Info & Comments */}
+              {/* Right Column - Quick Actions, Job Info & Comments */}
               <div className="space-y-md">
                 {/* Quick Actions */}
                 <PermissionGate permission="canManageCandidates">
@@ -250,54 +302,6 @@ export default function CandidateProfile() {
                     </CardContent>
                   </Card>
                 )}
-
-                {/* Candidate Information */}
-                <Card className="bg-surface-primary border-border">
-                  <CardHeader>
-                    <CardTitle className="text-text-primary">Candidate Information</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-md">
-                    <div className="grid grid-cols-1 gap-md">
-                      <div className="space-y-sm">
-                        <div className="flex items-center gap-sm text-text-secondary">
-                          <MapPin className="h-4 w-4" />
-                          <span className="text-sm font-medium">Location</span>
-                        </div>
-                        <p className="text-text-primary ml-6">{formatLocation(candidate)}</p>
-                      </div>
-
-                      <div className="space-y-sm">
-                        <div className="flex items-center gap-sm text-text-secondary">
-                          <DollarSign className="h-4 w-4" />
-                          <span className="text-sm font-medium">Salary Expectations</span>
-                        </div>
-                        <p className="text-text-primary ml-6">{formatSalary(candidate)}</p>
-                      </div>
-
-                      <div className="space-y-sm">
-                        <div className="flex items-center gap-sm text-text-secondary">
-                          <Calendar className="h-4 w-4" />
-                          <span className="text-sm font-medium">Added</span>
-                        </div>
-                        <p className="text-text-primary ml-6">
-                          {new Date(candidate.created_at).toLocaleDateString('en-US', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric'
-                          })}
-                        </p>
-                      </div>
-
-                      <div className="space-y-sm">
-                        <div className="flex items-center gap-sm text-text-secondary">
-                          <User className="h-4 w-4" />
-                          <span className="text-sm font-medium">Added By</span>
-                        </div>
-                        <p className="text-text-primary ml-6">Internal Team</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
 
                 {/* Comments Section */}
                 <Card className="bg-surface-primary border-border">
