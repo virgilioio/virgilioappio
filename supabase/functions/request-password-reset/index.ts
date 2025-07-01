@@ -71,9 +71,10 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("Failed to create reset token");
     }
 
-    // Send email with Resend
-    const resetUrl = `${Deno.env.get("SUPABASE_URL")?.replace('.supabase.co', '')}/reset-password?token=${token}`;
+    // Fix the reset URL - use the proper application URL
+    const resetUrl = `https://etrxjxstjfcozdjumfsj.supabase.co/reset-password?token=${token}`;
     
+    // Send email with Resend
     const emailResponse = await resend.emails.send({
       from: "Virgilio <noreply@resend.dev>",
       to: [email],
@@ -110,7 +111,12 @@ const handler = async (req: Request): Promise<Response> => {
       `,
     });
 
-    console.log("Password reset email sent:", emailResponse);
+    if (emailResponse.error) {
+      console.error("Error sending email:", emailResponse.error);
+      throw new Error("Failed to send reset email");
+    }
+
+    console.log("Password reset email sent successfully:", emailResponse);
 
     return new Response(
       JSON.stringify({ message: "Password reset email sent if account exists" }),
