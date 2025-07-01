@@ -36,6 +36,7 @@ interface FormData {
   salary_period: string
   profile_summary: string
   notes: string
+  linkedin_url: string
 }
 
 const currencies = [
@@ -100,7 +101,8 @@ export function CandidateForm({
       salary_currency: 'USD',
       salary_period: 'annually',
       profile_summary: '',
-      notes: ''
+      notes: '',
+      linkedin_url: ''
     }
   })
 
@@ -127,7 +129,8 @@ export function CandidateForm({
         salary_currency: candidate.salary_currency || 'USD',
         salary_period: candidate.salary_period || 'annually',
         profile_summary: candidate.profile_summary || '',
-        notes: candidate.notes || ''
+        notes: candidate.notes || '',
+        linkedin_url: candidate.linkedin_url || ''
       }
       
       form.reset(candidateData)
@@ -159,7 +162,8 @@ export function CandidateForm({
         salary_currency: 'USD',
         salary_period: 'annually',
         profile_summary: '',
-        notes: ''
+        notes: '',
+        linkedin_url: ''
       })
       
       // Reset rich text editor values only for new candidates
@@ -167,6 +171,13 @@ export function CandidateForm({
       setNotes('')
     }
   }, [isOpen, candidate, form])
+
+  const validateLinkedInUrl = (url: string) => {
+    if (!url) return true // Allow empty URLs
+    
+    const linkedinRegex = /^https?:\/\/(www\.)?linkedin\.com\/in\/[a-zA-Z0-9-]+\/?$/
+    return linkedinRegex.test(url) || 'Please enter a valid LinkedIn profile URL (e.g., https://linkedin.com/in/username)'
+  }
 
   const handleSubmit = form.handleSubmit((data) => {
     const submitData = {
@@ -220,6 +231,22 @@ export function CandidateForm({
                   id="candidate_name"
                   {...form.register('candidate_name', { required: 'Name is required' })}
                   placeholder="Enter candidate name or alias"
+                  className="h-[44px]"
+                />
+              </FormField>
+
+              <FormField 
+                label="LinkedIn Profile URL" 
+                error={form.formState.errors.linkedin_url?.message}
+                htmlFor="linkedin_url"
+                helpText="Optional - Enter the candidate's LinkedIn profile URL"
+              >
+                <Input
+                  id="linkedin_url"
+                  {...form.register('linkedin_url', { 
+                    validate: validateLinkedInUrl 
+                  })}
+                  placeholder="https://linkedin.com/in/username"
                   className="h-[44px]"
                 />
               </FormField>

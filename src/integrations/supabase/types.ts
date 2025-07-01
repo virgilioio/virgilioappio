@@ -572,6 +572,7 @@ export type Database = {
           first_viewed_by: Json | null
           id: string
           job_id: string
+          linkedin_url: string | null
           location_city: string | null
           location_country: string | null
           location_state: string | null
@@ -589,6 +590,7 @@ export type Database = {
           first_viewed_by?: Json | null
           id?: string
           job_id: string
+          linkedin_url?: string | null
           location_city?: string | null
           location_country?: string | null
           location_state?: string | null
@@ -606,6 +608,7 @@ export type Database = {
           first_viewed_by?: Json | null
           id?: string
           job_id?: string
+          linkedin_url?: string | null
           location_city?: string | null
           location_country?: string | null
           location_state?: string | null

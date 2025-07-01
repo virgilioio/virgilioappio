@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
@@ -16,6 +15,7 @@ export interface Candidate {
   salary_period: string | null
   profile_summary: string | null
   notes: string | null
+  linkedin_url: string | null
   added_by: string | null
   created_at: string
   updated_at: string
@@ -32,6 +32,7 @@ export interface CreateCandidateData {
   salary_period?: string | null
   profile_summary?: string | null
   notes?: string | null
+  linkedin_url?: string | null
 }
 
 export function useCandidates(jobId: string) {

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
@@ -157,12 +156,23 @@ export default function CandidateProfile() {
                         )}
                       </div>
                       
-                      <Button 
-                        className="gap-sm h-[44px] bg-[#0078c7] text-white hover:bg-[#005a94]"
-                      >
-                        <Linkedin className="h-4 w-4" fill="white" />
-                        LinkedIn Account
-                      </Button>
+                      {candidate.linkedin_url ? (
+                        <Button 
+                          className="gap-sm h-[44px] bg-[#0078c7] text-white hover:bg-[#005a94]"
+                          onClick={() => window.open(candidate.linkedin_url!, '_blank')}
+                        >
+                          <Linkedin className="h-4 w-4" fill="white" />
+                          View LinkedIn
+                        </Button>
+                      ) : (
+                        <Button 
+                          className="gap-sm h-[44px] bg-[#0078c7] text-white hover:bg-[#005a94]"
+                          disabled
+                        >
+                          <Linkedin className="h-4 w-4" fill="white" />
+                          No LinkedIn
+                        </Button>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
