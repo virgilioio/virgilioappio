@@ -17,6 +17,8 @@ import JobRequests from './pages/JobRequests'
 import Candidates from './pages/Candidates'
 import Settings from './pages/Settings'
 import Login from './pages/Login'
+import ForgotPassword from './pages/ForgotPassword'
+import ResetPassword from './pages/ResetPassword'
 import AcceptInvite from './pages/AcceptInvite'
 import VerifyEmail from './pages/VerifyEmail'
 import { useAuth } from './contexts/AuthContext'
@@ -38,6 +40,8 @@ function AppContent() {
     <div className="min-h-screen bg-background text-foreground">
       <Routes>
         <Route path="/auth" element={<Login />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/accept-invite/:token" element={<AcceptInvite />} />
         <Route path="/verify-email" element={<VerifyEmail />} />
         <Route
