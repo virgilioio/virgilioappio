@@ -172,9 +172,9 @@ export default function CandidateProfile() {
                   <CardHeader>
                     <CardTitle className="text-text-primary">Candidate Information</CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-lg">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-lg">
-                      <div className="space-y-md">
+                  <CardContent className="space-y-2xl pb-xl">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2xl">
+                      <div className="space-y-xl">
                         <div className="flex items-start gap-md text-text-secondary">
                           <MapPin className="h-5 w-5 mt-1 flex-shrink-0" />
                           <div className="space-y-1">
@@ -192,7 +192,7 @@ export default function CandidateProfile() {
                         </div>
                       </div>
 
-                      <div className="space-y-md">
+                      <div className="space-y-xl">
                         <div className="flex items-start gap-md text-text-secondary">
                           <Calendar className="h-5 w-5 mt-1 flex-shrink-0" />
                           <div className="space-y-1">
