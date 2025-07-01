@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { MetricCard } from '@/components/invoices/MetricCard';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import { TrendingUp, ChevronDown, ChevronUp } from 'lucide-react';
+
 interface Candidate {
   id: string;
   candidate_name: string;
@@ -21,12 +22,14 @@ interface SalaryBand {
   label: string;
   count: number;
 }
+
 export function SalaryInsightsCard({
   candidates,
   jobCurrency = 'USD',
   className
 }: SalaryInsightsCardProps) {
   const [isOpen, setIsOpen] = useState(true);
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   // Move utility functions above useMemo to fix temporal dead zone error
   const formatCurrency = (value: number) => {
@@ -61,6 +64,7 @@ export function SalaryInsightsCard({
     }
     return null;
   };
+
   const salaryData = useMemo(() => {
     // Filter candidates with salary data
     const candidatesWithSalary = candidates.filter(candidate => candidate.salary_amount && candidate.salary_amount > 0);
@@ -193,12 +197,22 @@ export function SalaryInsightsCard({
         <CollapsibleContent className="space-y-2">
           <div className="h-60 w-full overflow-hidden">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={salaryData.chartData} margin={{
-              top: 20,
-              right: 30,
-              left: 20,
-              bottom: 30
-            }} barCategoryGap="20%">
+              <BarChart 
+                data={salaryData.chartData} 
+                margin={{
+                  top: 20,
+                  right: 30,
+                  left: 20,
+                  bottom: 30
+                }} 
+                barCategoryGap="20%"
+                onMouseMove={(data) => {
+                  if (data && data.activeTooltipIndex !== undefined) {
+                    setHoveredIndex(data.activeTooltipIndex);
+                  }
+                }}
+                onMouseLeave={() => setHoveredIndex(null)}
+              >
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis dataKey="name" tick={{
                 fontSize: 11,
@@ -213,7 +227,14 @@ export function SalaryInsightsCard({
                 position: 'insideLeft'
               }} />
                 <Tooltip content={<CustomTooltip />} />
-                <Bar dataKey="count" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} maxBarSize={60} />
+                <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={60}>
+                  {salaryData.chartData.map((entry, index) => (
+                    <Cell 
+                      key={`cell-${index}`} 
+                      fill={hoveredIndex === index ? '#d7c5fb' : '#8f6db3'} 
+                    />
+                  ))}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>
