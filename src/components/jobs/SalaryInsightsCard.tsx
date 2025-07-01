@@ -167,15 +167,20 @@ export function SalaryInsightsCard({
       avgSalary: Math.round(avgSalary)
     };
   }, [candidates]);
+
   if (!salaryData) {
-    return <MetricCard title="Salary Insights" value="No salary data available" icon={<TrendingUp />} tooltip="Add candidate salary expectations to see insights" />;
+    return <MetricCard title="Salary Insights (Annual)" value="No salary data available" icon={<TrendingUp />} tooltip="Add candidate salary expectations to see annual insights" />;
   }
+
   return <Collapsible open={isOpen} onOpenChange={setIsOpen}>
       <div className={`bg-white border border-border rounded-lg p-6 ${className}`}>
-        <CollapsibleTrigger className="flex items-center justify-between w-full mb-6 hover:opacity-80 transition-opacity cursor-pointer">
-          <div className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5 text-muted-foreground" />
-            <h3 className="text-sm font-medium text-muted-foreground">Salary Insights</h3>
+        <CollapsibleTrigger className="flex items-center justify-between w-full mb-4 hover:opacity-80 transition-opacity cursor-pointer">
+          <div className="flex flex-col items-start gap-1">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-muted-foreground" />
+              <h3 className="text-sm font-medium text-muted-foreground">Salary Insights (Annual)</h3>
+            </div>
+            <p className="text-xs text-muted-foreground ml-7">All salaries normalized to annual amounts</p>
           </div>
           <div className="flex items-center gap-2">
             <div className="text-xs text-muted-foreground">
@@ -185,7 +190,7 @@ export function SalaryInsightsCard({
           </div>
         </CollapsibleTrigger>
 
-        <CollapsibleContent className="space-y-6">
+        <CollapsibleContent className="space-y-4">
           <div className="h-64 w-full overflow-hidden">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={salaryData.chartData} margin={{
@@ -216,15 +221,15 @@ export function SalaryInsightsCard({
           <div className="grid grid-cols-3 gap-4 text-center">
             <div className="space-y-1">
               <div className="text-lg font-bold text-foreground">{formatCurrency(salaryData.minSalary)}</div>
-              <div className="text-xs text-muted-foreground">Minimum</div>
+              <div className="text-xs text-muted-foreground">Minimum (Annual)</div>
             </div>
             <div className="space-y-1">
               <div className="text-lg font-bold text-foreground">{formatCurrency(salaryData.avgSalary)}</div>
-              <div className="text-xs text-muted-foreground">Average</div>
+              <div className="text-xs text-muted-foreground">Average (Annual)</div>
             </div>
             <div className="space-y-1">
               <div className="text-lg font-bold text-foreground">{formatCurrency(salaryData.maxSalary)}</div>
-              <div className="text-xs text-muted-foreground">Maximum</div>
+              <div className="text-xs text-muted-foreground">Maximum (Annual)</div>
             </div>
           </div>
         </CollapsibleContent>
