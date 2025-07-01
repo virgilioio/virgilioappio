@@ -1,11 +1,10 @@
-
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { ArrowLeft, MapPin, DollarSign, Calendar, User, Edit } from 'lucide-react'
+import { ArrowLeft, MapPin, DollarSign, Calendar, User, Edit, Zap } from 'lucide-react'
 import { AuthGate } from '@/components/auth/AuthGate'
 import { PermissionGate } from '@/components/auth/PermissionGate'
 import { JobAssignmentGuard } from '@/components/auth/JobAssignmentGuard'
@@ -143,22 +142,13 @@ export default function CandidateProfile() {
             {/* Header Card */}
             <Card className="bg-surface-primary border-border mb-lg">
               <CardContent className="p-layout-md">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h1 className="text-2xl font-semibold text-text-primary mb-2">{candidate.candidate_name}</h1>
-                    {job && (
-                      <p className="text-text-secondary">
-                        Candidate for <span className="font-medium text-text-primary">{job.title}</span>
-                      </p>
-                    )}
-                  </div>
-                  
-                  <PermissionGate permission="canManageCandidates">
-                    <Button onClick={handleEdit} className="gap-sm h-[44px]">
-                      <Edit className="h-4 w-4" />
-                      Edit Candidate
-                    </Button>
-                  </PermissionGate>
+                <div>
+                  <h1 className="text-2xl font-semibold text-text-primary mb-2">{candidate.candidate_name}</h1>
+                  {job && (
+                    <p className="text-text-secondary">
+                      Candidate for <span className="font-medium text-text-primary">{job.title}</span>
+                    </p>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -202,8 +192,26 @@ export default function CandidateProfile() {
                 )}
               </div>
 
-              {/* Right Column - Job Info, Candidate Info & Comments */}
+              {/* Right Column - Quick Actions, Job Info, Candidate Info & Comments */}
               <div className="space-y-md">
+                {/* Quick Actions */}
+                <PermissionGate permission="canManageCandidates">
+                  <Card className="bg-surface-primary border-border">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2 text-text-primary">
+                        <Zap className="h-5 w-5" />
+                        Quick Actions
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <Button onClick={handleEdit} className="w-full gap-sm h-[44px]">
+                        <Edit className="h-4 w-4" />
+                        Edit Candidate
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </PermissionGate>
+
                 {/* Job Information */}
                 {job && (
                   <Card className="bg-surface-primary border-border">
