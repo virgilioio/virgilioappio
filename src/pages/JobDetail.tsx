@@ -1,4 +1,3 @@
-
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
@@ -23,6 +22,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from '@/hooks/use-toast'
+import { SalaryInsightsCard } from '@/components/jobs/SalaryInsightsCard'
 
 export default function JobDetail() {
   const { id } = useParams<{ id: string }>()
@@ -300,15 +300,21 @@ export default function JobDetail() {
               </TabsContent>
               
               <TabsContent value="candidates">
-                <CandidateTable
-                  candidates={candidates}
-                  isLoading={candidatesLoading}
-                  onEdit={handleEditCandidate}
-                  onDelete={handleDeleteCandidate}
-                  onAddNew={() => setShowAddCandidate(true)}
-                  markCandidateAsViewed={markCandidateAsViewed}
-                  isCandidateNewForUser={isCandidateNewForUser}
-                />
+                <div className="space-y-6">
+                  <SalaryInsightsCard 
+                    candidates={candidates}
+                    jobCurrency={job.currency || 'USD'}
+                  />
+                  <CandidateTable
+                    candidates={candidates}
+                    isLoading={candidatesLoading}
+                    onEdit={handleEditCandidate}
+                    onDelete={handleDeleteCandidate}
+                    onAddNew={() => setShowAddCandidate(true)}
+                    markCandidateAsViewed={markCandidateAsViewed}
+                    isCandidateNewForUser={isCandidateNewForUser}
+                  />
+                </div>
               </TabsContent>
               
               {userType === 'platform_admin' && (
@@ -342,15 +348,21 @@ export default function JobDetail() {
                   />
                 </TabsContent>
                 <TabsContent value="candidates">
-                  <CandidateTable
-                    candidates={candidates}
-                    isLoading={candidatesLoading}
-                    onEdit={handleEditCandidate}
-                    onDelete={handleDeleteCandidate}
-                    onAddNew={() => setShowAddCandidate(true)}
-                    markCandidateAsViewed={markCandidateAsViewed}
-                    isCandidateNewForUser={isCandidateNewForUser}
-                  />
+                  <div className="space-y-6">
+                    <SalaryInsightsCard 
+                      candidates={candidates}
+                      jobCurrency={job.currency || 'USD'}
+                    />
+                    <CandidateTable
+                      candidates={candidates}
+                      isLoading={candidatesLoading}
+                      onEdit={handleEditCandidate}
+                      onDelete={handleDeleteCandidate}
+                      onAddNew={() => setShowAddCandidate(true)}
+                      markCandidateAsViewed={markCandidateAsViewed}
+                      isCandidateNewForUser={isCandidateNewForUser}
+                    />
+                  </div>
                 </TabsContent>
                 {activeTab === 'assignments' && userType === 'platform_admin' && (
                   <TabsContent value="assignments">
