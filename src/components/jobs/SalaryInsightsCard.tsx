@@ -190,20 +190,20 @@ export function SalaryInsightsCard({
           </div>
         </CollapsibleTrigger>
 
-        <CollapsibleContent className="space-y-4">
-          <div className="h-64 w-full overflow-hidden">
+        <CollapsibleContent className="space-y-2">
+          <div className="h-60 w-full overflow-hidden">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={salaryData.chartData} margin={{
               top: 20,
               right: 30,
               left: 20,
-              bottom: 60
+              bottom: 30
             }} barCategoryGap="20%">
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis dataKey="name" tick={{
                 fontSize: 11,
                 fill: 'hsl(var(--muted-foreground))'
-              }} tickLine={false} axisLine={false} height={60} />
+              }} tickLine={false} axisLine={false} height={40} />
                 <YAxis tick={{
                 fontSize: 12,
                 fill: 'hsl(var(--muted-foreground))'
