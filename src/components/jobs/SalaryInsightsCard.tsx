@@ -1,6 +1,6 @@
 
 import { useMemo } from 'react'
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts'
 import { MetricCard } from '@/components/invoices/MetricCard'
 import { ChartContainer, ChartTooltipContent, ChartTooltip } from '@/components/ui/chart'
 import { TrendingUp } from 'lucide-react'
@@ -56,22 +56,19 @@ export function SalaryInsightsCard({ candidates, jobCurrency = 'USD', className 
     const maxSalary = Math.max(...annualSalaries)
     const avgSalary = annualSalaries.reduce((sum, salary) => sum + salary, 0) / annualSalaries.length
 
-    // Format data for chart
+    // Format data for chart with better structure
     const chartData = [
       {
         name: 'Minimum',
-        value: Math.round(minSalary),
-        fill: '#ef4444'
+        salary: Math.round(minSalary),
       },
       {
         name: 'Average',
-        value: Math.round(avgSalary),
-        fill: '#3b82f6'
+        salary: Math.round(avgSalary),
       },
       {
         name: 'Maximum',
-        value: Math.round(maxSalary),
-        fill: '#10b981'
+        salary: Math.round(maxSalary),
       }
     ]
 
@@ -106,7 +103,7 @@ export function SalaryInsightsCard({ candidates, jobCurrency = 'USD', className 
 
   return (
     <div className={`bg-background border border-border rounded-lg p-6 ${className}`}>
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-2">
           <TrendingUp className="h-5 w-5 text-muted-foreground" />
           <h3 className="text-sm font-medium text-muted-foreground">Salary Insights</h3>
@@ -116,50 +113,57 @@ export function SalaryInsightsCard({ candidates, jobCurrency = 'USD', className 
         </div>
       </div>
 
-      <div className="h-48 w-full mb-4">
+      <div className="h-64 w-full mb-6">
         <ChartContainer
           config={{
-            value: {
-              label: "Salary",
-              color: "#3b82f6",
+            salary: {
+              label: "Annual Salary",
+              color: "hsl(var(--primary))",
             },
           }}
         >
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={salaryData.chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis 
-                dataKey="name" 
-                tick={{ fontSize: 12 }}
-                tickLine={false}
-                axisLine={false}
-              />
-              <YAxis 
-                tick={{ fontSize: 12 }}
-                tickLine={false}
-                axisLine={false}
-                tickFormatter={(value) => `${jobCurrency} ${(value / 1000).toFixed(0)}k`}
-              />
-              <ChartTooltip
-                content={<ChartTooltipContent />}
-                formatter={(value: number) => [formatCurrency(value), "Annual Salary"]}
-              />
-              <Bar dataKey="value" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          <BarChart 
+            data={salaryData.chartData} 
+            margin={{ top: 20, right: 20, left: 20, bottom: 20 }}
+            barCategoryGap="30%"
+          >
+            <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+            <XAxis 
+              dataKey="name" 
+              tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
+              tickLine={false}
+              axisLine={false}
+            />
+            <YAxis 
+              tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }}
+              tickLine={false}
+              axisLine={false}
+              tickFormatter={(value) => `${jobCurrency} ${(value / 1000).toFixed(0)}k`}
+            />
+            <ChartTooltip
+              content={<ChartTooltipContent />}
+              formatter={(value: number) => [formatCurrency(value), "Annual Salary"]}
+            />
+            <Bar 
+              dataKey="salary" 
+              fill="hsl(var(--primary))" 
+              radius={[4, 4, 0, 0]}
+              maxBarSize={80}
+            />
+          </BarChart>
         </ChartContainer>
       </div>
 
       <div className="grid grid-cols-3 gap-4 text-center">
-        <div>
+        <div className="space-y-1">
           <div className="text-lg font-bold text-foreground">{formatCurrency(salaryData.minSalary)}</div>
           <div className="text-xs text-muted-foreground">Minimum</div>
         </div>
-        <div>
+        <div className="space-y-1">
           <div className="text-lg font-bold text-foreground">{formatCurrency(salaryData.avgSalary)}</div>
           <div className="text-xs text-muted-foreground">Average</div>
         </div>
-        <div>
+        <div className="space-y-1">
           <div className="text-lg font-bold text-foreground">{formatCurrency(salaryData.maxSalary)}</div>
           <div className="text-xs text-muted-foreground">Maximum</div>
         </div>
