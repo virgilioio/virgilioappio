@@ -145,7 +145,7 @@ export default function CandidateProfile() {
               {/* Left Column - Header Card and Tabbed Content */}
               <div className="lg:col-span-2 space-y-md">
                 {/* Header Card */}
-                <Card className="bg-surface-primary border-border">
+                <Card className="bg-white border-border">
                   <CardContent className="p-layout-md">
                     <div className="flex items-center justify-between">
                       <div>
