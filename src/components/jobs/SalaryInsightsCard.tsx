@@ -1,4 +1,3 @@
-
 import { useMemo, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { MetricCard } from '@/components/invoices/MetricCard';
@@ -29,7 +28,7 @@ export function SalaryInsightsCard({
   jobCurrency = 'USD',
   className
 }: SalaryInsightsCardProps) {
-  const [isOpen, setIsOpen] = useState(true);
+  const [isOpen, setIsOpen] = useState(false);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   // Move utility functions above useMemo to fix temporal dead zone error
@@ -191,11 +190,11 @@ export function SalaryInsightsCard({
             <div className="text-xs text-muted-foreground">
               {salaryData.count} candidate{salaryData.count !== 1 ? 's' : ''} with salary data
             </div>
-            {isOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+            {isOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground transition-transform duration-200" /> : <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200" />}
           </div>
         </CollapsibleTrigger>
 
-        <CollapsibleContent className="space-y-2">
+        <CollapsibleContent className="space-y-2 data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
           <div className="h-60 w-full overflow-hidden">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart 
