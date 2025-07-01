@@ -1,4 +1,3 @@
-
 import { useMemo, useState } from 'react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { MetricCard } from '@/components/invoices/MetricCard'
@@ -28,6 +27,39 @@ interface SalaryBand {
 
 export function SalaryInsightsCard({ candidates, jobCurrency = 'USD', className }: SalaryInsightsCardProps) {
   const [isOpen, setIsOpen] = useState(true)
+
+  // Move utility functions above useMemo to fix temporal dead zone error
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: jobCurrency,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(value)
+  }
+
+  const formatCurrencyShort = (value: number) => {
+    if (value >= 1000) {
+      return `${jobCurrency}${(value / 1000).toFixed(0)}k`
+    }
+    return formatCurrency(value)
+  }
+
+  // Custom tooltip component
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      const count = payload[0].value
+      return (
+        <div className="bg-background border border-border rounded-lg p-3 shadow-lg">
+          <p className="font-medium text-foreground">{label}</p>
+          <p className="text-primary">
+            {count} candidate{count !== 1 ? 's' : ''}
+          </p>
+        </div>
+      )
+    }
+    return null
+  }
 
   const salaryData = useMemo(() => {
     // Filter candidates with salary data
@@ -146,38 +178,6 @@ export function SalaryInsightsCard({ candidates, jobCurrency = 'USD', className 
       avgSalary: Math.round(avgSalary)
     }
   }, [candidates])
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: jobCurrency,
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(value)
-  }
-
-  const formatCurrencyShort = (value: number) => {
-    if (value >= 1000) {
-      return `${jobCurrency}${(value / 1000).toFixed(0)}k`
-    }
-    return formatCurrency(value)
-  }
-
-  // Custom tooltip component
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      const count = payload[0].value
-      return (
-        <div className="bg-background border border-border rounded-lg p-3 shadow-lg">
-          <p className="font-medium text-foreground">{label}</p>
-          <p className="text-primary">
-            {count} candidate{count !== 1 ? 's' : ''}
-          </p>
-        </div>
-      )
-    }
-    return null
-  }
 
   if (!salaryData) {
     return (
