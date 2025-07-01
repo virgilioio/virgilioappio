@@ -153,8 +153,7 @@ export default function CandidateProfile() {
                   </div>
                   
                   <Button 
-                    variant="outline" 
-                    className="gap-sm h-[44px] border-[#0078c7] text-[#0078c7] hover:bg-[#0078c7] hover:text-white"
+                    className="gap-sm h-[44px] bg-[#0078c7] text-white hover:bg-[#005a94]"
                   >
                     <Linkedin className="h-4 w-4" />
                     LinkedIn Account
