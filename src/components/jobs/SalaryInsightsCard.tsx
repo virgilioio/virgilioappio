@@ -206,12 +206,6 @@ export function SalaryInsightsCard({
                   bottom: 30
                 }} 
                 barCategoryGap="20%"
-                onMouseMove={(data) => {
-                  if (data && data.activeTooltipIndex !== undefined) {
-                    setHoveredIndex(data.activeTooltipIndex);
-                  }
-                }}
-                onMouseLeave={() => setHoveredIndex(null)}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis dataKey="name" tick={{
@@ -227,14 +221,7 @@ export function SalaryInsightsCard({
                 position: 'insideLeft'
               }} />
                 <Tooltip content={<CustomTooltip />} />
-                <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={60}>
-                  {salaryData.chartData.map((entry, index) => (
-                    <Cell 
-                      key={`cell-${index}`} 
-                      fill={hoveredIndex === index ? '#d7c5fb' : '#8f6db3'} 
-                    />
-                  ))}
-                </Bar>
+                <Bar dataKey="count" fill="#9c3fff" radius={[4, 4, 0, 0]} maxBarSize={60} />
               </BarChart>
             </ResponsiveContainer>
           </div>
