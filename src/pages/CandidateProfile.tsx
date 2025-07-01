@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
@@ -139,26 +140,28 @@ export default function CandidateProfile() {
               </Link>
             </div>
 
-            {/* Header */}
-            <div className="mb-lg">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h1 className="text-2xl font-semibold text-text-primary mb-2">{candidate.candidate_name}</h1>
-                  {job && (
-                    <p className="text-text-secondary">
-                      Candidate for <span className="font-medium text-text-primary">{job.title}</span>
-                    </p>
-                  )}
+            {/* Header Card */}
+            <Card className="bg-surface-primary border-border mb-lg">
+              <CardContent className="p-layout-md">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h1 className="text-2xl font-semibold text-text-primary mb-2">{candidate.candidate_name}</h1>
+                    {job && (
+                      <p className="text-text-secondary">
+                        Candidate for <span className="font-medium text-text-primary">{job.title}</span>
+                      </p>
+                    )}
+                  </div>
+                  
+                  <PermissionGate permission="canManageCandidates">
+                    <Button onClick={handleEdit} className="gap-sm h-[44px]">
+                      <Edit className="h-4 w-4" />
+                      Edit Candidate
+                    </Button>
+                  </PermissionGate>
                 </div>
-                
-                <PermissionGate permission="canManageCandidates">
-                  <Button onClick={handleEdit} className="gap-sm h-[44px]">
-                    <Edit className="h-4 w-4" />
-                    Edit Candidate
-                  </Button>
-                </PermissionGate>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
 
             {/* Main Content */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-lg">
