@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
@@ -139,33 +140,33 @@ export default function CandidateProfile() {
               </Link>
             </div>
 
-            {/* Header Card */}
-            <Card className="bg-surface-primary border-border mb-lg">
-              <CardContent className="p-layout-md">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h1 className="text-2xl font-semibold text-text-primary mb-2">{candidate.candidate_name}</h1>
-                    {job && (
-                      <p className="text-text-secondary">
-                        Candidate for <span className="font-medium text-text-primary">{job.title}</span>
-                      </p>
-                    )}
-                  </div>
-                  
-                  <Button 
-                    className="gap-sm h-[44px] bg-[#0078c7] text-white hover:bg-[#005a94]"
-                  >
-                    <Linkedin className="h-4 w-4" fill="white" />
-                    LinkedIn Account
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
             {/* Main Content */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-lg">
-              {/* Left Column - Profile Summary and Notes */}
+              {/* Left Column - Header Card, Profile Summary and Notes */}
               <div className="lg:col-span-2 space-y-md">
+                {/* Header Card */}
+                <Card className="bg-surface-primary border-border">
+                  <CardContent className="p-layout-md">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h1 className="text-2xl font-semibold text-text-primary mb-2">{candidate.candidate_name}</h1>
+                        {job && (
+                          <p className="text-text-secondary">
+                            Candidate for <span className="font-medium text-text-primary">{job.title}</span>
+                          </p>
+                        )}
+                      </div>
+                      
+                      <Button 
+                        className="gap-sm h-[44px] bg-[#0078c7] text-white hover:bg-[#005a94]"
+                      >
+                        <Linkedin className="h-4 w-4" fill="white" />
+                        LinkedIn Account
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
                 {/* Profile Summary */}
                 {candidate.profile_summary && (
                   <Card className="bg-surface-primary border-border">
