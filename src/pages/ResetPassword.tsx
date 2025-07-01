@@ -19,20 +19,25 @@ export default function ResetPassword() {
   const [error, setError] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+  const [token, setToken] = useState('')
 
   useEffect(() => {
-    // Check if we have the necessary tokens in the URL
-    const accessToken = searchParams.get('access_token')
-    const refreshToken = searchParams.get('refresh_token')
-    
-    if (!accessToken || !refreshToken) {
-      setError('Invalid or expired reset link. Please request a new password reset.')
+    const tokenParam = searchParams.get('token')
+    if (!tokenParam) {
+      setError('Invalid or missing reset token. Please request a new password reset.')
+    } else {
+      setToken(tokenParam)
     }
   }, [searchParams])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+
+    if (!token) {
+      setError('Invalid reset token. Please request a new password reset.')
+      return
+    }
 
     if (password !== confirmPassword) {
       setError('Passwords do not match')
@@ -47,8 +52,11 @@ export default function ResetPassword() {
     setIsLoading(true)
 
     try {
-      const { error } = await supabase.auth.updateUser({
-        password: password
+      const { error } = await supabase.functions.invoke('reset-password', {
+        body: {
+          token,
+          newPassword: password
+        }
       })
 
       if (error) {
@@ -208,7 +216,7 @@ export default function ResetPassword() {
               <Button
                 type="submit"
                 className="w-full h-12 text-base font-medium"
-                disabled={isLoading || !password || !confirmPassword}
+                disabled={isLoading || !password || !confirmPassword || !token}
                 size="lg"
               >
                 {isLoading ? 'Updating...' : 'Update password'}
