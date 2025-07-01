@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { ArrowLeft, MapPin, DollarSign, Calendar, User, Edit, Zap, Linkedin } from 'lucide-react'
+import { ArrowLeft, MapPin, DollarSign, Calendar, User, Edit, Zap, Linkedin, FileText, MessageSquare } from 'lucide-react'
 import { AuthGate } from '@/components/auth/AuthGate'
 import { PermissionGate } from '@/components/auth/PermissionGate'
 import { JobAssignmentGuard } from '@/components/auth/JobAssignmentGuard'
@@ -183,17 +183,19 @@ export default function CandidateProfile() {
                 <Card className="bg-surface-primary border-border">
                   <Tabs defaultValue="overview" className="w-full">
                     <CardHeader className="pb-2">
-                      <TabsList className="inline-flex h-auto items-center justify-start rounded-xl bg-transparent p-1 text-muted-foreground shadow-lg">
+                      <TabsList className="inline-flex h-auto items-center justify-start rounded-xl bg-transparent p-1 text-muted-foreground">
                         <TabsTrigger 
                           value="overview" 
                           className="inline-flex items-center justify-center whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-accent data-[state=active]:text-accent-foreground data-[state=active]:shadow-sm hover:bg-muted/50"
                         >
+                          <FileText className="h-4 w-4 mr-2" />
                           Overview
                         </TabsTrigger>
                         <TabsTrigger 
                           value="notes"
                           className="inline-flex items-center justify-center whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-accent data-[state=active]:text-accent-foreground data-[state=active]:shadow-sm hover:bg-muted/50"
                         >
+                          <MessageSquare className="h-4 w-4 mr-2" />
                           Notes
                         </TabsTrigger>
                       </TabsList>
