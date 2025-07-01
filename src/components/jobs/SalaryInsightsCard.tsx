@@ -119,7 +119,7 @@ export function SalaryInsightsCard({ candidates, jobCurrency = 'USD', className 
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-      <div className={`bg-background border border-border rounded-lg p-6 ${className}`}>
+      <div className={`bg-white border border-border rounded-lg p-6 ${className}`}>
         <CollapsibleTrigger className="flex items-center justify-between w-full mb-6 hover:opacity-80 transition-opacity cursor-pointer">
           <div className="flex items-center gap-2">
             <TrendingUp className="h-5 w-5 text-muted-foreground" />
