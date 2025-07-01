@@ -1,3 +1,4 @@
+
 import { useMemo, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { MetricCard } from '@/components/invoices/MetricCard';
@@ -206,12 +207,6 @@ export function SalaryInsightsCard({
                   bottom: 30
                 }} 
                 barCategoryGap="20%"
-                onMouseMove={(data) => {
-                  if (data && data.activeTooltipIndex !== undefined) {
-                    setHoveredIndex(data.activeTooltipIndex);
-                  }
-                }}
-                onMouseLeave={() => setHoveredIndex(null)}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                 <XAxis dataKey="name" tick={{
@@ -227,14 +222,7 @@ export function SalaryInsightsCard({
                 position: 'insideLeft'
               }} />
                 <Tooltip content={<CustomTooltip />} />
-                <Bar dataKey="count" radius={[4, 4, 0, 0]} maxBarSize={60}>
-                  {salaryData.chartData.map((entry, index) => (
-                    <Cell 
-                      key={`cell-${index}`} 
-                      fill={hoveredIndex === index ? "#d7c5fb" : "#7e3eff"} 
-                    />
-                  ))}
-                </Bar>
+                <Bar dataKey="count" fill="#7e3eff" radius={[4, 4, 0, 0]} maxBarSize={60} />
               </BarChart>
             </ResponsiveContainer>
           </div>
