@@ -1,4 +1,3 @@
-
 import { useState, useRef } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -16,11 +15,9 @@ interface CandidateAttachmentsProps {
 
 export function CandidateAttachments({ candidateId }: CandidateAttachmentsProps) {
   const { attachments, isLoading, isUploading, uploadAttachment, deleteAttachment, downloadAttachment } = useCandidateAttachments(candidateId)
-  const { hasPermission } = usePermissions()
+  const { canManageCandidates } = usePermissions()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [dragOver, setDragOver] = useState(false)
-
-  const canManageAttachments = hasPermission('canManageCandidates')
 
   const formatFileSize = (bytes: number | null) => {
     if (!bytes) return 'Unknown size'
@@ -61,13 +58,13 @@ export function CandidateAttachments({ candidateId }: CandidateAttachmentsProps)
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault()
     setDragOver(false)
-    if (!canManageAttachments) return
+    if (!canManageCandidates) return
     handleFileSelect(e.dataTransfer.files)
   }
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault()
-    if (canManageAttachments) {
+    if (canManageCandidates) {
       setDragOver(true)
     }
   }
@@ -114,7 +111,7 @@ export function CandidateAttachments({ candidateId }: CandidateAttachmentsProps)
       </CardHeader>
       <CardContent className="space-y-sm">
         {/* Upload Area */}
-        {canManageAttachments && (
+        {canManageCandidates && (
           <div
             className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
               dragOver 
@@ -158,7 +155,7 @@ export function CandidateAttachments({ candidateId }: CandidateAttachmentsProps)
           <div className="text-center py-8 text-text-secondary">
             <File className="h-8 w-8 mx-auto mb-2 opacity-50" />
             <p className="text-sm">No attachments yet</p>
-            {!canManageAttachments && (
+            {!canManageCandidates && (
               <p className="text-xs mt-1">You don't have permission to upload attachments</p>
             )}
           </div>
@@ -203,7 +200,7 @@ export function CandidateAttachments({ candidateId }: CandidateAttachmentsProps)
                       <Download className="h-4 w-4" />
                     </Button>
                     
-                    {canManageAttachments && (
+                    {canManageCandidates && (
                       <Button
                         variant="ghost"
                         size="sm"
