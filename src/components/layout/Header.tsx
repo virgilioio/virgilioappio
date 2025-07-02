@@ -1,3 +1,4 @@
+
 import { useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
@@ -124,7 +125,7 @@ export function Header() {
   )
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-background border-b border-border">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-border">
       <div className="flex items-center justify-between px-md py-2 sm:px-lg">
         {/* Logo and Desktop Navigation */}
         <div className="flex items-center gap-6">
