@@ -1,6 +1,86 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
+// PDF text extraction using pdf2text
+async function extractTextFromPDF(base64Content: string): Promise<string> {
+  try {
+    // Convert base64 to Uint8Array
+    const binaryString = atob(base64Content);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+
+    // Use pdf-parse compatible extraction
+    const response = await fetch('https://deno.land/x/pdf2text@1.0.1/mod.ts');
+    const { extractText } = await import('https://deno.land/x/pdf2text@1.0.1/mod.ts');
+    
+    const text = await extractText(bytes);
+    return text || '';
+  } catch (error) {
+    console.error('PDF extraction error:', error);
+    return '';
+  }
+}
+
+// DOCX text extraction
+async function extractTextFromDOCX(base64Content: string): Promise<string> {
+  try {
+    // Convert base64 to Uint8Array
+    const binaryString = atob(base64Content);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+
+    // Import JSZip for DOCX parsing
+    const JSZip = (await import('https://deno.land/x/jszip@0.11.0/mod.ts')).default;
+    
+    // Parse DOCX as ZIP file
+    const zip = await JSZip.loadAsync(bytes);
+    const documentXML = await zip.file('word/document.xml')?.async('text');
+    
+    if (!documentXML) {
+      throw new Error('Could not find document.xml in DOCX file');
+    }
+
+    // Extract text from XML using regex (basic text extraction)
+    const textMatches = documentXML.match(/<w:t[^>]*>([^<]*)<\/w:t>/g) || [];
+    const extractedText = textMatches
+      .map(match => match.replace(/<w:t[^>]*>([^<]*)<\/w:t>/, '$1'))
+      .join(' ')
+      .trim();
+
+    return extractedText || '';
+  } catch (error) {
+    console.error('DOCX extraction error:', error);
+    return '';
+  }
+}
+
+// Fallback text extraction for plain text or unknown formats
+function extractTextFallback(base64Content: string): string {
+  try {
+    return new TextDecoder().decode(
+      Uint8Array.from(atob(base64Content), c => c.charCodeAt(0))
+    );
+  } catch (error) {
+    console.error('Fallback extraction error:', error);
+    return '';
+  }
+}
+
+// Validate extracted text quality
+function validateExtractedText(text: string): boolean {
+  if (!text || text.length < 50) return false;
+  
+  // Check for reasonable text-to-noise ratio
+  const printableChars = text.replace(/[^\x20-\x7E]/g, '').length;
+  const ratio = printableChars / text.length;
+  
+  return ratio > 0.7; // At least 70% printable characters
+}
+
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
 const corsHeaders = {
@@ -38,30 +118,44 @@ serve(async (req) => {
 
     console.log(`Processing resume: ${fileName} (${fileType})`);
 
-    // Extract text based on file type
+    // Extract text based on file type using proper parsing
     let extractedText = '';
     
     if (fileType === 'text/plain') {
       // For plain text files, decode base64
-      extractedText = new TextDecoder().decode(
-        Uint8Array.from(atob(fileContent), c => c.charCodeAt(0))
-      );
+      extractedText = extractTextFallback(fileContent);
     } else if (fileType === 'application/pdf') {
-      // For PDF files, we'll need to extract text
-      // For now, let's assume the content is already extracted text
-      extractedText = new TextDecoder().decode(
-        Uint8Array.from(atob(fileContent), c => c.charCodeAt(0))
-      );
+      // For PDF files, use proper PDF text extraction
+      console.log('Attempting PDF text extraction...');
+      extractedText = await extractTextFromPDF(fileContent);
+      
+      // Fallback if PDF extraction fails
+      if (!validateExtractedText(extractedText)) {
+        console.log('PDF extraction failed, trying fallback...');
+        extractedText = extractTextFallback(fileContent);
+      }
     } else if (fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
-      // For DOCX files, basic text extraction
-      extractedText = new TextDecoder().decode(
-        Uint8Array.from(atob(fileContent), c => c.charCodeAt(0))
-      );
+      // For DOCX files, use proper DOCX text extraction
+      console.log('Attempting DOCX text extraction...');
+      extractedText = await extractTextFromDOCX(fileContent);
+      
+      // Fallback if DOCX extraction fails
+      if (!validateExtractedText(extractedText)) {
+        console.log('DOCX extraction failed, trying fallback...');
+        extractedText = extractTextFallback(fileContent);
+      }
     } else {
       throw new Error(`Unsupported file type: ${fileType}`);
     }
 
+    // Final validation
+    if (!validateExtractedText(extractedText)) {
+      console.warn(`Low quality text extraction for ${fileName}. Text length: ${extractedText.length}`);
+      console.warn('First 200 chars:', extractedText.substring(0, 200));
+    }
+
     console.log(`Extracted text length: ${extractedText.length} characters`);
+    console.log('Text quality check passed:', validateExtractedText(extractedText));
 
     // Use OpenAI to parse the resume
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
