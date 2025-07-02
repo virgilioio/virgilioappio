@@ -1,7 +1,6 @@
 
 import "https://deno.land/x/xhr@0.1.0/mod.ts"
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -9,8 +8,6 @@ const corsHeaders = {
 }
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY')
-const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -22,10 +19,37 @@ serve(async (req) => {
     
     if (!openAIApiKey) {
       console.error('OpenAI API key not found')
-      throw new Error('OpenAI API key not configured')
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'OpenAI API key not configured',
+          data: null 
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 500 
+        }
+      )
     }
 
-    const body = await req.json()
+    let body
+    try {
+      body = await req.json()
+    } catch (error) {
+      console.error('Failed to parse request body:', error)
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'Invalid request body',
+          data: null 
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400 
+        }
+      )
+    }
+
     const { fileContent, fileName } = body
     
     console.log(`Processing resume: ${fileName}`)
@@ -33,11 +57,31 @@ serve(async (req) => {
     console.log(`File content length: ${fileContent?.length || 0}`)
     
     if (!fileContent) {
-      throw new Error('No file content provided')
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'No file content provided',
+          data: null 
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400 
+        }
+      )
     }
 
     if (!fileName) {
-      throw new Error('No file name provided')
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'No file name provided',
+          data: null 
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400 
+        }
+      )
     }
 
     // Extract text from different file types
@@ -46,7 +90,7 @@ serve(async (req) => {
     try {
       if (fileName.toLowerCase().endsWith('.txt')) {
         // For text files, decode base64 if it's data URL format
-        if (fileContent.includes('data:')) {
+        if (typeof fileContent === 'string' && fileContent.includes('data:')) {
           const base64Data = fileContent.split(',')[1]
           if (base64Data) {
             resumeText = atob(base64Data)
@@ -63,47 +107,116 @@ serve(async (req) => {
         }
       } else if (fileName.toLowerCase().endsWith('.pdf') || fileName.toLowerCase().endsWith('.docx')) {
         // For PDF/DOCX, we'll treat the content as extracted text for now
-        // In a production environment, you'd use proper PDF/DOCX parsing libraries
-        if (fileContent.includes('data:')) {
+        if (typeof fileContent === 'string' && fileContent.includes('data:')) {
           const base64Data = fileContent.split(',')[1]
           if (base64Data) {
             try {
               resumeText = atob(base64Data)
             } catch (e) {
               console.error('Failed to decode base64:', e)
-              throw new Error('Unable to decode file content. Please ensure the file is properly formatted.')
+              return new Response(
+                JSON.stringify({ 
+                  success: false, 
+                  error: 'Unable to decode file content. Please ensure the file is properly formatted.',
+                  data: null 
+                }),
+                { 
+                  headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                  status: 400 
+                }
+              )
             }
           } else {
-            throw new Error('Invalid file format - no base64 data found')
+            return new Response(
+              JSON.stringify({ 
+                success: false, 
+                error: 'Invalid file format - no base64 data found',
+                data: null 
+              }),
+              { 
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 400 
+              }
+            )
           }
         } else {
           try {
             resumeText = atob(fileContent)
           } catch (e) {
             console.error('Failed to decode file content:', e)
-            throw new Error('Unable to decode file content. Please try uploading a text file instead.')
+            return new Response(
+              JSON.stringify({ 
+                success: false, 
+                error: 'Unable to decode file content. Please try uploading a text file instead.',
+                data: null 
+              }),
+              { 
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                status: 400 
+              }
+            )
           }
         }
       } else {
-        throw new Error('Unsupported file format. Please upload PDF, DOCX, or TXT files.')
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: 'Unsupported file format. Please upload PDF, DOCX, or TXT files.',
+            data: null 
+          }),
+          { 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 400 
+          }
+        )
       }
 
       console.log(`Extracted text preview: ${resumeText.substring(0, 200)}...`)
       
       if (!resumeText.trim()) {
-        throw new Error('No text content found in the resume. Please ensure the file contains readable text.')
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: 'No text content found in the resume. Please ensure the file contains readable text.',
+            data: null 
+          }),
+          { 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 400 
+          }
+        )
       }
 
       if (resumeText.length < 10) {
-        throw new Error('File appears to be too short or may not contain readable text content.')
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: 'File appears to be too short or may not contain readable text content.',
+            data: null 
+          }),
+          { 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 400 
+          }
+        )
       }
 
     } catch (error) {
       console.error('Error processing file:', error)
-      throw new Error(`File processing failed: ${error.message}`)
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: `File processing failed: ${error.message}`,
+          data: null 
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 500 
+        }
+      )
     }
 
-    console.log('Extracted text length:', resumeText.length)
+    console.log('Calling OpenAI API...')
 
     // Use OpenAI to parse the resume
     const systemPrompt = `You are an expert resume parser. Extract key information from resumes and return it as structured JSON. 
@@ -131,37 +244,72 @@ Rules:
 - Only include LinkedIn URLs that are clearly stated
 - Be conservative - if unsure, return null`
 
-    console.log('Calling OpenAI API...')
+    let aiResponse
+    try {
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openAIApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: `Parse this resume:\n\n${resumeText.substring(0, 4000)}` }
+          ],
+          temperature: 0.1,
+          max_tokens: 1000,
+        }),
+      })
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: `Parse this resume:\n\n${resumeText.substring(0, 4000)}` }
-        ],
-        temperature: 0.1,
-        max_tokens: 1000,
-      }),
-    })
+      if (!response.ok) {
+        const errorData = await response.text()
+        console.error('OpenAI API error:', response.status, errorData)
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: `OpenAI API error: ${response.status}`,
+            data: null 
+          }),
+          { 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 500 
+          }
+        )
+      }
 
-    if (!response.ok) {
-      const errorData = await response.text()
-      console.error('OpenAI API error:', response.status, errorData)
-      throw new Error(`OpenAI API error: ${response.status} - ${errorData}`)
+      aiResponse = await response.json()
+    } catch (error) {
+      console.error('Error calling OpenAI API:', error)
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: `Failed to call OpenAI API: ${error.message}`,
+          data: null 
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 500 
+        }
+      )
     }
 
-    const aiResponse = await response.json()
-    const parsedContent = aiResponse.choices[0]?.message?.content
+    const parsedContent = aiResponse.choices?.[0]?.message?.content
 
     if (!parsedContent) {
       console.error('No response from OpenAI')
-      throw new Error('No response from AI parser')
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'No response from AI parser',
+          data: null 
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 500 
+        }
+      )
     }
 
     console.log('AI response:', parsedContent)
@@ -173,7 +321,17 @@ Rules:
     } catch (e) {
       console.error('Failed to parse AI response as JSON:', parsedContent)
       console.error('JSON parse error:', e)
-      throw new Error('AI returned invalid JSON format. Please try again.')
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          error: 'AI returned invalid JSON format. Please try again.',
+          data: null 
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 500 
+        }
+      )
     }
 
     // Clean and validate the extracted data
@@ -207,11 +365,11 @@ Rules:
     )
 
   } catch (error) {
-    console.error('Error parsing resume:', error)
+    console.error('Unexpected error in parse-resume function:', error)
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: error.message || 'Failed to parse resume',
+        error: `Unexpected error: ${error.message}`,
         data: null 
       }),
       { 
