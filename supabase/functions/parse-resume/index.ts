@@ -75,24 +75,49 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `You are a resume parsing expert. Extract structured information from resumes and return it as JSON.
+            content: `You are an expert resume parsing AI. Extract structured information from resumes and return ONLY valid JSON with no markdown formatting.
 
-IMPORTANT: Return ONLY valid JSON, no markdown formatting or explanations.
+CRITICAL INSTRUCTIONS:
 
-Extract these fields:
-- candidate_name: Full name of the candidate
-- linkedin_url: LinkedIn profile URL (if mentioned, ensure it starts with https://linkedin.com/in/)
-- location_country: Country of residence
-- location_state: State/Province 
-- location_city: City
-- salary_amount: Any salary mentioned (number only, no currency symbols)
-- salary_currency: Currency code (USD, EUR, etc.)
-- profile_summary: Professional summary/objective (2-3 sentences highlighting experience and skills)
-- notes: Any additional relevant information for internal use
+1. LOCATION EXTRACTION - Look for location clues in:
+   - Header addresses (street, city, state, zip codes)
+   - Phone number area codes (e.g., 415 = San Francisco, 212 = New York)
+   - Email domain endings (e.g., .uk = United Kingdom)
+   - Explicitly mentioned locations in work experience
+   - Current residence statements
+   - Extract full location hierarchy: Country > State/Province > City
 
-If information is not available, use null for numbers, empty string for text fields.
-For location, try to infer from addresses, phone numbers, or explicitly stated locations.
-For profile_summary, create a concise professional summary based on the resume content.`
+2. PROFILE SUMMARY CREATION - Generate a 4-6 sentence professional summary that includes:
+   - Years of experience and primary expertise area
+   - Key technical skills and competencies
+   - Notable achievements or career highlights
+   - Industry focus or specialization
+   - Professional strengths and value proposition
+   - Base this on actual resume content, don't make assumptions
+
+3. SALARY EXTRACTION - Look for:
+   - Salary expectations or requirements
+   - Previous compensation mentioned
+   - Hourly rates or annual figures
+   - Extract number only, identify currency
+
+4. DATA VALIDATION:
+   - Ensure LinkedIn URLs are properly formatted
+   - Validate location data makes geographic sense
+   - Create meaningful profile summaries, not generic statements
+
+REQUIRED JSON FIELDS:
+- candidate_name: Full name (First Last format)
+- linkedin_url: Complete LinkedIn URL or empty string
+- location_country: Full country name
+- location_state: State/Province/Region name  
+- location_city: City name
+- salary_amount: Numeric value only (no symbols)
+- salary_currency: ISO currency code (USD, EUR, GBP, etc.)
+- profile_summary: Professional summary (4-6 sentences)
+- notes: Additional relevant information for recruiting team
+
+Return empty string for missing text fields, null for missing numbers.`
           },
           {
             role: 'user',
