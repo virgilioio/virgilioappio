@@ -92,6 +92,25 @@ export function ResumeUpload({ onDataExtracted, isLoading = false }: ResumeUploa
 
           console.log('Resume parsed successfully:', data.data)
           
+          // Check if we actually got meaningful data
+          const hasData = data.data && (
+            data.data.candidate_name || 
+            data.data.linkedin_url || 
+            data.data.location_country || 
+            data.data.profile_summary
+          );
+          
+          if (!hasData) {
+            console.warn('Resume parsing returned empty data');
+            setUploadStatus('error')
+            toast({
+              title: "Resume parsing incomplete",
+              description: "The resume was processed but no readable text was found. Please try a different file or enter information manually.",
+              variant: "destructive"
+            })
+            return;
+          }
+          
           setUploadStatus('success')
           onDataExtracted(data.data)
           

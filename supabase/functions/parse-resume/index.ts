@@ -1,7 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-// Robust PDF text extraction using proven PDF parser library
+// Enhanced PDF text extraction with multiple methods
 async function extractTextFromPDF(base64Content: string): Promise<string> {
   try {
     // Convert base64 to Uint8Array
@@ -13,21 +13,31 @@ async function extractTextFromPDF(base64Content: string): Promise<string> {
 
     console.log(`PDF extraction: Processing ${bytes.length} bytes`);
 
-    // Method 1: Try robust PDF library extraction
-    let extractedText = await extractTextFromPDFLibrary(bytes);
+    // Method 1: Try enhanced manual PDF parsing
+    let extractedText = extractTextFromPDFEnhanced(bytes);
     
     if (extractedText && extractedText.length > 10) {
-      console.log(`PDF extraction: Library method successful, extracted ${extractedText.length} characters`);
+      console.log(`PDF extraction: Enhanced method successful, extracted ${extractedText.length} characters`);
       console.log(`PDF text preview: ${extractedText.substring(0, 200)}...`);
       return cleanupExtractedText(extractedText);
     }
 
-    // Method 2: Try manual PDF parsing as fallback
-    console.log('PDF extraction: Trying manual PDF parsing fallback');
-    extractedText = extractTextFromPDFManual(bytes);
+    // Method 2: Try simple PDF parsing as fallback
+    console.log('PDF extraction: Trying simple PDF parsing fallback');
+    extractedText = extractTextFromPDFSimple(bytes);
     
     if (extractedText && extractedText.length > 5) {
-      console.log(`PDF extraction: Manual method successful, extracted ${extractedText.length} characters`);
+      console.log(`PDF extraction: Simple method successful, extracted ${extractedText.length} characters`);
+      console.log(`PDF text preview: ${extractedText.substring(0, 200)}...`);
+      return cleanupExtractedText(extractedText);
+    }
+
+    // Method 3: Try basic text extraction
+    console.log('PDF extraction: Trying basic text extraction');
+    extractedText = extractBasicText(bytes);
+    
+    if (extractedText && extractedText.length > 3) {
+      console.log(`PDF extraction: Basic method successful, extracted ${extractedText.length} characters`);
       console.log(`PDF text preview: ${extractedText.substring(0, 200)}...`);
       return cleanupExtractedText(extractedText);
     }
@@ -40,23 +50,98 @@ async function extractTextFromPDF(base64Content: string): Promise<string> {
   }
 }
 
-// Use proven PDF parsing library (pdf-parse equivalent for Deno)
-async function extractTextFromPDFLibrary(bytes: Uint8Array): Promise<string> {
+// Enhanced PDF text extraction with multiple extraction techniques
+function extractTextFromPDFEnhanced(bytes: Uint8Array): string {
   try {
-    // Import the PDF parser library
-    const { PDFDocument } = await import('https://esm.sh/pdf-lib@1.17.1');
-    
-    const pdfDoc = await PDFDocument.load(bytes);
-    const pages = pdfDoc.getPages();
+    const pdfString = new TextDecoder('latin1').decode(bytes);
     const textParts: string[] = [];
     
-    // Extract text from each page (basic implementation)
-    // Note: pdf-lib doesn't have built-in text extraction, so we'll use the manual method as fallback
-    console.log(`PDF has ${pages.length} pages, falling back to manual extraction`);
-    return extractTextFromPDFManual(bytes);
+    // Enhanced pattern matching with better text operators coverage
+    const patterns = [
+      // Text show operators with optional spacing
+      /\(([^)]+)\)\s*(?:Tj|TJ|'|"|T\*)/gi,
+      // Array text operators
+      /\[([^\]]+)\]\s*TJ/gi,
+      // Hex encoded text with proper decoding
+      /<([0-9A-Fa-f\s]+)>\s*(?:Tj|TJ)/gi,
+      // Text blocks with enhanced capture
+      /BT[\s\S]*?\(([^)]+)\)[\s\S]*?ET/gi,
+      // Font and text combined patterns
+      /\/F\d+\s+\d+\s+Tf[\s\S]*?\(([^)]+)\)/gi,
+      // Direct text content without operators
+      /q[\s\S]*?\(([^)]+)\)[\s\S]*?Q/gi
+    ];
     
+    for (const pattern of patterns) {
+      let match;
+      while ((match = pattern.exec(pdfString)) !== null) {
+        let text = match[1];
+        
+        if (text) {
+          // Handle hex encoded text
+          if (pattern.source.includes('0-9A-Fa-f')) {
+            text = hexToString(text.replace(/\s/g, ''));
+          } else {
+            // Handle PDF string escapes
+            text = decodePDFString(text);
+          }
+          
+          // Clean and validate text
+          text = text
+            .replace(/\s+/g, ' ')
+            .trim();
+          
+          if (text && text.length > 1 && !/^[\s\x00-\x1F\x7F-\x9F]*$/.test(text)) {
+            textParts.push(text);
+          }
+        }
+      }
+    }
+    
+    return textParts.join(' ').trim();
   } catch (error) {
-    console.error('PDF library extraction error:', error);
+    console.error('Enhanced PDF extraction error:', error);
+    return '';
+  }
+}
+
+// Basic text extraction for any readable content
+function extractBasicText(bytes: Uint8Array): string {
+  try {
+    // Try multiple encoding approaches
+    const encodings = ['utf-8', 'latin1', 'ascii'];
+    let bestText = '';
+    let maxScore = 0;
+    
+    for (const encoding of encodings) {
+      try {
+        const decoded = new TextDecoder(encoding, { fatal: false }).decode(bytes);
+        // Extract any sequences of printable characters
+        const textMatches = decoded.match(/[\x20-\x7E]{3,}/g);
+        
+        if (textMatches) {
+          const text = textMatches
+            .filter(match => match.length > 2)
+            .join(' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+          
+          // Score based on text quality
+          const score = text.length * (text.match(/[a-zA-Z]/g)?.length || 0) / text.length;
+          
+          if (score > maxScore) {
+            maxScore = score;
+            bestText = text;
+          }
+        }
+      } catch (e) {
+        // Continue with next encoding
+      }
+    }
+    
+    return bestText;
+  } catch (error) {
+    console.error('Basic text extraction error:', error);
     return '';
   }
 }
@@ -389,15 +474,15 @@ function extractTextFallback(base64Content: string): string {
 
 // Reduced validation strictness for better success rate
 function validateExtractedText(text: string): boolean {
-  if (!text || text.length < 5) {
+  if (!text || text.length < 3) {
     console.log('Validation failed: Text too short or empty');
     return false;
   }
   
-  // Very lenient validation - just check if we have some text
-  const words = text.split(/\s+/).filter(word => word.length > 1);
+  // Very lenient validation - just check if we have some readable content
+  const words = text.split(/\s+/).filter(word => word.length > 0);
   
-  if (words.length < 3) {
+  if (words.length < 2) {
     console.log(`Validation failed: Too few words: ${words.length}`);
     return false;
   }
