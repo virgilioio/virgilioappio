@@ -251,7 +251,10 @@ export function CandidateForm({
   }
 
   const handleClose = () => {
-    // Don't clear persisted data when closing - let it persist for later use
+    // Clear persisted data when closing dialog for new candidates
+    if (!candidate) {
+      clearPersistedData()
+    }
     onClose()
   }
 
