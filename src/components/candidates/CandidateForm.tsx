@@ -90,6 +90,8 @@ export function CandidateForm({
   const [currencyOpen, setCurrencyOpen] = useState(false)
   const [profileSummary, setProfileSummary] = useState('')
   const [notes, setNotes] = useState('')
+  const [fieldConfidence, setFieldConfidence] = useState<Record<string, 'high' | 'medium' | 'low'>>({})
+  const [aiFilledFields, setAiFilledFields] = useState<Set<string>>(new Set())
   const { user } = useAuth()
 
   const form = useForm<FormData>({
@@ -197,21 +199,55 @@ export function CandidateForm({
     }
   })
 
-  const handleResumeDataExtracted = (data: any) => {
+  const handleResumeDataExtracted = (data: any, metadata?: { confidence?: Record<string, 'high' | 'medium' | 'low'>, extractedSections?: string[] }) => {
     console.log('Resume data extracted:', data)
     
+    // Track which fields were filled by AI
+    const filledFields = new Set<string>()
+    
     // Update form with extracted data
-    form.setValue('candidate_name', data.candidate_name || '')
-    form.setValue('linkedin_url', data.linkedin_url || '')
-    form.setValue('location_country', data.location_country || '')
-    form.setValue('location_state', data.location_state || '')
-    form.setValue('location_city', data.location_city || '')
-    form.setValue('salary_amount', data.salary_amount?.toString() || '')
-    form.setValue('salary_currency', data.salary_currency || 'USD')
+    if (data.candidate_name) {
+      form.setValue('candidate_name', data.candidate_name)
+      filledFields.add('candidate_name')
+    }
+    if (data.linkedin_url) {
+      form.setValue('linkedin_url', data.linkedin_url)
+      filledFields.add('linkedin_url')
+    }
+    if (data.location_country) {
+      form.setValue('location_country', data.location_country)
+      filledFields.add('location_country')
+    }
+    if (data.location_state) {
+      form.setValue('location_state', data.location_state)
+      filledFields.add('location_state')
+    }
+    if (data.location_city) {
+      form.setValue('location_city', data.location_city)
+      filledFields.add('location_city')
+    }
+    if (data.salary_amount) {
+      form.setValue('salary_amount', data.salary_amount.toString())
+      filledFields.add('salary_amount')
+    }
+    if (data.salary_currency) {
+      form.setValue('salary_currency', data.salary_currency)
+      filledFields.add('salary_currency')
+    }
     
     // Update rich text editor values
-    setProfileSummary(data.profile_summary || '')
-    setNotes(data.notes || '')
+    if (data.profile_summary) {
+      setProfileSummary(data.profile_summary)
+      filledFields.add('profile_summary')
+    }
+    if (data.notes) {
+      setNotes(data.notes)
+      filledFields.add('notes')
+    }
+    
+    // Store metadata
+    setAiFilledFields(filledFields)
+    setFieldConfidence(metadata?.confidence || {})
   }
 
   const handleClose = () => {
@@ -253,28 +289,56 @@ export function CandidateForm({
                 error={form.formState.errors.candidate_name?.message}
                 htmlFor="candidate_name"
               >
-                <Input
-                  id="candidate_name"
-                  {...form.register('candidate_name', { required: 'Name is required' })}
-                  placeholder="Enter candidate name or alias"
-                  className="h-[44px]"
-                />
+                <div className="relative">
+                  <Input
+                    id="candidate_name"
+                    {...form.register('candidate_name', { required: 'Name is required' })}
+                    placeholder="Enter candidate name or alias"
+                    className="h-[44px]"
+                  />
+                  {aiFilledFields.has('candidate_name') && (
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                      <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-md">
+                        AI
+                      </span>
+                    </div>
+                  )}
+                </div>
+                {aiFilledFields.has('candidate_name') && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Extracted by AI • {fieldConfidence.candidate_name === 'high' ? 'High confidence' : fieldConfidence.candidate_name === 'medium' ? 'Medium confidence' : 'Low confidence'}
+                  </p>
+                )}
               </FormField>
 
               <FormField 
                 label="LinkedIn Profile URL" 
                 error={form.formState.errors.linkedin_url?.message}
                 htmlFor="linkedin_url"
-                helpText="Optional - Enter the candidate's LinkedIn profile URL"
+                helpText={aiFilledFields.has('linkedin_url') ? undefined : "Optional - Enter the candidate's LinkedIn profile URL"}
               >
-                <Input
-                  id="linkedin_url"
-                  {...form.register('linkedin_url', { 
-                    validate: validateLinkedInUrl 
-                  })}
-                  placeholder="https://linkedin.com/in/username"
-                  className="h-[44px]"
-                />
+                <div className="relative">
+                  <Input
+                    id="linkedin_url"
+                    {...form.register('linkedin_url', { 
+                      validate: validateLinkedInUrl 
+                    })}
+                    placeholder="https://linkedin.com/in/username"
+                    className="h-[44px]"
+                  />
+                  {aiFilledFields.has('linkedin_url') && (
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                      <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-md">
+                        AI
+                      </span>
+                    </div>
+                  )}
+                </div>
+                {aiFilledFields.has('linkedin_url') && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Extracted by AI • High confidence
+                  </p>
+                )}
               </FormField>
             </div>
 

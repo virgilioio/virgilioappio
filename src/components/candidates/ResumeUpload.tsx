@@ -7,7 +7,7 @@ import { supabase } from '@/integrations/supabase/client'
 import { useToast } from '@/hooks/use-toast'
 
 interface ResumeUploadProps {
-  onDataExtracted: (data: any) => void
+  onDataExtracted: (data: any, metadata?: { confidence?: Record<string, 'high' | 'medium' | 'low'>, extractedSections?: string[] }) => void
   isLoading?: boolean
 }
 
@@ -27,6 +27,8 @@ export function ResumeUpload({ onDataExtracted, isLoading = false }: ResumeUploa
   const [uploading, setUploading] = useState(false)
   const [uploadedFile, setUploadedFile] = useState<File | null>(null)
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'processing' | 'success' | 'error'>('idle')
+  const [extractedSections, setExtractedSections] = useState<string[]>([])
+  const [errorReason, setErrorReason] = useState<string>('')
   const { toast } = useToast()
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -103,6 +105,7 @@ export function ResumeUpload({ onDataExtracted, isLoading = false }: ResumeUploa
           if (!hasData) {
             console.warn('Resume parsing returned empty data');
             setUploadStatus('error')
+            setErrorReason('No readable content found')
             toast({
               title: "Resume parsing incomplete",
               description: "The resume was processed but no readable text was found. Please try a different file or enter information manually.",
@@ -111,8 +114,27 @@ export function ResumeUpload({ onDataExtracted, isLoading = false }: ResumeUploa
             return;
           }
           
+          // Determine confidence levels and extracted sections
+          const confidence: Record<string, 'high' | 'medium' | 'low'> = {
+            candidate_name: data.data.candidate_name ? 'high' : 'low',
+            linkedin_url: data.data.linkedin_url ? 'high' : 'low',
+            location_country: data.data.location_country ? 'medium' : 'low',
+            location_state: data.data.location_state ? 'medium' : 'low',
+            location_city: data.data.location_city ? 'medium' : 'low',
+            salary_amount: data.data.salary_amount ? 'low' : 'low', // Salary is usually inferred
+            profile_summary: data.data.profile_summary ? 'medium' : 'low',
+          }
+          
+          const sections = []
+          if (data.data.candidate_name) sections.push('Contact Info')
+          if (data.data.profile_summary) sections.push('Summary')
+          if (data.data.linkedin_url) sections.push('URLs')
+          if (data.data.location_country || data.data.location_state || data.data.location_city) sections.push('Location')
+          if (data.data.salary_amount) sections.push('Salary Information')
+          
+          setExtractedSections(sections)
           setUploadStatus('success')
-          onDataExtracted(data.data)
+          onDataExtracted(data.data, { confidence, extractedSections: sections })
           
           toast({
             title: "Resume processed successfully!",
@@ -122,6 +144,7 @@ export function ResumeUpload({ onDataExtracted, isLoading = false }: ResumeUploa
         } catch (error) {
           console.error('Resume parsing error:', error)
           setUploadStatus('error')
+          setErrorReason(error instanceof Error ? error.message : 'Processing failed')
           toast({
             title: "Failed to process resume",
             description: error instanceof Error ? error.message : "Please try again or fill the form manually.",
@@ -159,6 +182,8 @@ export function ResumeUpload({ onDataExtracted, isLoading = false }: ResumeUploa
   const resetUpload = () => {
     setUploadedFile(null)
     setUploadStatus('idle')
+    setExtractedSections([])
+    setErrorReason('')
     // Clear the input
     const input = document.getElementById('resume-upload') as HTMLInputElement
     if (input) input.value = ''
@@ -180,11 +205,11 @@ export function ResumeUpload({ onDataExtracted, isLoading = false }: ResumeUploa
   const getStatusMessage = () => {
     switch (uploadStatus) {
       case 'processing':
-        return 'Processing resume with AI...'
+        return 'Extracting resume details... This may take a few seconds.'
       case 'success':
         return `Successfully processed ${uploadedFile?.name}`
       case 'error':
-        return 'Failed to process resume'
+        return errorReason || 'Failed to process resume'
       default:
         return 'Upload a resume to auto-fill form fields'
     }
@@ -242,10 +267,35 @@ export function ResumeUpload({ onDataExtracted, isLoading = false }: ResumeUploa
         </div>
       </FormField>
 
-      {uploadStatus === 'success' && (
-        <div className="p-3 bg-success/10 border border-success/20 rounded-md">
-          <p className="text-sm text-success">
-            Resume data has been extracted and form fields updated. Please review all information for accuracy.
+      {uploadStatus === 'success' && extractedSections.length > 0 && (
+        <div className="space-y-3">
+          <div className="p-3 bg-success/10 border border-success/20 rounded-md">
+            <p className="text-sm text-success font-medium mb-2">
+              Resume parsed successfully! Please review and edit as needed.
+            </p>
+          </div>
+          
+          <div className="p-3 bg-surface-primary border border-border rounded-md">
+            <h4 className="text-sm font-medium text-text-primary mb-2">Resume Insights</h4>
+            <div className="space-y-1">
+              <p className="text-xs text-muted-foreground">
+                Extracted sections: {extractedSections.join(', ')}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Fields filled automatically - review for accuracy
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {uploadStatus === 'error' && (
+        <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md">
+          <p className="text-sm text-destructive font-medium mb-1">
+            We couldn't extract enough structured data from this resume.
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Reason: {errorReason}. You can still complete the candidate profile manually.
           </p>
         </div>
       )}
