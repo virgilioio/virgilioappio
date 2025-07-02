@@ -8,6 +8,7 @@ import { useCandidateAttachments } from '@/hooks/useCandidateAttachments'
 import { usePermissions } from '@/hooks/usePermissions'
 import { toast } from '@/hooks/use-toast'
 import { formatDistanceToNow } from 'date-fns'
+import { AttachmentPreviewDialog } from './AttachmentPreviewDialog'
 
 interface CandidateAttachmentsProps {
   candidateId: string
@@ -18,6 +19,8 @@ export function CandidateAttachments({ candidateId }: CandidateAttachmentsProps)
   const { canManageCandidates } = usePermissions()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [dragOver, setDragOver] = useState(false)
+  const [previewAttachment, setPreviewAttachment] = useState<typeof attachments[0] | null>(null)
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false)
 
   const formatFileSize = (bytes: number | null) => {
     if (!bytes) return 'Unknown size'
@@ -90,6 +93,16 @@ export function CandidateAttachments({ candidateId }: CandidateAttachmentsProps)
     }
   }
 
+  const handleAttachmentClick = (attachment: typeof attachments[0]) => {
+    setPreviewAttachment(attachment)
+    setIsPreviewOpen(true)
+  }
+
+  const handlePreviewClose = () => {
+    setIsPreviewOpen(false)
+    setPreviewAttachment(null)
+  }
+
   if (isLoading) {
     return (
       <Card className="bg-surface-primary border-border">
@@ -105,128 +118,140 @@ export function CandidateAttachments({ candidateId }: CandidateAttachmentsProps)
   }
 
   return (
-    <Card className="bg-surface-primary border-border">
-      <CardHeader>
-        <CardTitle className="text-text-primary">Attachments</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-sm">
-        {/* Upload Area */}
-        {canManageCandidates && (
-          <div
-            className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
-              dragOver 
-                ? 'border-primary bg-primary/5' 
-                : 'border-border hover:border-primary/50'
-            }`}
-            onDrop={handleDrop}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-          >
-            <input
-              ref={fileInputRef}
-              type="file"
-              className="hidden"
-              onChange={handleFileInputChange}
-              accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.gif"
-            />
-            
-            <Upload className="h-8 w-8 mx-auto text-text-secondary mb-2" />
-            <p className="text-sm text-text-secondary mb-2">
-              Drag and drop files here, or click to browse
-            </p>
-            <p className="text-xs text-text-secondary mb-4">
-              PDF, DOC, DOCX, TXT, images up to 10MB
-            </p>
-            
-            <Button
-              variant="outline"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={isUploading}
-              className="gap-sm"
+    <>
+      <Card className="bg-surface-primary border-border">
+        <CardHeader>
+          <CardTitle className="text-text-primary">Attachments</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-sm">
+          {/* Upload Area */}
+          {canManageCandidates && (
+            <div
+              className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+                dragOver 
+                  ? 'border-primary bg-primary/5' 
+                  : 'border-border hover:border-primary/50'
+              }`}
+              onDrop={handleDrop}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
             >
-              <Upload className="h-4 w-4" />
-              {isUploading ? 'Uploading...' : 'Choose Files'}
-            </Button>
-          </div>
-        )}
-
-        {/* Attachments List */}
-        {attachments.length === 0 ? (
-          <div className="text-center py-8 text-text-secondary">
-            <File className="h-8 w-8 mx-auto mb-2 opacity-50" />
-            <p className="text-sm">No attachments yet</p>
-            {!canManageCandidates && (
-              <p className="text-xs mt-1">You don't have permission to upload attachments</p>
-            )}
-          </div>
-        ) : (
-          <div className="space-y-sm">
-            {attachments.map((attachment) => {
-              const FileIcon = getFileIcon(attachment.file_type)
+              <input
+                ref={fileInputRef}
+                type="file"
+                className="hidden"
+                onChange={handleFileInputChange}
+                accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.gif"
+              />
               
-              return (
-                <div
-                  key={attachment.id}
-                  className="flex items-center justify-between p-3 border border-border rounded-lg hover:bg-accent/50 transition-colors"
-                >
-                  <div className="flex items-center gap-md flex-1 min-w-0">
-                    <FileIcon className="h-5 w-5 text-text-secondary flex-shrink-0" />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-text-primary truncate">
-                        {attachment.file_name}
-                      </p>
-                      <div className="flex items-center gap-sm text-xs text-text-secondary">
-                        <span>{formatFileSize(attachment.file_size_bytes)}</span>
-                        <span>•</span>
-                        <span>
-                          {formatDistanceToNow(new Date(attachment.created_at), { addSuffix: true })}
-                        </span>
-                      </div>
-                    </div>
-                    {attachment.file_type && (
-                      <Badge variant="secondary" className="text-xs">
-                        {attachment.file_type.split('/')[1]?.toUpperCase() || 'FILE'}
-                      </Badge>
-                    )}
-                  </div>
-                  
-                  <div className="flex items-center gap-sm">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => downloadAttachment(attachment.file_url, attachment.file_name)}
-                      className="gap-sm h-8 px-2"
+              <Upload className="h-8 w-8 mx-auto text-text-secondary mb-2" />
+              <p className="text-sm text-text-secondary mb-2">
+                Drag and drop files here, or click to browse
+              </p>
+              <p className="text-xs text-text-secondary mb-4">
+                PDF, DOC, DOCX, TXT, images up to 10MB
+              </p>
+              
+              <Button
+                variant="outline"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading}
+                className="gap-sm"
+              >
+                <Upload className="h-4 w-4" />
+                {isUploading ? 'Uploading...' : 'Choose Files'}
+              </Button>
+            </div>
+          )}
+
+          {/* Attachments List */}
+          {attachments.length === 0 ? (
+            <div className="text-center py-8 text-text-secondary">
+              <File className="h-8 w-8 mx-auto mb-2 opacity-50" />
+              <p className="text-sm">No attachments yet</p>
+              {!canManageCandidates && (
+                <p className="text-xs mt-1">You don't have permission to upload attachments</p>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-sm">
+              {attachments.map((attachment) => {
+                const FileIcon = getFileIcon(attachment.file_type)
+                
+                return (
+                  <div
+                    key={attachment.id}
+                    className="flex items-center justify-between p-3 border border-border rounded-lg hover:bg-accent/50 transition-colors"
+                  >
+                    <div 
+                      className="flex items-center gap-md flex-1 min-w-0 cursor-pointer"
+                      onClick={() => handleAttachmentClick(attachment)}
                     >
-                      <Download className="h-4 w-4" />
-                    </Button>
+                      <FileIcon className="h-5 w-5 text-text-secondary flex-shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-text-primary truncate">
+                          {attachment.file_name}
+                        </p>
+                        <div className="flex items-center gap-sm text-xs text-text-secondary">
+                          <span>{formatFileSize(attachment.file_size_bytes)}</span>
+                          <span>•</span>
+                          <span>
+                            {formatDistanceToNow(new Date(attachment.created_at), { addSuffix: true })}
+                          </span>
+                        </div>
+                      </div>
+                      {attachment.file_type && (
+                        <Badge variant="secondary" className="text-xs">
+                          {attachment.file_type.split('/')[1]?.toUpperCase() || 'FILE'}
+                        </Badge>
+                      )}
+                    </div>
                     
-                    {canManageCandidates && (
+                    <div className="flex items-center gap-sm">
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleDelete(attachment.id, attachment.file_url)}
-                        className="gap-sm h-8 px-2 text-destructive hover:text-destructive"
+                        onClick={() => downloadAttachment(attachment.file_url, attachment.file_name)}
+                        className="gap-sm h-8 px-2"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Download className="h-4 w-4" />
                       </Button>
-                    )}
+                      
+                      {canManageCandidates && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDelete(attachment.id, attachment.file_url)}
+                          className="gap-sm h-8 px-2 text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                </div>
-              )
-            })}
-          </div>
-        )}
+                )
+              })}
+            </div>
+          )}
 
-        {/* Info message */}
-        {attachments.length > 0 && (
-          <div className="flex items-start gap-2 p-3 bg-muted/50 rounded-lg">
-            <AlertCircle className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
-            <p className="text-xs text-muted-foreground">
-              Attachments are securely stored and only accessible to authorized team members.
-            </p>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+          {/* Info message */}
+          {attachments.length > 0 && (
+            <div className="flex items-start gap-2 p-3 bg-muted/50 rounded-lg">
+              <AlertCircle className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+              <p className="text-xs text-muted-foreground">
+                Attachments are securely stored and only accessible to authorized team members.
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <AttachmentPreviewDialog
+        attachment={previewAttachment}
+        isOpen={isPreviewOpen}
+        onClose={handlePreviewClose}
+        onDownload={downloadAttachment}
+      />
+    </>
   )
 }
