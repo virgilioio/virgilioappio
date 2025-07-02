@@ -174,7 +174,7 @@ export function CandidateUrls({ candidateId }: CandidateUrlsProps) {
               return (
                 <div
                   key={url.id}
-                  className="flex items-center justify-between p-3 border border-border rounded-lg hover:bg-accent/50 transition-colors"
+                  className="flex items-center justify-between p-3 border border-warning/20 bg-warning/10 rounded-lg hover:scale-105 transition-transform duration-200"
                 >
                   <div className="flex items-center gap-md flex-1 min-w-0">
                     <IconComponent className="h-5 w-5 text-text-secondary flex-shrink-0" />

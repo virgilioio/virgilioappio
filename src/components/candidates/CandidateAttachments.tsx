@@ -1,3 +1,4 @@
+
 import { useState, useRef } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -181,7 +182,7 @@ export function CandidateAttachments({ candidateId }: CandidateAttachmentsProps)
                 return (
                   <div
                     key={attachment.id}
-                    className="flex items-center justify-between p-3 border border-border rounded-lg hover:bg-accent/50 transition-colors"
+                    className="flex items-center justify-between p-3 border border-warning/20 bg-warning/10 rounded-lg hover:scale-105 transition-transform duration-200"
                   >
                     <div 
                       className="flex items-center gap-md flex-1 min-w-0 cursor-pointer"
