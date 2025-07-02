@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
@@ -148,7 +149,7 @@ export default function CandidateProfile() {
               {/* Left Column - Header Card with Tab Bar and Independent Cards */}
               <div className="lg:col-span-2 space-y-md">
                 {/* Header Card with Tab Bar */}
-                <Card className={cn("border-border", "!bg-white")}>
+                <Card className="border-0 shadow-none !bg-white">
                   <CardContent className="p-layout-md">
                     <div className="flex items-center justify-between mb-6">
                       <div>
@@ -180,13 +181,13 @@ export default function CandidateProfile() {
                     </div>
 
                     {/* Tab Bar inside Header Card */}
-                    <div className="w-full bg-surface-primary rounded-xl p-1 border border-border shadow-sm">
+                    <div className="w-full bg-surface-primary rounded-xl p-1 border-0 shadow-none">
                       <div className="inline-flex h-auto items-center justify-start rounded-xl bg-transparent p-0 text-muted-foreground w-full">
                         <button 
                           onClick={() => setActiveTab('overview')}
                           className={cn(
                             "inline-flex items-center justify-center whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-muted/50",
-                            activeTab === 'overview' && "bg-accent text-accent-foreground shadow-sm"
+                            activeTab === 'overview' && "bg-accent text-accent-foreground shadow-none"
                           )}
                         >
                           <FileText className="h-4 w-4 mr-2" />
@@ -196,7 +197,7 @@ export default function CandidateProfile() {
                           onClick={() => setActiveTab('notes')}
                           className={cn(
                             "inline-flex items-center justify-center whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-muted/50",
-                            activeTab === 'notes' && "bg-accent text-accent-foreground shadow-sm"
+                            activeTab === 'notes' && "bg-accent text-accent-foreground shadow-none"
                           )}
                         >
                           <MessageSquare className="h-4 w-4 mr-2" />
@@ -209,7 +210,7 @@ export default function CandidateProfile() {
 
                 {/* Independent Candidate Information Card - Overview Tab */}
                 {activeTab === 'overview' && (
-                  <Card className="bg-surface-primary border-border">
+                  <Card className="bg-surface-primary border-0 shadow-none">
                     <CardHeader>
                       <CardTitle className="text-lg font-medium text-text-primary">Candidate Information</CardTitle>
                     </CardHeader>
@@ -265,7 +266,7 @@ export default function CandidateProfile() {
 
                 {/* Independent Profile Summary Card - Overview Tab */}
                 {activeTab === 'overview' && candidate.profile_summary && (
-                  <Card className="bg-surface-primary border-border">
+                  <Card className="bg-surface-primary border-0 shadow-none">
                     <CardHeader>
                       <CardTitle className="text-lg font-medium text-text-primary">Profile Summary</CardTitle>
                     </CardHeader>
@@ -282,7 +283,7 @@ export default function CandidateProfile() {
 
                 {/* Independent Internal Notes Card - Notes Tab */}
                 {activeTab === 'notes' && candidate.notes && (
-                  <Card className="bg-surface-primary border-border">
+                  <Card className="bg-surface-primary border-0 shadow-none">
                     <CardHeader>
                       <CardTitle className="text-lg font-medium text-text-primary">Internal Notes</CardTitle>
                     </CardHeader>
@@ -299,7 +300,7 @@ export default function CandidateProfile() {
 
                 {/* Independent Comments Card - Notes Tab */}
                 {activeTab === 'notes' && (
-                  <Card className="bg-surface-primary border-border">
+                  <Card className="bg-surface-primary border-0 shadow-none">
                     <CardHeader>
                       <CardTitle className="text-lg font-medium text-text-primary">Comments</CardTitle>
                     </CardHeader>
@@ -318,7 +319,7 @@ export default function CandidateProfile() {
               <div className="space-y-md">
                 {/* Job Information */}
                 {job && (
-                  <Card className="bg-surface-primary border-border">
+                  <Card className="bg-surface-primary border-0 shadow-none">
                     <CardHeader>
                       <CardTitle className="text-text-primary">Job Information</CardTitle>
                     </CardHeader>
@@ -357,7 +358,7 @@ export default function CandidateProfile() {
 
                 {/* Quick Actions */}
                 <PermissionGate permission="canManageCandidates">
-                  <Card className="bg-surface-primary border-border">
+                  <Card className="bg-surface-primary border-0 shadow-none">
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2 text-text-primary">
                         <Zap className="h-5 w-5" />
