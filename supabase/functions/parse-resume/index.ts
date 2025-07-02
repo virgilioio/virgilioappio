@@ -1,10 +1,12 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-// Adobe PDF Extract API configuration
-const ADOBE_CLIENT_ID = "f967569106064a058e31ab0b7cc2de16";
-const ADOBE_CLIENT_SECRET = "p8e-CIaYSuaRp1FLanFEZ53oeKu819srBewS";
-const ADOBE_ORG_ID = "E9F023CF686570760A495E7E@AdobeOrg";
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
 // Enhanced parsed resume interface
 interface ParsedResume {
@@ -22,272 +24,225 @@ interface ParsedResume {
     skills?: string[];
   };
   urls: string[];
+  confidence: {
+    name: 'high' | 'medium' | 'low';
+    location: 'high' | 'medium' | 'low';
+    experience: 'high' | 'medium' | 'low';
+    overall: 'high' | 'medium' | 'low';
+  };
 }
 
-interface AdobeElement {
-  type: string;
-  text?: string;
-  path?: string;
-  bounds?: any;
+interface ParsedResumeData {
+  candidate_name: string;
+  linkedin_url: string;
+  location_country: string;
+  location_state: string;
+  location_city: string;
+  salary_amount: number | null;
+  salary_currency: string;
+  profile_summary: string;
+  notes: string;
 }
 
-// Get Adobe access token
-async function getAdobeAccessToken(): Promise<string> {
+// Enhanced PDF text extraction using multiple strategies
+async function extractTextFromPDF(base64Content: string): Promise<string> {
   try {
-    const response = await fetch('https://pdf-services.adobe.io/token', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({
-        'client_id': ADOBE_CLIENT_ID,
-        'client_secret': ADOBE_CLIENT_SECRET
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error(`Authentication failed: ${response.statusText}`);
+    console.log('Starting enhanced PDF text extraction...');
+    
+    // Strategy 1: Try basic PDF text extraction
+    const pdfText = await extractPDFTextBasic(base64Content);
+    if (pdfText && pdfText.length > 100) {
+      console.log('PDF text extraction successful:', pdfText.length, 'characters');
+      return pdfText;
     }
-
-    const data = await response.json();
-    return data.access_token;
+    
+    // Strategy 2: Fallback to raw text extraction
+    console.log('PDF extraction failed, trying raw text extraction...');
+    return await extractTextFallback(base64Content);
+    
   } catch (error) {
-    console.error('Failed to get Adobe access token:', error);
-    throw new Error('Adobe authentication failed');
-  }
-}
-
-// Extract text using Adobe PDF Extract API
-async function extractTextWithAdobe(base64Content: string): Promise<ParsedResume> {
-  try {
-    console.log('Starting Adobe PDF extraction...');
-    const accessToken = await getAdobeAccessToken();
-    
-    const assetID = await uploadToAdobe(base64Content, accessToken);
-    
-    // Create extraction job
-    const extractResponse = await fetch('https://pdf-services.adobe.io/operation/extractpdf', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${accessToken}`,
-        'X-API-Key': ADOBE_CLIENT_ID
-      },
-      body: JSON.stringify({
-        assetID: assetID,
-        elementsToExtract: ["text", "tables"],
-        renditionsToExtract: ["tables", "figures"]
-      })
-    });
-
-    if (!extractResponse.ok) {
-      const errorText = await extractResponse.text();
-      throw new Error(`Adobe extraction job creation failed: ${extractResponse.status} - ${errorText}`);
-    }
-
-    const extractJob = await extractResponse.json();
-    const jobLocation = extractResponse.headers.get('location');
-    console.log('Adobe extraction job created:', { jobId: jobLocation, response: extractJob });
-
-    // Poll for completion using the location header
-    let result;
-    for (let i = 0; i < 30; i++) { // 30 attempts, 2 seconds each = 60 seconds max
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      const statusResponse = await fetch(jobLocation, {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'X-API-Key': ADOBE_CLIENT_ID
-        }
-      });
-
-      if (!statusResponse.ok) {
-        throw new Error(`Failed to check job status: ${statusResponse.statusText}`);
-      }
-
-      result = await statusResponse.json();
-      console.log(`Adobe job status: ${result.status}`);
-
-      if (result.status === 'done') {
-        break;
-      } else if (result.status === 'failed') {
-        throw new Error('Adobe extraction job failed');
-      }
-    }
-
-    if (result?.status !== 'done') {
-      throw new Error('Adobe extraction timed out');
-    }
-
-    // Download the result using the asset downloadUri
-    const downloadResponse = await fetch(result.asset.downloadUri);
-
-    if (!downloadResponse.ok) {
-      throw new Error('Failed to download Adobe result');
-    }
-
-    // Extract ZIP and parse JSON
-    const zipBuffer = await downloadResponse.arrayBuffer();
-    const structuredData = await parseAdobeZip(zipBuffer);
-    
-    return processAdobeStructuredData(structuredData);
-
-  } catch (error) {
-    console.error('Adobe extraction failed:', error);
-    // Fallback to basic text extraction
+    console.error('PDF extraction failed:', error);
     return await extractTextFallback(base64Content);
   }
 }
 
-// Upload file to Adobe using proper 2-step process
-async function uploadToAdobe(base64Content: string, accessToken: string): Promise<string> {
-  // Step 1: Get upload pre-signed URI
-  const createAssetResponse = await fetch('https://pdf-services.adobe.io/assets', {
-    method: 'POST',
-    headers: {
-      'X-API-Key': ADOBE_CLIENT_ID,
-      'Authorization': `Bearer ${accessToken}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      mediaType: 'application/pdf'
-    })
-  });
-
-  if (!createAssetResponse.ok) {
-    throw new Error(`Adobe create asset failed: ${createAssetResponse.statusText}`);
+// Basic PDF text extraction
+async function extractPDFTextBasic(base64Content: string): Promise<string> {
+  try {
+    const binaryString = atob(base64Content);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    
+    // Simple PDF text extraction - look for text streams
+    const pdfString = new TextDecoder('latin1').decode(bytes);
+    const textMatches = pdfString.match(/\((.*?)\)[\s]*Tj/g) || [];
+    const streamMatches = pdfString.match(/stream\s+(.*?)\s+endstream/gs) || [];
+    
+    let extractedText = '';
+    
+    // Extract text from Tj operators
+    for (const match of textMatches) {
+      const text = match.replace(/^\(|\)[\s]*Tj$/g, '');
+      if (text && text.length > 1) {
+        extractedText += text + ' ';
+      }
+    }
+    
+    // Extract text from streams (simple approach)
+    for (const stream of streamMatches) {
+      const streamContent = stream.replace(/^stream\s+|\s+endstream$/g, '');
+      // Look for readable text patterns
+      const readableText = streamContent.match(/[A-Za-z0-9\s@.-]{3,}/g) || [];
+      extractedText += readableText.join(' ') + ' ';
+    }
+    
+    return extractedText.trim();
+  } catch (error) {
+    console.error('Basic PDF extraction failed:', error);
+    throw error;
   }
-
-  const createAssetResult = await createAssetResponse.json();
-  const { uploadUri, assetID } = createAssetResult;
-
-  // Step 2: Upload file to pre-signed URI
-  const fileBytes = Uint8Array.from(atob(base64Content), c => c.charCodeAt(0));
-  
-  const uploadResponse = await fetch(uploadUri, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/pdf'
-    },
-    body: fileBytes
-  });
-
-  if (!uploadResponse.ok) {
-    throw new Error(`Adobe file upload failed: ${uploadResponse.statusText}`);
-  }
-
-  return assetID;
 }
 
-// Parse Adobe ZIP response to extract structuredData.json
-async function parseAdobeZip(zipBuffer: ArrayBuffer): Promise<any> {
+// Enhanced DOCX text extraction
+async function extractTextFromDOCX(base64Content: string): Promise<string> {
   try {
-    console.log('Parsing Adobe ZIP response...');
+    console.log('Starting enhanced DOCX text extraction...');
     
-    // Import JSZip for ZIP parsing
+    const binaryString = atob(base64Content);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+
+    // Import JSZip for DOCX parsing
     const JSZip = (await import('https://deno.land/x/jszip@0.11.0/mod.ts')).default;
     
-    const zip = await JSZip.loadAsync(zipBuffer);
-    console.log('ZIP files found:', Object.keys(zip.files));
+    const zip = await JSZip.loadAsync(bytes);
+    const allTextParts: string[] = [];
+
+    // Extract from main document
+    const documentXML = await zip.file('word/document.xml')?.async('text');
+    if (documentXML) {
+      const mainText = extractTextFromDocumentXML(documentXML);
+      if (mainText) allTextParts.push(mainText);
+    }
+
+    // Extract from headers and footers
+    const headerFiles = Object.keys(zip.files).filter(name => name.startsWith('word/header'));
+    const footerFiles = Object.keys(zip.files).filter(name => name.startsWith('word/footer'));
     
-    // Extract structuredData.json from the ZIP
-    const structuredDataFile = zip.file('structuredData.json');
-    if (!structuredDataFile) {
-      console.warn('structuredData.json not found in ZIP, checking for other JSON files...');
-      // Look for any JSON file that might contain the structured data
-      const jsonFiles = Object.keys(zip.files).filter(name => name.endsWith('.json'));
-      console.log('JSON files found:', jsonFiles);
-      
-      if (jsonFiles.length > 0) {
-        const firstJsonFile = zip.file(jsonFiles[0]);
-        if (firstJsonFile) {
-          const jsonContent = await firstJsonFile.async('text');
-          return JSON.parse(jsonContent);
+    for (const headerFile of headerFiles) {
+      const headerXML = await zip.file(headerFile)?.async('text');
+      if (headerXML) {
+        const headerText = extractTextFromDocumentXML(headerXML);
+        if (headerText) allTextParts.push(headerText);
+      }
+    }
+    
+    for (const footerFile of footerFiles) {
+      const footerXML = await zip.file(footerFile)?.async('text');
+      if (footerXML) {
+        const footerText = extractTextFromDocumentXML(footerXML);
+        if (footerText) allTextParts.push(footerText);
+      }
+    }
+
+    const extractedText = allTextParts.join('\n\n').trim();
+    console.log('DOCX extraction successful:', extractedText.length, 'characters');
+    return extractedText;
+  } catch (error) {
+    console.error('DOCX extraction error:', error);
+    return await extractTextFallback(base64Content);
+  }
+}
+
+// Extract text from document XML with better parsing
+function extractTextFromDocumentXML(xml: string): string {
+  const textParts: string[] = [];
+  
+  try {
+    // Extract paragraphs
+    const paragraphs = xml.match(/<w:p[^>]*>.*?<\/w:p>/gs) || [];
+    
+    for (const paragraph of paragraphs) {
+      // Extract text runs
+      const textRuns = paragraph.match(/<w:t[^>]*>([^<]*)<\/w:t>/g) || [];
+      const texts = textRuns.map(run => {
+        const match = run.match(/<w:t[^>]*>([^<]*)<\/w:t>/);
+        return match ? match[1] : '';
+      });
+
+      const paragraphText = texts.join('').trim();
+      if (paragraphText && paragraphText.length > 0) {
+        textParts.push(paragraphText);
+      }
+    }
+    
+    // Extract table content
+    const tables = xml.match(/<w:tbl[^>]*>.*?<\/w:tbl>/gs) || [];
+    for (const table of tables) {
+      const cells = table.match(/<w:tc[^>]*>.*?<\/w:tc>/gs) || [];
+      for (const cell of cells) {
+        const cellTextRuns = cell.match(/<w:t[^>]*>([^<]*)<\/w:t>/g) || [];
+        const cellTexts = cellTextRuns.map(run => {
+          const match = run.match(/<w:t[^>]*>([^<]*)<\/w:t>/);
+          return match ? match[1] : '';
+        });
+        const cellText = cellTexts.join(' ').trim();
+        if (cellText) {
+          textParts.push(cellText);
         }
       }
-      
-      console.warn('No structured data found in Adobe ZIP response');
-      return { elements: [] };
     }
     
-    const structuredDataText = await structuredDataFile.async('text');
-    const structuredData = JSON.parse(structuredDataText);
-    
-    console.log('Adobe structured data parsed successfully:', {
-      elementsCount: structuredData.elements?.length || 0,
-      hasElements: !!structuredData.elements
-    });
-    
-    return structuredData;
+    return textParts.join('\n').trim();
   } catch (error) {
-    console.error('Failed to parse Adobe ZIP:', error);
-    return { elements: [] };
+    console.error('Error extracting text from document XML:', error);
+    return '';
   }
 }
 
-// Process Adobe structured data into our format
-function processAdobeStructuredData(structuredData: any): ParsedResume {
-  const elements: AdobeElement[] = structuredData.elements || [];
-  const textElements = elements.filter(el => el.type === 'text' && el.text);
-  
-  const rawText = textElements.map(el => el.text).join(' ');
-  const urls = extractURLsFromText(rawText);
-  
-  // Enhanced section detection using Adobe elements
-  const sections = detectSectionsFromElements(textElements);
-  
-  return {
-    rawText: rawText,
-    sections,
-    urls
-  };
+// Fallback text extraction
+async function extractTextFallback(base64Content: string): Promise<string> {
+  try {
+    console.log('Using fallback text extraction...');
+    const rawText = new TextDecoder().decode(
+      Uint8Array.from(atob(base64Content), c => c.charCodeAt(0))
+    );
+    
+    // Clean up the raw text
+    return rawText
+      .replace(/[^\x20-\x7E\n\r\t]/g, ' ') // Remove non-printable characters
+      .replace(/\s+/g, ' ') // Normalize whitespace
+      .trim();
+  } catch (error) {
+    console.error('Fallback extraction error:', error);
+    return '';
+  }
 }
 
-// Enhanced section detection using Adobe structured elements
-function detectSectionsFromElements(elements: AdobeElement[]): ParsedResume['sections'] {
-  const texts = elements.map(el => el.text || '').filter(text => text.length > 1);
-  const fullText = texts.join('\n');
+// Enhanced section detection with better parsing
+function detectSectionsFromText(text: string): ParsedResume['sections'] {
+  console.log('Starting enhanced section detection...');
   
-  console.log('Detecting sections from Adobe elements...');
-  
+  const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
   const sections: ParsedResume['sections'] = {};
   
-  // 1. Contact Section Detection (first 10 elements before first section header)
-  const sectionHeaderPattern = /^(EXPERIENCE|EMPLOYMENT|WORK HISTORY|EDUCATION|EDUCACIÓN|SKILLS|SUMMARY|OBJECTIVE)/i;
-  let contactEndIndex = 10; // Default to first 10 elements
+  // 1. Enhanced Contact Section Detection
+  sections.contact = parseContactSection(lines);
   
-  for (let i = 0; i < Math.min(texts.length, 20); i++) {
-    if (sectionHeaderPattern.test(texts[i])) {
-      contactEndIndex = i;
-      break;
-    }
-  }
+  // 2. Enhanced Experience Section Detection
+  sections.experience = parseExperienceSection(text, lines);
   
-  const contactText = texts.slice(0, contactEndIndex).join('\n');
-  sections.contact = parseContactSection(contactText);
+  // 3. Enhanced Education Section Detection
+  sections.education = parseEducationSection(text, lines);
   
-  // 2. Experience Section Detection
-  const experienceMatch = fullText.match(/(?:EXPERIENCE|EMPLOYMENT|WORK HISTORY)[\s:]*([^]*?)(?:EDUCATION|SKILLS|$)/i);
-  if (experienceMatch) {
-    sections.experience = parseExperienceSection(experienceMatch[1]);
-  } else {
-    // Fallback: look for date patterns and job-related keywords
-    sections.experience = extractExperienceFromDatePatterns(fullText);
-  }
+  // 4. Enhanced Skills Section Detection
+  sections.skills = parseSkillsSection(text, lines);
   
-  // 3. Education Section Detection
-  const educationMatch = fullText.match(/(?:EDUCATION|ACADEMIC)[\s:]*([^]*?)(?:SKILLS|EXPERIENCE|$)/i);
-  if (educationMatch) {
-    sections.education = parseEducationSection(educationMatch[1]);
-  }
-  
-  // 4. Skills Section Detection
-  const skillsMatch = fullText.match(/(?:SKILLS|TECHNICAL SKILLS|COMPETENCIES)[\s:]*([^]*?)(?:EDUCATION|EXPERIENCE|$)/i);
-  if (skillsMatch) {
-    sections.skills = parseSkillsSection(skillsMatch[1]);
-  }
-  
-  console.log('Sections detected:', {
+  console.log('Section detection completed:', {
     hasContact: !!sections.contact,
     experienceCount: sections.experience?.length || 0,
     educationCount: sections.education?.length || 0,
@@ -297,140 +252,316 @@ function detectSectionsFromElements(elements: AdobeElement[]): ParsedResume['sec
   return sections;
 }
 
-// Parse contact section with enhanced location detection
-function parseContactSection(contactText: string): ParsedResume['sections']['contact'] {
+// Enhanced contact section parsing
+function parseContactSection(lines: string[]): ParsedResume['sections']['contact'] {
   const contact: ParsedResume['sections']['contact'] = {};
+  const fullText = lines.join('\n');
   
-  // Name detection (usually first non-empty line)
-  const lines = contactText.split('\n').filter(line => line.trim().length > 2);
-  if (lines.length > 0) {
-    // Skip common email/phone patterns for name detection
-    const nameCandidate = lines.find(line => 
-      !/@/.test(line) && 
-      !/\d{3}[-.\s]?\d{3}[-.\s]?\d{4}/.test(line) &&
-      !/linkedin|github|http/i.test(line) &&
-      line.length > 3 && line.length < 50
-    );
-    if (nameCandidate) {
-      contact.name = nameCandidate.trim();
-    }
-  }
+  console.log('Parsing contact section from', lines.length, 'lines');
   
-  // Email detection
-  const emailMatch = contactText.match(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/);
-  if (emailMatch) {
-    contact.email = emailMatch[0];
-  }
-  
-  // Phone detection
-  const phoneMatch = contactText.match(/(\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/);
-  if (phoneMatch) {
-    contact.phone = phoneMatch[0];
-  }
-  
-  // LinkedIn detection
-  const linkedinMatch = contactText.match(/linkedin\.com\/in\/[^\s)>\]}"']+/i);
-  if (linkedinMatch) {
-    contact.linkedin = linkedinMatch[0].startsWith('http') ? linkedinMatch[0] : `https://${linkedinMatch[0]}`;
-  }
-  
-  // Enhanced location detection with multiple patterns and fallbacks
-  const locationPatterns = [
-    // Standard format: City, State/Province
-    /([A-Za-záéíóúñü]+(?:\s[A-Za-záéíóúñü]+)*),\s*([A-Za-z.]+)(?:,\s*([A-Za-z\s]+))?/g,
-    // International format: City, Country
-    /([A-Za-z\s]+),\s*(Mexico|España|Argentina|Colombia|Chile|Peru|Brasil|Brazil|United States|USA|Canada)/i,
-    // Mexican states format: City, STATE_ABBREV
-    /([\w\s]+),\s*(CDMX|Jal\.|NL|BC|QRO|GTO|SLP|CHIH|SON|TAM|VER|Mex\.|Pue\.|Yuc\.)/i,
-    // US states format: City, STATE
-    /([\w\s]+),\s*(CA|TX|NY|FL|IL|PA|OH|GA|NC|MI|NJ|VA|WA|AZ|MA|TN|IN|MO|MD|WI|CO|MN|SC|AL|LA|KY|OR|OK|CT|IA|MS|AR|KS|UT|NV|NM|WV|NE|ID|HI|NH|ME|MT|RI|DE|SD|ND|AK|VT|WY)/,
-    // International cities: City only
-    /(Mexico City|Guadalajara|Monterrey|Buenos Aires|São Paulo|Madrid|Barcelona|Toronto|Vancouver|London|Paris|Berlin|Sydney|Melbourne)/i
+  // Name detection - improved algorithm
+  const namePatterns = [
+    // First line that looks like a name (not email/phone/linkedin)
+    /^([A-Z][a-záéíóúñü]+(?:\s+[A-Z][a-záéíóúñü]+)+)$/i,
+    // Name with potential titles
+    /^(?:Mr\.?|Ms\.?|Mrs\.?|Dr\.?)?\s*([A-Z][a-záéíóúñü]+(?:\s+[A-Z][a-záéíóúñü]+)+)(?:\s*,?\s*(?:Jr\.?|Sr\.?|III?|PhD|MD))?$/i
   ];
   
-  for (const pattern of locationPatterns) {
-    const match = contactText.match(pattern);
-    if (match) {
-      if (match[3]) {
-        // City, State, Country format
-        contact.location = `${match[1].trim()}, ${match[2].trim()}, ${match[3].trim()}`;
-      } else {
-        // City, State format
-        contact.location = `${match[1].trim()}, ${match[2].trim()}`;
+  for (let i = 0; i < Math.min(lines.length, 5); i++) {
+    const line = lines[i];
+    if (!/@/.test(line) && 
+        !/\d{3}[-.\s]?\d{3}[-.\s]?\d{4}/.test(line) &&
+        !/linkedin|github|http/i.test(line) &&
+        line.length >= 4 && line.length <= 50) {
+      
+      for (const pattern of namePatterns) {
+        const match = line.match(pattern);
+        if (match) {
+          contact.name = match[1].trim();
+          console.log('Name found:', contact.name);
+          break;
+        }
       }
-      console.log('Location found in contact:', contact.location);
-      break;
-    }
-  }
-  
-  // Additional location fallback - look for address patterns
-  if (!contact.location) {
-    const addressPatterns = [
-      // Look for address-like patterns anywhere in contact text
-      /(?:^|\n)([A-Za-záéíóúñü\s]+),\s*([A-Za-z\s.]+)(?:,\s*([A-Za-z\s]+))?(?:\s+\d{5})?(?:\n|$)/gm,
-      // Look for standalone city names that are commonly recognized
-      /\b(Mexico City|Guadalajara|Monterrey|Buenos Aires|São Paulo|Madrid|Barcelona|Toronto|Vancouver|London|Paris|Berlin|Sydney|Melbourne|Austin|Seattle|San Francisco|Los Angeles|New York|Chicago|Houston|Phoenix|Philadelphia|San Antonio|San Diego|Dallas|Boston|Atlanta|Miami)\b/i
-    ];
-    
-    for (const pattern of addressPatterns) {
-      const matches = contactText.match(pattern);
-      if (matches && matches.length > 0) {
-        contact.location = matches[0].trim();
-        console.log('Location found via fallback:', contact.location);
+      
+      if (contact.name) break;
+      
+      // Fallback: if line looks like a name
+      const words = line.split(/\s+/);
+      if (words.length >= 2 && words.length <= 4 && 
+          words.every(word => /^[A-Za-záéíóúñü]+$/.test(word))) {
+        contact.name = line;
+        console.log('Name found (fallback):', contact.name);
         break;
       }
     }
   }
   
+  // Email detection
+  const emailMatch = fullText.match(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/);
+  if (emailMatch) {
+    contact.email = emailMatch[0];
+    console.log('Email found:', contact.email);
+  }
+  
+  // Phone detection - enhanced patterns
+  const phonePatterns = [
+    /(\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/,
+    /(\+\d{1,3}\s?)?\d{10,14}/,
+    /\(\d{3}\)\s?\d{3}-?\d{4}/
+  ];
+  
+  for (const pattern of phonePatterns) {
+    const phoneMatch = fullText.match(pattern);
+    if (phoneMatch) {
+      contact.phone = phoneMatch[0];
+      console.log('Phone found:', contact.phone);
+      break;
+    }
+  }
+  
+  // LinkedIn detection - enhanced patterns
+  const linkedinPatterns = [
+    /linkedin\.com\/in\/[^\s)>\]}"']+/i,
+    /(?:https?:\/\/)?(?:www\.)?linkedin\.com\/in\/[a-zA-Z0-9-]+\/?/i
+  ];
+  
+  for (const pattern of linkedinPatterns) {
+    const linkedinMatch = fullText.match(pattern);
+    if (linkedinMatch) {
+      contact.linkedin = linkedinMatch[0].startsWith('http') ? 
+        linkedinMatch[0] : `https://${linkedinMatch[0]}`;
+      console.log('LinkedIn found:', contact.linkedin);
+      break;
+    }
+  }
+  
+  // Enhanced location detection with comprehensive patterns
+  contact.location = parseLocation(fullText, lines);
+  
   return contact;
 }
 
-// Parse experience section into job entries
-function parseExperienceSection(experienceText: string): string[] {
-  const entries = experienceText
-    .split(/\n\s*\n|\d{4}\s*[-–—]\s*|\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b\s+\d{4}/i)
-    .filter(entry => entry.trim().length > 20)
-    .map(entry => entry.trim());
+// Enhanced location parsing
+function parseLocation(fullText: string, lines: string[]): string | undefined {
+  console.log('Parsing location...');
   
-  console.log(`Parsed ${entries.length} experience entries`);
-  return entries;
-}
-
-// Extract experience from date patterns when no clear section exists
-function extractExperienceFromDatePatterns(text: string): string[] {
-  const lines = text.split('\n');
-  const experienceLines: string[] = [];
+  const locationPatterns = [
+    // International format: City, State/Province, Country
+    /([A-Za-záéíóúñü\s]+),\s*([A-Za-z.\s]+),\s*([A-Za-z\s]+)/g,
+    // US/Mexico format: City, STATE_ABBREV
+    /([\w\s]+),\s*(CDMX|Jal\.|NL|BC|QRO|GTO|SLP|CHIH|SON|TAM|VER|Mex\.|Pue\.|Yuc\.|CA|TX|NY|FL|IL|PA|OH|GA|NC|MI|NJ|VA|WA|AZ|MA|TN|IN|MO|MD|WI|CO|MN|SC|AL|LA|KY|OR|OK|CT|IA|MS|AR|KS|UT|NV|NM|WV|NE|ID|HI|NH|ME|MT|RI|DE|SD|ND|AK|VT|WY)/i,
+    // City, Country format
+    /([A-Za-z\s]+),\s*(Mexico|México|España|Spain|Argentina|Colombia|Chile|Peru|Perú|Brasil|Brazil|United States|USA|Canada|Canadá)/i,
+    // Major cities standalone
+    /(Mexico City|Ciudad de México|Guadalajara|Monterrey|Buenos Aires|São Paulo|Madrid|Barcelona|Toronto|Vancouver|London|Paris|Berlin|Sydney|Melbourne|Austin|Seattle|San Francisco|Los Angeles|New York|Chicago|Houston|Phoenix|Philadelphia|San Antonio|San Diego|Dallas|Boston|Atlanta|Miami)/i
+  ];
   
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    // Look for lines with years and job keywords
-    if (/\d{4}/.test(line) && /manager|engineer|developer|analyst|coordinator|assistant|specialist|director/i.test(line)) {
-      // Include this line and the next few lines as context
-      const entry = lines.slice(i, Math.min(i + 3, lines.length)).join('\n').trim();
-      if (entry.length > 20) {
-        experienceLines.push(entry);
+  // Check each line for location patterns
+  for (const line of lines.slice(0, 10)) { // Check first 10 lines
+    for (const pattern of locationPatterns) {
+      const matches = line.match(pattern);
+      if (matches && matches[0].length >= 3) {
+        console.log('Location found in line:', matches[0]);
+        return matches[0].trim();
       }
     }
   }
   
-  console.log(`Extracted ${experienceLines.length} experience entries from date patterns`);
-  return experienceLines;
+  // Check full text for location patterns
+  for (const pattern of locationPatterns) {
+    const matches = fullText.match(pattern);
+    if (matches && matches[0].length >= 3) {
+      console.log('Location found in full text:', matches[0]);
+      return matches[0].trim();
+    }
+  }
+  
+  console.log('No location found');
+  return undefined;
 }
 
-// Parse education section
-function parseEducationSection(educationText: string): string[] {
-  return educationText
-    .split(/\n\s*\n|\d{4}\s*[-–—]/)
-    .filter(entry => entry.trim().length > 10)
-    .map(entry => entry.trim());
+// Enhanced experience section parsing
+function parseExperienceSection(fullText: string, lines: string[]): string[] {
+  console.log('Parsing experience section...');
+  
+  const experiences: string[] = [];
+  
+  // Look for experience section markers
+  const experienceMarkers = [
+    /^(EXPERIENCE|WORK EXPERIENCE|EMPLOYMENT|PROFESSIONAL EXPERIENCE|CAREER HISTORY)/i,
+    /^(EXPERIENCIA|EXPERIENCIA LABORAL|HISTORIAL LABORAL)/i
+  ];
+  
+  let experienceStartIndex = -1;
+  let experienceEndIndex = lines.length;
+  
+  // Find experience section boundaries
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    
+    // Check for experience section start
+    if (experienceStartIndex === -1) {
+      for (const marker of experienceMarkers) {
+        if (marker.test(line)) {
+          experienceStartIndex = i + 1;
+          console.log('Experience section found at line', i);
+          break;
+        }
+      }
+    }
+    
+    // Check for next section (end of experience)
+    if (experienceStartIndex > -1 && i > experienceStartIndex) {
+      if (/^(EDUCATION|SKILLS|CERTIFICATIONS|PROJECTS)/i.test(line)) {
+        experienceEndIndex = i;
+        break;
+      }
+    }
+  }
+  
+  // Extract experience entries
+  if (experienceStartIndex > -1) {
+    const experienceLines = lines.slice(experienceStartIndex, experienceEndIndex);
+    
+    // Group lines into experience entries based on dates and job titles
+    let currentEntry = '';
+    
+    for (const line of experienceLines) {
+      // Check if this line starts a new experience entry (has date or looks like job title)
+      if (/\d{4}/.test(line) || /^[A-Z][a-z\s]+(Manager|Engineer|Developer|Analyst|Coordinator|Assistant|Specialist|Director|Lead|Senior|Junior)/i.test(line)) {
+        if (currentEntry.trim()) {
+          experiences.push(currentEntry.trim());
+        }
+        currentEntry = line + '\n';
+      } else {
+        currentEntry += line + '\n';
+      }
+    }
+    
+    if (currentEntry.trim()) {
+      experiences.push(currentEntry.trim());
+    }
+  } else {
+    // Fallback: look for date patterns and job keywords throughout the text
+    const dateJobPattern = /(\d{4}[\s-]+(?:\d{4}|present|current)).*?(manager|engineer|developer|analyst|coordinator|assistant|specialist|director|lead|senior|junior)/gi;
+    const matches = fullText.match(dateJobPattern);
+    if (matches) {
+      experiences.push(...matches.slice(0, 5)); // Limit to 5 entries
+    }
+  }
+  
+  console.log('Experience entries found:', experiences.length);
+  return experiences;
 }
 
-// Parse skills section
-function parseSkillsSection(skillsText: string): string[] {
-  return skillsText
-    .split(/[,\n•·]/)
-    .filter(skill => skill.trim().length > 2)
-    .map(skill => skill.trim());
+// Enhanced education section parsing
+function parseEducationSection(fullText: string, lines: string[]): string[] {
+  console.log('Parsing education section...');
+  
+  const education: string[] = [];
+  
+  // Look for education section
+  const educationMarkers = [
+    /^(EDUCATION|ACADEMIC|STUDIES)/i,
+    /^(EDUCACIÓN|FORMACIÓN|ESTUDIOS)/i
+  ];
+  
+  let educationStartIndex = -1;
+  let educationEndIndex = lines.length;
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    
+    if (educationStartIndex === -1) {
+      for (const marker of educationMarkers) {
+        if (marker.test(line)) {
+          educationStartIndex = i + 1;
+          break;
+        }
+      }
+    }
+    
+    if (educationStartIndex > -1 && i > educationStartIndex) {
+      if (/^(EXPERIENCE|SKILLS|CERTIFICATIONS)/i.test(line)) {
+        educationEndIndex = i;
+        break;
+      }
+    }
+  }
+  
+  if (educationStartIndex > -1) {
+    const educationLines = lines.slice(educationStartIndex, educationEndIndex);
+    let currentEntry = '';
+    
+    for (const line of educationLines) {
+      if (/\d{4}/.test(line) || /(Bachelor|Master|PhD|Degree|University|College|Instituto)/i.test(line)) {
+        if (currentEntry.trim()) {
+          education.push(currentEntry.trim());
+        }
+        currentEntry = line + '\n';
+      } else {
+        currentEntry += line + '\n';
+      }
+    }
+    
+    if (currentEntry.trim()) {
+      education.push(currentEntry.trim());
+    }
+  }
+  
+  console.log('Education entries found:', education.length);
+  return education;
+}
+
+// Enhanced skills section parsing
+function parseSkillsSection(fullText: string, lines: string[]): string[] {
+  console.log('Parsing skills section...');
+  
+  const skills: string[] = [];
+  
+  // Look for skills section
+  const skillsMarkers = [
+    /^(SKILLS|TECHNICAL SKILLS|COMPETENCIES|TECHNOLOGIES)/i,
+    /^(HABILIDADES|COMPETENCIAS|TECNOLOGÍAS)/i
+  ];
+  
+  let skillsStartIndex = -1;
+  let skillsEndIndex = lines.length;
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    
+    if (skillsStartIndex === -1) {
+      for (const marker of skillsMarkers) {
+        if (marker.test(line)) {
+          skillsStartIndex = i + 1;
+          break;
+        }
+      }
+    }
+    
+    if (skillsStartIndex > -1 && i > skillsStartIndex) {
+      if (/^(EXPERIENCE|EDUCATION|CERTIFICATIONS)/i.test(line)) {
+        skillsEndIndex = i;
+        break;
+      }
+    }
+  }
+  
+  if (skillsStartIndex > -1) {
+    const skillsText = lines.slice(skillsStartIndex, skillsEndIndex).join(' ');
+    
+    // Split by common delimiters
+    const skillsList = skillsText
+      .split(/[,\n•·\-\|]/)
+      .map(skill => skill.trim())
+      .filter(skill => skill.length > 2 && skill.length < 50);
+    
+    skills.push(...skillsList);
+  }
+  
+  console.log('Skills found:', skills.length);
+  return skills;
 }
 
 // Extract URLs from text
@@ -453,111 +584,86 @@ function extractURLsFromText(text: string): string[] {
   return [...new Set(urls)];
 }
 
-// Enhanced DOCX text extraction
-async function extractTextFromDOCX(base64Content: string): Promise<ParsedResume> {
-  try {
-    const binaryString = atob(base64Content);
-    const bytes = new Uint8Array(binaryString.length);
-    for (let i = 0; i < binaryString.length; i++) {
-      bytes[i] = binaryString.charCodeAt(i);
-    }
-
-    console.log(`DOCX extraction: Processing ${bytes.length} bytes`);
-
-    // Import JSZip for DOCX parsing
-    const JSZip = (await import('https://deno.land/x/jszip@0.11.0/mod.ts')).default;
-    
-    const zip = await JSZip.loadAsync(bytes);
-    const allTextParts: string[] = [];
-
-    // Extract from main document
-    const documentXML = await zip.file('word/document.xml')?.async('text');
-    if (documentXML) {
-      const mainText = extractTextFromDocumentXML(documentXML);
-      if (mainText) allTextParts.push(mainText);
-    }
-
-    const extractedText = allTextParts.join('\n\n').trim();
-    console.log(`DOCX extraction: Extracted ${extractedText.length} characters`);
-    
-    const urls = extractURLsFromText(extractedText);
-    const sections = detectSectionsFromElements([{ type: 'text', text: extractedText }]);
-    
-    return {
-      rawText: extractedText,
-      sections,
-      urls
-    };
-  } catch (error) {
-    console.error('DOCX extraction error:', error);
-    return await extractTextFallback(base64Content);
-  }
-}
-
-// Extract text from document XML
-function extractTextFromDocumentXML(xml: string): string {
-  const textParts: string[] = [];
+// Calculate confidence scores
+function calculateConfidence(parsedResume: ParsedResume): ParsedResume['confidence'] {
+  const { sections, rawText } = parsedResume;
   
-  try {
-    const paragraphs = xml.match(/<w:p[^>]*>.*?<\/w:p>/gs) || [];
-    
-    for (const paragraph of paragraphs) {
-      const textRuns = paragraph.match(/<w:t[^>]*>([^<]*)<\/w:t>/g) || [];
-      const texts = textRuns.map(run => {
-        const match = run.match(/<w:t[^>]*>([^<]*)<\/w:t>/);
-        return match ? match[1] : '';
-      });
-
-      if (texts.length > 0) {
-        textParts.push(texts.join('').trim());
-      }
+  // Name confidence
+  let nameConfidence: 'high' | 'medium' | 'low' = 'low';
+  if (sections.contact?.name) {
+    const words = sections.contact.name.split(/\s+/);
+    if (words.length >= 2 && words.every(word => /^[A-Za-záéíóúñü]+$/.test(word))) {
+      nameConfidence = 'high';
+    } else if (words.length >= 2) {
+      nameConfidence = 'medium';
     }
-    
-    return textParts.join('\n').trim();
-  } catch (error) {
-    console.error('Error extracting text from document XML:', error);
-    return '';
   }
-}
-
-// Fallback text extraction for plain text or when other methods fail
-async function extractTextFallback(base64Content: string): Promise<ParsedResume> {
-  try {
-    const rawText = new TextDecoder().decode(
-      Uint8Array.from(atob(base64Content), c => c.charCodeAt(0))
+  
+  // Location confidence
+  let locationConfidence: 'high' | 'medium' | 'low' = 'low';
+  if (sections.contact?.location) {
+    const location = sections.contact.location;
+    if (location.includes(',') && location.length > 10) {
+      locationConfidence = 'high';
+    } else if (location.length > 5) {
+      locationConfidence = 'medium';
+    }
+  }
+  
+  // Experience confidence
+  let experienceConfidence: 'high' | 'medium' | 'low' = 'low';
+  if (sections.experience && sections.experience.length > 0) {
+    const hasDatePatterns = sections.experience.some(exp => /\d{4}/.test(exp));
+    const hasJobTitles = sections.experience.some(exp => 
+      /(manager|engineer|developer|analyst|coordinator|assistant|specialist|director)/i.test(exp)
     );
     
-    const urls = extractURLsFromText(rawText);
-    const sections = detectSectionsFromElements([{ type: 'text', text: rawText }]);
-    
-    return {
-      rawText,
-      sections,
-      urls
-    };
-  } catch (error) {
-    console.error('Fallback extraction error:', error);
-    return { rawText: '', sections: {}, urls: [] };
+    if (hasDatePatterns && hasJobTitles) {
+      experienceConfidence = 'high';
+    } else if (hasDatePatterns || hasJobTitles) {
+      experienceConfidence = 'medium';
+    }
   }
+  
+  // Overall confidence
+  const scores = [nameConfidence, locationConfidence, experienceConfidence];
+  const highCount = scores.filter(s => s === 'high').length;
+  const mediumCount = scores.filter(s => s === 'medium').length;
+  
+  let overallConfidence: 'high' | 'medium' | 'low' = 'low';
+  if (highCount >= 2) {
+    overallConfidence = 'high';
+  } else if (highCount >= 1 || mediumCount >= 2) {
+    overallConfidence = 'medium';
+  }
+  
+  return {
+    name: nameConfidence,
+    location: locationConfidence,
+    experience: experienceConfidence,
+    overall: overallConfidence
+  };
 }
 
-// Relaxed validation for resume quality
+// Enhanced validation
 function validateResumeQuality(parsedResume: ParsedResume, fileName: string): { isValid: boolean; error?: string; details?: any } {
-  const { rawText, sections } = parsedResume;
+  const { rawText, sections, confidence } = parsedResume;
   
-  console.log(`=== VALIDATION for ${fileName} ===`);
-  console.log(`Text length: ${rawText.length}`);
-  console.log(`Sections found:`, Object.keys(sections));
+  console.log(`Validating resume quality for ${fileName}`);
+  console.log(`Text length: ${rawText.length}, Overall confidence: ${confidence.overall}`);
   
   const details = {
     textLength: rawText.length,
     sectionsFound: Object.keys(sections).length,
     hasContact: !!sections.contact,
+    hasName: !!sections.contact?.name,
+    hasLocation: !!sections.contact?.location,
     hasExperience: !!(sections.experience?.length),
+    confidence: confidence,
     textPreview: rawText.substring(0, 200)
   };
   
-  // Very relaxed validation - just check for basic content
+  // Enhanced validation criteria
   if (rawText.length < 100) {
     return {
       isValid: false,
@@ -567,7 +673,7 @@ function validateResumeQuality(parsedResume: ParsedResume, fileName: string): { 
   }
   
   const words = rawText.split(/\s+/).filter(word => word.length > 1);
-  if (words.length < 20) {
+  if (words.length < 30) {
     return {
       isValid: false,
       error: "This file doesn't contain enough readable text. Please try a different file format.",
@@ -575,27 +681,18 @@ function validateResumeQuality(parsedResume: ParsedResume, fileName: string): { 
     };
   }
   
-  console.log(`✅ VALIDATION PASSED: ${words.length} words, ${Object.keys(sections).length} sections`);
+  // Check for basic resume indicators
+  const hasResumeIndicators = /\b(experience|education|skills|work|job|employment|university|college|degree)\b/i.test(rawText);
+  if (!hasResumeIndicators) {
+    return {
+      isValid: false,
+      error: "This file doesn't appear to be a resume. Please upload a resume file.",
+      details
+    };
+  }
+  
+  console.log(`✅ Validation passed: ${words.length} words, confidence: ${confidence.overall}`);
   return { isValid: true, details };
-}
-
-const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
-
-interface ParsedResumeData {
-  candidate_name: string;
-  linkedin_url: string;
-  location_country: string;
-  location_state: string;
-  location_city: string;
-  salary_amount: number | null;
-  salary_currency: string;
-  profile_summary: string;
-  notes: string;
 }
 
 serve(async (req) => {
@@ -659,19 +756,19 @@ serve(async (req) => {
 
     console.log(`[${requestId}] 📄 Processing resume: ${fileName} (${fileType}), size: ${fileSizeBytes} bytes`);
 
-    // Extract structured text based on file type
-    let parsedResume: ParsedResume;
+    // Extract text based on file type
+    let extractedText: string;
     
     try {
       if (fileType === 'text/plain') {
         console.log(`[${requestId}] 📝 Processing plain text file...`);
-        parsedResume = await extractTextFallback(fileContent);
+        extractedText = await extractTextFallback(fileContent);
       } else if (fileType === 'application/pdf') {
-        console.log(`[${requestId}] 📕 Attempting Adobe PDF extraction...`);
-        parsedResume = await extractTextWithAdobe(fileContent);
+        console.log(`[${requestId}] 📕 Processing PDF file...`);
+        extractedText = await extractTextFromPDF(fileContent);
       } else if (fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
-        console.log(`[${requestId}] 📄 Attempting DOCX text extraction...`);
-        parsedResume = await extractTextFromDOCX(fileContent);
+        console.log(`[${requestId}] 📄 Processing DOCX file...`);
+        extractedText = await extractTextFromDOCX(fileContent);
       } else {
         console.error(`[${requestId}] ❌ Unsupported file type: ${fileType}`);
         return new Response(JSON.stringify({ 
@@ -693,7 +790,19 @@ serve(async (req) => {
       });
     }
 
-    // Pre-AI validation
+    // Parse sections from extracted text
+    const sections = detectSectionsFromText(extractedText);
+    const urls = extractURLsFromText(extractedText);
+    
+    // Create parsed resume object
+    const parsedResume: ParsedResume = {
+      rawText: extractedText,
+      sections,
+      urls,
+      confidence: calculateConfidence({ rawText: extractedText, sections, urls, confidence: {} as any })
+    };
+
+    // Validate resume quality
     console.log(`[${requestId}] 🔍 Running validation...`);
     const validation = validateResumeQuality(parsedResume, fileName);
     
@@ -709,18 +818,17 @@ serve(async (req) => {
       });
     }
 
-    console.log(`[${requestId}] ✅ Validation passed`);
-    console.log(`[${requestId}] 📊 Sections found:`, Object.keys(parsedResume.sections));
-    console.log(`[${requestId}] 🔍 Contact details:`, {
+    console.log(`[${requestId}] ✅ Validation passed - Processing with AI...`);
+    console.log(`[${requestId}] 📊 Extracted data:`, {
       name: parsedResume.sections.contact?.name || 'Not found',
       location: parsedResume.sections.contact?.location || 'Not found',
       email: parsedResume.sections.contact?.email || 'Not found',
-      linkedin: parsedResume.sections.contact?.linkedin || 'Not found'
+      linkedin: parsedResume.sections.contact?.linkedin || 'Not found',
+      experienceEntries: parsedResume.sections.experience?.length || 0,
+      confidence: parsedResume.confidence
     });
-    console.log(`[${requestId}] 💼 Experience entries:`, parsedResume.sections.experience?.length || 0);
-    console.log(`[${requestId}] 🔗 URLs found:`, parsedResume.urls.length);
     
-    // Enhanced OpenAI prompt with structured data
+    // Enhanced OpenAI prompt
     console.log(`[${requestId}] 🤖 Calling OpenAI API...`);
     
     const controller = new AbortController();
@@ -740,7 +848,7 @@ serve(async (req) => {
           messages: [
             {
               role: 'system',
-              content: `You are an expert resume parsing AI. Extract structured candidate data from the resume sections below.
+              content: `You are an expert resume parsing AI. Extract structured candidate data from the pre-parsed resume sections below.
 
 CRITICAL: Return ONLY valid JSON. Do not include any explanatory text, markdown formatting, or code blocks.
 
@@ -750,25 +858,25 @@ LOCATION EXTRACTION RULES:
 - Common patterns: "City, State", "City, State, Country", "City, Country", standalone cities
 - Mexican states: CDMX=Ciudad de México, Jal.=Jalisco, NL=Nuevo León, BC=Baja California, etc.
 - US states: Use full names (Texas not TX, California not CA)
-- Look in: contact info, current job location, address lines, anywhere in resume
+- Spanish/Mexican cities: Mexico City, Guadalajara, Monterrey, etc.
 - Examples: "Guadalajara, Jal." → city="Guadalajara", state="Jalisco", country="Mexico"
 - Examples: "Austin, TX" → city="Austin", state="Texas", country="United States"
 
-PROFILE SUMMARY RULES (LESS RESTRICTIVE):
-- Generate profile_summary if ANY of the following is true:
-  * At least 1 clear job title found
-  * At least 1 company name found  
-  * At least 1 year of work experience detected
-  * Any professional experience or skills mentioned
-- The summary should include: roles, companies, skills, technologies, years if available
+PROFILE SUMMARY RULES (MANDATORY GENERATION):
+- ALWAYS generate a profile_summary if ANY professional information is detected
+- Generate summary if you find: job titles, company names, years of experience, or skills
 - Be concise (2-3 sentences) but informative
 - Focus on professional highlights and key competencies
-- If minimal experience exists, still generate a basic summary
+- Include experience level (entry, mid, senior) when determinable
+- If minimal experience, still generate a basic summary
 
 URL EXTRACTION:
 - LinkedIn: any variation of linkedin.com/in/username (with or without https://)
-- GitHub: github.com/username patterns
-- Portfolio sites: any professional URLs mentioned
+- Complete the URL with https:// if missing
+
+CONFIDENCE INDICATORS:
+- Use the confidence scores provided in metadata to inform your extraction
+- High confidence data should be preferred over low confidence data
 
 Return ONLY this JSON structure (no markdown, no explanation):
 {
@@ -779,35 +887,37 @@ Return ONLY this JSON structure (no markdown, no explanation):
   "location_city": "city name" | null,
   "salary_amount": numeric_value | null,
   "salary_currency": "currency_code" | null,
-  "profile_summary": "factual summary based on experience" | null,
-  "notes": "other relevant info" | null
+  "profile_summary": "professional summary based on experience" | null,
+  "notes": "other relevant info or parsing notes" | null
 }`
             },
             {
               role: 'user',
-              content: `Extract candidate information from this structured resume data:
+              content: `Extract candidate information from this parsed resume data:
+
+CONFIDENCE SCORES: ${JSON.stringify(parsedResume.confidence)}
 
 ${parsedResume.sections.contact ? `CONTACT INFORMATION:
-Name: ${parsedResume.sections.contact.name || 'Not found'}
-Email: ${parsedResume.sections.contact.email || 'Not found'}
-Phone: ${parsedResume.sections.contact.phone || 'Not found'}
-Location: ${parsedResume.sections.contact.location || 'Not found'}
-LinkedIn: ${parsedResume.sections.contact.linkedin || 'Not found'}
+Name: ${parsedResume.sections.contact.name || 'Not extracted'}
+Email: ${parsedResume.sections.contact.email || 'Not extracted'}
+Phone: ${parsedResume.sections.contact.phone || 'Not extracted'}
+Location: ${parsedResume.sections.contact.location || 'Not extracted'}
+LinkedIn: ${parsedResume.sections.contact.linkedin || 'Not extracted'}
 
-` : ''}${parsedResume.sections.experience && parsedResume.sections.experience.length > 0 ? `WORK EXPERIENCE:
-${parsedResume.sections.experience.join('\n\n')}
+` : ''}${parsedResume.sections.experience && parsedResume.sections.experience.length > 0 ? `WORK EXPERIENCE (${parsedResume.sections.experience.length} entries):
+${parsedResume.sections.experience.slice(0, 3).join('\n\n')}
 
-` : ''}${parsedResume.sections.education && parsedResume.sections.education.length > 0 ? `EDUCATION:
-${parsedResume.sections.education.join('\n\n')}
+` : ''}${parsedResume.sections.education && parsedResume.sections.education.length > 0 ? `EDUCATION (${parsedResume.sections.education.length} entries):
+${parsedResume.sections.education.slice(0, 2).join('\n\n')}
 
-` : ''}${parsedResume.sections.skills && parsedResume.sections.skills.length > 0 ? `SKILLS:
-${parsedResume.sections.skills.join(', ')}
+` : ''}${parsedResume.sections.skills && parsedResume.sections.skills.length > 0 ? `SKILLS (${parsedResume.sections.skills.length} found):
+${parsedResume.sections.skills.slice(0, 10).join(', ')}
 
 ` : ''}${parsedResume.urls.length > 0 ? `FOUND URLs:
 ${parsedResume.urls.join(', ')}
 
-` : ''}FULL TEXT (first 2000 chars):
-${parsedResume.rawText.substring(0, 2000)}${parsedResume.rawText.length > 2000 ? '...' : ''}
+` : ''}FULL TEXT SAMPLE (first 1500 chars):
+${parsedResume.rawText.substring(0, 1500)}${parsedResume.rawText.length > 1500 ? '...' : ''}
 
 Return structured JSON only.`
             }
@@ -878,7 +988,13 @@ Return structured JSON only.`
       notes: parsedData.notes || ''
     };
 
-    console.log(`[${requestId}] ✅ Successfully parsed resume data:`, cleanedData);
+    console.log(`[${requestId}] ✅ Successfully parsed resume data:`, {
+      name: cleanedData.candidate_name,
+      location: `${cleanedData.location_city}, ${cleanedData.location_state}, ${cleanedData.location_country}`,
+      hasLinkedIn: !!cleanedData.linkedin_url,
+      hasSummary: !!cleanedData.profile_summary,
+      confidence: parsedResume.confidence
+    });
 
     return new Response(JSON.stringify({ 
       success: true, 
@@ -889,7 +1005,8 @@ Return structured JSON only.`
         urlsFound: parsedResume.urls.length,
         sectionsDetected: Object.keys(parsedResume.sections).length,
         contactFound: !!parsedResume.sections.contact,
-        experienceEntries: parsedResume.sections.experience?.length || 0
+        experienceEntries: parsedResume.sections.experience?.length || 0,
+        confidence: parsedResume.confidence
       }
     }), {
       status: 200,
