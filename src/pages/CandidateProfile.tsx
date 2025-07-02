@@ -145,12 +145,12 @@ export default function CandidateProfile() {
 
             {/* Main Content */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-lg">
-              {/* Left Column - Header Card, Independent Tab Bar, and Independent Cards */}
+              {/* Left Column - Header Card with Tab Bar and Independent Cards */}
               <div className="lg:col-span-2 space-y-md">
-                {/* Header Card */}
+                {/* Header Card with Tab Bar */}
                 <Card className={cn("border-border", "!bg-white")}>
                   <CardContent className="p-layout-md">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between mb-6">
                       <div>
                         <h1 className="text-2xl font-semibold text-text-primary mb-2">{candidate.candidate_name}</h1>
                         {job && (
@@ -178,34 +178,34 @@ export default function CandidateProfile() {
                         </Button>
                       )}
                     </div>
+
+                    {/* Tab Bar inside Header Card */}
+                    <div className="w-full bg-surface-primary rounded-xl p-1 border border-border shadow-sm">
+                      <div className="inline-flex h-auto items-center justify-start rounded-xl bg-transparent p-0 text-muted-foreground w-full">
+                        <button 
+                          onClick={() => setActiveTab('overview')}
+                          className={cn(
+                            "inline-flex items-center justify-center whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-muted/50",
+                            activeTab === 'overview' && "bg-accent text-accent-foreground shadow-sm"
+                          )}
+                        >
+                          <FileText className="h-4 w-4 mr-2" />
+                          Overview
+                        </button>
+                        <button 
+                          onClick={() => setActiveTab('notes')}
+                          className={cn(
+                            "inline-flex items-center justify-center whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-muted/50",
+                            activeTab === 'notes' && "bg-accent text-accent-foreground shadow-sm"
+                          )}
+                        >
+                          <MessageSquare className="h-4 w-4 mr-2" />
+                          Notes
+                        </button>
+                      </div>
+                    </div>
                   </CardContent>
                 </Card>
-
-                {/* Independent Tab Bar */}
-                <div className="w-full bg-surface-primary rounded-xl p-1 border border-border shadow-sm">
-                  <div className="inline-flex h-auto items-center justify-start rounded-xl bg-transparent p-0 text-muted-foreground w-full">
-                    <button 
-                      onClick={() => setActiveTab('overview')}
-                      className={cn(
-                        "inline-flex items-center justify-center whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-muted/50",
-                        activeTab === 'overview' && "bg-accent text-accent-foreground shadow-sm"
-                      )}
-                    >
-                      <FileText className="h-4 w-4 mr-2" />
-                      Overview
-                    </button>
-                    <button 
-                      onClick={() => setActiveTab('notes')}
-                      className={cn(
-                        "inline-flex items-center justify-center whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-muted/50",
-                        activeTab === 'notes' && "bg-accent text-accent-foreground shadow-sm"
-                      )}
-                    >
-                      <MessageSquare className="h-4 w-4 mr-2" />
-                      Notes
-                    </button>
-                  </div>
-                </div>
 
                 {/* Independent Candidate Information Card - Overview Tab */}
                 {activeTab === 'overview' && (
