@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
@@ -145,7 +146,7 @@ export default function CandidateProfile() {
 
             {/* Main Content */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-lg">
-              {/* Left Column - Header Card and Tabbed Content */}
+              {/* Left Column - Header Card, Independent Tab Bar, and Tabbed Content */}
               <div className="lg:col-span-2 space-y-md">
                 {/* Header Card */}
                 <Card className={cn("border-border", "!bg-white")}>
