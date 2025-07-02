@@ -1,7 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-// PDF text extraction using pdf2text
+// PDF text extraction using basic PDF structure parsing
 async function extractTextFromPDF(base64Content: string): Promise<string> {
   try {
     // Convert base64 to Uint8Array
@@ -11,12 +11,51 @@ async function extractTextFromPDF(base64Content: string): Promise<string> {
       bytes[i] = binaryString.charCodeAt(i);
     }
 
-    // Use pdf-parse compatible extraction
-    const response = await fetch('https://deno.land/x/pdf2text@1.0.1/mod.ts');
-    const { extractText } = await import('https://deno.land/x/pdf2text@1.0.1/mod.ts');
+    // Convert to string and extract text between PDF text operators
+    const pdfString = new TextDecoder('latin1').decode(bytes);
     
-    const text = await extractText(bytes);
-    return text || '';
+    // Extract text from PDF streams using basic PDF text extraction
+    const textMatches = [];
+    
+    // Look for text between BT (begin text) and ET (end text) operators
+    const textBlocks = pdfString.match(/BT\s+.*?ET/gs) || [];
+    
+    for (const block of textBlocks) {
+      // Extract text from Tj operators: (text)Tj or (text)TJ
+      const tjMatches = block.match(/\(((?:[^()\\]|\\.|\\[0-7]{1,3})*)\)\s*T[jJ]/g) || [];
+      for (const match of tjMatches) {
+        const text = match.match(/\(((?:[^()\\]|\\.|\\[0-7]{1,3})*)\)/)?.[1];
+        if (text) {
+          // Basic cleanup of PDF escape sequences
+          const cleanText = text
+            .replace(/\\n/g, '\n')
+            .replace(/\\r/g, '\r')
+            .replace(/\\t/g, '\t')
+            .replace(/\\(.)/g, '$1');
+          textMatches.push(cleanText);
+        }
+      }
+      
+      // Also look for show text operators with arrays: [(text1)(text2)]TJ
+      const arrayMatches = block.match(/\[([^\]]*)\]\s*TJ/g) || [];
+      for (const match of arrayMatches) {
+        const arrayContent = match.match(/\[([^\]]*)\]/)?.[1];
+        if (arrayContent) {
+          const textInArray = arrayContent.match(/\(([^)]*)\)/g) || [];
+          for (const textMatch of textInArray) {
+            const text = textMatch.match(/\(([^)]*)\)/)?.[1];
+            if (text) {
+              textMatches.push(text);
+            }
+          }
+        }
+      }
+    }
+    
+    const extractedText = textMatches.join(' ').trim();
+    console.log(`PDF extraction: Found ${textBlocks.length} text blocks, extracted ${extractedText.length} characters`);
+    
+    return extractedText;
   } catch (error) {
     console.error('PDF extraction error:', error);
     return '';
@@ -44,13 +83,41 @@ async function extractTextFromDOCX(base64Content: string): Promise<string> {
       throw new Error('Could not find document.xml in DOCX file');
     }
 
-    // Extract text from XML using regex (basic text extraction)
-    const textMatches = documentXML.match(/<w:t[^>]*>([^<]*)<\/w:t>/g) || [];
-    const extractedText = textMatches
-      .map(match => match.replace(/<w:t[^>]*>([^<]*)<\/w:t>/, '$1'))
-      .join(' ')
-      .trim();
-
+    // Enhanced text extraction from XML - extract from paragraphs, tables, and text runs
+    const textParts = [];
+    
+    // Extract from paragraphs (w:p elements) to preserve document structure
+    const paragraphs = documentXML.match(/<w:p[^>]*>.*?<\/w:p>/gs) || [];
+    
+    for (const paragraph of paragraphs) {
+      // Extract all text runs (w:t) within each paragraph
+      const textRuns = paragraph.match(/<w:t[^>]*>([^<]*)<\/w:t>/g) || [];
+      const paragraphText = textRuns
+        .map(run => run.replace(/<w:t[^>]*>([^<]*)<\/w:t>/, '$1'))
+        .join('');
+      
+      if (paragraphText.trim()) {
+        textParts.push(paragraphText.trim());
+      }
+    }
+    
+    // Also extract from tables (w:tbl elements)
+    const tables = documentXML.match(/<w:tbl[^>]*>.*?<\/w:tbl>/gs) || [];
+    for (const table of tables) {
+      const tableCells = table.match(/<w:tc[^>]*>.*?<\/w:tc>/gs) || [];
+      for (const cell of tableCells) {
+        const cellText = (cell.match(/<w:t[^>]*>([^<]*)<\/w:t>/g) || [])
+          .map(run => run.replace(/<w:t[^>]*>([^<]*)<\/w:t>/, '$1'))
+          .join(' ');
+        if (cellText.trim()) {
+          textParts.push(cellText.trim());
+        }
+      }
+    }
+    
+    const extractedText = textParts.join('\n').trim();
+    console.log(`DOCX extraction: Found ${paragraphs.length} paragraphs, ${tables.length} tables, extracted ${extractedText.length} characters`);
+    
     return extractedText || '';
   } catch (error) {
     console.error('DOCX extraction error:', error);
@@ -70,15 +137,31 @@ function extractTextFallback(base64Content: string): string {
   }
 }
 
-// Validate extracted text quality
+// Validate extracted text quality with resume-specific checks
 function validateExtractedText(text: string): boolean {
-  if (!text || text.length < 50) return false;
+  if (!text || text.length < 100) return false;
   
   // Check for reasonable text-to-noise ratio
-  const printableChars = text.replace(/[^\x20-\x7E]/g, '').length;
+  const printableChars = text.replace(/[^\x20-\x7E\n\r\t]/g, '').length;
   const ratio = printableChars / text.length;
   
-  return ratio > 0.7; // At least 70% printable characters
+  if (ratio < 0.6) return false; // At least 60% printable characters
+  
+  // Check for resume-like content (common resume keywords)
+  const resumeKeywords = [
+    'experience', 'education', 'skill', 'work', 'employment', 'job', 
+    'company', 'position', 'role', 'responsibility', 'achievement',
+    'university', 'degree', 'certificate', 'project', 'team',
+    'manage', 'develop', 'lead', 'coordinate', 'implement'
+  ];
+  
+  const lowerText = text.toLowerCase();
+  const keywordCount = resumeKeywords.filter(keyword => 
+    lowerText.includes(keyword)
+  ).length;
+  
+  // Should have at least 3 resume-related keywords
+  return keywordCount >= 3;
 }
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
@@ -129,20 +212,18 @@ serve(async (req) => {
       console.log('Attempting PDF text extraction...');
       extractedText = await extractTextFromPDF(fileContent);
       
-      // Fallback if PDF extraction fails
+      // Log extraction results without binary fallback
       if (!validateExtractedText(extractedText)) {
-        console.log('PDF extraction failed, trying fallback...');
-        extractedText = extractTextFallback(fileContent);
+        console.warn('PDF extraction failed - no readable text found. May be image-based PDF or corrupted.');
       }
     } else if (fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
       // For DOCX files, use proper DOCX text extraction
       console.log('Attempting DOCX text extraction...');
       extractedText = await extractTextFromDOCX(fileContent);
       
-      // Fallback if DOCX extraction fails
+      // Log extraction results without binary fallback
       if (!validateExtractedText(extractedText)) {
-        console.log('DOCX extraction failed, trying fallback...');
-        extractedText = extractTextFallback(fileContent);
+        console.warn('DOCX extraction failed - no readable text found. May be corrupted or password-protected.');
       }
     } else {
       throw new Error(`Unsupported file type: ${fileType}`);
