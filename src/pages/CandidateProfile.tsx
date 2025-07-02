@@ -16,6 +16,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { CandidateComments } from '@/components/candidates/CandidateComments'
 import { CandidateForm } from '@/components/candidates/CandidateForm'
 import { cn } from '@/lib/utils'
+import { CandidateAttachments } from '@/components/candidates/CandidateAttachments'
 
 export default function CandidateProfile() {
   const { jobId, candidateId } = useParams<{ jobId: string; candidateId: string }>()
@@ -309,7 +310,7 @@ export default function CandidateProfile() {
                 </div>
               </div>
 
-              {/* Right Column - Job Info and Quick Actions */}
+              {/* Right Column - Job Info, Attachments, and Quick Actions */}
               <div className="space-y-md">
                 {/* Job Information */}
                 {job && (
@@ -338,6 +339,11 @@ export default function CandidateProfile() {
                       </div>
                     </CardContent>
                   </Card>
+                )}
+
+                {/* Attachments */}
+                {candidate && (
+                  <CandidateAttachments candidateId={candidate.id} />
                 )}
 
                 {/* Quick Actions */}
