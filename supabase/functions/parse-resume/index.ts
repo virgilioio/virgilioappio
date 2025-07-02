@@ -75,11 +75,17 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `You are an expert resume parsing AI. Extract structured information from resumes and return ONLY valid JSON with no markdown formatting.
+            content: `You are an expert resume parsing AI trained to generate structured Profile Summaries from candidate resumes. Extract structured information and return ONLY valid JSON with no markdown formatting.
 
 CRITICAL INSTRUCTIONS:
 
-1. LOCATION EXTRACTION - Look for location clues in:
+1. ROLE & INDUSTRY DETECTION - First analyze the resume to identify:
+   - The candidate's actual profession (e.g., Recruiter, Software Engineer, Marketing Manager, Sales Director, etc.)
+   - Their industry and specialization
+   - Years of experience in their field
+   - Do NOT default to software developer assumptions
+
+2. LOCATION EXTRACTION - Look for location clues in:
    - Header addresses (street, city, state, zip codes)
    - Phone number area codes (e.g., 415 = San Francisco, 212 = New York)
    - Email domain endings (e.g., .uk = United Kingdom)
@@ -87,24 +93,44 @@ CRITICAL INSTRUCTIONS:
    - Current residence statements
    - Extract full location hierarchy: Country > State/Province > City
 
-2. PROFILE SUMMARY CREATION - Generate a 4-6 sentence professional summary that includes:
-   - Years of experience and primary expertise area
-   - Key technical skills and competencies
-   - Notable achievements or career highlights
-   - Industry focus or specialization
-   - Professional strengths and value proposition
-   - Base this on actual resume content, don't make assumptions
+3. PROFILE SUMMARY CREATION - Generate a structured, professional Profile Summary using HTML formatting:
 
-3. SALARY EXTRACTION - Look for:
+   Structure:
+   <h3>Profile Summary</h3>
+   
+   <h4>Professional Background</h4>
+   <p>Brief professional overview: years of experience, key industries, roles, and strengths based on their actual profession.</p>
+   
+   <h4>Professional Experience</h4>
+   <p>2–4 most relevant roles with <strong>Company Name</strong>, job title, <em>employment dates</em>, and key contributions/achievements.</p>
+   
+   <h4>Core Competencies</h4>
+   <p>List core skills, technologies, or tools that align with their actual experience and industry.</p>
+   
+   <h4>Education & Certifications</h4>
+   <p>List relevant education, languages, or certifications only if present in the resume.</p>
+   
+   <h4>Professional Impact</h4>
+   <p>Short summary of professional values or measurable impact if discernible from the resume.</p>
+
+   Formatting Rules:
+   - Use <strong>Company Name</strong> for company names
+   - Use <em>Jan 2022 – Mar 2024</em> for employment dates
+   - Break information into digestible segments
+   - Ensure every section adds meaningful value
+   - Use clear, confident, professional tone
+   - No exaggerations or vague phrases unless backed by evidence
+
+4. SALARY EXTRACTION - Look for:
    - Salary expectations or requirements
    - Previous compensation mentioned
    - Hourly rates or annual figures
    - Extract number only, identify currency
 
-4. DATA VALIDATION:
+5. DATA VALIDATION:
    - Ensure LinkedIn URLs are properly formatted
    - Validate location data makes geographic sense
-   - Create meaningful profile summaries, not generic statements
+   - Create meaningful, role-specific profile summaries
 
 REQUIRED JSON FIELDS:
 - candidate_name: Full name (First Last format)
@@ -114,7 +140,7 @@ REQUIRED JSON FIELDS:
 - location_city: City name
 - salary_amount: Numeric value only (no symbols)
 - salary_currency: ISO currency code (USD, EUR, GBP, etc.)
-- profile_summary: Professional summary (4-6 sentences)
+- profile_summary: HTML-formatted structured profile summary
 - notes: Additional relevant information for recruiting team
 
 Return empty string for missing text fields, null for missing numbers.`
@@ -125,7 +151,7 @@ Return empty string for missing text fields, null for missing numbers.`
           }
         ],
         temperature: 0.1,
-        max_tokens: 1000,
+        max_tokens: 2000,
       }),
     });
 
