@@ -144,64 +144,63 @@ export default function CandidateProfile() {
               </Link>
             </div>
 
-            {/* Main Content */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-lg">
-              {/* Left Column - Header Card with Integrated Tabs */}
-              <div className="lg:col-span-2 space-y-md">
-                {/* Header Card with Tabs */}
-                <Card className={cn("border-border", "!bg-white")}>
-                  <CardContent className="p-layout-md">
-                    <div className="flex items-center justify-between mb-6">
-                      <div>
-                        <h1 className="text-2xl font-semibold text-text-primary mb-2">{candidate.candidate_name}</h1>
-                        {job && (
-                          <p className="text-text-secondary">
-                            Candidate for <span className="font-medium text-text-primary">{job.title}</span>
-                          </p>
-                        )}
-                      </div>
-                      
-                      {candidate.linkedin_url ? (
-                        <Button 
-                          className="gap-sm h-[44px] bg-[#0078c7] text-white hover:bg-[#005a94]"
-                          onClick={() => window.open(candidate.linkedin_url!, '_blank')}
-                        >
-                          <Linkedin className="h-4 w-4" fill="white" />
-                          View LinkedIn
-                        </Button>
-                      ) : (
-                        <Button 
-                          className="gap-sm h-[44px] bg-[#0078c7] text-white hover:bg-[#005a94]"
-                          disabled
-                        >
-                          <Linkedin className="h-4 w-4" fill="white" />
-                          No LinkedIn
-                        </Button>
-                      )}
-                    </div>
+            {/* Header Card - Independent */}
+            <Card className={cn("border-border mb-lg", "!bg-white")}>
+              <CardContent className="p-layout-md">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h1 className="text-2xl font-semibold text-text-primary mb-2">{candidate.candidate_name}</h1>
+                    {job && (
+                      <p className="text-text-secondary">
+                        Candidate for <span className="font-medium text-text-primary">{job.title}</span>
+                      </p>
+                    )}
+                  </div>
+                  
+                  {candidate.linkedin_url ? (
+                    <Button 
+                      className="gap-sm h-[44px] bg-[#0078c7] text-white hover:bg-[#005a94]"
+                      onClick={() => window.open(candidate.linkedin_url!, '_blank')}
+                    >
+                      <Linkedin className="h-4 w-4" fill="white" />
+                      View LinkedIn
+                    </Button>
+                  ) : (
+                    <Button 
+                      className="gap-sm h-[44px] bg-[#0078c7] text-white hover:bg-[#005a94]"
+                      disabled
+                    >
+                      <Linkedin className="h-4 w-4" fill="white" />
+                      No LinkedIn
+                    </Button>
+                  )}
+                </div>
 
-                    {/* Integrated Tabs */}
-                    <Tabs defaultValue="overview" className="w-full">
-                      <TabsList className="inline-flex h-auto items-center justify-start rounded-xl bg-muted p-1 text-muted-foreground w-full">
-                        <TabsTrigger 
-                          value="overview" 
-                          className="inline-flex items-center justify-center whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
-                        >
-                          <FileText className="h-4 w-4 mr-2" />
-                          Overview
-                        </TabsTrigger>
-                        <TabsTrigger 
-                          value="notes"
-                          className="inline-flex items-center justify-center whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
-                        >
-                          <MessageSquare className="h-4 w-4 mr-2" />
-                          Notes
-                        </TabsTrigger>
-                      </TabsList>
+                {/* Tabs */}
+                <Tabs defaultValue="overview" className="w-full">
+                  <TabsList className="inline-flex h-auto items-center justify-start rounded-xl bg-muted p-1 text-muted-foreground w-full">
+                    <TabsTrigger 
+                      value="overview" 
+                      className="inline-flex items-center justify-center whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
+                    >
+                      <FileText className="h-4 w-4 mr-2" />
+                      Overview
+                    </TabsTrigger>
+                    <TabsTrigger 
+                      value="notes"
+                      className="inline-flex items-center justify-center whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
+                    >
+                      <MessageSquare className="h-4 w-4 mr-2" />
+                      Notes
+                    </TabsTrigger>
+                  </TabsList>
 
-                      {/* Tab Content */}
-                      <TabsContent value="overview" className="space-y-md mt-md">
-                        {/* Candidate Information Card */}
+                  {/* Tab Content */}
+                  <TabsContent value="overview" className="space-y-md mt-md">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-lg">
+                      {/* Left Column - Candidate Information and Profile Summary */}
+                      <div className="lg:col-span-2 space-y-md">
+                        {/* Candidate Information Card - Independent */}
                         <Card className="bg-surface-primary border-border">
                           <CardHeader>
                             <CardTitle className="text-lg font-medium text-text-primary">Candidate Information</CardTitle>
@@ -255,7 +254,7 @@ export default function CandidateProfile() {
                           </CardContent>
                         </Card>
 
-                        {/* Profile Summary Card */}
+                        {/* Profile Summary Card - Independent */}
                         {candidate.profile_summary && (
                           <Card className="bg-surface-primary border-border">
                             <CardHeader>
@@ -271,9 +270,74 @@ export default function CandidateProfile() {
                             </CardContent>
                           </Card>
                         )}
-                      </TabsContent>
+                      </div>
 
-                      <TabsContent value="notes" className="space-y-md mt-md">
+                      {/* Right Column - Job Info, URLs, Attachments, and Quick Actions */}
+                      <div className="space-y-md">
+                        {/* Job Information */}
+                        {job && (
+                          <Card className="bg-surface-primary border-border">
+                            <CardHeader>
+                              <CardTitle className="text-text-primary">Job Information</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-sm">
+                              <div>
+                                <p className="text-sm font-medium text-text-secondary">Position</p>
+                                <p className="text-text-primary">{job.title}</p>
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium text-text-secondary">Department</p>
+                                <p className="text-text-primary">{job.department || 'Not specified'}</p>
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium text-text-secondary">Location</p>
+                                <p className="text-text-primary">{job.location || 'Not specified'}</p>
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium text-text-secondary">Status</p>
+                                <Badge variant={job.status === 'active' ? 'default' : 'secondary'}>
+                                  {job.status}
+                                </Badge>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        )}
+
+                        {/* URLs */}
+                        {candidate && (
+                          <CandidateUrls candidateId={candidate.id} />
+                        )}
+
+                        {/* Attachments */}
+                        {candidate && (
+                          <CandidateAttachments candidateId={candidate.id} />
+                        )}
+
+                        {/* Quick Actions */}
+                        <PermissionGate permission="canManageCandidates">
+                          <Card className="bg-surface-primary border-border">
+                            <CardHeader>
+                              <CardTitle className="flex items-center gap-2 text-text-primary">
+                                <Zap className="h-5 w-5" />
+                                Quick Actions
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                              <Button onClick={handleEdit} className="w-full gap-sm h-[44px]">
+                                <Edit className="h-4 w-4" />
+                                Edit Candidate
+                              </Button>
+                            </CardContent>
+                          </Card>
+                        </PermissionGate>
+                      </div>
+                    </div>
+                  </TabsContent>
+
+                  <TabsContent value="notes" className="space-y-md mt-md">
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-lg">
+                      {/* Left Column - Notes Content */}
+                      <div className="lg:col-span-2 space-y-md">
                         {/* Internal Notes Card */}
                         {candidate.notes && (
                           <Card className="bg-surface-primary border-border">
@@ -304,72 +368,72 @@ export default function CandidateProfile() {
                             />
                           </CardContent>
                         </Card>
-                      </TabsContent>
-                    </Tabs>
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Right Column - Job Info, URLs, Attachments, and Quick Actions */}
-              <div className="space-y-md">
-                {/* Job Information */}
-                {job && (
-                  <Card className="bg-surface-primary border-border">
-                    <CardHeader>
-                      <CardTitle className="text-text-primary">Job Information</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-sm">
-                      <div>
-                        <p className="text-sm font-medium text-text-secondary">Position</p>
-                        <p className="text-text-primary">{job.title}</p>
                       </div>
-                      <div>
-                        <p className="text-sm font-medium text-text-secondary">Department</p>
-                        <p className="text-text-primary">{job.department || 'Not specified'}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-text-secondary">Location</p>
-                        <p className="text-text-primary">{job.location || 'Not specified'}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-text-secondary">Status</p>
-                        <Badge variant={job.status === 'active' ? 'default' : 'secondary'}>
-                          {job.status}
-                        </Badge>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
 
-                {/* URLs */}
-                {candidate && (
-                  <CandidateUrls candidateId={candidate.id} />
-                )}
+                      {/* Right Column - Same sidebar content */}
+                      <div className="space-y-md">
+                        {/* Job Information */}
+                        {job && (
+                          <Card className="bg-surface-primary border-border">
+                            <CardHeader>
+                              <CardTitle className="text-text-primary">Job Information</CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-sm">
+                              <div>
+                                <p className="text-sm font-medium text-text-secondary">Position</p>
+                                <p className="text-text-primary">{job.title}</p>
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium text-text-secondary">Department</p>
+                                <p className="text-text-primary">{job.department || 'Not specified'}</p>
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium text-text-secondary">Location</p>
+                                <p className="text-text-primary">{job.location || 'Not specified'}</p>
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium text-text-secondary">Status</p>
+                                <Badge variant={job.status === 'active' ? 'default' : 'secondary'}>
+                                  {job.status}
+                                </Badge>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        )}
 
-                {/* Attachments */}
-                {candidate && (
-                  <CandidateAttachments candidateId={candidate.id} />
-                )}
+                        {/* URLs */}
+                        {candidate && (
+                          <CandidateUrls candidateId={candidate.id} />
+                        )}
 
-                {/* Quick Actions */}
-                <PermissionGate permission="canManageCandidates">
-                  <Card className="bg-surface-primary border-border">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2 text-text-primary">
-                        <Zap className="h-5 w-5" />
-                        Quick Actions
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <Button onClick={handleEdit} className="w-full gap-sm h-[44px]">
-                        <Edit className="h-4 w-4" />
-                        Edit Candidate
-                      </Button>
-                    </CardContent>
-                  </Card>
-                </PermissionGate>
-              </div>
-            </div>
+                        {/* Attachments */}
+                        {candidate && (
+                          <CandidateAttachments candidateId={candidate.id} />
+                        )}
+
+                        {/* Quick Actions */}
+                        <PermissionGate permission="canManageCandidates">
+                          <Card className="bg-surface-primary border-border">
+                            <CardHeader>
+                              <CardTitle className="flex items-center gap-2 text-text-primary">
+                                <Zap className="h-5 w-5" />
+                                Quick Actions
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                              <Button onClick={handleEdit} className="w-full gap-sm h-[44px]">
+                                <Edit className="h-4 w-4" />
+                                Edit Candidate
+                              </Button>
+                            </CardContent>
+                          </Card>
+                        </PermissionGate>
+                      </div>
+                    </div>
+                  </TabsContent>
+                </Tabs>
+              </CardContent>
+            </Card>
 
             {/* Edit Form Modal */}
             {candidate && (
