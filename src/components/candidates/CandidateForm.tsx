@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/AuthContext'
 import { useFormPersistence } from '@/hooks/useFormPersistence'
 import { CandidateComments } from './CandidateComments'
+import { ResumeUpload } from './ResumeUpload'
 import type { Candidate } from '@/hooks/useCandidates'
 
 interface CandidateFormProps {
@@ -196,6 +197,23 @@ export function CandidateForm({
     }
   })
 
+  const handleResumeDataExtracted = (data: any) => {
+    console.log('Resume data extracted:', data)
+    
+    // Update form with extracted data
+    form.setValue('candidate_name', data.candidate_name || '')
+    form.setValue('linkedin_url', data.linkedin_url || '')
+    form.setValue('location_country', data.location_country || '')
+    form.setValue('location_state', data.location_state || '')
+    form.setValue('location_city', data.location_city || '')
+    form.setValue('salary_amount', data.salary_amount?.toString() || '')
+    form.setValue('salary_currency', data.salary_currency || 'USD')
+    
+    // Update rich text editor values
+    setProfileSummary(data.profile_summary || '')
+    setNotes(data.notes || '')
+  }
+
   const handleClose = () => {
     // Don't clear persisted data when closing - let it persist for later use
     onClose()
@@ -213,6 +231,14 @@ export function CandidateForm({
         </DialogHeader>
 
         <div className="space-y-6">
+          {/* Resume Upload - Only show for new candidates */}
+          {!candidate && (
+            <ResumeUpload 
+              onDataExtracted={handleResumeDataExtracted}
+              isLoading={isLoading}
+            />
+          )}
+
           {/* Candidate Form */}
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Basic Information */}
