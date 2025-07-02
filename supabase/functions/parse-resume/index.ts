@@ -773,74 +773,64 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `You are an expert resume parsing AI. Extract ONLY information that is clearly present in the resume text. DO NOT generate generic content. Return ONLY valid JSON with no markdown formatting.
+            content: `You are an expert resume parsing AI. Extract structured candidate data from the resume sections below. Base your extraction ONLY on the provided information - do not infer or generate missing details.
 
-CRITICAL INSTRUCTIONS:
+LOCATION EXTRACTION RULES:
+- Parse locations from various formats: "Mexico City, CDMX", "Austin, TX", "Guadalajara, Jal.", "Toronto, ON, Canada"
+- Extract city, state/province, and country when available
+- Common patterns: "City, State", "City, State, Country", "City, Country"
+- Mexican states: CDMX=Ciudad de México, Jal.=Jalisco, NL=Nuevo León, etc.
+- Look in contact sections, current job locations, or address lines
 
-1. CONSERVATIVE EXTRACTION - Only extract information that is EXPLICITLY stated in the resume:
-   - If information is not clearly present, return empty string or null
-   - DO NOT create generic descriptions or summaries
-   - DO NOT make assumptions about experience or skills not mentioned
+PROFILE SUMMARY RULES:
+- Generate ONLY if substantial work experience is provided
+- Use actual company names, job titles, technologies, and achievements mentioned
+- Include years of experience if calculable from dates
+- Mention specific skills, tools, or industries from the experience section
+- Keep factual - avoid generic phrases unless supported by evidence
+- If no meaningful experience data exists, return null
 
-2. URL EXTRACTION - Look for complete URLs in the text:
-   - LinkedIn URLs: Must be complete URLs starting with https://linkedin.com or www.linkedin.com
-   - GitHub URLs: Must be complete URLs starting with https://github.com
-   - Portfolio URLs: Extract any other professional URLs found
-   - DO NOT construct URLs if they're not explicitly provided
+URL EXTRACTION:
+- LinkedIn: any variation of linkedin.com/in/username (with or without https://)
+- GitHub: github.com/username patterns
+- Portfolio sites: any professional URLs mentioned
 
-3. PROFILE SUMMARY - Create summary ONLY from actual resume content:
-   - Use the person's actual work experience, companies, and roles
-   - Include specific skills, technologies, and achievements mentioned
-   - Use dates and company names from the resume
-   - If insufficient information is available, create a brief summary with available facts
-   - NEVER use generic phrases like "seasoned professional" unless justified by actual experience
-
-4. LOCATION EXTRACTION - Look for explicit location information:
-   - Address headers, contact sections
-   - Current location statements
-   - Work location mentions
-   - Phone area codes as hints only
-
-5. NAME EXTRACTION - Extract the candidate's full name from:
-   - Header sections
-   - Contact information areas
-   - Resume title areas
-
-6. TEXT QUALITY CHECK - Before processing:
-   - If the extracted text appears to be mostly symbols, random characters, or very fragmented
-   - Return empty values rather than guessing
-
-LINKEDIN URL PATTERNS TO LOOK FOR:
-- https://linkedin.com/in/username
-- https://www.linkedin.com/in/username  
-- linkedin.com/in/username
-- www.linkedin.com/in/username
-
-REQUIRED JSON FIELDS:
-- candidate_name: Actual name found in resume or empty string
-- linkedin_url: Complete LinkedIn URL if found or empty string
-- location_country: Country if clearly stated or empty string
-- location_state: State/Province if clearly stated or empty string
-- location_city: City if clearly stated or empty string
-- salary_amount: Numeric salary if mentioned or null
-- salary_currency: Currency code if salary mentioned or "USD"
-- profile_summary: Factual summary from actual resume content or empty string
-- notes: Relevant additional info found or empty string
-
-IMPORTANT: Return empty strings/null if information is not clearly available. Do not generate placeholder content.`
+Return valid JSON only:
+{
+  "candidate_name": "full name from header/contact" | null,
+  "linkedin_url": "complete LinkedIn URL" | null, 
+  "location_country": "country name" | null,
+  "location_state": "state/province name" | null,
+  "location_city": "city name" | null,
+  "salary_amount": numeric_value | null,
+  "salary_currency": "currency_code" | null,
+  "profile_summary": "factual summary based on experience" | null,
+  "notes": "other relevant info" | null
+}`
           },
           {
             role: 'user',
-            content: `Parse this resume and extract the information as JSON:
+            content: `Extract candidate information from this structured resume data:
 
-RESUME TEXT:
-${parsedResume.rawText}
+${parsedResume.sections?.contact ? `CONTACT INFORMATION:
+${parsedResume.sections.contact}
 
-${parsedResume.urls.length > 0 ? `\nFOUND URLs: ${parsedResume.urls.join(', ')}` : ''}
+` : ''}${parsedResume.sections?.summary ? `PROFESSIONAL SUMMARY:
+${parsedResume.sections.summary}
 
-${parsedResume.sections?.contact ? `\nCONTACT SECTION: ${parsedResume.sections.contact}` : ''}
+` : ''}${parsedResume.sections?.experience && parsedResume.sections.experience.length > 0 ? `WORK EXPERIENCE:
+${parsedResume.sections.experience.join('\n\n')}
 
-Please extract the candidate information and return as JSON.`
+` : ''}${parsedResume.sections?.education && parsedResume.sections.education.length > 0 ? `EDUCATION:
+${parsedResume.sections.education.join('\n\n')}
+
+` : ''}${parsedResume.urls.length > 0 ? `FOUND URLs:
+${parsedResume.urls.join(', ')}
+
+` : ''}FULL TEXT:
+${parsedResume.rawText.substring(0, 2000)}${parsedResume.rawText.length > 2000 ? '...' : ''}
+
+Return structured JSON with the candidate information.`
           }
         ],
         temperature: 0.1,
