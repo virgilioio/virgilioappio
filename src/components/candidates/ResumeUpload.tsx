@@ -231,27 +231,23 @@ export function ResumeUpload({ onDataExtracted, className }: ResumeUploadProps) 
                   id="resume-upload"
                   disabled={isProcessing}
                 />
-                <label htmlFor="resume-upload">
-                  <Button 
-                    asChild 
-                    disabled={isProcessing}
-                    className="cursor-pointer"
-                  >
-                    <span>
-                      {isProcessing ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Processing...
-                        </>
-                      ) : (
-                        <>
-                          <Upload className="h-4 w-4 mr-2" />
-                          Choose File
-                        </>
-                      )}
-                    </span>
-                  </Button>
-                </label>
+                <Button 
+                  onClick={() => document.getElementById('resume-upload')?.click()}
+                  disabled={isProcessing}
+                  className="cursor-pointer"
+                >
+                  {isProcessing ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-4 w-4 mr-2" />
+                      Choose File
+                    </>
+                  )}
+                </Button>
                 
                 <p className="text-xs text-gray-500">
                   Supports PDF, DOCX, TXT • Max 10MB
