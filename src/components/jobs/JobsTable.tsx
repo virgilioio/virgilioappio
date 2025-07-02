@@ -187,7 +187,7 @@ export function JobsTable({
 
   if (isLoading) {
     return (
-      <Card className="bg-surface-primary border-border">
+      <Card className="bg-surface-primary">
         <CardHeader>
           <div className="flex gap-4">
             <Skeleton className="h-10 flex-1" />
@@ -204,7 +204,7 @@ export function JobsTable({
   }
 
   return (
-    <Card className="bg-surface-primary border-border">
+    <Card className="bg-surface-primary">
       <CardHeader>
         <div className="flex flex-col lg:flex-row gap-4">
           <div className="relative flex-1">
@@ -303,7 +303,7 @@ export function JobsTable({
       </CardHeader>
       <CardContent>
         {filteredJobs.length === 0 ? (
-          <div className="text-center py-xl bg-surface-secondary rounded-brand border border-border/50">
+          <div className="text-center py-xl bg-surface-secondary rounded-brand">
             <FileText className="h-12 w-12 mx-auto mb-md text-text-secondary opacity-50" />
             <p className="text-md font-medium text-text-primary mb-sm">
               {jobs.length === 0 ? 'No jobs yet' : 'No jobs match your filters'}
@@ -416,7 +416,7 @@ export function JobsTable({
               {/* Mobile Card View */}
               <div className="lg:hidden space-y-sm">
                 {paginatedJobs.map((job) => (
-                  <Card key={job.id} className="bg-background border-border hover:shadow-sm transition-all duration-150">
+                  <Card key={job.id} className="bg-background transition-all duration-150">
                     <CardContent className="p-sm">
                       <div 
                         className="cursor-pointer" 
@@ -505,7 +505,7 @@ export function JobsTable({
               <div className="mt-8 space-y-6">
                 {/* Results Summary Card */}
                 <div className="flex justify-center">
-                  <div className="inline-flex items-center gap-2 px-4 py-2 bg-surface-secondary/50 border border-border/50 rounded-brand text-sm text-text-secondary backdrop-blur-sm">
+                  <div className="inline-flex items-center gap-2 px-4 py-2 bg-surface-secondary/50 rounded-brand text-sm text-text-secondary backdrop-blur-sm">
                     <FileText className="h-4 w-4 opacity-60" />
                     <span className="font-medium">
                       Showing {startIndex + 1}-{Math.min(endIndex, filteredJobs.length)} of {filteredJobs.length} jobs
@@ -515,7 +515,7 @@ export function JobsTable({
                 
                 {/* Enhanced Pagination Navigation */}
                 <div className="flex justify-center">
-                  <div className="inline-flex items-center bg-surface-primary border border-border/80 rounded-brand shadow-sm p-1 gap-1">
+                  <div className="inline-flex items-center bg-surface-primary rounded-brand p-1 gap-1">
                     {/* Previous Button */}
                     <button
                       onClick={() => currentPage > 1 && setCurrentPage(currentPage - 1)}
@@ -578,7 +578,7 @@ export function JobsTable({
 
                 {/* Mobile Simplified Pagination */}
                 <div className="sm:hidden flex justify-center">
-                  <div className="inline-flex items-center gap-4 px-4 py-2 bg-surface-secondary/30 border border-border/50 rounded-brand backdrop-blur-sm">
+                  <div className="inline-flex items-center gap-4 px-4 py-2 bg-surface-secondary/30 rounded-brand backdrop-blur-sm">
                     <button
                       onClick={() => currentPage > 1 && setCurrentPage(currentPage - 1)}
                       disabled={currentPage === 1}
