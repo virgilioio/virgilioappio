@@ -18,30 +18,89 @@ serve(async (req) => {
   }
 
   try {
-    const { fileContent, fileName } = await req.json()
+    console.log('Parse resume function called')
+    
+    if (!openAIApiKey) {
+      console.error('OpenAI API key not found')
+      throw new Error('OpenAI API key not configured')
+    }
+
+    const body = await req.json()
+    const { fileContent, fileName } = body
+    
+    console.log(`Processing resume: ${fileName}`)
+    console.log(`File content type: ${typeof fileContent}`)
+    console.log(`File content length: ${fileContent?.length || 0}`)
     
     if (!fileContent) {
       throw new Error('No file content provided')
     }
 
-    console.log(`Processing resume: ${fileName}`)
+    if (!fileName) {
+      throw new Error('No file name provided')
+    }
 
     // Extract text from different file types
     let resumeText = ''
     
-    if (fileName.toLowerCase().endsWith('.txt')) {
-      // For text files, decode base64
-      resumeText = atob(fileContent.split(',')[1] || fileContent)
-    } else if (fileName.toLowerCase().endsWith('.pdf') || fileName.toLowerCase().endsWith('.docx')) {
-      // For PDF/DOCX, we'll treat the content as extracted text for now
-      // In a production environment, you'd use proper PDF/DOCX parsing libraries
-      resumeText = atob(fileContent.split(',')[1] || fileContent)
-    } else {
-      throw new Error('Unsupported file format. Please upload PDF, DOCX, or TXT files.')
-    }
+    try {
+      if (fileName.toLowerCase().endsWith('.txt')) {
+        // For text files, decode base64 if it's data URL format
+        if (fileContent.includes('data:')) {
+          const base64Data = fileContent.split(',')[1]
+          if (base64Data) {
+            resumeText = atob(base64Data)
+          } else {
+            resumeText = fileContent
+          }
+        } else {
+          // Try to decode as base64 first, if that fails treat as plain text
+          try {
+            resumeText = atob(fileContent)
+          } catch {
+            resumeText = fileContent
+          }
+        }
+      } else if (fileName.toLowerCase().endsWith('.pdf') || fileName.toLowerCase().endsWith('.docx')) {
+        // For PDF/DOCX, we'll treat the content as extracted text for now
+        // In a production environment, you'd use proper PDF/DOCX parsing libraries
+        if (fileContent.includes('data:')) {
+          const base64Data = fileContent.split(',')[1]
+          if (base64Data) {
+            try {
+              resumeText = atob(base64Data)
+            } catch (e) {
+              console.error('Failed to decode base64:', e)
+              throw new Error('Unable to decode file content. Please ensure the file is properly formatted.')
+            }
+          } else {
+            throw new Error('Invalid file format - no base64 data found')
+          }
+        } else {
+          try {
+            resumeText = atob(fileContent)
+          } catch (e) {
+            console.error('Failed to decode file content:', e)
+            throw new Error('Unable to decode file content. Please try uploading a text file instead.')
+          }
+        }
+      } else {
+        throw new Error('Unsupported file format. Please upload PDF, DOCX, or TXT files.')
+      }
 
-    if (!resumeText.trim()) {
-      throw new Error('No text content found in the resume')
+      console.log(`Extracted text preview: ${resumeText.substring(0, 200)}...`)
+      
+      if (!resumeText.trim()) {
+        throw new Error('No text content found in the resume. Please ensure the file contains readable text.')
+      }
+
+      if (resumeText.length < 10) {
+        throw new Error('File appears to be too short or may not contain readable text content.')
+      }
+
+    } catch (error) {
+      console.error('Error processing file:', error)
+      throw new Error(`File processing failed: ${error.message}`)
     }
 
     console.log('Extracted text length:', resumeText.length)
@@ -72,6 +131,8 @@ Rules:
 - Only include LinkedIn URLs that are clearly stated
 - Be conservative - if unsure, return null`
 
+    console.log('Calling OpenAI API...')
+
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -82,7 +143,7 @@ Rules:
         model: 'gpt-4o',
         messages: [
           { role: 'system', content: systemPrompt },
-          { role: 'user', content: `Parse this resume:\n\n${resumeText}` }
+          { role: 'user', content: `Parse this resume:\n\n${resumeText.substring(0, 4000)}` }
         ],
         temperature: 0.1,
         max_tokens: 1000,
@@ -91,14 +152,15 @@ Rules:
 
     if (!response.ok) {
       const errorData = await response.text()
-      console.error('OpenAI API error:', errorData)
-      throw new Error(`OpenAI API error: ${response.status}`)
+      console.error('OpenAI API error:', response.status, errorData)
+      throw new Error(`OpenAI API error: ${response.status} - ${errorData}`)
     }
 
     const aiResponse = await response.json()
     const parsedContent = aiResponse.choices[0]?.message?.content
 
     if (!parsedContent) {
+      console.error('No response from OpenAI')
       throw new Error('No response from AI parser')
     }
 
@@ -110,7 +172,8 @@ Rules:
       extractedData = JSON.parse(parsedContent)
     } catch (e) {
       console.error('Failed to parse AI response as JSON:', parsedContent)
-      throw new Error('AI returned invalid JSON format')
+      console.error('JSON parse error:', e)
+      throw new Error('AI returned invalid JSON format. Please try again.')
     }
 
     // Clean and validate the extracted data
