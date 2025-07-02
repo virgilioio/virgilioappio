@@ -1,8 +1,20 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-// Enhanced PDF text extraction with multiple methods
-async function extractTextFromPDF(base64Content: string): Promise<string> {
+// Parsed resume interface with structured data
+interface ParsedResume {
+  rawText: string;
+  sections?: {
+    contact?: string;
+    summary?: string;
+    experience?: string[];
+    education?: string[];
+  };
+  urls: string[];
+}
+
+// Enhanced PDF text extraction with structure preservation
+async function extractTextFromPDF(base64Content: string): Promise<ParsedResume> {
   try {
     // Convert base64 to Uint8Array
     const binaryString = atob(base64Content);
@@ -13,156 +25,221 @@ async function extractTextFromPDF(base64Content: string): Promise<string> {
 
     console.log(`PDF extraction: Processing ${bytes.length} bytes`);
 
-    // Method 1: Try enhanced manual PDF parsing
-    let extractedText = extractTextFromPDFEnhanced(bytes);
+    // Extract text with structure preservation
+    const result = extractStructuredTextFromPDF(bytes);
     
-    if (extractedText && extractedText.length > 10) {
-      console.log(`PDF extraction: Enhanced method successful, extracted ${extractedText.length} characters`);
-      console.log(`PDF text preview: ${extractedText.substring(0, 200)}...`);
-      return cleanupExtractedText(extractedText);
+    if (result.rawText && result.rawText.length > 50) {
+      console.log(`PDF extraction: Successful, extracted ${result.rawText.length} characters`);
+      console.log(`Found ${result.urls.length} URLs`);
+      console.log(`PDF text preview: ${result.rawText.substring(0, 300)}...`);
+      return result;
     }
 
-    // Method 2: Try simple PDF parsing as fallback
-    console.log('PDF extraction: Trying simple PDF parsing fallback');
-    extractedText = extractTextFromPDFSimple(bytes);
+    // Fallback to basic extraction
+    console.log('PDF extraction: Trying fallback method');
+    const fallbackText = extractBasicTextFromPDF(bytes);
     
-    if (extractedText && extractedText.length > 5) {
-      console.log(`PDF extraction: Simple method successful, extracted ${extractedText.length} characters`);
-      console.log(`PDF text preview: ${extractedText.substring(0, 200)}...`);
-      return cleanupExtractedText(extractedText);
-    }
-
-    // Method 3: Try basic text extraction
-    console.log('PDF extraction: Trying basic text extraction');
-    extractedText = extractBasicText(bytes);
-    
-    if (extractedText && extractedText.length > 3) {
-      console.log(`PDF extraction: Basic method successful, extracted ${extractedText.length} characters`);
-      console.log(`PDF text preview: ${extractedText.substring(0, 200)}...`);
-      return cleanupExtractedText(extractedText);
+    if (fallbackText && fallbackText.length > 20) {
+      console.log(`PDF extraction: Fallback successful, extracted ${fallbackText.length} characters`);
+      return {
+        rawText: cleanupExtractedText(fallbackText),
+        urls: extractURLsFromText(fallbackText),
+      };
     }
 
     console.warn('PDF extraction: All methods failed to extract readable text');
-    return '';
+    return { rawText: '', urls: [] };
   } catch (error) {
     console.error('PDF extraction error:', error);
-    return '';
+    return { rawText: '', urls: [] };
   }
 }
 
-// Enhanced PDF text extraction with multiple extraction techniques
-function extractTextFromPDFEnhanced(bytes: Uint8Array): string {
+// Enhanced PDF text extraction with structure preservation
+function extractStructuredTextFromPDF(bytes: Uint8Array): ParsedResume {
   try {
     const pdfString = new TextDecoder('latin1').decode(bytes);
-    const textParts: string[] = [];
+    const textSegments: string[] = [];
+    const urls: string[] = [];
     
-    // Enhanced pattern matching with better text operators coverage
-    const patterns = [
-      // Text show operators with optional spacing
+    // Enhanced patterns for better structure preservation
+    const textPatterns = [
+      // Text show operators with position tracking
+      /\s*(\d+(?:\.\d+)?\s+\d+(?:\.\d+)?\s+(?:Td|TD))\s*\(([^)]+)\)\s*(?:Tj|TJ|'|")/gi,
+      // Regular text operators
       /\(([^)]+)\)\s*(?:Tj|TJ|'|"|T\*)/gi,
-      // Array text operators
+      // Array text with better structure
       /\[([^\]]+)\]\s*TJ/gi,
-      // Hex encoded text with proper decoding
+      // Hex encoded text
       /<([0-9A-Fa-f\s]+)>\s*(?:Tj|TJ)/gi,
-      // Text blocks with enhanced capture
-      /BT[\s\S]*?\(([^)]+)\)[\s\S]*?ET/gi,
-      // Font and text combined patterns
-      /\/F\d+\s+\d+\s+Tf[\s\S]*?\(([^)]+)\)/gi,
-      // Direct text content without operators
-      /q[\s\S]*?\(([^)]+)\)[\s\S]*?Q/gi,
-      // URL and link annotations
-      /\/URI\s*\(([^)]+)\)/gi,
-      // Annotation content
-      /\/Contents\s*\(([^)]+)\)/gi
+      // Text blocks with positioning
+      /BT\s*([\s\S]*?)\s*ET/gi,
     ];
     
-    for (const pattern of patterns) {
+    // Extract URLs first to preserve them
+    const urlPatterns = [
+      /https?:\/\/[^\s)>\]}"']+/gi,
+      /www\.[^\s)>\]}"']+/gi,
+      /linkedin\.com\/in\/[^\s)>\]}"']+/gi,
+      /github\.com\/[^\s)>\]}"']+/gi,
+      /\/URI\s*\(([^)]+)\)/gi
+    ];
+    
+    for (const urlPattern of urlPatterns) {
+      let match;
+      while ((match = urlPattern.exec(pdfString)) !== null) {
+        let url = match[1] || match[0];
+        if (url.startsWith('(') && url.endsWith(')')) {
+          url = url.slice(1, -1);
+        }
+        url = url.replace(/[()]/g, '').trim();
+        if (url && (url.includes('linkedin') || url.includes('github') || url.startsWith('http'))) {
+          urls.push(url);
+        }
+      }
+    }
+    
+    // Extract text with structure awareness
+    for (const pattern of textPatterns) {
       let match;
       while ((match = pattern.exec(pdfString)) !== null) {
-        let text = match[1];
+        let text = match[match.length - 1]; // Get the text part
         
         if (text) {
           // Handle hex encoded text
-          if (pattern.source.includes('0-9A-Fa-f')) {
+          if (/^[0-9A-Fa-f\s]+$/.test(text)) {
             text = hexToString(text.replace(/\s/g, ''));
           } else {
             // Handle PDF string escapes
             text = decodePDFString(text);
           }
           
-          // Clean and validate text
+          // Preserve structure by detecting line breaks and spacing
           text = text
-            .replace(/\s+/g, ' ')
+            .replace(/\\n/g, '\n')
+            .replace(/\\r/g, '\n')
+            .replace(/\s{2,}/g, ' ')
             .trim();
           
           if (text && text.length > 1 && !/^[\s\x00-\x1F\x7F-\x9F]*$/.test(text)) {
-            textParts.push(text);
+            textSegments.push(text);
           }
         }
       }
     }
     
-    // Extract URLs directly from the raw PDF string
-    const urlPatterns = [
-      /https?:\/\/[^\s)>\]]+/gi,
-      /www\.[^\s)>\]]+/gi,
-      /linkedin\.com\/in\/[^\s)>\]]+/gi,
-      /github\.com\/[^\s)>\]]+/gi
+    // Join segments with proper spacing to preserve document structure
+    const rawText = textSegments
+      .filter(segment => segment.length > 1)
+      .join(' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    
+    // Attempt basic section detection
+    const sections = detectSections(rawText);
+    
+    return {
+      rawText: cleanupExtractedText(rawText),
+      sections,
+      urls: [...new Set(urls)] // Remove duplicates
+    };
+  } catch (error) {
+    console.error('Structured PDF extraction error:', error);
+    return { rawText: '', urls: [] };
+  }
+}
+
+// Detect common resume sections
+function detectSections(text: string): ParsedResume['sections'] {
+  const sections: ParsedResume['sections'] = {};
+  
+  try {
+    // Look for contact information (usually at the top)
+    const contactMatch = text.match(/^(.{0,500}?)(?:EXPERIENCE|EDUCATION|SKILLS|SUMMARY)/i);
+    if (contactMatch) {
+      sections.contact = contactMatch[1].trim();
+    }
+    
+    // Look for summary/objective
+    const summaryMatch = text.match(/(?:SUMMARY|OBJECTIVE|PROFILE)[\s:]*([^]*?)(?:EXPERIENCE|EDUCATION|SKILLS|$)/i);
+    if (summaryMatch) {
+      sections.summary = summaryMatch[1].trim();
+    }
+    
+    // Look for experience sections
+    const experienceMatches = text.match(/(?:EXPERIENCE|EMPLOYMENT|WORK HISTORY)[\s:]*([^]*?)(?:EDUCATION|SKILLS|$)/i);
+    if (experienceMatches) {
+      // Split experience into individual entries
+      sections.experience = experienceMatches[1]
+        .split(/\n\s*\n|\d{4}\s*-|\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b/i)
+        .filter(exp => exp.trim().length > 20)
+        .map(exp => exp.trim());
+    }
+    
+    // Look for education
+    const educationMatch = text.match(/(?:EDUCATION|ACADEMIC)[\s:]*([^]*?)(?:SKILLS|EXPERIENCE|$)/i);
+    if (educationMatch) {
+      sections.education = educationMatch[1]
+        .split(/\n\s*\n|\d{4}\s*-/)
+        .filter(edu => edu.trim().length > 10)
+        .map(edu => edu.trim());
+    }
+  } catch (error) {
+    console.log('Section detection failed:', error);
+  }
+  
+  return sections;
+}
+
+// Fallback PDF extraction using basic text patterns  
+function extractBasicTextFromPDF(bytes: Uint8Array): string {
+  try {
+    const pdfString = new TextDecoder('latin1').decode(bytes);
+    const textParts: string[] = [];
+    
+    // Simple but reliable text extraction patterns
+    const patterns = [
+      /\(([^)]+)\)\s*Tj/g,
+      /\(([^)]+)\)\s*TJ/g,
+      /\(([^)]+)\)\s*'/g,
+      /BT\s+.*?\(([^)]+)\).*?ET/gs
     ];
     
-    for (const urlPattern of urlPatterns) {
-      const urlMatches = pdfString.match(urlPattern);
-      if (urlMatches) {
-        textParts.push(...urlMatches.map(url => url.trim()));
+    for (const pattern of patterns) {
+      let match;
+      while ((match = pattern.exec(pdfString)) !== null) {
+        const text = decodePDFString(match[1]);
+        if (text && text.length > 1 && !/^[\s\x00-\x1F]+$/.test(text)) {
+          textParts.push(text.trim());
+        }
       }
     }
     
-    return cleanupExtractedText(textParts.join(' '));
+    return textParts.join(' ').trim();
   } catch (error) {
-    console.error('Enhanced PDF extraction error:', error);
+    console.error('Basic PDF extraction error:', error);
     return '';
   }
 }
 
-// Basic text extraction for any readable content
-function extractBasicText(bytes: Uint8Array): string {
-  try {
-    // Try multiple encoding approaches
-    const encodings = ['utf-8', 'latin1', 'ascii'];
-    let bestText = '';
-    let maxScore = 0;
-    
-    for (const encoding of encodings) {
-      try {
-        const decoded = new TextDecoder(encoding, { fatal: false }).decode(bytes);
-        // Extract any sequences of printable characters
-        const textMatches = decoded.match(/[\x20-\x7E]{3,}/g);
-        
-        if (textMatches) {
-          const text = textMatches
-            .filter(match => match.length > 2)
-            .join(' ')
-            .replace(/\s+/g, ' ')
-            .trim();
-          
-          // Score based on text quality
-          const score = text.length * (text.match(/[a-zA-Z]/g)?.length || 0) / text.length;
-          
-          if (score > maxScore) {
-            maxScore = score;
-            bestText = text;
-          }
-        }
-      } catch (e) {
-        // Continue with next encoding
-      }
+// Extract URLs from any text
+function extractURLsFromText(text: string): string[] {
+  const urls: string[] = [];
+  const urlPatterns = [
+    /https?:\/\/[^\s)>\]}"']+/gi,
+    /www\.[^\s)>\]}"']+/gi,
+    /linkedin\.com\/in\/[^\s)>\]}"']+/gi,
+    /github\.com\/[^\s)>\]}"']+/gi
+  ];
+  
+  for (const pattern of urlPatterns) {
+    const matches = text.match(pattern);
+    if (matches) {
+      urls.push(...matches.map(url => url.trim()));
     }
-    
-    return bestText;
-  } catch (error) {
-    console.error('Basic text extraction error:', error);
-    return '';
   }
+  
+  return [...new Set(urls)]; // Remove duplicates
 }
 
 // Manual PDF text extraction using improved patterns
@@ -305,7 +382,7 @@ function hasMinimumTextQuality(text: string): boolean {
 }
 
 // Enhanced DOCX text extraction with comprehensive content parsing
-async function extractTextFromDOCX(base64Content: string): Promise<string> {
+async function extractTextFromDOCX(base64Content: string): Promise<ParsedResume> {
   try {
     // Convert base64 to Uint8Array
     const binaryString = atob(base64Content);
@@ -357,10 +434,17 @@ async function extractTextFromDOCX(base64Content: string): Promise<string> {
     const extractedText = allTextParts.join('\n\n').trim();
     console.log(`DOCX extraction: Processed ${headerFiles.length} headers, ${footerFiles.length} footers, extracted ${extractedText.length} characters`);
     
-    return extractedText || '';
+    const urls = extractURLsFromText(extractedText);
+    const sections = detectSections(extractedText);
+    
+    return {
+      rawText: extractedText || '',
+      sections,
+      urls
+    };
   } catch (error) {
     console.error('DOCX extraction error:', error);
-    return '';
+    return { rawText: '', urls: [] };
   }
 }
 
@@ -480,15 +564,70 @@ function extractTextFromDrawing(drawing: string): string {
 }
 
 // Fallback text extraction for plain text or unknown formats
-function extractTextFallback(base64Content: string): string {
+function extractTextFallback(base64Content: string): ParsedResume {
   try {
-    return new TextDecoder().decode(
+    const rawText = new TextDecoder().decode(
       Uint8Array.from(atob(base64Content), c => c.charCodeAt(0))
     );
+    
+    return {
+      rawText,
+      urls: extractURLsFromText(rawText),
+      sections: detectSections(rawText)
+    };
   } catch (error) {
     console.error('Fallback extraction error:', error);
-    return '';
+    return { rawText: '', urls: [] };
   }
+}
+
+// Pre-AI validation for resume text quality
+function validateResumeQuality(parsedResume: ParsedResume): { isValid: boolean; error?: string } {
+  const { rawText, urls } = parsedResume;
+  
+  // Rule 1: Minimum text length
+  if (rawText.length < 1000) {
+    return {
+      isValid: false,
+      error: "We couldn't extract enough information from this resume. Please upload a cleaner file or complete the fields manually."
+    };
+  }
+  
+  // Rule 2: Must include resume keywords
+  const requiredKeywords = ['experience', 'skills', 'education', 'contact', 'summary', 'work', 'job', 'position'];
+  const foundKeywords = requiredKeywords.filter(keyword => 
+    rawText.toLowerCase().includes(keyword)
+  );
+  
+  if (foundKeywords.length < 2) {
+    return {
+      isValid: false,
+      error: "This doesn't appear to be a resume file. Please upload a resume document or complete the fields manually."
+    };
+  }
+  
+  // Rule 3: Must contain contact information (email or LinkedIn)
+  const hasEmail = /@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/.test(rawText);
+  const hasLinkedIn = urls.some(url => url.toLowerCase().includes('linkedin')) || 
+                     rawText.toLowerCase().includes('linkedin');
+  
+  if (!hasEmail && !hasLinkedIn) {
+    return {
+      isValid: false,
+      error: "We couldn't find contact information in this resume. Please check the file quality or enter information manually."
+    };
+  }
+  
+  // Rule 4: Must have paragraph structure
+  const paragraphs = rawText.split(/\n\s*\n/).filter(p => p.trim().length > 20);
+  if (paragraphs.length < 2) {
+    return {
+      isValid: false,
+      error: "This file doesn't appear to have a proper resume structure. Please try a different format or enter information manually."
+    };
+  }
+  
+  return { isValid: true };
 }
 
 // Enhanced text quality validation for resume content
@@ -569,51 +708,57 @@ serve(async (req) => {
 
     console.log(`Processing resume: ${fileName} (${fileType})`);
 
-    // Extract text based on file type using proper parsing
-    let extractedText = '';
+    // Extract structured text based on file type
+    let parsedResume: ParsedResume;
     
-    if (fileType === 'text/plain') {
-      // For plain text files, decode base64
-      extractedText = extractTextFallback(fileContent);
-    } else if (fileType === 'application/pdf') {
-      // For PDF files, use proper PDF text extraction
-      console.log('Attempting PDF text extraction...');
-      extractedText = await extractTextFromPDF(fileContent);
-      
-      // Log extraction results without binary fallback
-      if (!validateExtractedText(extractedText)) {
-        console.warn('PDF extraction failed - no readable text found. May be image-based PDF or corrupted.');
+    try {
+      if (fileType === 'text/plain') {
+        console.log('Processing plain text file...');
+        parsedResume = extractTextFallback(fileContent);
+      } else if (fileType === 'application/pdf') {
+        console.log('Attempting PDF text extraction...');
+        parsedResume = await extractTextFromPDF(fileContent);
+      } else if (fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+        console.log('Attempting DOCX text extraction...');
+        parsedResume = await extractTextFromDOCX(fileContent);
+      } else {
+        throw new Error(`Unsupported file type: ${fileType}`);
       }
-    } else if (fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
-      // For DOCX files, use proper DOCX text extraction
-      console.log('Attempting DOCX text extraction...');
-      extractedText = await extractTextFromDOCX(fileContent);
-      
-      // Log extraction results without binary fallback
-      if (!validateExtractedText(extractedText)) {
-        console.warn('DOCX extraction failed - no readable text found. May be corrupted or password-protected.');
-      }
-    } else {
-      throw new Error(`Unsupported file type: ${fileType}`);
+    } catch (extractionError) {
+      console.error('File extraction failed:', extractionError);
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: "This file could not be processed. Please try another format or complete the fields manually."
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
-    // Final validation
-    if (!validateExtractedText(extractedText)) {
-      console.warn(`Low quality text extraction for ${fileName}. Text length: ${extractedText.length}`);
-      console.warn('First 200 chars:', extractedText.substring(0, 200));
+    // Pre-AI validation
+    const validation = validateResumeQuality(parsedResume);
+    if (!validation.isValid) {
+      console.warn(`Resume validation failed for ${fileName}: ${validation.error}`);
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: validation.error
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
-    console.log(`Extracted text length: ${extractedText.length} characters`);
-    console.log('Text quality check passed:', validateExtractedText(extractedText));
+    console.log(`Extracted text length: ${parsedResume.rawText.length} characters`);
+    console.log(`Found ${parsedResume.urls.length} URLs: ${parsedResume.urls.join(', ')}`);
+    console.log('Resume validation passed - proceeding to AI parsing');
     
-    // Check if extracted text contains resume-like content
-    const hasValidResumeContent = hasResumeContent(extractedText);
-    console.log('Resume content validation:', hasValidResumeContent);
-    
-    // Log the actual text being sent to OpenAI for debugging
-    console.log('Text being sent to OpenAI (first 500 chars):', extractedText.substring(0, 500));
-    if (extractedText.length > 500) {
-      console.log('...and last 500 chars:', extractedText.substring(extractedText.length - 500));
+    // Log structured data being sent to OpenAI
+    console.log('Text being sent to OpenAI (first 500 chars):', parsedResume.rawText.substring(0, 500));
+    if (parsedResume.rawText.length > 500) {
+      console.log('...and last 500 chars:', parsedResume.rawText.substring(parsedResume.rawText.length - 500));
+    }
+    if (parsedResume.sections?.contact) {
+      console.log('Contact section preview:', parsedResume.sections.contact.substring(0, 200));
     }
 
     // Use OpenAI to parse the resume
@@ -686,7 +831,16 @@ IMPORTANT: Return empty strings/null if information is not clearly available. Do
           },
           {
             role: 'user',
-            content: `Parse this resume and extract the information as JSON:\n\n${extractedText}`
+            content: `Parse this resume and extract the information as JSON:
+
+RESUME TEXT:
+${parsedResume.rawText}
+
+${parsedResume.urls.length > 0 ? `\nFOUND URLs: ${parsedResume.urls.join(', ')}` : ''}
+
+${parsedResume.sections?.contact ? `\nCONTACT SECTION: ${parsedResume.sections.contact}` : ''}
+
+Please extract the candidate information and return as JSON.`
           }
         ],
         temperature: 0.1,
