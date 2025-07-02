@@ -645,12 +645,15 @@ function calculateConfidence(parsedResume: ParsedResume): ParsedResume['confiden
   };
 }
 
-// Enhanced validation
+// Enhanced validation with LinkedIn support
 function validateResumeQuality(parsedResume: ParsedResume, fileName: string): { isValid: boolean; error?: string; details?: any } {
   const { rawText, sections, confidence } = parsedResume;
   
   console.log(`Validating resume quality for ${fileName}`);
   console.log(`Text length: ${rawText.length}, Overall confidence: ${confidence.overall}`);
+  
+  // Check if this appears to be a LinkedIn resume
+  const isLinkedInResume = /linkedin/i.test(rawText) || /linkedin/i.test(fileName);
   
   const details = {
     textLength: rawText.length,
@@ -660,11 +663,13 @@ function validateResumeQuality(parsedResume: ParsedResume, fileName: string): { 
     hasLocation: !!sections.contact?.location,
     hasExperience: !!(sections.experience?.length),
     confidence: confidence,
-    textPreview: rawText.substring(0, 200)
+    textPreview: rawText.substring(0, 200),
+    isLinkedInResume: isLinkedInResume,
+    detectedKeywords: []
   };
   
   // Enhanced validation criteria
-  if (rawText.length < 100) {
+  if (rawText.length < 50) {
     return {
       isValid: false,
       error: "File appears to be empty or corrupted. Please try a different file.",
@@ -673,7 +678,7 @@ function validateResumeQuality(parsedResume: ParsedResume, fileName: string): { 
   }
   
   const words = rawText.split(/\s+/).filter(word => word.length > 1);
-  if (words.length < 30) {
+  if (words.length < 15) {
     return {
       isValid: false,
       error: "This file doesn't contain enough readable text. Please try a different file format.",
@@ -681,18 +686,168 @@ function validateResumeQuality(parsedResume: ParsedResume, fileName: string): { 
     };
   }
   
-  // Check for basic resume indicators
-  const hasResumeIndicators = /\b(experience|education|skills|work|job|employment|university|college|degree)\b/i.test(rawText);
-  if (!hasResumeIndicators) {
+  // Progressive validation with enhanced keyword detection
+  const resumeValidation = validateResumeContent(rawText, isLinkedInResume);
+  details.detectedKeywords = resumeValidation.detectedKeywords;
+  
+  if (!resumeValidation.isValid) {
+    // For LinkedIn resumes, try more relaxed validation
+    if (isLinkedInResume) {
+      const relaxedValidation = validateResumeContentRelaxed(rawText);
+      if (relaxedValidation.isValid) {
+        console.log(`✅ LinkedIn resume passed relaxed validation`);
+        return { isValid: true, details: { ...details, validationType: 'relaxed', detectedKeywords: relaxedValidation.detectedKeywords } };
+      }
+    }
+    
     return {
       isValid: false,
-      error: "This file doesn't appear to be a resume. Please upload a resume file.",
-      details
+      error: resumeValidation.error,
+      details: { ...details, failureType: resumeValidation.failureType }
     };
   }
   
-  console.log(`✅ Validation passed: ${words.length} words, confidence: ${confidence.overall}`);
-  return { isValid: true, details };
+  console.log(`✅ Validation passed: ${words.length} words, confidence: ${confidence.overall}, keywords found: ${resumeValidation.detectedKeywords.length}`);
+  return { isValid: true, details: { ...details, validationType: 'standard' } };
+}
+
+// Enhanced resume content validation with comprehensive keyword detection
+function validateResumeContent(text: string, isLinkedInResume: boolean): { isValid: boolean; error?: string; failureType?: string; detectedKeywords: string[] } {
+  const detectedKeywords: string[] = [];
+  
+  // Comprehensive resume indicators - English and Spanish
+  const resumeKeywords = [
+    // Professional sections - English
+    'experience', 'education', 'skills', 'work', 'job', 'employment', 
+    'university', 'college', 'degree', 'professional', 'career', 
+    'background', 'summary', 'profile', 'objective', 'qualifications',
+    'achievements', 'accomplishments', 'responsibilities', 'projects',
+    'certifications', 'awards', 'volunteer', 'languages', 'interests',
+    
+    // Professional sections - Spanish
+    'experiencia', 'educación', 'educacion', 'habilidades', 'trabajo', 
+    'empleo', 'universidad', 'colegio', 'titulo', 'grado', 'profesional',
+    'carrera', 'antecedentes', 'resumen', 'perfil', 'objetivo', 
+    'cualificaciones', 'logros', 'responsabilidades', 'proyectos',
+    'certificaciones', 'premios', 'voluntariado', 'idiomas', 'intereses',
+    
+    // LinkedIn-specific terms
+    'linkedin', 'resume', 'curriculum', 'cv', 'vitae',
+    
+    // Job titles and roles
+    'manager', 'engineer', 'developer', 'analyst', 'coordinator', 
+    'specialist', 'director', 'lead', 'senior', 'junior', 'intern',
+    'consultant', 'administrator', 'supervisor', 'executive',
+    
+    // Company and work terms
+    'company', 'corporation', 'organization', 'team', 'department',
+    'position', 'role', 'title', 'employer', 'workplace',
+    
+    // Time and duration indicators
+    'years', 'months', 'present', 'current', 'desde', 'hasta', 'actual',
+    
+    // Education terms
+    'bachelor', 'master', 'phd', 'doctorate', 'certificate', 'diploma',
+    'school', 'institute', 'academy', 'licenciatura', 'maestría', 'doctorado'
+  ];
+  
+  const lowerText = text.toLowerCase();
+  
+  // Check for keyword matches
+  for (const keyword of resumeKeywords) {
+    const regex = new RegExp(`\\b${keyword}\\b`, 'i');
+    if (regex.test(text)) {
+      detectedKeywords.push(keyword);
+    }
+  }
+  
+  // For LinkedIn resumes, be more lenient
+  const minKeywords = isLinkedInResume ? 2 : 3;
+  
+  if (detectedKeywords.length >= minKeywords) {
+    return { isValid: true, detectedKeywords };
+  }
+  
+  // Check for date patterns that indicate work history
+  const datePatterns = [
+    /\b\d{4}\s*[-–]\s*\d{4}\b/g,           // 2020-2023
+    /\b\d{4}\s*[-–]\s*present\b/gi,       // 2020-present
+    /\b\d{4}\s*[-–]\s*current\b/gi,       // 2020-current
+    /\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\s+\d{4}/gi, // Jan 2020
+    /\b(enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)\s+\d{4}/gi // Spanish months
+  ];
+  
+  let dateMatches = 0;
+  for (const pattern of datePatterns) {
+    const matches = text.match(pattern);
+    if (matches) {
+      dateMatches += matches.length;
+    }
+  }
+  
+  if (dateMatches >= 2) {
+    detectedKeywords.push('date_patterns');
+    return { isValid: true, detectedKeywords };
+  }
+  
+  // Check for email patterns (contact info)
+  if (/@/.test(text)) {
+    detectedKeywords.push('email');
+  }
+  
+  // Check for phone patterns
+  if (/\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/.test(text) || /\+\d{1,3}/.test(text)) {
+    detectedKeywords.push('phone');
+  }
+  
+  // If we have contact info and some keywords, it might be a resume
+  if (detectedKeywords.length >= 1 && (detectedKeywords.includes('email') || detectedKeywords.includes('phone'))) {
+    return { isValid: true, detectedKeywords };
+  }
+  
+  return {
+    isValid: false,
+    error: `This file doesn't appear to be a resume. Found ${detectedKeywords.length} resume indicators (need at least ${minKeywords}).`,
+    failureType: 'insufficient_keywords',
+    detectedKeywords
+  };
+}
+
+// Relaxed validation for LinkedIn resumes with parsing issues
+function validateResumeContentRelaxed(text: string): { isValid: boolean; detectedKeywords: string[] } {
+  const detectedKeywords: string[] = [];
+  const lowerText = text.toLowerCase();
+  
+  // Very basic indicators that this could be a resume
+  const basicIndicators = [
+    'email', 'phone', 'linkedin', 'experience', 'education', 'skills',
+    'work', 'job', '@', '.com', 'university', 'college', 'company',
+    'manager', 'engineer', 'developer', 'analyst', 'years', 'months'
+  ];
+  
+  for (const indicator of basicIndicators) {
+    if (lowerText.includes(indicator.toLowerCase())) {
+      detectedKeywords.push(indicator);
+    }
+  }
+  
+  // Check for patterns that look like structured data
+  const hasStructuredData = (
+    /@/.test(text) || // email
+    /\b\d{4}\b/.test(text) || // years
+    /\b[A-Z][a-z]+\s+[A-Z][a-z]+\b/.test(text) || // proper names
+    /\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b/.test(text) // phone numbers
+  );
+  
+  if (hasStructuredData) {
+    detectedKeywords.push('structured_data');
+  }
+  
+  // If we have at least 2 indicators, consider it a resume
+  return {
+    isValid: detectedKeywords.length >= 2,
+    detectedKeywords
+  };
 }
 
 serve(async (req) => {
