@@ -89,10 +89,41 @@ export function ResumeUpload({ onDataExtracted, isLoading = false }: ResumeUploa
           }
 
           if (!data.success) {
-            throw new Error(data.error || 'Failed to parse resume')
+            console.error('Resume parsing failed:', data.error);
+            console.log('Error details:', data.details);
+            setUploadStatus('error')
+            setErrorReason(data.error || 'Processing failed')
+            
+            // Show detailed error message based on the type of failure
+            let errorTitle = "Resume parsing failed";
+            let errorDescription = data.error || "Please try again or fill the form manually.";
+            
+            if (data.details) {
+              console.log('Validation details:', data.details);
+              
+              // Provide more specific guidance based on the validation failure
+              if (data.details.textLength < 200) {
+                errorTitle = "File appears empty or corrupted";
+                errorDescription = "We couldn't extract enough text from this file. Please try a different file format.";
+              } else if (data.details.keywordCount === 0 && !data.details.contactInfo?.hasPersonalInfo) {
+                errorTitle = "This doesn't appear to be a resume";
+                errorDescription = "We couldn't find resume-related content. Please upload a resume document.";
+              } else if (data.details.wordCount < 50) {
+                errorTitle = "File content is too short";
+                errorDescription = "The file doesn't contain enough readable text. Please try a different format.";
+              }
+            }
+            
+            toast({
+              title: errorTitle,
+              description: errorDescription,
+              variant: "destructive"
+            })
+            return;
           }
 
           console.log('Resume parsed successfully:', data.data)
+          console.log('Debug info:', data.debug);
           
           // Check if we actually got meaningful data
           const hasData = data.data && (
@@ -145,9 +176,32 @@ export function ResumeUpload({ onDataExtracted, isLoading = false }: ResumeUploa
           console.error('Resume parsing error:', error)
           setUploadStatus('error')
           setErrorReason(error instanceof Error ? error.message : 'Processing failed')
+          
+          // Provide helpful error messages for different types of failures
+          let errorTitle = "Failed to process resume";
+          let errorDescription = "Please try again or fill the form manually.";
+          
+          if (error instanceof Error) {
+            if (error.message.includes('timeout') || error.message.includes('timed out')) {
+              errorTitle = "Processing timed out";
+              errorDescription = "The file took too long to process. Please try a shorter resume or different format.";
+            } else if (error.message.includes('file type') || error.message.includes('format')) {
+              errorTitle = "Unsupported file format";
+              errorDescription = "Please upload a PDF, DOCX, or TXT file.";
+            } else if (error.message.includes('size') || error.message.includes('large')) {
+              errorTitle = "File too large";
+              errorDescription = "Please upload a file smaller than 5MB.";
+            } else if (error.message.includes('network') || error.message.includes('fetch')) {
+              errorTitle = "Network error";
+              errorDescription = "Please check your connection and try again.";
+            } else {
+              errorDescription = error.message;
+            }
+          }
+          
           toast({
-            title: "Failed to process resume",
-            description: error instanceof Error ? error.message : "Please try again or fill the form manually.",
+            title: errorTitle,
+            description: errorDescription,
             variant: "destructive"
           })
         } finally {
@@ -205,13 +259,13 @@ export function ResumeUpload({ onDataExtracted, isLoading = false }: ResumeUploa
   const getStatusMessage = () => {
     switch (uploadStatus) {
       case 'processing':
-        return 'Extracting resume details... This may take a few seconds.'
+        return 'Extracting resume details... This may take up to 30 seconds.'
       case 'success':
         return `Successfully processed ${uploadedFile?.name}`
       case 'error':
         return errorReason || 'Failed to process resume'
       default:
-        return 'Upload a resume to auto-fill form fields'
+        return 'Upload a resume to auto-fill form fields (PDF, DOCX, or TXT)'
     }
   }
 
@@ -292,11 +346,20 @@ export function ResumeUpload({ onDataExtracted, isLoading = false }: ResumeUploa
       {uploadStatus === 'error' && (
         <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-md">
           <p className="text-sm text-destructive font-medium mb-1">
-            We couldn't extract enough structured data from this resume.
+            Resume processing failed
           </p>
-          <p className="text-xs text-muted-foreground">
-            Reason: {errorReason}. You can still complete the candidate profile manually.
+          <p className="text-xs text-muted-foreground mb-2">
+            {errorReason}
           </p>
+          <div className="text-xs text-muted-foreground">
+            <p className="font-medium mb-1">Tips for better results:</p>
+            <ul className="list-disc list-inside space-y-1">
+              <li>Use text-based PDFs (not scanned images)</li>
+              <li>Ensure the file contains standard resume sections</li>
+              <li>Keep file size under 5MB</li>
+              <li>Try DOCX format for better text extraction</li>
+            </ul>
+          </div>
         </div>
       )}
     </div>

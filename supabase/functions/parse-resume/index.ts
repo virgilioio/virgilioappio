@@ -581,53 +581,82 @@ function extractTextFallback(base64Content: string): ParsedResume {
   }
 }
 
-// Pre-AI validation for resume text quality
-function validateResumeQuality(parsedResume: ParsedResume): { isValid: boolean; error?: string } {
+// Pre-AI validation for resume text quality (relaxed rules)
+function validateResumeQuality(parsedResume: ParsedResume, fileName: string): { isValid: boolean; error?: string; details?: any } {
   const { rawText, urls } = parsedResume;
   
-  // Rule 1: Minimum text length
-  if (rawText.length < 1000) {
+  // Log detailed validation info for debugging
+  console.log(`=== VALIDATION DEBUG for ${fileName} ===`);
+  console.log(`Text length: ${rawText.length}`);
+  console.log(`URLs found: ${urls.length} - ${urls.join(', ')}`);
+  console.log(`Text preview (first 200 chars): "${rawText.substring(0, 200)}"`);
+  
+  const details = {
+    textLength: rawText.length,
+    urlCount: urls.length,
+    foundUrls: urls,
+    textPreview: rawText.substring(0, 200)
+  };
+  
+  // Rule 1: Minimum text length (relaxed from 1000 to 200)
+  if (rawText.length < 200) {
+    console.log(`❌ VALIDATION FAILED: Text too short (${rawText.length} < 200)`);
     return {
       isValid: false,
-      error: "We couldn't extract enough information from this resume. Please upload a cleaner file or complete the fields manually."
+      error: "File appears to be empty or corrupted. Please try a different file.",
+      details
     };
   }
   
-  // Rule 2: Must include resume keywords
-  const requiredKeywords = ['experience', 'skills', 'education', 'contact', 'summary', 'work', 'job', 'position'];
-  const foundKeywords = requiredKeywords.filter(keyword => 
+  // Rule 2: Check for meaningful content (relaxed keyword requirement)
+  const resumeKeywords = ['experience', 'skills', 'education', 'contact', 'summary', 'work', 'job', 'position', 'university', 'company', 'role', 'responsibilities', 'achievements'];
+  const foundKeywords = resumeKeywords.filter(keyword => 
     rawText.toLowerCase().includes(keyword)
   );
   
-  if (foundKeywords.length < 2) {
-    return {
-      isValid: false,
-      error: "This doesn't appear to be a resume file. Please upload a resume document or complete the fields manually."
-    };
-  }
+  console.log(`Found resume keywords: ${foundKeywords.length}/13 - ${foundKeywords.join(', ')}`);
+  details.foundKeywords = foundKeywords;
+  details.keywordCount = foundKeywords.length;
   
-  // Rule 3: Must contain contact information (email or LinkedIn)
+  // Rule 3: Check for basic text quality (not just keywords)
+  const words = rawText.split(/\s+/).filter(word => word.length > 1);
+  const hasReasonableWordCount = words.length >= 50;
+  
+  console.log(`Word count: ${words.length}, reasonable: ${hasReasonableWordCount}`);
+  details.wordCount = words.length;
+  
+  // Rule 4: Check for contact patterns (relaxed)
   const hasEmail = /@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/.test(rawText);
   const hasLinkedIn = urls.some(url => url.toLowerCase().includes('linkedin')) || 
                      rawText.toLowerCase().includes('linkedin');
+  const hasPhonePattern = /(\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/.test(rawText);
+  const hasPersonalInfo = hasEmail || hasLinkedIn || hasPhonePattern;
   
-  if (!hasEmail && !hasLinkedIn) {
+  console.log(`Contact info - Email: ${hasEmail}, LinkedIn: ${hasLinkedIn}, Phone: ${hasPhonePattern}`);
+  details.contactInfo = { hasEmail, hasLinkedIn, hasPhonePattern, hasPersonalInfo };
+  
+  // Much more relaxed validation - only fail if file is clearly corrupted
+  if (!hasReasonableWordCount) {
+    console.log(`❌ VALIDATION FAILED: Insufficient readable content (${words.length} words)`);
     return {
       isValid: false,
-      error: "We couldn't find contact information in this resume. Please check the file quality or enter information manually."
+      error: "This file doesn't contain enough readable text. Please try a different file format.",
+      details
     };
   }
   
-  // Rule 4: Must have paragraph structure
-  const paragraphs = rawText.split(/\n\s*\n/).filter(p => p.trim().length > 20);
-  if (paragraphs.length < 2) {
+  // If we have some keywords OR contact info, consider it valid
+  if (foundKeywords.length === 0 && !hasPersonalInfo) {
+    console.log(`❌ VALIDATION FAILED: No resume indicators found`);
     return {
       isValid: false,
-      error: "This file doesn't appear to have a proper resume structure. Please try a different format or enter information manually."
+      error: "This doesn't appear to be a resume file. Please upload a resume document.",
+      details
     };
   }
   
-  return { isValid: true };
+  console.log(`✅ VALIDATION PASSED: Keywords: ${foundKeywords.length}, Contact: ${hasPersonalInfo}, Words: ${words.length}`);
+  return { isValid: true, details };
 }
 
 // Enhanced text quality validation for resume content
@@ -691,89 +720,173 @@ interface ParsedResumeData {
 }
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Initialize detailed logging
+  const requestId = crypto.randomUUID().substring(0, 8);
+  console.log(`[${requestId}] ===== NEW RESUME PARSING REQUEST =====`);
+
   try {
+    // Validate environment
     if (!openAIApiKey) {
-      throw new Error('OpenAI API key not configured');
+      console.error(`[${requestId}] ❌ OpenAI API key not configured`);
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: "AI service not configured. Please contact support."
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
-    const { fileContent, fileName, fileType } = await req.json();
+    // Parse and validate request body
+    let requestBody;
+    try {
+      requestBody = await req.json();
+    } catch (error) {
+      console.error(`[${requestId}] ❌ Invalid request body:`, error);
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: "Invalid request format"
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const { fileContent, fileName, fileType } = requestBody;
     
+    // Validate required fields
     if (!fileContent) {
-      throw new Error('No file content provided');
+      console.error(`[${requestId}] ❌ No file content provided`);
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: "No file content provided"
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
-    console.log(`Processing resume: ${fileName} (${fileType})`);
+    if (!fileName || !fileType) {
+      console.error(`[${requestId}] ❌ Missing file metadata - fileName: ${fileName}, fileType: ${fileType}`);
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: "Missing file information"
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
-    // Extract structured text based on file type
+    // Validate file size (5MB limit)
+    const fileSizeBytes = Math.floor((fileContent.length * 3) / 4); // Approximate base64 to bytes
+    if (fileSizeBytes > 5 * 1024 * 1024) {
+      console.error(`[${requestId}] ❌ File too large: ${fileSizeBytes} bytes`);
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: "File too large. Please upload a file smaller than 5MB."
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    console.log(`[${requestId}] 📄 Processing resume: ${fileName} (${fileType}), size: ${fileSizeBytes} bytes`);
+
+    // Extract structured text based on file type with error handling
     let parsedResume: ParsedResume;
     
     try {
       if (fileType === 'text/plain') {
-        console.log('Processing plain text file...');
+        console.log(`[${requestId}] 📝 Processing plain text file...`);
         parsedResume = extractTextFallback(fileContent);
       } else if (fileType === 'application/pdf') {
-        console.log('Attempting PDF text extraction...');
+        console.log(`[${requestId}] 📕 Attempting PDF text extraction...`);
         parsedResume = await extractTextFromPDF(fileContent);
       } else if (fileType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
-        console.log('Attempting DOCX text extraction...');
+        console.log(`[${requestId}] 📄 Attempting DOCX text extraction...`);
         parsedResume = await extractTextFromDOCX(fileContent);
       } else {
-        throw new Error(`Unsupported file type: ${fileType}`);
+        console.error(`[${requestId}] ❌ Unsupported file type: ${fileType}`);
+        return new Response(JSON.stringify({ 
+          success: false, 
+          error: `Unsupported file type: ${fileType}. Please upload a PDF, DOCX, or TXT file.`
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
       }
     } catch (extractionError) {
-      console.error('File extraction failed:', extractionError);
+      console.error(`[${requestId}] ❌ File extraction failed:`, extractionError);
       return new Response(JSON.stringify({ 
         success: false, 
-        error: "This file could not be processed. Please try another format or complete the fields manually."
+        error: "Unable to read this file. Please try a different format or upload a text-based file.",
+        details: { extractionError: extractionError.message }
       }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Pre-AI validation
-    const validation = validateResumeQuality(parsedResume);
+    // Pre-AI validation with detailed logging
+    console.log(`[${requestId}] 🔍 Running pre-AI validation...`);
+    const validation = validateResumeQuality(parsedResume, fileName);
+    
     if (!validation.isValid) {
-      console.warn(`Resume validation failed for ${fileName}: ${validation.error}`);
+      console.warn(`[${requestId}] ❌ Resume validation failed: ${validation.error}`);
+      console.log(`[${requestId}] Validation details:`, JSON.stringify(validation.details, null, 2));
+      
       return new Response(JSON.stringify({ 
         success: false, 
-        error: validation.error
+        error: validation.error,
+        details: validation.details
       }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    console.log(`Extracted text length: ${parsedResume.rawText.length} characters`);
-    console.log(`Found ${parsedResume.urls.length} URLs: ${parsedResume.urls.join(', ')}`);
-    console.log('Resume validation passed - proceeding to AI parsing');
+    console.log(`[${requestId}] ✅ Validation passed - Text: ${parsedResume.rawText.length} chars, URLs: ${parsedResume.urls.length}`);
+    console.log(`[${requestId}] 📊 Found URLs: ${parsedResume.urls.join(', ')}`);
     
     // Log structured data being sent to OpenAI
-    console.log('Text being sent to OpenAI (first 500 chars):', parsedResume.rawText.substring(0, 500));
-    if (parsedResume.rawText.length > 500) {
-      console.log('...and last 500 chars:', parsedResume.rawText.substring(parsedResume.rawText.length - 500));
-    }
+    console.log(`[${requestId}] 🤖 Preparing OpenAI request...`);
+    console.log(`[${requestId}] Text preview (first 300 chars): "${parsedResume.rawText.substring(0, 300)}..."`);
+    
     if (parsedResume.sections?.contact) {
-      console.log('Contact section preview:', parsedResume.sections.contact.substring(0, 200));
+      console.log(`[${requestId}] Contact section: "${parsedResume.sections.contact.substring(0, 150)}..."`);
+    }
+    if (parsedResume.sections?.summary) {
+      console.log(`[${requestId}] Summary section: "${parsedResume.sections.summary.substring(0, 150)}..."`);
     }
 
-    // Use OpenAI to parse the resume
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content: `You are an expert resume parsing AI. Extract structured candidate data from the resume sections below. Base your extraction ONLY on the provided information - do not infer or generate missing details.
+    // Use OpenAI to parse the resume with timeout
+    console.log(`[${requestId}] 🚀 Calling OpenAI API...`);
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+    
+    let response;
+    try {
+      response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openAIApiKey}`,
+          'Content-Type': 'application/json',
+        },
+        signal: controller.signal,
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            {
+              role: 'system',
+              content: `You are an expert resume parsing AI. Extract structured candidate data from the resume sections below. 
+
+CRITICAL: Return ONLY valid JSON. Do not include any explanatory text, markdown formatting, or code blocks.
 
 LOCATION EXTRACTION RULES:
 - Parse locations from various formats: "Mexico City, CDMX", "Austin, TX", "Guadalajara, Jal.", "Toronto, ON, Canada"
@@ -795,7 +908,7 @@ URL EXTRACTION:
 - GitHub: github.com/username patterns
 - Portfolio sites: any professional URLs mentioned
 
-Return valid JSON only:
+Return ONLY this JSON structure (no markdown, no explanation):
 {
   "candidate_name": "full name from header/contact" | null,
   "linkedin_url": "complete LinkedIn URL" | null, 
@@ -807,10 +920,10 @@ Return valid JSON only:
   "profile_summary": "factual summary based on experience" | null,
   "notes": "other relevant info" | null
 }`
-          },
-          {
-            role: 'user',
-            content: `Extract candidate information from this structured resume data:
+            },
+            {
+              role: 'user',
+              content: `Extract candidate information from this structured resume data:
 
 ${parsedResume.sections?.contact ? `CONTACT INFORMATION:
 ${parsedResume.sections.contact}
@@ -828,32 +941,77 @@ ${parsedResume.sections.education.join('\n\n')}
 ${parsedResume.urls.join(', ')}
 
 ` : ''}FULL TEXT:
-${parsedResume.rawText.substring(0, 2000)}${parsedResume.rawText.length > 2000 ? '...' : ''}
+${parsedResume.rawText.substring(0, 2500)}${parsedResume.rawText.length > 2500 ? '...' : ''}
 
-Return structured JSON with the candidate information.`
-          }
-        ],
-        temperature: 0.1,
-        max_tokens: 2000,
-      }),
-    });
+Return structured JSON only.`
+            }
+          ],
+          temperature: 0.1,
+          max_tokens: 2000,
+        }),
+      });
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+      console.error(`[${requestId}] ❌ OpenAI API request failed:`, fetchError);
+      
+      if (fetchError.name === 'AbortError') {
+        return new Response(JSON.stringify({ 
+          success: false, 
+          error: "AI processing timed out. Please try again with a shorter resume."
+        }), {
+          status: 408,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: "AI service temporarily unavailable. Please try again."
+      }), {
+        status: 503,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
-      throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`);
+      console.error(`[${requestId}] ❌ OpenAI API error: ${response.status} ${response.statusText}`);
+      const errorText = await response.text();
+      console.error(`[${requestId}] OpenAI error details:`, errorText);
+      
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: "AI parsing service error. Please try again."
+      }), {
+        status: 503,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     const aiResponse = await response.json();
-    const parsedContent = aiResponse.choices[0].message.content;
+    let parsedContent = aiResponse.choices[0].message.content;
 
-    console.log('AI Response:', parsedContent);
+    console.log(`[${requestId}] 🤖 AI Response received:`, parsedContent.substring(0, 500));
+
+    // Clean up response (remove markdown formatting if present)
+    parsedContent = parsedContent.replace(/```json\s*/, '').replace(/```\s*$/, '').trim();
 
     // Parse the JSON response
     let parsedData: ParsedResumeData;
     try {
       parsedData = JSON.parse(parsedContent);
-    } catch (error) {
-      console.error('Failed to parse AI response as JSON:', parsedContent);
-      throw new Error('Failed to parse resume data from AI response');
+    } catch (parseError) {
+      console.error(`[${requestId}] ❌ Failed to parse AI response as JSON:`, parseError);
+      console.error(`[${requestId}] Raw AI response:`, parsedContent);
+      
+      return new Response(JSON.stringify({ 
+        success: false, 
+        error: "AI returned invalid data format. Please try again or enter information manually."
+      }), {
+        status: 422,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
     // Validate and clean the data
@@ -869,23 +1027,33 @@ Return structured JSON with the candidate information.`
       notes: parsedData.notes || ''
     };
 
-    console.log('Parsed resume data:', cleanedData);
+    console.log(`[${requestId}] ✅ Successfully parsed resume data:`, cleanedData);
 
     return new Response(JSON.stringify({ 
       success: true, 
       data: cleanedData,
-      fileName: fileName
+      fileName: fileName,
+      debug: {
+        textLength: parsedResume.rawText.length,
+        urlsFound: parsedResume.urls.length,
+        sectionsDetected: Object.keys(parsedResume.sections || {}).length
+      }
     }), {
+      status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
-    console.error('Error in parse-resume function:', error);
+    console.error(`[${requestId}] ❌ Unexpected error in parse-resume function:`, error);
+    console.error(`[${requestId}] Error stack:`, error.stack);
+    
+    // Always return HTTP 200 with error flag to avoid frontend issues
     return new Response(JSON.stringify({ 
       success: false, 
-      error: error.message 
+      error: "An unexpected error occurred. Please try again or enter information manually.",
+      details: { errorMessage: error.message }
     }), {
-      status: 500,
+      status: 200, // Changed from 500 to 200 to ensure frontend receives response
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
