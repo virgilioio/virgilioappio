@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ArrowLeft, MapPin, DollarSign, Calendar, User, Edit, Zap, Linkedin, FileText, MessageSquare } from 'lucide-react'
 import { AuthGate } from '@/components/auth/AuthGate'
 import { PermissionGate } from '@/components/auth/PermissionGate'
@@ -26,6 +25,7 @@ export default function CandidateProfile() {
   const [candidate, setCandidate] = useState<Candidate | null>(null)
   const [job, setJob] = useState<any>(null)
   const [isFormOpen, setIsFormOpen] = useState(false)
+  const [activeTab, setActiveTab] = useState<'overview' | 'notes'>('overview')
   const { candidates, isLoading: candidatesLoading, updateCandidate } = useCandidates(jobId || '')
   const { getJob, isLoading: jobLoading } = useJobs()
 
@@ -145,7 +145,7 @@ export default function CandidateProfile() {
 
             {/* Main Content */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-lg">
-              {/* Left Column - Header Card, Independent Tab Bar, and Tabbed Content */}
+              {/* Left Column - Header Card, Independent Tab Bar, and Independent Cards */}
               <div className="lg:col-span-2 space-y-md">
                 {/* Header Card */}
                 <Card className={cn("border-border", "!bg-white")}>
@@ -183,132 +183,135 @@ export default function CandidateProfile() {
 
                 {/* Independent Tab Bar */}
                 <div className="w-full bg-surface-primary rounded-xl p-1 border border-border shadow-sm">
-                  <Tabs defaultValue="overview" className="w-full">
-                    <TabsList className="inline-flex h-auto items-center justify-start rounded-xl bg-transparent p-0 text-muted-foreground w-full">
-                      <TabsTrigger 
-                        value="overview" 
-                        className="inline-flex items-center justify-center whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-accent data-[state=active]:text-accent-foreground data-[state=active]:shadow-sm hover:bg-muted/50"
-                      >
-                        <FileText className="h-4 w-4 mr-2" />
-                        Overview
-                      </TabsTrigger>
-                      <TabsTrigger 
-                        value="notes"
-                        className="inline-flex items-center justify-center whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:bg-accent data-[state=active]:text-accent-foreground data-[state=active]:shadow-sm hover:bg-muted/50"
-                      >
-                        <MessageSquare className="h-4 w-4 mr-2" />
-                        Notes
-                      </TabsTrigger>
-                    </TabsList>
+                  <div className="inline-flex h-auto items-center justify-start rounded-xl bg-transparent p-0 text-muted-foreground w-full">
+                    <button 
+                      onClick={() => setActiveTab('overview')}
+                      className={cn(
+                        "inline-flex items-center justify-center whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-muted/50",
+                        activeTab === 'overview' && "bg-accent text-accent-foreground shadow-sm"
+                      )}
+                    >
+                      <FileText className="h-4 w-4 mr-2" />
+                      Overview
+                    </button>
+                    <button 
+                      onClick={() => setActiveTab('notes')}
+                      className={cn(
+                        "inline-flex items-center justify-center whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-muted/50",
+                        activeTab === 'notes' && "bg-accent text-accent-foreground shadow-sm"
+                      )}
+                    >
+                      <MessageSquare className="h-4 w-4 mr-2" />
+                      Notes
+                    </button>
+                  </div>
+                </div>
 
-                    {/* Tabbed Content */}
-                    <TabsContent value="overview" className="space-y-md mt-md">
-                      {/* Candidate Information Card */}
-                      <Card className="bg-surface-primary border-border">
-                        <CardHeader>
-                          <CardTitle className="text-lg font-medium text-text-primary">Candidate Information</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="space-y-2xl">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2xl">
-                              <div className="space-y-xl">
-                                <div className="flex items-start gap-md text-text-secondary">
-                                  <MapPin className="h-5 w-5 mt-1 flex-shrink-0" />
-                                  <div className="space-y-1">
-                                    <span className="text-sm font-medium block">Location</span>
-                                    <p className="text-text-primary text-base">{formatLocation(candidate)}</p>
-                                  </div>
-                                </div>
-
-                                <div className="flex items-start gap-md text-text-secondary">
-                                  <DollarSign className="h-5 w-5 mt-1 flex-shrink-0" />
-                                  <div className="space-y-1">
-                                    <span className="text-sm font-medium block">Salary Expectations</span>
-                                    <p className="text-text-primary text-base">{formatSalary(candidate)}</p>
-                                  </div>
-                                </div>
+                {/* Independent Candidate Information Card - Overview Tab */}
+                {activeTab === 'overview' && (
+                  <Card className="bg-surface-primary border-border">
+                    <CardHeader>
+                      <CardTitle className="text-lg font-medium text-text-primary">Candidate Information</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-2xl">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2xl">
+                          <div className="space-y-xl">
+                            <div className="flex items-start gap-md text-text-secondary">
+                              <MapPin className="h-5 w-5 mt-1 flex-shrink-0" />
+                              <div className="space-y-1">
+                                <span className="text-sm font-medium block">Location</span>
+                                <p className="text-text-primary text-base">{formatLocation(candidate)}</p>
                               </div>
+                            </div>
 
-                              <div className="space-y-xl">
-                                <div className="flex items-start gap-md text-text-secondary">
-                                  <Calendar className="h-5 w-5 mt-1 flex-shrink-0" />
-                                  <div className="space-y-1">
-                                    <span className="text-sm font-medium block">Added</span>
-                                    <p className="text-text-primary text-base">
-                                      {new Date(candidate.created_at).toLocaleDateString('en-US', {
-                                        year: 'numeric',
-                                        month: 'long',
-                                        day: 'numeric'
-                                      })}
-                                    </p>
-                                  </div>
-                                </div>
-
-                                <div className="flex items-start gap-md text-text-secondary">
-                                  <User className="h-5 w-5 mt-1 flex-shrink-0" />
-                                  <div className="space-y-1">
-                                    <span className="text-sm font-medium block">Added By</span>
-                                    <p className="text-text-primary text-base">Internal Team</p>
-                                  </div>
-                                </div>
+                            <div className="flex items-start gap-md text-text-secondary">
+                              <DollarSign className="h-5 w-5 mt-1 flex-shrink-0" />
+                              <div className="space-y-1">
+                                <span className="text-sm font-medium block">Salary Expectations</span>
+                                <p className="text-text-primary text-base">{formatSalary(candidate)}</p>
                               </div>
                             </div>
                           </div>
-                        </CardContent>
-                      </Card>
 
-                      {/* Profile Summary Card */}
-                      {candidate.profile_summary && (
-                        <Card className="bg-surface-primary border-border">
-                          <CardHeader>
-                            <CardTitle className="text-lg font-medium text-text-primary">Profile Summary</CardTitle>
-                          </CardHeader>
-                          <CardContent>
-                            <div className="prose prose-sm max-w-none text-text-primary">
-                              <div 
-                                className="leading-relaxed [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:my-2 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0"
-                                dangerouslySetInnerHTML={{ __html: candidate.profile_summary }}
-                              />
+                          <div className="space-y-xl">
+                            <div className="flex items-start gap-md text-text-secondary">
+                              <Calendar className="h-5 w-5 mt-1 flex-shrink-0" />
+                              <div className="space-y-1">
+                                <span className="text-sm font-medium block">Added</span>
+                                <p className="text-text-primary text-base">
+                                  {new Date(candidate.created_at).toLocaleDateString('en-US', {
+                                    year: 'numeric',
+                                    month: 'long',
+                                    day: 'numeric'
+                                  })}
+                                </p>
+                              </div>
                             </div>
-                          </CardContent>
-                        </Card>
-                      )}
-                    </TabsContent>
 
-                    <TabsContent value="notes" className="space-y-md mt-md">
-                      {/* Internal Notes Card */}
-                      {candidate.notes && (
-                        <Card className="bg-surface-primary border-border">
-                          <CardHeader>
-                            <CardTitle className="text-lg font-medium text-text-primary">Internal Notes</CardTitle>
-                          </CardHeader>
-                          <CardContent>
-                            <div className="prose prose-sm max-w-none text-text-primary">
-                              <div 
-                                className="leading-relaxed [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:my-2 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0"
-                                dangerouslySetInnerHTML={{ __html: candidate.notes }}
-                              />
+                            <div className="flex items-start gap-md text-text-secondary">
+                              <User className="h-5 w-5 mt-1 flex-shrink-0" />
+                              <div className="space-y-1">
+                                <span className="text-sm font-medium block">Added By</span>
+                                <p className="text-text-primary text-base">Internal Team</p>
+                              </div>
                             </div>
-                          </CardContent>
-                        </Card>
-                      )}
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
 
-                      {/* Comments Card */}
-                      <Card className="bg-surface-primary border-border">
-                        <CardHeader>
-                          <CardTitle className="text-lg font-medium text-text-primary">Comments</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <CandidateComments
-                            candidateId={candidate.id}
-                            jobId={candidate.job_id}
-                            organizationId={user?.user_metadata?.organization_id || 'default-org'}
-                          />
-                        </CardContent>
-                      </Card>
-                    </TabsContent>
-                  </Tabs>
-                </div>
+                {/* Independent Profile Summary Card - Overview Tab */}
+                {activeTab === 'overview' && candidate.profile_summary && (
+                  <Card className="bg-surface-primary border-border">
+                    <CardHeader>
+                      <CardTitle className="text-lg font-medium text-text-primary">Profile Summary</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="prose prose-sm max-w-none text-text-primary">
+                        <div 
+                          className="leading-relaxed [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:my-2 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0"
+                          dangerouslySetInnerHTML={{ __html: candidate.profile_summary }}
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Independent Internal Notes Card - Notes Tab */}
+                {activeTab === 'notes' && candidate.notes && (
+                  <Card className="bg-surface-primary border-border">
+                    <CardHeader>
+                      <CardTitle className="text-lg font-medium text-text-primary">Internal Notes</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="prose prose-sm max-w-none text-text-primary">
+                        <div 
+                          className="leading-relaxed [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:my-2 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0"
+                          dangerouslySetInnerHTML={{ __html: candidate.notes }}
+                        />
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Independent Comments Card - Notes Tab */}
+                {activeTab === 'notes' && (
+                  <Card className="bg-surface-primary border-border">
+                    <CardHeader>
+                      <CardTitle className="text-lg font-medium text-text-primary">Comments</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <CandidateComments
+                        candidateId={candidate.id}
+                        jobId={candidate.job_id}
+                        organizationId={user?.user_metadata?.organization_id || 'default-org'}
+                      />
+                    </CardContent>
+                  </Card>
+                )}
               </div>
 
               {/* Right Column - Job Info, URLs, Attachments, and Quick Actions */}
