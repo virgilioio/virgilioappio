@@ -34,18 +34,20 @@ interface AdobeElement {
 // Get Adobe access token
 async function getAdobeAccessToken(): Promise<string> {
   try {
-    const response = await fetch('https://ims-na1.adobelogin.com/ims/token/v3', {
+    const response = await fetch('https://pdf-services.adobe.io/token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
       body: new URLSearchParams({
         'client_id': ADOBE_CLIENT_ID,
-        'client_secret': ADOBE_CLIENT_SECRET,
-        'grant_type': 'client_credentials',
-        'scope': 'openid,AdobeID,session,additional_info,read_organizations,read_pc'
+        'client_secret': ADOBE_CLIENT_SECRET
       })
     });
+
+    if (!response.ok) {
+      throw new Error(`Authentication failed: ${response.statusText}`);
+    }
 
     const data = await response.json();
     return data.access_token;
@@ -61,41 +63,47 @@ async function extractTextWithAdobe(base64Content: string): Promise<ParsedResume
     console.log('Starting Adobe PDF extraction...');
     const accessToken = await getAdobeAccessToken();
     
+    const assetID = await uploadToAdobe(base64Content, accessToken);
+    
     // Create extraction job
     const extractResponse = await fetch('https://pdf-services.adobe.io/operation/extractpdf', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${accessToken}`,
-        'x-api-key': ADOBE_CLIENT_ID
+        'X-API-Key': ADOBE_CLIENT_ID
       },
       body: JSON.stringify({
-        assetID: await uploadToAdobe(base64Content, accessToken),
-        getCharBounds: false,
-        includeStyling: false,
-        includeTableStructureData: false,
-        elementsToExtract: ["text"]
+        assetID: assetID,
+        elementsToExtract: ["text", "tables"],
+        renditionsToExtract: ["tables", "figures"]
       })
     });
 
     if (!extractResponse.ok) {
-      throw new Error(`Adobe extraction failed: ${extractResponse.statusText}`);
+      const errorText = await extractResponse.text();
+      throw new Error(`Adobe extraction job creation failed: ${extractResponse.status} - ${errorText}`);
     }
 
     const extractJob = await extractResponse.json();
-    console.log('Adobe extraction job created:', extractJob.jobId);
+    const jobLocation = extractResponse.headers.get('location');
+    console.log('Adobe extraction job created:', { jobId: jobLocation, response: extractJob });
 
-    // Poll for completion
+    // Poll for completion using the location header
     let result;
     for (let i = 0; i < 30; i++) { // 30 attempts, 2 seconds each = 60 seconds max
       await new Promise(resolve => setTimeout(resolve, 2000));
       
-      const statusResponse = await fetch(`https://pdf-services.adobe.io/operation/extractpdf/${extractJob.jobId}`, {
+      const statusResponse = await fetch(jobLocation, {
         headers: {
           'Authorization': `Bearer ${accessToken}`,
-          'x-api-key': ADOBE_CLIENT_ID
+          'X-API-Key': ADOBE_CLIENT_ID
         }
       });
+
+      if (!statusResponse.ok) {
+        throw new Error(`Failed to check job status: ${statusResponse.statusText}`);
+      }
 
       result = await statusResponse.json();
       console.log(`Adobe job status: ${result.status}`);
@@ -111,13 +119,8 @@ async function extractTextWithAdobe(base64Content: string): Promise<ParsedResume
       throw new Error('Adobe extraction timed out');
     }
 
-    // Download the result
-    const downloadResponse = await fetch(result.asset.downloadUri, {
-      headers: {
-        'Authorization': `Bearer ${accessToken}`,
-        'x-api-key': ADOBE_CLIENT_ID
-      }
-    });
+    // Download the result using the asset downloadUri
+    const downloadResponse = await fetch(result.asset.downloadUri);
 
     if (!downloadResponse.ok) {
       throw new Error('Failed to download Adobe result');
@@ -136,32 +139,90 @@ async function extractTextWithAdobe(base64Content: string): Promise<ParsedResume
   }
 }
 
-// Upload file to Adobe
+// Upload file to Adobe using proper 2-step process
 async function uploadToAdobe(base64Content: string, accessToken: string): Promise<string> {
-  const uploadResponse = await fetch('https://pdf-services.adobe.io/assets', {
+  // Step 1: Get upload pre-signed URI
+  const createAssetResponse = await fetch('https://pdf-services.adobe.io/assets', {
     method: 'POST',
     headers: {
-      'Content-Type': 'application/pdf',
+      'X-API-Key': ADOBE_CLIENT_ID,
       'Authorization': `Bearer ${accessToken}`,
-      'x-api-key': ADOBE_CLIENT_ID
+      'Content-Type': 'application/json'
     },
-    body: Uint8Array.from(atob(base64Content), c => c.charCodeAt(0))
+    body: JSON.stringify({
+      mediaType: 'application/pdf'
+    })
+  });
+
+  if (!createAssetResponse.ok) {
+    throw new Error(`Adobe create asset failed: ${createAssetResponse.statusText}`);
+  }
+
+  const createAssetResult = await createAssetResponse.json();
+  const { uploadUri, assetID } = createAssetResult;
+
+  // Step 2: Upload file to pre-signed URI
+  const fileBytes = Uint8Array.from(atob(base64Content), c => c.charCodeAt(0));
+  
+  const uploadResponse = await fetch(uploadUri, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/pdf'
+    },
+    body: fileBytes
   });
 
   if (!uploadResponse.ok) {
-    throw new Error(`Adobe upload failed: ${uploadResponse.statusText}`);
+    throw new Error(`Adobe file upload failed: ${uploadResponse.statusText}`);
   }
 
-  const uploadResult = await uploadResponse.json();
-  return uploadResult.assetID;
+  return assetID;
 }
 
-// Parse Adobe ZIP response (simplified for Deno)
+// Parse Adobe ZIP response to extract structuredData.json
 async function parseAdobeZip(zipBuffer: ArrayBuffer): Promise<any> {
-  // For now, we'll simulate the structured data parsing
-  // In a real implementation, you'd use a ZIP library to extract structuredData.json
-  console.log('Adobe ZIP parsing - using fallback method');
-  return { elements: [] };
+  try {
+    console.log('Parsing Adobe ZIP response...');
+    
+    // Import JSZip for ZIP parsing
+    const JSZip = (await import('https://deno.land/x/jszip@0.11.0/mod.ts')).default;
+    
+    const zip = await JSZip.loadAsync(zipBuffer);
+    console.log('ZIP files found:', Object.keys(zip.files));
+    
+    // Extract structuredData.json from the ZIP
+    const structuredDataFile = zip.file('structuredData.json');
+    if (!structuredDataFile) {
+      console.warn('structuredData.json not found in ZIP, checking for other JSON files...');
+      // Look for any JSON file that might contain the structured data
+      const jsonFiles = Object.keys(zip.files).filter(name => name.endsWith('.json'));
+      console.log('JSON files found:', jsonFiles);
+      
+      if (jsonFiles.length > 0) {
+        const firstJsonFile = zip.file(jsonFiles[0]);
+        if (firstJsonFile) {
+          const jsonContent = await firstJsonFile.async('text');
+          return JSON.parse(jsonContent);
+        }
+      }
+      
+      console.warn('No structured data found in Adobe ZIP response');
+      return { elements: [] };
+    }
+    
+    const structuredDataText = await structuredDataFile.async('text');
+    const structuredData = JSON.parse(structuredDataText);
+    
+    console.log('Adobe structured data parsed successfully:', {
+      elementsCount: structuredData.elements?.length || 0,
+      hasElements: !!structuredData.elements
+    });
+    
+    return structuredData;
+  } catch (error) {
+    console.error('Failed to parse Adobe ZIP:', error);
+    return { elements: [] };
+  }
 }
 
 // Process Adobe structured data into our format
@@ -273,14 +334,18 @@ function parseContactSection(contactText: string): ParsedResume['sections']['con
     contact.linkedin = linkedinMatch[0].startsWith('http') ? linkedinMatch[0] : `https://${linkedinMatch[0]}`;
   }
   
-  // Enhanced location detection with multiple patterns
+  // Enhanced location detection with multiple patterns and fallbacks
   const locationPatterns = [
     // Standard format: City, State/Province
     /([A-Za-záéíóúñü]+(?:\s[A-Za-záéíóúñü]+)*),\s*([A-Za-z.]+)(?:,\s*([A-Za-z\s]+))?/g,
     // International format: City, Country
-    /([A-Za-z\s]+),\s*(Mexico|España|Argentina|Colombia|Chile|Peru|Brasil|Brazil)/i,
+    /([A-Za-z\s]+),\s*(Mexico|España|Argentina|Colombia|Chile|Peru|Brasil|Brazil|United States|USA|Canada)/i,
     // Mexican states format: City, STATE_ABBREV
-    /([\w\s]+),\s*(CDMX|Jal\.|NL|BC|QRO|GTO|SLP|CHIH|SON|TAM|VER)/i
+    /([\w\s]+),\s*(CDMX|Jal\.|NL|BC|QRO|GTO|SLP|CHIH|SON|TAM|VER|Mex\.|Pue\.|Yuc\.)/i,
+    // US states format: City, STATE
+    /([\w\s]+),\s*(CA|TX|NY|FL|IL|PA|OH|GA|NC|MI|NJ|VA|WA|AZ|MA|TN|IN|MO|MD|WI|CO|MN|SC|AL|LA|KY|OR|OK|CT|IA|MS|AR|KS|UT|NV|NM|WV|NE|ID|HI|NH|ME|MT|RI|DE|SD|ND|AK|VT|WY)/,
+    // International cities: City only
+    /(Mexico City|Guadalajara|Monterrey|Buenos Aires|São Paulo|Madrid|Barcelona|Toronto|Vancouver|London|Paris|Berlin|Sydney|Melbourne)/i
   ];
   
   for (const pattern of locationPatterns) {
@@ -293,8 +358,27 @@ function parseContactSection(contactText: string): ParsedResume['sections']['con
         // City, State format
         contact.location = `${match[1].trim()}, ${match[2].trim()}`;
       }
-      console.log('Location found:', contact.location);
+      console.log('Location found in contact:', contact.location);
       break;
+    }
+  }
+  
+  // Additional location fallback - look for address patterns
+  if (!contact.location) {
+    const addressPatterns = [
+      // Look for address-like patterns anywhere in contact text
+      /(?:^|\n)([A-Za-záéíóúñü\s]+),\s*([A-Za-z\s.]+)(?:,\s*([A-Za-z\s]+))?(?:\s+\d{5})?(?:\n|$)/gm,
+      // Look for standalone city names that are commonly recognized
+      /\b(Mexico City|Guadalajara|Monterrey|Buenos Aires|São Paulo|Madrid|Barcelona|Toronto|Vancouver|London|Paris|Berlin|Sydney|Melbourne|Austin|Seattle|San Francisco|Los Angeles|New York|Chicago|Houston|Phoenix|Philadelphia|San Antonio|San Diego|Dallas|Boston|Atlanta|Miami)\b/i
+    ];
+    
+    for (const pattern of addressPatterns) {
+      const matches = contactText.match(pattern);
+      if (matches && matches.length > 0) {
+        contact.location = matches[0].trim();
+        console.log('Location found via fallback:', contact.location);
+        break;
+      }
     }
   }
   
@@ -627,6 +711,14 @@ serve(async (req) => {
 
     console.log(`[${requestId}] ✅ Validation passed`);
     console.log(`[${requestId}] 📊 Sections found:`, Object.keys(parsedResume.sections));
+    console.log(`[${requestId}] 🔍 Contact details:`, {
+      name: parsedResume.sections.contact?.name || 'Not found',
+      location: parsedResume.sections.contact?.location || 'Not found',
+      email: parsedResume.sections.contact?.email || 'Not found',
+      linkedin: parsedResume.sections.contact?.linkedin || 'Not found'
+    });
+    console.log(`[${requestId}] 💼 Experience entries:`, parsedResume.sections.experience?.length || 0);
+    console.log(`[${requestId}] 🔗 URLs found:`, parsedResume.urls.length);
     
     // Enhanced OpenAI prompt with structured data
     console.log(`[${requestId}] 🤖 Calling OpenAI API...`);
@@ -654,19 +746,24 @@ CRITICAL: Return ONLY valid JSON. Do not include any explanatory text, markdown 
 
 LOCATION EXTRACTION RULES:
 - Parse locations from various formats: "Mexico City, CDMX", "Austin, TX", "Guadalajara, Jal.", "Toronto, ON, Canada"
-- Extract city, state/province, and country when available
-- Common patterns: "City, State", "City, State, Country", "City, Country"
-- Mexican states: CDMX=Ciudad de México, Jal.=Jalisco, NL=Nuevo León, etc.
-- Look in contact sections, current job locations, or address lines
+- Break down locations into components: city, state/province, country
+- Common patterns: "City, State", "City, State, Country", "City, Country", standalone cities
+- Mexican states: CDMX=Ciudad de México, Jal.=Jalisco, NL=Nuevo León, BC=Baja California, etc.
+- US states: Use full names (Texas not TX, California not CA)
+- Look in: contact info, current job location, address lines, anywhere in resume
+- Examples: "Guadalajara, Jal." → city="Guadalajara", state="Jalisco", country="Mexico"
+- Examples: "Austin, TX" → city="Austin", state="Texas", country="United States"
 
-PROFILE SUMMARY RULES:
+PROFILE SUMMARY RULES (LESS RESTRICTIVE):
 - Generate profile_summary if ANY of the following is true:
-  * At least 2 job titles found
-  * At least 2 company names found  
-  * At least 2 years of experience total
-- The summary must include company names, roles, skills or technologies mentioned
-- Use years if detectable. Be concise but informative.
-- If insufficient experience data exists, return null
+  * At least 1 clear job title found
+  * At least 1 company name found  
+  * At least 1 year of work experience detected
+  * Any professional experience or skills mentioned
+- The summary should include: roles, companies, skills, technologies, years if available
+- Be concise (2-3 sentences) but informative
+- Focus on professional highlights and key competencies
+- If minimal experience exists, still generate a basic summary
 
 URL EXTRACTION:
 - LinkedIn: any variation of linkedin.com/in/username (with or without https://)
