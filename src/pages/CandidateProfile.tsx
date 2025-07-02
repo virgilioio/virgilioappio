@@ -1,11 +1,10 @@
-
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { ArrowLeft, MapPin, DollarSign, Calendar, User, Edit, Zap, Linkedin, FileText, MessageSquare } from 'lucide-react'
+import { ArrowLeft, MapPin, DollarSign, Calendar, User, Edit, Zap, Linkedin, FileText, MessageSquare, ChevronLeft, ChevronRight } from 'lucide-react'
 import { AuthGate } from '@/components/auth/AuthGate'
 import { PermissionGate } from '@/components/auth/PermissionGate'
 import { JobAssignmentGuard } from '@/components/auth/JobAssignmentGuard'
@@ -29,6 +28,17 @@ export default function CandidateProfile() {
   const [activeTab, setActiveTab] = useState<'overview' | 'notes'>('overview')
   const { candidates, isLoading: candidatesLoading, updateCandidate } = useCandidates(jobId || '')
   const { getJob, isLoading: jobLoading } = useJobs()
+
+  // Navigation logic for previous/next candidates
+  const currentCandidateIndex = candidates.findIndex(c => c.id === candidateId)
+  const hasPreviousCandidate = currentCandidateIndex > 0
+  const hasNextCandidate = currentCandidateIndex < candidates.length - 1
+  const previousCandidate = hasPreviousCandidate ? candidates[currentCandidateIndex - 1] : null
+  const nextCandidate = hasNextCandidate ? candidates[currentCandidateIndex + 1] : null
+
+  const navigateToCandidate = (candidateId: string) => {
+    navigate(`/jobs/${jobId}/candidates/${candidateId}`)
+  }
 
   useEffect(() => {
     if (jobId && candidateId && candidates.length > 0) {
@@ -135,13 +145,37 @@ export default function CandidateProfile() {
         <JobAssignmentGuard>
           <AppContainer>
             {/* Navigation */}
-            <div className="mb-lg">
+            <div className="mb-lg flex items-center justify-between">
               <Link to={`/jobs/${jobId}?tab=candidates`}>
                 <Button variant="ghost" className="gap-sm h-[44px] text-text-secondary hover:text-text-primary">
                   <ArrowLeft className="h-4 w-4" />
                   Back to Candidates
                 </Button>
               </Link>
+
+              {/* Navigation Arrows */}
+              <div className="flex items-center gap-sm">
+                <Button
+                  variant="ghost"
+                  className="gap-sm h-[44px] text-text-secondary hover:text-text-primary"
+                  onClick={() => previousCandidate && navigateToCandidate(previousCandidate.id)}
+                  disabled={!hasPreviousCandidate}
+                  title={previousCandidate ? `Previous: ${previousCandidate.candidate_name}` : 'No previous candidate'}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Previous
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="gap-sm h-[44px] text-text-secondary hover:text-text-primary"
+                  onClick={() => nextCandidate && navigateToCandidate(nextCandidate.id)}
+                  disabled={!hasNextCandidate}
+                  title={nextCandidate ? `Next: ${nextCandidate.candidate_name}` : 'No next candidate'}
+                >
+                  Next
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
 
             {/* Main Content */}
