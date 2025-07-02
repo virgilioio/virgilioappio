@@ -69,7 +69,11 @@ function extractTextFromPDFEnhanced(bytes: Uint8Array): string {
       // Font and text combined patterns
       /\/F\d+\s+\d+\s+Tf[\s\S]*?\(([^)]+)\)/gi,
       // Direct text content without operators
-      /q[\s\S]*?\(([^)]+)\)[\s\S]*?Q/gi
+      /q[\s\S]*?\(([^)]+)\)[\s\S]*?Q/gi,
+      // URL and link annotations
+      /\/URI\s*\(([^)]+)\)/gi,
+      // Annotation content
+      /\/Contents\s*\(([^)]+)\)/gi
     ];
     
     for (const pattern of patterns) {
@@ -98,7 +102,22 @@ function extractTextFromPDFEnhanced(bytes: Uint8Array): string {
       }
     }
     
-    return textParts.join(' ').trim();
+    // Extract URLs directly from the raw PDF string
+    const urlPatterns = [
+      /https?:\/\/[^\s)>\]]+/gi,
+      /www\.[^\s)>\]]+/gi,
+      /linkedin\.com\/in\/[^\s)>\]]+/gi,
+      /github\.com\/[^\s)>\]]+/gi
+    ];
+    
+    for (const urlPattern of urlPatterns) {
+      const urlMatches = pdfString.match(urlPattern);
+      if (urlMatches) {
+        textParts.push(...urlMatches.map(url => url.trim()));
+      }
+    }
+    
+    return cleanupExtractedText(textParts.join(' '));
   } catch (error) {
     console.error('Enhanced PDF extraction error:', error);
     return '';
@@ -472,7 +491,7 @@ function extractTextFallback(base64Content: string): string {
   }
 }
 
-// Reduced validation strictness for better success rate
+// Enhanced text quality validation for resume content
 function validateExtractedText(text: string): boolean {
   if (!text || text.length < 3) {
     console.log('Validation failed: Text too short or empty');
@@ -491,6 +510,26 @@ function validateExtractedText(text: string): boolean {
   console.log(`Text preview: ${text.substring(0, 200)}...`);
   
   return true;
+}
+
+// Check if text contains resume-like content
+function hasResumeContent(text: string): boolean {
+  const resumeIndicators = [
+    /\b(experience|work|employment|job|position|role)\b/i,
+    /\b(education|university|college|degree|bachelor|master)\b/i,
+    /\b(skills|technologies|tools|software)\b/i,
+    /\b(email|phone|linkedin|github)\b/i,
+    /\b(company|organization|corp|inc|ltd)\b/i,
+    /\b\d{4}\b/, // Years
+    /@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/, // Email patterns
+    /linkedin\.com/i,
+    /github\.com/i
+  ];
+  
+  const matches = resumeIndicators.filter(pattern => pattern.test(text)).length;
+  console.log(`Resume content indicators found: ${matches}/9`);
+  
+  return matches >= 2; // At least 2 resume indicators
 }
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
@@ -566,6 +605,16 @@ serve(async (req) => {
 
     console.log(`Extracted text length: ${extractedText.length} characters`);
     console.log('Text quality check passed:', validateExtractedText(extractedText));
+    
+    // Check if extracted text contains resume-like content
+    const hasValidResumeContent = hasResumeContent(extractedText);
+    console.log('Resume content validation:', hasValidResumeContent);
+    
+    // Log the actual text being sent to OpenAI for debugging
+    console.log('Text being sent to OpenAI (first 500 chars):', extractedText.substring(0, 500));
+    if (extractedText.length > 500) {
+      console.log('...and last 500 chars:', extractedText.substring(extractedText.length - 500));
+    }
 
     // Use OpenAI to parse the resume
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -579,75 +628,61 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `You are an expert resume parsing AI trained to generate structured Profile Summaries from candidate resumes. Extract structured information and return ONLY valid JSON with no markdown formatting.
+            content: `You are an expert resume parsing AI. Extract ONLY information that is clearly present in the resume text. DO NOT generate generic content. Return ONLY valid JSON with no markdown formatting.
 
 CRITICAL INSTRUCTIONS:
 
-1. ROLE & INDUSTRY DETECTION - First analyze the resume to identify:
-   - The candidate's actual profession (e.g., Recruiter, Software Engineer, Marketing Manager, Sales Director, etc.)
-   - Their industry and specialization
-   - Years of experience in their field
-   - Do NOT default to software developer assumptions
+1. CONSERVATIVE EXTRACTION - Only extract information that is EXPLICITLY stated in the resume:
+   - If information is not clearly present, return empty string or null
+   - DO NOT create generic descriptions or summaries
+   - DO NOT make assumptions about experience or skills not mentioned
 
-2. LOCATION EXTRACTION - Look for location clues in:
-   - Header addresses (street, city, state, zip codes)
-   - Phone number area codes (e.g., 415 = San Francisco, 212 = New York)
-   - Email domain endings (e.g., .uk = United Kingdom)
-   - Explicitly mentioned locations in work experience
-   - Current residence statements
-   - Extract full location hierarchy: Country > State/Province > City
+2. URL EXTRACTION - Look for complete URLs in the text:
+   - LinkedIn URLs: Must be complete URLs starting with https://linkedin.com or www.linkedin.com
+   - GitHub URLs: Must be complete URLs starting with https://github.com
+   - Portfolio URLs: Extract any other professional URLs found
+   - DO NOT construct URLs if they're not explicitly provided
 
-3. PROFILE SUMMARY CREATION - Generate a structured, professional Profile Summary using HTML formatting:
+3. PROFILE SUMMARY - Create summary ONLY from actual resume content:
+   - Use the person's actual work experience, companies, and roles
+   - Include specific skills, technologies, and achievements mentioned
+   - Use dates and company names from the resume
+   - If insufficient information is available, create a brief summary with available facts
+   - NEVER use generic phrases like "seasoned professional" unless justified by actual experience
 
-   Structure:
-   <h3>Profile Summary</h3>
-   
-   <h4>Professional Background</h4>
-   <p>Brief professional overview: years of experience, key industries, roles, and strengths based on their actual profession.</p>
-   
-   <h4>Professional Experience</h4>
-   <p>2–4 most relevant roles with <strong>Company Name</strong>, job title, <em>employment dates</em>, and key contributions/achievements.</p>
-   
-   <h4>Core Competencies</h4>
-   <p>List core skills, technologies, or tools that align with their actual experience and industry.</p>
-   
-   <h4>Education & Certifications</h4>
-   <p>List relevant education, languages, or certifications only if present in the resume.</p>
-   
-   <h4>Professional Impact</h4>
-   <p>Short summary of professional values or measurable impact if discernible from the resume.</p>
+4. LOCATION EXTRACTION - Look for explicit location information:
+   - Address headers, contact sections
+   - Current location statements
+   - Work location mentions
+   - Phone area codes as hints only
 
-   Formatting Rules:
-   - Use <strong>Company Name</strong> for company names
-   - Use <em>Jan 2022 – Mar 2024</em> for employment dates
-   - Break information into digestible segments
-   - Ensure every section adds meaningful value
-   - Use clear, confident, professional tone
-   - No exaggerations or vague phrases unless backed by evidence
+5. NAME EXTRACTION - Extract the candidate's full name from:
+   - Header sections
+   - Contact information areas
+   - Resume title areas
 
-4. SALARY EXTRACTION - Look for:
-   - Salary expectations or requirements
-   - Previous compensation mentioned
-   - Hourly rates or annual figures
-   - Extract number only, identify currency
+6. TEXT QUALITY CHECK - Before processing:
+   - If the extracted text appears to be mostly symbols, random characters, or very fragmented
+   - Return empty values rather than guessing
 
-5. DATA VALIDATION:
-   - Ensure LinkedIn URLs are properly formatted
-   - Validate location data makes geographic sense
-   - Create meaningful, role-specific profile summaries
+LINKEDIN URL PATTERNS TO LOOK FOR:
+- https://linkedin.com/in/username
+- https://www.linkedin.com/in/username  
+- linkedin.com/in/username
+- www.linkedin.com/in/username
 
 REQUIRED JSON FIELDS:
-- candidate_name: Full name (First Last format)
-- linkedin_url: Complete LinkedIn URL or empty string
-- location_country: Full country name
-- location_state: State/Province/Region name  
-- location_city: City name
-- salary_amount: Numeric value only (no symbols)
-- salary_currency: ISO currency code (USD, EUR, GBP, etc.)
-- profile_summary: HTML-formatted structured profile summary
-- notes: Additional relevant information for recruiting team
+- candidate_name: Actual name found in resume or empty string
+- linkedin_url: Complete LinkedIn URL if found or empty string
+- location_country: Country if clearly stated or empty string
+- location_state: State/Province if clearly stated or empty string
+- location_city: City if clearly stated or empty string
+- salary_amount: Numeric salary if mentioned or null
+- salary_currency: Currency code if salary mentioned or "USD"
+- profile_summary: Factual summary from actual resume content or empty string
+- notes: Relevant additional info found or empty string
 
-Return empty string for missing text fields, null for missing numbers.`
+IMPORTANT: Return empty strings/null if information is not clearly available. Do not generate placeholder content.`
           },
           {
             role: 'user',
