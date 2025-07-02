@@ -164,6 +164,47 @@ export type Database = {
           },
         ]
       }
+      candidate_urls: {
+        Row: {
+          candidate_id: string
+          created_at: string | null
+          created_by: string | null
+          icon_name: string
+          id: string
+          label: string
+          updated_at: string | null
+          url: string
+        }
+        Insert: {
+          candidate_id: string
+          created_at?: string | null
+          created_by?: string | null
+          icon_name?: string
+          id?: string
+          label: string
+          updated_at?: string | null
+          url: string
+        }
+        Update: {
+          candidate_id?: string
+          created_at?: string | null
+          created_by?: string | null
+          icon_name?: string
+          id?: string
+          label?: string
+          updated_at?: string | null
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidate_urls_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "job_candidates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       countries: {
         Row: {
           code: string

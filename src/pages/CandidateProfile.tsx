@@ -17,6 +17,7 @@ import { CandidateComments } from '@/components/candidates/CandidateComments'
 import { CandidateForm } from '@/components/candidates/CandidateForm'
 import { cn } from '@/lib/utils'
 import { CandidateAttachments } from '@/components/candidates/CandidateAttachments'
+import { CandidateUrls } from '@/components/candidates/CandidateUrls'
 
 export default function CandidateProfile() {
   const { jobId, candidateId } = useParams<{ jobId: string; candidateId: string }>()
@@ -310,7 +311,7 @@ export default function CandidateProfile() {
                 </div>
               </div>
 
-              {/* Right Column - Job Info, Attachments, and Quick Actions */}
+              {/* Right Column - Job Info, URLs, Attachments, and Quick Actions */}
               <div className="space-y-md">
                 {/* Job Information */}
                 {job && (
@@ -339,6 +340,11 @@ export default function CandidateProfile() {
                       </div>
                     </CardContent>
                   </Card>
+                )}
+
+                {/* URLs */}
+                {candidate && (
+                  <CandidateUrls candidateId={candidate.id} />
                 )}
 
                 {/* Attachments */}
