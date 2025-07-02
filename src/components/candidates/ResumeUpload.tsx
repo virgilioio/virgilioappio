@@ -2,7 +2,7 @@
 import React, { useState, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { Upload, FileText, X, Loader2, CheckCircle, AlertCircle } from 'lucide-react'
+import { Upload, FileText, X, Loader2, CheckCircle, AlertCircle, RefreshCw } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { supabase } from '@/integrations/supabase/client'
 
@@ -30,6 +30,7 @@ export function ResumeUpload({ onDataExtracted, className }: ResumeUploadProps) 
   const [isProcessing, setIsProcessing] = useState(false)
   const [processingStatus, setProcessingStatus] = useState<'idle' | 'processing' | 'success' | 'error'>('idle')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [retryCount, setRetryCount] = useState(0)
 
   const acceptedFileTypes = ['.pdf', '.docx', '.txt']
   const maxFileSize = 10 * 1024 * 1024 // 10MB
@@ -54,6 +55,10 @@ export function ResumeUpload({ onDataExtracted, className }: ResumeUploadProps) 
     if (file.size > maxFileSize) {
       return 'File size must be less than 10MB.'
     }
+
+    if (file.size === 0) {
+      return 'File appears to be empty. Please select a valid file.'
+    }
     
     return null
   }
@@ -61,20 +66,47 @@ export function ResumeUpload({ onDataExtracted, className }: ResumeUploadProps) 
   const readFileAsBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader()
-      reader.onload = () => resolve(reader.result as string)
-      reader.onerror = reject
+      reader.onload = () => {
+        const result = reader.result as string
+        console.log('File read successfully:', {
+          fileName: file.name,
+          fileSize: file.size,
+          fileType: file.type,
+          resultLength: result.length,
+          isDataURL: result.startsWith('data:')
+        })
+        resolve(result)
+      }
+      reader.onerror = (error) => {
+        console.error('File reading error:', error)
+        reject(new Error('Failed to read file. Please try again.'))
+      }
       reader.readAsDataURL(file)
     })
   }
 
-  const processFile = async (file: File) => {
+  const processFile = async (file: File, isRetry: boolean = false) => {
     setIsProcessing(true)
     setProcessingStatus('processing')
     setErrorMessage(null)
 
+    if (!isRetry) {
+      setRetryCount(0)
+    }
+
     try {
+      console.log('Starting file processing:', {
+        fileName: file.name,
+        fileSize: file.size,
+        fileType: file.type,
+        isRetry,
+        retryCount
+      })
+
       // Read file content
       const fileContent = await readFileAsBase64(file)
+      
+      console.log('Calling parse-resume function...')
       
       // Call the edge function to parse the resume
       const { data, error } = await supabase.functions.invoke('parse-resume', {
@@ -84,22 +116,47 @@ export function ResumeUpload({ onDataExtracted, className }: ResumeUploadProps) 
         }
       })
 
+      console.log('Parse-resume response:', { data, error })
+
       if (error) {
         throw new Error(error.message || 'Failed to parse resume')
       }
 
+      if (!data) {
+        throw new Error('No response data received from parsing service')
+      }
+
       if (!data.success) {
-        throw new Error(data.error || 'Failed to parse resume')
+        throw new Error(data.error || 'Resume parsing failed')
       }
 
       console.log('Resume parsing successful:', data.data)
       setProcessingStatus('success')
+      setRetryCount(0)
       onDataExtracted(data.data)
 
     } catch (error) {
       console.error('Resume processing error:', error)
       setProcessingStatus('error')
-      setErrorMessage(error instanceof Error ? error.message : 'Failed to process resume')
+      
+      const errorMsg = error instanceof Error ? error.message : 'Failed to process resume'
+      setErrorMessage(errorMsg)
+      
+      // Don't auto-retry on certain errors
+      const noRetryErrors = [
+        'Unsupported file format',
+        'No file content provided',
+        'No readable text found',
+        'Invalid request body'
+      ]
+      
+      const shouldNotRetry = noRetryErrors.some(noRetryError => errorMsg.includes(noRetryError))
+      
+      if (shouldNotRetry) {
+        setRetryCount(0)
+      } else {
+        setRetryCount(prev => prev + 1)
+      }
     } finally {
       setIsProcessing(false)
     }
@@ -110,6 +167,7 @@ export function ResumeUpload({ onDataExtracted, className }: ResumeUploadProps) 
     if (validationError) {
       setErrorMessage(validationError)
       setProcessingStatus('error')
+      setSelectedFile(null)
       return
     }
 
@@ -139,6 +197,13 @@ export function ResumeUpload({ onDataExtracted, className }: ResumeUploadProps) 
     setSelectedFile(null)
     setProcessingStatus('idle')
     setErrorMessage(null)
+    setRetryCount(0)
+  }
+
+  const retryProcessing = () => {
+    if (selectedFile) {
+      processFile(selectedFile, true)
+    }
   }
 
   const getStatusIcon = () => {
@@ -157,7 +222,7 @@ export function ResumeUpload({ onDataExtracted, className }: ResumeUploadProps) 
   const getStatusMessage = () => {
     switch (processingStatus) {
       case 'processing':
-        return 'Parsing resume with AI...'
+        return 'Parsing resume with AI... This may take a moment.'
       case 'success':
         return 'Resume parsed successfully! Check the form fields below.'
       case 'error':
@@ -166,6 +231,8 @@ export function ResumeUpload({ onDataExtracted, className }: ResumeUploadProps) 
         return 'Upload a resume to auto-fill candidate information'
     }
   }
+
+  const canRetry = processingStatus === 'error' && retryCount < 3 && selectedFile
 
   return (
     <Card className={cn("border-2 border-dashed", className)}>
@@ -185,8 +252,10 @@ export function ResumeUpload({ onDataExtracted, className }: ResumeUploadProps) 
             <div className="space-y-4">
               <div className="flex items-center justify-center gap-3">
                 {getStatusIcon()}
-                <span className="font-medium">{selectedFile.name}</span>
-                {processingStatus !== 'processing' && (
+                <span className="font-medium truncate max-w-xs" title={selectedFile.name}>
+                  {selectedFile.name}
+                </span>
+                {!isProcessing && (
                   <Button
                     variant="ghost"
                     size="sm"
@@ -206,6 +275,31 @@ export function ResumeUpload({ onDataExtracted, className }: ResumeUploadProps) 
               )}>
                 {getStatusMessage()}
               </p>
+
+              {canRetry && (
+                <div className="flex justify-center">
+                  <Button
+                    onClick={retryProcessing}
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    Retry ({retryCount}/3)
+                  </Button>
+                </div>
+              )}
+
+              {processingStatus === 'error' && retryCount >= 3 && (
+                <div className="text-xs text-gray-500 space-y-1">
+                  <p>Having trouble? Try:</p>
+                  <ul className="list-disc list-inside text-left space-y-1">
+                    <li>Using a different file format (PDF, DOCX, or TXT)</li>
+                    <li>Ensuring the file contains readable text</li>
+                    <li>Checking that the file isn't corrupted</li>
+                  </ul>
+                </div>
+              )}
             </div>
           ) : (
             <div className="space-y-4">

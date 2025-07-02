@@ -9,6 +9,77 @@ const corsHeaders = {
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY')
 
+// Simple PDF text extraction function
+function extractPDFText(pdfBuffer: Uint8Array): string {
+  try {
+    // Convert buffer to string and look for text content
+    const pdfString = new TextDecoder('latin1').decode(pdfBuffer)
+    
+    // Basic PDF text extraction - look for text between stream objects
+    const textMatches = pdfString.match(/BT\s+.*?ET/gs) || []
+    let extractedText = ""
+    
+    for (const match of textMatches) {
+      // Extract text from PDF text objects
+      const textContent = match.match(/\(([^)]+)\)/g) || []
+      for (const text of textContent) {
+        extractedText += text.replace(/[()]/g, "") + " "
+      }
+    }
+    
+    // If basic extraction fails, try alternative method
+    if (!extractedText.trim()) {
+      const streamMatches = pdfString.match(/stream\s+(.*?)\s+endstream/gs) || []
+      for (const stream of streamMatches) {
+        const cleanStream = stream.replace(/stream|endstream/g, "").trim()
+        // Look for readable text patterns
+        const readableText = cleanStream.match(/[A-Za-z0-9\s@.,;:()!?-]{10,}/g) || []
+        extractedText += readableText.join(" ") + " "
+      }
+    }
+    
+    return extractedText.trim()
+  } catch (error) {
+    console.error('PDF extraction error:', error)
+    return ""
+  }
+}
+
+// Simple DOCX text extraction function
+function extractDOCXText(docxBuffer: Uint8Array): string {
+  try {
+    // Convert buffer to string and look for XML content
+    const docxString = new TextDecoder('utf-8').decode(docxBuffer)
+    
+    // Basic DOCX text extraction - look for text in w:t elements
+    const textMatches = docxString.match(/<w:t[^>]*>([^<]*)<\/w:t>/g) || []
+    let extractedText = ""
+    
+    for (const match of textMatches) {
+      const text = match.replace(/<[^>]*>/g, "")
+      if (text.trim()) {
+        extractedText += text + " "
+      }
+    }
+    
+    // Alternative extraction method if the first one fails
+    if (!extractedText.trim()) {
+      const paragraphMatches = docxString.match(/<w:p[^>]*>.*?<\/w:p>/gs) || []
+      for (const paragraph of paragraphMatches) {
+        const cleanText = paragraph.replace(/<[^>]*>/g, "").trim()
+        if (cleanText && cleanText.length > 2) {
+          extractedText += cleanText + " "
+        }
+      }
+    }
+    
+    return extractedText.trim()
+  } catch (error) {
+    console.error('DOCX extraction error:', error)
+    return ""
+  }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
@@ -22,7 +93,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: 'OpenAI API key not configured',
+          error: 'OpenAI API key not configured. Please configure the OPENAI_API_KEY secret.',
           data: null 
         }),
         { 
@@ -35,12 +106,18 @@ serve(async (req) => {
     let body
     try {
       body = await req.json()
+      console.log('Request body received:', { 
+        hasFileContent: !!body.fileContent, 
+        fileName: body.fileName,
+        contentType: typeof body.fileContent,
+        contentLength: body.fileContent?.length
+      })
     } catch (error) {
       console.error('Failed to parse request body:', error)
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: 'Invalid request body',
+          error: 'Invalid request body. Please ensure the request contains valid JSON.',
           data: null 
         }),
         { 
@@ -52,15 +129,11 @@ serve(async (req) => {
 
     const { fileContent, fileName } = body
     
-    console.log(`Processing resume: ${fileName}`)
-    console.log(`File content type: ${typeof fileContent}`)
-    console.log(`File content length: ${fileContent?.length || 0}`)
-    
     if (!fileContent) {
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: 'No file content provided',
+          error: 'No file content provided. Please select a file to upload.',
           data: null 
         }),
         { 
@@ -74,7 +147,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: 'No file name provided',
+          error: 'No file name provided. Please ensure a valid file is selected.',
           data: null 
         }),
         { 
@@ -84,84 +157,76 @@ serve(async (req) => {
       )
     }
 
-    // Extract text from different file types
+    const fileExtension = fileName.toLowerCase().split('.').pop()
+    console.log('Processing file:', fileName, 'Extension:', fileExtension)
+
     let resumeText = ''
     
     try {
-      if (fileName.toLowerCase().endsWith('.txt')) {
-        // For text files, decode base64 if it's data URL format
-        if (typeof fileContent === 'string' && fileContent.includes('data:')) {
+      if (fileExtension === 'txt') {
+        // Handle text files
+        if (fileContent.startsWith('data:')) {
           const base64Data = fileContent.split(',')[1]
-          if (base64Data) {
-            resumeText = atob(base64Data)
-          } else {
-            resumeText = fileContent
+          if (!base64Data) {
+            throw new Error('Invalid data URL format')
           }
+          resumeText = atob(base64Data)
         } else {
-          // Try to decode as base64 first, if that fails treat as plain text
+          // Assume it's already base64 encoded
           try {
             resumeText = atob(fileContent)
           } catch {
+            // If atob fails, treat as plain text
             resumeText = fileContent
           }
         }
-      } else if (fileName.toLowerCase().endsWith('.pdf') || fileName.toLowerCase().endsWith('.docx')) {
-        // For PDF/DOCX, we'll treat the content as extracted text for now
-        if (typeof fileContent === 'string' && fileContent.includes('data:')) {
-          const base64Data = fileContent.split(',')[1]
-          if (base64Data) {
-            try {
-              resumeText = atob(base64Data)
-            } catch (e) {
-              console.error('Failed to decode base64:', e)
-              return new Response(
-                JSON.stringify({ 
-                  success: false, 
-                  error: 'Unable to decode file content. Please ensure the file is properly formatted.',
-                  data: null 
-                }),
-                { 
-                  headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-                  status: 400 
-                }
-              )
-            }
-          } else {
-            return new Response(
-              JSON.stringify({ 
-                success: false, 
-                error: 'Invalid file format - no base64 data found',
-                data: null 
-              }),
-              { 
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-                status: 400 
-              }
-            )
-          }
-        } else {
-          try {
-            resumeText = atob(fileContent)
-          } catch (e) {
-            console.error('Failed to decode file content:', e)
-            return new Response(
-              JSON.stringify({ 
-                success: false, 
-                error: 'Unable to decode file content. Please try uploading a text file instead.',
-                data: null 
-              }),
-              { 
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-                status: 400 
-              }
-            )
-          }
+      } else if (fileExtension === 'pdf') {
+        // Handle PDF files
+        let base64Data = fileContent
+        if (fileContent.startsWith('data:')) {
+          base64Data = fileContent.split(',')[1]
         }
+        
+        if (!base64Data) {
+          throw new Error('Invalid PDF data format')
+        }
+        
+        // Convert base64 to binary buffer
+        const binaryString = atob(base64Data)
+        const bytes = new Uint8Array(binaryString.length)
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i)
+        }
+        
+        console.log('Extracting text from PDF, size:', bytes.length, 'bytes')
+        resumeText = extractPDFText(bytes)
+        
+      } else if (fileExtension === 'docx') {
+        // Handle DOCX files
+        let base64Data = fileContent
+        if (fileContent.startsWith('data:')) {
+          base64Data = fileContent.split(',')[1]
+        }
+        
+        if (!base64Data) {
+          throw new Error('Invalid DOCX data format')
+        }
+        
+        // Convert base64 to binary buffer
+        const binaryString = atob(base64Data)
+        const bytes = new Uint8Array(binaryString.length)
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i)
+        }
+        
+        console.log('Extracting text from DOCX, size:', bytes.length, 'bytes')
+        resumeText = extractDOCXText(bytes)
+        
       } else {
         return new Response(
           JSON.stringify({ 
             success: false, 
-            error: 'Unsupported file format. Please upload PDF, DOCX, or TXT files.',
+            error: `Unsupported file format: .${fileExtension}. Please upload PDF, DOCX, or TXT files.`,
             data: null 
           }),
           { 
@@ -171,13 +236,14 @@ serve(async (req) => {
         )
       }
 
-      console.log(`Extracted text preview: ${resumeText.substring(0, 200)}...`)
+      console.log('Extracted text length:', resumeText.length)
+      console.log('Text preview:', resumeText.substring(0, 200))
       
       if (!resumeText.trim()) {
         return new Response(
           JSON.stringify({ 
             success: false, 
-            error: 'No text content found in the resume. Please ensure the file contains readable text.',
+            error: 'No readable text found in the file. Please ensure the file contains text content or try a different file format.',
             data: null 
           }),
           { 
@@ -187,11 +253,11 @@ serve(async (req) => {
         )
       }
 
-      if (resumeText.length < 10) {
+      if (resumeText.length < 50) {
         return new Response(
           JSON.stringify({ 
             success: false, 
-            error: 'File appears to be too short or may not contain readable text content.',
+            error: 'The extracted text appears to be too short. Please ensure the file contains a complete resume.',
             data: null 
           }),
           { 
@@ -206,7 +272,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: `File processing failed: ${error.message}`,
+          error: `File processing failed: ${error.message}. Please try a different file or format.`,
           data: null 
         }),
         { 
@@ -216,33 +282,35 @@ serve(async (req) => {
       )
     }
 
-    console.log('Calling OpenAI API...')
+    console.log('Calling OpenAI API for text analysis...')
 
-    // Use OpenAI to parse the resume
     const systemPrompt = `You are an expert resume parser. Extract key information from resumes and return it as structured JSON. 
 
-Return ONLY valid JSON in this exact format:
+Analyze the provided resume text and extract the following information. Return ONLY valid JSON in this exact format:
+
 {
   "candidate_name": "Full name of the candidate",
-  "location_country": "Country name",
-  "location_state": "State/Province name", 
-  "location_city": "City name",
-  "salary_amount": "Annual salary as number (no currency symbols)",
-  "salary_currency": "Currency code like USD, EUR, etc",
-  "salary_period": "annually, monthly, or hourly",
-  "profile_summary": "Professional summary or bio (2-3 sentences)",
-  "linkedin_url": "LinkedIn profile URL if found",
-  "extracted_skills": "Comma-separated list of key skills",
-  "years_experience": "Total years of experience as number"
+  "location_country": "Country name only",
+  "location_state": "State/Province name only", 
+  "location_city": "City name only",
+  "salary_amount": null,
+  "salary_currency": "USD",
+  "salary_period": "annually",
+  "profile_summary": "Professional summary or bio based on resume content (2-3 sentences)",
+  "linkedin_url": "LinkedIn profile URL if clearly stated",
+  "extracted_skills": "Comma-separated list of key technical and professional skills",
+  "years_experience": "Total years of professional experience as number"
 }
 
 Rules:
-- Return null for fields not found or unclear
-- For salary, extract any mentioned compensation
-- For location, extract current location or preferred location
-- For profile_summary, create a concise professional summary based on the resume content
-- Only include LinkedIn URLs that are clearly stated
-- Be conservative - if unsure, return null`
+- Return null for fields not found or unclear (except defaults for currency/period)
+- For location, extract current location or preferred work location
+- Create a concise professional summary based on the resume content even if not explicitly stated
+- Only include LinkedIn URLs that are clearly stated in the resume
+- For skills, extract both technical skills and key professional competencies
+- For years of experience, calculate based on work history dates
+- Be conservative - if unsure about a field, return null
+- Ensure all JSON is properly formatted and valid`
 
     let aiResponse
     try {
@@ -256,20 +324,20 @@ Rules:
           model: 'gpt-4o-mini',
           messages: [
             { role: 'system', content: systemPrompt },
-            { role: 'user', content: `Parse this resume:\n\n${resumeText.substring(0, 4000)}` }
+            { role: 'user', content: `Parse this resume text and extract the requested information:\n\n${resumeText.substring(0, 6000)}` }
           ],
           temperature: 0.1,
-          max_tokens: 1000,
+          max_tokens: 1500,
         }),
       })
 
       if (!response.ok) {
-        const errorData = await response.text()
-        console.error('OpenAI API error:', response.status, errorData)
+        const errorText = await response.text()
+        console.error('OpenAI API error:', response.status, response.statusText, errorText)
         return new Response(
           JSON.stringify({ 
             success: false, 
-            error: `OpenAI API error: ${response.status}`,
+            error: `AI processing failed (${response.status}). Please try again or contact support.`,
             data: null 
           }),
           { 
@@ -280,12 +348,17 @@ Rules:
       }
 
       aiResponse = await response.json()
+      console.log('OpenAI response received:', { 
+        hasChoices: !!aiResponse.choices,
+        choicesLength: aiResponse.choices?.length 
+      })
+
     } catch (error) {
       console.error('Error calling OpenAI API:', error)
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: `Failed to call OpenAI API: ${error.message}`,
+          error: `AI service connection failed: ${error.message}. Please try again.`,
           data: null 
         }),
         { 
@@ -298,11 +371,11 @@ Rules:
     const parsedContent = aiResponse.choices?.[0]?.message?.content
 
     if (!parsedContent) {
-      console.error('No response from OpenAI')
+      console.error('No response content from OpenAI')
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: 'No response from AI parser',
+          error: 'AI parsing service returned no response. Please try again.',
           data: null 
         }),
         { 
@@ -312,29 +385,52 @@ Rules:
       )
     }
 
-    console.log('AI response:', parsedContent)
+    console.log('AI response content:', parsedContent.substring(0, 500))
 
-    // Parse the JSON response
     let extractedData
     try {
-      extractedData = JSON.parse(parsedContent)
+      // Clean the response to ensure it's valid JSON
+      const cleanedContent = parsedContent.trim()
+      extractedData = JSON.parse(cleanedContent)
     } catch (e) {
       console.error('Failed to parse AI response as JSON:', parsedContent)
       console.error('JSON parse error:', e)
-      return new Response(
-        JSON.stringify({ 
-          success: false, 
-          error: 'AI returned invalid JSON format. Please try again.',
-          data: null 
-        }),
-        { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 500 
+      
+      // Try to extract JSON from the response if it's wrapped in other text
+      const jsonMatch = parsedContent.match(/\{[\s\S]*\}/)
+      if (jsonMatch) {
+        try {
+          extractedData = JSON.parse(jsonMatch[0])
+        } catch (e2) {
+          console.error('Failed to parse extracted JSON:', e2)
+          return new Response(
+            JSON.stringify({ 
+              success: false, 
+              error: 'AI returned invalid data format. Please try again with a different resume.',
+              data: null 
+            }),
+            { 
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              status: 500 
+            }
+          )
         }
-      )
+      } else {
+        return new Response(
+          JSON.stringify({ 
+            success: false, 
+            error: 'AI parsing failed to return structured data. Please try again.',
+            data: null 
+          }),
+          { 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 500 
+          }
+        )
+      }
     }
 
-    // Clean and validate the extracted data
+    // Validate and clean the extracted data
     const cleanedData = {
       candidate_name: extractedData.candidate_name || null,
       location_country: extractedData.location_country || null,
@@ -350,13 +446,18 @@ Rules:
       notes: extractedData.extracted_skills ? `Skills: ${extractedData.extracted_skills}${extractedData.years_experience ? `\nExperience: ${extractedData.years_experience} years` : ''}` : null
     }
 
-    console.log('Cleaned extracted data:', cleanedData)
+    console.log('Successfully parsed resume data:', {
+      hasName: !!cleanedData.candidate_name,
+      hasLocation: !!(cleanedData.location_country || cleanedData.location_city),
+      hasSkills: !!cleanedData.extracted_skills,
+      hasExperience: !!cleanedData.years_experience
+    })
 
     return new Response(
       JSON.stringify({ 
         success: true, 
         data: cleanedData,
-        message: 'Resume parsed successfully' 
+        message: 'Resume parsed successfully!' 
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -369,7 +470,7 @@ Rules:
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: `Unexpected error: ${error.message}`,
+        error: `Server error: ${error.message}. Please try again or contact support.`,
         data: null 
       }),
       { 
