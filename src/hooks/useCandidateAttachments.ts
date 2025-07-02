@@ -27,6 +27,8 @@ export function useCandidateAttachments(candidateId: string) {
 
     setIsLoading(true)
     try {
+      console.log('Fetching attachments for candidate:', candidateId)
+      
       const { data, error } = await supabase
         .from('candidate_attachments')
         .select('*')
@@ -38,6 +40,7 @@ export function useCandidateAttachments(candidateId: string) {
         throw error
       }
 
+      console.log('Fetched attachments:', data)
       setAttachments(data || [])
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch attachments'
@@ -59,9 +62,13 @@ export function useCandidateAttachments(candidateId: string) {
 
     setIsUploading(true)
     try {
+      console.log('Uploading file:', file.name, 'for candidate:', candidateId)
+      
       // Generate unique file path
       const fileExt = file.name.split('.').pop()
       const fileName = `${candidateId}/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
+
+      console.log('Generated file path:', fileName)
 
       // Upload file to storage
       const { error: storageError } = await supabase.storage
@@ -73,13 +80,15 @@ export function useCandidateAttachments(candidateId: string) {
         throw storageError
       }
 
+      console.log('File uploaded to storage successfully')
+
       // Create database record
       const { error: dbError } = await supabase
         .from('candidate_attachments')
         .insert({
           candidate_id: candidateId,
           file_name: file.name,
-          file_url: fileName,
+          file_url: fileName, // Store the storage path
           file_size_bytes: file.size,
           file_type: file.type,
           uploaded_by: user.id
@@ -93,6 +102,8 @@ export function useCandidateAttachments(candidateId: string) {
           .remove([fileName])
         throw dbError
       }
+
+      console.log('Database record created successfully')
 
       toast({
         title: 'Success',
@@ -117,6 +128,8 @@ export function useCandidateAttachments(candidateId: string) {
   const deleteAttachment = async (attachmentId: string, fileUrl: string) => {
     setIsLoading(true)
     try {
+      console.log('Deleting attachment:', attachmentId, 'with file:', fileUrl)
+      
       // Delete from database
       const { error: dbError } = await supabase
         .from('candidate_attachments')
@@ -160,6 +173,8 @@ export function useCandidateAttachments(candidateId: string) {
 
   const downloadAttachment = async (fileUrl: string, fileName: string) => {
     try {
+      console.log('Downloading attachment:', fileUrl, fileName)
+      
       const { data, error } = await supabase.storage
         .from('candidate-attachments')
         .download(fileUrl)
@@ -169,6 +184,8 @@ export function useCandidateAttachments(candidateId: string) {
         throw error
       }
 
+      console.log('File downloaded successfully, creating download link')
+      
       // Create download link
       const url = URL.createObjectURL(data)
       const a = document.createElement('a')

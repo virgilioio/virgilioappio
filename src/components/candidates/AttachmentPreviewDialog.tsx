@@ -31,25 +31,29 @@ export function AttachmentPreviewDialog({
   const loadPreview = async () => {
     if (!attachment) return
 
+    console.log('Loading preview for attachment:', attachment)
     setIsLoading(true)
     setError(null)
 
     try {
+      console.log('Attempting to download file from storage:', attachment.file_url)
+      
       const { data, error: downloadError } = await supabase.storage
         .from('candidate-attachments')
         .download(attachment.file_url)
 
       if (downloadError) {
-        console.error('Error loading preview:', downloadError)
-        setError('Failed to load preview')
+        console.error('Storage download error:', downloadError)
+        setError('Failed to load preview: ' + downloadError.message)
         return
       }
 
+      console.log('File downloaded successfully, creating preview URL')
       const url = URL.createObjectURL(data)
       setPreviewUrl(url)
     } catch (err) {
       console.error('Preview error:', err)
-      setError('Failed to load preview')
+      setError('Failed to load preview: ' + (err instanceof Error ? err.message : 'Unknown error'))
     } finally {
       setIsLoading(false)
     }
