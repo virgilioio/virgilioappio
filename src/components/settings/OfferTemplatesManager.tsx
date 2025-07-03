@@ -193,7 +193,11 @@ export function OfferTemplatesManager() {
       </Card>
 
       {/* Create/Edit Template Dialog */}
-      <Dialog open={isCreateDialogOpen || !!editingTemplate} onOpenChange={closeDialogs}>
+      <Dialog open={isCreateDialogOpen || !!editingTemplate} onOpenChange={(open) => {
+        if (!open) {
+          closeDialogs()
+        }
+      }}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
