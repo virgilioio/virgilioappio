@@ -47,6 +47,7 @@ export function CreateOfferLetterDialog({
   const [offerTitle, setOfferTitle] = useState('')
   const [fieldOptions, setFieldOptions] = useState<Record<string, Array<{ label: string; value: string }>>>({})
   const [optionsLoading, setOptionsLoading] = useState(false)
+  const [previewLoading, setPreviewLoading] = useState(false)
 
   const selectedTemplate = templates.find(t => t.id === selectedTemplateId)
 
@@ -108,17 +109,23 @@ export function CreateOfferLetterDialog({
         console.log('✅ Sanitized content length:', sanitizedContent.length)
         console.log('📄 Sanitized content preview:', sanitizedContent.substring(0, 300) + '...')
         
-        if (!sanitizedContent || sanitizedContent.trim() === '') {
-          console.error('❌ Sanitization resulted in empty content!')
-          // Fallback to basic processing
-          setProcessedContent(`<p>${content.replace(/<[^>]*>/g, '')}</p>`)
-        } else {
-          setProcessedContent(sanitizedContent)
-        }
+        // Set loading state and use setTimeout to ensure proper editor initialization
+        setPreviewLoading(true)
         
-        setOfferTitle(generateOfferLetterTitle(candidate, job))
-        setCurrentStep('preview')
-        console.log('✅ Successfully moved to preview step')
+        setTimeout(() => {
+          if (!sanitizedContent || sanitizedContent.trim() === '') {
+            console.error('❌ Sanitization resulted in empty content!')
+            // Fallback to basic processing
+            setProcessedContent(`<p>${content.replace(/<[^>]*>/g, '')}</p>`)
+          } else {
+            setProcessedContent(sanitizedContent)
+          }
+          
+          setOfferTitle(generateOfferLetterTitle(candidate, job))
+          setCurrentStep('preview')
+          setPreviewLoading(false)
+          console.log('✅ Successfully moved to preview step')
+        }, 0)
       } catch (error) {
         console.error('❌ Error processing template:', error)
         // Show error to user or handle gracefully
@@ -399,42 +406,48 @@ export function CreateOfferLetterDialog({
         </p>
       </div>
 
-      <div className="space-y-4">
-        <div>
-          <Label htmlFor="offer-title">Offer Letter Title</Label>
-          <Input
-            id="offer-title"
-            value={offerTitle}
-            onChange={(e) => setOfferTitle(e.target.value)}
-            placeholder="Enter offer letter title"
-          />
+      {previewLoading ? (
+        <div className="text-center py-8">
+          <p className="text-muted-foreground">Processing template content...</p>
         </div>
-
-        <div>
-          <Label>Content</Label>
-          {/* Debug info */}
-          <div className="text-xs text-muted-foreground mb-2">
-            Content length: {processedContent?.length || 0} characters
-            {!processedContent && <span className="text-red-500 ml-2">⚠️ No content loaded</span>}
-          </div>
-          
-          {processedContent ? (
-            <RichTextEditor
-              value={processedContent}
-              onChange={setProcessedContent}
-              placeholder="Offer letter content"
-              minHeight="300px"
+      ) : (
+        <div className="space-y-4">
+          <div>
+            <Label htmlFor="offer-title">Offer Letter Title</Label>
+            <Input
+              id="offer-title"
+              value={offerTitle}
+              onChange={(e) => setOfferTitle(e.target.value)}
+              placeholder="Enter offer letter title"
             />
-          ) : (
-            <div className="border border-dashed border-muted rounded-md p-8 text-center">
-              <p className="text-muted-foreground">No content available</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Go back to the previous step and try again
-              </p>
+          </div>
+
+          <div>
+            <Label>Content</Label>
+            {/* Debug info */}
+            <div className="text-xs text-muted-foreground mb-2">
+              Content length: {processedContent?.length || 0} characters
+              {!processedContent && <span className="text-red-500 ml-2">⚠️ No content loaded</span>}
             </div>
-          )}
+            
+            {processedContent ? (
+              <RichTextEditor
+                value={processedContent}
+                onChange={setProcessedContent}
+                placeholder="Offer letter content"
+                minHeight="300px"
+              />
+            ) : (
+              <div className="border border-dashed border-muted rounded-md p-8 text-center">
+                <p className="text-muted-foreground">No content available</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Go back to the previous step and try again
+                </p>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   )
 
