@@ -214,11 +214,11 @@ export function RichTextEditor({
       isExternalUpdateRef.current = true
     }
     
-    // MAIN CONTENT UPDATE LOGIC - More permissive conditions
+    // MAIN CONTENT UPDATE LOGIC - More permissive conditions for external updates
     const shouldUpdateContent = editorRef.current && 
                                value && 
                                value.trim() !== '' &&
-                               value !== lastContentRef.current && 
+                               (isExternalUpdate || value !== lastContentRef.current) && 
                                !isUpdatingRef.current
     
     console.log('🔍 Should update content:', shouldUpdateContent)
