@@ -17,6 +17,10 @@ import { Candidate } from '@/hooks/useCandidates'
 import { processOfferLetterTemplate, generateOfferLetterTitle, validateOfferLetterData, OfferLetterData } from '@/utils/offerLetterUtils'
 import { sanitizeHtmlForEditor } from '@/utils/htmlSanitizer'
 import { useAuth } from '@/contexts/AuthContext'
+import { useCandidateAttachments } from '@/hooks/useCandidateAttachments'
+import jsPDF from 'jspdf'
+import html2canvas from 'html2canvas'
+import { toast } from '@/hooks/use-toast'
 
 interface CreateOfferLetterDialogProps {
   isOpen: boolean
@@ -40,6 +44,7 @@ export function CreateOfferLetterDialog({
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('')
   const { fields, isLoading: fieldsLoading, fetchFieldOptions } = useOfferTemplateFields(selectedTemplateId)
   const { createOfferLetter, isLoading: creatingLetter } = useOfferLetters(candidate.id)
+  const { uploadAttachment } = useCandidateAttachments(candidate.id)
   
   const [currentStep, setCurrentStep] = useState<Step>('template')
   const [fieldValues, setFieldValues] = useState<Record<string, any>>({})
@@ -156,6 +161,60 @@ const [previewLoading, setPreviewLoading] = useState(false)
     }
   }
 
+  const generatePDF = async (htmlContent: string, title: string): Promise<Blob> => {
+    // Create a temporary container to render the content
+    const tempContainer = document.createElement('div')
+    tempContainer.innerHTML = htmlContent
+    tempContainer.style.position = 'absolute'
+    tempContainer.style.left = '-9999px'
+    tempContainer.style.top = '-9999px'
+    tempContainer.style.width = '210mm' // A4 width
+    tempContainer.style.padding = '20mm'
+    tempContainer.style.fontFamily = 'Arial, sans-serif'
+    tempContainer.style.fontSize = '12px'
+    tempContainer.style.lineHeight = '1.6'
+    tempContainer.style.color = '#000000'
+    tempContainer.style.backgroundColor = '#ffffff'
+
+    document.body.appendChild(tempContainer)
+
+    try {
+      // Convert HTML to canvas
+      const canvas = await html2canvas(tempContainer, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff'
+      })
+
+      // Create PDF
+      const pdf = new jsPDF('p', 'mm', 'a4')
+      const imgData = canvas.toDataURL('image/png')
+      const imgWidth = 210 // A4 width in mm
+      const pageHeight = 295 // A4 height in mm
+      const imgHeight = (canvas.height * imgWidth) / canvas.width
+      let heightLeft = imgHeight
+
+      let position = 0
+
+      // Add first page
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
+      heightLeft -= pageHeight
+
+      // Add additional pages if needed
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight
+        pdf.addPage()
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
+        heightLeft -= pageHeight
+      }
+
+      return pdf.output('blob')
+    } finally {
+      document.body.removeChild(tempContainer)
+    }
+  }
+
   const handleCreateOfferLetter = async () => {
     try {
       // Validate data
@@ -168,6 +227,7 @@ const [previewLoading, setPreviewLoading] = useState(false)
         return
       }
 
+      // Create the offer letter in database
       await createOfferLetter({
         candidate_id: candidate.id,
         job_id: candidate.job_id,
@@ -180,6 +240,31 @@ const [previewLoading, setPreviewLoading] = useState(false)
         created_by: user?.id
       })
 
+      // Generate PDF and upload as attachment
+      try {
+        const pdfBlob = await generatePDF(processedContent, offerTitle)
+        const timestamp = new Date().toISOString().split('T')[0]
+        const fileName = `Offer_Letter_${candidate.candidate_name.replace(/\s+/g, '_')}_${timestamp}.pdf`
+        
+        // Create a File object from the blob
+        const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' })
+        
+        // Upload as attachment
+        await uploadAttachment(pdfFile)
+        
+        toast({
+          title: 'Success',
+          description: 'Offer letter created and PDF attached successfully'
+        })
+      } catch (pdfError) {
+        console.error('Failed to generate/upload PDF:', pdfError)
+        toast({
+          title: 'Partial Success',
+          description: 'Offer letter created but PDF attachment failed',
+          variant: 'destructive'
+        })
+      }
+
       onClose()
       // Reset state
       setCurrentStep('template')
@@ -189,6 +274,11 @@ const [previewLoading, setPreviewLoading] = useState(false)
       setOfferTitle('')
     } catch (error) {
       console.error('Failed to create offer letter:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to create offer letter',
+        variant: 'destructive'
+      })
     }
   }
 
