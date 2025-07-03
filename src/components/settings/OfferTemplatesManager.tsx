@@ -14,6 +14,7 @@ import { useOfferTemplates, type OfferTemplate } from '@/hooks/useOfferTemplates
 import { useOfferTemplateFields } from '@/hooks/useOfferTemplateFields'
 import { OfferTemplateFieldsManager } from './OfferTemplateFieldsManager'
 import { PlaceholderHelper } from './PlaceholderHelper'
+import { sanitizeHtmlForEditor } from '@/utils/htmlSanitizer'
 
 export function OfferTemplatesManager() {
   const { templates, isLoading, createTemplate, updateTemplate, deleteTemplate } = useOfferTemplates()
@@ -77,15 +78,27 @@ export function OfferTemplatesManager() {
   }
 
   const openEditDialog = (template: OfferTemplate) => {
+    console.log('🔧 Opening edit dialog for template:', template.name)
+    console.log('📄 Raw template content:', template.content)
+    
     setIsFormReady(false)
+    
+    // Sanitize the HTML content before setting it
+    const sanitizedContent = sanitizeHtmlForEditor(template.content)
+    console.log('🧹 Setting sanitized content:', sanitizedContent)
+    
     setFormData({
       name: template.name,
       description: template.description || '',
-      content: template.content
+      content: sanitizedContent
     })
     setEditingTemplate(template)
+    
     // Set form ready after a brief delay to ensure state is updated
-    setTimeout(() => setIsFormReady(true), 50)
+    setTimeout(() => {
+      console.log('✅ Form ready, content should be:', sanitizedContent)
+      setIsFormReady(true)
+    }, 100)
   }
 
   const openFieldsDialog = (templateId: string) => {
