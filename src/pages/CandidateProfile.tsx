@@ -35,9 +35,9 @@ export default function CandidateProfile() {
   const { candidates, isLoading: candidatesLoading, updateCandidate } = useCandidates(jobId || '')
   const { getJob, isLoading: jobLoading } = useJobs()
 
-  // Get the organization data from the database
-  const userOrganization = profile?.organization_id 
-    ? organizations.find(org => org.id === profile.organization_id)
+  // Get the job's organization data from the database
+  const jobOrganization = job?.organization_id 
+    ? organizations.find(org => org.id === job.organization_id)
     : null
 
   // Navigation logic for previous/next candidates
@@ -353,7 +353,7 @@ export default function CandidateProfile() {
                       <CandidateComments
                         candidateId={candidate.id}
                         jobId={candidate.job_id}
-                        organizationId={userOrganization?.id || 'default-org'}
+                        organizationId={jobOrganization?.id || 'default-org'}
                       />
                     </CardContent>
                   </Card>
@@ -442,13 +442,13 @@ export default function CandidateProfile() {
             )}
 
             {/* Create Offer Letter Dialog */}
-            {candidate && job && userOrganization && (
+            {candidate && job && jobOrganization && (
               <CreateOfferLetterDialog
                 isOpen={isOfferLetterDialogOpen}
                 onClose={() => setIsOfferLetterDialogOpen(false)}
                 candidate={candidate}
                 job={job}
-                organization={userOrganization}
+                organization={jobOrganization}
               />
             )}
           </AppContainer>
