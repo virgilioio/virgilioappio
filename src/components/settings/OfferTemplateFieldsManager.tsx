@@ -49,6 +49,9 @@ export function OfferTemplateFieldsManager({ templateId }: OfferTemplateFieldsMa
 
   const handleCreateField = async () => {
     try {
+      console.log('🚀 Creating field with data:', formData)
+      console.log('📋 Select options to save:', selectOptions)
+      
       const maxOrder = fields.length > 0 ? Math.max(...fields.map(f => f.display_order)) : -1
       
       const newField = await createField({
@@ -57,24 +60,47 @@ export function OfferTemplateFieldsManager({ templateId }: OfferTemplateFieldsMa
         display_order: maxOrder + 1
       })
 
+      console.log('✅ Field created successfully:', newField)
+
       // If it's a select field, create the options
       if (formData.field_type === 'select' && selectOptions.length > 0 && newField) {
+        console.log('💾 Creating select options for field:', newField.id)
+        
         for (let i = 0; i < selectOptions.length; i++) {
           const option = selectOptions[i]
           if (option.label.trim() && option.value.trim()) {
-            await createFieldOption({
+            console.log(`📝 Creating option ${i + 1}:`, {
               offer_template_field_id: newField.id,
               option_label: option.label,
               option_value: option.value,
               display_order: i
             })
+            
+            const createdOption = await createFieldOption({
+              offer_template_field_id: newField.id,
+              option_label: option.label,
+              option_value: option.value,
+              display_order: i
+            })
+            
+            console.log(`✅ Option ${i + 1} created:`, createdOption)
+          } else {
+            console.log(`⚠️ Skipping empty option ${i + 1}:`, option)
           }
         }
+        console.log('🎉 All select options created successfully!')
+      } else if (formData.field_type === 'select') {
+        console.log('⚠️ Select field created but no options to save:', {
+          hasNewField: !!newField,
+          optionsCount: selectOptions.length,
+          options: selectOptions
+        })
       }
       
       setIsCreateDialogOpen(false)
       resetForm()
     } catch (error) {
+      console.error('❌ Error creating field:', error)
       // Error handled in hook
     }
   }
