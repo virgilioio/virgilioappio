@@ -64,6 +64,7 @@ export function SettingsSidebar({ currentTab, onTabChange, className }: Settings
         { id: 'platform-legal', label: 'Legal', icon: FileText, show: true },
         { id: 'platform-assets', label: 'Assets', icon: Image, show: true },
         { id: 'platform-countries', label: 'Countries', icon: Globe, show: true },
+        { id: 'platform-templates', label: 'Templates', icon: FileText, show: true },
       ]
     },
   ].filter(item => item.show)

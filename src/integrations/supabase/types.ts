@@ -404,6 +404,7 @@ export type Database = {
           created_at: string
           display_order: number
           id: string
+          offer_template_field_id: string | null
           option_label: string
           option_value: string
         }
@@ -412,6 +413,7 @@ export type Database = {
           created_at?: string
           display_order?: number
           id?: string
+          offer_template_field_id?: string | null
           option_label: string
           option_value: string
         }
@@ -420,6 +422,7 @@ export type Database = {
           created_at?: string
           display_order?: number
           id?: string
+          offer_template_field_id?: string | null
           option_label?: string
           option_value?: string
         }
@@ -431,6 +434,13 @@ export type Database = {
             referencedRelation: "country_fields"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "field_select_options_offer_template_field_id_fkey"
+            columns: ["offer_template_field_id"]
+            isOneToOne: false
+            referencedRelation: "offer_template_fields"
+            referencedColumns: ["id"]
+          },
         ]
       }
       field_validation_rules: {
@@ -439,6 +449,7 @@ export type Database = {
           created_at: string
           error_message: string
           id: string
+          offer_template_field_id: string | null
           rule_type: string
           rule_value: string
         }
@@ -447,6 +458,7 @@ export type Database = {
           created_at?: string
           error_message: string
           id?: string
+          offer_template_field_id?: string | null
           rule_type: string
           rule_value: string
         }
@@ -455,6 +467,7 @@ export type Database = {
           created_at?: string
           error_message?: string
           id?: string
+          offer_template_field_id?: string | null
           rule_type?: string
           rule_value?: string
         }
@@ -464,6 +477,13 @@ export type Database = {
             columns: ["country_field_id"]
             isOneToOne: false
             referencedRelation: "country_fields"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "field_validation_rules_offer_template_field_id_fkey"
+            columns: ["offer_template_field_id"]
+            isOneToOne: false
+            referencedRelation: "offer_template_fields"
             referencedColumns: ["id"]
           },
         ]
@@ -1002,6 +1022,95 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      offer_template_fields: {
+        Row: {
+          accepted_file_types: string | null
+          created_at: string
+          created_by: string | null
+          display_order: number
+          field_label: string
+          field_name: string
+          field_type: Database["public"]["Enums"]["field_type"]
+          help_text: string | null
+          id: string
+          is_required: boolean
+          max_file_size_mb: number | null
+          placeholder_text: string | null
+          template_id: string
+          updated_at: string
+        }
+        Insert: {
+          accepted_file_types?: string | null
+          created_at?: string
+          created_by?: string | null
+          display_order?: number
+          field_label: string
+          field_name: string
+          field_type?: Database["public"]["Enums"]["field_type"]
+          help_text?: string | null
+          id?: string
+          is_required?: boolean
+          max_file_size_mb?: number | null
+          placeholder_text?: string | null
+          template_id: string
+          updated_at?: string
+        }
+        Update: {
+          accepted_file_types?: string | null
+          created_at?: string
+          created_by?: string | null
+          display_order?: number
+          field_label?: string
+          field_name?: string
+          field_type?: Database["public"]["Enums"]["field_type"]
+          help_text?: string | null
+          id?: string
+          is_required?: boolean
+          max_file_size_mb?: number | null
+          placeholder_text?: string | null
+          template_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "offer_template_fields_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "offer_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      offer_templates: {
+        Row: {
+          content: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       organization_custom_data: {
         Row: {

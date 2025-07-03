@@ -12,6 +12,7 @@ import { AdvertisingManager } from '@/components/settings/AdvertisingManager'
 import { LegalManager } from '@/components/settings/LegalManager'
 import { PlatformAssetUploader } from '@/components/settings/PlatformAssetUploader'
 import { CountryManagement } from '@/components/settings/CountryManagement'
+import { OfferTemplatesManager } from '@/components/settings/OfferTemplatesManager'
 import { usePermissions } from '@/hooks/usePermissions'
 import { AppContainer } from '@/components/layout/AppContainer'
 import { Section } from '@/components/layout/Section'
@@ -54,6 +55,8 @@ export default function Settings() {
         return <PlatformAssetUploader />
       case 'platform-countries':
         return <CountryManagement />
+      case 'platform-templates':
+        return <OfferTemplatesManager />
       default:
         return <PlatformSettingsManager />
     }
@@ -132,6 +135,9 @@ export default function Settings() {
                       {renderPlatformContent()}
                     </TabsContent>
                     <TabsContent value="platform-countries">
+                      {renderPlatformContent()}
+                    </TabsContent>
+                    <TabsContent value="platform-templates">
                       {renderPlatformContent()}
                     </TabsContent>
                   </>
