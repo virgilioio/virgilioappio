@@ -175,26 +175,30 @@ export function useCandidateAttachments(candidateId: string) {
     try {
       console.log('Downloading attachment:', fileUrl, fileName)
       
+      // Use signed URL for more reliable downloads
       const { data, error } = await supabase.storage
         .from('candidate-attachments')
-        .download(fileUrl)
+        .createSignedUrl(fileUrl, 300) // 5 minute expiry
 
       if (error) {
-        console.error('Download error:', error)
+        console.error('Signed URL creation error:', error)
         throw error
       }
 
-      console.log('File downloaded successfully, creating download link')
+      if (!data?.signedUrl) {
+        throw new Error('Failed to create download URL')
+      }
+
+      console.log('Signed URL created successfully, starting download')
       
-      // Create download link
-      const url = URL.createObjectURL(data)
+      // Create download link using signed URL
       const a = document.createElement('a')
-      a.href = url
+      a.href = data.signedUrl
       a.download = fileName
+      a.target = '_blank' // Open in new tab as fallback
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
-      URL.revokeObjectURL(url)
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to download attachment'
       console.error('Download error:', err)
