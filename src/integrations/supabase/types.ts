@@ -400,7 +400,7 @@ export type Database = {
       }
       field_select_options: {
         Row: {
-          country_field_id: string
+          country_field_id: string | null
           created_at: string
           display_order: number
           id: string
@@ -409,7 +409,7 @@ export type Database = {
           option_value: string
         }
         Insert: {
-          country_field_id: string
+          country_field_id?: string | null
           created_at?: string
           display_order?: number
           id?: string
@@ -418,7 +418,7 @@ export type Database = {
           option_value: string
         }
         Update: {
-          country_field_id?: string
+          country_field_id?: string | null
           created_at?: string
           display_order?: number
           id?: string

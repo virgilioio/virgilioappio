@@ -178,10 +178,7 @@ export function useOfferTemplateFields(templateId?: string) {
     try {
       const { data, error } = await supabase
         .from('field_select_options')
-        .insert({
-          ...optionData,
-          country_field_id: null
-        })
+        .insert(optionData)
         .select()
         .single()
 
