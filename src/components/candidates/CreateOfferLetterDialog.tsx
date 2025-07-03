@@ -123,8 +123,15 @@ const [previewLoading, setPreviewLoading] = useState(false)
             // Fallback to basic processing
             setProcessedContent(`<p>${content.replace(/<[^>]*>/g, '')}</p>`)
           } else {
+            console.log('🚀 Setting external update flag BEFORE content')
+            // CRITICAL: Set external update flag BEFORE content to ensure proper recognition
             setIsExternalUpdate(true)
-            setProcessedContent(sanitizedContent)
+            
+            // Use a brief delay to ensure the flag is processed before content
+            setTimeout(() => {
+              console.log('📝 Setting processed content with external update flag active')
+              setProcessedContent(sanitizedContent)
+            }, 10)
           }
           
           setOfferTitle(generateOfferLetterTitle(candidate, job))
