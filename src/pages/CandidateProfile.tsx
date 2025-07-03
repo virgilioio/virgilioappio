@@ -349,8 +349,26 @@ export default function CandidateProfile() {
                 )}
               </div>
 
-              {/* Right Column - Job Info, URLs, Attachments, and Quick Actions */}
+              {/* Right Column - Quick Actions, Job Info, URLs, and Attachments */}
               <div className="space-y-md">
+                {/* Quick Actions */}
+                <PermissionGate permission="canManageCandidates">
+                  <Card className="bg-surface-primary">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2 text-text-primary">
+                        <Zap className="h-5 w-5" />
+                        Quick Actions
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <Button onClick={handleEdit} className="w-full gap-sm h-[44px]">
+                        <Edit className="h-4 w-4" />
+                        Edit Candidate
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </PermissionGate>
+
                 {/* Job Information */}
                 {job && (
                   <Card className="bg-surface-primary">
@@ -389,24 +407,6 @@ export default function CandidateProfile() {
                 {candidate && (
                   <CandidateAttachments candidateId={candidate.id} />
                 )}
-
-                {/* Quick Actions */}
-                <PermissionGate permission="canManageCandidates">
-                  <Card className="bg-surface-primary">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2 text-text-primary">
-                        <Zap className="h-5 w-5" />
-                        Quick Actions
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <Button onClick={handleEdit} className="w-full gap-sm h-[44px]">
-                        <Edit className="h-4 w-4" />
-                        Edit Candidate
-                      </Button>
-                    </CardContent>
-                  </Card>
-                </PermissionGate>
               </div>
             </div>
 
