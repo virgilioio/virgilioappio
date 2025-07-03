@@ -10,13 +10,14 @@ import { Separator } from '@/components/ui/separator'
 import { FormField } from '@/components/ui/form-field'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Check, ChevronsUpDown } from 'lucide-react'
+import { Check, ChevronsUpDown, Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/AuthContext'
 import { useFormPersistence } from '@/hooks/useFormPersistence'
 import { CandidateComments } from './CandidateComments'
 import { ResumeUpload } from './ResumeUpload'
 import type { Candidate } from '@/hooks/useCandidates'
+import { toast } from '@/hooks/use-toast'
 
 interface CandidateFormProps {
   isOpen: boolean
@@ -90,8 +91,8 @@ export function CandidateForm({
   const [currencyOpen, setCurrencyOpen] = useState(false)
   const [profileSummary, setProfileSummary] = useState('')
   const [notes, setNotes] = useState('')
-  const [fieldConfidence, setFieldConfidence] = useState<Record<string, 'high' | 'medium' | 'low'>>({})
-  const [aiFilledFields, setAiFilledFields] = useState<Set<string>>(new Set())
+  const [showResumeUpload, setShowResumeUpload] = useState(false)
+  const [hasAutoFilledData, setHasAutoFilledData] = useState(false)
   const { user } = useAuth()
 
   const form = useForm<FormData>({
@@ -116,6 +117,57 @@ export function CandidateForm({
     enabled: isOpen && !candidate, // Only persist for new candidates
     debounceMs: 300
   })
+
+  // Show resume upload only for new candidates
+  useEffect(() => {
+    setShowResumeUpload(!candidate)
+  }, [candidate, isOpen])
+
+  // Handle resume data extraction
+  const handleResumeDataExtracted = (extractedData: any) => {
+    console.log('Extracted resume data:', extractedData)
+    
+    // Update form fields with extracted data
+    if (extractedData.candidate_name) {
+      form.setValue('candidate_name', extractedData.candidate_name)
+    }
+    if (extractedData.location_country) {
+      form.setValue('location_country', extractedData.location_country)
+    }
+    if (extractedData.location_state) {
+      form.setValue('location_state', extractedData.location_state)
+    }
+    if (extractedData.location_city) {
+      form.setValue('location_city', extractedData.location_city)
+    }
+    if (extractedData.salary_amount) {
+      form.setValue('salary_amount', extractedData.salary_amount.toString())
+    }
+    if (extractedData.salary_currency) {
+      form.setValue('salary_currency', extractedData.salary_currency)
+    }
+    if (extractedData.salary_period) {
+      form.setValue('salary_period', extractedData.salary_period)
+    }
+    if (extractedData.linkedin_url) {
+      form.setValue('linkedin_url', extractedData.linkedin_url)
+    }
+
+    // Update rich text editor values
+    if (extractedData.profile_summary) {
+      setProfileSummary(extractedData.profile_summary)
+    }
+    if (extractedData.notes) {
+      setNotes(extractedData.notes)
+    }
+
+    setHasAutoFilledData(true)
+    
+    toast({
+      title: 'Resume Parsed Successfully!',
+      description: 'Candidate information has been auto-filled from the resume. Please review and edit as needed.',
+    })
+  }
 
   // Effect for handling candidate data loading (when editing)
   useEffect(() => {
@@ -147,6 +199,7 @@ export function CandidateForm({
       
       setProfileSummary(profileSummaryValue)
       setNotes(notesValue)
+      setHasAutoFilledData(false)
     }
   }, [candidate, isOpen, form])
 
@@ -172,6 +225,7 @@ export function CandidateForm({
       // Reset rich text editor values only for new candidates
       setProfileSummary('')
       setNotes('')
+      setHasAutoFilledData(false)
     }
   }, [isOpen, candidate, form])
 
@@ -199,62 +253,8 @@ export function CandidateForm({
     }
   })
 
-  const handleResumeDataExtracted = (data: any, metadata?: { confidence?: Record<string, 'high' | 'medium' | 'low'>, extractedSections?: string[] }) => {
-    console.log('Resume data extracted:', data)
-    
-    // Track which fields were filled by AI
-    const filledFields = new Set<string>()
-    
-    // Update form with extracted data
-    if (data.candidate_name) {
-      form.setValue('candidate_name', data.candidate_name)
-      filledFields.add('candidate_name')
-    }
-    if (data.linkedin_url) {
-      form.setValue('linkedin_url', data.linkedin_url)
-      filledFields.add('linkedin_url')
-    }
-    if (data.location_country) {
-      form.setValue('location_country', data.location_country)
-      filledFields.add('location_country')
-    }
-    if (data.location_state) {
-      form.setValue('location_state', data.location_state)
-      filledFields.add('location_state')
-    }
-    if (data.location_city) {
-      form.setValue('location_city', data.location_city)
-      filledFields.add('location_city')
-    }
-    if (data.salary_amount) {
-      form.setValue('salary_amount', data.salary_amount.toString())
-      filledFields.add('salary_amount')
-    }
-    if (data.salary_currency) {
-      form.setValue('salary_currency', data.salary_currency)
-      filledFields.add('salary_currency')
-    }
-    
-    // Update rich text editor values
-    if (data.profile_summary) {
-      setProfileSummary(data.profile_summary)
-      filledFields.add('profile_summary')
-    }
-    if (data.notes) {
-      setNotes(data.notes)
-      filledFields.add('notes')
-    }
-    
-    // Store metadata
-    setAiFilledFields(filledFields)
-    setFieldConfidence(metadata?.confidence || {})
-  }
-
   const handleClose = () => {
-    // Clear persisted data when closing dialog for new candidates
-    if (!candidate) {
-      clearPersistedData()
-    }
+    // Don't clear persisted data when closing - let it persist for later use
     onClose()
   }
 
@@ -264,18 +264,27 @@ export function CandidateForm({
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-surface-primary">
         <DialogHeader className="pb-6">
-          <DialogTitle className="text-xl font-semibold text-text-primary">
+          <DialogTitle className="text-xl font-semibold text-text-primary flex items-center gap-2">
             {candidate ? 'Edit Candidate' : 'Add New Candidate'}
+            {hasAutoFilledData && (
+              <div className="flex items-center gap-1 text-sm font-normal text-green-600 bg-green-50 px-2 py-1 rounded-md">
+                <Sparkles className="h-3 w-3" />
+                AI Auto-filled
+              </div>
+            )}
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-6">
           {/* Resume Upload - Only show for new candidates */}
-          {!candidate && (
-            <ResumeUpload 
-              onDataExtracted={handleResumeDataExtracted}
-              isLoading={isLoading}
-            />
+          {showResumeUpload && (
+            <>
+              <ResumeUpload 
+                onDataExtracted={handleResumeDataExtracted}
+                className="mb-6"
+              />
+              <Separator />
+            </>
           )}
 
           {/* Candidate Form */}
@@ -292,56 +301,34 @@ export function CandidateForm({
                 error={form.formState.errors.candidate_name?.message}
                 htmlFor="candidate_name"
               >
-                <div className="relative">
-                  <Input
-                    id="candidate_name"
-                    {...form.register('candidate_name', { required: 'Name is required' })}
-                    placeholder="Enter candidate name or alias"
-                    className="h-[44px]"
-                  />
-                  {aiFilledFields.has('candidate_name') && (
-                    <div className="absolute right-2 top-1/2 -translate-y-1/2">
-                      <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-md">
-                        AI
-                      </span>
-                    </div>
+                <Input
+                  id="candidate_name"
+                  {...form.register('candidate_name', { required: 'Name is required' })}
+                  placeholder="Enter candidate name or alias"
+                  className={cn(
+                    "h-[44px]",
+                    hasAutoFilledData && form.watch('candidate_name') && "border-green-500 bg-green-50"
                   )}
-                </div>
-                {aiFilledFields.has('candidate_name') && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Extracted by AI • {fieldConfidence.candidate_name === 'high' ? 'High confidence' : fieldConfidence.candidate_name === 'medium' ? 'Medium confidence' : 'Low confidence'}
-                  </p>
-                )}
+                />
               </FormField>
 
               <FormField 
                 label="LinkedIn Profile URL" 
                 error={form.formState.errors.linkedin_url?.message}
                 htmlFor="linkedin_url"
-                helpText={aiFilledFields.has('linkedin_url') ? undefined : "Optional - Enter the candidate's LinkedIn profile URL"}
+                helpText="Optional - Enter the candidate's LinkedIn profile URL"
               >
-                <div className="relative">
-                  <Input
-                    id="linkedin_url"
-                    {...form.register('linkedin_url', { 
-                      validate: validateLinkedInUrl 
-                    })}
-                    placeholder="https://linkedin.com/in/username"
-                    className="h-[44px]"
-                  />
-                  {aiFilledFields.has('linkedin_url') && (
-                    <div className="absolute right-2 top-1/2 -translate-y-1/2">
-                      <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-md">
-                        AI
-                      </span>
-                    </div>
+                <Input
+                  id="linkedin_url"
+                  {...form.register('linkedin_url', { 
+                    validate: validateLinkedInUrl 
+                  })}
+                  placeholder="https://linkedin.com/in/username"
+                  className={cn(
+                    "h-[44px]",
+                    hasAutoFilledData && form.watch('linkedin_url') && "border-green-500 bg-green-50"
                   )}
-                </div>
-                {aiFilledFields.has('linkedin_url') && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Extracted by AI • High confidence
-                  </p>
-                )}
+                />
               </FormField>
             </div>
 
@@ -359,7 +346,10 @@ export function CandidateForm({
                   id="location_country"
                   {...form.register('location_country')}
                   placeholder="Country"
-                  className="h-[44px]"
+                  className={cn(
+                    "h-[44px]",
+                    hasAutoFilledData && form.watch('location_country') && "border-green-500 bg-green-50"
+                  )}
                 />
               </FormField>
 
@@ -372,7 +362,10 @@ export function CandidateForm({
                     id="location_state"
                     {...form.register('location_state')}
                     placeholder="State/Province"
-                    className="h-[44px]"
+                    className={cn(
+                      "h-[44px]",
+                      hasAutoFilledData && form.watch('location_state') && "border-green-500 bg-green-50"
+                    )}
                   />
                 </FormField>
 
@@ -384,7 +377,10 @@ export function CandidateForm({
                     id="location_city"
                     {...form.register('location_city')}
                     placeholder="City"
-                    className="h-[44px]"
+                    className={cn(
+                      "h-[44px]",
+                      hasAutoFilledData && form.watch('location_city') && "border-green-500 bg-green-50"
+                    )}
                   />
                 </FormField>
               </div>
@@ -412,7 +408,10 @@ export function CandidateForm({
                     }
                   })}
                   placeholder="50000"
-                  className="h-[44px]"
+                  className={cn(
+                    "h-[44px]",
+                    hasAutoFilledData && form.watch('salary_amount') && "border-green-500 bg-green-50"
+                  )}
                 />
               </FormField>
 
@@ -427,7 +426,10 @@ export function CandidateForm({
                         variant="outline"
                         role="combobox"
                         aria-expanded={currencyOpen}
-                        className="w-full justify-between h-[44px]"
+                        className={cn(
+                          "w-full justify-between h-[44px]",
+                          hasAutoFilledData && form.watch('salary_currency') && form.watch('salary_currency') !== 'USD' && "border-green-500 bg-green-50"
+                        )}
                       >
                         {form.watch('salary_currency')
                           ? currencies.find((currency) => currency.value === form.watch('salary_currency'))?.label
@@ -474,7 +476,10 @@ export function CandidateForm({
                     value={form.watch('salary_period')} 
                     onValueChange={(value) => form.setValue('salary_period', value)}
                   >
-                    <SelectTrigger className="h-[44px]">
+                    <SelectTrigger className={cn(
+                      "h-[44px]",
+                      hasAutoFilledData && form.watch('salary_period') && form.watch('salary_period') !== 'annually' && "border-green-500 bg-green-50"
+                    )}>
                       <SelectValue placeholder="Period" />
                     </SelectTrigger>
                     <SelectContent>
@@ -498,13 +503,18 @@ export function CandidateForm({
                 htmlFor="profile_summary"
                 helpText="Brief overview of candidate's experience and skills"
               >
-                <RichTextEditor
-                  value={profileSummary}
-                  onChange={setProfileSummary}
-                  placeholder="Brief summary of candidate's background, experience, and key skills..."
-                  minHeight="150px"
-                  className="mt-1"
-                />
+                <div className={cn(
+                  "rounded-md",
+                  hasAutoFilledData && profileSummary && "ring-2 ring-green-500 ring-opacity-50"
+                )}>
+                  <RichTextEditor
+                    value={profileSummary}
+                    onChange={setProfileSummary}
+                    placeholder="Brief summary of candidate's background, experience, and key skills..."
+                    minHeight="150px"
+                    className="mt-1"
+                  />
+                </div>
               </FormField>
 
               <FormField 
@@ -512,13 +522,18 @@ export function CandidateForm({
                 htmlFor="notes"
                 helpText="Private notes visible only to internal team"
               >
-                <RichTextEditor
-                  value={notes}
-                  onChange={setNotes}
-                  placeholder="Add any additional internal notes about this candidate..."
-                  minHeight="120px"
-                  className="mt-1"
-                />
+                <div className={cn(
+                  "rounded-md",
+                  hasAutoFilledData && notes && "ring-2 ring-green-500 ring-opacity-50"
+                )}>
+                  <RichTextEditor
+                    value={notes}
+                    onChange={setNotes}
+                    placeholder="Add any additional internal notes about this candidate..."
+                    minHeight="120px"
+                    className="mt-1"
+                  />
+                </div>
               </FormField>
             </div>
 
