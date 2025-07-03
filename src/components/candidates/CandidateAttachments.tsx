@@ -142,7 +142,7 @@ export function CandidateAttachments({ candidateId }: CandidateAttachmentsProps)
                 type="file"
                 className="hidden"
                 onChange={handleFileInputChange}
-                accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.gif"
+                accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png,.gif,.zip"
               />
               
               <Upload className="h-8 w-8 mx-auto text-text-secondary mb-2" />
@@ -150,7 +150,7 @@ export function CandidateAttachments({ candidateId }: CandidateAttachmentsProps)
                 Drag and drop files here, or click to browse
               </p>
               <p className="text-xs text-text-secondary mb-4">
-                PDF, DOC, DOCX, TXT, images up to 10MB
+                PDF, DOC, DOCX, TXT, ZIP, images up to 10MB
               </p>
               
               <Button
