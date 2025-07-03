@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { ArrowLeft, MapPin, DollarSign, Calendar, User, Edit, Zap, Linkedin, FileText, MessageSquare, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
+import { ArrowLeft, MapPin, DollarSign, Calendar, User, Edit, Zap, Linkedin, FileText, MessageSquare, ChevronLeft, ChevronRight, Clock } from 'lucide-react'
 import { AuthGate } from '@/components/auth/AuthGate'
 import { PermissionGate } from '@/components/auth/PermissionGate'
 import { JobAssignmentGuard } from '@/components/auth/JobAssignmentGuard'
@@ -31,6 +32,7 @@ export default function CandidateProfile() {
   const [job, setJob] = useState<any>(null)
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [isOfferLetterDialogOpen, setIsOfferLetterDialogOpen] = useState(false)
+  const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<'overview' | 'notes'>('overview')
   const { candidates, isLoading: candidatesLoading, updateCandidate } = useCandidates(jobId || '')
   const { getJob, isLoading: jobLoading } = useJobs()
@@ -384,6 +386,14 @@ export default function CandidateProfile() {
                         <FileText className="h-4 w-4" />
                         Create Offer Letter
                       </Button>
+                      <Button 
+                        onClick={() => setIsScheduleDialogOpen(true)} 
+                        className="w-full gap-sm h-[44px]"
+                        variant="outline"
+                      >
+                        <Clock className="h-4 w-4" />
+                        Schedule
+                      </Button>
                     </CardContent>
                   </Card>
                 </PermissionGate>
@@ -451,6 +461,25 @@ export default function CandidateProfile() {
                 organization={jobOrganization}
               />
             )}
+
+            {/* Schedule Dialog */}
+            <Dialog open={isScheduleDialogOpen} onOpenChange={setIsScheduleDialogOpen}>
+              <DialogContent className="max-w-md">
+                <DialogHeader>
+                  <DialogTitle className="text-xl font-semibold text-text-primary">Schedule Meeting</DialogTitle>
+                  <DialogDescription className="text-text-secondary">
+                    Schedule interviews and meetings with candidates
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="py-6 text-center">
+                  <Clock className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                  <h3 className="text-lg font-medium text-text-primary mb-2">Coming Soon</h3>
+                  <p className="text-text-secondary">
+                    Scheduling functionality will be available in an upcoming update.
+                  </p>
+                </div>
+              </DialogContent>
+            </Dialog>
           </AppContainer>
         </JobAssignmentGuard>
       </PermissionGate>
