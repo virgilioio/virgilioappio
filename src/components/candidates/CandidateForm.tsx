@@ -175,8 +175,8 @@ export function CandidateForm({
   const validateLinkedInUrl = (url: string) => {
     if (!url) return true // Allow empty URLs
     
-    const linkedinRegex = /^https?:\/\/(www\.)?linkedin\.com\/in\/[a-zA-Z0-9-]+\/?$/
-    return linkedinRegex.test(url) || 'Please enter a valid LinkedIn profile URL (e.g., https://linkedin.com/in/username)'
+    const linkedinRegex = /^https?:\/\/.*linkedin\.com/
+    return linkedinRegex.test(url) || 'Please enter a valid LinkedIn URL'
   }
 
   const handleSubmit = form.handleSubmit((data) => {
