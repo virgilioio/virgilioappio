@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import * as React from 'react'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -37,13 +38,15 @@ export function CreateOfferLetterDialog({
   const { user } = useAuth()
   const { templates, isLoading: templatesLoading } = useOfferTemplates()
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('')
-  const { fields, isLoading: fieldsLoading } = useOfferTemplateFields(selectedTemplateId)
+  const { fields, isLoading: fieldsLoading, fetchFieldOptions } = useOfferTemplateFields(selectedTemplateId)
   const { createOfferLetter, isLoading: creatingLetter } = useOfferLetters(candidate.id)
   
   const [currentStep, setCurrentStep] = useState<Step>('template')
   const [fieldValues, setFieldValues] = useState<Record<string, any>>({})
   const [processedContent, setProcessedContent] = useState('')
   const [offerTitle, setOfferTitle] = useState('')
+  const [fieldOptions, setFieldOptions] = useState<Record<string, Array<{ label: string; value: string }>>>({})
+  const [optionsLoading, setOptionsLoading] = useState(false)
 
   const selectedTemplate = templates.find(t => t.id === selectedTemplateId)
 
@@ -52,6 +55,7 @@ export function CreateOfferLetterDialog({
     setSelectedTemplateId(templateId)
     setFieldValues({})
     setProcessedContent('')
+    setFieldOptions({})
     // Auto-advance to fields step
     setCurrentStep('fields')
     console.log('Advanced to fields step')
@@ -268,8 +272,39 @@ export function CreateOfferLetterDialog({
     </div>
   )
 
+  const loadFieldOptions = async () => {
+    if (!fields.length) return
+    
+    setOptionsLoading(true)
+    const optionsMap: Record<string, Array<{ label: string; value: string }>> = {}
+    
+    try {
+      for (const field of fields) {
+        if (field.field_type === 'select') {
+          const options = await fetchFieldOptions(field.id)
+          optionsMap[field.field_name] = options.map(opt => ({
+            label: opt.option_label,
+            value: opt.option_value
+          }))
+        }
+      }
+      setFieldOptions(optionsMap)
+    } catch (error) {
+      console.error('Error loading field options:', error)
+    } finally {
+      setOptionsLoading(false)
+    }
+  }
+
+  // Load options when fields change
+  React.useEffect(() => {
+    if (fields.length > 0 && currentStep === 'fields') {
+      loadFieldOptions()
+    }
+  }, [fields, currentStep])
+
   const renderFieldInputs = () => {
-    if (fieldsLoading) {
+    if (fieldsLoading || optionsLoading) {
       return <div className="text-center py-8">Loading template fields...</div>
     }
 
@@ -317,6 +352,24 @@ export function CreateOfferLetterDialog({
                     onChange={(e) => handleFieldChange(field.field_name, e.target.value)}
                     placeholder={field.placeholder_text}
                   />
+                ) : field.field_type === 'select' ? (
+                  <Select
+                    value={fieldValues[field.field_name] || ''}
+                    onValueChange={(value) => handleFieldChange(field.field_name, value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder={field.placeholder_text || 'Select an option'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {fieldOptions[field.field_name]?.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      )) || (
+                        <SelectItem value="" disabled>No options available</SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
                 ) : (
                   <Input
                     id={field.field_name}
