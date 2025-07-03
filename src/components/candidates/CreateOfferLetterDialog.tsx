@@ -67,27 +67,58 @@ export function CreateOfferLetterDialog({
       setCurrentStep('fields')
     } else if (currentStep === 'fields') {
       // Process template and generate content
-      console.log('Processing template:', selectedTemplate?.name)
-      console.log('Field values:', fieldValues)
-      const offerData: OfferLetterData = {
-        candidate,
-        job,
-        organization,
-        fieldValues
-      }
+      console.log('🚀 Processing template:', selectedTemplate?.name)
+      console.log('📝 Field values:', fieldValues)
+      console.log('📏 Template content length:', selectedTemplate?.content?.length || 0)
       
       if (!selectedTemplate?.content) {
-        console.error('No template content found!')
+        console.error('❌ No template content found!')
         return
       }
       
-      const content = processOfferLetterTemplate(selectedTemplate.content, offerData)
-      console.log('Processed content:', content.substring(0, 200) + '...')
-      const sanitizedContent = sanitizeHtmlForEditor(content)
-      console.log('Sanitized content:', sanitizedContent.substring(0, 200) + '...')
-      setProcessedContent(sanitizedContent)
-      setOfferTitle(generateOfferLetterTitle(candidate, job))
-      setCurrentStep('preview')
+      if (selectedTemplate.content.length === 0) {
+        console.error('❌ Template content is empty!')
+        return
+      }
+      
+      try {
+        const offerData: OfferLetterData = {
+          candidate,
+          job,
+          organization,
+          fieldValues
+        }
+        
+        console.log('⚙️ Processing template with placeholders...')
+        const content = processOfferLetterTemplate(selectedTemplate.content, offerData)
+        console.log('✅ Processed content length:', content.length)
+        console.log('📄 Processed content preview:', content.substring(0, 300) + '...')
+        
+        if (!content || content.trim() === '') {
+          console.error('❌ Template processing resulted in empty content!')
+          return
+        }
+        
+        console.log('🧹 Starting HTML sanitization...')
+        const sanitizedContent = sanitizeHtmlForEditor(content)
+        console.log('✅ Sanitized content length:', sanitizedContent.length)
+        console.log('📄 Sanitized content preview:', sanitizedContent.substring(0, 300) + '...')
+        
+        if (!sanitizedContent || sanitizedContent.trim() === '') {
+          console.error('❌ Sanitization resulted in empty content!')
+          // Fallback to basic processing
+          setProcessedContent(`<p>${content.replace(/<[^>]*>/g, '')}</p>`)
+        } else {
+          setProcessedContent(sanitizedContent)
+        }
+        
+        setOfferTitle(generateOfferLetterTitle(candidate, job))
+        setCurrentStep('preview')
+        console.log('✅ Successfully moved to preview step')
+      } catch (error) {
+        console.error('❌ Error processing template:', error)
+        // Show error to user or handle gracefully
+      }
     } else if (currentStep === 'preview') {
       setCurrentStep('review')
     }
@@ -328,12 +359,27 @@ export function CreateOfferLetterDialog({
 
         <div>
           <Label>Content</Label>
-          <RichTextEditor
-            value={processedContent}
-            onChange={setProcessedContent}
-            placeholder="Offer letter content"
-            minHeight="300px"
-          />
+          {/* Debug info */}
+          <div className="text-xs text-muted-foreground mb-2">
+            Content length: {processedContent?.length || 0} characters
+            {!processedContent && <span className="text-red-500 ml-2">⚠️ No content loaded</span>}
+          </div>
+          
+          {processedContent ? (
+            <RichTextEditor
+              value={processedContent}
+              onChange={setProcessedContent}
+              placeholder="Offer letter content"
+              minHeight="300px"
+            />
+          ) : (
+            <div className="border border-dashed border-muted rounded-md p-8 text-center">
+              <p className="text-muted-foreground">No content available</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Go back to the previous step and try again
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>
