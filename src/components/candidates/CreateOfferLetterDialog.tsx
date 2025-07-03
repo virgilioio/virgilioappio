@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -47,9 +47,13 @@ export function CreateOfferLetterDialog({
   const selectedTemplate = templates.find(t => t.id === selectedTemplateId)
 
   const handleTemplateSelect = (templateId: string) => {
+    console.log('Template selected:', templateId)
     setSelectedTemplateId(templateId)
     setFieldValues({})
     setProcessedContent('')
+    // Auto-advance to fields step
+    setCurrentStep('fields')
+    console.log('Advanced to fields step')
   }
 
   const handleFieldChange = (fieldName: string, value: any) => {
@@ -195,8 +199,10 @@ export function CreateOfferLetterDialog({
           {templates.map((template) => (
             <Card
               key={template.id}
-              className={`cursor-pointer transition-all hover:shadow-md ${
-                selectedTemplateId === template.id ? 'ring-2 ring-primary' : ''
+              className={`cursor-pointer transition-all hover:shadow-md hover:bg-accent/50 ${
+                selectedTemplateId === template.id 
+                  ? 'ring-2 ring-primary bg-primary/5 border-primary' 
+                  : 'hover:border-primary/20'
               }`}
               onClick={() => handleTemplateSelect(template.id)}
             >
@@ -381,6 +387,9 @@ export function CreateOfferLetterDialog({
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Create Offer Letter</DialogTitle>
+          <DialogDescription>
+            Create a personalized offer letter for {candidate.candidate_name} using predefined templates and custom fields.
+          </DialogDescription>
         </DialogHeader>
 
         {renderStepIndicator()}
