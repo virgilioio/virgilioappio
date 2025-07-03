@@ -231,7 +231,6 @@ export function OfferTemplatesManager() {
               <div className="space-y-2">
                 <Label htmlFor="content">Template Content</Label>
                 <RichTextEditor
-                  key={editingTemplate?.id || 'create'}
                   value={formData.content}
                   onChange={(content) => setFormData(prev => ({ ...prev, content }))}
                   placeholder="Enter your offer letter template content here. Use placeholders like {{job.title}}, {{organization.name}}, {{field.start_date}} etc."
