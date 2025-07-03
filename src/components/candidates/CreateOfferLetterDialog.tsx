@@ -442,14 +442,26 @@ const [previewLoading, setPreviewLoading] = useState(false)
             </div>
             
             {processedContent ? (
-              <RichTextEditor
-                value={processedContent}
-                onChange={setProcessedContent}
-                placeholder="Offer letter content"
-                minHeight="300px"
-                isExternalUpdate={isExternalUpdate}
-                onExternalUpdateComplete={handleExternalUpdateComplete}
-              />
+              <div style={{ 
+                border: '2px solid red', 
+                minHeight: '300px', 
+                background: 'white',
+                color: 'black',
+                display: 'block',
+                visibility: 'visible',
+                position: 'relative',
+                zIndex: 999
+              }}>
+                <RichTextEditor
+                  value={processedContent}
+                  onChange={setProcessedContent}
+                  placeholder="Offer letter content"
+                  minHeight="300px"
+                  isExternalUpdate={isExternalUpdate}
+                  onExternalUpdateComplete={handleExternalUpdateComplete}
+                  className="!text-black !bg-white !block !visible"
+                />
+              </div>
             ) : (
               <div className="border border-dashed border-muted rounded-md p-8 text-center">
                 <p className="text-muted-foreground">No content available</p>
