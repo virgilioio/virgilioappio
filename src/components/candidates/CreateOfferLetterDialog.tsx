@@ -47,7 +47,8 @@ export function CreateOfferLetterDialog({
   const [offerTitle, setOfferTitle] = useState('')
   const [fieldOptions, setFieldOptions] = useState<Record<string, Array<{ label: string; value: string }>>>({})
   const [optionsLoading, setOptionsLoading] = useState(false)
-  const [previewLoading, setPreviewLoading] = useState(false)
+const [previewLoading, setPreviewLoading] = useState(false)
+  const [isExternalUpdate, setIsExternalUpdate] = useState(false)
 
   const selectedTemplate = templates.find(t => t.id === selectedTemplateId)
 
@@ -118,6 +119,7 @@ export function CreateOfferLetterDialog({
             // Fallback to basic processing
             setProcessedContent(`<p>${content.replace(/<[^>]*>/g, '')}</p>`)
           } else {
+            setIsExternalUpdate(true)
             setProcessedContent(sanitizedContent)
           }
           
@@ -125,7 +127,7 @@ export function CreateOfferLetterDialog({
           setCurrentStep('preview')
           setPreviewLoading(false)
           console.log('✅ Successfully moved to preview step')
-        }, 0)
+        }, 100)
       } catch (error) {
         console.error('❌ Error processing template:', error)
         // Show error to user or handle gracefully
@@ -436,6 +438,7 @@ export function CreateOfferLetterDialog({
                 onChange={setProcessedContent}
                 placeholder="Offer letter content"
                 minHeight="300px"
+                isExternalUpdate={isExternalUpdate}
               />
             ) : (
               <div className="border border-dashed border-muted rounded-md p-8 text-center">

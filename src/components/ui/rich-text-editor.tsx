@@ -26,6 +26,7 @@ interface RichTextEditorProps {
   placeholder?: string
   className?: string
   minHeight?: string
+  isExternalUpdate?: boolean
 }
 
 export function RichTextEditor({ 
@@ -33,7 +34,8 @@ export function RichTextEditor({
   onChange, 
   placeholder = "Start typing...", 
   className,
-  minHeight = "200px"
+  minHeight = "200px",
+  isExternalUpdate = false
 }: RichTextEditorProps) {
   const [isFocused, setIsFocused] = useState(false)
   const [linkUrl, setLinkUrl] = useState('')
@@ -199,7 +201,12 @@ export function RichTextEditor({
     console.log('🔄 RichTextEditor useEffect triggered')
     console.log('📝 Value length:', value?.length || 0)
     console.log('🎯 lastContentRef equals value:', lastContentRef.current === value)
-    console.log('🔀 isExternalUpdate:', isExternalUpdateRef.current)
+    console.log('🔀 isExternalUpdate prop:', isExternalUpdate)
+    
+    // Set external update flag when prop indicates external update
+    if (isExternalUpdate) {
+      isExternalUpdateRef.current = true
+    }
     
     // Only update innerHTML for external updates (template loading) and avoid internal updates (typing)
     if (editorRef.current && value && value !== lastContentRef.current && !isUpdatingRef.current) {
@@ -222,7 +229,7 @@ export function RichTextEditor({
         isExternalUpdateRef.current = false // Reset flag
       }, 0)
     }
-  }, [value])
+  }, [value, isExternalUpdate])
 
   return (
     <div className={cn(
