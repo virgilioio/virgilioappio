@@ -12,6 +12,8 @@ import { AppContainer } from '@/components/layout/AppContainer'
 import { useCandidates, Candidate } from '@/hooks/useCandidates'
 import { useJobs } from '@/hooks/useJobs'
 import { useAuth } from '@/contexts/AuthContext'
+import { useUserProfile } from '@/hooks/useUserProfile'
+import { useOrganizations } from '@/hooks/useOrganizations'
 import { CandidateComments } from '@/components/candidates/CandidateComments'
 import { CandidateForm } from '@/components/candidates/CandidateForm'
 import { cn } from '@/lib/utils'
@@ -23,6 +25,8 @@ export default function CandidateProfile() {
   const { jobId, candidateId } = useParams<{ jobId: string; candidateId: string }>()
   const navigate = useNavigate()
   const { user } = useAuth()
+  const { profile, isLoading: profileLoading } = useUserProfile()
+  const { organizations, isLoading: organizationsLoading } = useOrganizations()
   const [candidate, setCandidate] = useState<Candidate | null>(null)
   const [job, setJob] = useState<any>(null)
   const [isFormOpen, setIsFormOpen] = useState(false)
@@ -30,6 +34,11 @@ export default function CandidateProfile() {
   const [activeTab, setActiveTab] = useState<'overview' | 'notes'>('overview')
   const { candidates, isLoading: candidatesLoading, updateCandidate } = useCandidates(jobId || '')
   const { getJob, isLoading: jobLoading } = useJobs()
+
+  // Get the organization data from the database
+  const userOrganization = profile?.organization_id 
+    ? organizations.find(org => org.id === profile.organization_id)
+    : null
 
   // Navigation logic for previous/next candidates
   const currentCandidateIndex = candidates.findIndex(c => c.id === candidateId)
@@ -94,7 +103,7 @@ export default function CandidateProfile() {
     return `${currency} ${amount} ${period}`
   }
 
-  if (candidatesLoading || jobLoading) {
+  if (candidatesLoading || jobLoading || profileLoading || organizationsLoading) {
     return (
       <AuthGate>
         <PermissionGate permission="canViewCandidates">
@@ -344,7 +353,7 @@ export default function CandidateProfile() {
                       <CandidateComments
                         candidateId={candidate.id}
                         jobId={candidate.job_id}
-                        organizationId={user?.user_metadata?.organization_id || 'default-org'}
+                        organizationId={userOrganization?.id || 'default-org'}
                       />
                     </CardContent>
                   </Card>
@@ -433,18 +442,13 @@ export default function CandidateProfile() {
             )}
 
             {/* Create Offer Letter Dialog */}
-            {candidate && job && (
+            {candidate && job && userOrganization && (
               <CreateOfferLetterDialog
                 isOpen={isOfferLetterDialogOpen}
                 onClose={() => setIsOfferLetterDialogOpen(false)}
                 candidate={candidate}
                 job={job}
-                organization={{ 
-                  id: user?.user_metadata?.organization_id,
-                  name: user?.user_metadata?.organization_name,
-                  country: user?.user_metadata?.organization_country,
-                  default_currency: user?.user_metadata?.organization_default_currency
-                }}
+                organization={userOrganization}
               />
             )}
           </AppContainer>
