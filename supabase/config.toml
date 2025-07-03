@@ -3,6 +3,3 @@ project_id = "etrxjxstjfcozdjumfsj"
 
 [functions.create-dev-admin]
 verify_jwt = false
-
-[functions.parse-resume]
-verify_jwt = false
