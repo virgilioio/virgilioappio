@@ -14,6 +14,7 @@ import { useOfferTemplates, type OfferTemplate } from '@/hooks/useOfferTemplates
 import { useOfferTemplateFields } from '@/hooks/useOfferTemplateFields'
 import { OfferTemplateFieldsManager } from './OfferTemplateFieldsManager'
 import { PlaceholderHelper } from './PlaceholderHelper'
+import { sanitizeHtmlForEditor } from '@/utils/htmlSanitizer'
 
 export function OfferTemplatesManager() {
   const { templates, isLoading, createTemplate, updateTemplate, deleteTemplate } = useOfferTemplates()
@@ -75,10 +76,16 @@ export function OfferTemplatesManager() {
   }
 
   const openEditDialog = (template: OfferTemplate) => {
+    console.log('🔧 Editing template:', template.name)
+    console.log('📄 Original content length:', template.content.length)
+    
+    const sanitizedContent = sanitizeHtmlForEditor(template.content)
+    console.log('🧹 Sanitized content length:', sanitizedContent.length)
+    
     setFormData({
       name: template.name,
       description: template.description || '',
-      content: template.content
+      content: sanitizedContent
     })
     setEditingTemplate(template)
   }
