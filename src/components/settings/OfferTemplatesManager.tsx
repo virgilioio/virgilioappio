@@ -14,7 +14,6 @@ import { useOfferTemplates, type OfferTemplate } from '@/hooks/useOfferTemplates
 import { useOfferTemplateFields } from '@/hooks/useOfferTemplateFields'
 import { OfferTemplateFieldsManager } from './OfferTemplateFieldsManager'
 import { PlaceholderHelper } from './PlaceholderHelper'
-import { sanitizeHtmlForEditor } from '@/utils/htmlSanitizer'
 
 export function OfferTemplatesManager() {
   const { templates, isLoading, createTemplate, updateTemplate, deleteTemplate } = useOfferTemplates()
@@ -22,7 +21,6 @@ export function OfferTemplatesManager() {
   const [editingTemplate, setEditingTemplate] = useState<OfferTemplate | null>(null)
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null)
   const [isFieldsDialogOpen, setIsFieldsDialogOpen] = useState(false)
-  const [isFormReady, setIsFormReady] = useState(false)
   
   // Form state
   const [formData, setFormData] = useState({
@@ -73,32 +71,16 @@ export function OfferTemplatesManager() {
 
   const openCreateDialog = () => {
     setFormData({ name: '', description: '', content: '' })
-    setIsFormReady(true)
     setIsCreateDialogOpen(true)
   }
 
   const openEditDialog = (template: OfferTemplate) => {
-    console.log('🔧 Opening edit dialog for template:', template.name)
-    console.log('📄 Raw template content:', template.content)
-    
-    setIsFormReady(false)
-    
-    // Sanitize the HTML content before setting it
-    const sanitizedContent = sanitizeHtmlForEditor(template.content)
-    console.log('🧹 Setting sanitized content:', sanitizedContent)
-    
     setFormData({
       name: template.name,
       description: template.description || '',
-      content: sanitizedContent
+      content: template.content
     })
     setEditingTemplate(template)
-    
-    // Set form ready after a brief delay to ensure state is updated
-    setTimeout(() => {
-      console.log('✅ Form ready, content should be:', sanitizedContent)
-      setIsFormReady(true)
-    }, 100)
   }
 
   const openFieldsDialog = (templateId: string) => {
@@ -112,7 +94,6 @@ export function OfferTemplatesManager() {
     setIsFieldsDialogOpen(false)
     setSelectedTemplateId(null)
     setFormData({ name: '', description: '', content: '' })
-    setIsFormReady(false)
   }
 
   return (
@@ -249,19 +230,13 @@ export function OfferTemplatesManager() {
 
               <div className="space-y-2">
                 <Label htmlFor="content">Template Content</Label>
-                {isFormReady ? (
-                  <RichTextEditor
-                    key={editingTemplate?.id || 'create'}
-                    value={formData.content}
-                    onChange={(content) => setFormData(prev => ({ ...prev, content }))}
-                    placeholder="Enter your offer letter template content here. Use placeholders like {{job.title}}, {{organization.name}}, {{field.start_date}} etc."
-                    minHeight="400px"
-                  />
-                ) : (
-                  <div className="min-h-[400px] border rounded-md bg-muted/30 flex items-center justify-center">
-                    <div className="text-sm text-muted-foreground">Loading template content...</div>
-                  </div>
-                )}
+                <RichTextEditor
+                  key={editingTemplate?.id || 'create'}
+                  value={formData.content}
+                  onChange={(content) => setFormData(prev => ({ ...prev, content }))}
+                  placeholder="Enter your offer letter template content here. Use placeholders like {{job.title}}, {{organization.name}}, {{field.start_date}} etc."
+                  minHeight="400px"
+                />
               </div>
 
               <div className="flex justify-end gap-3">
