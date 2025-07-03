@@ -14,6 +14,7 @@ import { useOfferTemplateFields, OfferTemplateField } from '@/hooks/useOfferTemp
 import { useOfferLetters } from '@/hooks/useOfferLetters'
 import { Candidate } from '@/hooks/useCandidates'
 import { processOfferLetterTemplate, generateOfferLetterTitle, validateOfferLetterData, OfferLetterData } from '@/utils/offerLetterUtils'
+import { sanitizeHtmlForEditor } from '@/utils/htmlSanitizer'
 import { useAuth } from '@/contexts/AuthContext'
 
 interface CreateOfferLetterDialogProps {
@@ -61,18 +62,30 @@ export function CreateOfferLetterDialog({
   }
 
   const handleNextStep = () => {
+    console.log('handleNextStep called, currentStep:', currentStep)
     if (currentStep === 'template' && selectedTemplate) {
       setCurrentStep('fields')
     } else if (currentStep === 'fields') {
       // Process template and generate content
+      console.log('Processing template:', selectedTemplate?.name)
+      console.log('Field values:', fieldValues)
       const offerData: OfferLetterData = {
         candidate,
         job,
         organization,
         fieldValues
       }
-      const content = processOfferLetterTemplate(selectedTemplate!.content, offerData)
-      setProcessedContent(content)
+      
+      if (!selectedTemplate?.content) {
+        console.error('No template content found!')
+        return
+      }
+      
+      const content = processOfferLetterTemplate(selectedTemplate.content, offerData)
+      console.log('Processed content:', content.substring(0, 200) + '...')
+      const sanitizedContent = sanitizeHtmlForEditor(content)
+      console.log('Sanitized content:', sanitizedContent.substring(0, 200) + '...')
+      setProcessedContent(sanitizedContent)
       setOfferTitle(generateOfferLetterTitle(candidate, job))
       setCurrentStep('preview')
     } else if (currentStep === 'preview') {
