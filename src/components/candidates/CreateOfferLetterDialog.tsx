@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import * as React from 'react'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -49,6 +49,10 @@ export function CreateOfferLetterDialog({
   const [optionsLoading, setOptionsLoading] = useState(false)
 const [previewLoading, setPreviewLoading] = useState(false)
   const [isExternalUpdate, setIsExternalUpdate] = useState(false)
+
+  const handleExternalUpdateComplete = useCallback(() => {
+    setIsExternalUpdate(false)
+  }, [])
 
   const selectedTemplate = templates.find(t => t.id === selectedTemplateId)
 
@@ -439,6 +443,7 @@ const [previewLoading, setPreviewLoading] = useState(false)
                 placeholder="Offer letter content"
                 minHeight="300px"
                 isExternalUpdate={isExternalUpdate}
+                onExternalUpdateComplete={handleExternalUpdateComplete}
               />
             ) : (
               <div className="border border-dashed border-muted rounded-md p-8 text-center">

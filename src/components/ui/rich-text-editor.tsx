@@ -27,6 +27,7 @@ interface RichTextEditorProps {
   className?: string
   minHeight?: string
   isExternalUpdate?: boolean
+  onExternalUpdateComplete?: () => void
 }
 
 export function RichTextEditor({ 
@@ -35,7 +36,8 @@ export function RichTextEditor({
   placeholder = "Start typing...", 
   className,
   minHeight = "200px",
-  isExternalUpdate = false
+  isExternalUpdate = false,
+  onExternalUpdateComplete
 }: RichTextEditorProps) {
   const [isFocused, setIsFocused] = useState(false)
   const [linkUrl, setLinkUrl] = useState('')
@@ -227,6 +229,11 @@ export function RichTextEditor({
         }
         isUpdatingRef.current = false
         isExternalUpdateRef.current = false // Reset flag
+        
+        // Call completion callback for external updates
+        if (isExternalUpdate && onExternalUpdateComplete) {
+          onExternalUpdateComplete()
+        }
       }, 0)
     }
   }, [value, isExternalUpdate])
