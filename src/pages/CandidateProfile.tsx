@@ -17,6 +17,7 @@ import { CandidateForm } from '@/components/candidates/CandidateForm'
 import { cn } from '@/lib/utils'
 import { CandidateAttachments } from '@/components/candidates/CandidateAttachments'
 import { CandidateUrls } from '@/components/candidates/CandidateUrls'
+import { CreateOfferLetterDialog } from '@/components/candidates/CreateOfferLetterDialog'
 
 export default function CandidateProfile() {
   const { jobId, candidateId } = useParams<{ jobId: string; candidateId: string }>()
@@ -25,6 +26,7 @@ export default function CandidateProfile() {
   const [candidate, setCandidate] = useState<Candidate | null>(null)
   const [job, setJob] = useState<any>(null)
   const [isFormOpen, setIsFormOpen] = useState(false)
+  const [isOfferLetterDialogOpen, setIsOfferLetterDialogOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<'overview' | 'notes'>('overview')
   const { candidates, isLoading: candidatesLoading, updateCandidate } = useCandidates(jobId || '')
   const { getJob, isLoading: jobLoading } = useJobs()
@@ -360,10 +362,18 @@ export default function CandidateProfile() {
                         Quick Actions
                       </CardTitle>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="space-y-3">
                       <Button onClick={handleEdit} className="w-full gap-sm h-[44px]">
                         <Edit className="h-4 w-4" />
                         Edit Candidate
+                      </Button>
+                      <Button 
+                        onClick={() => setIsOfferLetterDialogOpen(true)} 
+                        className="w-full gap-sm h-[44px]"
+                        variant="outline"
+                      >
+                        <FileText className="h-4 w-4" />
+                        Create Offer Letter
                       </Button>
                     </CardContent>
                   </Card>
@@ -419,6 +429,22 @@ export default function CandidateProfile() {
                 candidate={candidate}
                 jobId={candidate.job_id}
                 isLoading={candidatesLoading}
+              />
+            )}
+
+            {/* Create Offer Letter Dialog */}
+            {candidate && job && (
+              <CreateOfferLetterDialog
+                isOpen={isOfferLetterDialogOpen}
+                onClose={() => setIsOfferLetterDialogOpen(false)}
+                candidate={candidate}
+                job={job}
+                organization={{ 
+                  id: user?.user_metadata?.organization_id,
+                  name: user?.user_metadata?.organization_name,
+                  country: user?.user_metadata?.organization_country,
+                  default_currency: user?.user_metadata?.organization_default_currency
+                }}
               />
             )}
           </AppContainer>

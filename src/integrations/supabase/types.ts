@@ -1023,6 +1023,87 @@ export type Database = {
           },
         ]
       }
+      offer_letters: {
+        Row: {
+          candidate_id: string
+          content: string
+          created_at: string
+          created_by: string | null
+          field_values: Json | null
+          id: string
+          job_id: string
+          organization_id: string
+          status: string
+          template_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          candidate_id: string
+          content: string
+          created_at?: string
+          created_by?: string | null
+          field_values?: Json | null
+          id?: string
+          job_id: string
+          organization_id: string
+          status?: string
+          template_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          candidate_id?: string
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          field_values?: Json | null
+          id?: string
+          job_id?: string
+          organization_id?: string
+          status?: string
+          template_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "offer_letters_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "job_candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offer_letters_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offer_letters_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization_exchange_rates"
+            referencedColumns: ["organization_id"]
+          },
+          {
+            foreignKeyName: "offer_letters_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "offer_letters_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "offer_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       offer_template_fields: {
         Row: {
           accepted_file_types: string | null
