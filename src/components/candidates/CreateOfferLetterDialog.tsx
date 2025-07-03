@@ -114,31 +114,29 @@ const [previewLoading, setPreviewLoading] = useState(false)
         console.log('✅ Sanitized content length:', sanitizedContent.length)
         console.log('📄 Sanitized content preview:', sanitizedContent.substring(0, 300) + '...')
         
-        // Set loading state and use setTimeout to ensure proper editor initialization
+        // Set loading state
         setPreviewLoading(true)
         
-        setTimeout(() => {
-          if (!sanitizedContent || sanitizedContent.trim() === '') {
-            console.error('❌ Sanitization resulted in empty content!')
-            // Fallback to basic processing
-            setProcessedContent(`<p>${content.replace(/<[^>]*>/g, '')}</p>`)
-          } else {
-            console.log('🚀 Setting external update flag BEFORE content')
-            // CRITICAL: Set external update flag BEFORE content to ensure proper recognition
-            setIsExternalUpdate(true)
-            
-            // Use a brief delay to ensure the flag is processed before content
-            setTimeout(() => {
-              console.log('📝 Setting processed content with external update flag active')
-              setProcessedContent(sanitizedContent)
-            }, 10)
-          }
-          
+        if (!sanitizedContent || sanitizedContent.trim() === '') {
+          console.error('❌ Sanitization resulted in empty content!')
+          setProcessedContent(`<p>${content.replace(/<[^>]*>/g, '')}</p>`)
           setOfferTitle(generateOfferLetterTitle(candidate, job))
           setCurrentStep('preview')
           setPreviewLoading(false)
-          console.log('✅ Successfully moved to preview step')
-        }, 100)
+        } else {
+          console.log('🚀 CRITICAL FIX: Setting external update flag and content simultaneously')
+          console.log('📄 Content to be set:', sanitizedContent.substring(0, 200) + '...')
+          
+          // CRITICAL FIX: Set both external update flag and content in the same state update batch
+          // This ensures the RichTextEditor receives both changes in the same render cycle
+          setIsExternalUpdate(true)
+          setProcessedContent(sanitizedContent)
+          setOfferTitle(generateOfferLetterTitle(candidate, job))
+          setCurrentStep('preview')
+          setPreviewLoading(false)
+          
+          console.log('✅ Successfully moved to preview step with content')
+        }
       } catch (error) {
         console.error('❌ Error processing template:', error)
         // Show error to user or handle gracefully

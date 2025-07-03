@@ -201,61 +201,75 @@ export function RichTextEditor({
   // Update editor content when value prop changes from parent
   useEffect(() => {
     console.log('🔄 RichTextEditor useEffect triggered')
-    console.log('📝 Value length:', value?.length || 0)
-    console.log('🎯 lastContentRef equals value:', lastContentRef.current === value)
+    console.log('📝 Value present:', !!value, 'Length:', value?.length || 0)
+    console.log('🎯 Content changed:', value !== lastContentRef.current)
     console.log('🔀 isExternalUpdate prop:', isExternalUpdate)
     console.log('📍 isExternalUpdateRef.current:', isExternalUpdateRef.current)
     console.log('🔧 isUpdatingRef.current:', isUpdatingRef.current)
+    console.log('🏠 Editor exists:', !!editorRef.current)
     
-    // Set external update flag when prop indicates external update
-    if (isExternalUpdate) {
-      console.log('🎯 Setting isExternalUpdateRef to true')
+    // CRITICAL FIX: Always set external update flag when prop indicates external update
+    if (isExternalUpdate && !isExternalUpdateRef.current) {
+      console.log('🎯 SETTING isExternalUpdateRef to true')
       isExternalUpdateRef.current = true
     }
     
-    // Only update innerHTML for external updates (template loading) and avoid internal updates (typing)
-    if (editorRef.current && value && value !== lastContentRef.current && !isUpdatingRef.current) {
-      console.log('🚀 Starting content update process')
-      console.log('📋 Content to set:', value.substring(0, 200) + '...')
+    // MAIN CONTENT UPDATE LOGIC - More permissive conditions
+    const shouldUpdateContent = editorRef.current && 
+                               value && 
+                               value.trim() !== '' &&
+                               value !== lastContentRef.current && 
+                               !isUpdatingRef.current
+    
+    console.log('🔍 Should update content:', shouldUpdateContent)
+    
+    if (shouldUpdateContent) {
+      console.log('🚀 STARTING CONTENT UPDATE PROCESS')
+      console.log('📋 Content preview:', value.substring(0, 300) + '...')
       
       isUpdatingRef.current = true
       
       // Save cursor position for external updates
-      const savedPosition = saveTextCursorPosition(editorRef.current)
+      const savedPosition = isExternalUpdateRef.current ? saveTextCursorPosition(editorRef.current) : null
       
-      // Update content
+      // FORCE content update
+      console.log('🔥 FORCING innerHTML update')
       editorRef.current.innerHTML = value
       lastContentRef.current = value
-      console.log('📝 Content physically set to innerHTML')
+      console.log('📝 Content PHYSICALLY set to innerHTML, new length:', editorRef.current.innerHTML.length)
       
-      // Restore cursor position after DOM update for external updates
+      // Short delay to ensure DOM is updated
       setTimeout(() => {
-        console.log('✅ Content set in editor, innerHTML length:', editorRef.current?.innerHTML?.length || 0)
-        console.log('📊 Current editor content:', editorRef.current?.innerHTML?.substring(0, 200) + '...')
+        const currentContent = editorRef.current?.innerHTML || ''
+        console.log('✅ Post-update verification:')
+        console.log('📊 Editor innerHTML length:', currentContent.length)
+        console.log('📄 Editor content preview:', currentContent.substring(0, 200) + '...')
+        console.log('🎯 External update was:', isExternalUpdateRef.current)
         
+        // Restore cursor position for external updates
         if (editorRef.current && savedPosition && isExternalUpdateRef.current) {
           restoreTextCursorPosition(editorRef.current, savedPosition)
         }
+        
         isUpdatingRef.current = false
         
-        // Only reset flag and call callback if this was an external update
+        // Reset external update flag and call callback
         if (isExternalUpdateRef.current) {
-          console.log('🎯 Resetting external update flag and calling completion callback')
+          console.log('🎯 RESETTING external update flag and calling completion callback')
           isExternalUpdateRef.current = false
           
-          // Call completion callback for external updates
           if (onExternalUpdateComplete) {
             onExternalUpdateComplete()
           }
         }
-      }, 0)
+      }, 50)
     } else {
-      console.log('❌ Skipping content update:', {
-        hasEditor: !!editorRef.current,
-        hasValue: !!value,
-        contentChanged: value !== lastContentRef.current,
-        notUpdating: !isUpdatingRef.current
-      })
+      console.log('❌ SKIPPING content update - Conditions not met:')
+      console.log('   - Editor exists:', !!editorRef.current)
+      console.log('   - Value exists:', !!value)
+      console.log('   - Value not empty:', value?.trim() !== '')
+      console.log('   - Content changed:', value !== lastContentRef.current)
+      console.log('   - Not currently updating:', !isUpdatingRef.current)
     }
   }, [value, isExternalUpdate])
 
