@@ -195,21 +195,20 @@ export function RichTextEditor({
 
   // Update editor content when value prop changes from parent
   useEffect(() => {
-    if (editorRef.current && value !== lastContentRef.current && !isUpdatingRef.current) {
+    console.log('🔄 RichTextEditor useEffect triggered')
+    console.log('📝 Value length:', value?.length || 0)
+    console.log('🎯 lastContentRef equals value:', lastContentRef.current === value)
+    
+    if (editorRef.current && value && !isUpdatingRef.current) {
       isUpdatingRef.current = true
       
-      // Save current cursor position
-      const savedPosition = saveTextCursorPosition(editorRef.current)
-      
-      // Update content
+      // Force update the innerHTML
       editorRef.current.innerHTML = value
       lastContentRef.current = value
       
-      // Restore cursor position after DOM update
+      // Skip cursor restoration for initial content load to avoid errors
       setTimeout(() => {
-        if (editorRef.current && savedPosition) {
-          restoreTextCursorPosition(editorRef.current, savedPosition)
-        }
+        console.log('✅ Content set in editor, innerHTML length:', editorRef.current?.innerHTML?.length || 0)
         isUpdatingRef.current = false
       }, 0)
     }

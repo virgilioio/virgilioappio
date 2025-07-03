@@ -79,14 +79,25 @@ export function OfferTemplatesManager() {
     console.log('🔧 Editing template:', template.name)
     console.log('📄 Original content length:', template.content.length)
     
-    const sanitizedContent = sanitizeHtmlForEditor(template.content)
-    console.log('🧹 Sanitized content length:', sanitizedContent.length)
-    
+    // First clear the content to ensure fresh state
     setFormData({
-      name: template.name,
-      description: template.description || '',
-      content: sanitizedContent
+      name: '',
+      description: '',
+      content: ''
     })
+    
+    // Then set the actual content after sanitization
+    setTimeout(() => {
+      const sanitizedContent = sanitizeHtmlForEditor(template.content)
+      console.log('🧹 Sanitized content length:', sanitizedContent.length)
+      
+      setFormData({
+        name: template.name,
+        description: template.description || '',
+        content: sanitizedContent
+      })
+    }, 0)
+    
     setEditingTemplate(template)
   }
 
