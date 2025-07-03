@@ -43,6 +43,7 @@ export function RichTextEditor({
   const cursorPositionRef = useRef<TextCursorPosition | null>(null)
   const lastContentRef = useRef<string>(value)
   const isUpdatingRef = useRef(false)
+  const isExternalUpdateRef = useRef(false)
 
   const execCommand = useCallback((command: string, value?: string) => {
     document.execCommand(command, false, value)
@@ -198,18 +199,27 @@ export function RichTextEditor({
     console.log('🔄 RichTextEditor useEffect triggered')
     console.log('📝 Value length:', value?.length || 0)
     console.log('🎯 lastContentRef equals value:', lastContentRef.current === value)
+    console.log('🔀 isExternalUpdate:', isExternalUpdateRef.current)
     
-    if (editorRef.current && value && !isUpdatingRef.current) {
+    // Only update innerHTML for external updates (template loading) and avoid internal updates (typing)
+    if (editorRef.current && value && value !== lastContentRef.current && !isUpdatingRef.current) {
       isUpdatingRef.current = true
       
-      // Force update the innerHTML
+      // Save cursor position for external updates
+      const savedPosition = saveTextCursorPosition(editorRef.current)
+      
+      // Update content
       editorRef.current.innerHTML = value
       lastContentRef.current = value
       
-      // Skip cursor restoration for initial content load to avoid errors
+      // Restore cursor position after DOM update for external updates
       setTimeout(() => {
         console.log('✅ Content set in editor, innerHTML length:', editorRef.current?.innerHTML?.length || 0)
+        if (editorRef.current && savedPosition && isExternalUpdateRef.current) {
+          restoreTextCursorPosition(editorRef.current, savedPosition)
+        }
         isUpdatingRef.current = false
+        isExternalUpdateRef.current = false // Reset flag
       }, 0)
     }
   }, [value])
