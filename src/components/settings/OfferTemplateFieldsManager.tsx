@@ -18,9 +18,10 @@ interface OfferTemplateFieldsManagerProps {
 }
 
 export function OfferTemplateFieldsManager({ templateId }: OfferTemplateFieldsManagerProps) {
-  const { fields, isLoading, createField, updateField, deleteField } = useOfferTemplateFields(templateId)
+  const { fields, isLoading, createField, updateField, deleteField, fetchFieldOptions, createFieldOption, deleteFieldOption } = useOfferTemplateFields(templateId)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [editingField, setEditingField] = useState<OfferTemplateField | null>(null)
+  const [selectOptions, setSelectOptions] = useState<Array<{ label: string; value: string }>>([])
   
   // Form state
   const [formData, setFormData] = useState({
@@ -50,11 +51,26 @@ export function OfferTemplateFieldsManager({ templateId }: OfferTemplateFieldsMa
     try {
       const maxOrder = fields.length > 0 ? Math.max(...fields.map(f => f.display_order)) : -1
       
-      await createField({
+      const newField = await createField({
         template_id: templateId,
         ...formData,
         display_order: maxOrder + 1
       })
+
+      // If it's a select field, create the options
+      if (formData.field_type === 'select' && selectOptions.length > 0 && newField) {
+        for (let i = 0; i < selectOptions.length; i++) {
+          const option = selectOptions[i]
+          if (option.label.trim() && option.value.trim()) {
+            await createFieldOption({
+              offer_template_field_id: newField.id,
+              option_label: option.label,
+              option_value: option.value,
+              display_order: i
+            })
+          }
+        }
+      }
       
       setIsCreateDialogOpen(false)
       resetForm()
@@ -68,6 +84,31 @@ export function OfferTemplateFieldsManager({ templateId }: OfferTemplateFieldsMa
     
     try {
       await updateField(editingField.id, formData)
+      
+      // If it's a select field, update the options
+      if (formData.field_type === 'select') {
+        // First, get current options to delete them
+        const currentOptions = await fetchFieldOptions(editingField.id)
+        
+        // Delete existing options
+        for (const option of currentOptions) {
+          await deleteFieldOption(option.id)
+        }
+        
+        // Create new options
+        for (let i = 0; i < selectOptions.length; i++) {
+          const option = selectOptions[i]
+          if (option.label.trim() && option.value.trim()) {
+            await createFieldOption({
+              offer_template_field_id: editingField.id,
+              option_label: option.label,
+              option_value: option.value,
+              display_order: i
+            })
+          }
+        }
+      }
+      
       setEditingField(null)
       resetForm()
     } catch (error) {
@@ -103,7 +144,7 @@ export function OfferTemplateFieldsManager({ templateId }: OfferTemplateFieldsMa
     setIsCreateDialogOpen(true)
   }
 
-  const openEditDialog = (field: OfferTemplateField) => {
+  const openEditDialog = async (field: OfferTemplateField) => {
     setFormData({
       field_name: field.field_name,
       field_label: field.field_label,
@@ -115,6 +156,23 @@ export function OfferTemplateFieldsManager({ templateId }: OfferTemplateFieldsMa
       accepted_file_types: field.accepted_file_types || '',
       max_file_size_mb: field.max_file_size_mb || 5
     })
+    
+    // Load existing select options if it's a select field
+    if (field.field_type === 'select') {
+      try {
+        const options = await fetchFieldOptions(field.id)
+        setSelectOptions(options.map(opt => ({ 
+          label: opt.option_label, 
+          value: opt.option_value 
+        })))
+      } catch (error) {
+        console.error('Error loading field options:', error)
+        setSelectOptions([])
+      }
+    } else {
+      setSelectOptions([])
+    }
+    
     setEditingField(field)
   }
 
@@ -130,6 +188,7 @@ export function OfferTemplateFieldsManager({ templateId }: OfferTemplateFieldsMa
       accepted_file_types: '',
       max_file_size_mb: 5
     })
+    setSelectOptions([])
   }
 
   const closeDialogs = () => {
@@ -380,6 +439,66 @@ export function OfferTemplateFieldsManager({ templateId }: OfferTemplateFieldsMa
                     min="1"
                     max="100"
                   />
+                </div>
+              </div>
+            )}
+
+            {formData.field_type === 'select' && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label>Dropdown Options</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setSelectOptions(prev => [...prev, { label: '', value: '' }])}
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    Add Option
+                  </Button>
+                </div>
+                
+                <div className="space-y-2">
+                  {selectOptions.map((option, index) => (
+                    <div key={index} className="flex gap-2 items-center">
+                      <div className="flex-1">
+                        <Input
+                          placeholder="Option Label"
+                          value={option.label}
+                          onChange={(e) => {
+                            const newOptions = [...selectOptions]
+                            newOptions[index].label = e.target.value
+                            newOptions[index].value = e.target.value.toLowerCase().replace(/\s+/g, '_')
+                            setSelectOptions(newOptions)
+                          }}
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <Input
+                          placeholder="Option Value"
+                          value={option.value}
+                          onChange={(e) => {
+                            const newOptions = [...selectOptions]
+                            newOptions[index].value = e.target.value
+                            setSelectOptions(newOptions)
+                          }}
+                        />
+                      </div>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSelectOptions(prev => prev.filter((_, i) => i !== index))}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  {selectOptions.length === 0 && (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      No options added yet. Click "Add Option" to create dropdown choices.
+                    </p>
+                  )}
                 </div>
               </div>
             )}
