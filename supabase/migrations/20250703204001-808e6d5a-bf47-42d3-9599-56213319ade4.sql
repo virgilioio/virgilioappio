@@ -1,7 +1,7 @@
 -- Drop the existing complex policy for candidate attachments storage
 DROP POLICY IF EXISTS "Users can view candidate attachments they have access to" ON storage.objects;
 
--- Create a simpler, more reliable policy for candidate attachments
+-- Create a comprehensive policy that matches table RLS for candidate attachments
 CREATE POLICY "Users can view candidate attachments they have access to" ON storage.objects
 FOR SELECT USING (
   bucket_id = 'candidate-attachments' AND (
@@ -16,6 +16,14 @@ FOR SELECT USING (
       WHERE ca.file_url = objects.name 
       AND m.user_id = auth.uid() 
       AND m.user_status = 'active'
+    ) OR
+    -- Users assigned directly to the job can also access attachments
+    EXISTS (
+      SELECT 1 FROM candidate_attachments ca
+      JOIN job_candidates jc ON ca.candidate_id = jc.id
+      JOIN job_assignments ja ON jc.job_id = ja.job_id
+      WHERE ca.file_url = objects.name 
+      AND ja.user_id = auth.uid()
     )
   )
 );
