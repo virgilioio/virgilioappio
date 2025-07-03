@@ -189,7 +189,7 @@ const [previewLoading, setPreviewLoading] = useState(false)
     logoElement.style.position = 'absolute'
     logoElement.style.top = '10mm'
     logoElement.style.left = '10mm'
-    logoElement.style.height = '20mm'
+    logoElement.style.height = '8mm'
     logoElement.style.width = 'auto'
     logoElement.style.zIndex = '1000'
     
