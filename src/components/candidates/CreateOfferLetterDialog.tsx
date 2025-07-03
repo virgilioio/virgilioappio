@@ -18,6 +18,7 @@ import { processOfferLetterTemplate, generateOfferLetterTitle, validateOfferLett
 import { sanitizeHtmlForEditor } from '@/utils/htmlSanitizer'
 import { useAuth } from '@/contexts/AuthContext'
 import { useCandidateAttachments } from '@/hooks/useCandidateAttachments'
+import { supabase } from '@/integrations/supabase/client'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 import { toast } from '@/hooks/use-toast'
@@ -162,15 +163,51 @@ const [previewLoading, setPreviewLoading] = useState(false)
   }
 
   const generatePDF = async (htmlContent: string, title: string): Promise<Blob> => {
+    // Fetch current active logo from platform assets
+    let logoUrl = '/virgilio-logo.png' // Default fallback
+    try {
+      const { data, error } = await supabase
+        .from('platform_assets')
+        .select('file_url')
+        .eq('asset_type', 'logo')
+        .eq('is_active', true)
+        .single()
+
+      if (data && !error) {
+        logoUrl = data.file_url
+      }
+    } catch (error) {
+      console.log('Using default logo for PDF - no custom logo found')
+    }
+
     // Create a temporary container to render the content
     const tempContainer = document.createElement('div')
+    
+    // Create logo element
+    const logoElement = document.createElement('img')
+    logoElement.src = logoUrl
+    logoElement.style.position = 'absolute'
+    logoElement.style.top = '10mm'
+    logoElement.style.left = '10mm'
+    logoElement.style.height = '20mm'
+    logoElement.style.width = 'auto'
+    logoElement.style.zIndex = '1000'
+    
     // Strip inline styles and simplify HTML for better PDF generation
     const simplifiedHtml = htmlContent
       .replace(/style="[^"]*"/g, '') // Remove inline styles
       .replace(/<font[^>]*>/g, '<span>') // Replace font tags
       .replace(/<\/font>/g, '</span>')
-      
-    tempContainer.innerHTML = simplifiedHtml
+    
+    // Create content wrapper with top margin to account for logo
+    const contentWrapper = document.createElement('div')
+    contentWrapper.style.marginTop = '30mm' // Space for logo
+    contentWrapper.innerHTML = simplifiedHtml
+    
+    // Add logo and content to container
+    tempContainer.appendChild(logoElement)
+    tempContainer.appendChild(contentWrapper)
+    
     tempContainer.style.position = 'absolute'
     tempContainer.style.left = '-9999px'
     tempContainer.style.top = '-9999px'
@@ -185,6 +222,16 @@ const [previewLoading, setPreviewLoading] = useState(false)
     tempContainer.style.wordWrap = 'break-word'
 
     document.body.appendChild(tempContainer)
+
+    // Wait for logo to load
+    await new Promise((resolve) => {
+      if (logoElement.complete) {
+        resolve(undefined)
+      } else {
+        logoElement.onload = () => resolve(undefined)
+        logoElement.onerror = () => resolve(undefined) // Continue even if logo fails
+      }
+    })
 
     try {
       // Convert HTML to canvas with optimized settings
