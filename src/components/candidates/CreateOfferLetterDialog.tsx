@@ -164,48 +164,59 @@ const [previewLoading, setPreviewLoading] = useState(false)
   const generatePDF = async (htmlContent: string, title: string): Promise<Blob> => {
     // Create a temporary container to render the content
     const tempContainer = document.createElement('div')
-    tempContainer.innerHTML = htmlContent
+    // Strip inline styles and simplify HTML for better PDF generation
+    const simplifiedHtml = htmlContent
+      .replace(/style="[^"]*"/g, '') // Remove inline styles
+      .replace(/<font[^>]*>/g, '<span>') // Replace font tags
+      .replace(/<\/font>/g, '</span>')
+      
+    tempContainer.innerHTML = simplifiedHtml
     tempContainer.style.position = 'absolute'
     tempContainer.style.left = '-9999px'
     tempContainer.style.top = '-9999px'
     tempContainer.style.width = '210mm' // A4 width
+    tempContainer.style.maxWidth = '210mm'
     tempContainer.style.padding = '20mm'
     tempContainer.style.fontFamily = 'Arial, sans-serif'
     tempContainer.style.fontSize = '12px'
-    tempContainer.style.lineHeight = '1.6'
+    tempContainer.style.lineHeight = '1.4'
     tempContainer.style.color = '#000000'
     tempContainer.style.backgroundColor = '#ffffff'
+    tempContainer.style.wordWrap = 'break-word'
 
     document.body.appendChild(tempContainer)
 
     try {
-      // Convert HTML to canvas
+      // Convert HTML to canvas with optimized settings
       const canvas = await html2canvas(tempContainer, {
-        scale: 2,
+        scale: 1, // Reduced from 2 to 1 for smaller file size
         useCORS: true,
         allowTaint: true,
-        backgroundColor: '#ffffff'
+        backgroundColor: '#ffffff',
+        removeContainer: true
       })
 
-      // Create PDF
+      // Create PDF with compression
       const pdf = new jsPDF('p', 'mm', 'a4')
-      const imgData = canvas.toDataURL('image/png')
-      const imgWidth = 210 // A4 width in mm
-      const pageHeight = 295 // A4 height in mm
+      
+      // Convert to JPEG for better compression
+      const imgData = canvas.toDataURL('image/jpeg', 0.7) // JPEG with 70% quality
+      const imgWidth = 190 // Slightly smaller to fit better
+      const pageHeight = 277 // A4 height minus margins
       const imgHeight = (canvas.height * imgWidth) / canvas.width
       let heightLeft = imgHeight
 
-      let position = 0
+      let position = 10 // Start with margin
 
       // Add first page
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
+      pdf.addImage(imgData, 'JPEG', 10, position, imgWidth, imgHeight)
       heightLeft -= pageHeight
 
       // Add additional pages if needed
       while (heightLeft >= 0) {
-        position = heightLeft - imgHeight
+        position = heightLeft - imgHeight + 10
         pdf.addPage()
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight)
+        pdf.addImage(imgData, 'JPEG', 10, position, imgWidth, imgHeight)
         heightLeft -= pageHeight
       }
 
@@ -469,12 +480,14 @@ const [previewLoading, setPreviewLoading] = useState(false)
                       <SelectValue placeholder={field.placeholder_text || 'Select an option'} />
                     </SelectTrigger>
                     <SelectContent>
-                      {fieldOptions[field.field_name]?.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      )) || (
-                        <SelectItem value="" disabled>No options available</SelectItem>
+                      {fieldOptions[field.field_name]?.length > 0 ? (
+                        fieldOptions[field.field_name].map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="no-options" disabled>No options available</SelectItem>
                       )}
                     </SelectContent>
                   </Select>
