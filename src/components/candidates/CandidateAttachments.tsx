@@ -42,11 +42,11 @@ export function CandidateAttachments({ candidateId }: CandidateAttachmentsProps)
 
     const file = files[0]
     
-    // Validate file size (10MB limit)
-    if (file.size > 10 * 1024 * 1024) {
+    // Validate file size (15MB limit)
+    if (file.size > 15 * 1024 * 1024) {
       toast({
         title: 'Error',
-        description: 'File size must be less than 10MB',
+        description: 'File size must be less than 15MB',
         variant: 'destructive'
       })
       return
@@ -150,7 +150,7 @@ export function CandidateAttachments({ candidateId }: CandidateAttachmentsProps)
                 Drag and drop files here, or click to browse
               </p>
               <p className="text-xs text-text-secondary mb-4">
-                PDF, DOC, DOCX, TXT, ZIP, images up to 10MB
+                PDF, DOC, DOCX, TXT, ZIP, images up to 15MB
               </p>
               
               <Button
