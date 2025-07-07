@@ -20,8 +20,10 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useIsMobile } from '@/hooks/use-mobile'
-import { Invoice } from '@/hooks/useInvoices'
+import { Invoice, useInvoices } from '@/hooks/useInvoices'
 import { useOrganizations } from '@/hooks/useOrganizations'
+import { InvoiceDetailsDialog } from './InvoiceDetailsDialog'
+import { EditInvoiceModal } from './EditInvoiceModal'
 
 interface AdminInvoicesTableProps {
   invoices: Invoice[]
@@ -30,11 +32,17 @@ interface AdminInvoicesTableProps {
 
 export function AdminInvoicesTable({ invoices, isLoading }: AdminInvoicesTableProps) {
   const { organizations } = useOrganizations()
+  const { deleteInvoice } = useInvoices()
   const isMobile = useIsMobile()
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
+
+  // Modal states
+  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null)
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false)
+  const [editModalOpen, setEditModalOpen] = useState(false)
 
   // Sort invoices by date (newest first)
   const sortedInvoices = [...invoices].sort((a, b) => {
@@ -123,6 +131,28 @@ export function AdminInvoicesTable({ invoices, isLoading }: AdminInvoicesTablePr
     })
   }
 
+  const handleRowClick = (invoice: Invoice) => {
+    setSelectedInvoice(invoice)
+    setDetailsDialogOpen(true)
+  }
+
+  const handleEditInvoice = (invoice: Invoice) => {
+    setSelectedInvoice(invoice)
+    setEditModalOpen(true)
+  }
+
+  const handleDeleteInvoice = async (invoice: Invoice) => {
+    if (window.confirm('Are you sure you want to delete this invoice?')) {
+      await deleteInvoice(invoice.id)
+    }
+  }
+
+  const handleDownloadPDF = (invoice: Invoice) => {
+    if (invoice.invoice_url) {
+      window.open(invoice.invoice_url, '_blank')
+    }
+  }
+
   if (isLoading) {
     return (
       <Card>
@@ -190,7 +220,11 @@ export function AdminInvoicesTable({ invoices, isLoading }: AdminInvoicesTablePr
             </TableHeader>
             <TableBody>
               {paginatedInvoices.map((invoice) => (
-                <TableRow key={invoice.id} className="h-[52px]">
+                <TableRow 
+                  key={invoice.id} 
+                  className="h-[52px] cursor-pointer hover:bg-muted/50" 
+                  onClick={() => handleRowClick(invoice)}
+                >
                   <TableCell className="font-medium">
                     <div>
                       <div className="font-medium">{invoice.title}</div>
@@ -218,17 +252,29 @@ export function AdminInvoicesTable({ invoices, isLoading }: AdminInvoicesTablePr
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem>
+                        <DropdownMenuItem onClick={(e) => {
+                          e.stopPropagation()
+                          handleEditInvoice(invoice)
+                        }}>
                           <Edit className="h-4 w-4 mr-2" />
                           Edit Invoice
                         </DropdownMenuItem>
                         {invoice.invoice_url && (
-                          <DropdownMenuItem>
+                          <DropdownMenuItem onClick={(e) => {
+                            e.stopPropagation()
+                            handleDownloadPDF(invoice)
+                          }}>
                             <Download className="h-4 w-4 mr-2" />
                             Download PDF
                           </DropdownMenuItem>
                         )}
-                        <DropdownMenuItem className="text-destructive">
+                        <DropdownMenuItem 
+                          className="text-destructive" 
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleDeleteInvoice(invoice)
+                          }}
+                        >
                           <Trash2 className="h-4 w-4 mr-2" />
                           Delete Invoice
                         </DropdownMenuItem>
@@ -244,7 +290,11 @@ export function AdminInvoicesTable({ invoices, isLoading }: AdminInvoicesTablePr
         {/* Mobile Card Layout */}
         <div className="md:hidden space-y-4">
           {paginatedInvoices.map((invoice) => (
-            <Card key={invoice.id} className="p-4">
+            <Card 
+              key={invoice.id} 
+              className="p-4 cursor-pointer hover:bg-muted/50" 
+              onClick={() => handleRowClick(invoice)}
+            >
               <div className="space-y-3">
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0">
@@ -396,6 +446,20 @@ export function AdminInvoicesTable({ invoices, isLoading }: AdminInvoicesTablePr
             </div>
           </div>
         )}
+
+        {/* Invoice Details Dialog */}
+        <InvoiceDetailsDialog
+          invoice={selectedInvoice}
+          open={detailsDialogOpen}
+          onOpenChange={setDetailsDialogOpen}
+        />
+
+        {/* Edit Invoice Modal */}
+        <EditInvoiceModal
+          invoice={selectedInvoice}
+          open={editModalOpen}
+          onOpenChange={setEditModalOpen}
+        />
       </CardContent>
     </Card>
   )
