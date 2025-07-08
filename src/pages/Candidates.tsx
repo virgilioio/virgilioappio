@@ -4,12 +4,14 @@ import { Users } from 'lucide-react'
 import { AuthGate } from '@/components/auth/AuthGate'
 import { PermissionGate } from '@/components/auth/PermissionGate'
 import { IndependentCandidateTable } from '@/components/candidates/IndependentCandidateTable'
+import { IndependentCandidateForm } from '@/components/candidates/IndependentCandidateForm'
 import { useIndependentCandidates } from '@/hooks/useIndependentCandidates'
 import { usePermissions } from '@/hooks/usePermissions'
 
 export default function Candidates() {
-  const { canViewCandidates, isGuest } = usePermissions()
+  const { canViewCandidates } = usePermissions()
   const [selectedCandidate, setSelectedCandidate] = useState(null)
+  const [isFormOpen, setIsFormOpen] = useState(false)
   
   const {
     candidates,
@@ -35,8 +37,12 @@ export default function Candidates() {
   }
 
   const handleAddNew = () => {
-    // TODO: Open candidate creation modal/form
-    console.log('Add new candidate')
+    setIsFormOpen(true)
+  }
+
+  const handleFormClose = () => {
+    setIsFormOpen(false)
+    setSelectedCandidate(null)
   }
 
   if (error) {
@@ -76,6 +82,17 @@ export default function Candidates() {
               onEdit={handleEdit}
               onDelete={handleDelete}
               onAddNew={handleAddNew}
+            />
+
+            <IndependentCandidateForm
+              isOpen={isFormOpen}
+              onClose={handleFormClose}
+              onSubmit={async (data) => {
+                await addCandidate(data)
+              }}
+              isLoading={isLoading}
+              initialData={selectedCandidate}
+              title={selectedCandidate ? "Edit Candidate" : "Add New Candidate"}
             />
           </div>
         </div>
