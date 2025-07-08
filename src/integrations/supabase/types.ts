@@ -210,6 +210,72 @@ export type Database = {
           },
         ]
       }
+      candidates: {
+        Row: {
+          candidate_name: string
+          created_at: string
+          created_by: string | null
+          email: string | null
+          id: string
+          linkedin_url: string | null
+          location_city: string | null
+          location_country: string | null
+          location_state: string | null
+          phone: string | null
+          profile_summary: string | null
+          resume_url: string | null
+          salary_amount: number | null
+          salary_currency: string | null
+          salary_period: string | null
+          skills: string[] | null
+          source: string | null
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          candidate_name: string
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          id?: string
+          linkedin_url?: string | null
+          location_city?: string | null
+          location_country?: string | null
+          location_state?: string | null
+          phone?: string | null
+          profile_summary?: string | null
+          resume_url?: string | null
+          salary_amount?: number | null
+          salary_currency?: string | null
+          salary_period?: string | null
+          skills?: string[] | null
+          source?: string | null
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          candidate_name?: string
+          created_at?: string
+          created_by?: string | null
+          email?: string | null
+          id?: string
+          linkedin_url?: string | null
+          location_city?: string | null
+          location_country?: string | null
+          location_state?: string | null
+          phone?: string | null
+          profile_summary?: string | null
+          resume_url?: string | null
+          salary_amount?: number | null
+          salary_currency?: string | null
+          salary_period?: string | null
+          skills?: string[] | null
+          source?: string | null
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       countries: {
         Row: {
           code: string
@@ -667,6 +733,54 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "job_assignments_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_candidate_associations: {
+        Row: {
+          added_by: string | null
+          candidate_id: string
+          created_at: string
+          id: string
+          job_id: string
+          notes: string | null
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          added_by?: string | null
+          candidate_id: string
+          created_at?: string
+          id?: string
+          job_id: string
+          notes?: string | null
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          added_by?: string | null
+          candidate_id?: string
+          created_at?: string
+          id?: string
+          job_id?: string
+          notes?: string | null
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_candidate_associations_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_candidate_associations_job_id_fkey"
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs"
