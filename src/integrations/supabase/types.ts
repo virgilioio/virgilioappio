@@ -1705,6 +1705,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
+      execute_candidate_sync: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       generate_invite_token: {
         Args: Record<PropertyKey, never>
         Returns: string
@@ -1807,6 +1811,14 @@ export type Database = {
           success: boolean
           message: string
           affected_tables: Json
+        }[]
+      }
+      sync_job_candidates_to_independent: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          synced_count: number
+          skipped_count: number
+          details: Json
         }[]
       }
       test_get_user_organization_id: {
