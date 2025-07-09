@@ -33,8 +33,10 @@ const ROLE_KEYWORDS: KeywordDictionary = {
     'ventas', 'marketing', 'mercadeo', 'cuenta', 'negocio', 'consultor', 'representante', 'asociado', 'ejecutivo',
     // Soporte y Operaciones
     'soporte', 'cliente', 'operaciones', 'practicante', 'trainee', 'júnior', 'sénior', 'principal', 'staff',
+    // Recursos Humanos y Talento
+    'recursos humanos', 'rrhh', 'talento humano', 'capital humano', 'gestión humana', 'people', 'talent',
     // Específicos de industria
-    'enfermero', 'médico', 'maestro', 'profesor', 'abogado', 'contador', 'reclutador', 'rrhh', 'finanzas', 'legal'
+    'enfermero', 'médico', 'maestro', 'profesor', 'abogado', 'contador', 'reclutador', 'finanzas', 'legal'
   ],
   pt: [
     // Roles técnicos
@@ -158,6 +160,9 @@ const INDUSTRY_KEYWORDS: KeywordDictionary = {
     'sanitario', 'salud', 'finanzas', 'banca', 'seguros', 'retail', 'manufactura', 'automotriz', 'aeroespacial', 'energía',
     'educación', 'gobierno', 'sin ánimo de lucro', 'consultoría', 'legal', 'inmobiliario', 'construcción', 'agricultura',
     'entretenimiento', 'medios', 'gaming', 'deportes', 'hospitalidad', 'viajes', 'logística', 'cadena de suministro', 'telecom',
+    // Marketing y Promocionales
+    'promocionales', 'productos promocionales', 'marketing promocional', 'publicidad promocional', 'artículos promocionales',
+    'merchandising', 'regalos corporativos', 'branding', 'impresos', 'serigrafía', 'bordado', 'grabado',
     // Funciones de Negocio
     'marketing', 'mercadeo', 'ventas', 'operaciones', 'producto', 'ingeniería', 'diseño', 'rrhh', 'personas', 'talento', 'reclutamiento',
     'finanzas', 'contabilidad', 'legal', 'cumplimiento', 'seguridad', 'it', 'soporte', 'éxito del cliente', 'desarrollo de negocio'
