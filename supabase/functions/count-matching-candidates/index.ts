@@ -25,7 +25,7 @@ interface MatchResult {
   excellent: number; // 90-100% skill match
   good: number;      // 70-89% skill match
   fair: number;      // 50-69% skill match
-  minimal: number;   // 30-49% skill match
+  minimal: number;   // 20-49% skill match
   breakdown: {
     salaryMatches: number;
     locationMatches: number;
@@ -36,21 +36,136 @@ interface MatchResult {
   };
 }
 
+// Skill synonyms and variations mapping
+const SKILL_SYNONYMS: Record<string, string[]> = {
+  'sales development representative': ['sdr', 'sales development', 'sales rep', 'sales representative', 'bdr', 'business development representative'],
+  'javascript': ['js', 'javascript', 'ecmascript', 'node.js', 'nodejs'],
+  'react': ['reactjs', 'react.js', 'react native'],
+  'python': ['py', 'python3', 'python 3'],
+  'customer success': ['cs', 'customer support', 'client success'],
+  'project management': ['pm', 'project manager', 'program management'],
+  'business development': ['bd', 'biz dev', 'business dev', 'bdr'],
+  'machine learning': ['ml', 'artificial intelligence', 'ai', 'deep learning'],
+  'data science': ['data scientist', 'data analysis', 'analytics'],
+  'full stack': ['fullstack', 'full-stack', 'frontend and backend'],
+  'devops': ['dev ops', 'infrastructure', 'site reliability'],
+  'quality assurance': ['qa', 'testing', 'test automation'],
+  'user experience': ['ux', 'user interface', 'ui', 'ui/ux'],
+  'software engineer': ['software developer', 'developer', 'engineer', 'programmer'],
+  'marketing': ['digital marketing', 'growth marketing', 'content marketing'],
+  'account management': ['account manager', 'key account', 'client management']
+};
+
+function normalizeSkill(skill: string): string {
+  return skill.toLowerCase().trim()
+    .replace(/[^\w\s]/g, '') // Remove special characters
+    .replace(/\s+/g, ' '); // Normalize whitespace
+}
+
+function getSkillWords(skill: string): string[] {
+  return normalizeSkill(skill).split(' ').filter(word => word.length > 2);
+}
+
+function findSkillSynonyms(skill: string): string[] {
+  const normalized = normalizeSkill(skill);
+  
+  // Check if skill is in synonyms as key
+  if (SKILL_SYNONYMS[normalized]) {
+    return SKILL_SYNONYMS[normalized];
+  }
+  
+  // Check if skill is in synonyms as value
+  for (const [key, synonyms] of Object.entries(SKILL_SYNONYMS)) {
+    if (synonyms.includes(normalized)) {
+      return [key, ...synonyms.filter(s => s !== normalized)];
+    }
+  }
+  
+  return [];
+}
+
 function calculateSkillMatch(jobSkills: string[], candidateSkills: string[]): number {
   if (!jobSkills || !candidateSkills || jobSkills.length === 0 || candidateSkills.length === 0) {
     return 0;
   }
   
-  const jobSkillsLower = jobSkills.map(skill => skill.toLowerCase().trim());
-  const candidateSkillsLower = candidateSkills.map(skill => skill.toLowerCase().trim());
+  const normalizedJobSkills = jobSkills.map(normalizeSkill);
+  const normalizedCandidateSkills = candidateSkills.map(normalizeSkill);
   
-  const matches = jobSkillsLower.filter(skill => 
-    candidateSkillsLower.some(cSkill => 
-      cSkill.includes(skill) || skill.includes(cSkill)
-    )
-  );
+  let totalScore = 0;
+  let maxPossibleScore = jobSkills.length * 100; // 100 points per job skill
   
-  return (matches.length / jobSkillsLower.length) * 100;
+  console.log(`🔍 Matching job skills: [${normalizedJobSkills.join(', ')}]`);
+  console.log(`🎯 Against candidate skills: [${normalizedCandidateSkills.join(', ')}]`);
+  
+  for (const jobSkill of normalizedJobSkills) {
+    let bestMatchScore = 0;
+    let matchDetails = '';
+    
+    for (const candidateSkill of normalizedCandidateSkills) {
+      let score = 0;
+      
+      // 1. Exact match (100 points)
+      if (jobSkill === candidateSkill) {
+        score = 100;
+        matchDetails = `exact match`;
+      }
+      // 2. Substring match (80 points)
+      else if (candidateSkill.includes(jobSkill) || jobSkill.includes(candidateSkill)) {
+        score = 80;
+        matchDetails = `substring match`;
+      }
+      // 3. Word-level match (70 points)
+      else {
+        const jobWords = getSkillWords(jobSkill);
+        const candidateWords = getSkillWords(candidateSkill);
+        const wordMatches = jobWords.filter(word => candidateWords.includes(word));
+        
+        if (wordMatches.length > 0) {
+          score = Math.min(70, (wordMatches.length / jobWords.length) * 70);
+          matchDetails = `word match (${wordMatches.join(', ')})`;
+        }
+      }
+      
+      // 4. Synonym match (60 points)
+      if (score === 0) {
+        const jobSynonyms = findSkillSynonyms(jobSkill);
+        const candidateSynonyms = findSkillSynonyms(candidateSkill);
+        
+        if (jobSynonyms.includes(candidateSkill) || candidateSynonyms.includes(jobSkill)) {
+          score = 60;
+          matchDetails = `synonym match`;
+        }
+        // Check synonym word matches
+        else {
+          for (const synonym of jobSynonyms) {
+            if (candidateSkill.includes(synonym) || synonym.includes(candidateSkill)) {
+              score = Math.max(score, 50);
+              matchDetails = `synonym substring match`;
+              break;
+            }
+          }
+        }
+      }
+      
+      if (score > bestMatchScore) {
+        bestMatchScore = score;
+        if (score > 0) {
+          console.log(`  ✅ "${jobSkill}" → "${candidateSkill}": ${score}% (${matchDetails})`);
+        }
+      }
+    }
+    
+    totalScore += bestMatchScore;
+    if (bestMatchScore === 0) {
+      console.log(`  ❌ "${jobSkill}": no match found`);
+    }
+  }
+  
+  const finalScore = (totalScore / maxPossibleScore) * 100;
+  console.log(`📊 Final skill match: ${finalScore.toFixed(1)}% (${totalScore}/${maxPossibleScore})`);
+  
+  return finalScore;
 }
 
 function checkSalaryCompatibility(
@@ -166,6 +281,10 @@ serve(async (req) => {
 
       // Only proceed with skill matching if salary and location are compatible
       if (salaryMatch && locationMatch) {
+        console.log(`\n🧑‍💼 Analyzing candidate: ${candidate.candidate_name}`);
+        console.log(`💰 Salary: ${candidate.salary_amount} ${candidate.salary_currency}`);
+        console.log(`📍 Location: ${[candidate.location_city, candidate.location_state, candidate.location_country].filter(Boolean).join(', ')}`);
+        
         const skillMatchPercentage = calculateSkillMatch(
           criteria.skills || [],
           candidate.skills || []
@@ -173,8 +292,8 @@ serve(async (req) => {
         
         skillMatches.push(skillMatchPercentage);
         
-        // Categorize by skill match percentage (minimum 30% to be included)
-        if (skillMatchPercentage >= 30 || !criteria.skills || criteria.skills.length === 0) {
+        // Categorize by skill match percentage (minimum 20% to be included)
+        if (skillMatchPercentage >= 20 || !criteria.skills || criteria.skills.length === 0) {
           qualifiedCandidates++;
           
           if (skillMatchPercentage >= 90) excellent++;
