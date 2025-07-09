@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Loader2, Sparkles, CheckCircle2, Circle, Briefcase, DollarSign, MapPin, Target, ChevronDown, ChevronUp } from 'lucide-react'
+import { Loader2, Sparkles, CheckCircle2, Circle, Briefcase, DollarSign, MapPin, Target, ChevronDown, ChevronUp, TrendingUp, Clock, Users, Award } from 'lucide-react'
 import { supabase } from '@/integrations/supabase/client'
 import { useToast } from '@/hooks/use-toast'
 import { validateJobPrompt, getValidationStats, type ValidationItem } from '@/utils/jobPromptValidation'
@@ -181,129 +181,148 @@ export function AIJobAssistant() {
       </div>
 
       <Dialog open={showModal} onOpenChange={setShowModal}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>AI-Generated Job Specification</DialogTitle>
           </DialogHeader>
           
           {jobSpec && (
-            <div className="space-y-6">
-              {/* Job Title Section */}
-              <div className="space-y-3">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Left Column - Main Job Details */}
+              <div className="lg:col-span-2 space-y-6">
+                {/* Job Title Section */}
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-sm font-medium">Job Title</label>
+                    <input
+                      type="text"
+                      value={selectedTitle}
+                      onChange={(e) => setSelectedTitle(e.target.value)}
+                      className="w-full mt-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                    />
+                  </div>
+                  
+                  {jobSpec.alt_titles.length > 0 && (
+                    <div>
+                      <label className="text-sm text-muted-foreground">Suggested Alternatives</label>
+                      <div className="flex flex-wrap gap-2 mt-1">
+                        {jobSpec.alt_titles.map((title, index) => (
+                          <Button
+                            key={index}
+                            variant={selectedTitle === title ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setSelectedTitle(title)}
+                          >
+                            {title}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Job Details Grid */}
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 text-sm">
+                      <Briefcase className="h-4 w-4" />
+                      <span className="font-medium">{jobSpec.department}</span>
+                      <Badge variant="outline">{jobSpec.level}</Badge>
+                    </div>
+                    
+                    <div className="flex items-center gap-2 text-sm">
+                      <MapPin className="h-4 w-4" />
+                      <span>{jobSpec.location}</span>
+                    </div>
+                    
+                    <div className="flex items-center gap-2 text-sm">
+                      <DollarSign className="h-4 w-4" />
+                      <span>
+                        {jobSpec.salary_range.currency} {jobSpec.salary_range.min.toLocaleString()} - {jobSpec.salary_range.max.toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div>
+                      <h4 className="text-sm font-medium mb-2">Required Skills</h4>
+                      <div className="flex flex-wrap gap-1">
+                        {jobSpec.skills.map((skill, index) => (
+                          <Badge key={index} variant="secondary" className="bg-gradient-to-r from-primary/10 to-accent/10">
+                            {skill}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Job Description */}
                 <div>
-                  <label className="text-sm font-medium">Job Title</label>
-                  <input
-                    type="text"
-                    value={selectedTitle}
-                    onChange={(e) => setSelectedTitle(e.target.value)}
-                    className="w-full mt-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                </div>
-                
-                {jobSpec.alt_titles.length > 0 && (
-                  <div>
-                    <label className="text-sm text-muted-foreground">Suggested Alternatives</label>
-                    <div className="flex flex-wrap gap-2 mt-1">
-                      {jobSpec.alt_titles.map((title, index) => (
-                        <Button
-                          key={index}
-                          variant={selectedTitle === title ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => setSelectedTitle(title)}
-                        >
-                          {title}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Job Details Grid */}
-              <div className="grid md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 text-sm">
-                    <Briefcase className="h-4 w-4" />
-                    <span className="font-medium">{jobSpec.department}</span>
-                    <Badge variant="outline">{jobSpec.level}</Badge>
-                  </div>
-                  
-                  <div className="flex items-center gap-2 text-sm">
-                    <MapPin className="h-4 w-4" />
-                    <span>{jobSpec.location}</span>
-                  </div>
-                  
-                  <div className="flex items-center gap-2 text-sm">
-                    <DollarSign className="h-4 w-4" />
-                    <span>
-                      {jobSpec.salary_range.currency} {jobSpec.salary_range.min.toLocaleString()} - {jobSpec.salary_range.max.toLocaleString()}
-                    </span>
-                  </div>
+                  <h4 className="text-sm font-medium mb-2">Job Description</h4>
+                  <div className="p-4 bg-muted rounded-lg text-sm" dangerouslySetInnerHTML={{ __html: jobSpec.job_description }} />
                 </div>
 
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="text-sm font-medium mb-2">Required Skills</h4>
-                    <div className="flex flex-wrap gap-1">
-                      {jobSpec.skills.map((skill, index) => (
-                        <Badge key={index} variant="secondary" className="bg-gradient-to-r from-primary/10 to-accent/10">
-                          {skill}
-                        </Badge>
-                      ))}
-                    </div>
+                {/* Service Selection */}
+                <div className="border-t pt-6">
+                  <h4 className="text-lg font-semibold mb-4">How would you like to proceed?</h4>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <Button
+                      onClick={handleSelfService}
+                      className="h-auto p-6 flex-col items-start text-left space-y-2"
+                      variant="outline"
+                    >
+                      <div className="font-semibold text-yellow-600">🟡 Self-Service</div>
+                      <div className="text-sm text-muted-foreground">
+                        Pay-per-job via Stripe • Dashboard access • No recruiter • No guarantee
+                      </div>
+                      <div className="text-sm font-medium">Pay & Manage Myself</div>
+                    </Button>
+                    
+                    <Button
+                      onClick={handleFullService}
+                      className="h-auto p-6 flex-col items-start text-left space-y-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700"
+                    >
+                      <div className="font-semibold text-white">🟢 Full-Service by Virgilio</div>
+                      <div className="text-sm text-green-100">
+                        CSM + recruiter • Sourcing • Vetting • Offers • Guarantee
+                      </div>
+                      <div className="text-sm font-medium text-white">Request Virgilio Support</div>
+                    </Button>
                   </div>
                 </div>
               </div>
 
-              {/* Job Description */}
-              <div>
-                <h4 className="text-sm font-medium mb-2">Job Description</h4>
-                <div className="p-4 bg-muted rounded-lg text-sm">
-                  {jobSpec.job_description}
-                </div>
-              </div>
-
-              {/* AI Recommendations */}
-              <div>
-                <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
-                  <Target className="h-4 w-4" />
-                  AI Insights & Recommendations
-                </h4>
-                <div className="space-y-2">
-                  {jobSpec.recommendations.map((rec, index) => (
-                    <div key={index} className="p-3 bg-gradient-to-r from-primary/5 to-accent/5 rounded-lg border border-primary/10">
-                      <p className="text-sm">{rec}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Service Selection */}
-              <div className="border-t pt-6">
-                <h4 className="text-lg font-semibold mb-4">How would you like to proceed?</h4>
-                <div className="grid md:grid-cols-2 gap-4">
-                  <Button
-                    onClick={handleSelfService}
-                    className="h-auto p-6 flex-col items-start text-left space-y-2"
-                    variant="outline"
-                  >
-                    <div className="font-semibold text-yellow-600">🟡 Self-Service</div>
-                    <div className="text-sm text-muted-foreground">
-                      Pay-per-job via Stripe • Dashboard access • No recruiter • No guarantee
-                    </div>
-                    <div className="text-sm font-medium">Pay & Manage Myself</div>
-                  </Button>
-                  
-                  <Button
-                    onClick={handleFullService}
-                    className="h-auto p-6 flex-col items-start text-left space-y-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700"
-                  >
-                    <div className="font-semibold text-white">🟢 Full-Service by Virgilio</div>
-                    <div className="text-sm text-green-100">
-                      CSM + recruiter • Sourcing • Vetting • Offers • Guarantee
-                    </div>
-                    <div className="text-sm font-medium text-white">Request Virgilio Support</div>
-                  </Button>
+              {/* Right Column - AI Insights & Recommendations */}
+              <div className="lg:col-span-1">
+                <div className="sticky top-4">
+                  <h4 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <Target className="h-5 w-5 text-primary" />
+                    AI Insights & Recommendations
+                  </h4>
+                  <div className="space-y-3">
+                    {jobSpec.recommendations.map((rec, index) => {
+                      const icons = [
+                        { icon: TrendingUp, color: 'text-blue-500', bg: 'bg-blue-50 border-blue-200' },
+                        { icon: Clock, color: 'text-orange-500', bg: 'bg-orange-50 border-orange-200' },
+                        { icon: DollarSign, color: 'text-green-500', bg: 'bg-green-50 border-green-200' },
+                        { icon: Award, color: 'text-purple-500', bg: 'bg-purple-50 border-purple-200' }
+                      ]
+                      const iconData = icons[index % icons.length]
+                      const IconComponent = iconData.icon
+                      
+                      return (
+                        <div key={index} className={`p-4 rounded-lg border ${iconData.bg} transition-all duration-200 hover:shadow-md`}>
+                          <div className="flex items-start gap-3">
+                            <div className={`p-2 rounded-full bg-white shadow-sm ${iconData.color}`}>
+                              <IconComponent className="h-4 w-4" />
+                            </div>
+                            <p className="text-sm text-gray-700 leading-relaxed">{rec}</p>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
                 </div>
               </div>
             </div>
