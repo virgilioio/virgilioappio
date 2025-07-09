@@ -45,7 +45,7 @@ async function getAdobeAccessToken(): Promise<string> {
       client_id: clientId,
       client_secret: clientSecret,
       grant_type: 'client_credentials',
-      scope: 'openid,AdobeID,DCAPI'
+      scope: 'https://ims-na1.adobelogin.com/s/ent_documentcloud_sdk'
     });
     
     console.log('Request body:', requestBody.toString());
@@ -106,7 +106,7 @@ async function extractPDFText(pdfFile: File): Promise<string> {
     const uploadFormData = new FormData();
     uploadFormData.append('file', pdfFile);
 
-    const uploadResponse = await fetch('https://pdf-services.adobe.io/assets', {
+    const uploadResponse = await fetch('https://pdf-services-ue1.adobe.io/assets', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
@@ -149,7 +149,7 @@ async function extractPDFText(pdfFile: File): Promise<string> {
     
     console.log('Extract job payload:', JSON.stringify(extractJobPayload, null, 2));
     
-    const createJobResponse = await fetch('https://pdf-services.adobe.io/operation/extractpdf', {
+    const createJobResponse = await fetch('https://pdf-services-ue1.adobe.io/operation/extractpdf', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
@@ -397,6 +397,7 @@ serve(async (req) => {
   console.log('=== Resume Processing Function Called ===');
   console.log('Method:', req.method);
   console.log('Headers:', Object.fromEntries(req.headers.entries()));
+  console.log('Timestamp:', new Date().toISOString());
   
   if (req.method === 'OPTIONS') {
     console.log('Handling CORS preflight request');
@@ -527,13 +528,21 @@ serve(async (req) => {
     console.error('Error type:', error.constructor.name);
     console.error('Error message:', error.message);
     console.error('Error stack:', error.stack);
+    console.error('Timestamp:', new Date().toISOString());
+    
+    // Return more detailed error information for debugging
+    const errorResponse = { 
+      success: false, 
+      error: error.message || 'Failed to process resume',
+      error_type: error.constructor.name,
+      timestamp: new Date().toISOString(),
+      details: error.stack || 'No stack trace available'
+    };
+    
+    console.error('Sending error response:', JSON.stringify(errorResponse, null, 2));
     
     return new Response(
-      JSON.stringify({ 
-        success: false, 
-        error: error.message || 'Failed to process resume',
-        details: error.stack || 'No stack trace available'
-      }),
+      JSON.stringify(errorResponse),
       { 
         status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
