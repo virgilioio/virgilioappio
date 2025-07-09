@@ -212,11 +212,13 @@ export type Database = {
       }
       candidates: {
         Row: {
+          auto_generated_skills: Json | null
           candidate_name: string
           created_at: string
           created_by: string | null
           email: string | null
           id: string
+          last_skills_generation: string | null
           linkedin_url: string | null
           location_city: string | null
           location_country: string | null
@@ -228,16 +230,19 @@ export type Database = {
           salary_currency: string | null
           salary_period: string | null
           skills: string[] | null
+          skills_metadata: Json | null
           source: string | null
           status: string | null
           updated_at: string
         }
         Insert: {
+          auto_generated_skills?: Json | null
           candidate_name: string
           created_at?: string
           created_by?: string | null
           email?: string | null
           id?: string
+          last_skills_generation?: string | null
           linkedin_url?: string | null
           location_city?: string | null
           location_country?: string | null
@@ -249,16 +254,19 @@ export type Database = {
           salary_currency?: string | null
           salary_period?: string | null
           skills?: string[] | null
+          skills_metadata?: Json | null
           source?: string | null
           status?: string | null
           updated_at?: string
         }
         Update: {
+          auto_generated_skills?: Json | null
           candidate_name?: string
           created_at?: string
           created_by?: string | null
           email?: string | null
           id?: string
+          last_skills_generation?: string | null
           linkedin_url?: string | null
           location_city?: string | null
           location_country?: string | null
@@ -270,6 +278,7 @@ export type Database = {
           salary_currency?: string | null
           salary_period?: string | null
           skills?: string[] | null
+          skills_metadata?: Json | null
           source?: string | null
           status?: string | null
           updated_at?: string
@@ -791,11 +800,13 @@ export type Database = {
       job_candidates: {
         Row: {
           added_by: string | null
+          auto_generated_skills: Json | null
           candidate_name: string
           created_at: string
           first_viewed_by: Json | null
           id: string
           job_id: string
+          last_skills_generation: string | null
           linkedin_url: string | null
           location_city: string | null
           location_country: string | null
@@ -806,15 +817,18 @@ export type Database = {
           salary_currency: string | null
           salary_period: string | null
           skills: string[] | null
+          skills_metadata: Json | null
           updated_at: string
         }
         Insert: {
           added_by?: string | null
+          auto_generated_skills?: Json | null
           candidate_name: string
           created_at?: string
           first_viewed_by?: Json | null
           id?: string
           job_id: string
+          last_skills_generation?: string | null
           linkedin_url?: string | null
           location_city?: string | null
           location_country?: string | null
@@ -825,15 +839,18 @@ export type Database = {
           salary_currency?: string | null
           salary_period?: string | null
           skills?: string[] | null
+          skills_metadata?: Json | null
           updated_at?: string
         }
         Update: {
           added_by?: string | null
+          auto_generated_skills?: Json | null
           candidate_name?: string
           created_at?: string
           first_viewed_by?: Json | null
           id?: string
           job_id?: string
+          last_skills_generation?: string | null
           linkedin_url?: string | null
           location_city?: string | null
           location_country?: string | null
@@ -844,6 +861,7 @@ export type Database = {
           salary_currency?: string | null
           salary_period?: string | null
           skills?: string[] | null
+          skills_metadata?: Json | null
           updated_at?: string
         }
         Relationships: [
@@ -1681,6 +1699,10 @@ export type Database = {
           organization_id: string
           issue_description: string
         }[]
+      }
+      categorize_skills: {
+        Args: { manual_skills: string[]; generated_skills: Json }
+        Returns: Json
       }
       check_recursion_safety: {
         Args: Record<PropertyKey, never>

@@ -14,6 +14,7 @@ import { CreateIndependentCandidateData } from '@/hooks/useIndependentCandidates
 import { toast } from '@/hooks/use-toast'
 import { supabase } from '@/integrations/supabase/client'
 import { getSkillColor } from '@/utils/skillColors'
+import { SkillsGenerationPanel } from './SkillsGenerationPanel'
 
 const candidateSchema = z.object({
   candidate_name: z.string().min(1, 'Name is required'),
@@ -499,6 +500,17 @@ export function IndependentCandidateForm({
               )}
             </div>
           </div>
+
+          {/* AI Skills Generation */}
+          <SkillsGenerationPanel
+            profileSummary={watch("profile_summary") || ""}
+            candidateName={watch("candidate_name") || ""}
+            onSkillsAccepted={(newSkills) => {
+              const uniqueSkills = [...new Set([...skills, ...newSkills])];
+              setSkills(uniqueSkills);
+            }}
+            existingSkills={skills}
+          />
 
           {/* Profile Summary */}
           <div className="space-y-2">

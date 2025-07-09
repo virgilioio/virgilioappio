@@ -19,6 +19,7 @@ import { CandidateComments } from './CandidateComments'
 import type { Candidate } from '@/hooks/useCandidates'
 import { toast } from '@/hooks/use-toast'
 import { getSkillColor } from '@/utils/skillColors'
+import { SkillsGenerationPanel } from './SkillsGenerationPanel'
 
 interface CandidateFormProps {
   isOpen: boolean
@@ -610,6 +611,17 @@ export function CandidateForm({
                 </div>
               </FormField>
             </div>
+
+            {/* AI Skills Generation */}
+            <SkillsGenerationPanel
+              profileSummary={profileSummary}
+              candidateName={form.watch('candidate_name')}
+              onSkillsAccepted={(newSkills) => {
+                const uniqueSkills = [...new Set([...skills, ...newSkills])];
+                setSkills(uniqueSkills);
+              }}
+              existingSkills={skills}
+            />
 
             {/* Profile & Notes */}
             <div className="space-y-4">
