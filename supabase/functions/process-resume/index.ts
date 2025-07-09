@@ -113,12 +113,108 @@ serve(async (req) => {
 
     console.log("📤 File uploaded to Adobe successfully");
 
-    // Step 6: Return success response
+    // Step 6: Create Adobe extraction job
+    console.log(`📥 Starting Adobe extract job for asset: ${assetID}`);
+
+    const extractJobRes = await fetch("https://pdf-services-ue1.adobe.io/operation/extractpdf", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${access_token}`,
+        "x-api-key": client_id,
+        "x-gw-ims-org-id": org_id,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        assetID: assetID,
+        outputType: "json"
+      })
+    });
+
+    if (!extractJobRes.ok) {
+      const extractError = await extractJobRes.text();
+      console.error("❌ Extract job creation failed:", extractJobRes.status, extractError);
+      return new Response("Extract job creation failed", { status: 500, headers: corsHeaders });
+    }
+
+    const jobLocation = extractJobRes.headers.get("location");
+    if (!jobLocation) {
+      console.error("❌ No job location received");
+      return new Response("No job location received from Adobe", { status: 500, headers: corsHeaders });
+    }
+
+    console.log("📥 Extract job created, polling for completion...");
+
+    // Step 7: Poll for job completion
+    let jobCompleted = false;
+    let attempts = 0;
+    const maxAttempts = 30; // 60 seconds (2 second intervals)
+    let finalJobResult: any;
+
+    while (!jobCompleted && attempts < maxAttempts) {
+      await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
+      attempts++;
+
+      console.log(`⏳ Polling extract job: attempt ${attempts}...`);
+
+      const statusRes = await fetch(jobLocation, {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${access_token}`,
+          "x-api-key": client_id,
+          "x-gw-ims-org-id": org_id
+        }
+      });
+
+      if (!statusRes.ok) {
+        const statusError = await statusRes.text();
+        console.error(`❌ Failed to check job status (attempt ${attempts}):`, statusError);
+        continue;
+      }
+
+      const statusResult = await statusRes.json();
+      console.log(`⏳ Job status: ${statusResult.status}`);
+
+      if (statusResult.status === "done") {
+        jobCompleted = true;
+        finalJobResult = statusResult;
+        console.log("✅ Job complete, downloading result");
+      } else if (statusResult.status === "failed") {
+        console.error("❌ Extract job failed:", statusResult);
+        return new Response("Adobe extraction job failed", { status: 500, headers: corsHeaders });
+      }
+    }
+
+    if (!jobCompleted) {
+      console.error("❌ Job timed out after 60 seconds");
+      return new Response("Adobe extraction job timed out", { status: 500, headers: corsHeaders });
+    }
+
+    // Step 8: Download extraction results
+    if (!finalJobResult.asset || !finalJobResult.asset.downloadUri) {
+      console.error("❌ No download URL in job result");
+      return new Response("No download URL received from Adobe", { status: 500, headers: corsHeaders });
+    }
+
+    const downloadRes = await fetch(finalJobResult.asset.downloadUri, {
+      headers: {
+        "Authorization": `Bearer ${access_token}`
+      }
+    });
+
+    if (!downloadRes.ok) {
+      const downloadError = await downloadRes.text();
+      console.error("❌ Failed to download extraction results:", downloadError);
+      return new Response("Failed to download extraction results", { status: 500, headers: corsHeaders });
+    }
+
+    const extractedJson = await downloadRes.json();
+    console.log("📄 Resume JSON extracted successfully");
+
+    // Step 9: Return success response with extracted data
     return new Response(
       JSON.stringify({
         success: true,
-        assetID: assetID,
-        note: "Adobe asset created and file uploaded successfully"
+        raw_resume_json: extractedJson
       }),
       { 
         headers: { 
