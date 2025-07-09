@@ -66,8 +66,28 @@ export default function CandidateProfile() {
       })
       
       setCandidate(foundCandidate || null)
+      
+      // If form was open and candidate changed, close it to prevent showing wrong data
+      if (isFormOpen && foundCandidate && candidate && foundCandidate.id !== candidate.id) {
+        console.log('CandidateProfile - Closing form due to candidate change')
+        setIsFormOpen(false)
+      }
     }
-  }, [candidates, candidateId])
+  }, [candidates, candidateId, candidate, isFormOpen])
+
+  // Force candidate state update when candidateId changes
+  useEffect(() => {
+    if (candidateId && candidates.length > 0) {
+      const foundCandidate = candidates.find(c => c.id === candidateId)
+      if (foundCandidate && (!candidate || candidate.id !== foundCandidate.id)) {
+        console.log('CandidateProfile - Force updating candidate state for new candidateId:', {
+          newCandidateId: candidateId,
+          newCandidateName: foundCandidate.candidate_name
+        })
+        setCandidate(foundCandidate)
+      }
+    }
+  }, [candidateId, candidates])
 
   useEffect(() => {
     if (jobId) {
@@ -86,6 +106,13 @@ export default function CandidateProfile() {
   }
 
   const handleEdit = () => {
+    console.log('CandidateProfile - Edit button clicked:', {
+      candidateId: candidateId,
+      candidateFromState: candidate?.id,
+      candidateName: candidate?.candidate_name,
+      isFormOpen: isFormOpen
+    })
+
     // Defensive check: Ensure we have the correct candidate before opening the form
     if (!candidate || candidate.id !== candidateId) {
       console.warn('CandidateProfile - Edit attempted with mismatched candidate state:', {
@@ -99,10 +126,15 @@ export default function CandidateProfile() {
       if (currentCandidate) {
         console.log('CandidateProfile - Found current candidate in candidates array, updating state')
         setCandidate(currentCandidate)
-        // Open the form after a brief delay to ensure state is updated
-        setTimeout(() => setIsFormOpen(true), 100)
+        
+        // Use a longer delay to ensure state update completes
+        setTimeout(() => {
+          console.log('CandidateProfile - Opening form after state update')
+          setIsFormOpen(true)
+        }, 200)
       } else {
         console.error('CandidateProfile - Could not find current candidate in candidates array')
+        // Try to reload the candidates first
         return
       }
     } else {

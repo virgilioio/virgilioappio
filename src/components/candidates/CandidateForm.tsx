@@ -178,32 +178,39 @@ export function CandidateForm({
       // Clear the current candidate ID when creating a new candidate
       setCurrentCandidateId(null)
     }
-  }, [candidate, isOpen, form, currentCandidateId])
+  }, [candidate, isOpen, form])
 
   // Effect for handling form reset (when closing dialog for new candidates)
   useEffect(() => {
-    if (!isOpen && !candidate) {
-      console.log('Resetting form for new candidate creation')
+    if (!isOpen) {
+      console.log('CandidateForm - Dialog closed, resetting state')
+      
+      // Reset the current candidate ID tracking when dialog closes
+      setCurrentCandidateId(null)
       
       // Only reset form when dialog closes for new candidates (not when editing)
-      form.reset({
-        candidate_name: '',
-        location_country: '',
-        location_state: '',
-        location_city: '',
-        salary_amount: '',
-        salary_currency: 'USD',
-        salary_period: 'annually',
-        profile_summary: '',
-        notes: '',
-        linkedin_url: ''
-      })
-      
-      // Reset rich text editor values only for new candidates
-      setProfileSummary('')
-      setNotes('')
-      setSkills([])
-      setNewSkill('')
+      if (!candidate) {
+        console.log('CandidateForm - Resetting form for new candidate creation')
+        
+        form.reset({
+          candidate_name: '',
+          location_country: '',
+          location_state: '',
+          location_city: '',
+          salary_amount: '',
+          salary_currency: 'USD',
+          salary_period: 'annually',
+          profile_summary: '',
+          notes: '',
+          linkedin_url: ''
+        })
+        
+        // Reset rich text editor values only for new candidates
+        setProfileSummary('')
+        setNotes('')
+        setSkills([])
+        setNewSkill('')
+      }
     }
   }, [isOpen, candidate, form])
 
