@@ -292,7 +292,7 @@ export function AIJobAssistant() {
                   </div>
                 ) : (
                   <div className="border-t pt-6">
-                    <div className="flex items-center gap-3 mb-6">
+                    <div className="flex items-center gap-3 mb-8">
                       <Button
                         variant="ghost"
                         size="sm"
@@ -302,31 +302,87 @@ export function AIJobAssistant() {
                         <ArrowLeft className="h-4 w-4" />
                         Back
                       </Button>
-                      <h4 className="text-lg font-semibold">How would you like to proceed?</h4>
+                      <h4 className="text-xl font-semibold">How would you like to proceed?</h4>
                     </div>
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <Button
-                        onClick={handleSelfService}
-                        className="h-auto p-6 flex-col items-start text-left space-y-2"
-                        variant="outline"
-                      >
-                        <div className="font-semibold text-yellow-600">🟡 Self-Service</div>
-                        <div className="text-sm text-muted-foreground">
-                          Pay-per-job via Stripe • Dashboard access • No recruiter • No guarantee
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      {/* Self-Service Option */}
+                      <div className="relative group">
+                        <div className="h-full p-8 bg-gradient-to-br from-yellow-50 to-orange-50 border-2 border-yellow-200 rounded-xl transition-all duration-300 hover:shadow-lg hover:border-yellow-300">
+                          <div className="flex items-center gap-3 mb-4">
+                            <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                            <h5 className="text-lg font-bold text-yellow-700">Self-Service</h5>
+                          </div>
+                          
+                          <div className="space-y-4 mb-6">
+                            <p className="text-yellow-800 font-medium">Take control and manage everything yourself</p>
+                            <ul className="space-y-2 text-sm text-yellow-700">
+                              <li className="flex items-center gap-2">
+                                <CheckCircle2 className="h-4 w-4 text-yellow-600" />
+                                Pay-per-job via Stripe
+                              </li>
+                              <li className="flex items-center gap-2">
+                                <CheckCircle2 className="h-4 w-4 text-yellow-600" />
+                                Full dashboard access
+                              </li>
+                              <li className="flex items-center gap-2">
+                                <Circle className="h-4 w-4 text-yellow-400" />
+                                No dedicated recruiter
+                              </li>
+                              <li className="flex items-center gap-2">
+                                <Circle className="h-4 w-4 text-yellow-400" />
+                                No guarantee
+                              </li>
+                            </ul>
+                          </div>
+                          
+                          <Button
+                            onClick={handleSelfService}
+                            className="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-semibold py-3"
+                          >
+                            Choose Self-Service
+                          </Button>
                         </div>
-                        <div className="text-sm font-medium">Pay & Manage Myself</div>
-                      </Button>
-                      
-                      <Button
-                        onClick={handleFullService}
-                        className="h-auto p-6 flex-col items-start text-left space-y-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700"
-                      >
-                        <div className="font-semibold text-white">🟢 Full-Service by Virgilio</div>
-                        <div className="text-sm text-green-100">
-                          CSM + recruiter • Sourcing • Vetting • Offers • Guarantee
+                      </div>
+
+                      {/* Full-Service Option */}
+                      <div className="relative group">
+                        <div className="h-full p-8 bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl transition-all duration-300 hover:shadow-lg hover:border-green-300">
+                          <div className="flex items-center gap-3 mb-4">
+                            <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                            <h5 className="text-lg font-bold text-green-700">Full-Service by Virgilio</h5>
+                          </div>
+                          
+                          <div className="space-y-4 mb-6">
+                            <p className="text-green-800 font-medium">Let our experts handle everything for you</p>
+                            <ul className="space-y-2 text-sm text-green-700">
+                              <li className="flex items-center gap-2">
+                                <CheckCircle2 className="h-4 w-4 text-green-600" />
+                                Dedicated CSM + recruiter
+                              </li>
+                              <li className="flex items-center gap-2">
+                                <CheckCircle2 className="h-4 w-4 text-green-600" />
+                                Professional sourcing & vetting
+                              </li>
+                              <li className="flex items-center gap-2">
+                                <CheckCircle2 className="h-4 w-4 text-green-600" />
+                                Offer management
+                              </li>
+                              <li className="flex items-center gap-2">
+                                <CheckCircle2 className="h-4 w-4 text-green-600" />
+                                Success guarantee
+                              </li>
+                            </ul>
+                          </div>
+                          
+                          <Button
+                            onClick={handleFullService}
+                            className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3"
+                          >
+                            Request Virgilio Support
+                          </Button>
                         </div>
-                        <div className="text-sm font-medium text-white">Request Virgilio Support</div>
-                      </Button>
+                      </div>
                     </div>
                   </div>
                 )}
