@@ -1,5 +1,6 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0';
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
 
@@ -7,6 +8,11 @@ const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+const supabase = createClient(
+  Deno.env.get('SUPABASE_URL') ?? '',
+  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+);
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -120,7 +126,53 @@ Return ONLY valid JSON in this format (with content in the same language as the 
       throw new Error('Invalid response format from AI');
     }
 
-    return new Response(JSON.stringify({ jobSpec }), {
+    console.log('✅ Job spec generated, now finding matching candidates...');
+
+    // Call candidate matching function
+    let candidateMatching = null;
+    try {
+      const { data: matchingData, error: matchingError } = await supabase.functions.invoke(
+        'count-matching-candidates',
+        {
+          body: {
+            skills: jobSpec.skills || [],
+            location: jobSpec.location || '',
+            salary_min: jobSpec.salary_range?.min || 0,
+            salary_max: jobSpec.salary_range?.max || 0,
+            currency: jobSpec.salary_range?.currency || 'USD'
+          }
+        }
+      );
+
+      if (matchingError) {
+        console.error('❌ Error calling candidate matching:', matchingError);
+      } else {
+        candidateMatching = matchingData;
+        console.log('📊 Candidate matching result:', candidateMatching);
+      }
+    } catch (matchingError) {
+      console.error('❌ Failed to get candidate matching:', matchingError);
+      // Continue without candidate matching data
+    }
+
+    // Include candidate matching in the response
+    const response = {
+      jobSpec,
+      candidateMatching: candidateMatching || {
+        totalCandidates: 0,
+        excellent: 0,
+        good: 0,
+        fair: 0,
+        minimal: 0,
+        breakdown: {
+          salaryMatches: 0,
+          locationMatches: 0,
+          skillsAnalysis: { averageMatch: 0, topSkills: [] }
+        }
+      }
+    };
+
+    return new Response(JSON.stringify(response), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {

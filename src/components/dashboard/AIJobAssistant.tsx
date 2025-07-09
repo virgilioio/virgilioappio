@@ -25,10 +25,27 @@ interface JobSpec {
   recommendations: string[]
 }
 
+interface CandidateMatching {
+  totalCandidates: number
+  excellent: number
+  good: number
+  fair: number
+  minimal: number
+  breakdown: {
+    salaryMatches: number
+    locationMatches: number
+    skillsAnalysis: {
+      averageMatch: number
+      topSkills: string[]
+    }
+  }
+}
+
 export function AIJobAssistant() {
   const [prompt, setPrompt] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
   const [jobSpec, setJobSpec] = useState<JobSpec | null>(null)
+  const [candidateMatching, setCandidateMatching] = useState<CandidateMatching | null>(null)
   const [showModal, setShowModal] = useState(false)
   const [selectedTitle, setSelectedTitle] = useState('')
   const [isCollapsed, setIsCollapsed] = useState(true)
@@ -54,6 +71,7 @@ export function AIJobAssistant() {
 
       if (data?.jobSpec) {
         setJobSpec(data.jobSpec)
+        setCandidateMatching(data.candidateMatching || null)
         setSelectedTitle(data.jobSpec.job_title)
         setDialogStep('review')
         setShowModal(true)
@@ -413,33 +431,145 @@ export function AIJobAssistant() {
 
               {/* Right Column - AI Insights & Recommendations */}
               <div className="lg:col-span-1">
-                <div className="sticky top-4">
-                  <h4 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                    <Target className="h-5 w-5 text-primary" />
-                    AI Insights & Recommendations
-                  </h4>
-                  <div className="space-y-3">
-                    {jobSpec.recommendations.map((rec, index) => {
-                      const icons = [
-                        { icon: TrendingUp, color: 'text-blue-500', bg: 'bg-blue-50 border-blue-200' },
-                        { icon: Clock, color: 'text-orange-500', bg: 'bg-orange-50 border-orange-200' },
-                        { icon: DollarSign, color: 'text-green-500', bg: 'bg-green-50 border-green-200' },
-                        { icon: Award, color: 'text-purple-500', bg: 'bg-purple-50 border-purple-200' }
-                      ]
-                      const iconData = icons[index % icons.length]
-                      const IconComponent = iconData.icon
-                      
-                      return (
-                        <div key={index} className={`p-4 rounded-lg border ${iconData.bg} transition-all duration-200 hover:shadow-md`}>
-                          <div className="flex items-start gap-3">
-                            <div className={`p-2 rounded-full bg-white shadow-sm ${iconData.color}`}>
-                              <IconComponent className="h-4 w-4" />
-                            </div>
-                            <p className="text-sm text-gray-700 leading-relaxed">{rec}</p>
+                <div className="sticky top-4 space-y-6">
+                  {/* Candidate Pool Analysis */}
+                  {candidateMatching && (
+                    <div>
+                      <h4 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                        <Users className="h-5 w-5 text-primary" />
+                        Candidate Pool Analysis
+                      </h4>
+                      <div className="space-y-4">
+                        {/* Total Candidates */}
+                        <div className="p-4 bg-gradient-to-br from-blue-50 to-cyan-50 border-2 border-blue-200 rounded-xl">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-sm font-medium text-blue-700">Total Matching Candidates</span>
+                            <span className="text-2xl font-bold text-blue-800">{candidateMatching.totalCandidates}</span>
+                          </div>
+                          <div className="text-xs text-blue-600">
+                            From our independent talent pool
                           </div>
                         </div>
-                      )
-                    })}
+
+                        {/* Match Quality Breakdown */}
+                        {candidateMatching.totalCandidates > 0 && (
+                          <div className="space-y-3">
+                            <div className="text-sm font-medium">Match Quality Breakdown</div>
+                            
+                            {candidateMatching.excellent > 0 && (
+                              <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                                  <span className="text-sm text-green-700">Excellent Match (90%+)</span>
+                                </div>
+                                <span className="text-sm font-medium text-green-800">{candidateMatching.excellent}</span>
+                              </div>
+                            )}
+                            
+                            {candidateMatching.good > 0 && (
+                              <div className="flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                  <span className="text-sm text-blue-700">Good Match (70-89%)</span>
+                                </div>
+                                <span className="text-sm font-medium text-blue-800">{candidateMatching.good}</span>
+                              </div>
+                            )}
+                            
+                            {candidateMatching.fair > 0 && (
+                              <div className="flex items-center justify-between p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                                  <span className="text-sm text-yellow-700">Fair Match (50-69%)</span>
+                                </div>
+                                <span className="text-sm font-medium text-yellow-800">{candidateMatching.fair}</span>
+                              </div>
+                            )}
+                            
+                            {candidateMatching.minimal > 0 && (
+                              <div className="flex items-center justify-between p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                                  <span className="text-sm text-orange-700">Minimal Match (30-49%)</span>
+                                </div>
+                                <span className="text-sm font-medium text-orange-800">{candidateMatching.minimal}</span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Insight Message */}
+                        <div className="p-3 bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-lg">
+                          <div className="flex items-start gap-2">
+                            <TrendingUp className="h-4 w-4 text-purple-600 mt-0.5" />
+                            <div className="text-sm">
+                              {candidateMatching.totalCandidates === 0 ? (
+                                <span className="text-purple-700">
+                                  No candidates match your exact criteria. Consider broadening location or skill requirements.
+                                </span>
+                              ) : candidateMatching.totalCandidates >= 20 ? (
+                                <span className="text-purple-700">
+                                  Great talent pool available! You have excellent options for this role.
+                                </span>
+                              ) : candidateMatching.totalCandidates >= 10 ? (
+                                <span className="text-purple-700">
+                                  Good talent pool available with {candidateMatching.totalCandidates} qualified candidates.
+                                </span>
+                              ) : (
+                                <span className="text-purple-700">
+                                  Limited talent pool ({candidateMatching.totalCandidates} candidates). Consider expanding criteria.
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Top Skills in Pool */}
+                        {candidateMatching.breakdown.skillsAnalysis.topSkills.length > 0 && (
+                          <div>
+                            <div className="text-sm font-medium mb-2">Top Skills in Candidate Pool</div>
+                            <div className="flex flex-wrap gap-1">
+                              {candidateMatching.breakdown.skillsAnalysis.topSkills.slice(0, 6).map((skill, index) => (
+                                <span key={index} className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-700 border border-gray-200">
+                                  {skill}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* AI Insights & Recommendations */}
+                  <div>
+                    <h4 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                      <Target className="h-5 w-5 text-primary" />
+                      AI Insights & Recommendations
+                    </h4>
+                    <div className="space-y-3">
+                      {jobSpec.recommendations.map((rec, index) => {
+                        const icons = [
+                          { icon: TrendingUp, color: 'text-blue-500', bg: 'bg-blue-50 border-blue-200' },
+                          { icon: Clock, color: 'text-orange-500', bg: 'bg-orange-50 border-orange-200' },
+                          { icon: DollarSign, color: 'text-green-500', bg: 'bg-green-50 border-green-200' },
+                          { icon: Award, color: 'text-purple-500', bg: 'bg-purple-50 border-purple-200' }
+                        ]
+                        const iconData = icons[index % icons.length]
+                        const IconComponent = iconData.icon
+                        
+                        return (
+                          <div key={index} className={`p-4 rounded-lg border ${iconData.bg} transition-all duration-200 hover:shadow-md`}>
+                            <div className="flex items-start gap-3">
+                              <div className={`p-2 rounded-full bg-white shadow-sm ${iconData.color}`}>
+                                <IconComponent className="h-4 w-4" />
+                              </div>
+                              <p className="text-sm text-gray-700 leading-relaxed">{rec}</p>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
                   </div>
                 </div>
               </div>
