@@ -311,6 +311,24 @@ export default function CandidateProfile() {
                   </Card>
                 )}
 
+                {/* Skills Card - Overview Tab */}
+                {activeTab === 'overview' && candidate.skills && candidate.skills.length > 0 && (
+                  <Card className="bg-surface-primary">
+                    <CardHeader>
+                      <CardTitle className="text-lg font-medium text-text-primary">Skills</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex flex-wrap gap-2">
+                        {candidate.skills.map((skill) => (
+                          <Badge key={skill} variant="outline" className="text-sm">
+                            {skill}
+                          </Badge>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
                 {/* Independent Profile Summary Card - Overview Tab */}
                 {activeTab === 'overview' && candidate.profile_summary && (
                   <Card className="bg-surface-primary">

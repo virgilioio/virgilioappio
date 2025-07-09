@@ -289,23 +289,6 @@ export default function IndependentCandidateProfile() {
                 </Card>
               )}
 
-              {/* Profile Summary Card - Overview Tab */}
-              {activeTab === 'overview' && candidate.profile_summary && (
-                <Card className="bg-surface-primary">
-                  <CardHeader>
-                    <CardTitle className="text-lg font-medium text-text-primary">Profile Summary</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="prose prose-sm max-w-none text-text-primary">
-                      <div 
-                        className="leading-relaxed [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:my-2 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0"
-                        dangerouslySetInnerHTML={{ __html: candidate.profile_summary }}
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
               {/* Skills Card - Overview Tab */}
               {activeTab === 'overview' && candidate.skills && candidate.skills.length > 0 && (
                 <Card className="bg-surface-primary">
@@ -323,6 +306,24 @@ export default function IndependentCandidateProfile() {
                   </CardContent>
                 </Card>
               )}
+
+              {/* Profile Summary Card - Overview Tab */}
+              {activeTab === 'overview' && candidate.profile_summary && (
+                <Card className="bg-surface-primary">
+                  <CardHeader>
+                    <CardTitle className="text-lg font-medium text-text-primary">Profile Summary</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="prose prose-sm max-w-none text-text-primary">
+                      <div 
+                        className="leading-relaxed [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:my-2 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0"
+                        dangerouslySetInnerHTML={{ __html: candidate.profile_summary }}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
 
               {/* Detailed Information Card - Details Tab */}
               {activeTab === 'details' && (
