@@ -10,7 +10,8 @@ import { Separator } from '@/components/ui/separator'
 import { FormField } from '@/components/ui/form-field'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Check, ChevronsUpDown } from 'lucide-react'
+import { Check, ChevronsUpDown, X, Plus } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/AuthContext'
 import { useFormPersistence } from '@/hooks/useFormPersistence'
@@ -89,6 +90,8 @@ export function CandidateForm({
   const [currencyOpen, setCurrencyOpen] = useState(false)
   const [profileSummary, setProfileSummary] = useState('')
   const [notes, setNotes] = useState('')
+  const [skills, setSkills] = useState<string[]>([])
+  const [newSkill, setNewSkill] = useState('')
   const { user } = useAuth()
 
   const form = useForm<FormData>({
@@ -138,12 +141,15 @@ export function CandidateForm({
       // Set the rich text editor values separately with logging
       const profileSummaryValue = candidate.profile_summary || ''
       const notesValue = candidate.notes || ''
+      const skillsValue = candidate.skills || []
       
       console.log('Setting profile summary:', profileSummaryValue)
       console.log('Setting notes:', notesValue)
+      console.log('Setting skills:', skillsValue)
       
       setProfileSummary(profileSummaryValue)
       setNotes(notesValue)
+      setSkills(skillsValue)
     }
   }, [candidate, isOpen, form])
 
@@ -169,6 +175,8 @@ export function CandidateForm({
       // Reset rich text editor values only for new candidates
       setProfileSummary('')
       setNotes('')
+      setSkills([])
+      setNewSkill('')
     }
   }, [isOpen, candidate, form])
 
@@ -185,6 +193,7 @@ export function CandidateForm({
       salary_amount: data.salary_amount ? Number(data.salary_amount) : null,
       profile_summary: profileSummary,
       notes: notes,
+      skills: skills.length > 0 ? skills : null,
       job_id: jobId
     }
     
@@ -195,6 +204,24 @@ export function CandidateForm({
       clearPersistedData()
     }
   })
+
+  const addSkill = () => {
+    if (newSkill.trim() && !skills.includes(newSkill.trim())) {
+      setSkills([...skills, newSkill.trim()])
+      setNewSkill('')
+    }
+  }
+
+  const removeSkill = (skillToRemove: string) => {
+    setSkills(skills.filter(skill => skill !== skillToRemove))
+  }
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      addSkill()
+    }
+  }
 
   const handleClose = () => {
     // Don't clear persisted data when closing - let it persist for later use
@@ -392,6 +419,51 @@ export function CandidateForm({
                   </Select>
                 </FormField>
               </div>
+            </div>
+
+            {/* Skills */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium text-text-primary border-b border-border pb-2">
+                Skills & Expertise
+              </h3>
+              
+              <FormField 
+                label="Skills" 
+                htmlFor="skills"
+                helpText="Add relevant skills and technologies"
+              >
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <Input
+                      value={newSkill}
+                      onChange={(e) => setNewSkill(e.target.value)}
+                      onKeyPress={handleKeyPress}
+                      placeholder="Add a skill (e.g., React, Python, etc.)"
+                      className="flex-1 h-[44px]"
+                    />
+                    <Button type="button" onClick={addSkill} variant="outline" size="sm" className="h-[44px]">
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  
+                  {skills.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {skills.map((skill) => (
+                        <Badge key={skill} variant="secondary" className="flex items-center gap-1">
+                          {skill}
+                          <button
+                            type="button"
+                            onClick={() => removeSkill(skill)}
+                            className="ml-1 rounded-full hover:bg-destructive hover:text-destructive-foreground"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </FormField>
             </div>
 
             {/* Profile & Notes */}

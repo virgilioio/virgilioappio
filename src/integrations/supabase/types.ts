@@ -805,6 +805,7 @@ export type Database = {
           salary_amount: number | null
           salary_currency: string | null
           salary_period: string | null
+          skills: string[] | null
           updated_at: string
         }
         Insert: {
@@ -823,6 +824,7 @@ export type Database = {
           salary_amount?: number | null
           salary_currency?: string | null
           salary_period?: string | null
+          skills?: string[] | null
           updated_at?: string
         }
         Update: {
@@ -841,6 +843,7 @@ export type Database = {
           salary_amount?: number | null
           salary_currency?: string | null
           salary_period?: string | null
+          skills?: string[] | null
           updated_at?: string
         }
         Relationships: [

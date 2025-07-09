@@ -24,6 +24,7 @@ interface BaseCandidate {
   salary_currency: string | null
   salary_period: string | null
   profile_summary: string | null
+  skills: string[] | null
   created_at: string
   first_viewed_by: Record<string, string> | null
 }
@@ -311,13 +312,14 @@ export function CandidateTable({
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Name</TableHead>
-                      {showJobInfo && <TableHead>Job</TableHead>}
-                      {showJobInfo && <TableHead>Organization</TableHead>}
-                      <TableHead>Location</TableHead>
-                      <TableHead>Salary Expectations</TableHead>
-                      <TableHead>Added</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+                       <TableHead>Name</TableHead>
+                       {showJobInfo && <TableHead>Job</TableHead>}
+                       {showJobInfo && <TableHead>Organization</TableHead>}
+                       <TableHead>Location</TableHead>
+                       <TableHead>Skills</TableHead>
+                       <TableHead>Salary Expectations</TableHead>
+                       <TableHead>Added</TableHead>
+                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -365,18 +367,42 @@ export function CandidateTable({
                             </Link>
                           </TableCell>
                         )}
-                        <TableCell>
-                          <Link 
-                            to={getCandidateLink(candidate)}
-                            className="block w-full h-full"
-                            onClick={() => handleCandidateClick(candidate)}
-                          >
-                            <div className="flex items-center gap-1 text-sm text-text-secondary">
-                              <MapPin className="h-3 w-3 shrink-0" />
-                              <span>{formatLocation(candidate)}</span>
-                            </div>
-                          </Link>
-                        </TableCell>
+                         <TableCell>
+                           <Link 
+                             to={getCandidateLink(candidate)}
+                             className="block w-full h-full"
+                             onClick={() => handleCandidateClick(candidate)}
+                           >
+                             <div className="flex items-center gap-1 text-sm text-text-secondary">
+                               <MapPin className="h-3 w-3 shrink-0" />
+                               <span>{formatLocation(candidate)}</span>
+                             </div>
+                           </Link>
+                         </TableCell>
+                         <TableCell>
+                           <Link 
+                             to={getCandidateLink(candidate)}
+                             className="block w-full h-full"
+                             onClick={() => handleCandidateClick(candidate)}
+                           >
+                             {candidate.skills && candidate.skills.length > 0 ? (
+                               <div className="flex flex-wrap gap-1">
+                                 {candidate.skills.slice(0, 3).map((skill) => (
+                                   <Badge key={skill} variant="secondary" className="text-xs">
+                                     {skill}
+                                   </Badge>
+                                 ))}
+                                 {candidate.skills.length > 3 && (
+                                   <Badge variant="outline" className="text-xs">
+                                     +{candidate.skills.length - 3} more
+                                   </Badge>
+                                 )}
+                               </div>
+                             ) : (
+                               <span className="text-muted-foreground text-sm">No skills listed</span>
+                             )}
+                           </Link>
+                         </TableCell>
                         <TableCell>
                           <Link 
                             to={getCandidateLink(candidate)}

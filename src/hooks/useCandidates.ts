@@ -16,6 +16,7 @@ export interface Candidate {
   profile_summary: string | null
   notes: string | null
   linkedin_url: string | null
+  skills: string[] | null
   added_by: string | null
   created_at: string
   updated_at: string
@@ -33,6 +34,7 @@ export interface CreateCandidateData {
   profile_summary?: string | null
   notes?: string | null
   linkedin_url?: string | null
+  skills?: string[] | null
 }
 
 export function useCandidates(jobId: string) {
