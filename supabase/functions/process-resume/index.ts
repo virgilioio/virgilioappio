@@ -43,39 +43,89 @@ serve(async (req) => {
 
     console.log(`📄 Processing file: ${file.name} (${file.size} bytes)`);
 
-    // Step 2: For now, let's create a simple demo text extraction
-    // This will help us verify the OpenAI part works first
-    console.log("📝 Creating demo resume text for testing...");
+    // Step 2: Extract text from PDF
+    console.log("📝 Extracting text from PDF...");
     
-    const resumeText = `John Doe
-Software Engineer
-Email: john.doe@example.com
-Phone: (555) 123-4567
-LinkedIn: https://linkedin.com/in/johndoe
+    const fileBuffer = await file.arrayBuffer();
+    const uint8Array = new Uint8Array(fileBuffer);
+    
+    let resumeText = "";
+    try {
+      // Use a simple PDF text extraction approach
+      // Convert PDF bytes to string and extract readable text
+      const pdfString = new TextDecoder('latin1').decode(uint8Array);
+      
+      // Extract text between common PDF text markers
+      const textMatches = pdfString.match(/BT[\s\S]*?ET/g) || [];
+      const extractedTexts: string[] = [];
+      
+      for (const match of textMatches) {
+        // Look for text within parentheses or between Tj commands
+        const textInParens = match.match(/\(([^)]+)\)/g);
+        const textBeforeTj = match.match(/\[([^\]]+)\]/g);
+        
+        if (textInParens) {
+          textInParens.forEach(text => {
+            const cleanText = text.replace(/[()]/g, '').trim();
+            if (cleanText.length > 1) {
+              extractedTexts.push(cleanText);
+            }
+          });
+        }
+        
+        if (textBeforeTj) {
+          textBeforeTj.forEach(text => {
+            const cleanText = text.replace(/[\[\]]/g, '').trim();
+            if (cleanText.length > 1) {
+              extractedTexts.push(cleanText);
+            }
+          });
+        }
+      }
+      
+      // Also try to extract any readable ASCII text from the PDF
+      const asciiText = pdfString.replace(/[^\x20-\x7E\n\r]/g, ' ')
+        .split(/\s+/)
+        .filter(word => word.length > 1 && /[a-zA-Z]/.test(word))
+        .join(' ');
+      
+      // Combine extracted texts
+      resumeText = [...extractedTexts, asciiText]
+        .join(' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      
+      console.log(`📝 Text extracted: ${resumeText.length} characters`);
+      
+      // If we didn't get much text, provide a helpful fallback
+      if (resumeText.length < 50) {
+        console.log("⚠️ Limited text extracted, using demo text as fallback");
+        resumeText = `${file.name} Resume Content:
 
-SUMMARY
-Experienced software engineer with 5+ years developing web applications using React, Node.js, and Python. 
-Strong background in full-stack development and cloud technologies.
+This resume was uploaded but text extraction was limited. The file appears to be a PDF resume.
+Please manually enter the candidate information or try uploading a different format.
 
-EXPERIENCE
-Senior Software Engineer - Tech Corp (2021-Present)
-• Developed and maintained React applications serving 10k+ users
-• Built RESTful APIs using Node.js and Express
-• Implemented CI/CD pipelines using Docker and AWS
+Based on filename: ${file.name}
+File size: ${file.size} bytes
+File type: ${file.type}
 
-Software Engineer - StartupXYZ (2019-2021)  
-• Created web applications using React and Python Flask
-• Collaborated with design team to implement responsive UI
-• Optimized database queries improving performance by 40%
+You can manually enter the candidate's information in the form below.`;
+      }
+      
+    } catch (pdfError) {
+      console.error("❌ PDF parsing failed:", pdfError);
+      
+      // Fallback to a user-friendly message that includes file info
+      resumeText = `Resume Upload: ${file.name}
 
-SKILLS
-React, JavaScript, Python, Node.js, AWS, Docker, Git, SQL, MongoDB
+This appears to be a PDF resume file, but we had difficulty extracting the text content automatically.
+File details:
+- Name: ${file.name}
+- Size: ${(file.size / 1024).toFixed(1)} KB
+- Type: ${file.type}
 
-EDUCATION
-Bachelor of Science in Computer Science
-University of Technology (2019)`;
-
-    console.log(`📝 Demo text created: ${resumeText.length} characters`);
+Please manually enter the candidate's information in the form fields below, or try uploading a different PDF format.`;
+    }
 
     // Step 3: Get OpenAI API key
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
