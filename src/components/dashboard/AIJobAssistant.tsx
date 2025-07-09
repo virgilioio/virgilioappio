@@ -249,11 +249,25 @@ export function AIJobAssistant() {
                     <div>
                       <h4 className="text-sm font-medium mb-2">Required Skills</h4>
                       <div className="flex flex-wrap gap-1">
-                        {jobSpec.skills.map((skill, index) => (
-                          <Badge key={index} variant="secondary" className="bg-gradient-to-r from-primary/10 to-accent/10">
-                            {skill}
-                          </Badge>
-                        ))}
+                        {jobSpec.skills.map((skill, index) => {
+                          const pastelColors = [
+                            'bg-pink-100 text-pink-700 border-pink-200',
+                            'bg-blue-100 text-blue-700 border-blue-200',
+                            'bg-green-100 text-green-700 border-green-200',
+                            'bg-yellow-100 text-yellow-700 border-yellow-200',
+                            'bg-purple-100 text-purple-700 border-purple-200',
+                            'bg-indigo-100 text-indigo-700 border-indigo-200',
+                            'bg-orange-100 text-orange-700 border-orange-200',
+                            'bg-teal-100 text-teal-700 border-teal-200'
+                          ]
+                          const colorClass = pastelColors[index % pastelColors.length]
+                          
+                          return (
+                            <Badge key={index} variant="outline" className={`${colorClass} border`}>
+                              {skill}
+                            </Badge>
+                          )
+                        })}
                       </div>
                     </div>
                   </div>
