@@ -82,29 +82,9 @@ export function SkillsEditor({
   return (
     <div className={className}>
       <div className="space-y-4">
-        {/* Header with live candidate count */}
-        <div className="flex items-center justify-between">
+        {/* Header */}
+        <div>
           <h4 className="text-sm font-medium">Required Skills</h4>
-          <div className="flex items-center gap-2">
-            {isLoading && (
-              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-            )}
-            {matchingData && (
-              <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                <Users className="h-4 w-4" />
-                <span className="font-medium text-foreground">
-                  {matchingData.totalCandidates}
-                </span>
-                <span>candidates</span>
-              </div>
-            )}
-            {error && (
-              <div className="flex items-center gap-1 text-sm text-destructive">
-                <AlertCircle className="h-4 w-4" />
-                <span>Error</span>
-              </div>
-            )}
-          </div>
         </div>
 
         {/* Skills display */}
