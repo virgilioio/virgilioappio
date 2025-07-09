@@ -25,34 +25,75 @@ interface ExtractedProfile {
   };
 }
 
-async function getAdobeAccessToken(): Promise<string> {
-  const clientId = Deno.env.get('ADOBE_CLIENT_ID');
+// JWT helper function for Adobe authentication
+async function createJWT(): Promise<string> {
+  const apiKey = Deno.env.get('ADOBE_API_KEY');
+  const technicalAccountId = Deno.env.get('ADOBE_TECHNICAL_ACCOUNT_ID');
+  const orgId = Deno.env.get('ADOBE_IMS_ORG');
   const clientSecret = Deno.env.get('ADOBE_CLIENT_SECRET');
   
-  if (!clientId || !clientSecret) {
-    throw new Error('Adobe credentials not configured');
+  if (!apiKey || !technicalAccountId || !orgId || !clientSecret) {
+    throw new Error('Adobe credentials not properly configured');
   }
 
-  // Get access token from Adobe
-  const response = await fetch('https://ims-na1.adobelogin.com/ims/token/v1', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: new URLSearchParams({
-      client_id: clientId,
-      client_secret: clientSecret,
-      grant_type: 'client_credentials',
-      scope: 'openid,AdobeID,read_organizations,additional_info.projectedProductContext,additional_info.job_function'
-    }),
-  });
+  // Create JWT payload
+  const now = Math.floor(Date.now() / 1000);
+  const payload = {
+    iss: orgId,
+    sub: technicalAccountId,
+    aud: `https://ims-na1.adobelogin.com/c/${apiKey}`,
+    exp: now + 300, // 5 minutes
+    iat: now,
+    'https://ims-na1.adobelogin.com/s/ent_documentservices_sdk': true
+  };
 
-  if (!response.ok) {
-    throw new Error(`Adobe authentication failed: ${response.statusText}`);
+  // For simplicity, we'll use a basic JWT implementation
+  // In production, you'd want to use proper JWT signing with RS256
+  const header = btoa(JSON.stringify({ alg: "HS256", typ: "JWT" }));
+  const payloadStr = btoa(JSON.stringify(payload));
+  
+  // Create signature (simplified - in production use proper RS256 with private key)
+  const signature = btoa(clientSecret);
+  
+  return `${header}.${payloadStr}.${signature}`;
+}
+
+async function getAdobeAccessToken(): Promise<string> {
+  const apiKey = Deno.env.get('ADOBE_API_KEY');
+  const clientSecret = Deno.env.get('ADOBE_CLIENT_SECRET');
+  
+  if (!apiKey || !clientSecret) {
+    throw new Error('Adobe API credentials not configured');
   }
 
-  const tokenData = await response.json();
-  return tokenData.access_token;
+  try {
+    // Use a simpler OAuth2 approach for now since JWT requires private key setup
+    const response = await fetch('https://ims-na1.adobelogin.com/ims/token/v1', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        client_id: apiKey,
+        client_secret: clientSecret,
+        grant_type: 'client_credentials',
+        scope: 'openid,AdobeID,DCAPI'
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Adobe auth response:', errorText);
+      throw new Error(`Adobe authentication failed: ${response.statusText} - ${errorText}`);
+    }
+
+    const tokenData = await response.json();
+    console.log('Adobe authentication successful');
+    return tokenData.access_token;
+  } catch (error) {
+    console.error('Adobe authentication error:', error);
+    throw error;
+  }
 }
 
 async function extractPDFText(pdfFile: File): Promise<string> {
@@ -68,7 +109,7 @@ async function extractPDFText(pdfFile: File): Promise<string> {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
-        'x-api-key': Deno.env.get('ADOBE_CLIENT_ID') || '',
+        'x-api-key': Deno.env.get('ADOBE_API_KEY') || '',
       },
       body: formData,
     });

@@ -1,0 +1,2 @@
+-- First, let me update the edge function with proper Adobe PDF Services integration
+-- This migration is just a placeholder since we're updating the edge function code
