@@ -44,31 +44,31 @@ export function AIJobAssistant() {
     {
       id: 'role',
       label: 'Role or position title',
-      regex: /(engineer|developer|manager|sales|marketing|designer|analyst|coordinator|specialist|director|lead|senior|junior|intern)/i,
+      regex: /(engineer|developer|manager|sales|marketing|designer|analyst|coordinator|specialist|director|lead|senior|junior|intern|ingeniero|desarrollador|gerente|ventas|mercadeo|diseñador|analista|coordinador|especialista|director|líder|sénior|júnior|practicante|engenheiro|desenvolvedor|vendas|marketing|coordenador|especialista|diretor|líder|sênior|júnior|estagiário|ingénieur|développeur|gestionnaire|ventes|concepteur|analyste|coordinateur|spécialiste|directeur|dirigeant|senior|junior|stagiaire)/i,
       checked: false
     },
     {
       id: 'responsibilities',
       label: 'Key responsibilities or goals',
-      regex: /(build|develop|manage|create|lead|implement|design|analyze|coordinate|optimize|drive|execute)/i,
+      regex: /(build|develop|manage|create|lead|implement|design|analyze|coordinate|optimize|drive|execute|construir|desarrollar|gestionar|crear|liderar|implementar|diseñar|analizar|coordinar|optimizar|impulsar|ejecutar|construir|desenvolver|gerenciar|criar|liderar|implementar|projetar|analisar|coordenar|otimizar|dirigir|executar|construire|développer|gérer|créer|diriger|mettre en œuvre|concevoir|analyser|coordonner|optimiser|conduire|exécuter)/i,
       checked: false
     },
     {
       id: 'industry',
       label: 'Industry or team context',
-      regex: /(fintech|startup|ecommerce|saas|healthcare|education|finance|tech|marketing|sales)/i,
+      regex: /(fintech|startup|ecommerce|saas|healthcare|education|finance|tech|marketing|sales|tecnología|sanitario|educación|finanzas|tecnologia|saúde|educação|finanças|technologie|santé|éducation|finances|équipe|team|equipo|equipe)/i,
       checked: false
     },
     {
       id: 'location',
       label: 'Location or region',
-      regex: /(remote|city|country|mexico|usa|canada|europe|asia|latin|america|office|hybrid)/i,
+      regex: /(remote|city|country|mexico|usa|canada|europe|asia|latin|america|office|hybrid|remoto|ciudad|país|méxico|eeuu|canadá|europa|asia|latinoamérica|oficina|híbrido|cidade|país|eua|canadá|europa|ásia|américa|escritório|híbrido|bureau|ville|pays|mexique|états-unis|canada|europe|asie|amérique|bureau|hybride|work from home|trabajo remoto|trabalho remoto|travail à domicile)/i,
       checked: false
     },
     {
       id: 'outcomes',
       label: 'Desired outcomes or metrics',
-      regex: /(revenue|growth|launch|improve|increase|scale|optimize|reduce|enhance|achieve)/i,
+      regex: /(revenue|growth|launch|improve|increase|scale|optimize|reduce|enhance|achieve|ingresos|crecimiento|lanzar|mejorar|aumentar|escalar|optimizar|reducir|potenciar|lograr|receita|crescimento|lançar|melhorar|aumentar|escalar|otimizar|reduzir|aprimorar|alcançar|revenu|croissance|lancer|améliorer|augmenter|mettre à l'échelle|optimiser|réduire|améliorer|atteindre|objetivos|metas|goals|objectifs)/i,
       checked: false
     }
   ]
