@@ -59,33 +59,33 @@ async function createJWT(): Promise<string> {
 }
 
 async function getAdobeAccessToken(): Promise<string> {
-  const apiKey = Deno.env.get('ADOBE_API_KEY');
+  const clientId = Deno.env.get('ADOBE_CLIENT_ID');
   const clientSecret = Deno.env.get('ADOBE_CLIENT_SECRET');
   
   console.log('Adobe credentials check:', {
-    hasApiKey: !!apiKey,
+    hasClientId: !!clientId,
     hasClientSecret: !!clientSecret,
-    apiKeyLength: apiKey?.length || 0
+    clientIdLength: clientId?.length || 0
   });
   
-  if (!apiKey || !clientSecret) {
-    throw new Error('Adobe API credentials not configured');
+  if (!clientId || !clientSecret) {
+    throw new Error('Adobe OAuth credentials not configured. Need ADOBE_CLIENT_ID and ADOBE_CLIENT_SECRET');
   }
 
   try {
-    console.log('Attempting Adobe authentication...');
+    console.log('Attempting Adobe OAuth authentication...');
     
-    // Use a simpler OAuth2 approach for now since JWT requires private key setup
-    const response = await fetch('https://ims-na1.adobelogin.com/ims/token/v1', {
+    // Use correct Adobe IMS OAuth endpoint and scope for PDF Services
+    const response = await fetch('https://ims-na1.adobelogin.com/ims/token/v3', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
       body: new URLSearchParams({
-        client_id: apiKey,
+        client_id: clientId,
         client_secret: clientSecret,
         grant_type: 'client_credentials',
-        scope: 'openid,AdobeID,DCAPI'
+        scope: 'openid,AdobeID,read_organizations,additional_info.projectedProductContext,session'
       }),
     });
 
@@ -109,38 +109,157 @@ async function getAdobeAccessToken(): Promise<string> {
 async function extractPDFText(pdfFile: File): Promise<string> {
   try {
     const accessToken = await getAdobeAccessToken();
+    const clientId = Deno.env.get('ADOBE_CLIENT_ID');
+    const orgId = Deno.env.get('ADOBE_IMS_ORG');
     
-    // Create FormData for Adobe PDF Services API
-    const formData = new FormData();
-    formData.append('file', pdfFile);
+    if (!clientId || !orgId) {
+      throw new Error('Adobe Client ID and Organization ID are required');
+    }
 
-    // Adobe PDF Extract API call
-    const extractResponse = await fetch('https://pdf-services.adobe.io/operation/extractpdf', {
+    console.log('Starting Adobe PDF Services extraction process...');
+
+    // Step 1: Upload PDF to Adobe's asset storage
+    console.log('Step 1: Uploading PDF to Adobe asset storage...');
+    const uploadFormData = new FormData();
+    uploadFormData.append('contentAnalyzerRequests', JSON.stringify({
+      cpf: {
+        inputs: {
+          documentIn: {
+            dc: [
+              {
+                pagestart: 1,
+                pageend: -1
+              }
+            ],
+            cpf: {
+              outputs: [
+                {
+                  type: "text",
+                  tableOutputFormat: "csv"
+                }
+              ]
+            }
+          }
+        }
+      }
+    }));
+    uploadFormData.append('documentIn', pdfFile);
+
+    const uploadResponse = await fetch('https://pdf-services.adobe.io/operation/contentanalyzer', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
-        'x-api-key': Deno.env.get('ADOBE_API_KEY') || '',
+        'x-api-key': clientId,
+        'x-gw-ims-org-id': orgId,
       },
-      body: formData,
+      body: uploadFormData,
     });
 
-    if (!extractResponse.ok) {
-      throw new Error(`Adobe PDF Extract failed: ${extractResponse.statusText}`);
+    console.log('Adobe upload response status:', uploadResponse.status);
+    
+    if (!uploadResponse.ok) {
+      const errorText = await uploadResponse.text();
+      console.error('Adobe upload failed:', errorText);
+      throw new Error(`Adobe PDF upload failed: ${uploadResponse.statusText} - ${errorText}`);
     }
 
-    const extractResult = await extractResponse.json();
+    const uploadResult = await uploadResponse.json();
+    const jobId = uploadResult.jobId;
     
-    // Extract text content from Adobe's response
-    // Note: Adobe's response structure may vary, adjust based on actual API response
-    const textContent = extractResult.elements
-      ?.filter((el: any) => el.Text)
-      ?.map((el: any) => el.Text)
-      ?.join(' ') || '';
+    if (!jobId) {
+      console.error('No job ID received from Adobe:', uploadResult);
+      throw new Error('Adobe did not return a job ID');
+    }
 
-    return textContent;
+    console.log('Adobe job created with ID:', jobId);
+
+    // Step 2: Poll for job completion
+    console.log('Step 2: Polling for job completion...');
+    let jobCompleted = false;
+    let attempts = 0;
+    const maxAttempts = 30; // 30 seconds timeout
+    let jobResult: any;
+
+    while (!jobCompleted && attempts < maxAttempts) {
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+      attempts++;
+
+      const statusResponse = await fetch(`https://pdf-services.adobe.io/operation/contentanalyzer/${jobId}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'x-api-key': clientId,
+          'x-gw-ims-org-id': orgId,
+        },
+      });
+
+      if (!statusResponse.ok) {
+        console.error('Failed to check job status:', statusResponse.statusText);
+        continue;
+      }
+
+      jobResult = await statusResponse.json();
+      console.log(`Job status check ${attempts}: ${jobResult.status}`);
+
+      if (jobResult.status === 'done') {
+        jobCompleted = true;
+      } else if (jobResult.status === 'failed') {
+        throw new Error(`Adobe job failed: ${jobResult.error || 'Unknown error'}`);
+      }
+    }
+
+    if (!jobCompleted) {
+      throw new Error('Adobe job timed out after 30 seconds');
+    }
+
+    // Step 3: Download and parse results
+    console.log('Step 3: Downloading extraction results...');
+    if (!jobResult.output || !jobResult.output.length) {
+      throw new Error('No output received from Adobe job');
+    }
+
+    const downloadUrl = jobResult.output[0].downloadUri;
+    if (!downloadUrl) {
+      throw new Error('No download URL received from Adobe');
+    }
+
+    const downloadResponse = await fetch(downloadUrl, {
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+      },
+    });
+
+    if (!downloadResponse.ok) {
+      throw new Error(`Failed to download extraction results: ${downloadResponse.statusText}`);
+    }
+
+    const extractionResult = await downloadResponse.json();
+    console.log('Successfully downloaded extraction results');
+
+    // Step 4: Extract text from the results
+    let extractedText = '';
+    
+    if (extractionResult.elements && Array.isArray(extractionResult.elements)) {
+      extractedText = extractionResult.elements
+        .filter((element: any) => element.Text)
+        .map((element: any) => element.Text)
+        .join(' ');
+    } else if (extractionResult.textContent) {
+      extractedText = extractionResult.textContent;
+    } else if (typeof extractionResult === 'string') {
+      extractedText = extractionResult;
+    }
+
+    console.log('Extracted text length:', extractedText.length);
+    
+    if (!extractedText.trim()) {
+      throw new Error('No text content found in the extracted results');
+    }
+
+    return extractedText;
   } catch (error) {
     console.error('PDF extraction failed:', error);
-    throw new Error('Failed to extract text from PDF');
+    throw new Error(`Failed to extract text from PDF: ${error.message}`);
   }
 }
 
