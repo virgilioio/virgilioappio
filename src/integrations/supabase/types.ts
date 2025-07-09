@@ -1613,6 +1613,72 @@ export type Database = {
         }
         Relationships: []
       }
+      salary_market_data: {
+        Row: {
+          cached_at: string
+          created_at: string
+          currency: string
+          data_source: string
+          experience_level: string | null
+          expires_at: string
+          id: string
+          job_title: string
+          location_city: string | null
+          location_country: string
+          market_competitiveness: string | null
+          percentile_25: number | null
+          percentile_75: number | null
+          percentile_90: number | null
+          salary_max: number | null
+          salary_median: number | null
+          salary_min: number | null
+          sample_size: number | null
+          updated_at: string
+        }
+        Insert: {
+          cached_at?: string
+          created_at?: string
+          currency?: string
+          data_source?: string
+          experience_level?: string | null
+          expires_at?: string
+          id?: string
+          job_title: string
+          location_city?: string | null
+          location_country: string
+          market_competitiveness?: string | null
+          percentile_25?: number | null
+          percentile_75?: number | null
+          percentile_90?: number | null
+          salary_max?: number | null
+          salary_median?: number | null
+          salary_min?: number | null
+          sample_size?: number | null
+          updated_at?: string
+        }
+        Update: {
+          cached_at?: string
+          created_at?: string
+          currency?: string
+          data_source?: string
+          experience_level?: string | null
+          expires_at?: string
+          id?: string
+          job_title?: string
+          location_city?: string | null
+          location_country?: string
+          market_competitiveness?: string | null
+          percentile_25?: number | null
+          percentile_75?: number | null
+          percentile_90?: number | null
+          salary_max?: number | null
+          salary_median?: number | null
+          salary_min?: number | null
+          sample_size?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       supported_currencies: {
         Row: {
           code: string
@@ -1709,6 +1775,10 @@ export type Database = {
         Returns: boolean
       }
       cleanup_expired_invitations: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
+      cleanup_expired_salary_data: {
         Args: Record<PropertyKey, never>
         Returns: number
       }

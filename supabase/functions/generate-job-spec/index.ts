@@ -25,6 +25,60 @@ serve(async (req) => {
 
     console.log('Generating job spec for prompt:', prompt);
 
+    // First, get market salary data to enhance AI recommendations
+    let marketSalaryData = null;
+    let salaryInsights = '';
+    
+    // Try to extract job title and location from prompt for salary research
+    const jobTitleMatch = prompt.match(/(?:need|hire|looking for|want)\s+(?:a\s+)?([^,.!?]+?)(?:\s+(?:in|at|for|based))/i);
+    const locationMatch = prompt.match(/(?:in|at|based in|located in)\s+([^,.!?]+?)(?:\.|,|!|\?|$)/i);
+    
+    if (jobTitleMatch && locationMatch) {
+      const inferredJobTitle = jobTitleMatch[1].trim();
+      const inferredLocation = locationMatch[1].trim();
+      
+      console.log(`🔍 Researching salary for: ${inferredJobTitle} in ${inferredLocation}`);
+      
+      try {
+        const { data: salaryResponse, error: salaryError } = await supabase.functions.invoke(
+          'coresignal-salary-research',
+          {
+            body: {
+              jobTitle: inferredJobTitle,
+              location: inferredLocation,
+              useCache: true
+            }
+          }
+        );
+
+        if (!salaryError && salaryResponse?.salaryData) {
+          marketSalaryData = salaryResponse.salaryData;
+          const currency = marketSalaryData.currency;
+          const median = marketSalaryData.salary_median;
+          const min = marketSalaryData.percentile_25;
+          const max = marketSalaryData.percentile_75;
+          
+          salaryInsights = `
+
+MARKET SALARY INTELLIGENCE:
+- Role: ${inferredJobTitle} in ${inferredLocation}
+- Market Median: ${currency} ${median?.toLocaleString()} 
+- Market Range: ${currency} ${min?.toLocaleString()} - ${currency} ${max?.toLocaleString()}
+- Market Competitiveness: ${marketSalaryData.market_competitiveness}
+- Sample Size: ${marketSalaryData.sample_size} jobs analyzed
+- Data Source: ${salaryResponse.source}
+
+Use this market data to provide SPECIFIC salary recommendations instead of generic ranges. Compare any suggested salary range against this market data and provide insights about market positioning.`;
+          
+          console.log('✅ Market salary data obtained:', marketSalaryData);
+        } else {
+          console.log('❌ No market salary data available:', salaryError);
+        }
+      } catch (salaryError) {
+        console.error('Error getting salary data:', salaryError);
+      }
+    }
+
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -63,7 +117,7 @@ ROLE INTERPRETATION INTELLIGENCE:
 - Infer specific roles from general terms:
   * "Ventas" could be Sales Development Representative, Account Executive, Sales Manager, etc.
   * "Marketing" could be Marketing Specialist, Digital Marketing Manager, Content Creator, etc.
-  * "Tech" could be Software Developer, DevOps Engineer, Data Analyst, etc.
+  * "Tech" could be Software Developer DevOps Engineer, Data Analyst, etc.
 - Consider context clues like company size, industry, seniority level mentioned
 - Generate 2-3 alternative titles that represent different seniority levels or specializations
 
@@ -71,16 +125,19 @@ ENHANCED ANALYSIS REQUIREMENTS:
 - Understand the context of the role in the user's language
 - Infer the most likely job title, department, and seniority level appropriate to their region/language
 - Detect any mention of city, country, or timezone to determine location and currency
-- Estimate salary range based on market and location (use regional salary data)
+- Use market salary data when available to provide specific recommendations
 - Generate 5-8 relevant English skill tags that match the role requirements
 - Analyze what the client is trying to achieve and translate that into a strong, structured job description
 
-SALARY INTELLIGENCE:
+SALARY INTELLIGENCE WITH MARKET DATA:
+- PRIORITY: Use actual market data from CoreSignal when available (see MARKET SALARY INTELLIGENCE section below)
 - For LATAM positions: Use appropriate local currencies (MXN, BRL, COP, etc.) and monthly periods
 - For US positions: Use USD and annual periods  
 - For European positions: Use EUR and annual periods
-- Research-based salary ranges for the specific market
+- When market data is available, use it to provide SPECIFIC salary recommendations and market positioning insights
 - ALWAYS specify if salary is "monthly" or "annual" based on regional norms
+
+${salaryInsights}
 
 🧱 The job_description field MUST follow this structure in the user's language:
 
@@ -120,7 +177,7 @@ Return ONLY valid JSON in this format:
   "recommendations": [
     "Insight about role commonness in user's language",
     "Hiring difficulty assessment in user's language", 
-    "Market compensation note in user's language",
+    "SPECIFIC market compensation insight using actual data when available in user's language",
     "Time-to-hire implication in user's language"
   ]
 }`
@@ -180,7 +237,7 @@ Return ONLY valid JSON in this format:
       // Continue without candidate matching data
     }
 
-    // Include candidate matching in the response
+    // Include candidate matching and market salary data in the response
     const finalResponse = {
       jobSpec,
       candidateMatching: candidateMatching || {
@@ -194,7 +251,8 @@ Return ONLY valid JSON in this format:
           locationMatches: 0,
           skillsAnalysis: { averageMatch: 0, topSkills: [] }
         }
-      }
+      },
+      marketSalaryData: marketSalaryData // Include salary data for frontend insights
     };
 
     return new Response(JSON.stringify(finalResponse), {

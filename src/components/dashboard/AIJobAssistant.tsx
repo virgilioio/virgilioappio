@@ -43,6 +43,18 @@ interface CandidateMatching {
   }
 }
 
+interface MarketSalaryData {
+  salary_min: number
+  salary_max: number
+  salary_median: number
+  percentile_25: number
+  percentile_75: number
+  percentile_90: number
+  currency: string
+  market_competitiveness: string
+  sample_size: number
+}
+
 export function AIJobAssistant() {
   const [prompt, setPrompt] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
