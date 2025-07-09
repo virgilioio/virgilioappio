@@ -101,7 +101,10 @@ export function AIJobAssistant() {
             <CardTitle className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Sparkles className="h-5 w-5 text-primary" />
-                AI Job Assistant
+                Virgil AI
+                <Badge variant="secondary" className="text-xs bg-gradient-to-r from-purple-100 to-cyan-100 text-purple-700 border-purple-200">
+                  Beta
+                </Badge>
               </div>
               {isCollapsed ? (
                 <ChevronDown className="h-5 w-5 text-muted-foreground" />
