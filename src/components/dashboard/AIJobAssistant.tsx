@@ -263,9 +263,9 @@ export function AIJobAssistant() {
                           const colorClass = pastelColors[index % pastelColors.length]
                           
                           return (
-                            <Badge key={index} variant="outline" className={`${colorClass} border`}>
+                            <span key={index} className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${colorClass}`}>
                               {skill}
-                            </Badge>
+                            </span>
                           )
                         })}
                       </div>
