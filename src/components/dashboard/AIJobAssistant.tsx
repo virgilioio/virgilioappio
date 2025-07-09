@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Loader2, Sparkles, CheckCircle2, Circle, Briefcase, DollarSign, MapPin, Target, ChevronDown, ChevronUp, TrendingUp, Clock, Users, Award } from 'lucide-react'
+import { Loader2, Sparkles, CheckCircle2, Circle, Briefcase, DollarSign, MapPin, Target, ChevronDown, ChevronUp, TrendingUp, Clock, Users, Award, ArrowLeft } from 'lucide-react'
 import { supabase } from '@/integrations/supabase/client'
 import { useToast } from '@/hooks/use-toast'
 import { validateJobPrompt, getValidationStats, type ValidationItem } from '@/utils/jobPromptValidation'
@@ -32,6 +32,7 @@ export function AIJobAssistant() {
   const [showModal, setShowModal] = useState(false)
   const [selectedTitle, setSelectedTitle] = useState('')
   const [isCollapsed, setIsCollapsed] = useState(true)
+  const [dialogStep, setDialogStep] = useState<'review' | 'proceed'>('review')
   const { toast } = useToast()
 
   const currentValidation = validateJobPrompt(prompt)
@@ -53,6 +54,7 @@ export function AIJobAssistant() {
       if (data?.jobSpec) {
         setJobSpec(data.jobSpec)
         setSelectedTitle(data.jobSpec.job_title)
+        setDialogStep('review')
         setShowModal(true)
       } else {
         throw new Error('Invalid response from AI service')
@@ -263,34 +265,56 @@ export function AIJobAssistant() {
                   <div className="p-4 bg-muted rounded-lg text-sm" dangerouslySetInnerHTML={{ __html: jobSpec.job_description }} />
                 </div>
 
-                {/* Service Selection */}
-                <div className="border-t pt-6">
-                  <h4 className="text-lg font-semibold mb-4">How would you like to proceed?</h4>
-                  <div className="grid md:grid-cols-2 gap-4">
+                {/* Continue/Service Selection */}
+                {dialogStep === 'review' ? (
+                  <div className="border-t pt-6 flex justify-end">
                     <Button
-                      onClick={handleSelfService}
-                      className="h-auto p-6 flex-col items-start text-left space-y-2"
-                      variant="outline"
+                      onClick={() => setDialogStep('proceed')}
+                      className="px-8 py-3 bg-gradient-to-r from-primary to-accent text-white hover:opacity-90 transition-opacity"
                     >
-                      <div className="font-semibold text-yellow-600">🟡 Self-Service</div>
-                      <div className="text-sm text-muted-foreground">
-                        Pay-per-job via Stripe • Dashboard access • No recruiter • No guarantee
-                      </div>
-                      <div className="text-sm font-medium">Pay & Manage Myself</div>
-                    </Button>
-                    
-                    <Button
-                      onClick={handleFullService}
-                      className="h-auto p-6 flex-col items-start text-left space-y-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700"
-                    >
-                      <div className="font-semibold text-white">🟢 Full-Service by Virgilio</div>
-                      <div className="text-sm text-green-100">
-                        CSM + recruiter • Sourcing • Vetting • Offers • Guarantee
-                      </div>
-                      <div className="text-sm font-medium text-white">Request Virgilio Support</div>
+                      Continue
                     </Button>
                   </div>
-                </div>
+                ) : (
+                  <div className="border-t pt-6">
+                    <div className="flex items-center gap-3 mb-6">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setDialogStep('review')}
+                        className="flex items-center gap-2"
+                      >
+                        <ArrowLeft className="h-4 w-4" />
+                        Back
+                      </Button>
+                      <h4 className="text-lg font-semibold">How would you like to proceed?</h4>
+                    </div>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <Button
+                        onClick={handleSelfService}
+                        className="h-auto p-6 flex-col items-start text-left space-y-2"
+                        variant="outline"
+                      >
+                        <div className="font-semibold text-yellow-600">🟡 Self-Service</div>
+                        <div className="text-sm text-muted-foreground">
+                          Pay-per-job via Stripe • Dashboard access • No recruiter • No guarantee
+                        </div>
+                        <div className="text-sm font-medium">Pay & Manage Myself</div>
+                      </Button>
+                      
+                      <Button
+                        onClick={handleFullService}
+                        className="h-auto p-6 flex-col items-start text-left space-y-2 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700"
+                      >
+                        <div className="font-semibold text-white">🟢 Full-Service by Virgilio</div>
+                        <div className="text-sm text-green-100">
+                          CSM + recruiter • Sourcing • Vetting • Offers • Guarantee
+                        </div>
+                        <div className="text-sm font-medium text-white">Request Virgilio Support</div>
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Right Column - AI Insights & Recommendations */}
