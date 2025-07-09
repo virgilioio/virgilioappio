@@ -44,7 +44,7 @@ serve(async (req) => {
     // Step 3: Get Adobe access token
     console.log("🔐 Requesting Adobe access token...");
 
-    const tokenRes = await fetch("https://ims-na1.adobelogin.com/ims/token/v3", {
+    const tokenRes = await fetch("https://ims-na1.adobelogin.com/ims/token/v1", {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded"
@@ -53,15 +53,23 @@ serve(async (req) => {
         client_id,
         client_secret,
         grant_type: "client_credentials",
-        scope: "openid,AdobeID,DCAPI"
+        scope: "openid,AdobeID,read_organizations,additional_info.projectedProductContext"
       })
     });
 
     const tokenData = await tokenRes.json();
 
     if (!tokenRes.ok) {
-      console.error("❌ Adobe auth failed:", tokenRes.status, tokenData);
-      return new Response("Adobe auth failed", { status: 500, headers: corsHeaders });
+      console.error("❌ Adobe auth failed:", tokenRes.status, tokenRes.statusText);
+      console.error("❌ Adobe auth response:", JSON.stringify(tokenData, null, 2));
+      return new Response(JSON.stringify({ 
+        error: "Adobe authentication failed", 
+        details: tokenData,
+        status: tokenRes.status 
+      }), { 
+        status: 500, 
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
     }
 
     const access_token = tokenData.access_token;
@@ -86,8 +94,16 @@ serve(async (req) => {
     const assetData = await assetRes.json();
 
     if (!assetRes.ok) {
-      console.error("❌ Adobe asset creation failed:", assetRes.status, assetData);
-      return new Response("Adobe asset creation failed", { status: 500, headers: corsHeaders });
+      console.error("❌ Adobe asset creation failed:", assetRes.status, assetRes.statusText);
+      console.error("❌ Adobe asset response:", JSON.stringify(assetData, null, 2));
+      return new Response(JSON.stringify({ 
+        error: "Adobe asset creation failed", 
+        details: assetData,
+        status: assetRes.status 
+      }), { 
+        status: 500, 
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
     }
 
     const { uploadUri, assetID } = assetData;
@@ -133,8 +149,16 @@ serve(async (req) => {
 
     if (!extractJobRes.ok) {
       const extractError = await extractJobRes.text();
-      console.error("❌ Extract job creation failed:", extractJobRes.status, extractError);
-      return new Response("Extract job creation failed", { status: 500, headers: corsHeaders });
+      console.error("❌ Extract job creation failed:", extractJobRes.status, extractJobRes.statusText);
+      console.error("❌ Extract job response:", extractError);
+      return new Response(JSON.stringify({ 
+        error: "Extract job creation failed", 
+        details: extractError,
+        status: extractJobRes.status 
+      }), { 
+        status: 500, 
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
     }
 
     const jobLocation = extractJobRes.headers.get("location");
