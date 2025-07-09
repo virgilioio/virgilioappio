@@ -22,11 +22,13 @@ import { Member } from "@/hooks/useMembers"
 import { useOrganizations } from "@/hooks/useOrganizations"
 import { usePermissions } from "@/hooks/usePermissions"
 import { useAuth } from "@/contexts/AuthContext"
+import { Copy, Check, ExternalLink } from "lucide-react"
+import { copyToClipboard } from "@/utils/clipboard"
 
 interface MemberFormProps {
   isOpen: boolean
   onClose: () => void
-  onSubmit: (data: any) => Promise<void>
+  onSubmit: (data: any) => Promise<any>
   member?: Member | null
   isLoading: boolean
 }
@@ -44,6 +46,8 @@ export function MemberForm({
   const [organizationId, setOrganizationId] = useState<string>("")
   const [status, setStatus] = useState<string>("invited")
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [inviteUrl, setInviteUrl] = useState<string>("")
+  const [showInviteUrl, setShowInviteUrl] = useState(false)
   
   const { organizations } = useOrganizations()
   const permissions = usePermissions()
@@ -68,6 +72,8 @@ export function MemberForm({
       setStatus("invited")
     }
     setErrors({})
+    setInviteUrl("")
+    setShowInviteUrl(false)
   }, [member, isOpen])
 
   // Auto-set role when user type changes
@@ -147,8 +153,15 @@ export function MemberForm({
         data.organization_id = organizationId
       }
 
-      await onSubmit(data)
-      onClose()
+      const result = await onSubmit(data)
+      
+      // If creating a new member and we got an invite URL, show it
+      if (!member && result?.inviteUrl) {
+        setInviteUrl(result.inviteUrl)
+        setShowInviteUrl(true)
+      } else {
+        onClose()
+      }
     } catch (error) {
       console.error('Error submitting form:', error)
     }
@@ -191,20 +204,62 @@ export function MemberForm({
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>
-            {member ? 'Edit Member' : 'Invite New User'}
+            {showInviteUrl ? 'Invitation Sent!' : member ? 'Edit Member' : 'Invite New User'}
           </DialogTitle>
           <DialogDescription>
-            {member 
-              ? 'Update member role, type and status.'
-              : isCustomerSuccess 
-                ? 'Invite a new user to join an organization as either a Workspace Owner or Guest.'
-                : isWorkspaceOwner
-                  ? 'Invite a new user to your organization as either a Workspace Owner or Guest.'
-                  : 'Send an invitation to join the organization.'}
+            {showInviteUrl 
+              ? 'The invitation has been sent via email. You can also copy the link below to share directly.'
+              : member 
+                ? 'Update member role, type and status.'
+                : isCustomerSuccess 
+                  ? 'Invite a new user to join an organization as either a Workspace Owner or Guest.'
+                  : isWorkspaceOwner
+                    ? 'Invite a new user to your organization as either a Workspace Owner or Guest.'
+                    : 'Send an invitation to join the organization.'}
           </DialogDescription>
         </DialogHeader>
         
-        <form onSubmit={handleSubmit}>
+        {showInviteUrl ? (
+          <div className="py-token-md">
+            <div className="space-y-token-md">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Check className="h-4 w-4 text-green-600" />
+                <span>Invitation sent to {email}</span>
+              </div>
+              
+              <div className="space-y-token-sm">
+                <Label htmlFor="invite-url">Invitation Link</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="invite-url"
+                    value={inviteUrl}
+                    readOnly
+                    className="font-mono text-sm"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => copyToClipboard(inviteUrl, 'Invitation link copied!')}
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Share this link directly with the invited user or they can use the email invitation
+                </p>
+              </div>
+              
+              <div className="flex items-center gap-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                <ExternalLink className="h-4 w-4 text-blue-600" />
+                <span className="text-sm text-blue-700">
+                  The user can also access this link from their email invitation
+                </span>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit}>
           <div className="grid gap-token-md py-token-md">
             {/* Email field - only for new invitations */}
             {!member && (
@@ -381,6 +436,15 @@ export function MemberForm({
             </Button>
           </DialogFooter>
         </form>
+        )}
+        
+        {showInviteUrl && (
+          <DialogFooter>
+            <Button onClick={onClose} className="w-full">
+              Done
+            </Button>
+          </DialogFooter>
+        )}
       </DialogContent>
     </Dialog>
   )

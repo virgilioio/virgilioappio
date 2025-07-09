@@ -163,6 +163,26 @@ export function useMembers() {
     }
   }
 
+  const getInviteUrl = async (memberId: string) => {
+    try {
+      const { data: member, error } = await supabase
+        .from('members')
+        .select('invite_token')
+        .eq('id', memberId)
+        .eq('user_status', 'invited')
+        .single()
+
+      if (error || !member?.invite_token) {
+        throw new Error('No valid invitation token found')
+      }
+
+      return `https://app.virgilio.io/accept-invite/${member.invite_token}`
+    } catch (error) {
+      console.error('Failed to get invite URL:', error)
+      throw error
+    }
+  }
+
   const createMember = async (data: CreateMemberData) => {
     if (!user) throw new Error('User not authenticated')
     
@@ -202,11 +222,13 @@ export function useMembers() {
 
       if (!data.user_id && data.email && newMember.invite_token) {
         try {
-          await sendInvitationEmail(newMember.id, data.email)
+          const inviteData = await sendInvitationEmail(newMember.id, data.email)
           toast({
             title: 'Success',
             description: `Invitation sent to ${data.email} successfully`
           })
+          // Return the invite URL along with the member data
+          return { ...newMember, inviteUrl: inviteData?.inviteUrl }
         } catch (emailError) {
           console.error('Failed to send invitation email:', emailError)
           toast({
@@ -353,6 +375,7 @@ export function useMembers() {
     createMember,
     updateMember,
     deactivateMember,
-    resendInvitation
+    resendInvitation,
+    getInviteUrl
   }
 }

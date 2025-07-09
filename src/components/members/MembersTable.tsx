@@ -6,11 +6,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
-import { Search, Edit, UserMinus, Mail, Plus, ChevronLeft, ChevronRight, MoreHorizontal, Users } from 'lucide-react'
-import { Member } from '@/hooks/useMembers'
+import { Search, Edit, UserMinus, Mail, Plus, ChevronLeft, ChevronRight, MoreHorizontal, Users, Link, Copy } from 'lucide-react'
+import { Member, useMembers } from '@/hooks/useMembers'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useOrganizations } from '@/hooks/useOrganizations'
 import { MemberOrgIndicator } from './MemberOrgIndicator'
+import { copyToClipboard } from '@/utils/clipboard'
 
 interface MembersTableProps {
   members: Member[]
@@ -35,6 +36,7 @@ export function MembersTable({
   const [organizationFilter, setOrganizationFilter] = useState<string>('all')
   const permissions = usePermissions()
   const { organizations } = useOrganizations()
+  const { getInviteUrl } = useMembers()
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
@@ -115,6 +117,15 @@ export function MembersTable({
     }
     
     return pages
+  }
+
+  const handleCopyInviteLink = async (memberId: string) => {
+    try {
+      const inviteUrl = await getInviteUrl(memberId)
+      copyToClipboard(inviteUrl, 'Invitation link copied!')
+    } catch (error) {
+      console.error('Failed to copy invite link:', error)
+    }
   }
 
   if (isLoading) {
@@ -252,12 +263,25 @@ export function MembersTable({
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-2">
                             {member.user_status === 'invited' && permissions.canManageMembers && (
-                              <Button variant="ghost" size="sm" onClick={(e) => { 
-                                e.stopPropagation(); 
-                                onResendInvitation(member.id, member.invited_email || ''); 
-                              }}>
-                                <Mail className="h-4 w-4" />
-                              </Button>
+                              <>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  onClick={(e) => { 
+                                    e.stopPropagation(); 
+                                    handleCopyInviteLink(member.id); 
+                                  }}
+                                  title="Copy invitation link"
+                                >
+                                  <Copy className="h-4 w-4" />
+                                </Button>
+                                <Button variant="ghost" size="sm" onClick={(e) => { 
+                                  e.stopPropagation(); 
+                                  onResendInvitation(member.id, member.invited_email || ''); 
+                                }}>
+                                  <Mail className="h-4 w-4" />
+                                </Button>
+                              </>
                             )}
                             {permissions.canManageMembers && (
                               <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); onEdit(member); }}>
