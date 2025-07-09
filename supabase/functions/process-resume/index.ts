@@ -1,3 +1,4 @@
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
 
 const corsHeaders = {
@@ -210,11 +211,103 @@ serve(async (req) => {
     const extractedJson = await downloadRes.json();
     console.log("📄 Resume JSON extracted successfully");
 
-    // Step 9: Return success response with extracted data
+    // Step 9: Clean and flatten Adobe elements into readable text
+    let resumeText = "";
+    if (extractedJson && extractedJson.elements && Array.isArray(extractedJson.elements)) {
+      resumeText = extractedJson.elements
+        .filter((element: any) => element.Text) // Only text elements
+        .map((element: any) => element.Text)
+        .join("\n"); // Join with line breaks for readability
+    }
+
+    if (!resumeText.trim()) {
+      console.error("❌ No text content extracted from PDF");
+      return new Response("No text content found in PDF", { status: 400, headers: corsHeaders });
+    }
+
+    console.log(`🧠 Flattened resume text length: ${resumeText.length} chars`);
+
+    // Step 10: Get OpenAI API key
+    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+    if (!openAIApiKey) {
+      console.error("❌ OpenAI API key not configured");
+      return new Response("OpenAI API key not configured", { status: 500, headers: corsHeaders });
+    }
+
+    // Step 11: Send to OpenAI for structured extraction
+    console.log("🧠 Sending prompt to OpenAI");
+
+    const openAIPrompt = `You are an expert in resume analysis and hiring systems.
+
+Below is the full extracted text of a candidate's resume. Please extract and return structured profile data.
+
+RESUME:
+"""
+${resumeText}
+"""
+
+Respond with valid JSON:
+{
+  "candidate_name": "Full name of candidate",
+  "email": "Email if available",
+  "phone": "Phone number if available",
+  "linkedin_url": "LinkedIn profile URL if available",
+  "location_city": "City",
+  "location_state": "State or region",
+  "location_country": "Country",
+  "salary_amount": null,
+  "salary_currency": "USD",
+  "salary_period": "monthly | yearly | hourly",
+  "skills": ["Skill 1", "Skill 2", "Skill 3"],
+  "profile_summary": {
+    "about_me": "Short paragraph from resume intro",
+    "experience_highlights": [
+      "Company A - Role - Dates - 1-sentence summary",
+      "Company B - Role - Dates - 1-sentence summary"
+    ],
+    "key_competencies": ["Competency 1", "Competency 2"]
+  }
+}`;
+
+    const openAIRes = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openAIApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: 'You are a helpful assistant that extracts structured data from resumes. Always respond with valid JSON only.' },
+          { role: 'user', content: openAIPrompt }
+        ],
+        temperature: 0.1,
+      }),
+    });
+
+    if (!openAIRes.ok) {
+      const openAIError = await openAIRes.text();
+      console.error("❌ OpenAI API failed:", openAIRes.status, openAIError);
+      return new Response("OpenAI API failed", { status: 500, headers: corsHeaders });
+    }
+
+    const openAIData = await openAIRes.json();
+    const aiContent = openAIData.choices[0].message.content;
+
+    let structuredProfile;
+    try {
+      structuredProfile = JSON.parse(aiContent);
+      console.log("✅ OpenAI returned structured profile");
+    } catch (parseError) {
+      console.error("❌ OpenAI failed to respond or returned malformed JSON:", parseError);
+      return new Response("Failed to parse AI response", { status: 500, headers: corsHeaders });
+    }
+
+    // Step 12: Return final structured profile
     return new Response(
       JSON.stringify({
         success: true,
-        raw_resume_json: extractedJson
+        structured_profile: structuredProfile
       }),
       { 
         headers: { 
