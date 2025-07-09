@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Loader2, Sparkles, CheckCircle2, Circle, Briefcase, DollarSign, MapPin, Target } from 'lucide-react'
+import { Loader2, Sparkles, CheckCircle2, Circle, Briefcase, DollarSign, MapPin, Target, ChevronDown, ChevronUp } from 'lucide-react'
 import { supabase } from '@/integrations/supabase/client'
 import { useToast } from '@/hooks/use-toast'
 
@@ -37,6 +37,7 @@ export function AIJobAssistant() {
   const [jobSpec, setJobSpec] = useState<JobSpec | null>(null)
   const [showModal, setShowModal] = useState(false)
   const [selectedTitle, setSelectedTitle] = useState('')
+  const [isCollapsed, setIsCollapsed] = useState(false)
   const { toast } = useToast()
 
   const validationItems: ValidationItem[] = [
@@ -133,75 +134,94 @@ export function AIJobAssistant() {
 
   return (
     <>
-      <Card className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-purple-500/5 via-cyan-500/5 to-pink-500/5" />
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-primary" />
-            AI Job Assistant
-          </CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Describe the talent you need and let AI generate a complete job specification
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="relative">
-            <Textarea
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              placeholder="Describe the role you're looking to fill... (e.g., 'I need a senior sales rep for our fintech startup to build outbound pipeline in Mexico City and drive 30% revenue growth')"
-              className="min-h-[100px] resize-none border-2 bg-background/50 backdrop-blur-sm focus:border-primary transition-all duration-300"
-              style={{
-                background: 'linear-gradient(135deg, hsl(var(--background)/0.8), hsl(var(--background)/0.9))',
-                borderImage: canGenerate ? 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)), hsl(var(--primary))) 1' : undefined
-              }}
-            />
-            <div className="absolute bottom-2 right-2 text-xs text-muted-foreground">
-              {wordCount} words
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            <div className="flex flex-wrap gap-4">
-              {currentValidation.map((item) => (
-                <div key={item.id} className="flex items-center gap-2 text-sm">
-                  {item.checked ? (
-                    <CheckCircle2 className="h-4 w-4 text-green-500" />
-                  ) : (
-                    <Circle className="h-4 w-4 text-muted-foreground" />
-                  )}
-                  <span className={item.checked ? 'text-green-700 dark:text-green-400' : 'text-muted-foreground'}>
-                    {item.label}
-                  </span>
-                </div>
-              ))}
-            </div>
-            {!canGenerate && (
-              <p className="text-xs text-muted-foreground">
-                Write at least 10 words to continue
-              </p>
-            )}
-          </div>
-
-          <Button
-            onClick={handleGenerate}
-            disabled={!canGenerate || isGenerating}
-            className="w-full bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90"
+      <div className="relative">
+        <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 via-cyan-500/20 to-pink-500/20 rounded-lg blur-sm" />
+        <Card className="relative bg-white border-2 border-transparent bg-clip-padding before:absolute before:inset-0 before:-m-[2px] before:rounded-lg before:bg-gradient-to-r before:from-purple-500 before:via-cyan-500 before:to-pink-500 before:-z-10 before:animate-pulse">
+          <CardHeader 
+            className="cursor-pointer"
+            onClick={() => setIsCollapsed(!isCollapsed)}
           >
-            {isGenerating ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Generating Job Details...
-              </>
-            ) : (
-              <>
-                <Sparkles className="h-4 w-4 mr-2" />
-                Generate Job Details
-              </>
-            )}
-          </Button>
-        </CardContent>
-      </Card>
+            <CardTitle className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-primary" />
+                AI Job Assistant
+              </div>
+              {isCollapsed ? (
+                <ChevronDown className="h-5 w-5 text-muted-foreground" />
+              ) : (
+                <ChevronUp className="h-5 w-5 text-muted-foreground" />
+              )}
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Describe the talent you need and let AI generate a complete job specification
+            </p>
+          </CardHeader>
+          
+          <div 
+            className={`transition-all duration-300 ease-in-out overflow-hidden ${
+              isCollapsed ? 'max-h-0 opacity-0' : 'max-h-[1000px] opacity-100'
+            }`}
+          >
+            <CardContent className="space-y-6">
+              <div className="relative">
+                <Textarea
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  placeholder="Describe the role you're looking to fill... (e.g., 'I need a senior sales rep for our fintech startup to build outbound pipeline in Mexico City and drive 30% revenue growth')"
+                  className="min-h-[100px] resize-none border-2 bg-background/50 backdrop-blur-sm focus:border-primary transition-all duration-300"
+                  style={{
+                    background: 'hsl(var(--background))',
+                    borderImage: canGenerate ? 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)), hsl(var(--primary))) 1' : undefined
+                  }}
+                />
+                <div className="absolute bottom-2 right-2 text-xs text-muted-foreground">
+                  {wordCount} words
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex flex-wrap gap-4">
+                  {currentValidation.map((item) => (
+                    <div key={item.id} className="flex items-center gap-2 text-sm">
+                      {item.checked ? (
+                        <CheckCircle2 className="h-4 w-4 text-green-500" />
+                      ) : (
+                        <Circle className="h-4 w-4 text-muted-foreground" />
+                      )}
+                      <span className={item.checked ? 'text-green-700 dark:text-green-400' : 'text-muted-foreground'}>
+                        {item.label}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                {!canGenerate && (
+                  <p className="text-xs text-muted-foreground">
+                    Write at least 10 words to continue
+                  </p>
+                )}
+              </div>
+
+              <Button
+                onClick={handleGenerate}
+                disabled={!canGenerate || isGenerating}
+                className="w-full bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90"
+              >
+                {isGenerating ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Generating Job Details...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    Generate Job Details
+                  </>
+                )}
+              </Button>
+            </CardContent>
+          </div>
+        </Card>
+      </div>
 
       <Dialog open={showModal} onOpenChange={setShowModal}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
