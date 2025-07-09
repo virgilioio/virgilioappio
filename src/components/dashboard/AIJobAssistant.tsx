@@ -33,6 +33,7 @@ export function AIJobAssistant() {
   const [selectedTitle, setSelectedTitle] = useState('')
   const [isCollapsed, setIsCollapsed] = useState(true)
   const [dialogStep, setDialogStep] = useState<'review' | 'proceed'>('review')
+  const [isFocused, setIsFocused] = useState(false)
   const { toast } = useToast()
 
   const currentValidation = validateJobPrompt(prompt)
@@ -120,17 +121,36 @@ export function AIJobAssistant() {
           >
             <CardContent className="space-y-6">
               <div className="relative">
+                <div 
+                  className={`absolute inset-0 rounded-md transition-all duration-500 ai-border-gradient ${
+                    isFocused || prompt.length > 0 
+                      ? 'opacity-100 ai-border-active' 
+                      : 'opacity-60'
+                  }`}
+                  style={{
+                    padding: '2px',
+                    borderRadius: '6px',
+                  }}
+                >
+                  <div className="w-full h-full bg-white rounded-md"></div>
+                </div>
                 <Textarea
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
+                  onFocus={() => setIsFocused(true)}
+                  onBlur={() => setIsFocused(false)}
                   placeholder="Describe the role you're looking to fill... (e.g., 'I need a senior sales rep for our fintech startup to build outbound pipeline in Mexico City and drive 30% revenue growth')"
-                  className="min-h-[100px] resize-none border-2 bg-background/50 backdrop-blur-sm focus:border-primary transition-all duration-300"
+                  className={`relative min-h-[100px] resize-none bg-transparent border-0 focus:ring-0 focus:outline-none transition-all duration-300 ${
+                    isFocused || prompt.length > 0 
+                      ? 'shadow-lg shadow-purple-500/20' 
+                      : ''
+                  }`}
                   style={{
-                    background: 'hsl(var(--background))',
-                    borderImage: canGenerate ? 'linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)), hsl(var(--primary))) 1' : undefined
+                    zIndex: 10,
+                    position: 'relative'
                   }}
                 />
-                <div className="absolute bottom-2 right-2 text-xs text-muted-foreground">
+                <div className="absolute bottom-2 right-2 text-xs text-muted-foreground z-20">
                   {wordCount} words
                 </div>
               </div>
