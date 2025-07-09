@@ -471,144 +471,63 @@ Respond with valid JSON:
   }
 
   try {
-    console.log('=== Request Processing Start ===');
-    
-    const formData = await req.formData();
-    console.log('FormData entries:', Array.from(formData.keys()));
-    
-    const file = formData.get('resume') as File;
+    console.log("🚀 Edge Function started");
 
-    if (!file) {
-      console.error('No file provided in request');
-      return new Response(
-        JSON.stringify({ 
-          success: false,
-          error: 'No resume file provided' 
-        }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    // 1. Load env vars safely
+    const client_id = Deno.env.get("ADOBE_CLIENT_ID");
+    const client_secret = Deno.env.get("ADOBE_CLIENT_SECRET");
+
+    if (!client_id || !client_secret) {
+      console.error("❌ Missing Adobe credentials");
+      return new Response("Missing Adobe credentials", { status: 500 });
     }
 
-    console.log('File details:', {
-      name: file.name,
-      size: file.size,
-      type: file.type
+    // 2. Request Adobe Access Token
+    console.log("🔐 Requesting Adobe access token...");
+
+    const tokenRes = await fetch("https://ims-na1.adobelogin.com/ims/token", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded"
+      },
+      body: new URLSearchParams({
+        client_id,
+        client_secret,
+        grant_type: "client_credentials",
+        scope: "openid,AdobeID,DCAPI"
+      })
     });
 
-    // Validate file type and size
-    if (file.type !== 'application/pdf') {
-      console.error('Invalid file type:', file.type);
-      return new Response(
-        JSON.stringify({ 
-          success: false,
-          error: 'Only PDF files are supported' 
-        }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    const tokenData = await tokenRes.json();
+
+    if (!tokenRes.ok) {
+      console.error("❌ Adobe auth failed:", tokenRes.status, tokenData);
+      return new Response("Adobe auth failed", { status: 500 });
     }
 
-    if (file.size > 5 * 1024 * 1024) { // 5MB
-      console.error('File too large:', file.size);
-      return new Response(
-        JSON.stringify({ 
-          success: false,
-          error: 'File size must be less than 5MB' 
-        }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Step 1: Extract text from PDF using Adobe
-    console.log('=== Starting PDF Text Extraction ===');
-    const extractedText = await extractPDFText(file);
-
-    if (!extractedText.trim()) {
-      console.error('No text extracted from PDF');
-      return new Response(
-        JSON.stringify({ 
-          success: false,
-          error: 'Could not extract text from PDF' 
-        }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    console.log('PDF text extraction successful, text length:', extractedText.length);
-
-    // Step 2: Structure the data using OpenAI
-    console.log('=== Starting AI Data Structuring ===');
-    const structuredProfile = await structureProfileWithAI(extractedText);
-
-    console.log('AI structuring successful');
-
-    // Format profile summary as HTML
-    let profileSummaryHtml = '';
-    if (structuredProfile.profile_summary?.about_me) {
-      profileSummaryHtml += `<p>${structuredProfile.profile_summary.about_me}</p>`;
-    }
-    
-    if (structuredProfile.profile_summary?.experience_highlights?.length > 0) {
-      profileSummaryHtml += '<h4>Experience Highlights</h4><ul>';
-      structuredProfile.profile_summary.experience_highlights.forEach(exp => {
-        profileSummaryHtml += `<li>${exp}</li>`;
-      });
-      profileSummaryHtml += '</ul>';
-    }
-
-    if (structuredProfile.profile_summary?.key_competencies?.length > 0) {
-      profileSummaryHtml += '<h4>Key Competencies</h4><ul>';
-      structuredProfile.profile_summary.key_competencies.forEach(comp => {
-        profileSummaryHtml += `<li>${comp}</li>`;
-      });
-      profileSummaryHtml += '</ul>';
-    }
-
-    const response = {
-      success: true,
-      extracted_data: {
-        candidate_name: structuredProfile.candidate_name || '',
-        email: structuredProfile.email || '',
-        phone: structuredProfile.phone || '',
-        linkedin_url: structuredProfile.linkedin_url || '',
-        location_city: structuredProfile.location_city || '',
-        location_state: structuredProfile.location_state || '',
-        location_country: structuredProfile.location_country || '',
-        salary_amount: structuredProfile.salary_amount,
-        salary_currency: structuredProfile.salary_currency || 'USD',
-        salary_period: structuredProfile.salary_period || 'annually',
-        skills: structuredProfile.skills || [],
-        profile_summary: profileSummaryHtml,
-      }
-    };
-
-    console.log('=== Resume Processing Successful ===');
-    console.log('Response data:', JSON.stringify(response, null, 2));
+    const access_token = tokenData.access_token;
+    console.log("✅ Adobe token received:", access_token.slice(0, 20), "...");
 
     return new Response(
-      JSON.stringify(response),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({
+        success: true,
+        access_token_preview: access_token.slice(0, 20) + "..."
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
     );
 
   } catch (error) {
-    console.error('=== Resume Processing Error ===');
+    console.error('=== Adobe Authentication Error ===');
     console.error('Error type:', error.constructor.name);
     console.error('Error message:', error.message);
     console.error('Error stack:', error.stack);
-    console.error('Timestamp:', new Date().toISOString());
-    
-    // Return more detailed error information for debugging
-    const errorResponse = { 
-      success: false, 
-      error: error.message || 'Failed to process resume',
-      error_type: error.constructor.name,
-      timestamp: new Date().toISOString(),
-      details: error.stack || 'No stack trace available'
-    };
-    
-    console.error('Sending error response:', JSON.stringify(errorResponse, null, 2));
     
     return new Response(
-      JSON.stringify(errorResponse),
+      JSON.stringify({ 
+        success: false, 
+        error: error.message || 'Failed to authenticate with Adobe',
+        error_type: error.constructor.name
+      }),
       { 
         status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
