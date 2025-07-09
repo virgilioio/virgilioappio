@@ -25,8 +25,40 @@ interface ExtractedProfile {
   };
 }
 
+async function getAdobeAccessToken(): Promise<string> {
+  const clientId = Deno.env.get('ADOBE_CLIENT_ID');
+  const clientSecret = Deno.env.get('ADOBE_CLIENT_SECRET');
+  
+  if (!clientId || !clientSecret) {
+    throw new Error('Adobe credentials not configured');
+  }
+
+  // Get access token from Adobe
+  const response = await fetch('https://ims-na1.adobelogin.com/ims/token/v1', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: new URLSearchParams({
+      client_id: clientId,
+      client_secret: clientSecret,
+      grant_type: 'client_credentials',
+      scope: 'openid,AdobeID,read_organizations,additional_info.projectedProductContext,additional_info.job_function'
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Adobe authentication failed: ${response.statusText}`);
+  }
+
+  const tokenData = await response.json();
+  return tokenData.access_token;
+}
+
 async function extractPDFText(pdfFile: File): Promise<string> {
   try {
+    const accessToken = await getAdobeAccessToken();
+    
     // Create FormData for Adobe PDF Services API
     const formData = new FormData();
     formData.append('file', pdfFile);
@@ -35,7 +67,7 @@ async function extractPDFText(pdfFile: File): Promise<string> {
     const extractResponse = await fetch('https://pdf-services.adobe.io/operation/extractpdf', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${Deno.env.get('ADOBE_ACCESS_TOKEN')}`,
+        'Authorization': `Bearer ${accessToken}`,
         'x-api-key': Deno.env.get('ADOBE_CLIENT_ID') || '',
       },
       body: formData,

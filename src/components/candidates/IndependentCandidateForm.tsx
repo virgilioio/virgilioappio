@@ -165,7 +165,7 @@ export function IndependentCandidateForm({
       const formData = new FormData()
       formData.append('resume', file)
 
-      const response = await fetch('/functions/v1/process-resume', {
+      const response = await fetch('https://etrxjxstjfcozdjumfsj.supabase.co/functions/v1/process-resume', {
         method: 'POST',
         body: formData,
       })
