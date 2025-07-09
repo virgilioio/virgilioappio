@@ -132,6 +132,7 @@ export const SkillsGenerationPanel: React.FC<SkillsGenerationPanelProps> = ({
           <div className="flex gap-2">
             {!hasGeneratedSkills && (
               <Button
+                type="button"
                 onClick={handleGenerateSkills}
                 disabled={isGenerating}
                 size="sm"
@@ -152,6 +153,7 @@ export const SkillsGenerationPanel: React.FC<SkillsGenerationPanelProps> = ({
             {hasGeneratedSkills && (
               <>
                 <Button
+                  type="button"
                   onClick={clearGeneratedSkills}
                   variant="outline"
                   size="sm"
@@ -159,6 +161,7 @@ export const SkillsGenerationPanel: React.FC<SkillsGenerationPanelProps> = ({
                   Clear All
                 </Button>
                 <Button
+                  type="button"
                   onClick={handleAcceptSelected}
                   disabled={!hasSelectedSkills}
                   size="sm"
@@ -196,6 +199,7 @@ export const SkillsGenerationPanel: React.FC<SkillsGenerationPanelProps> = ({
                 <h4 className="font-medium">All Skills</h4>
                 <div className="flex gap-2">
                   <Button
+                    type="button"
                     variant="outline"
                     size="sm"
                     onClick={selectAllSkills}
@@ -203,6 +207,7 @@ export const SkillsGenerationPanel: React.FC<SkillsGenerationPanelProps> = ({
                     Select All
                   </Button>
                   <Button
+                    type="button"
                     variant="outline"
                     size="sm"
                     onClick={deselectAllSkills}
@@ -247,6 +252,7 @@ export const SkillsGenerationPanel: React.FC<SkillsGenerationPanelProps> = ({
                     <h4 className="font-medium">{getCategoryLabel(category as keyof SkillsByCategory)}</h4>
                     <div className="flex gap-2">
                       <Button
+                        type="button"
                         variant="outline"
                         size="sm"
                         onClick={() => selectAllInCategory(category as keyof SkillsByCategory)}
@@ -254,6 +260,7 @@ export const SkillsGenerationPanel: React.FC<SkillsGenerationPanelProps> = ({
                         Select All
                       </Button>
                       <Button
+                        type="button"
                         variant="outline"
                         size="sm"
                         onClick={() => deselectAllInCategory(category as keyof SkillsByCategory)}
