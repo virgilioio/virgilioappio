@@ -76,10 +76,11 @@ ENHANCED ANALYSIS REQUIREMENTS:
 - Analyze what the client is trying to achieve and translate that into a strong, structured job description
 
 SALARY INTELLIGENCE:
-- For LATAM positions: Use appropriate local currencies (MXN, BRL, COP, etc.)
-- For US positions: Use USD
-- For European positions: Use EUR
+- For LATAM positions: Use appropriate local currencies (MXN, BRL, COP, etc.) and monthly periods
+- For US positions: Use USD and annual periods  
+- For European positions: Use EUR and annual periods
 - Research-based salary ranges for the specific market
+- ALWAYS specify if salary is "monthly" or "annual" based on regional norms
 
 🧱 The job_description field MUST follow this structure in the user's language:
 
@@ -112,7 +113,8 @@ Return ONLY valid JSON in this format:
   "salary_range": {
     "min": integer,
     "max": integer,
-    "currency": "USD|MXN|EUR|BRL|COP|etc"
+    "currency": "USD|MXN|EUR|BRL|COP|etc",
+    "period": "monthly|annual"
   },
   "skills": ["Skill 1 in English", "Skill 2 in English", "Skill 3 in English", "Skill 4 in English", "Skill 5 in English"],
   "recommendations": [
@@ -161,7 +163,8 @@ Return ONLY valid JSON in this format:
             location: jobSpec.location || '',
             salary_min: jobSpec.salary_range?.min || 0,
             salary_max: jobSpec.salary_range?.max || 0,
-            currency: jobSpec.salary_range?.currency || 'USD'
+            currency: jobSpec.salary_range?.currency || 'USD',
+            salary_period: jobSpec.salary_range?.period || 'annual'
           }
         }
       );

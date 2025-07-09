@@ -18,6 +18,7 @@ interface MatchingCriteria {
   salary_min?: number;
   salary_max?: number;
   currency?: string;
+  salary_period?: 'monthly' | 'annual';
 }
 
 interface MatchResult {
@@ -82,6 +83,44 @@ function findSkillSynonyms(skill: string): string[] {
   }
   
   return [];
+}
+
+// Currency conversion rates (approximate)
+const CURRENCY_RATES: Record<string, number> = {
+  'USD': 1,
+  'MXN': 18,
+  'BRL': 5,
+  'COP': 4000,
+  'EUR': 0.85,
+  'GBP': 0.75,
+  'ARS': 800,
+  'CLP': 800,
+  'PEN': 3.5
+};
+
+function convertCurrency(amount: number, fromCurrency: string, toCurrency: string): number {
+  if (fromCurrency === toCurrency) return amount;
+  
+  const fromRate = CURRENCY_RATES[fromCurrency] || 1;
+  const toRate = CURRENCY_RATES[toCurrency] || 1;
+  
+  // Convert to USD first, then to target currency
+  const usdAmount = amount / fromRate;
+  return usdAmount * toRate;
+}
+
+function normalizeSalaryToAnnual(amount: number, period: string): number {
+  switch (period.toLowerCase()) {
+    case 'monthly':
+      return amount * 12;
+    case 'annual':
+    case 'yearly':
+      return amount;
+    case 'hourly':
+      return amount * 40 * 52; // 40 hours/week * 52 weeks
+    default:
+      return amount;
+  }
 }
 
 function calculateSkillMatch(jobSkills: string[], candidateSkills: string[]): number {
@@ -173,24 +212,30 @@ function checkSalaryCompatibility(
   jobMax?: number, 
   candidateSalary?: number,
   jobCurrency?: string,
-  candidateCurrency?: string
+  candidateCurrency?: string,
+  jobSalaryPeriod?: string,
+  candidateSalaryPeriod?: string
 ): boolean {
   if (!candidateSalary) return true; // No salary requirement from candidate
   if (!jobMin && !jobMax) return true; // No salary range specified in job
   
-  // Simple currency check - in real world, we'd convert currencies
-  if (jobCurrency && candidateCurrency && jobCurrency !== candidateCurrency) {
-    return true; // For now, assume convertible
-  }
+  console.log(`💰 Salary comparison: Job: ${jobMin}-${jobMax} ${jobCurrency}/${jobSalaryPeriod}, Candidate: ${candidateSalary} ${candidateCurrency}/${candidateSalaryPeriod}`);
   
-  const effectiveJobMin = jobMin || 0;
-  const effectiveJobMax = jobMax || Number.MAX_SAFE_INTEGER;
+  // Normalize all salaries to annual in USD for comparison
+  const normalizedJobMin = jobMin ? convertCurrency(normalizeSalaryToAnnual(jobMin, jobSalaryPeriod || 'annual'), jobCurrency || 'USD', 'USD') : 0;
+  const normalizedJobMax = jobMax ? convertCurrency(normalizeSalaryToAnnual(jobMax, jobSalaryPeriod || 'annual'), jobCurrency || 'USD', 'USD') : Number.MAX_SAFE_INTEGER;
+  const normalizedCandidateSalary = convertCurrency(normalizeSalaryToAnnual(candidateSalary, candidateSalaryPeriod || 'annual'), candidateCurrency || 'USD', 'USD');
+  
+  console.log(`💰 Normalized comparison: Job: ${normalizedJobMin}-${normalizedJobMax} USD/annual, Candidate: ${normalizedCandidateSalary} USD/annual`);
   
   // Allow 20% flexibility in salary expectations
   const flexibilityFactor = 1.2;
-  const adjustedCandidateSalary = candidateSalary / flexibilityFactor;
+  const adjustedCandidateSalary = normalizedCandidateSalary / flexibilityFactor;
   
-  return adjustedCandidateSalary <= effectiveJobMax && candidateSalary >= effectiveJobMin * 0.8;
+  const isCompatible = adjustedCandidateSalary <= normalizedJobMax && normalizedCandidateSalary >= normalizedJobMin * 0.8;
+  console.log(`💰 Salary compatibility: ${isCompatible ? '✅' : '❌'}`);
+  
+  return isCompatible;
 }
 
 function checkLocationCompatibility(jobLocation?: string, candidateLocation?: string): boolean {
@@ -266,7 +311,9 @@ serve(async (req) => {
         criteria.salary_max,
         candidate.salary_amount,
         criteria.currency,
-        candidate.salary_currency
+        candidate.salary_currency,
+        criteria.salary_period,
+        candidate.salary_period
       );
       
       const locationMatch = checkLocationCompatibility(
