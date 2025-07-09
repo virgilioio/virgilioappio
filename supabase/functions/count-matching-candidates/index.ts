@@ -54,7 +54,10 @@ const SKILL_SYNONYMS: Record<string, string[]> = {
   'user experience': ['ux', 'user interface', 'ui', 'ui/ux'],
   'software engineer': ['software developer', 'developer', 'engineer', 'programmer'],
   'marketing': ['digital marketing', 'growth marketing', 'content marketing'],
-  'account management': ['account manager', 'key account', 'client management']
+  'account management': ['account manager', 'key account', 'client management'],
+  'human resources': ['hr', 'people operations', 'talent acquisition'],
+  'cold calling': ['outbound calling', 'prospecting calls', 'sales calls'],
+  'lead generation': ['lead gen', 'prospecting', 'lead qualification']
 };
 
 function normalizeSkill(skill: string): string {
@@ -85,28 +88,26 @@ function findSkillSynonyms(skill: string): string[] {
   return [];
 }
 
-// Currency conversion rates (approximate)
-const CURRENCY_RATES: Record<string, number> = {
-  'USD': 1,
-  'MXN': 18,
-  'BRL': 5,
-  'COP': 4000,
-  'EUR': 0.85,
-  'GBP': 0.75,
-  'ARS': 800,
-  'CLP': 800,
-  'PEN': 3.5
-};
-
-function convertCurrency(amount: number, fromCurrency: string, toCurrency: string): number {
+async function convertCurrency(amount: number, fromCurrency: string, toCurrency: string): Promise<number> {
   if (fromCurrency === toCurrency) return amount;
   
-  const fromRate = CURRENCY_RATES[fromCurrency] || 1;
-  const toRate = CURRENCY_RATES[toCurrency] || 1;
-  
-  // Convert to USD first, then to target currency
-  const usdAmount = amount / fromRate;
-  return usdAmount * toRate;
+  try {
+    // Use the platform's currency conversion function
+    const { data: rate, error } = await supabase.rpc('get_organization_currency_rate', {
+      from_currency: fromCurrency,
+      to_currency: toCurrency
+    });
+    
+    if (error) {
+      console.warn(`Currency conversion error: ${error.message}, using fallback rate`);
+      return amount; // Fallback to original amount
+    }
+    
+    return amount * (rate || 1);
+  } catch (error) {
+    console.warn('Currency conversion failed:', error);
+    return amount; // Fallback to original amount
+  }
 }
 
 function normalizeSalaryToAnnual(amount: number, period: string): number {
@@ -123,13 +124,53 @@ function normalizeSalaryToAnnual(amount: number, period: string): number {
   }
 }
 
-function calculateSkillMatch(jobSkills: string[], candidateSkills: string[]): number {
-  if (!jobSkills || !candidateSkills || jobSkills.length === 0 || candidateSkills.length === 0) {
+function extractSkillsFromSummary(summary: string): string[] {
+  if (!summary) return [];
+  
+  const skillKeywords = [
+    'sales development representative', 'sdr', 'business development', 'bdr',
+    'sales', 'marketing', 'management', 'engineer', 'developer', 'designer', 'analyst',
+    'javascript', 'python', 'react', 'node', 'sql', 'aws', 'google', 'microsoft',
+    'crm', 'salesforce', 'hubspot', 'excel', 'powerbi', 'tableau', 'jira',
+    'recruiting', 'hr', 'human resources', 'onboarding', 'training', 'payroll',
+    'customer service', 'support', 'account management', 'cold calling',
+    'project management', 'agile', 'scrum', 'digital marketing', 'seo', 'sem',
+    'accounting', 'finance', 'operations', 'logistics', 'supply chain',
+    'lead generation', 'prospecting', 'outbound', 'inbound', 'qualification'
+  ];
+  
+  const cleanSummary = summary.toLowerCase().replace(/<[^>]*>/g, ' ').replace(/[^\w\s]/g, ' ');
+  const extractedSkills: string[] = [];
+  
+  for (const keyword of skillKeywords) {
+    if (cleanSummary.includes(keyword)) {
+      extractedSkills.push(keyword);
+    }
+  }
+  
+  return [...new Set(extractedSkills)]; // Remove duplicates
+}
+
+function calculateSkillMatch(jobSkills: string[], candidateSkills: string[], candidateSummary?: string): number {
+  // If no job skills specified, return high match
+  if (!jobSkills || jobSkills.length === 0) {
+    return 80;
+  }
+  
+  let skillsToMatch = candidateSkills || [];
+  
+  // If candidate has no explicit skills, try to extract from profile summary
+  if ((!candidateSkills || candidateSkills.length === 0) && candidateSummary) {
+    skillsToMatch = extractSkillsFromSummary(candidateSummary);
+    console.log(`🔍 Extracted skills from summary: [${skillsToMatch.join(', ')}]`);
+  }
+  
+  if (skillsToMatch.length === 0) {
     return 0;
   }
   
   const normalizedJobSkills = jobSkills.map(normalizeSkill);
-  const normalizedCandidateSkills = candidateSkills.map(normalizeSkill);
+  const normalizedCandidateSkills = skillsToMatch.map(normalizeSkill);
   
   let totalScore = 0;
   let maxPossibleScore = jobSkills.length * 100; // 100 points per job skill
@@ -207,7 +248,7 @@ function calculateSkillMatch(jobSkills: string[], candidateSkills: string[]): nu
   return finalScore;
 }
 
-function checkSalaryCompatibility(
+async function checkSalaryCompatibility(
   jobMin?: number, 
   jobMax?: number, 
   candidateSalary?: number,
@@ -215,16 +256,16 @@ function checkSalaryCompatibility(
   candidateCurrency?: string,
   jobSalaryPeriod?: string,
   candidateSalaryPeriod?: string
-): boolean {
+): Promise<boolean> {
   if (!candidateSalary) return true; // No salary requirement from candidate
   if (!jobMin && !jobMax) return true; // No salary range specified in job
   
   console.log(`💰 Salary comparison: Job: ${jobMin}-${jobMax} ${jobCurrency}/${jobSalaryPeriod}, Candidate: ${candidateSalary} ${candidateCurrency}/${candidateSalaryPeriod}`);
   
   // Normalize all salaries to annual in USD for comparison
-  const normalizedJobMin = jobMin ? convertCurrency(normalizeSalaryToAnnual(jobMin, jobSalaryPeriod || 'annual'), jobCurrency || 'USD', 'USD') : 0;
-  const normalizedJobMax = jobMax ? convertCurrency(normalizeSalaryToAnnual(jobMax, jobSalaryPeriod || 'annual'), jobCurrency || 'USD', 'USD') : Number.MAX_SAFE_INTEGER;
-  const normalizedCandidateSalary = convertCurrency(normalizeSalaryToAnnual(candidateSalary, candidateSalaryPeriod || 'annual'), candidateCurrency || 'USD', 'USD');
+  const normalizedJobMin = jobMin ? await convertCurrency(normalizeSalaryToAnnual(jobMin, jobSalaryPeriod || 'annual'), jobCurrency || 'USD', 'USD') : 0;
+  const normalizedJobMax = jobMax ? await convertCurrency(normalizeSalaryToAnnual(jobMax, jobSalaryPeriod || 'annual'), jobCurrency || 'USD', 'USD') : Number.MAX_SAFE_INTEGER;
+  const normalizedCandidateSalary = await convertCurrency(normalizeSalaryToAnnual(candidateSalary, candidateSalaryPeriod || 'annual'), candidateCurrency || 'USD', 'USD');
   
   console.log(`💰 Normalized comparison: Job: ${normalizedJobMin}-${normalizedJobMax} USD/annual, Candidate: ${normalizedCandidateSalary} USD/annual`);
   
@@ -306,7 +347,7 @@ serve(async (req) => {
     // Analyze each candidate
     for (const candidate of candidates) {
       // Primary filters: salary and location
-      const salaryMatch = checkSalaryCompatibility(
+      const salaryMatch = await checkSalaryCompatibility(
         criteria.salary_min,
         criteria.salary_max,
         candidate.salary_amount,
@@ -334,7 +375,8 @@ serve(async (req) => {
         
         const skillMatchPercentage = calculateSkillMatch(
           criteria.skills || [],
-          candidate.skills || []
+          candidate.skills || [],
+          candidate.profile_summary
         );
         
         skillMatches.push(skillMatchPercentage);
