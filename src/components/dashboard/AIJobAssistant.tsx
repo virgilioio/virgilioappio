@@ -37,7 +37,7 @@ export function AIJobAssistant() {
   const [jobSpec, setJobSpec] = useState<JobSpec | null>(null)
   const [showModal, setShowModal] = useState(false)
   const [selectedTitle, setSelectedTitle] = useState('')
-  const [isCollapsed, setIsCollapsed] = useState(false)
+  const [isCollapsed, setIsCollapsed] = useState(true)
   const { toast } = useToast()
 
   const validationItems: ValidationItem[] = [
@@ -201,23 +201,26 @@ export function AIJobAssistant() {
                 )}
               </div>
 
-              <Button
-                onClick={handleGenerate}
-                disabled={!canGenerate || isGenerating}
-                className="w-full bg-gradient-to-r from-primary to-accent hover:from-primary/90 hover:to-accent/90"
-              >
-                {isGenerating ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Generating Job Details...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="h-4 w-4 mr-2" />
-                    Generate Job Details
-                  </>
-                )}
-              </Button>
+              <div className="flex justify-end">
+                <Button
+                  onClick={handleGenerate}
+                  disabled={!canGenerate || isGenerating}
+                  className="px-6 py-2 text-white hover:opacity-90 transition-opacity"
+                  style={{ backgroundColor: '#7e3eff' }}
+                >
+                  {isGenerating ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Generating Job Details...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-4 w-4 mr-2" />
+                      Generate Job Details
+                    </>
+                  )}
+                </Button>
+              </div>
             </CardContent>
           </div>
         </Card>
