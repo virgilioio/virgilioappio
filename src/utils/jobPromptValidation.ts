@@ -199,6 +199,12 @@ const LOCATION_KEYWORDS: KeywordDictionary = {
   en: [
     // Work arrangements
     'remote', 'hybrid', 'onsite', 'office', 'work from home', 'wfh', 'distributed', 'flexible', 'location independent',
+    // Business Regions & Abbreviations
+    'latam', 'latin america', 'south america', 'nam', 'north america', 'emea', 'europe middle east africa', 
+    'apac', 'asia pacific', 'apj', 'asia pacific japan', 'cis', 'commonwealth independent states',
+    'mena', 'middle east north africa', 'ssa', 'sub saharan africa', 'dach', 'germany austria switzerland',
+    'nordics', 'nordic countries', 'benelux', 'belgium netherlands luxembourg', 'anz', 'australia new zealand',
+    'gcc', 'gulf cooperation council', 'asean', 'southeast asia', 'mercosur', 'southern cone',
     // Regions & Countries
     'usa', 'united states', 'america', 'canada', 'mexico', 'uk', 'united kingdom', 'europe', 'germany', 'france', 'spain',
     'italy', 'netherlands', 'brazil', 'argentina', 'colombia', 'chile', 'peru', 'asia', 'china', 'japan', 'india', 'singapore',
@@ -212,6 +218,12 @@ const LOCATION_KEYWORDS: KeywordDictionary = {
   es: [
     // Modalidades de trabajo
     'remoto', 'híbrido', 'presencial', 'oficina', 'trabajo desde casa', 'teletrabajo', 'distribuido', 'flexible', 'independiente de ubicación',
+    // Regiones de Negocio y Abreviaciones
+    'latam', 'latinoamérica', 'américa latina', 'sudamérica', 'nam', 'norteamérica', 'américa del norte', 'emea', 'europa medio oriente áfrica',
+    'apac', 'asia pacífico', 'apj', 'asia pacífico japón', 'cis', 'estados independientes mancomunados',
+    'mena', 'medio oriente norte áfrica', 'ssa', 'áfrica subsahariana', 'dach', 'alemania austria suiza',
+    'países nórdicos', 'benelux', 'bélgica países bajos luxemburgo', 'anz', 'australia nueva zelanda',
+    'gcc', 'consejo cooperación golfo', 'asean', 'sudeste asiático', 'mercosur', 'cono sur',
     // Regiones y Países
     'eeuu', 'estados unidos', 'américa', 'canadá', 'méxico', 'reino unido', 'europa', 'alemania', 'francia', 'españa',
     'italia', 'países bajos', 'brasil', 'argentina', 'colombia', 'chile', 'perú', 'asia', 'china', 'japón', 'india', 'singapur',
@@ -225,6 +237,12 @@ const LOCATION_KEYWORDS: KeywordDictionary = {
   pt: [
     // Modalidades de trabalho
     'remoto', 'híbrido', 'presencial', 'escritório', 'trabalho de casa', 'home office', 'distribuído', 'flexível', 'independente de localização',
+    // Regiões de Negócio e Abreviações
+    'latam', 'américa latina', 'sul américa', 'nam', 'américa do norte', 'emea', 'europa meio oriente áfrica',
+    'apac', 'ásia pacífico', 'apj', 'ásia pacífico japão', 'cis', 'estados independentes',
+    'mena', 'meio oriente norte áfrica', 'ssa', 'áfrica subsaariana', 'dach', 'alemanha áustria suíça',
+    'países nórdicos', 'benelux', 'bélgica holanda luxemburgo', 'anz', 'austrália nova zelândia',
+    'gcc', 'conselho cooperação golfo', 'asean', 'sudeste asiático', 'mercosul', 'cone sul',
     // Regiões e Países
     'eua', 'estados unidos', 'américa', 'canadá', 'méxico', 'reino unido', 'europa', 'alemanha', 'frança', 'espanha',
     'itália', 'países baixos', 'brasil', 'argentina', 'colômbia', 'chile', 'peru', 'ásia', 'china', 'japão', 'índia', 'singapura',
@@ -238,6 +256,12 @@ const LOCATION_KEYWORDS: KeywordDictionary = {
   fr: [
     // Modalités de travail
     'télétravail', 'hybride', 'sur site', 'bureau', 'travail à domicile', 'distribué', 'flexible', 'indépendant de la localisation',
+    // Régions d'Affaires et Abréviations
+    'latam', 'amérique latine', 'amérique du sud', 'nam', 'amérique du nord', 'emea', 'europe moyen orient afrique',
+    'apac', 'asie pacifique', 'apj', 'asie pacifique japon', 'cis', 'états indépendants',
+    'mena', 'moyen orient afrique nord', 'ssa', 'afrique subsaharienne', 'dach', 'allemagne autriche suisse',
+    'pays nordiques', 'benelux', 'belgique pays-bas luxembourg', 'anz', 'australie nouvelle-zélande',
+    'gcc', 'conseil coopération golfe', 'asean', 'asie du sud-est', 'mercosur', 'cône sud',
     // Régions et Pays
     'états-unis', 'amérique', 'canada', 'mexique', 'royaume-uni', 'europe', 'allemagne', 'france', 'espagne',
     'italie', 'pays-bas', 'brésil', 'argentine', 'colombie', 'chili', 'pérou', 'asie', 'chine', 'japon', 'inde', 'singapour',
