@@ -270,7 +270,8 @@ export function AIJobAssistant() {
                   <div className="border-t pt-6 flex justify-end">
                     <Button
                       onClick={() => setDialogStep('proceed')}
-                      className="px-8 py-3 bg-gradient-to-r from-primary to-accent text-white hover:opacity-90 transition-opacity"
+                      className="px-8 py-3 text-white hover:opacity-90 transition-opacity"
+                      style={{ backgroundColor: '#7e3eff' }}
                     >
                       Continue
                     </Button>
