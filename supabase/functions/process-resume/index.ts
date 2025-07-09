@@ -31,28 +31,71 @@ serve(async (req) => {
 
     console.log(`📄 Processing file: ${file.name} (${file.size} bytes)`);
 
-    // Step 2: Extract text from PDF using pdf-parse
+    // Step 2: Extract text from PDF using pdf2text
     console.log("📝 Extracting text from PDF...");
     
     const fileBuffer = await file.arrayBuffer();
     const uint8Array = new Uint8Array(fileBuffer);
     
-    // Import pdf-parse dynamically
-    const { default: pdfParse } = await import("https://deno.land/x/pdf_parse@1.1.9/mod.ts");
-    
     let resumeText = "";
     try {
-      const pdfData = await pdfParse(uint8Array);
-      resumeText = pdfData.text;
+      // Use a more reliable PDF parsing approach
+      // Import the PDF parsing library
+      const { getDocument } = await import("https://esm.sh/pdfjs-dist@4.0.379/build/pdf.mjs");
+      
+      // Set up PDF.js worker
+      const pdfjsLib = { getDocument };
+      
+      // Load the PDF document
+      const loadingTask = pdfjsLib.getDocument({
+        data: uint8Array,
+        useSystemFonts: true,
+        disableFontFace: true,
+      });
+      
+      const pdf = await loadingTask.promise;
+      console.log(`📄 PDF loaded: ${pdf.numPages} pages`);
+      
+      // Extract text from all pages
+      const textPromises = [];
+      for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+        textPromises.push(
+          pdf.getPage(pageNum).then(async (page) => {
+            const textContent = await page.getTextContent();
+            return textContent.items
+              .filter((item: any) => item.str && item.str.trim())
+              .map((item: any) => item.str)
+              .join(' ');
+          })
+        );
+      }
+      
+      const pageTexts = await Promise.all(textPromises);
+      resumeText = pageTexts.join('\n\n').trim();
+      
       console.log(`📝 Text extracted successfully: ${resumeText.length} characters`);
+      
     } catch (pdfError) {
       console.error("❌ PDF parsing failed:", pdfError);
-      return new Response("Failed to extract text from PDF", { status: 500, headers: corsHeaders });
+      console.error("❌ PDF error details:", pdfError.message, pdfError.stack);
+      return new Response(JSON.stringify({
+        error: "Failed to extract text from PDF",
+        details: pdfError.message
+      }), { 
+        status: 500, 
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
     }
 
     if (!resumeText.trim()) {
       console.error("❌ No text content extracted from PDF");
-      return new Response("No text content found in PDF", { status: 400, headers: corsHeaders });
+      return new Response(JSON.stringify({
+        error: "No text content found in PDF",
+        details: "The PDF appears to be empty or contains only images"
+      }), { 
+        status: 400, 
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
     }
 
     // Step 10: Get OpenAI API key
