@@ -1,6 +1,8 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
+console.log("🔍 Edge Function started"); // FIRST LINE
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -424,6 +426,49 @@ serve(async (req) => {
   if (req.method === 'OPTIONS') {
     console.log('Handling CORS preflight request');
     return new Response(null, { headers: corsHeaders });
+  }
+
+  // STEP 1: Environment Check
+  try {
+    const env = {
+      client_id: Deno.env.get("ADOBE_CLIENT_ID"),
+      client_secret: Deno.env.get("ADOBE_CLIENT_SECRET"),
+      org_id: Deno.env.get("ADOBE_IMS_ORG"),
+      openai_key: Deno.env.get("OPENAI_API_KEY")
+    };
+
+    console.log("🧪 Env loaded", {
+      client_id: !!env.client_id,
+      client_secret: !!env.client_secret,
+      org_id: !!env.org_id,
+      openai_key: !!env.openai_key
+    });
+
+    if (!env.client_id || !env.client_secret || !env.org_id) {
+      throw new Error("Missing Adobe credentials in environment");
+    }
+
+    if (!env.openai_key) {
+      throw new Error("Missing OpenAI API key in environment");
+    }
+
+    console.log("✅ All environment variables present");
+
+    // STEP 3: Dummy response test (uncomment to test)
+    // return new Response(JSON.stringify({ success: true, test: "dummy response works" }), {
+    //   headers: { ...corsHeaders, "Content-Type": "application/json" },
+    //   status: 200
+    // });
+
+  } catch (envError) {
+    console.error("❌ Environment check failed:", envError.message);
+    return new Response(
+      JSON.stringify({ 
+        success: false,
+        error: `Environment setup error: ${envError.message}` 
+      }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
   }
 
   try {
