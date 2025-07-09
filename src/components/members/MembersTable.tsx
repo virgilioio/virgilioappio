@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Search, Edit, UserMinus, Mail, Plus, ChevronLeft, ChevronRight, MoreHorizontal, Users, Link, Copy } from 'lucide-react'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Member, useMembers } from '@/hooks/useMembers'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useOrganizations } from '@/hooks/useOrganizations'
@@ -261,39 +262,50 @@ export function MembersTable({
                         </TableCell>
                         <TableCell>{new Date(member.created_at).toLocaleDateString()}</TableCell>
                         <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            {member.user_status === 'invited' && permissions.canManageMembers && (
-                              <>
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm" 
-                                  onClick={(e) => { 
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="h-8 w-8 p-0"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48">
+                              {permissions.canManageMembers && (
+                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(member); }}>
+                                  <Edit className="h-4 w-4 mr-2" />
+                                  Edit Member
+                                </DropdownMenuItem>
+                              )}
+                              {member.user_status === 'invited' && permissions.canManageMembers && (
+                                <>
+                                  <DropdownMenuItem onClick={(e) => { 
                                     e.stopPropagation(); 
                                     handleCopyInviteLink(member.id); 
-                                  }}
-                                  title="Copy invitation link"
-                                >
-                                  <Copy className="h-4 w-4" />
-                                </Button>
-                                <Button variant="ghost" size="sm" onClick={(e) => { 
-                                  e.stopPropagation(); 
-                                  onResendInvitation(member.id, member.invited_email || ''); 
-                                }}>
-                                  <Mail className="h-4 w-4" />
-                                </Button>
-                              </>
-                            )}
-                            {permissions.canManageMembers && (
-                              <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); onEdit(member); }}>
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                            )}
-                            {permissions.canManageMembers && member.user_status !== 'inactive' && (
-                              <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); onDeactivate(member.id); }}>
-                                <UserMinus className="h-4 w-4" />
-                              </Button>
-                            )}
-                          </div>
+                                  }}>
+                                    <Copy className="h-4 w-4 mr-2" />
+                                    Copy Invite Link
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={(e) => { 
+                                    e.stopPropagation(); 
+                                    onResendInvitation(member.id, member.invited_email || ''); 
+                                  }}>
+                                    <Mail className="h-4 w-4 mr-2" />
+                                    Resend Invitation
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                              {permissions.canManageMembers && member.user_status !== 'inactive' && (
+                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onDeactivate(member.id); }}>
+                                  <UserMinus className="h-4 w-4 mr-2" />
+                                  Deactivate Member
+                                </DropdownMenuItem>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </TableCell>
                       </TableRow>
                     )
