@@ -82,7 +82,7 @@ export function AIJobAssistant() {
   const currentValidation = checkValidation(prompt)
   const validItemsCount = currentValidation.filter(item => item.checked).length
   const wordCount = prompt.trim().split(/\s+/).filter(word => word.length > 0).length
-  const canGenerate = validItemsCount >= 2 && wordCount >= 15
+  const canGenerate = wordCount >= 10
 
   const handleGenerate = async () => {
     if (!canGenerate) return
@@ -178,7 +178,7 @@ export function AIJobAssistant() {
             </div>
             {!canGenerate && (
               <p className="text-xs text-muted-foreground">
-                Complete at least 2 checklist items and write 15+ words to continue
+                Write at least 10 words to continue
               </p>
             )}
           </div>
