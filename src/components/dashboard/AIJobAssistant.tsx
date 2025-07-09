@@ -162,8 +162,7 @@ export function AIJobAssistant() {
           </div>
 
           <div className="space-y-3">
-            <h4 className="text-sm font-medium">Prompt Quality Checklist</h4>
-            <div className="grid gap-2">
+            <div className="flex flex-wrap gap-4">
               {currentValidation.map((item) => (
                 <div key={item.id} className="flex items-center gap-2 text-sm">
                   {item.checked ? (
