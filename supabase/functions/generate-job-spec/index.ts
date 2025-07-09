@@ -156,7 +156,7 @@ Return ONLY valid JSON in this format (with content in the same language as the 
     }
 
     // Include candidate matching in the response
-    const response = {
+    const finalResponse = {
       jobSpec,
       candidateMatching: candidateMatching || {
         totalCandidates: 0,
@@ -172,7 +172,7 @@ Return ONLY valid JSON in this format (with content in the same language as the 
       }
     };
 
-    return new Response(JSON.stringify(response), {
+    return new Response(JSON.stringify(finalResponse), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {
