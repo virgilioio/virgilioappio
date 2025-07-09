@@ -6,159 +6,98 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Load PDF.js from CDN
-const loadPDFjs = async () => {
-  const pdfScript = await fetch('https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js');
-  const pdfCode = await pdfScript.text();
-  
-  // Create a global PDF object
-  const pdfModule = eval(`
-    (function() {
-      ${pdfCode}
-      return pdfjsLib;
-    })()
-  `);
-  
-  // Set worker
-  pdfModule.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
-  return pdfModule;
-};
-
-// Load Tesseract.js for OCR
-const loadTesseract = async () => {
-  const tesseractScript = await fetch('https://cdn.jsdelivr.net/npm/tesseract.js@4.1.1/dist/tesseract.min.js');
-  const tesseractCode = await tesseractScript.text();
-  
-  return eval(`
-    (function() {
-      ${tesseractCode}
-      return Tesseract;
-    })()
-  `);
-};
-
-// Primary PDF.js text extraction
-async function extractTextWithPDFjs(uint8Array: Uint8Array): Promise<{ text: string; quality: 'good' | 'poor' | 'failed' }> {
+// Simple PDF text extraction using basic pattern matching
+async function extractPDFText(uint8Array: Uint8Array, fileName: string): Promise<string> {
   try {
-    console.log("📖 Starting PDF.js text extraction...");
-    const pdfLib = await loadPDFjs();
+    console.log("📄 Starting PDF text extraction...");
     
-    const pdf = await pdfLib.getDocument({ data: uint8Array }).promise;
-    const numPages = pdf.numPages;
-    console.log(`📄 PDF has ${numPages} pages`);
+    // Convert PDF bytes to string for pattern matching
+    const pdfString = new TextDecoder('latin1').decode(uint8Array);
     
-    const textContent = [];
+    // Extract text patterns from PDF structure
+    const textPatterns = [
+      // Text objects in PDF format: (text content)
+      /\(((?:[^()\\]|\\.|\\[0-7]{1,3})*)\)/g,
+      // Bracket text: [text content]
+      /\[((?:[^\[\]\\]|\\.|\\[0-7]{1,3})*)\]/g,
+      // Direct text streams
+      /BT\s+.*?ET/gs,
+    ];
     
-    for (let pageNum = 1; pageNum <= numPages; pageNum++) {
-      const page = await pdf.getPage(pageNum);
-      const content = await page.getTextContent();
-      
-      const pageText = content.items
-        .map((item: any) => item.str)
-        .join(' ')
-        .trim();
-      
-      if (pageText) {
-        textContent.push(pageText);
-      }
-    }
+    let extractedText = '';
     
-    const fullText = textContent.join('\n\n').trim();
-    console.log(`📝 PDF.js extracted ${fullText.length} characters`);
-    
-    // Quality assessment
-    const wordCount = fullText.split(/\s+/).filter(word => word.length > 2).length;
-    const hasEmail = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/.test(fullText);
-    const hasPhone = /\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/.test(fullText);
-    
-    if (fullText.length > 100 && wordCount > 20 && (hasEmail || hasPhone || wordCount > 50)) {
-      return { text: fullText, quality: 'good' };
-    } else if (fullText.length > 50) {
-      return { text: fullText, quality: 'poor' };
-    } else {
-      return { text: '', quality: 'failed' };
-    }
-    
-  } catch (error) {
-    console.error("❌ PDF.js extraction failed:", error);
-    return { text: '', quality: 'failed' };
-  }
-}
-
-// OCR fallback using Tesseract.js
-async function extractTextWithOCR(uint8Array: Uint8Array, fileName: string): Promise<string> {
-  try {
-    console.log("🔍 Starting OCR text extraction...");
-    const pdfLib = await loadPDFjs();
-    const tesseract = await loadTesseract();
-    
-    const pdf = await pdfLib.getDocument({ data: uint8Array }).promise;
-    const page = await pdf.getPage(1); // Start with first page
-    
-    const viewport = page.getViewport({ scale: 2.0 }); // Higher scale for better OCR
-    const canvas = new OffscreenCanvas(viewport.width, viewport.height);
-    const context = canvas.getContext('2d');
-    
-    await page.render({
-      canvasContext: context,
-      viewport: viewport
-    }).promise;
-    
-    // Convert canvas to image blob
-    const imageBlob = await canvas.convertToBlob({ type: 'image/png' });
-    const imageBuffer = await imageBlob.arrayBuffer();
-    
-    console.log("🖼️ Converted PDF to image, starting OCR...");
-    
-    // Perform OCR
-    const { data: { text } } = await tesseract.recognize(
-      new Uint8Array(imageBuffer),
-      'eng',
-      {
-        logger: (m: any) => {
-          if (m.status === 'recognizing text') {
-            console.log(`OCR Progress: ${Math.round(m.progress * 100)}%`);
-          }
+    // Try each pattern
+    for (const pattern of textPatterns) {
+      const matches = [...pdfString.matchAll(pattern)];
+      if (matches.length > 0) {
+        const texts = matches
+          .map(match => match[1] || match[0])
+          .filter(text => text && text.length > 1)
+          .map(text => text
+            .replace(/\\[nr]/g, ' ')
+            .replace(/\\[t]/g, ' ')
+            .replace(/\\(.)/g, '$1')
+            .trim()
+          )
+          .filter(text => /[a-zA-Z]/.test(text) && text.length > 2);
+        
+        if (texts.length > 0) {
+          extractedText = texts.join(' ').replace(/\s+/g, ' ').trim();
+          break;
         }
       }
-    );
+    }
     
-    console.log(`🔤 OCR extracted ${text.length} characters`);
+    // Fallback: extract any readable strings
+    if (!extractedText || extractedText.length < 50) {
+      console.log("🔍 Trying fallback string extraction...");
+      const readableStrings = pdfString
+        .split(/[\x00-\x1F\x7F-\xFF]/)
+        .filter(str => str.length > 3 && /[a-zA-Z]/.test(str))
+        .map(str => str.trim())
+        .filter(str => str.length > 3);
+      
+      extractedText = readableStrings.slice(0, 100).join(' ').replace(/\s+/g, ' ').trim();
+    }
     
-    // Clean up OCR text
-    const cleanedText = text
-      .replace(/[^\w\s@.-]/g, ' ') // Remove special characters except email/phone chars
-      .replace(/\s+/g, ' ')
-      .trim();
+    console.log(`📝 Extracted ${extractedText.length} characters from PDF`);
     
-    return cleanedText.length > 50 ? cleanedText : 
-      `OCR Resume: ${fileName}\n\nOCR text extraction completed but yielded limited readable content. This may be a low-quality scan or complex layout.`;
+    // Quality check
+    if (extractedText.length > 50) {
+      const wordCount = extractedText.split(/\s+/).length;
+      const hasEmail = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/.test(extractedText);
+      const hasPhone = /\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/.test(extractedText);
+      
+      if (wordCount > 10 && (hasEmail || hasPhone || wordCount > 20)) {
+        return extractedText;
+      }
+    }
+    
+    // If extraction failed or quality is poor
+    return `Resume: ${fileName}
+
+Basic text extraction completed but content appears limited. This may be:
+• An image-based or scanned PDF
+• A PDF with complex formatting
+• A password-protected document
+
+File size: ${(uint8Array.length / 1024).toFixed(1)} KB
+
+Please ensure the PDF contains selectable text, or consider converting it to a text-based format.`;
     
   } catch (error) {
-    console.error("❌ OCR extraction failed:", error);
-    return `OCR Resume: ${fileName}\n\nOCR processing failed. This may be due to image quality or format issues.`;
-  }
-}
+    console.error("❌ PDF text extraction failed:", error);
+    return `Resume: ${fileName}
 
-// Final fallback - manual parsing
-async function extractTextFallback(uint8Array: Uint8Array, fileName: string): Promise<string> {
-  console.log("🔧 Using fallback manual parsing...");
-  const pdfString = new TextDecoder('latin1').decode(uint8Array);
-  
-  // Extract readable text patterns
-  const textMatches = [
-    ...pdfString.match(/\(([^)]+)\)/g) || [],
-    ...pdfString.match(/\[([^\]]+)\]/g) || []
-  ];
-  
-  const extractedTexts = textMatches
-    .map(match => match.replace(/[()[\]]/g, '').trim())
-    .filter(text => text.length > 2 && /[a-zA-Z]/.test(text));
-  
-  const result = extractedTexts.join(' ').replace(/\s+/g, ' ').trim();
-  
-  return result.length > 50 ? result : 
-    `Fallback Resume: ${fileName}\n\nManual text extraction completed with limited success. Consider re-uploading as a text-based PDF or using OCR software.`;
+Text extraction failed due to: ${error.message}
+
+This may be due to:
+• Corrupted PDF file
+• Unsupported PDF format
+• Complex document structure
+
+Please try re-uploading or using a different PDF format.`;
+  }
 }
 
 serve(async (req) => {
@@ -198,81 +137,14 @@ serve(async (req) => {
 
     console.log(`📄 Processing file: ${file.name} (${file.size} bytes)`);
 
-    // Step 2: Hybrid PDF text extraction (PDF.js + OCR fallback)
-    console.log("📝 Starting hybrid PDF text extraction...");
+    // Step 2: Simple PDF text extraction
+    console.log("📝 Starting PDF text extraction...");
     
     const fileBuffer = await file.arrayBuffer();
     const uint8Array = new Uint8Array(fileBuffer);
     
-    let resumeText = "";
-    let extractionMethod = "unknown";
-    
-    // Phase 1: Try PDF.js first (handles 90% of PDFs)
-    const pdfResult = await extractTextWithPDFjs(uint8Array);
-    
-    if (pdfResult.quality === 'good') {
-      resumeText = pdfResult.text;
-      extractionMethod = "PDF.js";
-      console.log("✅ PDF.js extraction successful with good quality");
-    } else if (pdfResult.quality === 'poor') {
-      console.log("⚠️ PDF.js extraction yielded poor quality, trying OCR...");
-      
-      // Phase 2: Try OCR for better results
-      try {
-        const ocrText = await extractTextWithOCR(uint8Array, file.name);
-        if (ocrText.length > pdfResult.text.length * 1.5) {
-          resumeText = ocrText;
-          extractionMethod = "OCR";
-          console.log("✅ OCR extraction provided better results");
-        } else {
-          resumeText = pdfResult.text;
-          extractionMethod = "PDF.js (poor quality)";
-          console.log("📝 Using PDF.js results despite poor quality");
-        }
-      } catch (ocrError) {
-        console.error("❌ OCR failed, using PDF.js results:", ocrError);
-        resumeText = pdfResult.text;
-        extractionMethod = "PDF.js (OCR failed)";
-      }
-    } else {
-      console.log("❌ PDF.js failed completely, trying OCR...");
-      
-      // Phase 2: OCR as primary method
-      try {
-        resumeText = await extractTextWithOCR(uint8Array, file.name);
-        extractionMethod = "OCR";
-        console.log("✅ OCR extraction completed");
-      } catch (ocrError) {
-        console.error("❌ OCR also failed, using manual fallback:", ocrError);
-        
-        // Phase 3: Manual parsing fallback
-        resumeText = await extractTextFallback(uint8Array, file.name);
-        extractionMethod = "Manual fallback";
-        console.log("🔧 Manual fallback extraction completed");
-      }
-    }
-
-    // Final validation and user guidance
-    if (resumeText.length < 50) {
-      console.log("⚠️ All extraction methods yielded minimal text");
-      resumeText = `PDF Resume: ${file.name}
-
-This PDF was processed using multiple extraction methods (${extractionMethod}) but yielded limited results.
-File details: ${file.name} (${(file.size/1024).toFixed(1)} KB)
-
-Possible reasons:
-• Image-based PDF requiring advanced OCR
-• Complex formatting or unusual fonts  
-• Password protected or secured PDF
-• Corrupted or non-standard PDF structure
-
-Recommendations:
-• Try exporting as a new, simpler PDF format
-• Ensure the PDF contains selectable text
-• Consider manual data entry for this resume`;
-    } else {
-      console.log(`✅ Extraction completed via ${extractionMethod}: ${resumeText.length} characters`);
-    }
+    const resumeText = await extractPDFText(uint8Array, file.name);
+    console.log(`📝 Text extraction completed: ${resumeText.length} characters`);
 
 
     // Step 3: Get OpenAI API key
