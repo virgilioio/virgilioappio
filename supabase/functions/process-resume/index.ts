@@ -7,7 +7,7 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  console.log("🚀 Edge Function started");
+  console.log("🚀 Resume processing started");
 
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -29,245 +29,31 @@ serve(async (req) => {
       return new Response("Only PDF files are allowed", { status: 400, headers: corsHeaders });
     }
 
-    console.log(`📄 Received file: ${file.name} (${file.size} bytes)`);
+    console.log(`📄 Processing file: ${file.name} (${file.size} bytes)`);
 
-    // Step 2: Get Adobe credentials
-    const client_id = Deno.env.get("ADOBE_CLIENT_ID");
-    const client_secret = Deno.env.get("ADOBE_CLIENT_SECRET");
-    const org_id = Deno.env.get("ADOBE_IMS_ORG");
-    const technical_account_id = Deno.env.get("ADOBE_TECHNICAL_ACCOUNT_ID");
-
-    console.log("🔧 Adobe Credentials Check:");
-    console.log("- Client ID:", client_id ? "✓ Set" : "❌ Missing");
-    console.log("- Client Secret:", client_secret ? "✓ Set" : "❌ Missing");
-    console.log("- Org ID:", org_id ? "✓ Set" : "❌ Missing");
-    console.log("- Technical Account ID:", technical_account_id ? "✓ Set" : "❌ Missing");
-
-    if (!client_id || !client_secret || !org_id) {
-      console.error("❌ Missing Adobe credentials");
-      return new Response(JSON.stringify({ 
-        error: "Missing Adobe credentials", 
-        missing: {
-          client_id: !client_id,
-          client_secret: !client_secret,
-          org_id: !org_id,
-          technical_account_id: !technical_account_id
-        }
-      }), { 
-        status: 500, 
-        headers: { ...corsHeaders, "Content-Type": "application/json" }
-      });
-    }
-
-    // Step 3: Get Adobe access token
-    console.log("🔐 Requesting Adobe access token...");
-
-    const tokenRes = await fetch("https://ims-na1.adobelogin.com/ims/token/v1", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded"
-      },
-      body: new URLSearchParams({
-        client_id,
-        client_secret,
-        grant_type: "client_credentials",
-        scope: "openid,AdobeID,DCAPI"
-      })
-    });
-
-    const tokenData = await tokenRes.json();
-
-    if (!tokenRes.ok) {
-      console.error("❌ Adobe auth failed:", tokenRes.status, tokenRes.statusText);
-      console.error("❌ Adobe auth response:", JSON.stringify(tokenData, null, 2));
-      return new Response(JSON.stringify({ 
-        error: "Adobe authentication failed", 
-        details: tokenData,
-        status: tokenRes.status 
-      }), { 
-        status: 500, 
-        headers: { ...corsHeaders, "Content-Type": "application/json" }
-      });
-    }
-
-    const access_token = tokenData.access_token;
-    console.log("🔐 Adobe token acquired");
-
-    // Step 4: Create Adobe asset and get upload URI
-    console.log("🆔 Creating Adobe asset...");
-
-    const assetRes = await fetch("https://pdf-services-ue1.adobe.io/assets", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${access_token}`,
-        "x-api-key": client_id,
-        "x-gw-ims-org-id": org_id,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        mediaType: "application/pdf"
-      })
-    });
-
-    const assetData = await assetRes.json();
-
-    if (!assetRes.ok) {
-      console.error("❌ Adobe asset creation failed:", assetRes.status, assetRes.statusText);
-      console.error("❌ Adobe asset response:", JSON.stringify(assetData, null, 2));
-      return new Response(JSON.stringify({ 
-        error: "Adobe asset creation failed", 
-        details: assetData,
-        status: assetRes.status 
-      }), { 
-        status: 500, 
-        headers: { ...corsHeaders, "Content-Type": "application/json" }
-      });
-    }
-
-    const { uploadUri, assetID } = assetData;
-    console.log(`🆔 Adobe assetID: ${assetID}`);
-
-    // Step 5: Upload file to Adobe
-    console.log("📤 Uploading file to Adobe...");
-
-    const fileBuffer = new Uint8Array(await file.arrayBuffer());
-
-    const uploadRes = await fetch(uploadUri, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/pdf"
-      },
-      body: fileBuffer
-    });
-
-    if (!uploadRes.ok) {
-      const uploadError = await uploadRes.text();
-      console.error("❌ File upload failed:", uploadRes.status, uploadError);
-      return new Response("File upload failed", { status: 500, headers: corsHeaders });
-    }
-
-    console.log("📤 File uploaded to Adobe successfully");
-
-    // Step 6: Create Adobe extraction job
-    console.log(`📥 Starting Adobe extract job for asset: ${assetID}`);
-
-    const extractJobRes = await fetch("https://pdf-services-ue1.adobe.io/operation/extractpdf", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${access_token}`,
-        "x-api-key": client_id,
-        "x-gw-ims-org-id": org_id,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        assetID: assetID,
-        outputType: "json"
-      })
-    });
-
-    if (!extractJobRes.ok) {
-      const extractError = await extractJobRes.text();
-      console.error("❌ Extract job creation failed:", extractJobRes.status, extractJobRes.statusText);
-      console.error("❌ Extract job response:", extractError);
-      return new Response(JSON.stringify({ 
-        error: "Extract job creation failed", 
-        details: extractError,
-        status: extractJobRes.status 
-      }), { 
-        status: 500, 
-        headers: { ...corsHeaders, "Content-Type": "application/json" }
-      });
-    }
-
-    const jobLocation = extractJobRes.headers.get("location");
-    if (!jobLocation) {
-      console.error("❌ No job location received");
-      return new Response("No job location received from Adobe", { status: 500, headers: corsHeaders });
-    }
-
-    console.log("📥 Extract job created, polling for completion...");
-
-    // Step 7: Poll for job completion
-    let jobCompleted = false;
-    let attempts = 0;
-    const maxAttempts = 30; // 60 seconds (2 second intervals)
-    let finalJobResult: any;
-
-    while (!jobCompleted && attempts < maxAttempts) {
-      await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
-      attempts++;
-
-      console.log(`⏳ Polling extract job: attempt ${attempts}...`);
-
-      const statusRes = await fetch(jobLocation, {
-        method: "GET",
-        headers: {
-          "Authorization": `Bearer ${access_token}`,
-          "x-api-key": client_id,
-          "x-gw-ims-org-id": org_id
-        }
-      });
-
-      if (!statusRes.ok) {
-        const statusError = await statusRes.text();
-        console.error(`❌ Failed to check job status (attempt ${attempts}):`, statusError);
-        continue;
-      }
-
-      const statusResult = await statusRes.json();
-      console.log(`⏳ Job status: ${statusResult.status}`);
-
-      if (statusResult.status === "done") {
-        jobCompleted = true;
-        finalJobResult = statusResult;
-        console.log("✅ Job complete, downloading result");
-      } else if (statusResult.status === "failed") {
-        console.error("❌ Extract job failed:", statusResult);
-        return new Response("Adobe extraction job failed", { status: 500, headers: corsHeaders });
-      }
-    }
-
-    if (!jobCompleted) {
-      console.error("❌ Job timed out after 60 seconds");
-      return new Response("Adobe extraction job timed out", { status: 500, headers: corsHeaders });
-    }
-
-    // Step 8: Download extraction results
-    if (!finalJobResult.asset || !finalJobResult.asset.downloadUri) {
-      console.error("❌ No download URL in job result");
-      return new Response("No download URL received from Adobe", { status: 500, headers: corsHeaders });
-    }
-
-    const downloadRes = await fetch(finalJobResult.asset.downloadUri, {
-      headers: {
-        "Authorization": `Bearer ${access_token}`
-      }
-    });
-
-    if (!downloadRes.ok) {
-      const downloadError = await downloadRes.text();
-      console.error("❌ Failed to download extraction results:", downloadError);
-      return new Response("Failed to download extraction results", { status: 500, headers: corsHeaders });
-    }
-
-    const extractedJson = await downloadRes.json();
-    console.log("📄 Resume JSON extracted successfully");
-
-    // Step 9: Clean and flatten Adobe elements into readable text
+    // Step 2: Extract text from PDF using pdf-parse
+    console.log("📝 Extracting text from PDF...");
+    
+    const fileBuffer = await file.arrayBuffer();
+    const uint8Array = new Uint8Array(fileBuffer);
+    
+    // Import pdf-parse dynamically
+    const { default: pdfParse } = await import("https://deno.land/x/pdf_parse@1.1.9/mod.ts");
+    
     let resumeText = "";
-    if (extractedJson && extractedJson.elements && Array.isArray(extractedJson.elements)) {
-      resumeText = extractedJson.elements
-        .filter((element: any) => element.Text) // Only text elements
-        .map((element: any) => element.Text)
-        .join("\n"); // Join with line breaks for readability
+    try {
+      const pdfData = await pdfParse(uint8Array);
+      resumeText = pdfData.text;
+      console.log(`📝 Text extracted successfully: ${resumeText.length} characters`);
+    } catch (pdfError) {
+      console.error("❌ PDF parsing failed:", pdfError);
+      return new Response("Failed to extract text from PDF", { status: 500, headers: corsHeaders });
     }
 
     if (!resumeText.trim()) {
       console.error("❌ No text content extracted from PDF");
       return new Response("No text content found in PDF", { status: 400, headers: corsHeaders });
     }
-
-    console.log(`🧠 Flattened resume text length: ${resumeText.length} chars`);
 
     // Step 10: Get OpenAI API key
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
