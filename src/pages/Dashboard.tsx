@@ -6,6 +6,7 @@ import { PaymentsTracker } from '@/components/dashboard/PaymentsTracker'
 import { PaymentHistory } from '@/components/dashboard/PaymentHistory'
 import { OnboardingProgress } from '@/components/dashboard/OnboardingProgress'
 import { AdvertisingBanner } from '@/components/dashboard/AdvertisingBanner'
+import { AIJobAssistant } from '@/components/dashboard/AIJobAssistant'
 import { InvoiceFilterProvider } from '@/utils/invoiceFilters'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -27,6 +28,11 @@ export default function Dashboard() {
         <InvoiceFilterProvider>
           <div className="space-y-6">
             <WelcomeHeader profile={profile} isLoading={isLoading} />
+            
+            {/* AI Job Assistant - Top Section */}
+            {(permissions.canCreateJobs || permissions.canRequestJobs) && (
+              <AIJobAssistant />
+            )}
             
             {/* Adaptive layout based on available content */}
             {hasBillingContent ? (
