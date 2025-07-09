@@ -62,11 +62,19 @@ async function getAdobeAccessToken(): Promise<string> {
   const apiKey = Deno.env.get('ADOBE_API_KEY');
   const clientSecret = Deno.env.get('ADOBE_CLIENT_SECRET');
   
+  console.log('Adobe credentials check:', {
+    hasApiKey: !!apiKey,
+    hasClientSecret: !!clientSecret,
+    apiKeyLength: apiKey?.length || 0
+  });
+  
   if (!apiKey || !clientSecret) {
     throw new Error('Adobe API credentials not configured');
   }
 
   try {
+    console.log('Attempting Adobe authentication...');
+    
     // Use a simpler OAuth2 approach for now since JWT requires private key setup
     const response = await fetch('https://ims-na1.adobelogin.com/ims/token/v1', {
       method: 'POST',
@@ -81,14 +89,16 @@ async function getAdobeAccessToken(): Promise<string> {
       }),
     });
 
+    console.log('Adobe auth response status:', response.status);
+    
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Adobe auth response:', errorText);
+      console.error('Adobe auth response error:', errorText);
       throw new Error(`Adobe authentication failed: ${response.statusText} - ${errorText}`);
     }
 
     const tokenData = await response.json();
-    console.log('Adobe authentication successful');
+    console.log('Adobe authentication successful, token received');
     return tokenData.access_token;
   } catch (error) {
     console.error('Adobe authentication error:', error);
