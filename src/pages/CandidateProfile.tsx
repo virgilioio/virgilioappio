@@ -51,7 +51,8 @@ export default function CandidateProfile() {
   const nextCandidate = hasNextCandidate ? candidates[currentCandidateIndex + 1] : null
 
   const navigateToCandidate = (candidateId: string) => {
-    navigate(`/jobs/${jobId}/candidates/${candidateId}`)
+    // Force a full page refresh to ensure all state is properly reset
+    window.location.href = `/jobs/${jobId}/candidates/${candidateId}`
   }
 
   useEffect(() => {
