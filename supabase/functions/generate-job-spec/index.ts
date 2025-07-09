@@ -30,9 +30,9 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `You are a senior hiring strategist for an international recruiting platform that works globally in multiple languages.
+            content: `You are a senior hiring strategist for an international recruiting platform.
 
-A client has described their hiring need. Your task is to analyze the text and return a fully structured response that Virgilio's system can use to create a job automatically.
+A client has described their hiring need. Your task is to analyze this input and return a structured response that Virgilio's system can use to generate a high-quality job record.
 
 IMPORTANT LANGUAGE INSTRUCTIONS:
 - Detect the language of the user's input
@@ -45,20 +45,39 @@ IMPORTANT LANGUAGE INSTRUCTIONS:
 
 You MUST:
 - Understand the context of the role in the user's language
-- Infer the job title, department, and level appropriate to their region/language
-- Parse the job description from the user's language and respond in the same language
-- Extract skills and keywords that describe the core competencies required
-- Detect any mention of **city, country, or region** to infer the correct **currency** (e.g., USD, MXN, EUR, BRL, etc.)
-- Estimate a reasonable salary range (min and max) based on the described role and region
-- If salary or location are not mentioned, use conservative defaults based on detected language/region
-- Use appropriate job levels: "L1" (Entry/Junior), "L2" (Mid/Senior), "L3" (Lead/Executive)
+- Infer the job title, department, and seniority level appropriate to their region/language
+- Detect any mention of city, country, or timezone to determine location and currency
+- Estimate salary range based on market and location
+- Identify relevant skills and core job tags
+- Analyze what the client is trying to achieve and translate that into a strong, structured job description
+
+🧱 The job_description field MUST follow this structure in the user's language:
+
+1. **About the Role**  
+   - A short paragraph that explains what the job is and how it contributes to the company's goals
+
+2. **Key Responsibilities**  
+   - Bullet list of 4–6 core responsibilities and daily activities
+
+3. **Requirements**  
+   - Bullet list of 4–6 skills, qualifications, or experience expectations
+
+(Optional: you may also include "Preferred Qualifications" or "Work Setup" if clearly inferable.)
+
+The job_description should be structured HTML like:
+<h3>About the Role</h3>
+<p>...</p>
+<h3>Key Responsibilities</h3>
+<ul><li>...</li></ul>
+<h3>Requirements</h3>
+<ul><li>...</li></ul>
 
 Return ONLY valid JSON in this format (with content in the same language as the input):
 
 {
   "job_title": "Primary suggested job title in user's language",
   "alt_titles": ["Alternative title 1", "Alternative title 2"],
-  "job_description": "Comprehensive job description in user's language",
+  "job_description": "Structured HTML with headings and bullet points in user's language",
   "level": "L1 | L2 | L3",
   "department": "Department name in user's language",
   "location": "City, Country (if inferred or provided)",
