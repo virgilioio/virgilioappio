@@ -164,7 +164,7 @@ export function IndependentCandidateForm({
 
     try {
       const formData = new FormData()
-      formData.append('resume', file)
+      formData.append('file', file)
 
       const { data: response, error: functionError } = await supabase.functions.invoke('process-resume', {
         body: formData,
@@ -174,30 +174,70 @@ export function IndependentCandidateForm({
         throw new Error(functionError.message || 'Function invocation failed')
       }
 
-      if (response?.success && response?.extracted_data) {
-        const data = response.extracted_data
+      if (response?.success && response?.structured_profile) {
+        const profile = response.structured_profile
         
         // Auto-fill form fields
-        setValue('candidate_name', data.candidate_name || '')
-        setValue('email', data.email || '')
-        setValue('phone', data.phone || '')
-        setValue('linkedin_url', data.linkedin_url || '')
-        setValue('location_city', data.location_city || '')
-        setValue('location_state', data.location_state || '')
-        setValue('location_country', data.location_country || '')
-        setValue('salary_amount', data.salary_amount || undefined)
-        setValue('salary_currency', data.salary_currency || 'USD')
-        setValue('salary_period', data.salary_period || 'annually')
-        setValue('profile_summary', data.profile_summary || '')
+        if (profile.candidate_name) {
+          setValue('candidate_name', profile.candidate_name)
+        }
+        if (profile.email) {
+          setValue('email', profile.email)
+        }
+        if (profile.phone) {
+          setValue('phone', profile.phone)
+        }
+        if (profile.linkedin_url) {
+          setValue('linkedin_url', profile.linkedin_url)
+        }
+        if (profile.location_city) {
+          setValue('location_city', profile.location_city)
+        }
+        if (profile.location_state) {
+          setValue('location_state', profile.location_state)
+        }
+        if (profile.location_country) {
+          setValue('location_country', profile.location_country)
+        }
+        if (profile.salary_amount) {
+          setValue('salary_amount', profile.salary_amount)
+        }
+        if (profile.salary_currency) {
+          setValue('salary_currency', profile.salary_currency)
+        }
+        if (profile.salary_period) {
+          setValue('salary_period', profile.salary_period)
+        }
+        
+        // Combine profile summary sections
+        let combinedSummary = ''
+        if (profile.profile_summary) {
+          if (profile.profile_summary.about_me) {
+            combinedSummary += profile.profile_summary.about_me + '\n\n'
+          }
+          if (profile.profile_summary.experience_highlights && profile.profile_summary.experience_highlights.length > 0) {
+            combinedSummary += 'Experience Highlights:\n'
+            profile.profile_summary.experience_highlights.forEach((highlight: string) => {
+              combinedSummary += `• ${highlight}\n`
+            })
+            combinedSummary += '\n'
+          }
+          if (profile.profile_summary.key_competencies && profile.profile_summary.key_competencies.length > 0) {
+            combinedSummary += 'Key Competencies: ' + profile.profile_summary.key_competencies.join(', ')
+          }
+        }
+        if (combinedSummary) {
+          setValue('profile_summary', combinedSummary.trim())
+        }
         
         // Set skills
-        if (data.skills && data.skills.length > 0) {
-          setSkills(data.skills)
+        if (profile.skills && profile.skills.length > 0) {
+          setSkills(profile.skills)
         }
 
         toast({
-          title: 'Resume processed successfully',
-          description: 'Form has been auto-filled with extracted data. Please review and edit as needed.',
+          title: '✅ Resume processed successfully',
+          description: 'Form has been auto-filled with AI-extracted data. Please review and edit as needed.',
         })
       } else {
         throw new Error(response?.error || 'Failed to process resume')

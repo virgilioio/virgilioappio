@@ -251,7 +251,7 @@ export function CandidateForm({
 
     try {
       const formData = new FormData()
-      formData.append('resume', file)
+      formData.append('file', file)
 
       const response = await fetch('https://etrxjxstjfcozdjumfsj.supabase.co/functions/v1/process-resume', {
         method: 'POST',
@@ -260,30 +260,64 @@ export function CandidateForm({
 
       const result = await response.json()
 
-      if (result.success && result.extracted_data) {
-        const data = result.extracted_data
+      if (result.success && result.structured_profile) {
+        const profile = result.structured_profile
         
         // Auto-fill form fields
-        form.setValue('candidate_name', data.candidate_name || '')
-        form.setValue('linkedin_url', data.linkedin_url || '')
-        form.setValue('location_city', data.location_city || '')
-        form.setValue('location_state', data.location_state || '')
-        form.setValue('location_country', data.location_country || '')
-        form.setValue('salary_amount', data.salary_amount ? data.salary_amount.toString() : '')
-        form.setValue('salary_currency', data.salary_currency || 'USD')
-        form.setValue('salary_period', data.salary_period || 'annually')
+        if (profile.candidate_name) {
+          form.setValue('candidate_name', profile.candidate_name)
+        }
+        if (profile.linkedin_url) {
+          form.setValue('linkedin_url', profile.linkedin_url)
+        }
+        if (profile.location_city) {
+          form.setValue('location_city', profile.location_city)
+        }
+        if (profile.location_state) {
+          form.setValue('location_state', profile.location_state)
+        }
+        if (profile.location_country) {
+          form.setValue('location_country', profile.location_country)
+        }
+        if (profile.salary_amount) {
+          form.setValue('salary_amount', profile.salary_amount.toString())
+        }
+        if (profile.salary_currency) {
+          form.setValue('salary_currency', profile.salary_currency)
+        }
+        if (profile.salary_period) {
+          form.setValue('salary_period', profile.salary_period)
+        }
         
-        // Set rich text editor values
-        setProfileSummary(data.profile_summary || '')
+        // Combine profile summary sections
+        let combinedSummary = ''
+        if (profile.profile_summary) {
+          if (profile.profile_summary.about_me) {
+            combinedSummary += profile.profile_summary.about_me + '\n\n'
+          }
+          if (profile.profile_summary.experience_highlights && profile.profile_summary.experience_highlights.length > 0) {
+            combinedSummary += 'Experience Highlights:\n'
+            profile.profile_summary.experience_highlights.forEach((highlight: string) => {
+              combinedSummary += `• ${highlight}\n`
+            })
+            combinedSummary += '\n'
+          }
+          if (profile.profile_summary.key_competencies && profile.profile_summary.key_competencies.length > 0) {
+            combinedSummary += 'Key Competencies: ' + profile.profile_summary.key_competencies.join(', ')
+          }
+        }
+        if (combinedSummary) {
+          setProfileSummary(combinedSummary.trim())
+        }
         
         // Set skills
-        if (data.skills && data.skills.length > 0) {
-          setSkills(data.skills)
+        if (profile.skills && profile.skills.length > 0) {
+          setSkills(profile.skills)
         }
 
         toast({
-          title: 'Resume processed successfully',
-          description: 'Form has been auto-filled with extracted data. Please review and edit as needed.',
+          title: '✅ Resume processed successfully',
+          description: 'Form has been auto-filled with AI-extracted data. Please review and edit as needed.',
         })
       } else {
         throw new Error(result.error || 'Failed to process resume')
