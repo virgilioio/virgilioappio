@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -27,6 +28,7 @@ export function IndependentCandidateTable({
   onAddNew
 }: IndependentCandidateTableProps) {
   const permissions = usePermissions()
+  const navigate = useNavigate()
   const [searchTerm, setSearchTerm] = useState('')
   const [locationFilter, setLocationFilter] = useState<string>('all')
   const [statusFilter, setStatusFilter] = useState<string>('all')
@@ -35,6 +37,10 @@ export function IndependentCandidateTable({
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
+
+  const handleViewProfile = (candidateId: string) => {
+    navigate(`/candidates/${candidateId}`)
+  }
 
   const handleDelete = (candidateId: string) => {
     if (confirm('Are you sure you want to delete this candidate?')) {
@@ -293,7 +299,7 @@ export function IndependentCandidateTable({
                         key={candidate.id}
                         interactive
                         className="cursor-pointer"
-                        onClick={() => onEdit(candidate)}
+                        onClick={() => handleViewProfile(candidate.id)}
                       >
                         <TableCell>
                           <div className="font-medium text-text-primary">
@@ -394,7 +400,7 @@ export function IndependentCandidateTable({
                     <CardContent className="p-sm">
                       <div 
                         className="cursor-pointer"
-                        onClick={() => onEdit(candidate)}
+                        onClick={() => handleViewProfile(candidate.id)}
                       >
                         <div className="space-y-sm">
                           <div className="flex items-start justify-between">

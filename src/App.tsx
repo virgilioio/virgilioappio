@@ -25,6 +25,7 @@ import { useAuth } from './contexts/AuthContext'
 import NotFound from './pages/NotFound'
 import AdminInvoices from './pages/AdminInvoices'
 import CandidateProfile from '@/pages/CandidateProfile'
+import IndependentCandidateProfile from '@/pages/IndependentCandidateProfile'
 import { useFavicon } from './hooks/useFavicon'
 import { useBrowserTitle } from './hooks/useBrowserTitle'
 import { Toaster } from '@/components/ui/toaster'
@@ -58,6 +59,7 @@ function AppContent() {
           <Route path="jobs/:id" element={<JobDetail />} />
           <Route path="jobs/:jobId/candidates/:candidateId" element={<CandidateProfile />} />
           <Route path="candidates" element={<Candidates />} />
+          <Route path="candidates/:candidateId" element={<IndependentCandidateProfile />} />
           <Route path="members" element={<Members />} />
           <Route path="organizations" element={<Organizations />} />
           <Route path="job-requests" element={<JobRequests />} />
