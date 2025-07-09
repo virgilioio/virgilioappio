@@ -6,86 +6,159 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Helper function for simple PDF text extraction
-async function extractPDFTextSimple(uint8Array: Uint8Array): Promise<string> {
-  const pdfString = new TextDecoder('latin1').decode(uint8Array);
+// Load PDF.js from CDN
+const loadPDFjs = async () => {
+  const pdfScript = await fetch('https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js');
+  const pdfCode = await pdfScript.text();
   
-  // Extract text between BT...ET blocks (text objects in PDF)
-  const textBlocks = pdfString.match(/BT[\s\S]*?ET/g) || [];
-  const extractedTexts: string[] = [];
+  // Create a global PDF object
+  const pdfModule = eval(`
+    (function() {
+      ${pdfCode}
+      return pdfjsLib;
+    })()
+  `);
   
-  for (const block of textBlocks) {
-    // Extract text in parentheses and brackets
-    const texts = [
-      ...(block.match(/\(([^)]+)\)/g) || []),
-      ...(block.match(/\[([^\]]+)\]/g) || [])
-    ];
+  // Set worker
+  pdfModule.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+  return pdfModule;
+};
+
+// Load Tesseract.js for OCR
+const loadTesseract = async () => {
+  const tesseractScript = await fetch('https://cdn.jsdelivr.net/npm/tesseract.js@4.1.1/dist/tesseract.min.js');
+  const tesseractCode = await tesseractScript.text();
+  
+  return eval(`
+    (function() {
+      ${tesseractCode}
+      return Tesseract;
+    })()
+  `);
+};
+
+// Primary PDF.js text extraction
+async function extractTextWithPDFjs(uint8Array: Uint8Array): Promise<{ text: string; quality: 'good' | 'poor' | 'failed' }> {
+  try {
+    console.log("📖 Starting PDF.js text extraction...");
+    const pdfLib = await loadPDFjs();
     
-    texts.forEach(text => {
-      const clean = text.replace(/[()[\]]/g, '').trim();
-      if (clean.length > 1 && /[a-zA-Z]/.test(clean)) {
-        extractedTexts.push(clean);
+    const pdf = await pdfLib.getDocument({ data: uint8Array }).promise;
+    const numPages = pdf.numPages;
+    console.log(`📄 PDF has ${numPages} pages`);
+    
+    const textContent = [];
+    
+    for (let pageNum = 1; pageNum <= numPages; pageNum++) {
+      const page = await pdf.getPage(pageNum);
+      const content = await page.getTextContent();
+      
+      const pageText = content.items
+        .map((item: any) => item.str)
+        .join(' ')
+        .trim();
+      
+      if (pageText) {
+        textContent.push(pageText);
       }
-    });
+    }
+    
+    const fullText = textContent.join('\n\n').trim();
+    console.log(`📝 PDF.js extracted ${fullText.length} characters`);
+    
+    // Quality assessment
+    const wordCount = fullText.split(/\s+/).filter(word => word.length > 2).length;
+    const hasEmail = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/.test(fullText);
+    const hasPhone = /\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/.test(fullText);
+    
+    if (fullText.length > 100 && wordCount > 20 && (hasEmail || hasPhone || wordCount > 50)) {
+      return { text: fullText, quality: 'good' };
+    } else if (fullText.length > 50) {
+      return { text: fullText, quality: 'poor' };
+    } else {
+      return { text: '', quality: 'failed' };
+    }
+    
+  } catch (error) {
+    console.error("❌ PDF.js extraction failed:", error);
+    return { text: '', quality: 'failed' };
   }
-  
-  return extractedTexts.join(' ').replace(/\s+/g, ' ').trim();
 }
 
-// Helper function for advanced text extraction
-async function extractTextAdvanced(uint8Array: Uint8Array, fileName: string): Promise<string> {
+// OCR fallback using Tesseract.js
+async function extractTextWithOCR(uint8Array: Uint8Array, fileName: string): Promise<string> {
+  try {
+    console.log("🔍 Starting OCR text extraction...");
+    const pdfLib = await loadPDFjs();
+    const tesseract = await loadTesseract();
+    
+    const pdf = await pdfLib.getDocument({ data: uint8Array }).promise;
+    const page = await pdf.getPage(1); // Start with first page
+    
+    const viewport = page.getViewport({ scale: 2.0 }); // Higher scale for better OCR
+    const canvas = new OffscreenCanvas(viewport.width, viewport.height);
+    const context = canvas.getContext('2d');
+    
+    await page.render({
+      canvasContext: context,
+      viewport: viewport
+    }).promise;
+    
+    // Convert canvas to image blob
+    const imageBlob = await canvas.convertToBlob({ type: 'image/png' });
+    const imageBuffer = await imageBlob.arrayBuffer();
+    
+    console.log("🖼️ Converted PDF to image, starting OCR...");
+    
+    // Perform OCR
+    const { data: { text } } = await tesseract.recognize(
+      new Uint8Array(imageBuffer),
+      'eng',
+      {
+        logger: (m: any) => {
+          if (m.status === 'recognizing text') {
+            console.log(`OCR Progress: ${Math.round(m.progress * 100)}%`);
+          }
+        }
+      }
+    );
+    
+    console.log(`🔤 OCR extracted ${text.length} characters`);
+    
+    // Clean up OCR text
+    const cleanedText = text
+      .replace(/[^\w\s@.-]/g, ' ') // Remove special characters except email/phone chars
+      .replace(/\s+/g, ' ')
+      .trim();
+    
+    return cleanedText.length > 50 ? cleanedText : 
+      `OCR Resume: ${fileName}\n\nOCR text extraction completed but yielded limited readable content. This may be a low-quality scan or complex layout.`;
+    
+  } catch (error) {
+    console.error("❌ OCR extraction failed:", error);
+    return `OCR Resume: ${fileName}\n\nOCR processing failed. This may be due to image quality or format issues.`;
+  }
+}
+
+// Final fallback - manual parsing
+async function extractTextFallback(uint8Array: Uint8Array, fileName: string): Promise<string> {
+  console.log("🔧 Using fallback manual parsing...");
   const pdfString = new TextDecoder('latin1').decode(uint8Array);
   
-  // Multiple extraction strategies
-  const strategies = [
-    // Strategy 1: Extract strings between Tj operators
-    () => {
-      const tjMatches = pdfString.match(/\(([^)]+)\)\s*Tj/g) || [];
-      return tjMatches.map(match => match.replace(/[()]/g, '').replace(/\s*Tj$/, '')).join(' ');
-    },
-    
-    // Strategy 2: Extract from text streams
-    () => {
-      const streamMatches = pdfString.match(/stream[\s\S]*?endstream/g) || [];
-      const texts: string[] = [];
-      
-      streamMatches.forEach(stream => {
-        const textInStream = stream.match(/\(([^)]+)\)/g) || [];
-        textInStream.forEach(text => {
-          const clean = text.replace(/[()]/g, '').trim();
-          if (clean.length > 1) texts.push(clean);
-        });
-      });
-      
-      return texts.join(' ');
-    },
-    
-    // Strategy 3: Look for readable ASCII sequences
-    () => {
-      return pdfString
-        .replace(/[^\x20-\x7E\n\r]/g, ' ')
-        .split(/\s+/)
-        .filter(word => word.length > 2 && /[a-zA-Z]/.test(word))
-        .join(' ');
-    }
+  // Extract readable text patterns
+  const textMatches = [
+    ...pdfString.match(/\(([^)]+)\)/g) || [],
+    ...pdfString.match(/\[([^\]]+)\]/g) || []
   ];
   
-  // Try each strategy and combine results
-  const results = strategies.map(strategy => {
-    try {
-      return strategy();
-    } catch {
-      return '';
-    }
-  }).filter(result => result.length > 0);
+  const extractedTexts = textMatches
+    .map(match => match.replace(/[()[\]]/g, '').trim())
+    .filter(text => text.length > 2 && /[a-zA-Z]/.test(text));
   
-  if (results.length === 0) {
-    return `PDF Resume: ${fileName}\n\nThis appears to be a complex PDF format that requires manual data entry.`;
-  }
+  const result = extractedTexts.join(' ').replace(/\s+/g, ' ').trim();
   
-  // Combine and deduplicate results
-  const combined = results.join(' ').replace(/\s+/g, ' ').trim();
-  return combined.length > 50 ? combined : `PDF Resume: ${fileName}\n\nLimited text extraction possible. Manual entry recommended.`;
+  return result.length > 50 ? result : 
+    `Fallback Resume: ${fileName}\n\nManual text extraction completed with limited success. Consider re-uploading as a text-based PDF or using OCR software.`;
 }
 
 serve(async (req) => {
@@ -125,79 +198,80 @@ serve(async (req) => {
 
     console.log(`📄 Processing file: ${file.name} (${file.size} bytes)`);
 
-    // Step 2: Extract text from PDF using a robust library
-    console.log("📝 Extracting text from PDF...");
+    // Step 2: Hybrid PDF text extraction (PDF.js + OCR fallback)
+    console.log("📝 Starting hybrid PDF text extraction...");
     
     const fileBuffer = await file.arrayBuffer();
     const uint8Array = new Uint8Array(fileBuffer);
     
     let resumeText = "";
-    try {
-      // Use pdf2pic approach - import a more reliable PDF parser
-      const { default: PDF } = await import("https://deno.land/x/pdf@0.1.2/mod.ts");
+    let extractionMethod = "unknown";
+    
+    // Phase 1: Try PDF.js first (handles 90% of PDFs)
+    const pdfResult = await extractTextWithPDFjs(uint8Array);
+    
+    if (pdfResult.quality === 'good') {
+      resumeText = pdfResult.text;
+      extractionMethod = "PDF.js";
+      console.log("✅ PDF.js extraction successful with good quality");
+    } else if (pdfResult.quality === 'poor') {
+      console.log("⚠️ PDF.js extraction yielded poor quality, trying OCR...");
       
+      // Phase 2: Try OCR for better results
       try {
-        const pdf = await PDF.load(uint8Array);
-        const pages = await pdf.getPages();
-        
-        const textContent = [];
-        for (const page of pages) {
-          const pageText = await page.getTextContent();
-          if (pageText && pageText.trim()) {
-            textContent.push(pageText);
-          }
+        const ocrText = await extractTextWithOCR(uint8Array, file.name);
+        if (ocrText.length > pdfResult.text.length * 1.5) {
+          resumeText = ocrText;
+          extractionMethod = "OCR";
+          console.log("✅ OCR extraction provided better results");
+        } else {
+          resumeText = pdfResult.text;
+          extractionMethod = "PDF.js (poor quality)";
+          console.log("📝 Using PDF.js results despite poor quality");
         }
-        
-        resumeText = textContent.join('\n\n').trim();
-        console.log(`📝 PDF.js extracted: ${resumeText.length} characters`);
-        
-      } catch (pdfLibError) {
-        console.log("📝 First library failed, trying alternative approach...");
-        throw pdfLibError;
+      } catch (ocrError) {
+        console.error("❌ OCR failed, using PDF.js results:", ocrError);
+        resumeText = pdfResult.text;
+        extractionMethod = "PDF.js (OCR failed)";
       }
+    } else {
+      console.log("❌ PDF.js failed completely, trying OCR...");
       
-    } catch (firstError) {
-      console.log("📝 Trying alternative PDF parsing method...");
-      
+      // Phase 2: OCR as primary method
       try {
-        // Fallback: Try a different PDF parsing approach
-        // Use Node.js compatible pdf-parse through CDN
-        const response = await fetch("https://cdn.skypack.dev/pdf-parse@1.1.9");
-        const pdfParseModule = await response.text();
+        resumeText = await extractTextWithOCR(uint8Array, file.name);
+        extractionMethod = "OCR";
+        console.log("✅ OCR extraction completed");
+      } catch (ocrError) {
+        console.error("❌ OCR also failed, using manual fallback:", ocrError);
         
-        // Create a simple PDF text extractor using buffer analysis
-        const pdfText = await extractPDFTextSimple(uint8Array);
-        resumeText = pdfText;
-        
-        console.log(`📝 Alternative method extracted: ${resumeText.length} characters`);
-        
-      } catch (secondError) {
-        console.log("📝 Both methods failed, using advanced text extraction...");
-        
-        // Final fallback: More sophisticated text extraction
-        resumeText = await extractTextAdvanced(uint8Array, file.name);
-        console.log(`📝 Advanced extraction: ${resumeText.length} characters`);
+        // Phase 3: Manual parsing fallback
+        resumeText = await extractTextFallback(uint8Array, file.name);
+        extractionMethod = "Manual fallback";
+        console.log("🔧 Manual fallback extraction completed");
       }
     }
 
-    // Validate extracted text quality
+    // Final validation and user guidance
     if (resumeText.length < 50) {
-      console.log("⚠️ Insufficient text extracted, creating placeholder");
+      console.log("⚠️ All extraction methods yielded minimal text");
       resumeText = `PDF Resume: ${file.name}
 
-This PDF was uploaded but automatic text extraction yielded limited results.
-The file appears to be: ${file.name} (${(file.size/1024).toFixed(1)} KB)
+This PDF was processed using multiple extraction methods (${extractionMethod}) but yielded limited results.
+File details: ${file.name} (${(file.size/1024).toFixed(1)} KB)
 
-Common reasons for extraction issues:
-• Image-based PDF (scanned document)
-• Complex formatting or unusual fonts
+Possible reasons:
+• Image-based PDF requiring advanced OCR
+• Complex formatting or unusual fonts  
 • Password protected or secured PDF
-• Non-standard PDF structure
+• Corrupted or non-standard PDF structure
 
-Please manually enter the candidate information, or try:
-• Exporting the resume as a new PDF from the original document
-• Using a simpler PDF format
-• Ensuring the PDF contains selectable text (not just images)`;
+Recommendations:
+• Try exporting as a new, simpler PDF format
+• Ensure the PDF contains selectable text
+• Consider manual data entry for this resume`;
+    } else {
+      console.log(`✅ Extraction completed via ${extractionMethod}: ${resumeText.length} characters`);
     }
 
 
