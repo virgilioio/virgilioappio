@@ -75,7 +75,7 @@ async function getAdobeAccessToken(): Promise<string> {
   try {
     console.log('Attempting Adobe OAuth authentication...');
     
-    // Use correct Adobe IMS OAuth endpoint and scope for PDF Services
+    // Use correct Adobe PDF Services scope
     const response = await fetch('https://ims-na1.adobelogin.com/ims/token/v3', {
       method: 'POST',
       headers: {
@@ -85,7 +85,7 @@ async function getAdobeAccessToken(): Promise<string> {
         client_id: clientId,
         client_secret: clientSecret,
         grant_type: 'client_credentials',
-        scope: 'openid,AdobeID,read_organizations,additional_info.projectedProductContext,session'
+        scope: 'https://ims-na1.adobelogin.com/s/ent_documentcloud_sdk'
       }),
     });
 
@@ -116,80 +116,94 @@ async function extractPDFText(pdfFile: File): Promise<string> {
       throw new Error('Adobe Client ID and Organization ID are required');
     }
 
-    console.log('Starting Adobe PDF Services extraction process...');
+    console.log('Starting Adobe PDF Extract API process...');
 
-    // Step 1: Upload PDF to Adobe's asset storage
-    console.log('Step 1: Uploading PDF to Adobe asset storage...');
+    // Step 1: Create PDF Extract job
+    console.log('Step 1: Creating PDF Extract job...');
+    const createJobPayload = {
+      assetID: null, // Will be set after upload
+      getCharBounds: false,
+      getStylingInfo: false
+    };
+
+    // First upload the PDF file
     const uploadFormData = new FormData();
-    uploadFormData.append('contentAnalyzerRequests', JSON.stringify({
-      cpf: {
-        inputs: {
-          documentIn: {
-            dc: [
-              {
-                pagestart: 1,
-                pageend: -1
-              }
-            ],
-            cpf: {
-              outputs: [
-                {
-                  type: "text",
-                  tableOutputFormat: "csv"
-                }
-              ]
-            }
-          }
-        }
-      }
-    }));
-    uploadFormData.append('documentIn', pdfFile);
+    uploadFormData.append('file', pdfFile);
 
-    const uploadResponse = await fetch('https://pdf-services.adobe.io/operation/contentanalyzer', {
+    const uploadResponse = await fetch('https://pdf-services.adobe.io/assets', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
         'x-api-key': clientId,
-        'x-gw-ims-org-id': orgId,
       },
       body: uploadFormData,
     });
 
-    console.log('Adobe upload response status:', uploadResponse.status);
+    console.log('Adobe file upload response status:', uploadResponse.status);
     
     if (!uploadResponse.ok) {
       const errorText = await uploadResponse.text();
-      console.error('Adobe upload failed:', errorText);
+      console.error('Adobe file upload failed:', errorText);
       throw new Error(`Adobe PDF upload failed: ${uploadResponse.statusText} - ${errorText}`);
     }
 
     const uploadResult = await uploadResponse.json();
-    const jobId = uploadResult.jobId;
+    const assetID = uploadResult.assetID;
     
-    if (!jobId) {
-      console.error('No job ID received from Adobe:', uploadResult);
-      throw new Error('Adobe did not return a job ID');
+    if (!assetID) {
+      console.error('No asset ID received from Adobe:', uploadResult);
+      throw new Error('Adobe did not return an asset ID');
     }
 
-    console.log('Adobe job created with ID:', jobId);
+    console.log('Adobe asset uploaded with ID:', assetID);
 
-    // Step 2: Poll for job completion
-    console.log('Step 2: Polling for job completion...');
+    // Step 2: Create extract job
+    createJobPayload.assetID = assetID;
+    
+    const createJobResponse = await fetch('https://pdf-services.adobe.io/operation/extractpdf', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'x-api-key': clientId,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(createJobPayload),
+    });
+
+    console.log('Adobe create job response status:', createJobResponse.status);
+    
+    if (!createJobResponse.ok) {
+      const errorText = await createJobResponse.text();
+      console.error('Adobe create job failed:', errorText);
+      throw new Error(`Adobe job creation failed: ${createJobResponse.statusText} - ${errorText}`);
+    }
+
+    const jobResult = await createJobResponse.json();
+    const jobLocation = createJobResponse.headers.get('location');
+    
+    if (!jobLocation) {
+      console.error('No job location received from Adobe:', jobResult);
+      throw new Error('Adobe did not return a job location');
+    }
+
+    console.log('Adobe job created at:', jobLocation);
+
+    // Step 3: Poll for job completion
+    console.log('Step 3: Polling for job completion...');
     let jobCompleted = false;
     let attempts = 0;
-    const maxAttempts = 30; // 30 seconds timeout
-    let jobResult: any;
+    const maxAttempts = 60; // 60 seconds timeout
+    let finalJobResult: any;
 
     while (!jobCompleted && attempts < maxAttempts) {
       await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
       attempts++;
 
-      const statusResponse = await fetch(`https://pdf-services.adobe.io/operation/contentanalyzer/${jobId}`, {
+      const statusResponse = await fetch(jobLocation, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
           'x-api-key': clientId,
-          'x-gw-ims-org-id': orgId,
         },
       });
 
@@ -198,30 +212,28 @@ async function extractPDFText(pdfFile: File): Promise<string> {
         continue;
       }
 
-      jobResult = await statusResponse.json();
-      console.log(`Job status check ${attempts}: ${jobResult.status}`);
+      finalJobResult = await statusResponse.json();
+      console.log(`Job status check ${attempts}: ${finalJobResult.status}`);
 
-      if (jobResult.status === 'done') {
+      if (finalJobResult.status === 'done') {
         jobCompleted = true;
-      } else if (jobResult.status === 'failed') {
-        throw new Error(`Adobe job failed: ${jobResult.error || 'Unknown error'}`);
+      } else if (finalJobResult.status === 'failed') {
+        throw new Error(`Adobe job failed: ${finalJobResult.error || 'Unknown error'}`);
       }
     }
 
     if (!jobCompleted) {
-      throw new Error('Adobe job timed out after 30 seconds');
+      throw new Error('Adobe job timed out after 60 seconds');
     }
 
-    // Step 3: Download and parse results
-    console.log('Step 3: Downloading extraction results...');
-    if (!jobResult.output || !jobResult.output.length) {
-      throw new Error('No output received from Adobe job');
+    // Step 4: Download and parse results
+    console.log('Step 4: Downloading extraction results...');
+    if (!finalJobResult.asset || !finalJobResult.asset.downloadUri) {
+      throw new Error('No download URL received from Adobe job result');
     }
 
-    const downloadUrl = jobResult.output[0].downloadUri;
-    if (!downloadUrl) {
-      throw new Error('No download URL received from Adobe');
-    }
+    const downloadUrl = finalJobResult.asset.downloadUri;
+    console.log('Downloading from:', downloadUrl);
 
     const downloadResponse = await fetch(downloadUrl, {
       headers: {
@@ -236,7 +248,7 @@ async function extractPDFText(pdfFile: File): Promise<string> {
     const extractionResult = await downloadResponse.json();
     console.log('Successfully downloaded extraction results');
 
-    // Step 4: Extract text from the results
+    // Step 5: Extract text from the results
     let extractedText = '';
     
     if (extractionResult.elements && Array.isArray(extractionResult.elements)) {
@@ -244,13 +256,17 @@ async function extractPDFText(pdfFile: File): Promise<string> {
         .filter((element: any) => element.Text)
         .map((element: any) => element.Text)
         .join(' ');
-    } else if (extractionResult.textContent) {
-      extractedText = extractionResult.textContent;
+    } else if (extractionResult.content && Array.isArray(extractionResult.content)) {
+      extractedText = extractionResult.content
+        .filter((item: any) => item.type === 'text')
+        .map((item: any) => item.value || item.text)
+        .join(' ');
     } else if (typeof extractionResult === 'string') {
       extractedText = extractionResult;
     }
 
     console.log('Extracted text length:', extractedText.length);
+    console.log('First 500 chars:', extractedText.substring(0, 500));
     
     if (!extractedText.trim()) {
       throw new Error('No text content found in the extracted results');

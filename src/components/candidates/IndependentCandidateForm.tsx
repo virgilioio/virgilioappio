@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge'
 import { X, Plus, Upload, Loader } from 'lucide-react'
 import { CreateIndependentCandidateData } from '@/hooks/useIndependentCandidates'
 import { toast } from '@/hooks/use-toast'
+import { supabase } from '@/integrations/supabase/client'
 
 const candidateSchema = z.object({
   candidate_name: z.string().min(1, 'Name is required'),
@@ -165,15 +166,16 @@ export function IndependentCandidateForm({
       const formData = new FormData()
       formData.append('resume', file)
 
-      const response = await fetch('https://etrxjxstjfcozdjumfsj.supabase.co/functions/v1/process-resume', {
-        method: 'POST',
+      const { data: response, error: functionError } = await supabase.functions.invoke('process-resume', {
         body: formData,
       })
 
-      const result = await response.json()
+      if (functionError) {
+        throw new Error(functionError.message || 'Function invocation failed')
+      }
 
-      if (result.success && result.extracted_data) {
-        const data = result.extracted_data
+      if (response?.success && response?.extracted_data) {
+        const data = response.extracted_data
         
         // Auto-fill form fields
         setValue('candidate_name', data.candidate_name || '')
@@ -198,7 +200,7 @@ export function IndependentCandidateForm({
           description: 'Form has been auto-filled with extracted data. Please review and edit as needed.',
         })
       } else {
-        throw new Error(result.error || 'Failed to process resume')
+        throw new Error(response?.error || 'Failed to process resume')
       }
     } catch (error) {
       console.error('Resume processing error:', error)
