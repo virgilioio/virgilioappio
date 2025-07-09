@@ -8,6 +8,7 @@ import { Loader2, Sparkles, CheckCircle2, Circle, Briefcase, DollarSign, MapPin,
 import { supabase } from '@/integrations/supabase/client'
 import { useToast } from '@/hooks/use-toast'
 import { validateJobPrompt, getValidationStats, type ValidationItem } from '@/utils/jobPromptValidation'
+import { SkillsEditor } from './SkillsEditor'
 
 interface JobSpec {
   job_title: string
@@ -51,6 +52,7 @@ export function AIJobAssistant() {
   const [isCollapsed, setIsCollapsed] = useState(true)
   const [dialogStep, setDialogStep] = useState<'review' | 'proceed'>('review')
   const [isFocused, setIsFocused] = useState(false)
+  const [editableSkills, setEditableSkills] = useState<string[]>([])
   const { toast } = useToast()
 
   const currentValidation = validateJobPrompt(prompt)
@@ -73,6 +75,7 @@ export function AIJobAssistant() {
         setJobSpec(data.jobSpec)
         setCandidateMatching(data.candidateMatching || null)
         setSelectedTitle(data.jobSpec.job_title)
+        setEditableSkills(data.jobSpec.skills || [])
         setDialogStep('review')
         setShowModal(true)
       } else {
@@ -287,30 +290,14 @@ export function AIJobAssistant() {
                   </div>
 
                   <div className="space-y-4">
-                    <div>
-                      <h4 className="text-sm font-medium mb-2">Required Skills</h4>
-                      <div className="flex flex-wrap gap-1">
-                        {jobSpec.skills.map((skill, index) => {
-                          const pastelColors = [
-                            'bg-pink-100 text-pink-700 border-pink-200',
-                            'bg-blue-100 text-blue-700 border-blue-200',
-                            'bg-green-100 text-green-700 border-green-200',
-                            'bg-yellow-100 text-yellow-700 border-yellow-200',
-                            'bg-purple-100 text-purple-700 border-purple-200',
-                            'bg-indigo-100 text-indigo-700 border-indigo-200',
-                            'bg-orange-100 text-orange-700 border-orange-200',
-                            'bg-teal-100 text-teal-700 border-teal-200'
-                          ]
-                          const colorClass = pastelColors[index % pastelColors.length]
-                          
-                          return (
-                            <span key={index} className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${colorClass}`}>
-                              {skill}
-                            </span>
-                          )
-                        })}
-                      </div>
-                    </div>
+                    <SkillsEditor
+                      skills={editableSkills}
+                      onSkillsChange={setEditableSkills}
+                      location={jobSpec.location}
+                      salaryMin={jobSpec.salary_range.min}
+                      salaryMax={jobSpec.salary_range.max}
+                      currency={jobSpec.salary_range.currency}
+                    />
                   </div>
                 </div>
 
