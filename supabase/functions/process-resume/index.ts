@@ -35,10 +35,28 @@ serve(async (req) => {
     const client_id = Deno.env.get("ADOBE_CLIENT_ID");
     const client_secret = Deno.env.get("ADOBE_CLIENT_SECRET");
     const org_id = Deno.env.get("ADOBE_IMS_ORG");
+    const technical_account_id = Deno.env.get("ADOBE_TECHNICAL_ACCOUNT_ID");
+
+    console.log("🔧 Adobe Credentials Check:");
+    console.log("- Client ID:", client_id ? "✓ Set" : "❌ Missing");
+    console.log("- Client Secret:", client_secret ? "✓ Set" : "❌ Missing");
+    console.log("- Org ID:", org_id ? "✓ Set" : "❌ Missing");
+    console.log("- Technical Account ID:", technical_account_id ? "✓ Set" : "❌ Missing");
 
     if (!client_id || !client_secret || !org_id) {
       console.error("❌ Missing Adobe credentials");
-      return new Response("Missing Adobe credentials", { status: 500, headers: corsHeaders });
+      return new Response(JSON.stringify({ 
+        error: "Missing Adobe credentials", 
+        missing: {
+          client_id: !client_id,
+          client_secret: !client_secret,
+          org_id: !org_id,
+          technical_account_id: !technical_account_id
+        }
+      }), { 
+        status: 500, 
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
     }
 
     // Step 3: Get Adobe access token
