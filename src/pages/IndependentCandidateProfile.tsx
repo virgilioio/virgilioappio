@@ -11,6 +11,7 @@ import { AppContainer } from '@/components/layout/AppContainer'
 import { useIndependentCandidates, IndependentCandidate } from '@/hooks/useIndependentCandidates'
 import { IndependentCandidateForm } from '@/components/candidates/IndependentCandidateForm'
 import { cn } from '@/lib/utils'
+import { getSkillColor } from '@/utils/skillColors'
 
 export default function IndependentCandidateProfile() {
   const { candidateId } = useParams<{ candidateId: string }>()
@@ -298,7 +299,7 @@ export default function IndependentCandidateProfile() {
                   <CardContent>
                     <div className="flex flex-wrap gap-2">
                       {candidate.skills.map((skill) => (
-                        <Badge key={skill} variant="outline" className="text-sm">
+                        <Badge key={skill} variant={getSkillColor(skill)} className="text-sm">
                           {skill}
                         </Badge>
                       ))}

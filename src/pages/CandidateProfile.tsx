@@ -21,6 +21,7 @@ import { cn } from '@/lib/utils'
 import { CandidateAttachments } from '@/components/candidates/CandidateAttachments'
 import { CandidateUrls } from '@/components/candidates/CandidateUrls'
 import { CreateOfferLetterDialog } from '@/components/candidates/CreateOfferLetterDialog'
+import { getSkillColor } from '@/utils/skillColors'
 
 export default function CandidateProfile() {
   const { jobId, candidateId } = useParams<{ jobId: string; candidateId: string }>()
@@ -320,7 +321,7 @@ export default function CandidateProfile() {
                     <CardContent>
                       <div className="flex flex-wrap gap-2">
                         {candidate.skills.map((skill) => (
-                          <Badge key={skill} variant="outline" className="text-sm">
+                          <Badge key={skill} variant={getSkillColor(skill)} className="text-sm">
                             {skill}
                           </Badge>
                         ))}

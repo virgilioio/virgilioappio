@@ -18,6 +18,7 @@ import { useFormPersistence } from '@/hooks/useFormPersistence'
 import { CandidateComments } from './CandidateComments'
 import type { Candidate } from '@/hooks/useCandidates'
 import { toast } from '@/hooks/use-toast'
+import { getSkillColor } from '@/utils/skillColors'
 
 interface CandidateFormProps {
   isOpen: boolean
@@ -593,7 +594,7 @@ export function CandidateForm({
                   {skills.length > 0 && (
                     <div className="flex flex-wrap gap-2 mt-2">
                       {skills.map((skill) => (
-                        <Badge key={skill} variant="secondary" className="flex items-center gap-1">
+                        <Badge key={skill} variant={getSkillColor(skill)} className="flex items-center gap-1">
                           {skill}
                           <button
                             type="button"

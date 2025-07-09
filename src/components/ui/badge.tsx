@@ -22,6 +22,12 @@ const badgeVariants = cva(
         info:
           "border-transparent bg-info text-info-foreground hover:bg-info/80",
         outline: "text-foreground border-border hover:bg-accent hover:text-accent-foreground",
+        "pastel-blue": "border-transparent bg-pastel-blue text-pastel-blue-foreground hover:bg-pastel-blue/80",
+        "pastel-purple": "border-transparent bg-pastel-purple text-pastel-purple-foreground hover:bg-pastel-purple/80",
+        "pastel-green": "border-transparent bg-pastel-green text-pastel-green-foreground hover:bg-pastel-green/80",
+        "pastel-pink": "border-transparent bg-pastel-pink text-pastel-pink-foreground hover:bg-pastel-pink/80",
+        "pastel-yellow": "border-transparent bg-pastel-yellow text-pastel-yellow-foreground hover:bg-pastel-yellow/80",
+        "pastel-orange": "border-transparent bg-pastel-orange text-pastel-orange-foreground hover:bg-pastel-orange/80",
       },
     },
     defaultVariants: {

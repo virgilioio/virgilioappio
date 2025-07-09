@@ -13,6 +13,7 @@ import { X, Plus, Upload, Loader } from 'lucide-react'
 import { CreateIndependentCandidateData } from '@/hooks/useIndependentCandidates'
 import { toast } from '@/hooks/use-toast'
 import { supabase } from '@/integrations/supabase/client'
+import { getSkillColor } from '@/utils/skillColors'
 
 const candidateSchema = z.object({
   candidate_name: z.string().min(1, 'Name is required'),
@@ -483,7 +484,7 @@ export function IndependentCandidateForm({
               {skills.length > 0 && (
                 <div className="flex flex-wrap gap-2 mt-2">
                   {skills.map((skill) => (
-                    <Badge key={skill} variant="secondary" className="flex items-center gap-1">
+                    <Badge key={skill} variant={getSkillColor(skill)} className="flex items-center gap-1">
                       {skill}
                       <button
                         type="button"

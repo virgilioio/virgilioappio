@@ -12,6 +12,7 @@ import { Link, useParams } from 'react-router-dom'
 import { PermissionGate } from '@/components/auth/PermissionGate'
 import { usePermissions } from '@/hooks/usePermissions'
 import { NewBadge } from '@/components/ui/new-badge'
+import { getSkillColor } from '@/utils/skillColors'
 
 // Support both local job candidates and global candidates with job info
 interface BaseCandidate {
@@ -387,11 +388,11 @@ export function CandidateTable({
                            >
                              {candidate.skills && candidate.skills.length > 0 ? (
                                <div className="flex flex-wrap gap-1">
-                                 {candidate.skills.slice(0, 3).map((skill) => (
-                                   <Badge key={skill} variant="secondary" className="text-xs">
-                                     {skill}
-                                   </Badge>
-                                 ))}
+                                  {candidate.skills.slice(0, 3).map((skill) => (
+                                    <Badge key={skill} variant={getSkillColor(skill)} className="text-xs">
+                                      {skill}
+                                    </Badge>
+                                  ))}
                                  {candidate.skills.length > 3 && (
                                    <Badge variant="outline" className="text-xs">
                                      +{candidate.skills.length - 3} more

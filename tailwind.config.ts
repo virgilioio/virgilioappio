@@ -87,6 +87,20 @@ export default {
 				info: {
 					DEFAULT: 'hsl(var(--info))',
 					foreground: 'hsl(var(--info-foreground))'
+				},
+				pastel: {
+					blue: 'hsl(var(--pastel-blue))',
+					'blue-foreground': 'hsl(var(--pastel-blue-foreground))',
+					purple: 'hsl(var(--pastel-purple))',
+					'purple-foreground': 'hsl(var(--pastel-purple-foreground))',
+					green: 'hsl(var(--pastel-green))',
+					'green-foreground': 'hsl(var(--pastel-green-foreground))',
+					pink: 'hsl(var(--pastel-pink))',
+					'pink-foreground': 'hsl(var(--pastel-pink-foreground))',
+					yellow: 'hsl(var(--pastel-yellow))',
+					'yellow-foreground': 'hsl(var(--pastel-yellow-foreground))',
+					orange: 'hsl(var(--pastel-orange))',
+					'orange-foreground': 'hsl(var(--pastel-orange-foreground))'
 				}
 			},
 			borderRadius: {

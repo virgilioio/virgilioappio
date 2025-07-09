@@ -43,6 +43,20 @@
     --info: 180 100% 88%; /* #c5f5fb */
     --info-foreground: 180 100% 20%;
 
+    /* Pastel colors for skills */
+    --pastel-blue: 219 92% 95%;
+    --pastel-blue-foreground: 213 94% 24%;
+    --pastel-purple: 270 100% 95%;
+    --pastel-purple-foreground: 261 83% 35%;
+    --pastel-green: 120 100% 94%;
+    --pastel-green-foreground: 120 100% 25%;
+    --pastel-pink: 330 100% 95%;
+    --pastel-pink-foreground: 330 81% 35%;
+    --pastel-yellow: 50 100% 94%;
+    --pastel-yellow-foreground: 45 93% 35%;
+    --pastel-orange: 25 100% 94%;
+    --pastel-orange-foreground: 20 91% 35%;
+
     --border: 0 0% 100%; /* Remove border visibility */
     --input: 0 0% 100%; /* Remove input border visibility */
     --ring: 60 100% 85%;
@@ -162,6 +176,20 @@
 
     --info: 180 100% 88%;
     --info-foreground: 180 100% 20%;
+
+    /* Dark mode pastel colors */
+    --pastel-blue: 213 94% 24%;
+    --pastel-blue-foreground: 219 92% 95%;
+    --pastel-purple: 261 83% 35%;
+    --pastel-purple-foreground: 270 100% 95%;
+    --pastel-green: 120 100% 25%;
+    --pastel-green-foreground: 120 100% 94%;
+    --pastel-pink: 330 81% 35%;
+    --pastel-pink-foreground: 330 100% 95%;
+    --pastel-yellow: 45 93% 35%;
+    --pastel-yellow-foreground: 50 100% 94%;
+    --pastel-orange: 20 91% 35%;
+    --pastel-orange-foreground: 25 100% 94%;
 
     --border: 0 0% 0% / 0; /* Remove border visibility in dark mode */
     --input: 0 0% 0% / 0; /* Remove input border visibility in dark mode */
