@@ -9,8 +9,9 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
-import { X, Plus } from 'lucide-react'
+import { X, Plus, Upload, Loader } from 'lucide-react'
 import { CreateIndependentCandidateData } from '@/hooks/useIndependentCandidates'
+import { toast } from '@/hooks/use-toast'
 
 const candidateSchema = z.object({
   candidate_name: z.string().min(1, 'Name is required'),
@@ -50,6 +51,7 @@ export function IndependentCandidateForm({
 }: IndependentCandidateFormProps) {
   const [skills, setSkills] = useState<string[]>(initialData?.skills || [])
   const [newSkill, setNewSkill] = useState('')
+  const [isProcessingResume, setIsProcessingResume] = useState(false)
 
   const {
     register,
@@ -135,6 +137,83 @@ export function IndependentCandidateForm({
     }
   }
 
+  const handleResumeUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+
+    if (file.type !== 'application/pdf') {
+      toast({
+        title: 'Invalid file type',
+        description: 'Please upload a PDF file only.',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: 'File too large',
+        description: 'Please upload a file smaller than 5MB.',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    setIsProcessingResume(true)
+
+    try {
+      const formData = new FormData()
+      formData.append('resume', file)
+
+      const response = await fetch('/functions/v1/process-resume', {
+        method: 'POST',
+        body: formData,
+      })
+
+      const result = await response.json()
+
+      if (result.success && result.extracted_data) {
+        const data = result.extracted_data
+        
+        // Auto-fill form fields
+        setValue('candidate_name', data.candidate_name || '')
+        setValue('email', data.email || '')
+        setValue('phone', data.phone || '')
+        setValue('linkedin_url', data.linkedin_url || '')
+        setValue('location_city', data.location_city || '')
+        setValue('location_state', data.location_state || '')
+        setValue('location_country', data.location_country || '')
+        setValue('salary_amount', data.salary_amount || undefined)
+        setValue('salary_currency', data.salary_currency || 'USD')
+        setValue('salary_period', data.salary_period || 'annually')
+        setValue('profile_summary', data.profile_summary || '')
+        
+        // Set skills
+        if (data.skills && data.skills.length > 0) {
+          setSkills(data.skills)
+        }
+
+        toast({
+          title: 'Resume processed successfully',
+          description: 'Form has been auto-filled with extracted data. Please review and edit as needed.',
+        })
+      } else {
+        throw new Error(result.error || 'Failed to process resume')
+      }
+    } catch (error) {
+      console.error('Resume processing error:', error)
+      toast({
+        title: 'Resume processing failed',
+        description: 'We couldn\'t extract the resume content. Please enter manually.',
+        variant: 'destructive'
+      })
+    } finally {
+      setIsProcessingResume(false)
+      // Reset file input
+      event.target.value = ''
+    }
+  }
+
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
@@ -146,6 +225,33 @@ export function IndependentCandidateForm({
         </DialogHeader>
 
         <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
+          {/* Resume Upload */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-foreground">Resume Upload (Optional)</h3>
+            <div className="space-y-2">
+              <Label htmlFor="resume">Upload Resume (PDF only, max 5MB)</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="resume"
+                  type="file"
+                  accept=".pdf"
+                  onChange={handleResumeUpload}
+                  disabled={isProcessingResume || isLoading}
+                  className="file:mr-3 file:py-1 file:px-2 file:rounded file:border-0 file:text-sm file:bg-primary file:text-primary-foreground"
+                />
+                {isProcessingResume && (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader className="h-4 w-4 animate-spin" />
+                    Processing...
+                  </div>
+                )}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Upload a PDF resume to auto-fill the form with extracted information.
+              </p>
+            </div>
+          </div>
+
           {/* Basic Information */}
           <div className="space-y-4">
             <h3 className="text-sm font-semibold text-foreground">Basic Information</h3>
