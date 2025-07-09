@@ -16,6 +16,33 @@ interface EnrichmentRequest {
   }
 }
 
+interface CoreSignalPerson {
+  id: string
+  name: string
+  title: string
+  company: string
+  location: string
+  emails: string[]
+  phones: string[]
+  linkedin_url?: string
+  bio?: string
+  experience: Array<{
+    company: string
+    title: string
+    start_date?: string
+    end_date?: string
+    location?: string
+    description?: string
+  }>
+  education: Array<{
+    school: string
+    degree?: string
+    field?: string
+    start_date?: string
+    end_date?: string
+  }>
+}
+
 serve(async (req) => {
   console.log('Function invoked with method:', req.method)
   
