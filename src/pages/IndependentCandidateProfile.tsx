@@ -60,7 +60,7 @@ export default function IndependentCandidateProfile() {
         fetchCandidateEnrichmentData(candidateId)
       }
     }
-  }, [candidates, candidateId, fetchCandidateEnrichmentData])
+  }, [candidates, candidateId]) // Removed fetchCandidateEnrichmentData from dependencies since it's now memoized
 
   const handleEnrichmentComplete = async () => {
     // Refresh candidate data after enrichment

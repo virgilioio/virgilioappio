@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
@@ -82,7 +82,9 @@ export const useCandidateEnrichment = () => {
     }
   };
 
-  const fetchCandidateEnrichmentData = async (candidateId: string) => {
+  const fetchCandidateEnrichmentData = useCallback(async (candidateId: string) => {
+    if (!candidateId) return;
+    
     try {
       // Fetch work experience
       const { data: workExp, error: workError } = await supabase
@@ -91,7 +93,10 @@ export const useCandidateEnrichment = () => {
         .eq('candidate_id', candidateId)
         .order('start_date', { ascending: false });
 
-      if (workError) throw workError;
+      // Only throw on real errors, not empty results
+      if (workError && workError.code !== 'PGRST116') {
+        console.error('Work experience fetch error:', workError);
+      }
       setWorkExperience(workExp || []);
 
       // Fetch education
@@ -101,7 +106,10 @@ export const useCandidateEnrichment = () => {
         .eq('candidate_id', candidateId)
         .order('start_date', { ascending: false });
 
-      if (eduError) throw eduError;
+      // Only throw on real errors, not empty results
+      if (eduError && eduError.code !== 'PGRST116') {
+        console.error('Education fetch error:', eduError);
+      }
       setEducation(edu || []);
 
       // Fetch enrichment logs
@@ -112,18 +120,27 @@ export const useCandidateEnrichment = () => {
         .order('created_at', { ascending: false })
         .limit(10);
 
-      if (logsError) throw logsError;
+      // Only throw on real errors, not empty results
+      if (logsError && logsError.code !== 'PGRST116') {
+        console.error('Enrichment logs fetch error:', logsError);
+      }
       setEnrichmentLogs(logs || []);
 
     } catch (error) {
       console.error('Error fetching enrichment data:', error);
-      toast({
-        title: "Data Fetch Error",
-        description: "Failed to load enrichment data",
-        variant: "destructive",
-      });
+      // Only show toast for real errors, not permission/empty data issues
+      if (error && typeof error === 'object' && 'code' in error) {
+        const supabaseError = error as any;
+        if (!['PGRST301', 'PGRST116'].includes(supabaseError.code)) {
+          toast({
+            title: "Data Fetch Error",
+            description: "Failed to load enrichment data",
+            variant: "destructive",
+          });
+        }
+      }
     }
-  };
+  }, [toast]);
 
   const generateResume = async (candidateId: string) => {
     try {
