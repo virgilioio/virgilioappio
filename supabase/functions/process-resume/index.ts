@@ -26,16 +26,19 @@ interface ExtractedProfile {
 }
 
 async function getAdobeAccessToken(): Promise<string> {
-  const clientId = Deno.env.get('ADOBE_CLIENT_ID');
-  const clientSecret = Deno.env.get('ADOBE_CLIENT_SECRET');
+  // Try both possible environment variable names
+  const clientId = Deno.env.get('PDF_SERVICES_CLIENT_ID') || Deno.env.get('ADOBE_CLIENT_ID');
+  const clientSecret = Deno.env.get('PDF_SERVICES_CLIENT_SECRET') || Deno.env.get('ADOBE_CLIENT_SECRET');
   
   console.log('=== Adobe Authentication Start ===');
+  console.log('PDF_SERVICES_CLIENT_ID exists:', !!Deno.env.get('PDF_SERVICES_CLIENT_ID'));
+  console.log('ADOBE_CLIENT_ID exists:', !!Deno.env.get('ADOBE_CLIENT_ID'));
   console.log('Client ID exists:', !!clientId);
   console.log('Client Secret exists:', !!clientSecret);
   
   if (!clientId || !clientSecret) {
     console.error('Missing Adobe credentials');
-    throw new Error('Adobe OAuth credentials not configured. Need ADOBE_CLIENT_ID and ADOBE_CLIENT_SECRET');
+    throw new Error('Adobe OAuth credentials not configured. Need PDF_SERVICES_CLIENT_ID/PDF_SERVICES_CLIENT_SECRET or ADOBE_CLIENT_ID/ADOBE_CLIENT_SECRET');
   }
 
   try {
@@ -90,7 +93,7 @@ async function extractPDFText(pdfFile: File): Promise<string> {
   
   try {
     const accessToken = await getAdobeAccessToken();
-    const clientId = Deno.env.get('ADOBE_CLIENT_ID');
+    const clientId = Deno.env.get('PDF_SERVICES_CLIENT_ID') || Deno.env.get('ADOBE_CLIENT_ID');
     const orgId = Deno.env.get('ADOBE_IMS_ORG');
     
     console.log('Adobe credentials for API calls:');
@@ -101,41 +104,60 @@ async function extractPDFText(pdfFile: File): Promise<string> {
       throw new Error('Adobe Client ID and Organization ID are required');
     }
 
-    // Step 1: Upload the PDF file to Adobe
-    console.log('=== Step 1: Uploading PDF to Adobe ===');
-    const uploadFormData = new FormData();
-    uploadFormData.append('file', pdfFile);
-
-    const uploadResponse = await fetch('https://pdf-services-ue1.adobe.io/assets', {
-      method: 'POST',
+    // Step 1: Get upload URI from Adobe
+    console.log('=== Step 1a: Getting Upload URI from Adobe ===');
+    const getUploadUriResponse = await fetch('https://pdf-services-ue1.adobe.io/assets', {
+      method: 'GET',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
         'x-api-key': clientId,
         'x-gw-ims-org-id': orgId,
       },
-      body: uploadFormData,
+    });
+
+    console.log('Get upload URI response status:', getUploadUriResponse.status);
+    console.log('Get upload URI response headers:', Object.fromEntries(getUploadUriResponse.headers.entries()));
+    
+    const uploadUriResponseText = await getUploadUriResponse.text();
+    console.log('Get upload URI response body:', uploadUriResponseText);
+    
+    if (!getUploadUriResponse.ok) {
+      console.error('Adobe get upload URI failed');
+      throw new Error(`Adobe get upload URI failed: ${getUploadUriResponse.status} - ${uploadUriResponseText}`);
+    }
+
+    const uploadUriResult = JSON.parse(uploadUriResponseText);
+    const uploadUri = uploadUriResult.uploadUri;
+    const assetID = uploadUriResult.assetID;
+    
+    if (!uploadUri || !assetID) {
+      console.error('No upload URI or asset ID received from Adobe');
+      throw new Error('Adobe did not return upload URI or asset ID');
+    }
+
+    console.log('Upload URI received:', uploadUri);
+    console.log('Asset ID received:', assetID);
+
+    // Step 1b: Upload the PDF file using the upload URI
+    console.log('=== Step 1b: Uploading PDF file to Adobe storage ===');
+    const uploadResponse = await fetch(uploadUri, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/pdf',
+      },
+      body: pdfFile,
     });
 
     console.log('Upload response status:', uploadResponse.status);
     console.log('Upload response headers:', Object.fromEntries(uploadResponse.headers.entries()));
     
-    const uploadResponseText = await uploadResponse.text();
-    console.log('Upload response body:', uploadResponseText);
-    
     if (!uploadResponse.ok) {
-      console.error('Adobe file upload failed');
-      throw new Error(`Adobe PDF upload failed: ${uploadResponse.status} - ${uploadResponseText}`);
+      const uploadErrorText = await uploadResponse.text();
+      console.error('Adobe file upload failed:', uploadErrorText);
+      throw new Error(`Adobe PDF upload failed: ${uploadResponse.status} - ${uploadErrorText}`);
     }
 
-    const uploadResult = JSON.parse(uploadResponseText);
-    const assetID = uploadResult.assetID;
-    
-    if (!assetID) {
-      console.error('No asset ID received from Adobe');
-      throw new Error('Adobe did not return an asset ID');
-    }
-
-    console.log('Asset uploaded successfully with ID:', assetID);
+    console.log('PDF file uploaded successfully');
 
     // Step 2: Create PDF Extract job
     console.log('=== Step 2: Creating PDF Extract Job ===');
