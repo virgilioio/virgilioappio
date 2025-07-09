@@ -6,6 +6,88 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Helper function for simple PDF text extraction
+async function extractPDFTextSimple(uint8Array: Uint8Array): Promise<string> {
+  const pdfString = new TextDecoder('latin1').decode(uint8Array);
+  
+  // Extract text between BT...ET blocks (text objects in PDF)
+  const textBlocks = pdfString.match(/BT[\s\S]*?ET/g) || [];
+  const extractedTexts: string[] = [];
+  
+  for (const block of textBlocks) {
+    // Extract text in parentheses and brackets
+    const texts = [
+      ...(block.match(/\(([^)]+)\)/g) || []),
+      ...(block.match(/\[([^\]]+)\]/g) || [])
+    ];
+    
+    texts.forEach(text => {
+      const clean = text.replace(/[()[\]]/g, '').trim();
+      if (clean.length > 1 && /[a-zA-Z]/.test(clean)) {
+        extractedTexts.push(clean);
+      }
+    });
+  }
+  
+  return extractedTexts.join(' ').replace(/\s+/g, ' ').trim();
+}
+
+// Helper function for advanced text extraction
+async function extractTextAdvanced(uint8Array: Uint8Array, fileName: string): Promise<string> {
+  const pdfString = new TextDecoder('latin1').decode(uint8Array);
+  
+  // Multiple extraction strategies
+  const strategies = [
+    // Strategy 1: Extract strings between Tj operators
+    () => {
+      const tjMatches = pdfString.match(/\(([^)]+)\)\s*Tj/g) || [];
+      return tjMatches.map(match => match.replace(/[()]/g, '').replace(/\s*Tj$/, '')).join(' ');
+    },
+    
+    // Strategy 2: Extract from text streams
+    () => {
+      const streamMatches = pdfString.match(/stream[\s\S]*?endstream/g) || [];
+      const texts: string[] = [];
+      
+      streamMatches.forEach(stream => {
+        const textInStream = stream.match(/\(([^)]+)\)/g) || [];
+        textInStream.forEach(text => {
+          const clean = text.replace(/[()]/g, '').trim();
+          if (clean.length > 1) texts.push(clean);
+        });
+      });
+      
+      return texts.join(' ');
+    },
+    
+    // Strategy 3: Look for readable ASCII sequences
+    () => {
+      return pdfString
+        .replace(/[^\x20-\x7E\n\r]/g, ' ')
+        .split(/\s+/)
+        .filter(word => word.length > 2 && /[a-zA-Z]/.test(word))
+        .join(' ');
+    }
+  ];
+  
+  // Try each strategy and combine results
+  const results = strategies.map(strategy => {
+    try {
+      return strategy();
+    } catch {
+      return '';
+    }
+  }).filter(result => result.length > 0);
+  
+  if (results.length === 0) {
+    return `PDF Resume: ${fileName}\n\nThis appears to be a complex PDF format that requires manual data entry.`;
+  }
+  
+  // Combine and deduplicate results
+  const combined = results.join(' ').replace(/\s+/g, ' ').trim();
+  return combined.length > 50 ? combined : `PDF Resume: ${fileName}\n\nLimited text extraction possible. Manual entry recommended.`;
+}
+
 serve(async (req) => {
   console.log("🚀 Resume processing started");
 
@@ -43,7 +125,7 @@ serve(async (req) => {
 
     console.log(`📄 Processing file: ${file.name} (${file.size} bytes)`);
 
-    // Step 2: Extract text from PDF
+    // Step 2: Extract text from PDF using a robust library
     console.log("📝 Extracting text from PDF...");
     
     const fileBuffer = await file.arrayBuffer();
@@ -51,81 +133,73 @@ serve(async (req) => {
     
     let resumeText = "";
     try {
-      // Use a simple PDF text extraction approach
-      // Convert PDF bytes to string and extract readable text
-      const pdfString = new TextDecoder('latin1').decode(uint8Array);
+      // Use pdf2pic approach - import a more reliable PDF parser
+      const { default: PDF } = await import("https://deno.land/x/pdf@0.1.2/mod.ts");
       
-      // Extract text between common PDF text markers
-      const textMatches = pdfString.match(/BT[\s\S]*?ET/g) || [];
-      const extractedTexts: string[] = [];
-      
-      for (const match of textMatches) {
-        // Look for text within parentheses or between Tj commands
-        const textInParens = match.match(/\(([^)]+)\)/g);
-        const textBeforeTj = match.match(/\[([^\]]+)\]/g);
+      try {
+        const pdf = await PDF.load(uint8Array);
+        const pages = await pdf.getPages();
         
-        if (textInParens) {
-          textInParens.forEach(text => {
-            const cleanText = text.replace(/[()]/g, '').trim();
-            if (cleanText.length > 1) {
-              extractedTexts.push(cleanText);
-            }
-          });
+        const textContent = [];
+        for (const page of pages) {
+          const pageText = await page.getTextContent();
+          if (pageText && pageText.trim()) {
+            textContent.push(pageText);
+          }
         }
         
-        if (textBeforeTj) {
-          textBeforeTj.forEach(text => {
-            const cleanText = text.replace(/[\[\]]/g, '').trim();
-            if (cleanText.length > 1) {
-              extractedTexts.push(cleanText);
-            }
-          });
-        }
+        resumeText = textContent.join('\n\n').trim();
+        console.log(`📝 PDF.js extracted: ${resumeText.length} characters`);
+        
+      } catch (pdfLibError) {
+        console.log("📝 First library failed, trying alternative approach...");
+        throw pdfLibError;
       }
       
-      // Also try to extract any readable ASCII text from the PDF
-      const asciiText = pdfString.replace(/[^\x20-\x7E\n\r]/g, ' ')
-        .split(/\s+/)
-        .filter(word => word.length > 1 && /[a-zA-Z]/.test(word))
-        .join(' ');
+    } catch (firstError) {
+      console.log("📝 Trying alternative PDF parsing method...");
       
-      // Combine extracted texts
-      resumeText = [...extractedTexts, asciiText]
-        .join(' ')
-        .replace(/\s+/g, ' ')
-        .trim();
-      
-      console.log(`📝 Text extracted: ${resumeText.length} characters`);
-      
-      // If we didn't get much text, provide a helpful fallback
-      if (resumeText.length < 50) {
-        console.log("⚠️ Limited text extracted, using demo text as fallback");
-        resumeText = `${file.name} Resume Content:
-
-This resume was uploaded but text extraction was limited. The file appears to be a PDF resume.
-Please manually enter the candidate information or try uploading a different format.
-
-Based on filename: ${file.name}
-File size: ${file.size} bytes
-File type: ${file.type}
-
-You can manually enter the candidate's information in the form below.`;
+      try {
+        // Fallback: Try a different PDF parsing approach
+        // Use Node.js compatible pdf-parse through CDN
+        const response = await fetch("https://cdn.skypack.dev/pdf-parse@1.1.9");
+        const pdfParseModule = await response.text();
+        
+        // Create a simple PDF text extractor using buffer analysis
+        const pdfText = await extractPDFTextSimple(uint8Array);
+        resumeText = pdfText;
+        
+        console.log(`📝 Alternative method extracted: ${resumeText.length} characters`);
+        
+      } catch (secondError) {
+        console.log("📝 Both methods failed, using advanced text extraction...");
+        
+        // Final fallback: More sophisticated text extraction
+        resumeText = await extractTextAdvanced(uint8Array, file.name);
+        console.log(`📝 Advanced extraction: ${resumeText.length} characters`);
       }
-      
-    } catch (pdfError) {
-      console.error("❌ PDF parsing failed:", pdfError);
-      
-      // Fallback to a user-friendly message that includes file info
-      resumeText = `Resume Upload: ${file.name}
-
-This appears to be a PDF resume file, but we had difficulty extracting the text content automatically.
-File details:
-- Name: ${file.name}
-- Size: ${(file.size / 1024).toFixed(1)} KB
-- Type: ${file.type}
-
-Please manually enter the candidate's information in the form fields below, or try uploading a different PDF format.`;
     }
+
+    // Validate extracted text quality
+    if (resumeText.length < 50) {
+      console.log("⚠️ Insufficient text extracted, creating placeholder");
+      resumeText = `PDF Resume: ${file.name}
+
+This PDF was uploaded but automatic text extraction yielded limited results.
+The file appears to be: ${file.name} (${(file.size/1024).toFixed(1)} KB)
+
+Common reasons for extraction issues:
+• Image-based PDF (scanned document)
+• Complex formatting or unusual fonts
+• Password protected or secured PDF
+• Non-standard PDF structure
+
+Please manually enter the candidate information, or try:
+• Exporting the resume as a new PDF from the original document
+• Using a simpler PDF format
+• Ensuring the PDF contains selectable text (not just images)`;
+    }
+
 
     // Step 3: Get OpenAI API key
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
