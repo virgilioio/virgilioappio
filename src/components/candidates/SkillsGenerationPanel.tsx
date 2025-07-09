@@ -182,7 +182,7 @@ export const SkillsGenerationPanel: React.FC<SkillsGenerationPanelProps> = ({
                     <div key={skill.name} className="relative">
                       <Badge
                         variant={isSelected ? "default" : "secondary"}
-                        className={`cursor-pointer transition-all ${
+                        className={`cursor-pointer transition-all pr-8 ${
                           isExisting 
                             ? "opacity-50 cursor-not-allowed" 
                             : "hover:scale-105"
@@ -192,10 +192,10 @@ export const SkillsGenerationPanel: React.FC<SkillsGenerationPanelProps> = ({
                         {skill.name}
                         {isSelected && <Check className="h-3 w-3 ml-1" />}
                         {isExisting && <span className="ml-1 text-xs">(exists)</span>}
+                        <span className="absolute right-1 top-1/2 -translate-y-1/2 text-xs opacity-75">
+                          {Math.round(skill.confidence * 100)}%
+                        </span>
                       </Badge>
-                      <div className="absolute -top-1 -right-1 text-xs opacity-75">
-                        {Math.round(skill.confidence * 100)}%
-                      </div>
                     </div>
                   );
                 })}
@@ -233,7 +233,7 @@ export const SkillsGenerationPanel: React.FC<SkillsGenerationPanelProps> = ({
                         <div key={skill.name} className="relative">
                           <Badge
                             variant={isSelected ? "default" : "secondary"}
-                            className={`cursor-pointer transition-all ${
+                            className={`cursor-pointer transition-all pr-8 ${
                               isExisting 
                                 ? "opacity-50 cursor-not-allowed" 
                                 : "hover:scale-105"
@@ -243,10 +243,10 @@ export const SkillsGenerationPanel: React.FC<SkillsGenerationPanelProps> = ({
                             {skill.name}
                             {isSelected && <Check className="h-3 w-3 ml-1" />}
                             {isExisting && <span className="ml-1 text-xs">(exists)</span>}
+                            <span className="absolute right-1 top-1/2 -translate-y-1/2 text-xs opacity-75">
+                              {Math.round(skill.confidence * 100)}%
+                            </span>
                           </Badge>
-                          <div className="absolute -top-1 -right-1 text-xs opacity-75">
-                            {Math.round(skill.confidence * 100)}%
-                          </div>
                         </div>
                       );
                     })}
