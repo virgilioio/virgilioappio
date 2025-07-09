@@ -96,6 +96,7 @@ export function CandidateForm({
   const [skills, setSkills] = useState<string[]>([])
   const [newSkill, setNewSkill] = useState('')
   const [isProcessingResume, setIsProcessingResume] = useState(false)
+  const [currentCandidateId, setCurrentCandidateId] = useState<string | null>(null)
   const { user } = useAuth()
 
   const form = useForm<FormData>({
@@ -124,38 +125,60 @@ export function CandidateForm({
   // Effect for handling candidate data loading (when editing)
   useEffect(() => {
     if (candidate && isOpen) {
-      console.log('Loading candidate data for editing:', candidate.candidate_name)
+      // Check if this is a different candidate than the one currently loaded
+      const candidateChanged = currentCandidateId !== candidate.id
       
-      // Reset form with candidate data when editing
-      const candidateData = {
-        candidate_name: candidate.candidate_name || '',
-        location_country: candidate.location_country || '',
-        location_state: candidate.location_state || '',
-        location_city: candidate.location_city || '',
-        salary_amount: candidate.salary_amount?.toString() || '',
-        salary_currency: candidate.salary_currency || 'USD',
-        salary_period: candidate.salary_period || 'annually',
-        profile_summary: candidate.profile_summary || '',
-        notes: candidate.notes || '',
-        linkedin_url: candidate.linkedin_url || ''
+      console.log('CandidateForm - Candidate data loading:', {
+        candidateName: candidate.candidate_name,
+        candidateId: candidate.id,
+        currentCandidateId: currentCandidateId,
+        candidateChanged: candidateChanged,
+        isOpen: isOpen
+      })
+      
+      // Always update the form if the candidate changed or if it's the first load
+      if (candidateChanged || currentCandidateId === null) {
+        console.log('CandidateForm - Updating form with candidate data')
+        
+        // Update the current candidate ID tracker
+        setCurrentCandidateId(candidate.id)
+        
+        // Reset form with candidate data when editing
+        const candidateData = {
+          candidate_name: candidate.candidate_name || '',
+          location_country: candidate.location_country || '',
+          location_state: candidate.location_state || '',
+          location_city: candidate.location_city || '',
+          salary_amount: candidate.salary_amount?.toString() || '',
+          salary_currency: candidate.salary_currency || 'USD',
+          salary_period: candidate.salary_period || 'annually',
+          profile_summary: candidate.profile_summary || '',
+          notes: candidate.notes || '',
+          linkedin_url: candidate.linkedin_url || ''
+        }
+        
+        form.reset(candidateData)
+        
+        // Set the rich text editor values separately with logging
+        const profileSummaryValue = candidate.profile_summary || ''
+        const notesValue = candidate.notes || ''
+        const skillsValue = candidate.skills || []
+        
+        console.log('CandidateForm - Setting rich text values:', {
+          profileSummary: profileSummaryValue,
+          notes: notesValue,
+          skills: skillsValue
+        })
+        
+        setProfileSummary(profileSummaryValue)
+        setNotes(notesValue)
+        setSkills(skillsValue)
       }
-      
-      form.reset(candidateData)
-      
-      // Set the rich text editor values separately with logging
-      const profileSummaryValue = candidate.profile_summary || ''
-      const notesValue = candidate.notes || ''
-      const skillsValue = candidate.skills || []
-      
-      console.log('Setting profile summary:', profileSummaryValue)
-      console.log('Setting notes:', notesValue)
-      console.log('Setting skills:', skillsValue)
-      
-      setProfileSummary(profileSummaryValue)
-      setNotes(notesValue)
-      setSkills(skillsValue)
+    } else if (!candidate && isOpen) {
+      // Clear the current candidate ID when creating a new candidate
+      setCurrentCandidateId(null)
     }
-  }, [candidate, isOpen, form])
+  }, [candidate, isOpen, form, currentCandidateId])
 
   // Effect for handling form reset (when closing dialog for new candidates)
   useEffect(() => {
@@ -339,6 +362,17 @@ export function CandidateForm({
   }
 
   const handleClose = () => {
+    console.log('CandidateForm - Closing form:', {
+      candidate: candidate?.candidate_name,
+      currentCandidateId: currentCandidateId,
+      isEditing: !!candidate
+    })
+    
+    // Reset the current candidate ID when closing
+    if (candidate) {
+      setCurrentCandidateId(null)
+    }
+    
     // Don't clear persisted data when closing - let it persist for later use
     onClose()
   }

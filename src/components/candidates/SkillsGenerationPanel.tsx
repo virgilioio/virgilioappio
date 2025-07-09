@@ -71,7 +71,26 @@ export const SkillsGenerationPanel: React.FC<SkillsGenerationPanelProps> = ({
     setSelectedSkills(newSelected);
   };
 
-  const handleAcceptSelected = () => {
+  const selectAllSkills = () => {
+    const newSelected = new Set(selectedSkills);
+    generatedSkills.forEach(skill => {
+      if (!existingSkills.includes(skill.name)) {
+        newSelected.add(skill.name);
+      }
+    });
+    setSelectedSkills(newSelected);
+  };
+
+  const deselectAllSkills = () => {
+    setSelectedSkills(new Set());
+  };
+
+  const handleAcceptSelected = (e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    
     const skillsToAdd = Array.from(selectedSkills).filter(
       skill => !existingSkills.includes(skill)
     );
@@ -173,6 +192,25 @@ export const SkillsGenerationPanel: React.FC<SkillsGenerationPanelProps> = ({
             </TabsList>
 
             <TabsContent value="all" className="mt-4">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="font-medium">All Skills</h4>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={selectAllSkills}
+                  >
+                    Select All
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={deselectAllSkills}
+                  >
+                    Deselect All
+                  </Button>
+                </div>
+              </div>
               <div className="flex flex-wrap gap-2">
                 {generatedSkills.map((skill) => {
                   const isExisting = existingSkills.includes(skill.name);

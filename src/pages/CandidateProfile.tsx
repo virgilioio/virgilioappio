@@ -57,6 +57,14 @@ export default function CandidateProfile() {
   useEffect(() => {
     if (jobId && candidateId && candidates.length > 0) {
       const foundCandidate = candidates.find(c => c.id === candidateId)
+      
+      console.log('CandidateProfile - Candidate state update:', {
+        candidateId: candidateId,
+        foundCandidate: foundCandidate?.candidate_name,
+        currentCandidate: candidate?.candidate_name,
+        candidatesLength: candidates.length
+      })
+      
       setCandidate(foundCandidate || null)
     }
   }, [candidates, candidateId])
@@ -78,7 +86,32 @@ export default function CandidateProfile() {
   }
 
   const handleEdit = () => {
-    setIsFormOpen(true)
+    // Defensive check: Ensure we have the correct candidate before opening the form
+    if (!candidate || candidate.id !== candidateId) {
+      console.warn('CandidateProfile - Edit attempted with mismatched candidate state:', {
+        candidateId: candidateId,
+        candidateFromState: candidate?.id,
+        candidateName: candidate?.candidate_name
+      })
+      
+      // Try to find the current candidate in the candidates array
+      const currentCandidate = candidates.find(c => c.id === candidateId)
+      if (currentCandidate) {
+        console.log('CandidateProfile - Found current candidate in candidates array, updating state')
+        setCandidate(currentCandidate)
+        // Open the form after a brief delay to ensure state is updated
+        setTimeout(() => setIsFormOpen(true), 100)
+      } else {
+        console.error('CandidateProfile - Could not find current candidate in candidates array')
+        return
+      }
+    } else {
+      console.log('CandidateProfile - Opening edit form with correct candidate:', {
+        candidateId: candidate.id,
+        candidateName: candidate.candidate_name
+      })
+      setIsFormOpen(true)
+    }
   }
 
   const handleFormSubmit = async (data: any) => {
