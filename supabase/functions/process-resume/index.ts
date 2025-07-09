@@ -53,7 +53,7 @@ serve(async (req) => {
         client_id,
         client_secret,
         grant_type: "client_credentials",
-        scope: "openid,AdobeID,read_organizations,additional_info.projectedProductContext"
+        scope: "openid,AdobeID,DCAPI"
       })
     });
 
