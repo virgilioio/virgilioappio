@@ -172,6 +172,50 @@ export function useCandidates(jobId: string) {
 
       console.log('Job verification successful:', jobData)
 
+      // Step 1: Check if candidate already exists in independent candidates table
+      let independentCandidateId: string | null = null
+      
+      if (candidateData.candidate_name) {
+        const { data: existingCandidate } = await supabase
+          .from('candidates')
+          .select('id')
+          .eq('candidate_name', candidateData.candidate_name)
+          .eq('location_country', candidateData.location_country || null)
+          .eq('location_city', candidateData.location_city || null)
+          .maybeSingle()
+        
+        independentCandidateId = existingCandidate?.id || null
+      }
+
+      // Step 2: If not exists, create in independent candidates table
+      if (!independentCandidateId) {
+        const { data: newIndependentCandidate, error: independentError } = await supabase
+          .from('candidates')
+          .insert([{
+            candidate_name: candidateData.candidate_name,
+            location_country: candidateData.location_country,
+            location_state: candidateData.location_state,
+            location_city: candidateData.location_city,
+            salary_amount: candidateData.salary_amount,
+            salary_currency: candidateData.salary_currency,
+            salary_period: candidateData.salary_period,
+            profile_summary: candidateData.profile_summary,
+            linkedin_url: candidateData.linkedin_url,
+            skills: candidateData.skills,
+            status: 'available',
+            source: 'job_application',
+            created_by: user.id,
+          }])
+          .select('id')
+          .single()
+
+        if (!independentError && newIndependentCandidate) {
+          independentCandidateId = newIndependentCandidate.id
+          console.log('Created independent candidate:', independentCandidateId)
+        }
+      }
+
+      // Step 3: Create job candidate (original functionality)
       const { data: newCandidate, error: createError } = await supabase
         .from('job_candidates')
         .insert([{
@@ -193,6 +237,18 @@ export function useCandidates(jobId: string) {
         } else {
           throw createError
         }
+      }
+
+      // Step 4: Create association between job candidate and independent candidate
+      if (independentCandidateId && newCandidate) {
+        await supabase
+          .from('job_candidate_associations')
+          .insert([{
+            job_id: jobId,
+            candidate_id: independentCandidateId,
+            notes: candidateData.notes,
+            added_by: user.id,
+          }])
       }
 
       console.log('Added candidate:', newCandidate)
