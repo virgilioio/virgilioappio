@@ -34,7 +34,9 @@ export default function IndependentCandidateProfile() {
   const nextCandidate = hasNextCandidate ? candidates[currentCandidateIndex + 1] : null
 
   const navigateToCandidate = (candidateId: string) => {
-    navigate(`/candidates/${candidateId}`)
+    // Force a full page refresh to ensure all state is properly reset
+    console.log('🔄 Navigating to candidate:', candidateId)
+    window.location.href = `/candidates/${candidateId}`
   }
 
   useEffect(() => {
