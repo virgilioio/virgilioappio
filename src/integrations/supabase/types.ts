@@ -169,6 +169,100 @@ export type Database = {
           },
         ]
       }
+      candidate_education: {
+        Row: {
+          candidate_id: string
+          created_at: string | null
+          degree_type: string | null
+          description: string | null
+          end_date: string | null
+          field_of_study: string | null
+          grade: string | null
+          id: string
+          institution_name: string
+          start_date: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          candidate_id: string
+          created_at?: string | null
+          degree_type?: string | null
+          description?: string | null
+          end_date?: string | null
+          field_of_study?: string | null
+          grade?: string | null
+          id?: string
+          institution_name: string
+          start_date?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          candidate_id?: string
+          created_at?: string | null
+          degree_type?: string | null
+          description?: string | null
+          end_date?: string | null
+          field_of_study?: string | null
+          grade?: string | null
+          id?: string
+          institution_name?: string
+          start_date?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidate_education_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      candidate_enrichment_logs: {
+        Row: {
+          candidate_id: string
+          created_at: string | null
+          credits_used: number | null
+          data_found: Json | null
+          enrichment_type: string
+          error_message: string | null
+          id: string
+          processed_by: string | null
+          status: string
+        }
+        Insert: {
+          candidate_id: string
+          created_at?: string | null
+          credits_used?: number | null
+          data_found?: Json | null
+          enrichment_type: string
+          error_message?: string | null
+          id?: string
+          processed_by?: string | null
+          status: string
+        }
+        Update: {
+          candidate_id?: string
+          created_at?: string | null
+          credits_used?: number | null
+          data_found?: Json | null
+          enrichment_type?: string
+          error_message?: string | null
+          id?: string
+          processed_by?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidate_enrichment_logs_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       candidate_urls: {
         Row: {
           candidate_id: string
@@ -210,13 +304,76 @@ export type Database = {
           },
         ]
       }
+      candidate_work_experience: {
+        Row: {
+          candidate_id: string
+          company_logo_url: string | null
+          company_name: string
+          created_at: string | null
+          description: string | null
+          end_date: string | null
+          id: string
+          is_current: boolean | null
+          job_title: string
+          location: string | null
+          skills_used: string[] | null
+          start_date: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          candidate_id: string
+          company_logo_url?: string | null
+          company_name: string
+          created_at?: string | null
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          is_current?: boolean | null
+          job_title: string
+          location?: string | null
+          skills_used?: string[] | null
+          start_date?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          candidate_id?: string
+          company_logo_url?: string | null
+          company_name?: string
+          created_at?: string | null
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          is_current?: boolean | null
+          job_title?: string
+          location?: string | null
+          skills_used?: string[] | null
+          start_date?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "candidate_work_experience_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       candidates: {
         Row: {
           auto_generated_skills: Json | null
+          bio: string | null
           candidate_name: string
+          company_current: string | null
+          contact_emails: string[] | null
+          contact_phones: string[] | null
+          coresignal_profile_id: string | null
           created_at: string
           created_by: string | null
           email: string | null
+          enriched_at: string | null
+          enrichment_status: string | null
           id: string
           last_skills_generation: string | null
           linkedin_url: string | null
@@ -225,22 +382,33 @@ export type Database = {
           location_state: string | null
           phone: string | null
           profile_summary: string | null
+          resume_generated_url: string | null
           resume_url: string | null
+          role_current: string | null
           salary_amount: number | null
           salary_currency: string | null
           salary_period: string | null
           skills: string[] | null
           skills_metadata: Json | null
+          social_profiles: Json | null
           source: string | null
           status: string | null
           updated_at: string
+          years_experience: number | null
         }
         Insert: {
           auto_generated_skills?: Json | null
+          bio?: string | null
           candidate_name: string
+          company_current?: string | null
+          contact_emails?: string[] | null
+          contact_phones?: string[] | null
+          coresignal_profile_id?: string | null
           created_at?: string
           created_by?: string | null
           email?: string | null
+          enriched_at?: string | null
+          enrichment_status?: string | null
           id?: string
           last_skills_generation?: string | null
           linkedin_url?: string | null
@@ -249,22 +417,33 @@ export type Database = {
           location_state?: string | null
           phone?: string | null
           profile_summary?: string | null
+          resume_generated_url?: string | null
           resume_url?: string | null
+          role_current?: string | null
           salary_amount?: number | null
           salary_currency?: string | null
           salary_period?: string | null
           skills?: string[] | null
           skills_metadata?: Json | null
+          social_profiles?: Json | null
           source?: string | null
           status?: string | null
           updated_at?: string
+          years_experience?: number | null
         }
         Update: {
           auto_generated_skills?: Json | null
+          bio?: string | null
           candidate_name?: string
+          company_current?: string | null
+          contact_emails?: string[] | null
+          contact_phones?: string[] | null
+          coresignal_profile_id?: string | null
           created_at?: string
           created_by?: string | null
           email?: string | null
+          enriched_at?: string | null
+          enrichment_status?: string | null
           id?: string
           last_skills_generation?: string | null
           linkedin_url?: string | null
@@ -273,15 +452,19 @@ export type Database = {
           location_state?: string | null
           phone?: string | null
           profile_summary?: string | null
+          resume_generated_url?: string | null
           resume_url?: string | null
+          role_current?: string | null
           salary_amount?: number | null
           salary_currency?: string | null
           salary_period?: string | null
           skills?: string[] | null
           skills_metadata?: Json | null
+          social_profiles?: Json | null
           source?: string | null
           status?: string | null
           updated_at?: string
+          years_experience?: number | null
         }
         Relationships: []
       }

@@ -10,6 +10,10 @@ import { PermissionGate } from '@/components/auth/PermissionGate'
 import { AppContainer } from '@/components/layout/AppContainer'
 import { useIndependentCandidates, IndependentCandidate } from '@/hooks/useIndependentCandidates'
 import { IndependentCandidateForm } from '@/components/candidates/IndependentCandidateForm'
+import { useCandidateEnrichment } from '@/hooks/useCandidateEnrichment'
+import { EnrichmentPanel } from '@/components/candidates/EnrichmentPanel'
+import { CandidateWorkExperienceComponent } from '@/components/candidates/CandidateWorkExperience'
+import { CandidateEducationComponent } from '@/components/candidates/CandidateEducationComponent'
 import { cn } from '@/lib/utils'
 import { getSkillColor } from '@/utils/skillColors'
 
@@ -18,13 +22,20 @@ export default function IndependentCandidateProfile() {
   const navigate = useNavigate()
   const [candidate, setCandidate] = useState<IndependentCandidate | null>(null)
   const [isFormOpen, setIsFormOpen] = useState(false)
-  const [activeTab, setActiveTab] = useState<'overview' | 'details'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'details' | 'experience' | 'education'>('overview')
   
   const { 
     candidates, 
     isLoading: candidatesLoading, 
-    updateCandidate 
+    updateCandidate,
+    getCandidates
   } = useIndependentCandidates()
+
+  const { 
+    workExperience, 
+    education, 
+    fetchCandidateEnrichmentData 
+  } = useCandidateEnrichment()
 
   // Navigation logic for previous/next candidates
   const currentCandidateIndex = candidates.findIndex(c => c.id === candidateId)
@@ -43,8 +54,21 @@ export default function IndependentCandidateProfile() {
     if (candidateId && candidates.length > 0) {
       const foundCandidate = candidates.find(c => c.id === candidateId)
       setCandidate(foundCandidate || null)
+      
+      // Load enrichment data if candidate is found
+      if (foundCandidate) {
+        fetchCandidateEnrichmentData(candidateId)
+      }
     }
-  }, [candidates, candidateId])
+  }, [candidates, candidateId, fetchCandidateEnrichmentData])
+
+  const handleEnrichmentComplete = async () => {
+    // Refresh candidate data after enrichment
+    await getCandidates()
+    if (candidateId) {
+      await fetchCandidateEnrichmentData(candidateId)
+    }
+  }
 
   const handleEdit = () => {
     setIsFormOpen(true)
@@ -212,7 +236,7 @@ export default function IndependentCandidateProfile() {
                       <button 
                         onClick={() => setActiveTab('overview')}
                         className={cn(
-                          "inline-flex items-center justify-center whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-muted/50",
+                          "inline-flex items-center justify-center whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-muted/50",
                           activeTab === 'overview' && "bg-accent text-accent-foreground"
                         )}
                       >
@@ -220,13 +244,33 @@ export default function IndependentCandidateProfile() {
                         Overview
                       </button>
                       <button 
-                        onClick={() => setActiveTab('details')}
+                        onClick={() => setActiveTab('experience')}
                         className={cn(
-                          "inline-flex items-center justify-center whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-muted/50",
-                          activeTab === 'details' && "bg-accent text-accent-foreground"
+                          "inline-flex items-center justify-center whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-muted/50",
+                          activeTab === 'experience' && "bg-accent text-accent-foreground"
+                        )}
+                      >
+                        <Zap className="h-4 w-4 mr-2" />
+                        Experience
+                      </button>
+                      <button 
+                        onClick={() => setActiveTab('education')}
+                        className={cn(
+                          "inline-flex items-center justify-center whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-muted/50",
+                          activeTab === 'education' && "bg-accent text-accent-foreground"
                         )}
                       >
                         <User className="h-4 w-4 mr-2" />
+                        Education
+                      </button>
+                      <button 
+                        onClick={() => setActiveTab('details')}
+                        className={cn(
+                          "inline-flex items-center justify-center whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-muted/50",
+                          activeTab === 'details' && "bg-accent text-accent-foreground"
+                        )}
+                      >
+                        <Calendar className="h-4 w-4 mr-2" />
                         Details
                       </button>
                     </div>
@@ -328,6 +372,16 @@ export default function IndependentCandidateProfile() {
               )}
 
 
+              {/* Work Experience Tab */}
+              {activeTab === 'experience' && (
+                <CandidateWorkExperienceComponent experiences={workExperience} />
+              )}
+
+              {/* Education Tab */}
+              {activeTab === 'education' && (
+                <CandidateEducationComponent education={education} />
+              )}
+
               {/* Detailed Information Card - Details Tab */}
               {activeTab === 'details' && (
                 <Card className="bg-surface-primary">
@@ -384,8 +438,14 @@ export default function IndependentCandidateProfile() {
               )}
             </div>
 
-            {/* Right Column - Quick Actions */}
+            {/* Right Column - Sidebar */}
             <div className="space-y-md">
+              {/* CoreSignal Enrichment Panel */}
+              <EnrichmentPanel 
+                candidate={candidate} 
+                onEnrichmentComplete={handleEnrichmentComplete}
+              />
+
               {/* Quick Actions */}
               <PermissionGate permission="canManageCandidates">
                 <Card className="bg-surface-primary">
