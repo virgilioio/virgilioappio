@@ -48,7 +48,7 @@ async function getAdobeAccessToken(): Promise<string> {
       client_id: clientId,
       client_secret: clientSecret,
       grant_type: 'client_credentials',
-      scope: 'https://ims-na1.adobelogin.com/s/ent_documentcloud_sdk'
+      scope: 'openid,AdobeID,DCAPI'
     });
     
     console.log('Request body:', requestBody.toString());
