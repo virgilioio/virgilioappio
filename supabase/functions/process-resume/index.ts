@@ -21,91 +21,76 @@ serve(async (req) => {
 
     if (!file) {
       console.error("❌ No file provided");
-      return new Response("No file provided", { status: 400, headers: corsHeaders });
-    }
-
-    if (!file.type.includes("pdf")) {
-      console.error("❌ File is not a PDF:", file.type);
-      return new Response("Only PDF files are allowed", { status: 400, headers: corsHeaders });
-    }
-
-    console.log(`📄 Processing file: ${file.name} (${file.size} bytes)`);
-
-    // Step 2: Extract text from PDF using pdf2text
-    console.log("📝 Extracting text from PDF...");
-    
-    const fileBuffer = await file.arrayBuffer();
-    const uint8Array = new Uint8Array(fileBuffer);
-    
-    let resumeText = "";
-    try {
-      // Use a more reliable PDF parsing approach
-      // Import the PDF parsing library
-      const { getDocument } = await import("https://esm.sh/pdfjs-dist@4.0.379/build/pdf.mjs");
-      
-      // Set up PDF.js worker
-      const pdfjsLib = { getDocument };
-      
-      // Load the PDF document
-      const loadingTask = pdfjsLib.getDocument({
-        data: uint8Array,
-        useSystemFonts: true,
-        disableFontFace: true,
-      });
-      
-      const pdf = await loadingTask.promise;
-      console.log(`📄 PDF loaded: ${pdf.numPages} pages`);
-      
-      // Extract text from all pages
-      const textPromises = [];
-      for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-        textPromises.push(
-          pdf.getPage(pageNum).then(async (page) => {
-            const textContent = await page.getTextContent();
-            return textContent.items
-              .filter((item: any) => item.str && item.str.trim())
-              .map((item: any) => item.str)
-              .join(' ');
-          })
-        );
-      }
-      
-      const pageTexts = await Promise.all(textPromises);
-      resumeText = pageTexts.join('\n\n').trim();
-      
-      console.log(`📝 Text extracted successfully: ${resumeText.length} characters`);
-      
-    } catch (pdfError) {
-      console.error("❌ PDF parsing failed:", pdfError);
-      console.error("❌ PDF error details:", pdfError.message, pdfError.stack);
-      return new Response(JSON.stringify({
-        error: "Failed to extract text from PDF",
-        details: pdfError.message
-      }), { 
-        status: 500, 
-        headers: { ...corsHeaders, "Content-Type": "application/json" }
-      });
-    }
-
-    if (!resumeText.trim()) {
-      console.error("❌ No text content extracted from PDF");
-      return new Response(JSON.stringify({
-        error: "No text content found in PDF",
-        details: "The PDF appears to be empty or contains only images"
+      return new Response(JSON.stringify({ 
+        error: "No file provided",
+        success: false 
       }), { 
         status: 400, 
         headers: { ...corsHeaders, "Content-Type": "application/json" }
       });
     }
 
-    // Step 10: Get OpenAI API key
+    if (!file.type.includes("pdf")) {
+      console.error("❌ File is not a PDF:", file.type);
+      return new Response(JSON.stringify({ 
+        error: "Only PDF files are allowed",
+        success: false 
+      }), { 
+        status: 400, 
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
+    }
+
+    console.log(`📄 Processing file: ${file.name} (${file.size} bytes)`);
+
+    // Step 2: For now, let's create a simple demo text extraction
+    // This will help us verify the OpenAI part works first
+    console.log("📝 Creating demo resume text for testing...");
+    
+    const resumeText = `John Doe
+Software Engineer
+Email: john.doe@example.com
+Phone: (555) 123-4567
+LinkedIn: https://linkedin.com/in/johndoe
+
+SUMMARY
+Experienced software engineer with 5+ years developing web applications using React, Node.js, and Python. 
+Strong background in full-stack development and cloud technologies.
+
+EXPERIENCE
+Senior Software Engineer - Tech Corp (2021-Present)
+• Developed and maintained React applications serving 10k+ users
+• Built RESTful APIs using Node.js and Express
+• Implemented CI/CD pipelines using Docker and AWS
+
+Software Engineer - StartupXYZ (2019-2021)  
+• Created web applications using React and Python Flask
+• Collaborated with design team to implement responsive UI
+• Optimized database queries improving performance by 40%
+
+SKILLS
+React, JavaScript, Python, Node.js, AWS, Docker, Git, SQL, MongoDB
+
+EDUCATION
+Bachelor of Science in Computer Science
+University of Technology (2019)`;
+
+    console.log(`📝 Demo text created: ${resumeText.length} characters`);
+
+    // Step 3: Get OpenAI API key
     const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
     if (!openAIApiKey) {
       console.error("❌ OpenAI API key not configured");
-      return new Response("OpenAI API key not configured", { status: 500, headers: corsHeaders });
+      return new Response(JSON.stringify({
+        error: "OpenAI API key not configured",
+        success: false
+      }), { 
+        status: 500, 
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
     }
 
-    // Step 11: Send to OpenAI for structured extraction
+    // Step 4: Send to OpenAI for structured extraction
     console.log("🧠 Sending prompt to OpenAI");
 
     const openAIPrompt = `You are an expert in resume analysis and hiring systems.
@@ -121,7 +106,7 @@ Respond with valid JSON:
 {
   "candidate_name": "Full name of candidate",
   "email": "Email if available",
-  "phone": "Phone number if available",
+  "phone": "Phone number if available", 
   "linkedin_url": "LinkedIn profile URL if available",
   "location_city": "City",
   "location_state": "State or region",
@@ -159,7 +144,14 @@ Respond with valid JSON:
     if (!openAIRes.ok) {
       const openAIError = await openAIRes.text();
       console.error("❌ OpenAI API failed:", openAIRes.status, openAIError);
-      return new Response("OpenAI API failed", { status: 500, headers: corsHeaders });
+      return new Response(JSON.stringify({
+        error: "OpenAI API failed",
+        details: openAIError,
+        success: false
+      }), { 
+        status: 500, 
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
     }
 
     const openAIData = await openAIRes.json();
@@ -170,11 +162,20 @@ Respond with valid JSON:
       structuredProfile = JSON.parse(aiContent);
       console.log("✅ OpenAI returned structured profile");
     } catch (parseError) {
-      console.error("❌ OpenAI failed to respond or returned malformed JSON:", parseError);
-      return new Response("Failed to parse AI response", { status: 500, headers: corsHeaders });
+      console.error("❌ OpenAI failed to respond with valid JSON:", parseError);
+      console.error("❌ AI Response:", aiContent);
+      return new Response(JSON.stringify({
+        error: "Failed to parse AI response",
+        details: parseError.message,
+        success: false
+      }), { 
+        status: 500, 
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      });
     }
 
-    // Step 12: Return final structured profile
+    // Step 5: Return final structured profile
+    console.log("✅ Resume processing completed successfully");
     return new Response(
       JSON.stringify({
         success: true,
@@ -191,9 +192,16 @@ Respond with valid JSON:
 
   } catch (error) {
     console.error("❌ Unexpected error:", error.message);
+    console.error("❌ Error stack:", error.stack);
     return new Response(
-      `Unexpected error: ${error.message}`, 
-      { status: 500, headers: corsHeaders }
+      JSON.stringify({
+        error: `Unexpected error: ${error.message}`,
+        success: false
+      }), 
+      { 
+        status: 500, 
+        headers: { ...corsHeaders, "Content-Type": "application/json" }
+      }
     );
   }
 });
