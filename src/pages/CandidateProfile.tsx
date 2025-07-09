@@ -83,11 +83,9 @@ export default function CandidateProfile() {
 
   const handleFormSubmit = async (data: any) => {
     if (!candidate) return
-    await updateCandidate(candidate.id, data)
+    const updatedCandidate = await updateCandidate(candidate.id, data)
+    setCandidate(updatedCandidate as Candidate)
     setIsFormOpen(false)
-    // Refresh candidate data
-    const updatedCandidate = candidates.find(c => c.id === candidateId)
-    setCandidate(updatedCandidate || null)
   }
 
   const formatLocation = (candidate: Candidate) => {
