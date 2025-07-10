@@ -1,14 +1,16 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Loader2, Sparkles, CheckCircle2, Circle, Briefcase, DollarSign, MapPin, Target, ChevronDown, ChevronUp, TrendingUp, Clock, Users, Award, ArrowLeft } from 'lucide-react'
+import { Loader2, Sparkles, CheckCircle2, Circle, Briefcase, DollarSign, MapPin, Target, ChevronDown, ChevronUp, TrendingUp, Clock, Users, Award } from 'lucide-react'
 import { supabase } from '@/integrations/supabase/client'
 import { useToast } from '@/hooks/use-toast'
 import { validateJobPrompt, getValidationStats, type ValidationItem } from '@/utils/jobPromptValidation'
 import { SkillsEditor } from './SkillsEditor'
+import { useJobs } from '@/hooks/useJobs'
 
 interface JobSpec {
   job_title: string
@@ -63,10 +65,12 @@ export function AIJobAssistant() {
   const [showModal, setShowModal] = useState(false)
   const [selectedTitle, setSelectedTitle] = useState('')
   const [isCollapsed, setIsCollapsed] = useState(true)
-  const [dialogStep, setDialogStep] = useState<'review' | 'proceed'>('review')
   const [isFocused, setIsFocused] = useState(false)
   const [editableSkills, setEditableSkills] = useState<string[]>([])
+  const [isCreatingJob, setIsCreatingJob] = useState(false)
   const { toast } = useToast()
+  const { createJob } = useJobs()
+  const navigate = useNavigate()
 
   const currentValidation = validateJobPrompt(prompt)
   const validItemsCount = currentValidation.filter(item => item.checked).length
@@ -89,7 +93,6 @@ export function AIJobAssistant() {
         setCandidateMatching(data.candidateMatching || null)
         setSelectedTitle(data.jobSpec.job_title)
         setEditableSkills(data.jobSpec.skills || [])
-        setDialogStep('review')
         setShowModal(true)
       } else {
         throw new Error('Invalid response from AI service')
@@ -106,21 +109,50 @@ export function AIJobAssistant() {
     }
   }
 
-  const handleSelfService = () => {
-    // TODO: Implement Stripe payment flow
-    toast({
-      title: 'Self-Service Option',
-      description: 'Payment integration coming soon!',
-    })
-  }
+  const handleCreateJob = async () => {
+    if (!jobSpec) return
 
-  const handleFullService = () => {
-    // TODO: Submit job request to CSM/recruiter
-    toast({
-      title: 'Full-Service Request',
-      description: 'Your request has been submitted to our team!',
-    })
-    setShowModal(false)
+    setIsCreatingJob(true)
+    try {
+      // Map AI level format to database enum
+      const levelMapping: Record<string, any> = {
+        'L1': 'L1 - Specialists',
+        'L2': 'L2 - Managers', 
+        'L3': 'L3 - Directors / VPs / Executive Search'
+      }
+
+      const jobData = {
+        title: selectedTitle,
+        description: jobSpec.job_description,
+        level: levelMapping[jobSpec.level] || 'L1 - Specialists',
+        location: jobSpec.location,
+        department: jobSpec.department,
+        salary_min: jobSpec.salary_range.min,
+        salary_max: jobSpec.salary_range.max,
+        currency: jobSpec.salary_range.currency,
+        status: 'draft' as const,
+        skills: editableSkills
+      }
+
+      const newJob = await createJob(jobData)
+      
+      toast({
+        title: 'Job Created Successfully',
+        description: `"${selectedTitle}" has been created and saved as a draft.`,
+      })
+
+      setShowModal(false)
+      navigate(`/jobs/${newJob.id}`)
+    } catch (error: any) {
+      console.error('Error creating job:', error)
+      toast({
+        title: 'Failed to Create Job',
+        description: error.message || 'An error occurred while creating the job.',
+        variant: 'destructive'
+      })
+    } finally {
+      setIsCreatingJob(false)
+    }
   }
 
   return (
@@ -323,113 +355,24 @@ export function AIJobAssistant() {
                   <div className="p-4 bg-muted rounded-lg text-sm" dangerouslySetInnerHTML={{ __html: jobSpec.job_description }} />
                 </div>
 
-                {/* Continue/Service Selection */}
-                {dialogStep === 'review' ? (
-                  <div className="border-t pt-6 flex justify-end">
-                    <Button
-                      onClick={() => setDialogStep('proceed')}
-                      className="px-8 py-3 text-white hover:opacity-90 transition-opacity"
-                      style={{ backgroundColor: '#7e3eff' }}
-                    >
-                      Continue
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="border-t pt-6">
-                    <div className="flex items-center gap-3 mb-8">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setDialogStep('review')}
-                        className="flex items-center gap-2"
-                      >
-                        <ArrowLeft className="h-4 w-4" />
-                        Back
-                      </Button>
-                      <h4 className="text-xl font-semibold">How would you like to proceed?</h4>
-                    </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                      {/* Self-Service Option */}
-                      <div className="relative group">
-                        <div className="h-full p-8 bg-gradient-to-br from-yellow-50 to-orange-50 border-2 border-yellow-200 rounded-xl transition-all duration-300 hover:shadow-lg hover:border-yellow-300">
-                          <div className="flex items-center gap-3 mb-4">
-                            <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                            <h5 className="text-lg font-bold text-yellow-700">Self-Service</h5>
-                          </div>
-                          
-                          <div className="space-y-4 mb-6">
-                            <p className="text-yellow-800 font-medium">Take control and manage everything yourself</p>
-                            <ul className="space-y-2 text-sm text-yellow-700">
-                              <li className="flex items-center gap-2">
-                                <CheckCircle2 className="h-4 w-4 text-yellow-600" />
-                                Pay-per-job via Stripe
-                              </li>
-                              <li className="flex items-center gap-2">
-                                <CheckCircle2 className="h-4 w-4 text-yellow-600" />
-                                Full dashboard access
-                              </li>
-                              <li className="flex items-center gap-2">
-                                <Circle className="h-4 w-4 text-yellow-400" />
-                                No dedicated recruiter
-                              </li>
-                              <li className="flex items-center gap-2">
-                                <Circle className="h-4 w-4 text-yellow-400" />
-                                No guarantee
-                              </li>
-                            </ul>
-                          </div>
-                          
-                          <Button
-                            onClick={handleSelfService}
-                            className="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-semibold py-3"
-                          >
-                            Choose Self-Service
-                          </Button>
-                        </div>
-                      </div>
-
-                      {/* Full-Service Option */}
-                      <div className="relative group">
-                        <div className="h-full p-8 bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-200 rounded-xl transition-all duration-300 hover:shadow-lg hover:border-green-300">
-                          <div className="flex items-center gap-3 mb-4">
-                            <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                            <h5 className="text-lg font-bold text-green-700">Full-Service by Virgilio</h5>
-                          </div>
-                          
-                          <div className="space-y-4 mb-6">
-                            <p className="text-green-800 font-medium">Let our experts handle everything for you</p>
-                            <ul className="space-y-2 text-sm text-green-700">
-                              <li className="flex items-center gap-2">
-                                <CheckCircle2 className="h-4 w-4 text-green-600" />
-                                Dedicated CSM + recruiter
-                              </li>
-                              <li className="flex items-center gap-2">
-                                <CheckCircle2 className="h-4 w-4 text-green-600" />
-                                Professional sourcing & vetting
-                              </li>
-                              <li className="flex items-center gap-2">
-                                <CheckCircle2 className="h-4 w-4 text-green-600" />
-                                Offer management
-                              </li>
-                              <li className="flex items-center gap-2">
-                                <CheckCircle2 className="h-4 w-4 text-green-600" />
-                                Success guarantee
-                              </li>
-                            </ul>
-                          </div>
-                          
-                          <Button
-                            onClick={handleFullService}
-                            className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3"
-                          >
-                            Request Virgilio Support
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
+                {/* Create Job */}
+                <div className="border-t pt-6 flex justify-end">
+                  <Button
+                    onClick={handleCreateJob}
+                    disabled={isCreatingJob}
+                    className="px-8 py-3 text-white hover:opacity-90 transition-opacity"
+                    style={{ backgroundColor: '#7e3eff' }}
+                  >
+                    {isCreatingJob ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Creating Job...
+                      </>
+                    ) : (
+                      'Create Job'
+                    )}
+                  </Button>
+                </div>
               </div>
 
               {/* Right Column - AI Insights & Recommendations */}
