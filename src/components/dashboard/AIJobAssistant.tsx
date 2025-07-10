@@ -153,7 +153,8 @@ export function AIJobAssistant() {
         salary_max: jobSpec.salary_range.max,
         currency: jobSpec.salary_range.currency,
         status: 'draft' as const,
-        skills: editableSkills
+        skills: editableSkills,
+        organization_id: organizationId // Add organization_id to the job data
       }
 
       const newJob = await createJob(jobData)
