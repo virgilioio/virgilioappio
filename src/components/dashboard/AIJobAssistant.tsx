@@ -1,16 +1,17 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Loader2, Sparkles, CheckCircle2, Circle, Briefcase, DollarSign, MapPin, Target, ChevronDown, ChevronUp, TrendingUp, Clock, Users, Award } from 'lucide-react'
+import { Loader2, Sparkles, CheckCircle2, Circle, Briefcase, DollarSign, MapPin, Target, ChevronDown, ChevronUp, TrendingUp, Clock, Users, Award, Building2 } from 'lucide-react'
 import { supabase } from '@/integrations/supabase/client'
 import { useToast } from '@/hooks/use-toast'
 import { validateJobPrompt, getValidationStats, type ValidationItem } from '@/utils/jobPromptValidation'
 import { SkillsEditor } from './SkillsEditor'
 import { useJobs } from '@/hooks/useJobs'
+import { useAuth } from '@/contexts/AuthContext'
 
 interface JobSpec {
   job_title: string
@@ -68,14 +69,35 @@ export function AIJobAssistant() {
   const [isFocused, setIsFocused] = useState(false)
   const [editableSkills, setEditableSkills] = useState<string[]>([])
   const [isCreatingJob, setIsCreatingJob] = useState(false)
+  const [organizationName, setOrganizationName] = useState<string>('')
   const { toast } = useToast()
   const { createJob } = useJobs()
   const navigate = useNavigate()
+  const { user, organizationId } = useAuth()
 
   const currentValidation = validateJobPrompt(prompt)
   const validItemsCount = currentValidation.filter(item => item.checked).length
   const wordCount = prompt.trim().split(/\s+/).filter(word => word.length > 0).length
   const canGenerate = wordCount >= 10
+
+  // Fetch organization name when component mounts
+  useEffect(() => {
+    const fetchOrganizationName = async () => {
+      if (organizationId) {
+        const { data, error } = await supabase
+          .from('organizations')
+          .select('name')
+          .eq('id', organizationId)
+          .single()
+
+        if (data && !error) {
+          setOrganizationName(data.name)
+        }
+      }
+    }
+
+    fetchOrganizationName()
+  }, [organizationId])
 
   const handleGenerate = async () => {
     if (!canGenerate) return
@@ -315,6 +337,13 @@ export function AIJobAssistant() {
                 {/* Job Details Grid */}
                 <div className="grid md:grid-cols-2 gap-6">
                   <div className="space-y-4">
+                    {organizationName && (
+                      <div className="flex items-center gap-2 text-sm">
+                        <Building2 className="h-4 w-4" />
+                        <span className="font-medium">{organizationName}</span>
+                      </div>
+                    )}
+                    
                     <div className="flex items-center gap-2 text-sm">
                       <Briefcase className="h-4 w-4" />
                       <span className="font-medium">{jobSpec.department}</span>
