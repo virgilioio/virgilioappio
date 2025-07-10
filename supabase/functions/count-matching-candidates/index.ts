@@ -449,6 +449,8 @@ function getCurrentCompanyFromExperience(experience?: any[]): string | undefined
 
 // CoreSignal integration functions
 function buildCoreSignalQuery(criteria: MatchingCriteria): any {
+  console.log('🔧 Building CoreSignal query with criteria:', JSON.stringify(criteria, null, 2));
+  
   const query: any = {
     query: {
       bool: {
@@ -457,32 +459,31 @@ function buildCoreSignalQuery(criteria: MatchingCriteria): any {
         filter: []
       }
     },
-    size: 1000
+    size: 100 // Reduce size for debugging
   };
 
-  // Skills matching using the correct field structure
+  // Skills matching - simplified approach for debugging
   if (criteria.skills && criteria.skills.length > 0) {
+    console.log('🏷️ Adding skills query for:', criteria.skills);
+    
+    // Try a much simpler approach first
     const skillsQuery = {
       bool: {
-        should: criteria.skills.map(skill => ({
-          multi_match: {
-            query: skill,
-            fields: [
-              "skills^3",
-              "job_title^2",
-              "description",
-              "headline",
-              "experience.title^2",
-              "experience.company_name"
-            ],
-            type: "best_fields",
-            fuzziness: "AUTO"
-          }
-        })),
-        minimum_should_match: Math.ceil(criteria.skills.length * 0.3)
+        should: criteria.skills.map(skill => [
+          // Simple term match
+          { term: { "skills": skill.toLowerCase() } },
+          // Simple match in description
+          { match: { "description": skill } },
+          // Simple match in job title
+          { match: { "job_title": skill } },
+          // Simple match in headline
+          { match: { "headline": skill } }
+        ]).flat(),
+        minimum_should_match: 1 // Just need one match
       }
     };
     query.query.bool.must.push(skillsQuery);
+    console.log('🏷️ Skills query added:', JSON.stringify(skillsQuery, null, 2));
   }
 
   // Enhanced location matching with regional intelligence
@@ -559,6 +560,8 @@ function buildCoreSignalQuery(criteria: MatchingCriteria): any {
 
 async function searchCoreSignal(criteria: MatchingCriteria): Promise<{ candidates: CoreSignalCandidate[], creditsUsed: number }> {
   console.log('🌐 Starting CoreSignal two-step search...');
+  console.log('📊 API Key status:', CORESIGNAL_API_KEY ? `Available (${CORESIGNAL_API_KEY.substring(0, 8)}...)` : 'Not found');
+  console.log('🌐 Base URL:', CORESIGNAL_BASE_URL);
   
   if (!CORESIGNAL_API_KEY) {
     console.error('🚫 CORESIGNAL_API_KEY not found in environment variables');
@@ -607,8 +610,117 @@ async function searchCoreSignal(criteria: MatchingCriteria): Promise<{ candidate
     console.log(`   - Sample IDs:`, candidateIds.slice(0, 3));
 
     if (candidateIds.length === 0) {
-      console.log('📭 No candidate IDs found in search results');
-      return { candidates: [], creditsUsed: 1 }; // Search still uses 1 credit
+      console.log('📭 No candidate IDs found in search results. Trying fallback search...');
+      
+      // Try a much broader fallback search
+      const fallbackQuery = {
+        query: { match_all: {} },
+        size: 50
+      };
+      
+      console.log('🔄 Attempting fallback search with match_all query');
+      
+      const fallbackResponse = await fetch(`${CORESIGNAL_BASE_URL}/cdapi/v2/employee_clean/search/es_dsl`, {
+        method: 'POST',
+        headers: {
+          'apikey': CORESIGNAL_API_KEY,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(fallbackQuery)
+      });
+      
+      if (fallbackResponse.ok) {
+        const fallbackData = await fallbackResponse.json();
+        const fallbackIds = (fallbackData.hits?.hits || []).map((hit: any) => hit._id);
+        console.log(`🔄 Fallback search found ${fallbackIds.length} candidates`);
+        
+        if (fallbackIds.length > 0) {
+          // Use fallback results but limit to 10 for testing
+          const limitedIds = fallbackIds.slice(0, 10);
+          console.log(`📝 Using first ${limitedIds.length} candidates from fallback search`);
+          
+          // Continue with collection process using limited fallback results
+          const candidateIds = limitedIds;
+          
+          // Step 2: Collect full profile data for each ID
+          console.log(`🔍 Step 2: Collecting full profiles for ${candidateIds.length} candidates...`);
+          const candidates: CoreSignalCandidate[] = [];
+          const collectErrors: string[] = [];
+          let successfulCollects = 0;
+          
+          for (let i = 0; i < candidateIds.length; i++) {
+            const candidateId = candidateIds[i];
+            
+            try {
+              console.log(`📋 Collecting candidate ${i + 1}/${candidateIds.length}: ID ${candidateId}`);
+              
+              const collectResponse = await fetch(`${CORESIGNAL_BASE_URL}/cdapi/v2/employee_clean/collect/${candidateId}`, {
+                method: 'GET',
+                headers: {
+                  'apikey': CORESIGNAL_API_KEY,
+                  'Content-Type': 'application/json',
+                }
+              });
+      
+              if (!collectResponse.ok) {
+                const errorText = await collectResponse.text();
+                console.warn(`⚠️ Failed to collect candidate ${candidateId}: ${collectResponse.status} - ${errorText}`);
+                collectErrors.push(`${candidateId}: ${collectResponse.status}`);
+                continue;
+              }
+      
+              const candidateData = await collectResponse.json();
+              console.log(`✅ Successfully collected candidate ${candidateId} via fallback`);
+              
+              // Transform to our format
+              const candidate: CoreSignalCandidate = {
+                id: candidateData.id || candidateId,
+                name: candidateData.full_name || candidateData.name || 'Unknown',
+                location: {
+                  country: candidateData.location_country,
+                  region: candidateData.location_regions?.[0] || candidateData.location_regions,
+                  city: extractCityFromRawAddress(candidateData.location_raw_address),
+                  state: extractStateFromRawAddress(candidateData.location_raw_address)
+                },
+                experience: candidateData.experience || [],
+                skills: Array.isArray(candidateData.skills) ? candidateData.skills : [],
+                summary: candidateData.description || candidateData.headline || candidateData.summary || '',
+                salary: extractSalaryFromExperience(candidateData.experience),
+                current_role: candidateData.job_title || getCurrentRoleFromExperience(candidateData.experience),
+                current_company: getCurrentCompanyFromExperience(candidateData.experience),
+                linkedin_url: candidateData.websites_linkedin,
+                years_experience: Math.floor((candidateData.total_experience_duration_months || 0) / 12),
+                education: candidateData.education || []
+              };
+      
+              candidates.push(candidate);
+              successfulCollects++;
+      
+              // Add small delay to avoid rate limiting
+              if (i < candidateIds.length - 1) {
+                await new Promise(resolve => setTimeout(resolve, 100));
+              }
+      
+            } catch (error) {
+              console.warn(`⚠️ Error collecting candidate ${candidateId}:`, error.message);
+              collectErrors.push(`${candidateId}: ${error.message}`);
+            }
+          }
+          
+          console.log(`🔄 Fallback collection summary:`);
+          console.log(`   - Successful collects: ${successfulCollects}`);
+          console.log(`   - Failed collects: ${collectErrors.length}`);
+          console.log(`   - Total credits used: ${2 + successfulCollects} (2 searches + ${successfulCollects} collects)`);
+          
+          return { 
+            candidates, 
+            creditsUsed: 2 + successfulCollects // 2 for searches + collects
+          };
+        }
+      }
+      
+      console.log('📭 Fallback search also returned no results');
+      return { candidates: [], creditsUsed: 2 }; // Both searches used credits
     }
 
     // Step 2: Collect full profile data for each ID
