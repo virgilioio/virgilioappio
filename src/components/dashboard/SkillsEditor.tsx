@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { Plus, X, Users, Loader2, TrendingUp, AlertCircle } from 'lucide-react'
+import { Plus, X, Users, Loader2, TrendingUp, AlertCircle, Globe, Database } from 'lucide-react'
 import { useRealTimeSkillMatching } from '@/hooks/useRealTimeSkillMatching'
 
 interface SkillsEditorProps {
@@ -154,29 +154,61 @@ export function SkillsEditor({
 
           {/* Matching breakdown */}
           {matchingData && matchingData.totalCandidates > 0 && (
-            <div className="mt-4 p-3 bg-muted/50 rounded-lg">
-              <div className="flex items-center gap-2 mb-2">
-                <TrendingUp className="h-4 w-4 text-primary" />
-                <span className="text-sm font-medium">Candidate Quality Breakdown</span>
+            <div className="mt-4 space-y-3">
+              {/* Candidate Quality Breakdown */}
+              <div className="p-3 bg-muted/50 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <TrendingUp className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-medium">Candidate Quality Breakdown</span>
+                </div>
+                <div className="grid grid-cols-4 gap-2 text-xs">
+                  <div className="text-center">
+                    <div className="font-medium text-green-600">{matchingData.excellent}</div>
+                    <div className="text-muted-foreground">Excellent</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="font-medium text-blue-600">{matchingData.good}</div>
+                    <div className="text-muted-foreground">Good</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="font-medium text-yellow-600">{matchingData.fair}</div>
+                    <div className="text-muted-foreground">Fair</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="font-medium text-gray-600">{matchingData.minimal}</div>
+                    <div className="text-muted-foreground">Minimal</div>
+                  </div>
+                </div>
               </div>
-              <div className="grid grid-cols-4 gap-2 text-xs">
-                <div className="text-center">
-                  <div className="font-medium text-green-600">{matchingData.excellent}</div>
-                  <div className="text-muted-foreground">Excellent</div>
+
+              {/* Source Breakdown */}
+              {matchingData.breakdown.coreSignalCandidates > 0 && (
+                <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Globe className="h-4 w-4 text-blue-600" />
+                    <span className="text-sm font-medium text-blue-900 dark:text-blue-100">Global Talent Pool</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 text-xs">
+                    <div className="flex items-center gap-2">
+                      <Database className="h-3 w-3 text-gray-600" />
+                      <span className="text-muted-foreground">Local:</span>
+                      <span className="font-medium">{matchingData.breakdown.localCandidates}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Globe className="h-3 w-3 text-blue-600" />
+                      <span className="text-muted-foreground">External:</span>
+                      <span className="font-medium text-blue-600">{matchingData.breakdown.coreSignalCandidates}</span>
+                    </div>
+                  </div>
+                  {matchingData.breakdown.creditsUsed > 0 && (
+                    <div className="mt-2 pt-2 border-t border-blue-200 dark:border-blue-800">
+                      <div className="text-xs text-blue-700 dark:text-blue-300">
+                        Search credits used: {matchingData.breakdown.creditsUsed}
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <div className="text-center">
-                  <div className="font-medium text-blue-600">{matchingData.good}</div>
-                  <div className="text-muted-foreground">Good</div>
-                </div>
-                <div className="text-center">
-                  <div className="font-medium text-yellow-600">{matchingData.fair}</div>
-                  <div className="text-muted-foreground">Fair</div>
-                </div>
-                <div className="text-center">
-                  <div className="font-medium text-gray-600">{matchingData.minimal}</div>
-                  <div className="text-muted-foreground">Minimal</div>
-                </div>
-              </div>
+              )}
             </div>
           )}
         </div>

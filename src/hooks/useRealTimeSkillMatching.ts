@@ -11,6 +11,9 @@ interface SkillMatchingData {
   breakdown: {
     salaryMatches: number
     locationMatches: number
+    coreSignalCandidates: number
+    localCandidates: number
+    creditsUsed: number
     skillsAnalysis: {
       averageMatch: number
       topSkills: string[]

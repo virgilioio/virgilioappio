@@ -12,6 +12,9 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 );
 
+const CORESIGNAL_API_KEY = Deno.env.get('CORESIGNAL_API_KEY');
+const CORESIGNAL_BASE_URL = 'https://api.coresignal.com';
+
 interface MatchingCriteria {
   skills?: string[];
   location?: string;
@@ -30,11 +33,41 @@ interface MatchResult {
   breakdown: {
     salaryMatches: number;
     locationMatches: number;
+    coreSignalCandidates: number;
+    localCandidates: number;
+    creditsUsed: number;
     skillsAnalysis: {
       averageMatch: number;
       topSkills: string[];
     };
   };
+}
+
+interface CoreSignalCandidate {
+  id: string;
+  name: string;
+  location?: {
+    country?: string;
+    region?: string;
+    city?: string;
+  };
+  experience?: Array<{
+    title?: string;
+    company?: string;
+    duration?: string;
+  }>;
+  skills?: string[];
+  summary?: string;
+  salary?: {
+    amount?: number;
+    currency?: string;
+    period?: string;
+  };
+}
+
+interface CoreSignalSearchResult {
+  employees: CoreSignalCandidate[];
+  count: number;
 }
 
 // Skill synonyms and variations mapping
@@ -293,6 +326,153 @@ function checkLocationCompatibility(jobLocation?: string, candidateLocation?: st
   return candidateLoc.includes(jobLoc) || jobLoc.includes(candidateLoc);
 }
 
+// CoreSignal integration functions
+function buildCoreSignalQuery(criteria: MatchingCriteria): any {
+  const query: any = {
+    query: {
+      bool: {
+        must: [],
+        should: [],
+        filter: []
+      }
+    },
+    size: 1000, // Maximum we can get in one search
+    _source: [
+      "id", "name", "location", "experience", "skills", "summary",
+      "current_position", "education", "last_updated"
+    ]
+  };
+
+  // Skills matching
+  if (criteria.skills && criteria.skills.length > 0) {
+    const skillsQuery = {
+      bool: {
+        should: criteria.skills.map(skill => ({
+          multi_match: {
+            query: skill,
+            fields: [
+              "experience.title^2",
+              "experience.company",
+              "skills^3",
+              "summary",
+              "current_position.title^2"
+            ],
+            type: "best_fields",
+            fuzziness: "AUTO"
+          }
+        })),
+        minimum_should_match: Math.ceil(criteria.skills.length * 0.3) // At least 30% of skills should match
+      }
+    };
+    query.query.bool.must.push(skillsQuery);
+  }
+
+  // Location matching
+  if (criteria.location && !criteria.location.toLowerCase().includes('remote')) {
+    const locationTerms = criteria.location.split(/[,\s]+/).filter(term => term.length > 2);
+    if (locationTerms.length > 0) {
+      const locationQuery = {
+        bool: {
+          should: locationTerms.map(term => ({
+            multi_match: {
+              query: term,
+              fields: ["location.country", "location.region", "location.city"],
+              fuzziness: "AUTO"
+            }
+          }))
+        }
+      };
+      query.query.bool.must.push(locationQuery);
+    }
+  }
+
+  // Add activity filter to get more recent profiles
+  query.query.bool.filter.push({
+    range: {
+      last_updated: {
+        gte: "2020-01-01" // Profiles updated since 2020
+      }
+    }
+  });
+
+  return query;
+}
+
+async function searchCoreSignal(criteria: MatchingCriteria): Promise<{ candidates: CoreSignalCandidate[], creditsUsed: number }> {
+  if (!CORESIGNAL_API_KEY) {
+    console.log('🚫 CoreSignal API key not available');
+    return { candidates: [], creditsUsed: 0 };
+  }
+
+  try {
+    const esQuery = buildCoreSignalQuery(criteria);
+    console.log('🔍 CoreSignal query:', JSON.stringify(esQuery, null, 2));
+
+    const response = await fetch(`${CORESIGNAL_BASE_URL}/v2/employee_clean/search/es_dsl`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${CORESIGNAL_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(esQuery)
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ CoreSignal API error:', response.status, errorText);
+      return { candidates: [], creditsUsed: 0 };
+    }
+
+    const data = await response.json();
+    console.log(`✅ CoreSignal found ${data.hits?.hits?.length || 0} candidates`);
+
+    // Transform CoreSignal data to our format
+    const candidates: CoreSignalCandidate[] = (data.hits?.hits || []).map((hit: any) => {
+      const source = hit._source;
+      return {
+        id: source.id || hit._id,
+        name: source.name || 'Unknown',
+        location: source.location,
+        experience: source.experience || [],
+        skills: source.skills || [],
+        summary: source.summary || '',
+        salary: extractSalaryFromExperience(source.experience)
+      };
+    });
+
+    return { 
+      candidates, 
+      creditsUsed: 1 // Each search costs 1 credit
+    };
+  } catch (error) {
+    console.error('❌ CoreSignal search error:', error);
+    return { candidates: [], creditsUsed: 0 };
+  }
+}
+
+function extractSalaryFromExperience(experience: any[]): { amount?: number; currency?: string; period?: string } | undefined {
+  // CoreSignal doesn't typically include salary data in search results
+  // This is a placeholder for potential future salary data
+  return undefined;
+}
+
+function convertCoreSignalToLocalFormat(coreSignalCandidate: CoreSignalCandidate): any {
+  const location = coreSignalCandidate.location;
+  return {
+    id: `coresignal_${coreSignalCandidate.id}`,
+    candidate_name: coreSignalCandidate.name,
+    location_country: location?.country,
+    location_state: location?.region,
+    location_city: location?.city,
+    skills: coreSignalCandidate.skills || [],
+    profile_summary: coreSignalCandidate.summary,
+    salary_amount: coreSignalCandidate.salary?.amount,
+    salary_currency: coreSignalCandidate.salary?.currency || 'USD',
+    salary_period: coreSignalCandidate.salary?.period || 'annual',
+    source: 'coresignal'
+  };
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -303,20 +483,43 @@ serve(async (req) => {
     const criteria: MatchingCriteria = await req.json();
     console.log('🔍 Searching for candidates with criteria:', criteria);
 
-    // Fetch all available independent candidates
-    const { data: candidates, error } = await supabase
+    // Step 1: Search local database first
+    const { data: localCandidates, error } = await supabase
       .from('candidates')
       .select('*')
       .eq('status', 'available');
 
     if (error) {
-      console.error('❌ Error fetching candidates:', error);
+      console.error('❌ Error fetching local candidates:', error);
       throw new Error(error.message);
     }
 
-    console.log(`📊 Found ${candidates?.length || 0} available candidates`);
+    console.log(`📊 Found ${localCandidates?.length || 0} local candidates`);
 
-    if (!candidates || candidates.length === 0) {
+    // Step 2: Determine if we need CoreSignal search
+    const LOCAL_CANDIDATE_THRESHOLD = 50;
+    const shouldSearchCoreSignal = (localCandidates?.length || 0) < LOCAL_CANDIDATE_THRESHOLD && CORESIGNAL_API_KEY;
+    
+    let coreSignalCandidates: CoreSignalCandidate[] = [];
+    let creditsUsed = 0;
+
+    if (shouldSearchCoreSignal) {
+      console.log('🌐 Searching CoreSignal for additional candidates...');
+      const coreSignalResult = await searchCoreSignal(criteria);
+      coreSignalCandidates = coreSignalResult.candidates;
+      creditsUsed = coreSignalResult.creditsUsed;
+      console.log(`🌐 Found ${coreSignalCandidates.length} CoreSignal candidates (${creditsUsed} credits used)`);
+    }
+
+    // Step 3: Combine and format all candidates
+    const allCandidates = [
+      ...(localCandidates || []),
+      ...coreSignalCandidates.map(convertCoreSignalToLocalFormat)
+    ];
+
+    console.log(`📊 Total candidates to analyze: ${allCandidates.length} (${localCandidates?.length || 0} local + ${coreSignalCandidates.length} external)`);
+
+    if (!allCandidates || allCandidates.length === 0) {
       const emptyResult: MatchResult = {
         totalCandidates: 0,
         excellent: 0,
@@ -326,6 +529,9 @@ serve(async (req) => {
         breakdown: {
           salaryMatches: 0,
           locationMatches: 0,
+          coreSignalCandidates: 0,
+          localCandidates: 0,
+          creditsUsed: 0,
           skillsAnalysis: {
             averageMatch: 0,
             topSkills: []
@@ -345,7 +551,7 @@ serve(async (req) => {
     let excellent = 0, good = 0, fair = 0, minimal = 0;
 
     // Analyze each candidate
-    for (const candidate of candidates) {
+    for (const candidate of allCandidates) {
       // Primary filters: salary and location
       const salaryMatch = await checkSalaryCompatibility(
         criteria.salary_min,
@@ -394,7 +600,7 @@ serve(async (req) => {
     }
 
     // Calculate top skills from qualified candidates
-    const allCandidateSkills = candidates
+    const allCandidateSkills = allCandidates
       .filter(c => c.skills && c.skills.length > 0)
       .flatMap(c => c.skills || []);
     
@@ -418,6 +624,9 @@ serve(async (req) => {
       breakdown: {
         salaryMatches,
         locationMatches,
+        coreSignalCandidates: coreSignalCandidates.length,
+        localCandidates: localCandidates?.length || 0,
+        creditsUsed,
         skillsAnalysis: {
           averageMatch: skillMatches.length > 0 
             ? skillMatches.reduce((a, b) => a + b, 0) / skillMatches.length 
@@ -445,6 +654,9 @@ serve(async (req) => {
       breakdown: {
         salaryMatches: 0,
         locationMatches: 0,
+        coreSignalCandidates: 0,
+        localCandidates: 0,
+        creditsUsed: 0,
         skillsAnalysis: { averageMatch: 0, topSkills: [] }
       }
     }), {
