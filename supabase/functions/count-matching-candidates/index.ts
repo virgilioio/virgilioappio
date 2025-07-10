@@ -412,8 +412,8 @@ function buildCoreSignalQuery(criteria: MatchingCriteria): any {
     },
     size: 1000, // Maximum we can get in one search
     _source: [
-      "id", "name", "location", "experience", "skills", "summary",
-      "current_position", "education", "last_updated"
+      "id", "name", "location", "country", "experience", "summary",
+      "title", "member_skills_collection", "member_education_collection", "last_updated_ux"
     ]
   };
 
@@ -426,10 +426,10 @@ function buildCoreSignalQuery(criteria: MatchingCriteria): any {
             query: skill,
             fields: [
               "experience.title^2",
-              "experience.company",
-              "skills^3",
+              "experience.company_name",
+              "member_skills_collection.member_skill_list.skill^3",
               "summary",
-              "current_position.title^2"
+              "title^2"
             ],
             type: "best_fields",
             fuzziness: "AUTO"
@@ -458,7 +458,7 @@ function buildCoreSignalQuery(criteria: MatchingCriteria): any {
       locationQuery.bool.should.push(...locationTerms.map(term => ({
         multi_match: {
           query: term,
-          fields: ["location.country^2", "location.region", "location.city"],
+          fields: ["country^2", "location"],
           fuzziness: "AUTO"
         }
       })));
@@ -469,7 +469,7 @@ function buildCoreSignalQuery(criteria: MatchingCriteria): any {
       console.log(`🌍 Expanding search to include all ${targetRegion} countries`);
       locationQuery.bool.should.push(...REGIONAL_MAPPINGS[targetRegion].map(country => ({
         match: {
-          "location.country": {
+          "country": {
             query: country,
             fuzziness: "AUTO"
           }
@@ -486,7 +486,7 @@ function buildCoreSignalQuery(criteria: MatchingCriteria): any {
           console.log(`🌍 Remote ${remoteTargetRegion} search - including all countries in region`);
           locationQuery.bool.should.push(...REGIONAL_MAPPINGS[remoteTargetRegion].map(country => ({
             match: {
-              "location.country": {
+              "country": {
                 query: country,
                 fuzziness: "AUTO"
               }
@@ -504,8 +504,8 @@ function buildCoreSignalQuery(criteria: MatchingCriteria): any {
   // Add activity filter to get more recent profiles
   query.query.bool.filter.push({
     range: {
-      last_updated: {
-        gte: "2020-01-01" // Profiles updated since 2020
+      last_updated_ux: {
+        gte: 1577836800 // Unix timestamp for 2020-01-01
       }
     }
   });
@@ -583,12 +583,22 @@ async function searchCoreSignal(criteria: MatchingCriteria): Promise<{ candidate
     // Transform CoreSignal data to our format
     const candidates: CoreSignalCandidate[] = (data.hits?.hits || []).map((hit: any) => {
       const source = hit._source;
+      
+      // Extract skills from member_skills_collection
+      const skills = source.member_skills_collection?.map((skillItem: any) => 
+        skillItem.member_skill_list?.skill
+      ).filter(Boolean) || [];
+      
       return {
         id: source.id || hit._id,
         name: source.name || 'Unknown',
-        location: source.location,
+        location: {
+          country: source.country,
+          region: source.location, // CoreSignal's "location" field often contains region/city info
+          city: source.location
+        },
         experience: source.experience || [],
-        skills: source.skills || [],
+        skills: skills,
         summary: source.summary || '',
         salary: extractSalaryFromExperience(source.experience)
       };
@@ -603,9 +613,11 @@ async function searchCoreSignal(criteria: MatchingCriteria): Promise<{ candidate
         id: sampleCandidate.id,
         name: sampleCandidate.name ? 'Present' : 'Missing',
         location: sampleCandidate.location,
-        skillsCount: sampleCandidate.skills?.length || 0,
+        country: sampleCandidate.country,
+        title: sampleCandidate.title,
+        skillsCount: sampleCandidate.member_skills_collection?.length || 0,
         experienceCount: sampleCandidate.experience?.length || 0,
-        hasCurrentPosition: !!sampleCandidate.current_position
+        hasSkillsCollection: !!sampleCandidate.member_skills_collection
       });
     }
 
