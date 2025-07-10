@@ -632,10 +632,13 @@ export function useJobs() {
     if (!user) return
 
     console.log('Setting up real-time subscriptions for jobs')
+    
+    // Create unique channel names to avoid subscription conflicts
+    const channelId = Math.random().toString(36).substr(2, 9)
 
     // Subscribe to jobs changes
     const jobsChannel = supabase
-      .channel('jobs-changes')
+      .channel(`jobs-changes-${channelId}`)
       .on(
         'postgres_changes',
         {
@@ -653,7 +656,7 @@ export function useJobs() {
 
     // Subscribe to job requests changes (to catch when they're approved and jobs are created)
     const jobRequestsChannel = supabase
-      .channel('job-requests-changes')
+      .channel(`job-requests-changes-${channelId}`)
       .on(
         'postgres_changes',
         {
@@ -674,7 +677,7 @@ export function useJobs() {
 
     // Subscribe to job assignments changes to refresh when recruiters are assigned/unassigned
     const jobAssignmentsChannel = supabase
-      .channel('job-assignments-changes')
+      .channel(`job-assignments-changes-${channelId}`)
       .on(
         'postgres_changes',
         {
