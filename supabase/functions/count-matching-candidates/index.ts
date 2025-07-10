@@ -511,33 +511,25 @@ function buildCoreSignalQuery(criteria: MatchingCriteria): any {
 }
 
 async function searchCoreSignal(criteria: MatchingCriteria): Promise<{ candidates: CoreSignalCandidate[], creditsUsed: number }> {
-  console.log('🌐 Starting CoreSignal search...');
+  console.log('🌐 Starting CoreSignal two-step search...');
   
   if (!CORESIGNAL_API_KEY) {
     console.error('🚫 CORESIGNAL_API_KEY not found in environment variables');
     return { candidates: [], creditsUsed: 0 };
   }
 
-  // Validate API key format
-  if (!CORESIGNAL_API_KEY.startsWith('cs_')) {
-    console.error('🚫 Invalid CoreSignal API key format (should start with cs_)');
-    return { candidates: [], creditsUsed: 0 };
-  }
-
   console.log('✅ CoreSignal API key found and validated');
 
   try {
+    // Step 1: Search for candidate IDs
     const esQuery = buildCoreSignalQuery(criteria);
-    console.log('🔍 CoreSignal query built:');
+    console.log('🔍 Step 1: Searching for candidate IDs...');
     console.log('   - Skills:', criteria.skills?.length || 0, 'skills');
     console.log('   - Location:', criteria.location);
-    console.log('   - Salary range:', criteria.salaryMin, '-', criteria.salaryMax, criteria.currency);
-    console.log('   - Full query:', JSON.stringify(esQuery, null, 2));
+    console.log('   - Salary range:', criteria.salary_min, '-', criteria.salary_max, criteria.currency);
 
-    const startTime = Date.now();
-    console.log('📡 Sending request to CoreSignal API...');
-
-    const response = await fetch(`${CORESIGNAL_BASE_URL}/cdapi/v2/employee_clean/search/es_dsl`, {
+    const searchStartTime = Date.now();
+    const searchResponse = await fetch(`${CORESIGNAL_BASE_URL}/cdapi/v2/employee_clean/search/es_dsl`, {
       method: 'POST',
       headers: {
         'apikey': CORESIGNAL_API_KEY,
@@ -546,91 +538,129 @@ async function searchCoreSignal(criteria: MatchingCriteria): Promise<{ candidate
       body: JSON.stringify(esQuery)
     });
 
-    const requestTime = Date.now() - startTime;
-    console.log(`⏱️ CoreSignal API response time: ${requestTime}ms`);
+    const searchTime = Date.now() - searchStartTime;
+    console.log(`⏱️ Search API response time: ${searchTime}ms`);
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ CoreSignal API error:');
-      console.error('   - Status:', response.status);
-      console.error('   - Status Text:', response.statusText);
+    if (!searchResponse.ok) {
+      const errorText = await searchResponse.text();
+      console.error('❌ CoreSignal Search API error:');
+      console.error('   - Status:', searchResponse.status);
+      console.error('   - Status Text:', searchResponse.statusText);
       console.error('   - Error Response:', errorText);
-      console.error('   - Request URL:', `${CORESIGNAL_BASE_URL}/v2/employee_clean/search/es_dsl`);
-      console.error('   - Headers sent:', {
-        'apikey': `${CORESIGNAL_API_KEY.substring(0, 10)}...`,
-        'Content-Type': 'application/json'
-      });
       return { candidates: [], creditsUsed: 0 };
     }
 
-    const data = await response.json();
-    const candidateCount = data.hits?.hits?.length || 0;
-    const totalHits = data.hits?.total?.value || data.hits?.total || 0;
+    const searchData = await searchResponse.json();
+    const candidateIds = (searchData.hits?.hits || []).map((hit: any) => hit._id);
+    const totalHits = searchData.hits?.total?.value || searchData.hits?.total || 0;
     
-    console.log(`✅ CoreSignal API Success:`);
-    console.log(`   - Candidates returned: ${candidateCount}`);
+    console.log(`✅ Search completed:`);
+    console.log(`   - Candidate IDs found: ${candidateIds.length}`);
     console.log(`   - Total matches in DB: ${totalHits}`);
-    console.log(`   - Response structure:`, {
-      hasHits: !!data.hits,
-      hitsCount: candidateCount,
-      totalValue: totalHits,
-      took: data.took
-    });
+    console.log(`   - Sample IDs:`, candidateIds.slice(0, 3));
 
-    // Transform CoreSignal data to our format
-    const candidates: CoreSignalCandidate[] = (data.hits?.hits || []).map((hit: any) => {
-      const source = hit._source;
-      
-      // Extract skills from flat skills array (not nested)
-      const skills = Array.isArray(source.skills) ? source.skills : [];
-      
-      return {
-        id: source.id || hit._id,
-        name: source.full_name || 'Unknown',
-        location: {
-          country: source.location_country,
-          region: source.location_regions,
-          city: source.location_raw_address
-        },
-        experience: source.experience || [],
-        skills: skills,
-        summary: source.description || source.headline || '',
-        salary: extractSalaryFromExperience(source.experience)
-      };
-    });
+    if (candidateIds.length === 0) {
+      console.log('📭 No candidate IDs found in search results');
+      return { candidates: [], creditsUsed: 1 }; // Search still uses 1 credit
+    }
 
-    console.log(`🔄 Processing ${candidateCount} CoreSignal candidates...`);
+    // Step 2: Collect full profile data for each ID
+    console.log(`🔍 Step 2: Collecting full profiles for ${candidateIds.length} candidates...`);
+    const candidates: CoreSignalCandidate[] = [];
+    const collectErrors: string[] = [];
+    let successfulCollects = 0;
+
+    // Limit to max 50 candidates to avoid excessive API calls
+    const maxCandidates = Math.min(candidateIds.length, 50);
+    const idsToCollect = candidateIds.slice(0, maxCandidates);
     
-    // Log a sample candidate for debugging
-    if (candidateCount > 0) {
-      const sampleCandidate = data.hits.hits[0]._source;
-      console.log('📋 Sample candidate structure:', {
+    console.log(`📝 Collecting data for ${idsToCollect.length} candidates (limited from ${candidateIds.length})`);
+
+    for (let i = 0; i < idsToCollect.length; i++) {
+      const candidateId = idsToCollect[i];
+      
+      try {
+        console.log(`📋 Collecting candidate ${i + 1}/${idsToCollect.length}: ID ${candidateId}`);
+        
+        const collectResponse = await fetch(`${CORESIGNAL_BASE_URL}/cdapi/v2/employee_clean/collect/${candidateId}`, {
+          method: 'GET',
+          headers: {
+            'apikey': CORESIGNAL_API_KEY,
+            'Content-Type': 'application/json',
+          }
+        });
+
+        if (!collectResponse.ok) {
+          const errorText = await collectResponse.text();
+          console.warn(`⚠️ Failed to collect candidate ${candidateId}: ${collectResponse.status} - ${errorText}`);
+          collectErrors.push(`${candidateId}: ${collectResponse.status}`);
+          continue;
+        }
+
+        const candidateData = await collectResponse.json();
+        console.log(`✅ Successfully collected candidate ${candidateId}`);
+        
+        // Transform to our format
+        const candidate: CoreSignalCandidate = {
+          id: candidateData.id || candidateId,
+          name: candidateData.full_name || candidateData.name || 'Unknown',
+          location: {
+            country: candidateData.location_country,
+            region: candidateData.location_regions,
+            city: candidateData.location_raw_address
+          },
+          experience: candidateData.experience || [],
+          skills: Array.isArray(candidateData.skills) ? candidateData.skills : [],
+          summary: candidateData.description || candidateData.headline || candidateData.summary || '',
+          salary: extractSalaryFromExperience(candidateData.experience)
+        };
+
+        candidates.push(candidate);
+        successfulCollects++;
+
+        // Add small delay to avoid rate limiting
+        if (i < idsToCollect.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+
+      } catch (error) {
+        console.warn(`⚠️ Error collecting candidate ${candidateId}:`, error.message);
+        collectErrors.push(`${candidateId}: ${error.message}`);
+      }
+    }
+
+    console.log(`🔄 Collection summary:`);
+    console.log(`   - Successful collects: ${successfulCollects}`);
+    console.log(`   - Failed collects: ${collectErrors.length}`);
+    console.log(`   - Total credits used: ${1 + successfulCollects} (1 search + ${successfulCollects} collects)`);
+    
+    if (collectErrors.length > 0) {
+      console.log(`   - Collect errors:`, collectErrors.slice(0, 5));
+    }
+
+    // Log sample collected candidate
+    if (candidates.length > 0) {
+      const sampleCandidate = candidates[0];
+      console.log('📋 Sample collected candidate:', {
         id: sampleCandidate.id,
-        full_name: sampleCandidate.full_name ? 'Present' : 'Missing',
-        job_title: sampleCandidate.job_title,
-        location_country: sampleCandidate.location_country,
-        location_raw_address: sampleCandidate.location_raw_address,
-        skillsCount: Array.isArray(sampleCandidate.skills) ? sampleCandidate.skills.length : 0,
-        experienceCount: sampleCandidate.experience?.length || 0,
-        hasSkills: !!sampleCandidate.skills,
-        hasDescription: !!sampleCandidate.description
+        name: sampleCandidate.name,
+        location: sampleCandidate.location,
+        skillsCount: sampleCandidate.skills?.length || 0,
+        hasExperience: (sampleCandidate.experience?.length || 0) > 0,
+        hasSummary: !!sampleCandidate.summary
       });
     }
 
     return { 
       candidates, 
-      creditsUsed: candidateCount > 0 ? 1 : 0 // Only count as credit used if we got results
+      creditsUsed: 1 + successfulCollects // 1 for search + 1 for each successful collect
     };
+
   } catch (error) {
-    console.error('❌ CoreSignal search error:');
+    console.error('❌ CoreSignal two-step search error:');
     console.error('   - Error type:', error.name);
     console.error('   - Error message:', error.message);
     console.error('   - Stack trace:', error.stack);
-    
-    // Check if it's a network error
-    if (error.message.includes('fetch')) {
-      console.error('🌐 Network error - check internet connection and API endpoint');
-    }
     
     return { candidates: [], creditsUsed: 0 };
   }
