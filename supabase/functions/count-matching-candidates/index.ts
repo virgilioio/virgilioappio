@@ -187,7 +187,7 @@ function extractSkillsFromSummary(summary: string): string[] {
 function calculateSkillMatch(jobSkills: string[], candidateSkills: string[], candidateSummary?: string): number {
   // If no job skills specified, return high match
   if (!jobSkills || jobSkills.length === 0) {
-    return 80;
+    return 85;
   }
   
   let skillsToMatch = candidateSkills || [];
@@ -198,8 +198,9 @@ function calculateSkillMatch(jobSkills: string[], candidateSkills: string[], can
     console.log(`🔍 Extracted skills from summary: [${skillsToMatch.join(', ')}]`);
   }
   
+  // If still no skills found, give a base score instead of 0 (maybe the candidate just doesn't have skills listed)
   if (skillsToMatch.length === 0) {
-    return 0;
+    return candidateSummary ? 30 : 15; // Some score if has summary, minimal if not
   }
   
   const normalizedJobSkills = jobSkills.map(normalizeSkill);
@@ -483,11 +484,11 @@ serve(async (req) => {
     const criteria: MatchingCriteria = await req.json();
     console.log('🔍 Searching for candidates with criteria:', criteria);
 
-    // Step 1: Search local database first
+    // Step 1: Search local database first (include all candidates, not just available)
     const { data: localCandidates, error } = await supabase
       .from('candidates')
       .select('*')
-      .eq('status', 'available');
+      .in('status', ['available', 'available_passive', 'considering']); // Include more candidate statuses
 
     if (error) {
       console.error('❌ Error fetching local candidates:', error);
@@ -550,9 +551,13 @@ serve(async (req) => {
     let qualifiedCandidates = 0;
     let excellent = 0, good = 0, fair = 0, minimal = 0;
 
-    // Analyze each candidate
+    // Analyze each candidate - CHANGED: Include ALL candidates, not just perfect salary+location matches
     for (const candidate of allCandidates) {
-      // Primary filters: salary and location
+      console.log(`\n🧑‍💼 Analyzing candidate: ${candidate.candidate_name}`);
+      console.log(`💰 Salary: ${candidate.salary_amount || 'Not specified'} ${candidate.salary_currency || ''}`);
+      console.log(`📍 Location: ${[candidate.location_city, candidate.location_state, candidate.location_country].filter(Boolean).join(', ') || 'Not specified'}`);
+      
+      // Check filters but don't use them to exclude entirely
       const salaryMatch = await checkSalaryCompatibility(
         criteria.salary_min,
         criteria.salary_max,
@@ -573,29 +578,35 @@ serve(async (req) => {
       if (salaryMatch) salaryMatches++;
       if (locationMatch) locationMatches++;
 
-      // Only proceed with skill matching if salary and location are compatible
-      if (salaryMatch && locationMatch) {
-        console.log(`\n🧑‍💼 Analyzing candidate: ${candidate.candidate_name}`);
-        console.log(`💰 Salary: ${candidate.salary_amount} ${candidate.salary_currency}`);
-        console.log(`📍 Location: ${[candidate.location_city, candidate.location_state, candidate.location_country].filter(Boolean).join(', ')}`);
+      // FIXED: Always check skill match, don't exclude based on salary/location
+      const skillMatchPercentage = calculateSkillMatch(
+        criteria.skills || [],
+        candidate.skills || [],
+        candidate.profile_summary
+      );
+      
+      skillMatches.push(skillMatchPercentage);
+      
+      // Give bonus for salary and location matches
+      let adjustedSkillMatch = skillMatchPercentage;
+      if (salaryMatch) adjustedSkillMatch += 5; // 5% bonus for salary match
+      if (locationMatch) adjustedSkillMatch += 5; // 5% bonus for location match
+      adjustedSkillMatch = Math.min(100, adjustedSkillMatch); // Cap at 100%
+      
+      console.log(`🎯 Skill match: ${skillMatchPercentage}% (adjusted: ${adjustedSkillMatch}%)`);
+      
+      // Lower threshold - include more candidates (minimum 10% instead of 20%)
+      if (adjustedSkillMatch >= 10 || !criteria.skills || criteria.skills.length === 0) {
+        qualifiedCandidates++;
         
-        const skillMatchPercentage = calculateSkillMatch(
-          criteria.skills || [],
-          candidate.skills || [],
-          candidate.profile_summary
-        );
+        if (adjustedSkillMatch >= 90) excellent++;
+        else if (adjustedSkillMatch >= 70) good++;
+        else if (adjustedSkillMatch >= 50) fair++;
+        else minimal++;
         
-        skillMatches.push(skillMatchPercentage);
-        
-        // Categorize by skill match percentage (minimum 20% to be included)
-        if (skillMatchPercentage >= 20 || !criteria.skills || criteria.skills.length === 0) {
-          qualifiedCandidates++;
-          
-          if (skillMatchPercentage >= 90) excellent++;
-          else if (skillMatchPercentage >= 70) good++;
-          else if (skillMatchPercentage >= 50) fair++;
-          else minimal++;
-        }
+        console.log(`✅ Candidate qualified (${adjustedSkillMatch >= 90 ? 'excellent' : adjustedSkillMatch >= 70 ? 'good' : adjustedSkillMatch >= 50 ? 'fair' : 'minimal'})`);
+      } else {
+        console.log(`❌ Candidate not qualified (${adjustedSkillMatch}% < 10%)`);
       }
     }
 
