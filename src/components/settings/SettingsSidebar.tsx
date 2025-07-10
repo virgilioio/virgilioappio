@@ -1,5 +1,5 @@
 
-import { User, Building, Receipt, Users, Shield, Settings as SettingsIcon, Megaphone, FileText, Image, Globe } from 'lucide-react'
+import { User, Building, Receipt, Users, Shield, Settings as SettingsIcon, Megaphone, FileText, Image, Globe, BarChart3 } from 'lucide-react'
 import { usePermissions } from '@/hooks/usePermissions'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -25,7 +25,7 @@ interface SettingsSidebarProps {
 export function SettingsSidebar({ currentTab, onTabChange, className }: SettingsSidebarProps) {
   const permissions = usePermissions()
   const [platformOpen, setPlatformOpen] = useState(
-    ['platform-settings', 'platform-advertising', 'platform-legal', 'platform-assets', 'platform-countries'].includes(currentTab)
+    ['platform-dashboard', 'platform-settings', 'platform-advertising', 'platform-legal', 'platform-assets', 'platform-countries', 'platform-templates'].includes(currentTab)
   )
 
   const navItems: SettingsNavItem[] = [
@@ -59,6 +59,7 @@ export function SettingsSidebar({ currentTab, onTabChange, className }: Settings
       icon: Shield, 
       show: permissions.isPlatformAdmin || permissions.canCreateOrganizations,
       submenu: [
+        { id: 'platform-dashboard', label: 'Dashboard', icon: BarChart3, show: true },
         { id: 'platform-settings', label: 'Settings', icon: SettingsIcon, show: true },
         { id: 'platform-advertising', label: 'Advertising', icon: Megaphone, show: true },
         { id: 'platform-legal', label: 'Legal', icon: FileText, show: true },
@@ -77,7 +78,7 @@ export function SettingsSidebar({ currentTab, onTabChange, className }: Settings
     if (itemId === 'platform') {
       handlePlatformToggle()
       if (!platformOpen) {
-        onTabChange('platform-settings') // Default to settings when opening platform
+        onTabChange('platform-dashboard') // Default to dashboard when opening platform
       }
     } else {
       onTabChange(itemId)

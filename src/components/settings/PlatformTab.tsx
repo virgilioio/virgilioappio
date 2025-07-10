@@ -5,18 +5,24 @@ import { CountryManagement } from './CountryManagement'
 import { PlatformSettingsManager } from './PlatformSettingsManager'
 import { AdvertisingManager } from './AdvertisingManager'
 import { LegalManager } from './LegalManager'
+import { PlatformDashboard } from '@/components/dashboard/PlatformDashboard'
 
 export function PlatformTab() {
   return (
     <div className="space-y-6">
-      <Tabs defaultValue="settings" className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+      <Tabs defaultValue="dashboard" className="w-full">
+        <TabsList className="grid w-full grid-cols-6">
+          <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
           <TabsTrigger value="advertising">Advertising</TabsTrigger>
           <TabsTrigger value="legal">Legal</TabsTrigger>
           <TabsTrigger value="assets">Assets</TabsTrigger>
           <TabsTrigger value="countries">Countries</TabsTrigger>
         </TabsList>
+        
+        <TabsContent value="dashboard" className="space-y-6">
+          <PlatformDashboard />
+        </TabsContent>
         
         <TabsContent value="settings" className="space-y-6">
           <PlatformSettingsManager />

@@ -13,6 +13,7 @@ import { LegalManager } from '@/components/settings/LegalManager'
 import { PlatformAssetUploader } from '@/components/settings/PlatformAssetUploader'
 import { CountryManagement } from '@/components/settings/CountryManagement'
 import { OfferTemplatesManager } from '@/components/settings/OfferTemplatesManager'
+import { PlatformTab } from '@/components/settings/PlatformTab'
 import { usePermissions } from '@/hooks/usePermissions'
 import { AppContainer } from '@/components/layout/AppContainer'
 import { Section } from '@/components/layout/Section'
@@ -45,6 +46,8 @@ export default function Settings() {
 
   const renderPlatformContent = () => {
     switch (currentTab) {
+      case 'platform-dashboard':
+        return <PlatformTab />
       case 'platform-settings':
         return <PlatformSettingsManager />
       case 'platform-advertising':
@@ -58,7 +61,7 @@ export default function Settings() {
       case 'platform-templates':
         return <OfferTemplatesManager />
       default:
-        return <PlatformSettingsManager />
+        return <PlatformTab />
     }
   }
 
@@ -122,6 +125,9 @@ export default function Settings() {
                 
                 {isPlatformAdmin && (
                   <>
+                    <TabsContent value="platform-dashboard">
+                      {renderPlatformContent()}
+                    </TabsContent>
                     <TabsContent value="platform-settings">
                       {renderPlatformContent()}
                     </TabsContent>
