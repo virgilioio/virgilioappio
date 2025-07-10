@@ -36,6 +36,8 @@ interface MatchResult {
     coreSignalCandidates: number;
     localCandidates: number;
     creditsUsed: number;
+    coreSignalError?: string;
+    searchStrategy: string;
     skillsAnalysis: {
       averageMatch: number;
       topSkills: string[];
@@ -512,14 +514,31 @@ function buildCoreSignalQuery(criteria: MatchingCriteria): any {
 }
 
 async function searchCoreSignal(criteria: MatchingCriteria): Promise<{ candidates: CoreSignalCandidate[], creditsUsed: number }> {
+  console.log('🌐 Starting CoreSignal search...');
+  
   if (!CORESIGNAL_API_KEY) {
-    console.log('🚫 CoreSignal API key not available');
+    console.error('🚫 CORESIGNAL_API_KEY not found in environment variables');
     return { candidates: [], creditsUsed: 0 };
   }
 
+  // Validate API key format
+  if (!CORESIGNAL_API_KEY.startsWith('cs_')) {
+    console.error('🚫 Invalid CoreSignal API key format (should start with cs_)');
+    return { candidates: [], creditsUsed: 0 };
+  }
+
+  console.log('✅ CoreSignal API key found and validated');
+
   try {
     const esQuery = buildCoreSignalQuery(criteria);
-    console.log('🔍 CoreSignal query:', JSON.stringify(esQuery, null, 2));
+    console.log('🔍 CoreSignal query built:');
+    console.log('   - Skills:', criteria.skills?.length || 0, 'skills');
+    console.log('   - Location:', criteria.location);
+    console.log('   - Salary range:', criteria.salaryMin, '-', criteria.salaryMax, criteria.currency);
+    console.log('   - Full query:', JSON.stringify(esQuery, null, 2));
+
+    const startTime = Date.now();
+    console.log('📡 Sending request to CoreSignal API...');
 
     const response = await fetch(`${CORESIGNAL_BASE_URL}/v2/employee_clean/search/es_dsl`, {
       method: 'POST',
@@ -530,14 +549,36 @@ async function searchCoreSignal(criteria: MatchingCriteria): Promise<{ candidate
       body: JSON.stringify(esQuery)
     });
 
+    const requestTime = Date.now() - startTime;
+    console.log(`⏱️ CoreSignal API response time: ${requestTime}ms`);
+
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('❌ CoreSignal API error:', response.status, errorText);
+      console.error('❌ CoreSignal API error:');
+      console.error('   - Status:', response.status);
+      console.error('   - Status Text:', response.statusText);
+      console.error('   - Error Response:', errorText);
+      console.error('   - Request URL:', `${CORESIGNAL_BASE_URL}/v2/employee_clean/search/es_dsl`);
+      console.error('   - Headers sent:', {
+        'Authorization': `Bearer ${CORESIGNAL_API_KEY.substring(0, 10)}...`,
+        'Content-Type': 'application/json'
+      });
       return { candidates: [], creditsUsed: 0 };
     }
 
     const data = await response.json();
-    console.log(`✅ CoreSignal found ${data.hits?.hits?.length || 0} candidates`);
+    const candidateCount = data.hits?.hits?.length || 0;
+    const totalHits = data.hits?.total?.value || data.hits?.total || 0;
+    
+    console.log(`✅ CoreSignal API Success:`);
+    console.log(`   - Candidates returned: ${candidateCount}`);
+    console.log(`   - Total matches in DB: ${totalHits}`);
+    console.log(`   - Response structure:`, {
+      hasHits: !!data.hits,
+      hitsCount: candidateCount,
+      totalValue: totalHits,
+      took: data.took
+    });
 
     // Transform CoreSignal data to our format
     const candidates: CoreSignalCandidate[] = (data.hits?.hits || []).map((hit: any) => {
@@ -553,12 +594,36 @@ async function searchCoreSignal(criteria: MatchingCriteria): Promise<{ candidate
       };
     });
 
+    console.log(`🔄 Processing ${candidateCount} CoreSignal candidates...`);
+    
+    // Log a sample candidate for debugging
+    if (candidateCount > 0) {
+      const sampleCandidate = data.hits.hits[0]._source;
+      console.log('📋 Sample candidate structure:', {
+        id: sampleCandidate.id,
+        name: sampleCandidate.name ? 'Present' : 'Missing',
+        location: sampleCandidate.location,
+        skillsCount: sampleCandidate.skills?.length || 0,
+        experienceCount: sampleCandidate.experience?.length || 0,
+        hasCurrentPosition: !!sampleCandidate.current_position
+      });
+    }
+
     return { 
       candidates, 
-      creditsUsed: 1 // Each search costs 1 credit
+      creditsUsed: candidateCount > 0 ? 1 : 0 // Only count as credit used if we got results
     };
   } catch (error) {
-    console.error('❌ CoreSignal search error:', error);
+    console.error('❌ CoreSignal search error:');
+    console.error('   - Error type:', error.name);
+    console.error('   - Error message:', error.message);
+    console.error('   - Stack trace:', error.stack);
+    
+    // Check if it's a network error
+    if (error.message.includes('fetch')) {
+      console.error('🌐 Network error - check internet connection and API endpoint');
+    }
+    
     return { candidates: [], creditsUsed: 0 };
   }
 }
@@ -611,17 +676,36 @@ serve(async (req) => {
 
     // Step 2: Determine if we need CoreSignal search
     const LOCAL_CANDIDATE_THRESHOLD = 50;
-    const shouldSearchCoreSignal = (localCandidates?.length || 0) < LOCAL_CANDIDATE_THRESHOLD && CORESIGNAL_API_KEY;
+    const localCount = localCandidates?.length || 0;
+    const hasApiKey = !!CORESIGNAL_API_KEY;
+    const shouldSearchCoreSignal = localCount < LOCAL_CANDIDATE_THRESHOLD && hasApiKey;
+    
+    console.log('🔍 CoreSignal search decision:');
+    console.log(`   - Local candidates: ${localCount}`);
+    console.log(`   - Threshold: ${LOCAL_CANDIDATE_THRESHOLD}`);
+    console.log(`   - API key available: ${hasApiKey}`);
+    console.log(`   - Will search CoreSignal: ${shouldSearchCoreSignal}`);
     
     let coreSignalCandidates: CoreSignalCandidate[] = [];
     let creditsUsed = 0;
+    let coreSignalError = null;
 
     if (shouldSearchCoreSignal) {
-      console.log('🌐 Searching CoreSignal for additional candidates...');
+      console.log('🌐 Initiating CoreSignal search for additional candidates...');
       const coreSignalResult = await searchCoreSignal(criteria);
       coreSignalCandidates = coreSignalResult.candidates;
       creditsUsed = coreSignalResult.creditsUsed;
-      console.log(`🌐 Found ${coreSignalCandidates.length} CoreSignal candidates (${creditsUsed} credits used)`);
+      console.log(`🌐 CoreSignal search completed: ${coreSignalCandidates.length} candidates found (${creditsUsed} credits used)`);
+      
+      if (coreSignalCandidates.length === 0 && creditsUsed === 0) {
+        coreSignalError = 'CoreSignal search failed or returned no results';
+        console.warn('⚠️ CoreSignal search did not return any candidates');
+      }
+    } else if (!hasApiKey) {
+      console.log('🚫 Skipping CoreSignal search: API key not configured');
+      coreSignalError = 'CoreSignal API key not configured';
+    } else {
+      console.log(`🚫 Skipping CoreSignal search: sufficient local candidates (${localCount} >= ${LOCAL_CANDIDATE_THRESHOLD})`);
     }
 
     // Step 3: Combine and format all candidates
@@ -639,17 +723,19 @@ serve(async (req) => {
         good: 0,
         fair: 0,
         minimal: 0,
-        breakdown: {
-          salaryMatches: 0,
-          locationMatches: 0,
-          coreSignalCandidates: 0,
-          localCandidates: 0,
-          creditsUsed: 0,
-          skillsAnalysis: {
-            averageMatch: 0,
-            topSkills: []
+          breakdown: {
+            salaryMatches: 0,
+            locationMatches: 0,
+            coreSignalCandidates: 0,
+            localCandidates: 0,
+            creditsUsed: 0,
+            coreSignalError: coreSignalError,
+            searchStrategy: 'No candidates found',
+            skillsAnalysis: {
+              averageMatch: 0,
+              topSkills: []
+            }
           }
-        }
       };
       
       return new Response(JSON.stringify(emptyResult), {
@@ -750,6 +836,8 @@ serve(async (req) => {
         coreSignalCandidates: coreSignalCandidates.length,
         localCandidates: localCandidates?.length || 0,
         creditsUsed,
+        coreSignalError,
+        searchStrategy: shouldSearchCoreSignal ? 'Local + CoreSignal' : (hasApiKey ? 'Local only (sufficient)' : 'Local only (no API key)'),
         skillsAnalysis: {
           averageMatch: skillMatches.length > 0 
             ? skillMatches.reduce((a, b) => a + b, 0) / skillMatches.length 

@@ -44,6 +44,11 @@ interface CandidateMatching {
   breakdown: {
     salaryMatches: number
     locationMatches: number
+    coreSignalCandidates: number
+    localCandidates: number
+    creditsUsed: number
+    coreSignalError?: string
+    searchStrategy: string
     skillsAnalysis: {
       averageMatch: number
       topSkills: string[]
@@ -435,6 +440,34 @@ export function AIJobAssistant() {
                           <div className="text-xs text-blue-600">
                             From our independent talent pool
                           </div>
+                        </div>
+
+                        {/* Data Source Breakdown */}
+                        <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                          <div className="text-sm font-medium text-gray-700 mb-2">Search Strategy & Sources</div>
+                          <div className="grid grid-cols-2 gap-3 text-xs">
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Local Database:</span>
+                              <span className="font-medium">{candidateMatching.breakdown.localCandidates}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">CoreSignal API:</span>
+                              <span className="font-medium">{candidateMatching.breakdown.coreSignalCandidates}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Strategy:</span>
+                              <span className="font-medium text-blue-600">{candidateMatching.breakdown.searchStrategy}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-600">Credits Used:</span>
+                              <span className="font-medium">{candidateMatching.breakdown.creditsUsed}</span>
+                            </div>
+                          </div>
+                          {candidateMatching.breakdown.coreSignalError && (
+                            <div className="mt-2 p-2 bg-orange-50 border border-orange-200 rounded text-xs">
+                              <span className="text-orange-700">⚠️ {candidateMatching.breakdown.coreSignalError}</span>
+                            </div>
+                          )}
                         </div>
 
                         {/* Match Quality Breakdown */}
