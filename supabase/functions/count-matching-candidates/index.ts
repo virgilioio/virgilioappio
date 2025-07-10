@@ -687,14 +687,12 @@ serve(async (req) => {
     console.log(`📊 Found ${localCandidates?.length || 0} local candidates`);
 
     // Step 2: Determine if we need CoreSignal search
-    const LOCAL_CANDIDATE_THRESHOLD = 50;
     const localCount = localCandidates?.length || 0;
     const hasApiKey = !!CORESIGNAL_API_KEY;
-    const shouldSearchCoreSignal = localCount < LOCAL_CANDIDATE_THRESHOLD && hasApiKey;
+    const shouldSearchCoreSignal = hasApiKey; // Always search CoreSignal when API key is available
     
     console.log('🔍 CoreSignal search decision:');
     console.log(`   - Local candidates: ${localCount}`);
-    console.log(`   - Threshold: ${LOCAL_CANDIDATE_THRESHOLD}`);
     console.log(`   - API key available: ${hasApiKey}`);
     console.log(`   - Will search CoreSignal: ${shouldSearchCoreSignal}`);
     
@@ -716,8 +714,6 @@ serve(async (req) => {
     } else if (!hasApiKey) {
       console.log('🚫 Skipping CoreSignal search: API key not configured');
       coreSignalError = 'CoreSignal API key not configured';
-    } else {
-      console.log(`🚫 Skipping CoreSignal search: sufficient local candidates (${localCount} >= ${LOCAL_CANDIDATE_THRESHOLD})`);
     }
 
     // Step 3: Combine and format all candidates
