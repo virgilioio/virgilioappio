@@ -52,6 +52,7 @@ interface CoreSignalCandidate {
     country?: string;
     region?: string;
     city?: string;
+    state?: string;
   };
   experience?: Array<{
     title?: string;
@@ -65,6 +66,11 @@ interface CoreSignalCandidate {
     currency?: string;
     period?: string;
   };
+  current_role?: string;
+  current_company?: string;
+  linkedin_url?: string;
+  years_experience?: number;
+  education?: Array<any>;
 }
 
 interface CoreSignalSearchResult {
@@ -400,6 +406,47 @@ function checkLocationCompatibility(jobLocation?: string, candidateLocation?: st
   return false;
 }
 
+// Helper functions for CoreSignal data transformation
+function extractCityFromRawAddress(rawAddress?: string): string | undefined {
+  if (!rawAddress) return undefined;
+  
+  // Common formats: "City, State, Country" or "City, Country"
+  const parts = rawAddress.split(',').map(part => part.trim());
+  if (parts.length > 0) {
+    return parts[0]; // First part is usually the city
+  }
+  
+  return undefined;
+}
+
+function extractStateFromRawAddress(rawAddress?: string): string | undefined {
+  if (!rawAddress) return undefined;
+  
+  // Common formats: "City, State, Country"
+  const parts = rawAddress.split(',').map(part => part.trim());
+  if (parts.length >= 3) {
+    return parts[1]; // Second part is usually the state/region
+  }
+  
+  return undefined;
+}
+
+function getCurrentRoleFromExperience(experience?: any[]): string | undefined {
+  if (!experience || experience.length === 0) return undefined;
+  
+  // Find the most recent/current position
+  const currentRole = experience.find(exp => exp.is_current) || experience[0];
+  return currentRole?.title;
+}
+
+function getCurrentCompanyFromExperience(experience?: any[]): string | undefined {
+  if (!experience || experience.length === 0) return undefined;
+  
+  // Find the most recent/current position
+  const currentRole = experience.find(exp => exp.is_current) || experience[0];
+  return currentRole?.company_name;
+}
+
 // CoreSignal integration functions
 function buildCoreSignalQuery(criteria: MatchingCriteria): any {
   const query: any = {
@@ -606,13 +653,19 @@ async function searchCoreSignal(criteria: MatchingCriteria): Promise<{ candidate
           name: candidateData.full_name || candidateData.name || 'Unknown',
           location: {
             country: candidateData.location_country,
-            region: candidateData.location_regions,
-            city: candidateData.location_raw_address
+            region: candidateData.location_regions?.[0] || candidateData.location_regions,
+            city: extractCityFromRawAddress(candidateData.location_raw_address),
+            state: extractStateFromRawAddress(candidateData.location_raw_address)
           },
           experience: candidateData.experience || [],
           skills: Array.isArray(candidateData.skills) ? candidateData.skills : [],
           summary: candidateData.description || candidateData.headline || candidateData.summary || '',
-          salary: extractSalaryFromExperience(candidateData.experience)
+          salary: extractSalaryFromExperience(candidateData.experience),
+          current_role: candidateData.job_title || getCurrentRoleFromExperience(candidateData.experience),
+          current_company: getCurrentCompanyFromExperience(candidateData.experience),
+          linkedin_url: candidateData.websites_linkedin,
+          years_experience: Math.floor((candidateData.total_experience_duration_months || 0) / 12),
+          education: candidateData.education || []
         };
 
         candidates.push(candidate);
@@ -678,13 +731,17 @@ function convertCoreSignalToLocalFormat(coreSignalCandidate: CoreSignalCandidate
     id: `coresignal_${coreSignalCandidate.id}`,
     candidate_name: coreSignalCandidate.name,
     location_country: location?.country,
-    location_state: location?.region,
+    location_state: location?.state,
     location_city: location?.city,
     skills: coreSignalCandidate.skills || [],
     profile_summary: coreSignalCandidate.summary,
     salary_amount: coreSignalCandidate.salary?.amount,
     salary_currency: coreSignalCandidate.salary?.currency || 'USD',
     salary_period: coreSignalCandidate.salary?.period || 'annual',
+    linkedin_url: coreSignalCandidate.linkedin_url,
+    role_current: coreSignalCandidate.current_role,
+    company_current: coreSignalCandidate.current_company,
+    years_experience: coreSignalCandidate.years_experience,
     source: 'coresignal'
   };
 }
