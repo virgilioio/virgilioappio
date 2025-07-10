@@ -20,6 +20,11 @@ interface JobSpec {
   level: 'L1' | 'L2' | 'L3'
   department: string
   location: string
+  regional_context?: {
+    region: 'LATAM' | 'EMEA' | 'APAC' | 'NORTH_AMERICA' | 'GLOBAL'
+    remote_scope?: string // e.g., "Remote - LATAM", "Specific office location"
+    timezone_alignment?: string // e.g., "Latin America timezones", "European business hours"
+  }
   salary_range: {
     min: number
     max: number
@@ -354,6 +359,11 @@ export function AIJobAssistant() {
                     <div className="flex items-center gap-2 text-sm">
                       <MapPin className="h-4 w-4" />
                       <span>{jobSpec.location}</span>
+                      {jobSpec.regional_context && (
+                        <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200">
+                          {jobSpec.regional_context.region}
+                        </Badge>
+                      )}
                     </div>
                     
                     <div className="flex items-center gap-2 text-sm">

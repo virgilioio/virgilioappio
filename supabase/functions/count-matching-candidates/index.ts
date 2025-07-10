@@ -313,18 +313,89 @@ async function checkSalaryCompatibility(
   return isCompatible;
 }
 
+// Regional mapping for enhanced location matching
+const REGIONAL_MAPPINGS = {
+  'LATAM': ['mexico', 'guatemala', 'belize', 'el salvador', 'honduras', 'nicaragua', 'costa rica', 'panama', 'colombia', 'venezuela', 'guyana', 'suriname', 'french guiana', 'brazil', 'ecuador', 'peru', 'bolivia', 'paraguay', 'chile', 'argentina', 'uruguay'],
+  'EMEA': ['europe', 'middle east', 'africa', 'united kingdom', 'germany', 'france', 'spain', 'italy', 'netherlands', 'sweden', 'norway', 'denmark', 'poland', 'romania', 'czech republic', 'hungary', 'bulgaria', 'slovakia', 'slovenia', 'croatia', 'serbia', 'bosnia', 'montenegro', 'albania', 'macedonia', 'greece', 'cyprus', 'malta', 'estonia', 'latvia', 'lithuania', 'finland', 'belgium', 'luxembourg', 'austria', 'switzerland', 'portugal', 'ireland', 'ukraine', 'russia', 'turkey', 'israel', 'egypt', 'south africa', 'nigeria', 'kenya', 'ghana', 'morocco', 'tunisia', 'algeria', 'libya', 'sudan', 'ethiopia', 'uganda', 'tanzania', 'zimbabwe', 'zambia', 'botswana', 'namibia', 'angola', 'mozambique', 'madagascar', 'mauritius', 'seychelles', 'uae', 'saudi arabia', 'qatar', 'bahrain', 'kuwait', 'oman', 'jordan', 'lebanon', 'iraq', 'iran'],
+  'APAC': ['asia', 'pacific', 'china', 'japan', 'south korea', 'north korea', 'taiwan', 'hong kong', 'macau', 'singapore', 'malaysia', 'thailand', 'vietnam', 'cambodia', 'laos', 'myanmar', 'indonesia', 'philippines', 'brunei', 'timor-leste', 'papua new guinea', 'australia', 'new zealand', 'fiji', 'samoa', 'tonga', 'vanuatu', 'solomon islands', 'palau', 'micronesia', 'marshall islands', 'nauru', 'kiribati', 'tuvalu', 'india', 'pakistan', 'bangladesh', 'sri lanka', 'nepal', 'bhutan', 'maldives', 'afghanistan', 'mongolia', 'kazakhstan', 'uzbekistan', 'turkmenistan', 'kyrgyzstan', 'tajikistan'],
+  'NORTH_AMERICA': ['united states', 'usa', 'canada', 'us', 'america', 'american']
+};
+
+function normalizeLocationForMatching(location: string): string {
+  return location.toLowerCase()
+    .replace(/[^\w\s-]/g, '') // Remove special characters except hyphens
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function getRegionFromLocation(location: string): string | null {
+  const normalized = normalizeLocationForMatching(location);
+  
+  // Check for explicit regional keywords
+  if (normalized.includes('latam') || normalized.includes('latin america')) return 'LATAM';
+  if (normalized.includes('emea')) return 'EMEA';
+  if (normalized.includes('apac') || normalized.includes('asia pacific')) return 'APAC';
+  if (normalized.includes('north america')) return 'NORTH_AMERICA';
+  
+  // Check if location matches any country in regions
+  for (const [region, countries] of Object.entries(REGIONAL_MAPPINGS)) {
+    if (countries.some(country => normalized.includes(country))) {
+      return region;
+    }
+  }
+  
+  return null;
+}
+
 function checkLocationCompatibility(jobLocation?: string, candidateLocation?: string): boolean {
   if (!jobLocation) return true; // No location requirement
   if (!candidateLocation) return true; // No location specified by candidate
   
-  const jobLoc = jobLocation.toLowerCase().trim();
-  const candidateLoc = candidateLocation.toLowerCase().trim();
+  const jobLoc = normalizeLocationForMatching(jobLocation);
+  const candidateLoc = normalizeLocationForMatching(candidateLocation);
   
-  // Check for remote keywords
-  if (jobLoc.includes('remote') || jobLoc.includes('anywhere')) return true;
+  console.log(`🌍 Location matching: Job="${jobLoc}" vs Candidate="${candidateLoc}"`);
   
-  // Check for country/state/city matches
-  return candidateLoc.includes(jobLoc) || jobLoc.includes(candidateLoc);
+  // Check for remote keywords - always compatible
+  if (jobLoc.includes('remote') || jobLoc.includes('anywhere') || candidateLoc.includes('remote')) {
+    console.log('✅ Remote work detected - location compatible');
+    return true;
+  }
+  
+  // Direct location match (city, state, country)
+  if (candidateLoc.includes(jobLoc) || jobLoc.includes(candidateLoc)) {
+    console.log('✅ Direct location match');
+    return true;
+  }
+  
+  // Regional matching - enhanced intelligence
+  const jobRegion = getRegionFromLocation(jobLocation);
+  const candidateRegion = getRegionFromLocation(candidateLocation);
+  
+  if (jobRegion && candidateRegion) {
+    const isRegionalMatch = jobRegion === candidateRegion;
+    console.log(`🌍 Regional analysis: Job region="${jobRegion}", Candidate region="${candidateRegion}", Match=${isRegionalMatch}`);
+    
+    if (isRegionalMatch) {
+      console.log('✅ Regional match found');
+      return true;
+    }
+  }
+  
+  // Handle "Remote - [Region]" format
+  if (jobLoc.includes('remote') && jobLoc.includes('-')) {
+    const remoteRegionMatch = jobLoc.match(/remote\s*-\s*(\w+)/);
+    if (remoteRegionMatch) {
+      const targetRegion = remoteRegionMatch[1].toUpperCase();
+      if (candidateRegion === targetRegion || (targetRegion === 'LATAM' && candidateRegion === 'LATAM')) {
+        console.log(`✅ Remote region match: ${targetRegion}`);
+        return true;
+      }
+    }
+  }
+  
+  console.log('❌ No location compatibility found');
+  return false;
 }
 
 // CoreSignal integration functions
@@ -368,21 +439,62 @@ function buildCoreSignalQuery(criteria: MatchingCriteria): any {
     query.query.bool.must.push(skillsQuery);
   }
 
-  // Location matching
+  // Enhanced location matching with regional intelligence
   if (criteria.location && !criteria.location.toLowerCase().includes('remote')) {
+    const normalizedLocation = normalizeLocationForMatching(criteria.location);
+    const targetRegion = getRegionFromLocation(criteria.location);
+    
+    const locationQuery: any = {
+      bool: {
+        should: []
+      }
+    };
+    
+    // Direct location search
     const locationTerms = criteria.location.split(/[,\s]+/).filter(term => term.length > 2);
     if (locationTerms.length > 0) {
-      const locationQuery = {
-        bool: {
-          should: locationTerms.map(term => ({
-            multi_match: {
-              query: term,
-              fields: ["location.country", "location.region", "location.city"],
-              fuzziness: "AUTO"
-            }
-          }))
+      locationQuery.bool.should.push(...locationTerms.map(term => ({
+        multi_match: {
+          query: term,
+          fields: ["location.country^2", "location.region", "location.city"],
+          fuzziness: "AUTO"
         }
-      };
+      })));
+    }
+    
+    // Regional search - if we detect a region, include all countries in that region
+    if (targetRegion && REGIONAL_MAPPINGS[targetRegion]) {
+      console.log(`🌍 Expanding search to include all ${targetRegion} countries`);
+      locationQuery.bool.should.push(...REGIONAL_MAPPINGS[targetRegion].map(country => ({
+        match: {
+          "location.country": {
+            query: country,
+            fuzziness: "AUTO"
+          }
+        }
+      })));
+    }
+    
+    // Handle "Remote - [Region]" format
+    if (normalizedLocation.includes('remote') && normalizedLocation.includes('-')) {
+      const remoteRegionMatch = normalizedLocation.match(/remote\s*-\s*(\w+)/);
+      if (remoteRegionMatch) {
+        const remoteTargetRegion = remoteRegionMatch[1].toUpperCase();
+        if (REGIONAL_MAPPINGS[remoteTargetRegion]) {
+          console.log(`🌍 Remote ${remoteTargetRegion} search - including all countries in region`);
+          locationQuery.bool.should.push(...REGIONAL_MAPPINGS[remoteTargetRegion].map(country => ({
+            match: {
+              "location.country": {
+                query: country,
+                fuzziness: "AUTO"
+              }
+            }
+          })));
+        }
+      }
+    }
+    
+    if (locationQuery.bool.should.length > 0) {
       query.query.bool.must.push(locationQuery);
     }
   }
