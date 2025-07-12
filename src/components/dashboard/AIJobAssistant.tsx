@@ -5,7 +5,11 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Loader2, Sparkles, CheckCircle2, Circle, Briefcase, DollarSign, MapPin, Target, ChevronDown, ChevronUp, TrendingUp, Clock, Users, Award, Building2 } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Progress } from '@/components/ui/progress'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Loader2, Sparkles, CheckCircle2, Circle, Briefcase, DollarSign, MapPin, Target, ChevronDown, ChevronUp, TrendingUp, Clock, Users, Award, Building2, Edit2, BarChart3, AlertTriangle, PieChart, RefreshCw } from 'lucide-react'
 import { supabase } from '@/integrations/supabase/client'
 import { useToast } from '@/hooks/use-toast'
 import { validateJobPrompt, getValidationStats, type ValidationItem } from '@/utils/jobPromptValidation'
@@ -80,6 +84,11 @@ export function AIJobAssistant() {
   const [editableSkills, setEditableSkills] = useState<string[]>([])
   const [isCreatingJob, setIsCreatingJob] = useState(false)
   const [organizationName, setOrganizationName] = useState<string>('')
+  const [currentStep, setCurrentStep] = useState<'prompt' | 'specs' | 'matches' | 'decision'>('prompt')
+  const [isEditing, setIsEditing] = useState<{[key: string]: boolean}>({})
+  const [editableJobSpec, setEditableJobSpec] = useState<JobSpec | null>(null)
+  const [isRefreshingMatches, setIsRefreshingMatches] = useState(false)
+  const [marketInsights, setMarketInsights] = useState<any>(null)
   const { toast } = useToast()
   const { createJob } = useJobs()
   const navigate = useNavigate()
@@ -122,9 +131,11 @@ export function AIJobAssistant() {
 
       if (data?.jobSpec) {
         setJobSpec(data.jobSpec)
+        setEditableJobSpec(data.jobSpec)
         setCandidateMatching(data.candidateMatching || null)
         setSelectedTitle(data.jobSpec.job_title)
         setEditableSkills(data.jobSpec.skills || [])
+        setCurrentStep('specs')
         setShowModal(true)
       } else {
         throw new Error('Invalid response from AI service')
@@ -142,7 +153,7 @@ export function AIJobAssistant() {
   }
 
   const handleCreateJob = async () => {
-    if (!jobSpec) return
+    if (!editableJobSpec) return
 
     setIsCreatingJob(true)
     try {
@@ -155,16 +166,16 @@ export function AIJobAssistant() {
 
       const jobData = {
         title: selectedTitle,
-        description: jobSpec.job_description,
-        level: levelMapping[jobSpec.level] || 'L1 - Specialists',
-        location: jobSpec.location,
-        department: jobSpec.department,
-        salary_min: jobSpec.salary_range.min,
-        salary_max: jobSpec.salary_range.max,
-        currency: jobSpec.salary_range.currency,
+        description: editableJobSpec.job_description,
+        level: levelMapping[editableJobSpec.level] || 'L1 - Specialists',
+        location: editableJobSpec.location,
+        department: editableJobSpec.department,
+        salary_min: editableJobSpec.salary_range.min,
+        salary_max: editableJobSpec.salary_range.max,
+        currency: editableJobSpec.salary_range.currency,
         status: 'draft' as const,
         skills: editableSkills,
-        organization_id: organizationId // Add organization_id to the job data
+        organization_id: organizationId
       }
 
       const newJob = await createJob(jobData)
@@ -185,6 +196,71 @@ export function AIJobAssistant() {
       })
     } finally {
       setIsCreatingJob(false)
+    }
+  }
+
+  const handleEditField = (field: string) => {
+    setIsEditing(prev => ({ ...prev, [field]: !prev[field] }))
+  }
+
+  const handleFieldUpdate = (field: string, value: any) => {
+    if (!editableJobSpec) return
+    
+    setEditableJobSpec(prev => {
+      if (!prev) return prev
+      
+      if (field.includes('.')) {
+        const [parentField, childField] = field.split('.')
+        const currentParentValue = prev[parentField as keyof JobSpec]
+        return {
+          ...prev,
+          [parentField]: {
+            ...(typeof currentParentValue === 'object' && currentParentValue !== null ? currentParentValue : {}),
+            [childField]: value
+          }
+        }
+      }
+      
+      return {
+        ...prev,
+        [field]: value
+      }
+    })
+  }
+
+  const handleRefreshMatches = async () => {
+    if (!editableJobSpec) return
+    
+    setIsRefreshingMatches(true)
+    try {
+      const { data, error } = await supabase.functions.invoke('count-matching-candidates', {
+        body: {
+          criteria: {
+            skills: editableSkills,
+            location: editableJobSpec.location,
+            salary_min: editableJobSpec.salary_range.min,
+            salary_max: editableJobSpec.salary_range.max,
+            currency: editableJobSpec.salary_range.currency
+          }
+        }
+      })
+
+      if (error) throw error
+      setCandidateMatching(data)
+      
+      toast({
+        title: 'Matches Refreshed',
+        description: 'Updated candidate matching based on your changes.'
+      })
+    } catch (error: any) {
+      console.error('Error refreshing matches:', error)
+      toast({
+        title: 'Failed to Refresh Matches',
+        description: error.message || 'Unable to refresh candidate matches.',
+        variant: 'destructive'
+      })
+    } finally {
+      setIsRefreshingMatches(false)
     }
   }
 
@@ -307,249 +383,384 @@ export function AIJobAssistant() {
       <Dialog open={showModal} onOpenChange={setShowModal}>
         <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>AI-Generated Job Specification</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              AI Job Assistant
+            </DialogTitle>
           </DialogHeader>
           
-          {jobSpec && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Left Column - Main Job Details */}
-              <div className="lg:col-span-2 space-y-6">
-                {/* Job Title Section */}
-                <div className="space-y-3">
-                  <div>
-                    <label className="text-sm font-medium">Job Title</label>
-                    <input
-                      type="text"
-                      value={selectedTitle}
-                      onChange={(e) => setSelectedTitle(e.target.value)}
-                      className="w-full mt-1 px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
-                    />
-                  </div>
-                  
-                  {jobSpec.alt_titles.length > 0 && (
-                    <div>
-                      <label className="text-sm text-muted-foreground">Suggested Alternatives</label>
-                      <div className="flex flex-wrap gap-2 mt-1">
-                        {jobSpec.alt_titles.map((title, index) => (
-                          <Button
-                            key={index}
-                            variant={selectedTitle === title ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => setSelectedTitle(title)}
-                          >
-                            {title}
-                          </Button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Job Details Grid */}
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div className="space-y-4">
-                    {organizationName && (
-                      <div className="flex items-center gap-2 text-sm">
-                        <Building2 className="h-4 w-4" />
-                        <span className="font-medium">{organizationName}</span>
-                      </div>
-                    )}
+          {editableJobSpec && (
+            <div className="space-y-6">
+              {/* Progress Steps */}
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center space-x-4">
+                  {[
+                    { id: 'prompt', label: 'Prompt', icon: Sparkles },
+                    { id: 'specs', label: 'Specifications', icon: Edit2 },
+                    { id: 'matches', label: 'Matches', icon: Users },
+                    { id: 'decision', label: 'Create', icon: Target }
+                  ].map((step, index) => {
+                    const StepIcon = step.icon
+                    const isActive = currentStep === step.id
+                    const isCompleted = ['prompt', 'specs'].includes(step.id) && currentStep !== 'prompt'
                     
-                    <div className="flex items-center gap-2 text-sm">
-                      <Briefcase className="h-4 w-4" />
-                      <span className="font-medium">{jobSpec.department}</span>
-                      <Badge variant="outline">{jobSpec.level}</Badge>
-                    </div>
-                    
-                    <div className="flex items-center gap-2 text-sm">
-                      <MapPin className="h-4 w-4" />
-                      <span>{jobSpec.location}</span>
-                      {jobSpec.regional_context && (
-                        <Badge variant="outline" className="text-xs bg-purple-50 text-purple-700 border-purple-200">
-                          {jobSpec.regional_context.region}
-                        </Badge>
-                      )}
-                    </div>
-                    
-                    <div className="flex items-center gap-2 text-sm">
-                      <DollarSign className="h-4 w-4" />
-                      <span>
-                        {jobSpec.salary_range.currency} {jobSpec.salary_range.min?.toLocaleString() || 'N/A'} - {jobSpec.salary_range.max?.toLocaleString() || 'N/A'} 
-                        <span className="text-muted-foreground ml-1">
-                          ({jobSpec.salary_range.period})
+                    return (
+                      <div key={step.id} className="flex items-center">
+                        <div className={`flex items-center justify-center w-8 h-8 rounded-full border-2 ${
+                          isActive ? 'border-primary bg-primary text-white' :
+                          isCompleted ? 'border-green-500 bg-green-500 text-white' :
+                          'border-gray-300 bg-white text-gray-400'
+                        }`}>
+                          <StepIcon className="h-4 w-4" />
+                        </div>
+                        <span className={`ml-2 text-sm font-medium ${
+                          isActive ? 'text-primary' : 
+                          isCompleted ? 'text-green-600' : 
+                          'text-gray-400'
+                        }`}>
+                          {step.label}
                         </span>
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <SkillsEditor
-                      skills={editableSkills}
-                      onSkillsChange={setEditableSkills}
-                      location={jobSpec.location}
-                      salaryMin={jobSpec.salary_range.min}
-                      salaryMax={jobSpec.salary_range.max}
-                      currency={jobSpec.salary_range.currency}
-                    />
-                  </div>
+                        {index < 3 && (
+                          <div className={`mx-4 w-8 h-0.5 ${
+                            isCompleted ? 'bg-green-500' : 'bg-gray-300'
+                          }`} />
+                        )}
+                      </div>
+                    )
+                  })}
                 </div>
-
-                {/* Job Description */}
-                <div>
-                  <h4 className="text-sm font-medium mb-2">Job Description</h4>
-                  <div className="p-4 bg-muted rounded-lg text-sm" dangerouslySetInnerHTML={{ __html: jobSpec.job_description }} />
-                </div>
-
-                {/* Create Job */}
-                <div className="border-t pt-6 flex justify-end">
-                  <Button
-                    onClick={handleCreateJob}
-                    disabled={isCreatingJob}
-                    className="px-8 py-3 text-white hover:opacity-90 transition-opacity"
-                    style={{ backgroundColor: '#7e3eff' }}
-                  >
-                    {isCreatingJob ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Creating Job...
-                      </>
-                    ) : (
-                      'Create Job'
-                    )}
-                  </Button>
-                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRefreshMatches}
+                  disabled={isRefreshingMatches}
+                  className="ml-4"
+                >
+                  {isRefreshingMatches ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                  )}
+                  Refresh Matches
+                </Button>
               </div>
 
-              {/* Right Column - AI Insights & Recommendations */}
-              <div className="lg:col-span-1">
-                <div className="sticky top-4 space-y-6">
-                  {/* Candidate Pool Analysis */}
-                  {candidateMatching && (
-                    <div>
-                      <h4 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                        <Users className="h-5 w-5 text-primary" />
-                        Candidate Pool Analysis
-                      </h4>
-                      <div className="space-y-4">
-                        {/* Total Candidates */}
-                        <div className="p-4 bg-gradient-to-br from-blue-50 to-cyan-50 border-2 border-blue-200 rounded-xl">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="text-sm font-medium text-blue-700">Total Matching Candidates</span>
-                            <span className="text-2xl font-bold text-blue-800">{candidateMatching.totalCandidates}</span>
+              <Tabs value={currentStep} onValueChange={(value) => setCurrentStep(value as any)} className="space-y-6">
+                <TabsList className="grid w-full grid-cols-4">
+                  <TabsTrigger value="prompt">Prompt</TabsTrigger>
+                  <TabsTrigger value="specs">Specifications</TabsTrigger>
+                  <TabsTrigger value="matches">Matches</TabsTrigger>
+                  <TabsTrigger value="decision">Create</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="prompt" className="space-y-4">
+                  <div className="p-4 bg-muted rounded-lg">
+                    <h4 className="font-medium mb-2">Original Prompt</h4>
+                    <p className="text-sm text-muted-foreground">{prompt}</p>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="specs" className="space-y-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    {/* Left Column - Editable Fields */}
+                    <div className="space-y-6">
+                      {/* Job Title */}
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-sm font-medium">Job Title</Label>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => handleEditField('title')}
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        {isEditing.title ? (
+                          <Input
+                            value={selectedTitle}
+                            onChange={(e) => setSelectedTitle(e.target.value)}
+                            onBlur={() => handleEditField('title')}
+                            autoFocus
+                          />
+                        ) : (
+                          <div className="p-2 bg-muted rounded cursor-pointer" onClick={() => handleEditField('title')}>
+                            {selectedTitle}
                           </div>
-                          <div className="text-xs text-blue-600">
+                        )}
+                        
+                        {editableJobSpec.alt_titles.length > 0 && (
+                          <div>
+                            <Label className="text-xs text-muted-foreground">Suggested Alternatives</Label>
+                            <div className="flex flex-wrap gap-2 mt-1">
+                              {editableJobSpec.alt_titles.map((title, index) => (
+                                <Button
+                                  key={index}
+                                  variant={selectedTitle === title ? "default" : "outline"}
+                                  size="sm"
+                                  onClick={() => setSelectedTitle(title)}
+                                >
+                                  {title}
+                                </Button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Department */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-sm font-medium">Department</Label>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => handleEditField('department')}
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        {isEditing.department ? (
+                          <Input
+                            value={editableJobSpec.department}
+                            onChange={(e) => handleFieldUpdate('department', e.target.value)}
+                            onBlur={() => handleEditField('department')}
+                            autoFocus
+                          />
+                        ) : (
+                          <div className="p-2 bg-muted rounded cursor-pointer" onClick={() => handleEditField('department')}>
+                            {editableJobSpec.department}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Location */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-sm font-medium">Location</Label>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => handleEditField('location')}
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        {isEditing.location ? (
+                          <Input
+                            value={editableJobSpec.location}
+                            onChange={(e) => handleFieldUpdate('location', e.target.value)}
+                            onBlur={() => handleEditField('location')}
+                            autoFocus
+                          />
+                        ) : (
+                          <div className="p-2 bg-muted rounded cursor-pointer" onClick={() => handleEditField('location')}>
+                            {editableJobSpec.location}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Salary Range */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-sm font-medium">Salary Range</Label>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => handleEditField('salary')}
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        {isEditing.salary ? (
+                          <div className="grid grid-cols-3 gap-2">
+                            <Input
+                              type="number"
+                              placeholder="Min"
+                              value={editableJobSpec.salary_range.min}
+                              onChange={(e) => handleFieldUpdate('salary_range.min', parseInt(e.target.value))}
+                            />
+                            <Input
+                              type="number"
+                              placeholder="Max"
+                              value={editableJobSpec.salary_range.max}
+                              onChange={(e) => handleFieldUpdate('salary_range.max', parseInt(e.target.value))}
+                            />
+                            <Input
+                              placeholder="Currency"
+                              value={editableJobSpec.salary_range.currency}
+                              onChange={(e) => handleFieldUpdate('salary_range.currency', e.target.value)}
+                            />
+                          </div>
+                        ) : (
+                          <div className="p-2 bg-muted rounded cursor-pointer" onClick={() => handleEditField('salary')}>
+                            {editableJobSpec.salary_range.currency} {editableJobSpec.salary_range.min?.toLocaleString()} - {editableJobSpec.salary_range.max?.toLocaleString()} ({editableJobSpec.salary_range.period})
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Skills */}
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">Skills</Label>
+                        <SkillsEditor
+                          skills={editableSkills}
+                          onSkillsChange={setEditableSkills}
+                          location={editableJobSpec.location}
+                          salaryMin={editableJobSpec.salary_range.min}
+                          salaryMax={editableJobSpec.salary_range.max}
+                          currency={editableJobSpec.salary_range.currency}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Right Column - Job Description */}
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-sm font-medium">Job Description</Label>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => handleEditField('description')}
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      {isEditing.description ? (
+                        <Textarea
+                          value={editableJobSpec.job_description}
+                          onChange={(e) => handleFieldUpdate('job_description', e.target.value)}
+                          onBlur={() => handleEditField('description')}
+                          className="min-h-[300px]"
+                          autoFocus
+                        />
+                      ) : (
+                        <div 
+                          className="p-4 bg-muted rounded-lg text-sm min-h-[300px] cursor-pointer" 
+                          onClick={() => handleEditField('description')}
+                          dangerouslySetInnerHTML={{ __html: editableJobSpec.job_description }} 
+                        />
+                      )}
+                    </div>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="matches" className="space-y-6">
+                  {candidateMatching && (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                      {/* Match Quality Overview */}
+                      <div className="space-y-6">
+                        <div className="p-6 bg-gradient-to-br from-blue-50 to-cyan-50 border-2 border-blue-200 rounded-xl">
+                          <div className="flex items-center justify-between mb-4">
+                            <h4 className="text-lg font-semibold text-blue-800">Total Candidates</h4>
+                            <span className="text-3xl font-bold text-blue-900">{candidateMatching.totalCandidates}</span>
+                          </div>
+                          <div className="text-sm text-blue-700">
                             From our independent talent pool
                           </div>
                         </div>
 
-                        {/* Data Source Breakdown */}
-                        <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
-                          <div className="text-sm font-medium text-gray-700 mb-2">Search Strategy & Sources</div>
-                          <div className="grid grid-cols-2 gap-3 text-xs">
-                            <div className="flex justify-between">
-                              <span className="text-gray-600">Local Database:</span>
-                              <span className="font-medium">{candidateMatching.breakdown.localCandidates}</span>
+                        {/* Match Quality Breakdown */}
+                        <div className="space-y-3">
+                          <h4 className="font-semibold text-gray-900">Match Quality Distribution</h4>
+                          
+                          {candidateMatching.excellent > 0 && (
+                            <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
+                              <div className="flex items-center gap-2">
+                                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                                <span className="text-sm text-green-700 font-medium">Excellent Match (90%+)</span>
+                              </div>
+                              <span className="text-sm font-bold text-green-800">{candidateMatching.excellent}</span>
                             </div>
-                            <div className="flex justify-between">
-                              <span className="text-gray-600">CoreSignal API:</span>
-                              <span className="font-medium">{candidateMatching.breakdown.coreSignalCandidates}</span>
+                          )}
+                          
+                          {candidateMatching.good > 0 && (
+                            <div className="flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                              <div className="flex items-center gap-2">
+                                <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                                <span className="text-sm text-blue-700 font-medium">Good Match (70-89%)</span>
+                              </div>
+                              <span className="text-sm font-bold text-blue-800">{candidateMatching.good}</span>
                             </div>
-                            <div className="flex justify-between">
-                              <span className="text-gray-600">Strategy:</span>
-                              <span className="font-medium text-blue-600">{candidateMatching.breakdown.searchStrategy}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-gray-600">Credits Used:</span>
-                              <span className="font-medium">{candidateMatching.breakdown.creditsUsed}</span>
-                            </div>
-                          </div>
-                          {candidateMatching.breakdown.coreSignalError && (
-                            <div className="mt-2 p-2 bg-orange-50 border border-orange-200 rounded text-xs">
-                              <span className="text-orange-700">⚠️ {candidateMatching.breakdown.coreSignalError}</span>
+                          )}
+                          
+                          {candidateMatching.fair > 0 && (
+                            <div className="flex items-center justify-between p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                              <div className="flex items-center gap-2">
+                                <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                                <span className="text-sm text-yellow-700 font-medium">Fair Match (50-69%)</span>
+                              </div>
+                              <span className="text-sm font-bold text-yellow-800">{candidateMatching.fair}</span>
                             </div>
                           )}
                         </div>
+                      </div>
 
-                        {/* Match Quality Breakdown */}
-                        {candidateMatching.totalCandidates > 0 && (
+                      {/* AI Insights */}
+                      <div className="space-y-6">
+                        <div>
+                          <h4 className="font-semibold text-gray-900 mb-4">Market Insights</h4>
                           <div className="space-y-3">
-                            <div className="text-sm font-medium">Match Quality Breakdown</div>
-                            
-                            {candidateMatching.excellent > 0 && (
-                              <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
-                                <div className="flex items-center gap-2">
-                                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                                  <span className="text-sm text-green-700">Excellent Match (90%+)</span>
+                            {candidateMatching.totalCandidates === 0 ? (
+                              <div className="p-4 bg-orange-50 border border-orange-200 rounded-lg">
+                                <div className="flex items-start gap-2">
+                                  <AlertTriangle className="h-5 w-5 text-orange-600 mt-0.5" />
+                                  <div>
+                                    <p className="text-sm font-medium text-orange-800">Limited Talent Pool</p>
+                                    <p className="text-xs text-orange-700 mt-1">
+                                      Consider broadening location requirements or expanding skill criteria to find more candidates.
+                                    </p>
+                                  </div>
                                 </div>
-                                <span className="text-sm font-medium text-green-800">{candidateMatching.excellent}</span>
+                              </div>
+                            ) : candidateMatching.totalCandidates >= 20 ? (
+                              <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                                <div className="flex items-start gap-2">
+                                  <TrendingUp className="h-5 w-5 text-green-600 mt-0.5" />
+                                  <div>
+                                    <p className="text-sm font-medium text-green-800">Excellent Talent Pool</p>
+                                    <p className="text-xs text-green-700 mt-1">
+                                      Great selection of candidates available. You can be selective with your requirements.
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                                <div className="flex items-start gap-2">
+                                  <Users className="h-5 w-5 text-blue-600 mt-0.5" />
+                                  <div>
+                                    <p className="text-sm font-medium text-blue-800">Good Talent Pool</p>
+                                    <p className="text-xs text-blue-700 mt-1">
+                                      {candidateMatching.totalCandidates} qualified candidates available for this role.
+                                    </p>
+                                  </div>
+                                </div>
                               </div>
                             )}
-                            
-                            {candidateMatching.good > 0 && (
-                              <div className="flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                                <div className="flex items-center gap-2">
-                                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                                  <span className="text-sm text-blue-700">Good Match (70-89%)</span>
-                                </div>
-                                <span className="text-sm font-medium text-blue-800">{candidateMatching.good}</span>
-                              </div>
-                            )}
-                            
-                            {candidateMatching.fair > 0 && (
-                              <div className="flex items-center justify-between p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                                <div className="flex items-center gap-2">
-                                  <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                                  <span className="text-sm text-yellow-700">Fair Match (50-69%)</span>
-                                </div>
-                                <span className="text-sm font-medium text-yellow-800">{candidateMatching.fair}</span>
-                              </div>
-                            )}
-                            
-                            {candidateMatching.minimal > 0 && (
-                              <div className="flex items-center justify-between p-3 bg-orange-50 border border-orange-200 rounded-lg">
-                                <div className="flex items-center gap-2">
-                                  <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                                  <span className="text-sm text-orange-700">Minimal Match (30-49%)</span>
-                                </div>
-                                <span className="text-sm font-medium text-orange-800">{candidateMatching.minimal}</span>
-                              </div>
-                            )}
-                          </div>
-                        )}
 
-                        {/* Insight Message */}
-                        <div className="p-3 bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-lg">
-                          <div className="flex items-start gap-2">
-                            <TrendingUp className="h-4 w-4 text-purple-600 mt-0.5" />
-                            <div className="text-sm">
-                              {candidateMatching.totalCandidates === 0 ? (
-                                <span className="text-purple-700">
-                                  No candidates match your exact criteria. Consider broadening location or skill requirements.
-                                </span>
-                              ) : candidateMatching.totalCandidates >= 20 ? (
-                                <span className="text-purple-700">
-                                  Great talent pool available! You have excellent options for this role.
-                                </span>
-                              ) : candidateMatching.totalCandidates >= 10 ? (
-                                <span className="text-purple-700">
-                                  Good talent pool available with {candidateMatching.totalCandidates} qualified candidates.
-                                </span>
-                              ) : (
-                                <span className="text-purple-700">
-                                  Limited talent pool ({candidateMatching.totalCandidates} candidates). Consider expanding criteria.
-                                </span>
-                              )}
+                            <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                              <div className="text-sm font-medium text-gray-700 mb-2">Search Details</div>
+                              <div className="grid grid-cols-2 gap-2 text-xs">
+                                <div className="flex justify-between">
+                                  <span className="text-gray-600">Local Database:</span>
+                                  <span className="font-medium">{candidateMatching.breakdown.localCandidates}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-gray-600">External API:</span>
+                                  <span className="font-medium">{candidateMatching.breakdown.coreSignalCandidates}</span>
+                                </div>
+                              </div>
                             </div>
                           </div>
                         </div>
 
-                        {/* Top Skills in Pool */}
+                        {/* Top Skills */}
                         {candidateMatching.breakdown.skillsAnalysis.topSkills.length > 0 && (
                           <div>
-                            <div className="text-sm font-medium mb-2">Top Skills in Candidate Pool</div>
-                            <div className="flex flex-wrap gap-1">
-                              {candidateMatching.breakdown.skillsAnalysis.topSkills.slice(0, 6).map((skill, index) => (
-                                <span key={index} className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-gray-100 text-gray-700 border border-gray-200">
+                            <h4 className="font-semibold text-gray-900 mb-3">Top Skills in Pool</h4>
+                            <div className="flex flex-wrap gap-2">
+                              {candidateMatching.breakdown.skillsAnalysis.topSkills.slice(0, 8).map((skill, index) => (
+                                <span key={index} className="inline-flex items-center px-3 py-1 rounded-full text-xs bg-purple-100 text-purple-700 border border-purple-200">
                                   {skill}
                                 </span>
                               ))}
@@ -559,39 +770,45 @@ export function AIJobAssistant() {
                       </div>
                     </div>
                   )}
+                </TabsContent>
 
-                  {/* AI Insights & Recommendations */}
-                  <div>
-                    <h4 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                      <Target className="h-5 w-5 text-primary" />
-                      AI Insights & Recommendations
-                    </h4>
-                    <div className="space-y-3">
-                      {jobSpec.recommendations.map((rec, index) => {
-                        const icons = [
-                          { icon: TrendingUp, color: 'text-blue-500', bg: 'bg-blue-50 border-blue-200' },
-                          { icon: Clock, color: 'text-orange-500', bg: 'bg-orange-50 border-orange-200' },
-                          { icon: DollarSign, color: 'text-green-500', bg: 'bg-green-50 border-green-200' },
-                          { icon: Award, color: 'text-purple-500', bg: 'bg-purple-50 border-purple-200' }
-                        ]
-                        const iconData = icons[index % icons.length]
-                        const IconComponent = iconData.icon
-                        
-                        return (
-                          <div key={index} className={`p-4 rounded-lg border ${iconData.bg} transition-all duration-200 hover:shadow-md`}>
-                            <div className="flex items-start gap-3">
-                              <div className={`p-2 rounded-full bg-white shadow-sm ${iconData.color}`}>
-                                <IconComponent className="h-4 w-4" />
-                              </div>
-                              <p className="text-sm text-gray-700 leading-relaxed">{rec}</p>
-                            </div>
-                          </div>
-                        )
-                      })}
+                <TabsContent value="decision" className="space-y-6">
+                  <div className="space-y-4">
+                    <h4 className="text-lg font-semibold">Ready to Create Job?</h4>
+                    <div className="p-4 bg-muted rounded-lg">
+                      <h5 className="font-medium mb-2">Job Summary</h5>
+                      <div className="space-y-2 text-sm">
+                        <div><strong>Title:</strong> {selectedTitle}</div>
+                        <div><strong>Department:</strong> {editableJobSpec.department}</div>
+                        <div><strong>Location:</strong> {editableJobSpec.location}</div>
+                        <div><strong>Skills:</strong> {editableSkills.join(', ')}</div>
+                        <div><strong>Salary:</strong> {editableJobSpec.salary_range.currency} {editableJobSpec.salary_range.min?.toLocaleString()} - {editableJobSpec.salary_range.max?.toLocaleString()}</div>
+                      </div>
+                    </div>
+                    
+                    <div className="flex justify-end">
+                      <Button
+                        onClick={handleCreateJob}
+                        disabled={isCreatingJob}
+                        className="px-8 py-3 text-white hover:opacity-90 transition-opacity"
+                        style={{ backgroundColor: '#7e3eff' }}
+                      >
+                        {isCreatingJob ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Creating Job...
+                          </>
+                        ) : (
+                          <>
+                            <Target className="h-4 w-4 mr-2" />
+                            Create Job
+                          </>
+                        )}
+                      </Button>
                     </div>
                   </div>
-                </div>
-              </div>
+                </TabsContent>
+              </Tabs>
             </div>
           )}
         </DialogContent>
