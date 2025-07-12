@@ -460,6 +460,7 @@ async function buildCoreSignalQuery(criteria: MatchingCriteria): Promise<any> {
     console.warn('⚠️ AI variations failed, using original terms:', error.message);
   }
   
+  // Always start with valid base query structure
   const query: any = {
     query: {
       bool: {
@@ -468,10 +469,9 @@ async function buildCoreSignalQuery(criteria: MatchingCriteria): Promise<any> {
         filter: []
       }
     }
-    // No 'size' here - let CoreSignal use default
   };
 
-  // Skills matching with variations and correct CoreSignal field names
+  // Skills matching with nested queries for member_skills_collection and experience.title
   if (criteria.skills && criteria.skills.length > 0) {
     console.log('🏷️ Adding skills query for:', criteria.skills);
     
@@ -482,7 +482,7 @@ async function buildCoreSignalQuery(criteria: MatchingCriteria): Promise<any> {
           const skillVariations = variations.skill_variations?.[skill] || [skill];
           
           return skillVariations.flatMap((skillVar: string) => [
-            // Nested skills from member_skills_collection with fuzziness
+            // Nested skills from member_skills_collection
             {
               nested: {
                 path: "member_skills_collection",
@@ -496,7 +496,7 @@ async function buildCoreSignalQuery(criteria: MatchingCriteria): Promise<any> {
                 }
               }
             },
-            // Summary field with fuzziness
+            // Summary field for broader skill matching
             { 
               match: { 
                 "summary": {
@@ -505,7 +505,7 @@ async function buildCoreSignalQuery(criteria: MatchingCriteria): Promise<any> {
                 }
               } 
             },
-            // Nested job title from experience with fuzziness
+            // Nested job title from experience
             {
               nested: {
                 path: "experience",
@@ -519,7 +519,7 @@ async function buildCoreSignalQuery(criteria: MatchingCriteria): Promise<any> {
                 }
               }
             },
-            // Title field with fuzziness
+            // Title field (headline)
             { 
               match: { 
                 "title": {
@@ -527,87 +527,101 @@ async function buildCoreSignalQuery(criteria: MatchingCriteria): Promise<any> {
                   fuzziness: "AUTO"
                 }
               } 
-            },
-            // Wildcard queries for partial matches
-            { wildcard: { "summary": `*${skillVar.toLowerCase()}*` } },
-            { wildcard: { "title": `*${skillVar.toLowerCase()}*` } }
+            }
           ]);
         }),
         minimum_should_match: 1
       }
     };
-    query.query.bool.must.push(skillsQuery);
+    query.query.bool.should.push(skillsQuery);
     console.log('🏷️ Skills query with variations added');
   }
 
-  // Enhanced location matching with regional intelligence
-  if (criteria.location && !criteria.location.toLowerCase().includes('remote')) {
-    const normalizedLocation = normalizeLocationForMatching(criteria.location);
-    const targetRegion = getRegionFromLocation(criteria.location);
+  // Location matching using country field (map USA to United States)
+  if (criteria.location) {
+    console.log('🌍 Adding location filter for:', criteria.location);
     
-    const locationQuery: any = {
-      bool: {
-        should: []
-      }
-    };
+    // Normalize location for better matching
+    let locationToSearch = criteria.location.toLowerCase().trim();
     
-    // Direct location search using correct fields
-    const locationTerms = criteria.location.split(/[,\s]+/).filter(term => term.length > 2);
-    if (locationTerms.length > 0) {
-      locationQuery.bool.should.push(...locationTerms.map(term => ({
-        multi_match: {
-          query: term,
-          fields: ["location_country^2", "location_raw_address", "location_regions"],
-          fuzziness: "AUTO"
-        }
-      })));
+    // Map common country variations
+    if (locationToSearch === 'usa' || locationToSearch === 'us' || locationToSearch === 'america') {
+      locationToSearch = 'united states';
     }
     
-    // Regional search - if we detect a region, include all countries in that region
-    if (targetRegion && REGIONAL_MAPPINGS[targetRegion]) {
-      console.log(`🌍 Expanding search to include all ${targetRegion} countries`);
-      locationQuery.bool.should.push(...REGIONAL_MAPPINGS[targetRegion].map(country => ({
+    // Skip if remote-only location
+    if (!locationToSearch.includes('remote') || locationToSearch.includes('-')) {
+      const locationQuery: any = {
+        bool: {
+          should: []
+        }
+      };
+      
+      // Direct country match
+      locationQuery.bool.should.push({
         match: {
-          "location_country": {
-            query: country,
+          "country": {
+            query: locationToSearch,
             fuzziness: "AUTO"
           }
         }
-      })));
-    }
-    
-    // Handle "Remote - [Region]" format
-    if (normalizedLocation.includes('remote') && normalizedLocation.includes('-')) {
-      const remoteRegionMatch = normalizedLocation.match(/remote\s*-\s*(\w+)/);
-      if (remoteRegionMatch) {
-        const remoteTargetRegion = remoteRegionMatch[1].toUpperCase();
-        if (REGIONAL_MAPPINGS[remoteTargetRegion]) {
-          console.log(`🌍 Remote ${remoteTargetRegion} search - including all countries in region`);
-          locationQuery.bool.should.push(...REGIONAL_MAPPINGS[remoteTargetRegion].map(country => ({
-            match: {
-              "location_country": {
-                query: country,
-                fuzziness: "AUTO"
-              }
-            }
-          })));
+      });
+      
+      // Location.raw field for more detailed location matching
+      locationQuery.bool.should.push({
+        match: {
+          "location.raw": {
+            query: criteria.location,
+            fuzziness: "AUTO"
+          }
         }
+      });
+      
+      // Regional expansion for broader search
+      const targetRegion = getRegionFromLocation(criteria.location);
+      if (targetRegion && REGIONAL_MAPPINGS[targetRegion]) {
+        console.log(`🌍 Expanding search to include all ${targetRegion} countries`);
+        locationQuery.bool.should.push(...REGIONAL_MAPPINGS[targetRegion].map(country => ({
+          match: {
+            "country": {
+              query: country,
+              fuzziness: "AUTO"
+            }
+          }
+        })));
+      }
+      
+      if (locationQuery.bool.should.length > 0) {
+        query.query.bool.filter.push(locationQuery);
       }
     }
-    
-    if (locationQuery.bool.should.length > 0) {
-      query.query.bool.must.push(locationQuery);
-    }
+  }
+
+  // Skip salary filtering - log that it's not available in employee data
+  if (criteria.salary_min || criteria.salary_max) {
+    console.log('💰 Salary not filtered in CoreSignal (no field available in employee profiles)');
   }
 
   // Add activity filter to get more recent profiles
   query.query.bool.filter.push({
     range: {
       last_updated: {
-        gte: "2020-01-01" // Date format for more recent profiles
+        gte: "2020-01-01"
       }
     }
   });
+
+  // Ensure we always have a valid query - if no criteria, use match_all
+  if (query.query.bool.must.length === 0 && 
+      query.query.bool.should.length === 0 && 
+      query.query.bool.filter.length <= 1) { // Only has the date filter
+    console.log('⚠️ No search criteria provided, using match_all query');
+    query.query = { match_all: {} };
+  }
+
+  // Log the full query for debugging
+  console.log('📤 Final CoreSignal Elasticsearch Query:');
+  console.log(JSON.stringify(query, null, 2));
 
   return query;
 }
@@ -719,6 +733,92 @@ async function searchCoreSignal(criteria: MatchingCriteria): Promise<{ candidate
       console.error('   - Status:', searchResponse.status);
       console.error('   - Status Text:', searchResponse.statusText);
       console.error('   - Error Response:', errorText);
+      
+      // Handle 422 "missing query" error by retrying with match_all
+      if (searchResponse.status === 422 && errorText.includes('missing query')) {
+        console.log('🔄 Retrying with match_all query due to missing query error');
+        
+        const retryQuery = { query: { match_all: {} } };
+        const retryResponse = await fetch(`${CORESIGNAL_BASE_URL}/cdapi/v2/employee_clean/search/es_dsl`, {
+          method: 'POST',
+          headers: {
+            'apikey': CORESIGNAL_API_KEY,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(retryQuery)
+        });
+        
+        if (retryResponse.ok) {
+          const retryData = await retryResponse.json();
+          const retryCandidateIds = (retryData.hits?.hits || []).map((hit: any) => hit._id);
+          console.log(`✅ Retry successful: ${retryCandidateIds.length} candidates found`);
+          
+          // Continue with the retry results...
+          if (retryCandidateIds.length > 0) {
+            const candidateIds = retryCandidateIds.slice(0, 10); // Limit for safety
+            // Use the same collection logic as in the main flow
+            const candidates: CoreSignalCandidate[] = [];
+            const collectErrors: string[] = [];
+            let successfulCollects = 0;
+            
+            for (let i = 0; i < candidateIds.length; i++) {
+              const candidateId = candidateIds[i];
+              
+              try {
+                const collectResponse = await fetch(`${CORESIGNAL_BASE_URL}/cdapi/v2/employee_clean/collect/${candidateId}`, {
+                  method: 'GET',
+                  headers: {
+                    'apikey': CORESIGNAL_API_KEY,
+                    'Content-Type': 'application/json',
+                  }
+                });
+        
+                if (!collectResponse.ok) {
+                  collectErrors.push(`${candidateId}: ${collectResponse.status}`);
+                  continue;
+                }
+        
+                const candidateData = await collectResponse.json();
+                const candidate: CoreSignalCandidate = {
+                  id: candidateData.id || candidateId,
+                  name: candidateData.full_name || candidateData.name || 'Unknown',
+                  location: {
+                    country: candidateData.location_country,
+                    region: candidateData.location_regions?.[0] || candidateData.location_regions,
+                    city: extractCityFromRawAddress(candidateData.location_raw_address),
+                    state: extractStateFromRawAddress(candidateData.location_raw_address)
+                  },
+                  experience: candidateData.experience || [],
+                  skills: Array.isArray(candidateData.skills) ? candidateData.skills : [],
+                  summary: candidateData.description || candidateData.headline || candidateData.summary || '',
+                  salary: extractSalaryFromExperience(candidateData.experience),
+                  current_role: candidateData.job_title || getCurrentRoleFromExperience(candidateData.experience),
+                  current_company: getCurrentCompanyFromExperience(candidateData.experience),
+                  linkedin_url: candidateData.websites_linkedin,
+                  years_experience: Math.floor((candidateData.total_experience_duration_months || 0) / 12),
+                  education: candidateData.education || []
+                };
+        
+                candidates.push(candidate);
+                successfulCollects++;
+                
+                // Small delay to avoid rate limiting
+                if (i < candidateIds.length - 1) {
+                  await new Promise(resolve => setTimeout(resolve, 100));
+                }
+              } catch (error) {
+                collectErrors.push(`${candidateId}: ${error.message}`);
+              }
+            }
+            
+            return { 
+              candidates, 
+              creditsUsed: 2 + successfulCollects // 2 searches + collects
+            };
+          }
+        }
+      }
+      
       return { candidates: [], creditsUsed: 0 };
     }
 
