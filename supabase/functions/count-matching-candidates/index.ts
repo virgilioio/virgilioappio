@@ -743,9 +743,25 @@ async function searchCoreSignal(criteria: MatchingCriteria): Promise<{ candidate
     console.log('   - Location:', criteria.location);
     console.log('   - Salary range:', criteria.salary_min, '-', criteria.salary_max, criteria.currency);
     
+    // Verify query has required structure before sending
+    if (!esQuery || typeof esQuery !== 'object' || !esQuery.query) {
+      console.error('❌ Invalid query structure - missing "query" key');
+      console.error('Generated query:', JSON.stringify(esQuery, null, 2));
+      throw new Error('Invalid Elasticsearch query structure');
+    }
+    
     // Log exact query being sent to CoreSignal
     console.log('📤 Elasticsearch Query being sent to CoreSignal:');
     console.log(JSON.stringify(esQuery, null, 2));
+    
+    // Log raw HTTP request details for debugging
+    const requestBody = JSON.stringify(esQuery);
+    console.log('🌐 HTTP Request Details:');
+    console.log('   - URL:', `${CORESIGNAL_BASE_URL}/cdapi/v2/employee_clean/search/es_dsl`);
+    console.log('   - Method: POST');
+    console.log('   - Content-Type: application/json');
+    console.log('   - Body size:', requestBody.length, 'bytes');
+    console.log('   - Body preview:', requestBody.substring(0, 200) + (requestBody.length > 200 ? '...' : ''));
 
     const searchStartTime = Date.now();
     const searchResponse = await fetch(`${CORESIGNAL_BASE_URL}/cdapi/v2/employee_clean/search/es_dsl`, {
@@ -754,7 +770,7 @@ async function searchCoreSignal(criteria: MatchingCriteria): Promise<{ candidate
         'apikey': CORESIGNAL_API_KEY,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(esQuery)
+      body: requestBody
     });
 
     const searchTime = Date.now() - searchStartTime;
