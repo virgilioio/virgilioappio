@@ -980,6 +980,49 @@ function convertCoreSignalToLocalFormat(coreSignalCandidate: CoreSignalCandidate
   };
 }
 
+async function triggerLibraryEnrichment(data: {
+  internalCandidates: any[];
+  coreSignalCandidates: CoreSignalCandidate[];
+  searchCriteria: MatchingCriteria;
+  searchId: string;
+}) {
+  try {
+    console.log('🧠 Triggering library enrichment for', {
+      internal: data.internalCandidates.length,
+      external: data.coreSignalCandidates.length,
+      searchId: data.searchId
+    });
+
+    // Combine candidates for enrichment
+    const allCandidatesForEnrichment = [
+      ...data.internalCandidates,
+      ...data.coreSignalCandidates
+    ];
+
+    // Call the enrichment edge function directly
+    const enrichmentResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/enrich-library-from-results`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        candidates: allCandidatesForEnrichment,
+        searchId: data.searchId,
+        searchCriteria: data.searchCriteria
+      })
+    });
+
+    if (!enrichmentResponse.ok) {
+      console.warn('⚠️ Library enrichment call failed:', enrichmentResponse.status);
+    } else {
+      console.log('✅ Library enrichment triggered successfully');
+    }
+  } catch (error) {
+    console.warn('⚠️ Failed to trigger library enrichment:', error.message);
+  }
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -1173,6 +1216,16 @@ serve(async (req) => {
     };
 
     console.log('✅ Candidate matching result:', result);
+
+    // Trigger library enrichment asynchronously (don't wait for it)
+    triggerLibraryEnrichment({
+      internalCandidates: localCandidates || [],
+      coreSignalCandidates: coreSignalCandidates || [],
+      searchCriteria: criteria,
+      searchId: `search_${Date.now()}`
+    }).catch(error => {
+      console.warn('⚠️ Library enrichment failed (non-blocking):', error.message);
+    });
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

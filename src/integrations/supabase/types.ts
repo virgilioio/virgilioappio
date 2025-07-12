@@ -1297,6 +1297,54 @@ export type Database = {
           },
         ]
       }
+      library_enrichment_logs: {
+        Row: {
+          additions_made: Json | null
+          ai_suggestions: Json | null
+          candidates_analyzed: number | null
+          created_at: string | null
+          enrichment_type: string
+          extracted_terms: Json
+          id: string
+          processed_by: string | null
+          processing_time_ms: number | null
+          rejection_reasons: Json | null
+          source_search_id: string | null
+          synonyms_added: number | null
+          terms_added: number | null
+        }
+        Insert: {
+          additions_made?: Json | null
+          ai_suggestions?: Json | null
+          candidates_analyzed?: number | null
+          created_at?: string | null
+          enrichment_type: string
+          extracted_terms: Json
+          id?: string
+          processed_by?: string | null
+          processing_time_ms?: number | null
+          rejection_reasons?: Json | null
+          source_search_id?: string | null
+          synonyms_added?: number | null
+          terms_added?: number | null
+        }
+        Update: {
+          additions_made?: Json | null
+          ai_suggestions?: Json | null
+          candidates_analyzed?: number | null
+          created_at?: string | null
+          enrichment_type?: string
+          extracted_terms?: Json
+          id?: string
+          processed_by?: string | null
+          processing_time_ms?: number | null
+          rejection_reasons?: Json | null
+          source_search_id?: string | null
+          synonyms_added?: number | null
+          terms_added?: number | null
+        }
+        Relationships: []
+      }
       members: {
         Row: {
           created_at: string | null
@@ -1878,32 +1926,44 @@ export type Database = {
         Row: {
           canonical_title: string
           category: string | null
+          confidence_score: number | null
           created_at: string | null
           id: string
+          last_seen: string | null
           onet_code: string | null
           seniority_level: string | null
+          source: string | null
           synonyms: string[] | null
           updated_at: string | null
+          usage_count: number | null
         }
         Insert: {
           canonical_title: string
           category?: string | null
+          confidence_score?: number | null
           created_at?: string | null
           id?: string
+          last_seen?: string | null
           onet_code?: string | null
           seniority_level?: string | null
+          source?: string | null
           synonyms?: string[] | null
           updated_at?: string | null
+          usage_count?: number | null
         }
         Update: {
           canonical_title?: string
           category?: string | null
+          confidence_score?: number | null
           created_at?: string | null
           id?: string
+          last_seen?: string | null
           onet_code?: string | null
           seniority_level?: string | null
+          source?: string | null
           synonyms?: string[] | null
           updated_at?: string | null
+          usage_count?: number | null
         }
         Relationships: []
       }
@@ -1911,35 +1971,47 @@ export type Database = {
         Row: {
           canonical_name: string
           city: string | null
+          confidence_score: number | null
           country_code: string | null
           created_at: string | null
           id: string
           is_remote: boolean | null
+          last_seen: string | null
           region: string | null
+          source: string | null
           synonyms: string[] | null
           updated_at: string | null
+          usage_count: number | null
         }
         Insert: {
           canonical_name: string
           city?: string | null
+          confidence_score?: number | null
           country_code?: string | null
           created_at?: string | null
           id?: string
           is_remote?: boolean | null
+          last_seen?: string | null
           region?: string | null
+          source?: string | null
           synonyms?: string[] | null
           updated_at?: string | null
+          usage_count?: number | null
         }
         Update: {
           canonical_name?: string
           city?: string | null
+          confidence_score?: number | null
           country_code?: string | null
           created_at?: string | null
           id?: string
           is_remote?: boolean | null
+          last_seen?: string | null
           region?: string | null
+          source?: string | null
           synonyms?: string[] | null
           updated_at?: string | null
+          usage_count?: number | null
         }
         Relationships: []
       }
@@ -1947,35 +2019,47 @@ export type Database = {
         Row: {
           canonical_name: string
           category: string | null
+          confidence_score: number | null
           created_at: string | null
           esco_code: string | null
           id: string
+          last_seen: string | null
           onet_code: string | null
           parent_skill: string | null
+          source: string | null
           synonyms: string[] | null
           updated_at: string | null
+          usage_count: number | null
         }
         Insert: {
           canonical_name: string
           category?: string | null
+          confidence_score?: number | null
           created_at?: string | null
           esco_code?: string | null
           id?: string
+          last_seen?: string | null
           onet_code?: string | null
           parent_skill?: string | null
+          source?: string | null
           synonyms?: string[] | null
           updated_at?: string | null
+          usage_count?: number | null
         }
         Update: {
           canonical_name?: string
           category?: string | null
+          confidence_score?: number | null
           created_at?: string | null
           esco_code?: string | null
           id?: string
+          last_seen?: string | null
           onet_code?: string | null
           parent_skill?: string | null
+          source?: string | null
           synonyms?: string[] | null
           updated_at?: string | null
+          usage_count?: number | null
         }
         Relationships: []
       }
@@ -2176,6 +2260,10 @@ export type Database = {
       get_user_type_secure: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      increment_term_usage: {
+        Args: { table_name: string; term_name: string }
+        Returns: undefined
       }
       is_user_assigned_to_job: {
         Args: { job_id_param: string; user_id_param?: string }
