@@ -451,16 +451,7 @@ function getCurrentCompanyFromExperience(experience?: any[]): string | undefined
 async function buildCoreSignalQuery(criteria: MatchingCriteria): Promise<any> {
   console.log('🔧 Building CoreSignal query with criteria:', JSON.stringify(criteria, null, 2));
   
-  // Generate AI variations for better matching
-  let variations: any = {};
-  try {
-    variations = await generateQueryVariations(criteria);
-    console.log('🤖 Generated query variations:', JSON.stringify(variations, null, 2));
-  } catch (error) {
-    console.warn('⚠️ AI variations failed, using original terms:', error.message);
-  }
-  
-  // Always start with valid base query structure
+  // Always start with valid base query structure to ensure "query" key exists
   const query: any = {
     query: {
       bool: {
@@ -470,6 +461,15 @@ async function buildCoreSignalQuery(criteria: MatchingCriteria): Promise<any> {
       }
     }
   };
+
+  // Generate AI variations for better matching
+  let variations: any = {};
+  try {
+    variations = await generateQueryVariations(criteria);
+    console.log('🤖 Generated query variations:', JSON.stringify(variations, null, 2));
+  } catch (error) {
+    console.warn('⚠️ AI variations failed, using original terms:', error.message);
+  }
 
   // Skills matching with nested queries for member_skills_collection and experience.title
   if (criteria.skills && criteria.skills.length > 0) {
@@ -490,7 +490,8 @@ async function buildCoreSignalQuery(criteria: MatchingCriteria): Promise<any> {
                   match: {
                     "member_skills_collection.skill": {
                       query: skillVar,
-                      fuzziness: "AUTO"
+                      fuzziness: "AUTO",
+                      boost: 2.0
                     }
                   }
                 }
@@ -501,7 +502,8 @@ async function buildCoreSignalQuery(criteria: MatchingCriteria): Promise<any> {
               match: { 
                 "summary": {
                   query: skillVar,
-                  fuzziness: "AUTO"
+                  fuzziness: "AUTO",
+                  boost: 1.5
                 }
               } 
             },
@@ -513,7 +515,8 @@ async function buildCoreSignalQuery(criteria: MatchingCriteria): Promise<any> {
                   match: {
                     "experience.title": {
                       query: skillVar,
-                      fuzziness: "AUTO"
+                      fuzziness: "AUTO",
+                      boost: 1.8
                     }
                   }
                 }
@@ -524,7 +527,8 @@ async function buildCoreSignalQuery(criteria: MatchingCriteria): Promise<any> {
               match: { 
                 "title": {
                   query: skillVar,
-                  fuzziness: "AUTO"
+                  fuzziness: "AUTO",
+                  boost: 1.7
                 }
               } 
             }
@@ -544,25 +548,38 @@ async function buildCoreSignalQuery(criteria: MatchingCriteria): Promise<any> {
     // Normalize location for better matching
     let locationToSearch = criteria.location.toLowerCase().trim();
     
-    // Map common country variations
-    if (locationToSearch === 'usa' || locationToSearch === 'us' || locationToSearch === 'america') {
-      locationToSearch = 'united states';
+    // Map common country variations for better matching
+    const countryMappings: Record<string, string> = {
+      'usa': 'united states',
+      'us': 'united states', 
+      'america': 'united states',
+      'uk': 'united kingdom',
+      'britain': 'united kingdom'
+    };
+    
+    if (countryMappings[locationToSearch]) {
+      locationToSearch = countryMappings[locationToSearch];
+      console.log(`🗺️ Mapped location: ${criteria.location} → ${locationToSearch}`);
     }
     
-    // Skip if remote-only location
-    if (!locationToSearch.includes('remote') || locationToSearch.includes('-')) {
+    // Handle remote locations - broaden search if remote, skip if purely remote
+    const isRemoteOnly = locationToSearch === 'remote' && !locationToSearch.includes('-');
+    
+    if (!isRemoteOnly) {
       const locationQuery: any = {
         bool: {
-          should: []
+          should: [],
+          minimum_should_match: 1
         }
       };
       
-      // Direct country match
+      // Direct country match (primary)
       locationQuery.bool.should.push({
         match: {
           "country": {
             query: locationToSearch,
-            fuzziness: "AUTO"
+            fuzziness: "AUTO",
+            boost: 2.0
           }
         }
       });
@@ -572,7 +589,8 @@ async function buildCoreSignalQuery(criteria: MatchingCriteria): Promise<any> {
         match: {
           "location.raw": {
             query: criteria.location,
-            fuzziness: "AUTO"
+            fuzziness: "AUTO",
+            boost: 1.5
           }
         }
       });
@@ -585,24 +603,27 @@ async function buildCoreSignalQuery(criteria: MatchingCriteria): Promise<any> {
           match: {
             "country": {
               query: country,
-              fuzziness: "AUTO"
+              fuzziness: "AUTO",
+              boost: 1.0
             }
           }
         })));
       }
       
-      if (locationQuery.bool.should.length > 0) {
-        query.query.bool.filter.push(locationQuery);
-      }
+      query.query.bool.filter.push(locationQuery);
+      console.log('🌍 Location filter added to query');
+    } else {
+      console.log('🌍 Remote-only location detected, skipping location filter for broader search');
     }
   }
 
   // Skip salary filtering - log that it's not available in employee data
   if (criteria.salary_min || criteria.salary_max) {
     console.log('💰 Salary not filtered in CoreSignal (no field available in employee profiles)');
+    console.log('💰 Note: Salary filtering will be applied post-search if candidate has salary data');
   }
 
-  // Add activity filter to get more recent profiles
+  // Add activity filter to get more recent and relevant profiles
   query.query.bool.filter.push({
     range: {
       last_updated: {
@@ -611,17 +632,29 @@ async function buildCoreSignalQuery(criteria: MatchingCriteria): Promise<any> {
     }
   });
 
-  // Ensure we always have a valid query - if no criteria, use match_all
-  if (query.query.bool.must.length === 0 && 
-      query.query.bool.should.length === 0 && 
-      query.query.bool.filter.length <= 1) { // Only has the date filter
-    console.log('⚠️ No search criteria provided, using match_all query');
-    query.query = { match_all: {} };
+  // CRITICAL: Ensure we ALWAYS have a valid query with "query" key
+  // If no meaningful criteria provided, use match_all but keep the structure
+  const hasSkills = criteria.skills && criteria.skills.length > 0;
+  const hasLocation = criteria.location && !criteria.location.toLowerCase().includes('remote');
+  
+  if (!hasSkills && !hasLocation) {
+    console.log('⚠️ No specific search criteria provided, using match_all query');
+    query.query = { 
+      match_all: {} 
+    };
+  } else if (query.query.bool.should.length === 0 && query.query.bool.must.length === 0) {
+    console.log('⚠️ No should/must clauses generated, adding fallback match_all');
+    query.query.bool.should.push({ match_all: {} });
   }
 
-  // Log the full query for debugging
+  // Set result size for initial search
+  query.size = 100; // Reasonable limit for initial search
+  query.from = 0;
+
+  // Log the full query for debugging and self-learning integration
   console.log('📤 Final CoreSignal Elasticsearch Query:');
   console.log(JSON.stringify(query, null, 2));
+  console.log('✅ Query structure validated - contains required "query" key');
 
   return query;
 }
@@ -1317,12 +1350,15 @@ serve(async (req) => {
 
     console.log('✅ Candidate matching result:', result);
 
-    // Trigger library enrichment asynchronously (don't wait for it)
+    // ALWAYS trigger library enrichment for self-learning (even with 0 external candidates)
+    const totalCandidatesForEnrichment = (localCandidates?.length || 0) + coreSignalCandidates.length;
+    console.log(`🧠 Triggering library enrichment with ${totalCandidatesForEnrichment} total candidates`);
+    
     triggerLibraryEnrichment({
       internalCandidates: localCandidates || [],
       coreSignalCandidates: coreSignalCandidates || [],
       searchCriteria: criteria,
-      searchId: `search_${Date.now()}`
+      searchId: `search_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`
     }).catch(error => {
       console.warn('⚠️ Library enrichment failed (non-blocking):', error.message);
     });
