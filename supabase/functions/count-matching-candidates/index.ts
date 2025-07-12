@@ -475,11 +475,26 @@ async function buildCoreSignalQuery(criteria: MatchingCriteria): Promise<any> {
   if (criteria.skills && criteria.skills.length > 0) {
     console.log('🏷️ Adding skills query for:', criteria.skills);
     
+    // Manual skill mappings as backup to AI variations
+    const manualSkillMappings: Record<string, string[]> = {
+      'lead generation': ['lead gen', 'prospecting', 'lead development', 'business development'],
+      'cold calling': ['cold outreach', 'phone prospecting', 'telemarketing', 'outbound calling'],
+      'crm management': ['crm', 'customer relationship management', 'salesforce', 'hubspot'],
+      'sales development': ['sdr', 'sales dev', 'inside sales', 'outbound sales'],
+      'negotiation': ['deal closing', 'sales closing', 'contract negotiation'],
+      'b2b sales': ['business to business', 'enterprise sales', 'corporate sales'],
+      'client engagement': ['customer engagement', 'relationship building', 'account management']
+    };
+    
     const skillsQuery = {
       bool: {
         should: criteria.skills.flatMap(skill => {
-          // Get variations for this skill, or use original
-          const skillVariations = variations.skill_variations?.[skill] || [skill];
+          // Combine AI variations with manual mappings
+          const aiVariations = variations.skill_variations?.[skill] || [];
+          const manualVariations = manualSkillMappings[skill.toLowerCase()] || [];
+          const skillVariations = [skill, ...aiVariations, ...manualVariations];
+          
+          console.log(`🔍 Skill "${skill}" expanded to:`, skillVariations);
           
           return skillVariations.flatMap((skillVar: string) => [
             // Nested skills from member_skills_collection
@@ -756,19 +771,22 @@ async function searchCoreSignal(criteria: MatchingCriteria): Promise<{ candidate
     
     // Log raw HTTP request details for debugging
     const requestBody = JSON.stringify(esQuery);
+    const searchUrl = `${CORESIGNAL_BASE_URL}/v2/employee_clean/search/es_dsl`;
     console.log('🌐 HTTP Request Details:');
-    console.log('   - URL:', `${CORESIGNAL_BASE_URL}/cdapi/v2/employee_clean/search/es_dsl`);
+    console.log('   - URL:', searchUrl);
     console.log('   - Method: POST');
-    console.log('   - Content-Type: application/json');
+    console.log('   - Headers: Authorization: Bearer [HIDDEN], Content-Type: application/json');
     console.log('   - Body size:', requestBody.length, 'bytes');
     console.log('   - Body preview:', requestBody.substring(0, 200) + (requestBody.length > 200 ? '...' : ''));
+    console.log('   - Full body JSON:', requestBody);
 
     const searchStartTime = Date.now();
-    const searchResponse = await fetch(`${CORESIGNAL_BASE_URL}/cdapi/v2/employee_clean/search/es_dsl`, {
+    const searchResponse = await fetch(searchUrl, {
       method: 'POST',
       headers: {
-        'apikey': CORESIGNAL_API_KEY,
+        'Authorization': `Bearer ${CORESIGNAL_API_KEY}`,
         'Content-Type': 'application/json',
+        'Accept': 'application/json'
       },
       body: requestBody
     });
@@ -783,16 +801,24 @@ async function searchCoreSignal(criteria: MatchingCriteria): Promise<{ candidate
       console.error('   - Status Text:', searchResponse.statusText);
       console.error('   - Error Response:', errorText);
       
-      // Handle 422 "missing query" error by retrying with match_all
-      if (searchResponse.status === 422 && errorText.includes('missing query')) {
-        console.log('🔄 Retrying with match_all query due to missing query error');
+      // Handle 422 "Field required" error by retrying with match_all
+      if (searchResponse.status === 422) {
+        console.log('🔄 Retrying with match_all query due to 422 error');
+        console.log('🔄 Original error:', errorText);
         
-        const retryQuery = { query: { match_all: {} } };
-        const retryResponse = await fetch(`${CORESIGNAL_BASE_URL}/cdapi/v2/employee_clean/search/es_dsl`, {
+        const retryQuery = { 
+          query: { match_all: {} },
+          size: 50,
+          from: 0
+        };
+        console.log('🔄 Retry query:', JSON.stringify(retryQuery, null, 2));
+        
+        const retryResponse = await fetch(`${CORESIGNAL_BASE_URL}/v2/employee_clean/search/es_dsl`, {
           method: 'POST',
           headers: {
-            'apikey': CORESIGNAL_API_KEY,
+            'Authorization': `Bearer ${CORESIGNAL_API_KEY}`,
             'Content-Type': 'application/json',
+            'Accept': 'application/json'
           },
           body: JSON.stringify(retryQuery)
         });
@@ -814,13 +840,13 @@ async function searchCoreSignal(criteria: MatchingCriteria): Promise<{ candidate
               const candidateId = candidateIds[i];
               
               try {
-                const collectResponse = await fetch(`${CORESIGNAL_BASE_URL}/cdapi/v2/employee_clean/collect/${candidateId}`, {
-                  method: 'GET',
-                  headers: {
-                    'apikey': CORESIGNAL_API_KEY,
-                    'Content-Type': 'application/json',
-                  }
-                });
+              const collectResponse = await fetch(`${CORESIGNAL_BASE_URL}/v2/employee_clean/collect/${candidateId}`, {
+                method: 'GET',
+                headers: {
+                  'Authorization': `Bearer ${CORESIGNAL_API_KEY}`,
+                  'Accept': 'application/json'
+                }
+              });
         
                 if (!collectResponse.ok) {
                   collectErrors.push(`${candidateId}: ${collectResponse.status}`);
@@ -891,11 +917,12 @@ async function searchCoreSignal(criteria: MatchingCriteria): Promise<{ candidate
       
       console.log('🔄 Attempting fallback search with match_all query');
       
-      const fallbackResponse = await fetch(`${CORESIGNAL_BASE_URL}/cdapi/v2/employee_clean/search/es_dsl`, {
+      const fallbackResponse = await fetch(`${CORESIGNAL_BASE_URL}/v2/employee_clean/search/es_dsl`, {
         method: 'POST',
         headers: {
-          'apikey': CORESIGNAL_API_KEY,
+          'Authorization': `Bearer ${CORESIGNAL_API_KEY}`,
           'Content-Type': 'application/json',
+          'Accept': 'application/json'
         },
         body: JSON.stringify(fallbackQuery)
       });
@@ -925,11 +952,11 @@ async function searchCoreSignal(criteria: MatchingCriteria): Promise<{ candidate
             try {
               console.log(`📋 Collecting candidate ${i + 1}/${candidateIds.length}: ID ${candidateId}`);
               
-              const collectResponse = await fetch(`${CORESIGNAL_BASE_URL}/cdapi/v2/employee_clean/collect/${candidateId}`, {
+              const collectResponse = await fetch(`${CORESIGNAL_BASE_URL}/v2/employee_clean/collect/${candidateId}`, {
                 method: 'GET',
                 headers: {
-                  'apikey': CORESIGNAL_API_KEY,
-                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${CORESIGNAL_API_KEY}`,
+                  'Accept': 'application/json'
                 }
               });
       
@@ -1012,11 +1039,11 @@ async function searchCoreSignal(criteria: MatchingCriteria): Promise<{ candidate
       try {
         console.log(`📋 Collecting candidate ${i + 1}/${idsToCollect.length}: ID ${candidateId}`);
         
-        const collectResponse = await fetch(`${CORESIGNAL_BASE_URL}/cdapi/v2/employee_clean/collect/${candidateId}`, {
+        const collectResponse = await fetch(`${CORESIGNAL_BASE_URL}/v2/employee_clean/collect/${candidateId}`, {
           method: 'GET',
           headers: {
-            'apikey': CORESIGNAL_API_KEY,
-            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${CORESIGNAL_API_KEY}`,
+            'Accept': 'application/json'
           }
         });
 
