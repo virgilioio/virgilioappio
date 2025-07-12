@@ -458,28 +458,45 @@ function buildCoreSignalQuery(criteria: MatchingCriteria): any {
         should: [],
         filter: []
       }
-    },
-    size: 100 // Reduce size for debugging
+    }
+    // No 'size' here - let CoreSignal use default
   };
 
-  // Skills matching - simplified approach for debugging
+  // Skills matching with correct CoreSignal field names
   if (criteria.skills && criteria.skills.length > 0) {
     console.log('🏷️ Adding skills query for:', criteria.skills);
     
-    // Try a much simpler approach first
     const skillsQuery = {
       bool: {
-        should: criteria.skills.map(skill => [
-          // Simple term match
-          { term: { "skills": skill.toLowerCase() } },
-          // Simple match in description
-          { match: { "description": skill } },
-          // Simple match in job title
-          { match: { "job_title": skill } },
-          // Simple match in headline
-          { match: { "headline": skill } }
-        ]).flat(),
-        minimum_should_match: 1 // Just need one match
+        should: criteria.skills.flatMap(skill => [
+          // Nested skills from member_skills_collection
+          {
+            nested: {
+              path: "member_skills_collection",
+              query: {
+                match: {
+                  "member_skills_collection.skill": skill
+                }
+              }
+            }
+          },
+          // Summary field (description equivalent)
+          { match: { "summary": skill } },
+          // Nested job title from experience
+          {
+            nested: {
+              path: "experience",
+              query: {
+                match: {
+                  "experience.title": skill
+                }
+              }
+            }
+          },
+          // Title field (headline equivalent)
+          { match: { "title": skill } }
+        ]),
+        minimum_should_match: 1
       }
     };
     query.query.bool.must.push(skillsQuery);
@@ -577,6 +594,10 @@ async function searchCoreSignal(criteria: MatchingCriteria): Promise<{ candidate
     console.log('   - Skills:', criteria.skills?.length || 0, 'skills');
     console.log('   - Location:', criteria.location);
     console.log('   - Salary range:', criteria.salary_min, '-', criteria.salary_max, criteria.currency);
+    
+    // Log exact query being sent to CoreSignal
+    console.log('📤 Elasticsearch Query being sent to CoreSignal:');
+    console.log(JSON.stringify(esQuery, null, 2));
 
     const searchStartTime = Date.now();
     const searchResponse = await fetch(`${CORESIGNAL_BASE_URL}/cdapi/v2/employee_clean/search/es_dsl`, {
