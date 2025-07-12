@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from '@/hooks/use-toast'
+import { useJobSpecNormalization } from './useJobSpecNormalization'
 
 export interface Job {
   id: string
@@ -15,6 +16,7 @@ export interface Job {
   salary_max: number | null
   currency: string | null
   status: 'draft' | 'open' | 'closed' | 'archived'
+  skills: string[] | null
   hiring_team: any[] | null
   hiring_team_names: string[] | null // Add resolved names for filtering
   organization_id: string
@@ -22,6 +24,11 @@ export interface Job {
   created_by: string | null
   created_at: string
   updated_at: string
+  // Standardization fields
+  standardized_skills?: string[] | null
+  standardized_title?: string | null
+  standardized_location?: string | null
+  normalization_metadata?: any
 }
 
 export interface CreateJobData {
@@ -34,6 +41,7 @@ export interface CreateJobData {
   salary_max?: number
   currency?: string
   status?: 'draft' | 'open' | 'closed' | 'archived'
+  skills?: string[]
   hiring_team?: any[]
   organization_id?: string
 }
@@ -48,6 +56,7 @@ export interface UpdateJobData {
   salary_max?: number
   currency?: string
   status?: 'draft' | 'open' | 'closed' | 'archived'
+  skills?: string[]
   hiring_team?: any[]
 }
 
@@ -56,6 +65,7 @@ export function useJobs() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const { user, userType, organizationId } = useAuth()
+  const { normalizeJobSpecs } = useJobSpecNormalization()
 
   const resolveHiringTeamNames = async (jobs: any[]) => {
     console.log('Starting enhanced hiring team name resolution for', jobs.length, 'jobs')
@@ -443,6 +453,28 @@ export function useJobs() {
     try {
       console.log('Creating job:', jobData)
       
+      // Normalize job specs if skills/title/location are present
+      let normalizedData: any = {}
+      const jobSpecs = {
+        title: jobData.title,
+        skills: jobData.skills, // Add skills to CreateJobData interface
+        location: jobData.location || undefined
+      }
+      
+      if (jobSpecs.title || jobSpecs.skills || jobSpecs.location) {
+        console.log('🔄 Normalizing job specs before creation:', jobSpecs)
+        const normalized = await normalizeJobSpecs(jobSpecs)
+        if (normalized) {
+          normalizedData = {
+            standardized_title: normalized.standardized_title,
+            standardized_skills: normalized.standardized_skills,
+            standardized_location: normalized.standardized_location,
+            normalization_metadata: normalized.normalization_metadata
+          }
+          console.log('✅ Job specs normalized:', normalizedData)
+        }
+      }
+      
       // Determine which organization to use based on user type
       let targetOrganizationId: string
       
@@ -467,6 +499,7 @@ export function useJobs() {
         .from('jobs')
         .insert([{
           ...jobData,
+          ...normalizedData,
           organization_id: targetOrganizationId,
           created_by: user.id,
         }])

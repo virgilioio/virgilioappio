@@ -1224,10 +1224,14 @@ export type Database = {
           id: string
           level: Database["public"]["Enums"]["job_level"]
           location: string | null
+          normalization_metadata: Json | null
           organization_id: string
           salary_max: number | null
           salary_min: number | null
           skills: string[] | null
+          standardized_location: string | null
+          standardized_skills: string[] | null
+          standardized_title: string | null
           status: Database["public"]["Enums"]["job_status"]
           title: string
           updated_at: string | null
@@ -1242,10 +1246,14 @@ export type Database = {
           id?: string
           level: Database["public"]["Enums"]["job_level"]
           location?: string | null
+          normalization_metadata?: Json | null
           organization_id: string
           salary_max?: number | null
           salary_min?: number | null
           skills?: string[] | null
+          standardized_location?: string | null
+          standardized_skills?: string[] | null
+          standardized_title?: string | null
           status?: Database["public"]["Enums"]["job_status"]
           title: string
           updated_at?: string | null
@@ -1260,10 +1268,14 @@ export type Database = {
           id?: string
           level?: Database["public"]["Enums"]["job_level"]
           location?: string | null
+          normalization_metadata?: Json | null
           organization_id?: string
           salary_max?: number | null
           salary_min?: number | null
           skills?: string[] | null
+          standardized_location?: string | null
+          standardized_skills?: string[] | null
+          standardized_title?: string | null
           status?: Database["public"]["Enums"]["job_status"]
           title?: string
           updated_at?: string | null
@@ -1859,6 +1871,111 @@ export type Database = {
           salary_min?: number | null
           sample_size?: number | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      standard_job_titles: {
+        Row: {
+          canonical_title: string
+          category: string | null
+          created_at: string | null
+          id: string
+          onet_code: string | null
+          seniority_level: string | null
+          synonyms: string[] | null
+          updated_at: string | null
+        }
+        Insert: {
+          canonical_title: string
+          category?: string | null
+          created_at?: string | null
+          id?: string
+          onet_code?: string | null
+          seniority_level?: string | null
+          synonyms?: string[] | null
+          updated_at?: string | null
+        }
+        Update: {
+          canonical_title?: string
+          category?: string | null
+          created_at?: string | null
+          id?: string
+          onet_code?: string | null
+          seniority_level?: string | null
+          synonyms?: string[] | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      standard_locations: {
+        Row: {
+          canonical_name: string
+          city: string | null
+          country_code: string | null
+          created_at: string | null
+          id: string
+          is_remote: boolean | null
+          region: string | null
+          synonyms: string[] | null
+          updated_at: string | null
+        }
+        Insert: {
+          canonical_name: string
+          city?: string | null
+          country_code?: string | null
+          created_at?: string | null
+          id?: string
+          is_remote?: boolean | null
+          region?: string | null
+          synonyms?: string[] | null
+          updated_at?: string | null
+        }
+        Update: {
+          canonical_name?: string
+          city?: string | null
+          country_code?: string | null
+          created_at?: string | null
+          id?: string
+          is_remote?: boolean | null
+          region?: string | null
+          synonyms?: string[] | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      standard_skills: {
+        Row: {
+          canonical_name: string
+          category: string | null
+          created_at: string | null
+          esco_code: string | null
+          id: string
+          onet_code: string | null
+          parent_skill: string | null
+          synonyms: string[] | null
+          updated_at: string | null
+        }
+        Insert: {
+          canonical_name: string
+          category?: string | null
+          created_at?: string | null
+          esco_code?: string | null
+          id?: string
+          onet_code?: string | null
+          parent_skill?: string | null
+          synonyms?: string[] | null
+          updated_at?: string | null
+        }
+        Update: {
+          canonical_name?: string
+          category?: string | null
+          created_at?: string | null
+          esco_code?: string | null
+          id?: string
+          onet_code?: string | null
+          parent_skill?: string | null
+          synonyms?: string[] | null
+          updated_at?: string | null
         }
         Relationships: []
       }

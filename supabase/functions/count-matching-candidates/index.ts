@@ -448,8 +448,17 @@ function getCurrentCompanyFromExperience(experience?: any[]): string | undefined
 }
 
 // CoreSignal integration functions
-function buildCoreSignalQuery(criteria: MatchingCriteria): any {
+async function buildCoreSignalQuery(criteria: MatchingCriteria): Promise<any> {
   console.log('🔧 Building CoreSignal query with criteria:', JSON.stringify(criteria, null, 2));
+  
+  // Generate AI variations for better matching
+  let variations: any = {};
+  try {
+    variations = await generateQueryVariations(criteria);
+    console.log('🤖 Generated query variations:', JSON.stringify(variations, null, 2));
+  } catch (error) {
+    console.warn('⚠️ AI variations failed, using original terms:', error.message);
+  }
   
   const query: any = {
     query: {
@@ -462,45 +471,73 @@ function buildCoreSignalQuery(criteria: MatchingCriteria): any {
     // No 'size' here - let CoreSignal use default
   };
 
-  // Skills matching with correct CoreSignal field names
+  // Skills matching with variations and correct CoreSignal field names
   if (criteria.skills && criteria.skills.length > 0) {
     console.log('🏷️ Adding skills query for:', criteria.skills);
     
     const skillsQuery = {
       bool: {
-        should: criteria.skills.flatMap(skill => [
-          // Nested skills from member_skills_collection
-          {
-            nested: {
-              path: "member_skills_collection",
-              query: {
-                match: {
-                  "member_skills_collection.skill": skill
+        should: criteria.skills.flatMap(skill => {
+          // Get variations for this skill, or use original
+          const skillVariations = variations.skill_variations?.[skill] || [skill];
+          
+          return skillVariations.flatMap((skillVar: string) => [
+            // Nested skills from member_skills_collection with fuzziness
+            {
+              nested: {
+                path: "member_skills_collection",
+                query: {
+                  match: {
+                    "member_skills_collection.skill": {
+                      query: skillVar,
+                      fuzziness: "AUTO"
+                    }
+                  }
                 }
               }
-            }
-          },
-          // Summary field (description equivalent)
-          { match: { "summary": skill } },
-          // Nested job title from experience
-          {
-            nested: {
-              path: "experience",
-              query: {
-                match: {
-                  "experience.title": skill
+            },
+            // Summary field with fuzziness
+            { 
+              match: { 
+                "summary": {
+                  query: skillVar,
+                  fuzziness: "AUTO"
+                }
+              } 
+            },
+            // Nested job title from experience with fuzziness
+            {
+              nested: {
+                path: "experience",
+                query: {
+                  match: {
+                    "experience.title": {
+                      query: skillVar,
+                      fuzziness: "AUTO"
+                    }
+                  }
                 }
               }
-            }
-          },
-          // Title field (headline equivalent)
-          { match: { "title": skill } }
-        ]),
+            },
+            // Title field with fuzziness
+            { 
+              match: { 
+                "title": {
+                  query: skillVar,
+                  fuzziness: "AUTO"
+                }
+              } 
+            },
+            // Wildcard queries for partial matches
+            { wildcard: { "summary": `*${skillVar.toLowerCase()}*` } },
+            { wildcard: { "title": `*${skillVar.toLowerCase()}*` } }
+          ]);
+        }),
         minimum_should_match: 1
       }
     };
     query.query.bool.must.push(skillsQuery);
-    console.log('🏷️ Skills query added:', JSON.stringify(skillsQuery, null, 2));
+    console.log('🏷️ Skills query with variations added');
   }
 
   // Enhanced location matching with regional intelligence
@@ -573,6 +610,70 @@ function buildCoreSignalQuery(criteria: MatchingCriteria): any {
   });
 
   return query;
+}
+
+async function generateQueryVariations(criteria: MatchingCriteria): Promise<any> {
+  const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+  if (!openAIApiKey) {
+    console.warn('⚠️ OpenAI API key not configured, skipping AI variations');
+    return {};
+  }
+
+  try {
+    const prompt = `Generate search variations for job matching. Provide 3-5 variations for each item including exact terms, abbreviations, synonyms, and related terms.
+
+Job Title: ${criteria.skills?.join(', ') || 'N/A'}
+Skills: ${criteria.skills?.join(', ') || 'N/A'}
+Location: ${criteria.location || 'N/A'}
+
+Return ONLY valid JSON in this exact format:
+{
+  "skill_variations": {
+    "skill1": ["variation1", "variation2", "variation3"],
+    "skill2": ["variation1", "variation2", "variation3"]
+  },
+  "title_variations": ["variation1", "variation2", "variation3"]
+}`;
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${openAIApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: 'You are a helpful assistant that generates search variations for job matching. Always respond with valid JSON only.' },
+          { role: 'user', content: prompt }
+        ],
+        temperature: 0.3,
+        max_tokens: 1000,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`OpenAI API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const content = data.choices[0].message.content.trim();
+    
+    // Clean up the response to ensure it's valid JSON
+    let cleanContent = content;
+    if (cleanContent.startsWith('```json')) {
+      cleanContent = cleanContent.replace(/```json\n?/, '').replace(/\n?```$/, '');
+    } else if (cleanContent.startsWith('```')) {
+      cleanContent = cleanContent.replace(/```\n?/, '').replace(/\n?```$/, '');
+    }
+    
+    const variations = JSON.parse(cleanContent);
+    console.log('🤖 Generated AI query variations:', JSON.stringify(variations, null, 2));
+    return variations;
+  } catch (error) {
+    console.warn('⚠️ Failed to generate AI variations:', error.message);
+    return {};
+  }
 }
 
 async function searchCoreSignal(criteria: MatchingCriteria): Promise<{ candidates: CoreSignalCandidate[], creditsUsed: number }> {
