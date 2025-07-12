@@ -374,7 +374,7 @@ export function AIJobAssistant() {
                     <div className="flex items-center gap-2 text-sm">
                       <DollarSign className="h-4 w-4" />
                       <span>
-                        {jobSpec.salary_range.currency} {jobSpec.salary_range.min.toLocaleString()} - {jobSpec.salary_range.max.toLocaleString()} 
+                        {jobSpec.salary_range.currency} {jobSpec.salary_range.min?.toLocaleString() || 'N/A'} - {jobSpec.salary_range.max?.toLocaleString() || 'N/A'} 
                         <span className="text-muted-foreground ml-1">
                           ({jobSpec.salary_range.period})
                         </span>
