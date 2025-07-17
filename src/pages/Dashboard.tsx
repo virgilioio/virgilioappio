@@ -30,7 +30,7 @@ export default function Dashboard() {
             <WelcomeHeader profile={profile} isLoading={isLoading} />
             
             {/* AI Job Assistant - Top Section */}
-            {(permissions.canCreateJobs || permissions.canRequestJobs) && (
+            {permissions.isPlatformAdmin && (
               <AIJobAssistant />
             )}
             
