@@ -381,7 +381,7 @@ export function AIJobAssistant() {
       </div>
 
       <Dialog open={showModal} onOpenChange={setShowModal}>
-        <DialogContent className="max-w-7xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="mx-2 sm:mx-4 w-[calc(100vw-1rem)] sm:w-[calc(100vw-2rem)] max-w-7xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Sparkles className="h-5 w-5 text-primary" />
@@ -392,11 +392,11 @@ export function AIJobAssistant() {
           {editableJobSpec && (
             <div className="space-y-6">
               {/* Progress Steps */}
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center space-x-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-4">
+                <div className="flex items-center space-x-2 sm:space-x-4 overflow-x-auto pb-2 sm:pb-0">
                   {[
                     { id: 'prompt', label: 'Prompt', icon: Sparkles },
-                    { id: 'specs', label: 'Specifications', icon: Edit2 },
+                    { id: 'specs', label: 'Specs', icon: Edit2 },
                     { id: 'matches', label: 'Matches', icon: Users },
                     { id: 'decision', label: 'Create', icon: Target }
                   ].map((step, index) => {
@@ -405,15 +405,15 @@ export function AIJobAssistant() {
                     const isCompleted = ['prompt', 'specs'].includes(step.id) && currentStep !== 'prompt'
                     
                     return (
-                      <div key={step.id} className="flex items-center">
-                        <div className={`flex items-center justify-center w-8 h-8 rounded-full border-2 ${
+                      <div key={step.id} className="flex items-center flex-shrink-0">
+                        <div className={`flex items-center justify-center w-6 h-6 sm:w-8 sm:h-8 rounded-full border-2 ${
                           isActive ? 'border-primary bg-primary text-white' :
                           isCompleted ? 'border-green-500 bg-green-500 text-white' :
                           'border-gray-300 bg-white text-gray-400'
                         }`}>
-                          <StepIcon className="h-4 w-4" />
+                          <StepIcon className="h-3 w-3 sm:h-4 sm:w-4" />
                         </div>
-                        <span className={`ml-2 text-sm font-medium ${
+                        <span className={`ml-1 sm:ml-2 text-xs sm:text-sm font-medium ${
                           isActive ? 'text-primary' : 
                           isCompleted ? 'text-green-600' : 
                           'text-gray-400'
@@ -421,7 +421,7 @@ export function AIJobAssistant() {
                           {step.label}
                         </span>
                         {index < 3 && (
-                          <div className={`mx-4 w-8 h-0.5 ${
+                          <div className={`mx-2 sm:mx-4 w-4 sm:w-8 h-0.5 ${
                             isCompleted ? 'bg-green-500' : 'bg-gray-300'
                           }`} />
                         )}
@@ -434,23 +434,23 @@ export function AIJobAssistant() {
                   size="sm"
                   onClick={handleRefreshMatches}
                   disabled={isRefreshingMatches}
-                  className="ml-4"
+                  className="self-start sm:self-auto"
                 >
                   {isRefreshingMatches ? (
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    <Loader2 className="h-4 w-4 animate-spin sm:mr-2" />
                   ) : (
-                    <RefreshCw className="h-4 w-4 mr-2" />
+                    <RefreshCw className="h-4 w-4 sm:mr-2" />
                   )}
-                  Refresh Matches
+                  <span className="hidden sm:inline">Refresh Matches</span>
                 </Button>
               </div>
 
               <Tabs value={currentStep} onValueChange={(value) => setCurrentStep(value as any)} className="space-y-6">
-                <TabsList className="grid w-full grid-cols-4">
-                  <TabsTrigger value="prompt">Prompt</TabsTrigger>
-                  <TabsTrigger value="specs">Specifications</TabsTrigger>
-                  <TabsTrigger value="matches">Matches</TabsTrigger>
-                  <TabsTrigger value="decision">Create</TabsTrigger>
+                <TabsList className="grid w-full grid-cols-4 h-auto p-1">
+                  <TabsTrigger value="prompt" className="text-xs sm:text-sm px-2 py-2">Prompt</TabsTrigger>
+                  <TabsTrigger value="specs" className="text-xs sm:text-sm px-2 py-2">Specs</TabsTrigger>
+                  <TabsTrigger value="matches" className="text-xs sm:text-sm px-2 py-2">Matches</TabsTrigger>
+                  <TabsTrigger value="decision" className="text-xs sm:text-sm px-2 py-2">Create</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="prompt" className="space-y-4">
@@ -461,7 +461,7 @@ export function AIJobAssistant() {
                 </TabsContent>
 
                 <TabsContent value="specs" className="space-y-6">
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
                     {/* Left Column - Editable Fields */}
                     <div className="space-y-6">
                       {/* Job Title */}
