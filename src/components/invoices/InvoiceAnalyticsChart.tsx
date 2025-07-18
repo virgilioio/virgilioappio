@@ -1,8 +1,12 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip } from 'recharts'
 import { Invoice } from '@/hooks/useInvoices'
-import { TrendingUp, Calendar } from 'lucide-react'
+import { TrendingUp, Globe } from 'lucide-react'
+import { useOrganizationCurrency } from '@/hooks/useOrganizationCurrency'
+import { useAuth } from '@/contexts/AuthContext'
+import { formatCurrencyAmount } from '@/utils/currencyUtils'
+import { useCurrencyConversion } from '@/hooks/useCurrencyConversion'
 
 interface InvoiceAnalyticsChartProps {
   invoices: Invoice[]
@@ -12,6 +16,8 @@ type TimePeriod = '1week' | '1month' | '3months' | '6months' | '1year' | 'all'
 
 export function InvoiceAnalyticsChart({ invoices }: InvoiceAnalyticsChartProps) {
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('6months')
+  const { defaultCurrency } = useOrganizationCurrency()
+  const { organizationId } = useAuth()
 
   const timePeriodOptions: { value: TimePeriod; label: string }[] = [
     { value: '1week', label: '1W' },
@@ -22,7 +28,7 @@ export function InvoiceAnalyticsChart({ invoices }: InvoiceAnalyticsChartProps) 
     { value: 'all', label: 'All' },
   ]
 
-  const { chartData, totalInvoiced } = useMemo(() => {
+  const filteredInvoices = useMemo(() => {
     const now = new Date()
     let startDate = new Date()
 
@@ -49,13 +55,19 @@ export function InvoiceAnalyticsChart({ invoices }: InvoiceAnalyticsChartProps) 
     }
 
     // Filter invoices by date range
-    const filteredInvoices = invoices.filter(invoice => {
+    return invoices.filter(invoice => {
       const invoiceDate = new Date(invoice.issued_at)
       return invoiceDate >= startDate && invoiceDate <= now
     })
+  }, [invoices, selectedPeriod])
 
-    // Calculate total amount of all invoices issued in the selected period
-    const totalAmount = filteredInvoices.reduce((sum, invoice) => sum + invoice.amount, 0)
+  const { totalConverted, showCurrencyIndicator, currencySymbol, isLoading } = useCurrencyConversion(
+    filteredInvoices,
+    defaultCurrency,
+    organizationId
+  )
+
+  const chartData = useMemo(() => {
 
     // Determine grouping strategy based on period
     const shouldGroupByMonth = ['3months', '6months', '1year', 'all'].includes(selectedPeriod)
@@ -113,37 +125,27 @@ export function InvoiceAnalyticsChart({ invoices }: InvoiceAnalyticsChartProps) 
 
     // If no data, show at least one point at zero
     if (data.length === 0) {
-      return {
-        chartData: [{
-          periodKey: now.toISOString().split('T')[0],
-          amount: 0,
-          date: now.toISOString().split('T')[0],
-          displayDate: now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-          fullDate: now.toLocaleDateString('en-US', { 
-            weekday: 'short',
-            year: 'numeric', 
-            month: 'short', 
-            day: 'numeric' 
-          })
-        }],
-        totalInvoiced: 0
-      }
+      const now = new Date()
+      return [{
+        periodKey: now.toISOString().split('T')[0],
+        amount: 0,
+        date: now.toISOString().split('T')[0],
+        displayDate: now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        fullDate: now.toLocaleDateString('en-US', { 
+          weekday: 'short',
+          year: 'numeric', 
+          month: 'short', 
+          day: 'numeric' 
+        })
+      }]
     }
 
-    return {
-      chartData: data,
-      totalInvoiced: totalAmount
-    }
-  }, [invoices, selectedPeriod])
+    return data
+  }, [filteredInvoices, selectedPeriod])
 
-  const currency = invoices[0]?.currency || 'USD'
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency
-    }).format(amount)
-  }
+  const formatCurrency = useCallback((amount: number) => {
+    return formatCurrencyAmount(amount, defaultCurrency, currencySymbol)
+  }, [defaultCurrency, currencySymbol])
 
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
@@ -168,13 +170,19 @@ export function InvoiceAnalyticsChart({ invoices }: InvoiceAnalyticsChartProps) 
         <div className="space-y-2">
           <div className="space-y-1">
             <div className="text-3xl font-bold text-black">
-              {formatCurrency(totalInvoiced)}
+              {isLoading ? '...' : formatCurrency(totalConverted)}
             </div>
           </div>
           
           <CardTitle className="flex items-center gap-2 text-base">
             <TrendingUp className="h-4 w-4" />
             Total Invoiced
+            {showCurrencyIndicator && (
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Globe className="h-3 w-3" />
+                {defaultCurrency}
+              </div>
+            )}
           </CardTitle>
         </div>
       </CardHeader>
