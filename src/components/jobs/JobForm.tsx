@@ -355,11 +355,13 @@ export function JobForm({ isOpen, onClose, onSubmit, job, isLoading }: JobFormPr
             <div className="col-span-2">
               <Label htmlFor="description">Job Description</Label>
               <RichTextEditor
+                key={job?.id || 'new-job'}
                 value={formData.description}
                 onChange={(value) => setFormData(prev => ({ ...prev, description: value }))}
                 placeholder="Describe the role, responsibilities, and requirements..."
                 minHeight="300px"
                 className="mt-1"
+                isExternalUpdate={!!job}
               />
             </div>
 
