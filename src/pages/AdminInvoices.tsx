@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Plus, Search, Filter, Calendar, Receipt } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -42,29 +42,33 @@ function AdminInvoicesContent() {
     setFilters(newFilters)
   }, [searchTerm, selectedStatuses, selectedOrganizations, selectedMonth, setFilters])
 
-  // Filter invoices based on all filters
-  const filteredInvoices = filterInvoices(invoices, {
-    searchTerm,
-    statuses: selectedStatuses,
-    organizationIds: selectedOrganizations,
-    selectedMonth
-  })
+  // Filter invoices based on all filters - memoize to prevent unnecessary recalculations
+  const filteredInvoices = useMemo(() => {
+    return filterInvoices(invoices, {
+      searchTerm,
+      statuses: selectedStatuses,
+      organizationIds: selectedOrganizations,
+      selectedMonth
+    })
+  }, [invoices, searchTerm, selectedStatuses, selectedOrganizations, selectedMonth])
 
   // Update filtered invoices in context
   useEffect(() => {
     setFilteredInvoices(filteredInvoices)
   }, [filteredInvoices, setFilteredInvoices])
 
-  const stats = getInvoiceStats(filteredInvoices)
+  const stats = useMemo(() => getInvoiceStats(filteredInvoices), [filteredInvoices])
 
-  const clearFilters = () => {
+  const clearFilters = useCallback(() => {
     setSearchTerm('')
     setSelectedStatuses([])
     setSelectedOrganizations([])
     setSelectedMonth(undefined)
-  }
+  }, [])
 
-  const hasActiveFilters = searchTerm || selectedStatuses.length > 0 || selectedOrganizations.length > 0 || selectedMonth
+  const hasActiveFilters = useMemo(() => {
+    return !!(searchTerm || selectedStatuses.length > 0 || selectedOrganizations.length > 0 || selectedMonth)
+  }, [searchTerm, selectedStatuses.length, selectedOrganizations.length, selectedMonth])
 
   const statusOptions = [
     { value: 'pending', label: 'Pending' },
@@ -73,10 +77,12 @@ function AdminInvoicesContent() {
     { value: 'partial', label: 'Partial' }
   ]
 
-  const organizationOptions = organizations.map(org => ({
-    value: org.id,
-    label: `${org.name} (${org.country})`
-  }))
+  const organizationOptions = useMemo(() => {
+    return organizations.map(org => ({
+      value: org.id,
+      label: `${org.name} (${org.country})`
+    }))
+  }, [organizations])
 
   // Get organization name for display
   const getOrganizationName = (orgId: string) => {

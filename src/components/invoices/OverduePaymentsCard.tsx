@@ -1,11 +1,12 @@
 
-import { useMemo, useEffect, useState } from 'react'
+import { useMemo, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Invoice } from '@/hooks/useInvoices'
 import { AlertTriangle, Globe } from 'lucide-react'
 import { useOrganizationCurrency } from '@/hooks/useOrganizationCurrency'
 import { useAuth } from '@/contexts/AuthContext'
-import { convertCurrency, formatCurrencyAmount, getCurrencySymbol } from '@/utils/currencyUtils'
+import { formatCurrencyAmount } from '@/utils/currencyUtils'
+import { useCurrencyConversion } from '@/hooks/useCurrencyConversion'
 
 interface OverduePaymentsCardProps {
   invoices: Invoice[]
@@ -14,14 +15,6 @@ interface OverduePaymentsCardProps {
 export function OverduePaymentsCard({ invoices }: OverduePaymentsCardProps) {
   const { defaultCurrency } = useOrganizationCurrency()
   const { organizationId } = useAuth()
-  const [currencySymbol, setCurrencySymbol] = useState('$')
-  const [convertedTotal, setConvertedTotal] = useState(0)
-  const [showCurrencyIndicator, setShowCurrencyIndicator] = useState(false)
-
-  // Fetch currency symbol
-  useEffect(() => {
-    getCurrencySymbol(defaultCurrency).then(setCurrencySymbol)
-  }, [defaultCurrency])
 
   const overdueInvoices = useMemo(() => {
     const now = new Date()
@@ -33,79 +26,18 @@ export function OverduePaymentsCard({ invoices }: OverduePaymentsCardProps) {
       return isOverdue
     })
 
-    console.log('=== OVERDUE PAYMENTS CARD CALCULATION ===')
-    console.log('Total invoices:', invoices.length)
-    console.log('Overdue invoices:', filteredInvoices.length, filteredInvoices.map(i => ({ 
-      id: i.id, 
-      amount: i.amount, 
-      currency: i.currency, 
-      status: i.status,
-      due_date: i.due_date,
-      remaining_amount: i.remaining_amount
-    })))
-
     return filteredInvoices
   }, [invoices])
 
-  // Convert total to organization's default currency with per-invoice conversion
-  useEffect(() => {
-    const convertTotal = async () => {
-      if (overdueInvoices.length === 0) {
-        setConvertedTotal(0)
-        setShowCurrencyIndicator(false)
-        return
-      }
+  const { totalConverted, showCurrencyIndicator, currencySymbol, isLoading } = useCurrencyConversion(
+    overdueInvoices,
+    defaultCurrency,
+    organizationId
+  )
 
-      console.log('=== OVERDUE PAYMENTS CURRENCY CONVERSION ===')
-      console.log('Target currency:', defaultCurrency)
-
-      let totalConverted = 0
-      let showIndicator = false
-
-      try {
-        for (const invoice of overdueInvoices) {
-          // For partial payments, use remaining amount, otherwise use full amount
-          const amountToConvert = invoice.status === 'partial' && invoice.remaining_amount 
-            ? invoice.remaining_amount 
-            : invoice.amount
-          
-          const conversion = await convertCurrency(
-            amountToConvert,
-            invoice.currency || 'USD',
-            defaultCurrency,
-            organizationId
-          )
-          
-          totalConverted += conversion.convertedAmount
-          if (conversion.exchangeRate !== 1.0) showIndicator = true
-          
-          console.log(`Overdue invoice ${invoice.id}: ${amountToConvert} ${invoice.currency} -> ${conversion.convertedAmount} ${defaultCurrency} (rate: ${conversion.exchangeRate})`)
-        }
-
-        console.log('Final overdue total converted:', totalConverted)
-
-        setConvertedTotal(totalConverted)
-        setShowCurrencyIndicator(showIndicator)
-      } catch (error) {
-        console.error('Error converting currency in OverduePaymentsCard:', error)
-        // Fallback to original amounts without conversion
-        const fallbackTotal = overdueInvoices.reduce((sum, invoice) => {
-          const amount = invoice.status === 'partial' && invoice.remaining_amount 
-            ? invoice.remaining_amount 
-            : invoice.amount
-          return sum + amount
-        }, 0)
-        setConvertedTotal(fallbackTotal)
-        setShowCurrencyIndicator(false)
-      }
-    }
-
-    convertTotal()
-  }, [overdueInvoices, defaultCurrency, organizationId])
-
-  const formatCurrency = (amount: number) => {
+  const formatCurrency = useCallback((amount: number) => {
     return formatCurrencyAmount(amount, defaultCurrency, currencySymbol)
-  }
+  }, [defaultCurrency, currencySymbol])
 
   return (
     <Card className="h-full rounded-2xl" style={{ backgroundColor: '#ffc2c2' }}>
@@ -113,7 +45,7 @@ export function OverduePaymentsCard({ invoices }: OverduePaymentsCardProps) {
         <div className="space-y-2">
           <div className="space-y-1">
             <div className="text-3xl font-bold text-black">
-              {formatCurrency(convertedTotal)}
+              {isLoading ? '...' : formatCurrency(totalConverted)}
             </div>
             <div className="text-xs text-muted-foreground">
               Subset of Outstanding Balance

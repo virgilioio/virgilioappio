@@ -52,7 +52,7 @@ export function MultiSelect({
     onSelectionChange([])
   }
 
-  const getDisplayText = () => {
+  const getDisplayText = React.useMemo(() => {
     if (selectedValues.length === 0) return placeholder
     if (selectedValues.length <= maxDisplay) {
       return selectedValues
@@ -60,13 +60,15 @@ export function MultiSelect({
         .join(", ")
     }
     return `${selectedValues.length} selected`
-  }
+  }, [selectedValues, options, placeholder, maxDisplay])
 
-  const filteredOptions = searchable 
-    ? options.filter(option => 
-        option.label.toLowerCase().includes(searchTerm.toLowerCase())
-      )
-    : options
+  const filteredOptions = React.useMemo(() => {
+    return searchable 
+      ? options.filter(option => 
+          option.label.toLowerCase().includes(searchTerm.toLowerCase())
+        )
+      : options
+  }, [options, searchable, searchTerm])
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
@@ -79,7 +81,7 @@ export function MultiSelect({
             className
           )}
         >
-          <span className="truncate">{getDisplayText()}</span>
+          <span className="truncate">{getDisplayText}</span>
           <div className="flex items-center gap-1">
             {selectedValues.length > 0 && (
               <X

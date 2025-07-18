@@ -1,11 +1,12 @@
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Invoice } from '@/hooks/useInvoices'
 import { DollarSign, Globe } from 'lucide-react'
 import { useOrganizationCurrency } from '@/hooks/useOrganizationCurrency'
 import { useAuth } from '@/contexts/AuthContext'
-import { convertCurrency, formatCurrencyAmount, getCurrencySymbol } from '@/utils/currencyUtils'
+import { formatCurrencyAmount } from '@/utils/currencyUtils'
+import { useCurrencyConversion } from '@/hooks/useCurrencyConversion'
 
 interface TotalPaidCardProps {
   invoices: Invoice[]
@@ -17,14 +18,6 @@ export function TotalPaidCard({ invoices }: TotalPaidCardProps) {
   const [selectedPeriod, setSelectedPeriod] = useState<TimePeriod>('6months')
   const { defaultCurrency } = useOrganizationCurrency()
   const { organizationId } = useAuth()
-  const [currencySymbol, setCurrencySymbol] = useState('$')
-  const [convertedTotal, setConvertedTotal] = useState(0)
-  const [showCurrencyIndicator, setShowCurrencyIndicator] = useState(false)
-
-  // Fetch currency symbol
-  useEffect(() => {
-    getCurrencySymbol(defaultCurrency).then(setCurrencySymbol)
-  }, [defaultCurrency])
 
   const timePeriodOptions: { value: TimePeriod; label: string }[] = [
     { value: '1week', label: '1W' },
@@ -70,68 +63,18 @@ export function TotalPaidCard({ invoices }: TotalPaidCardProps) {
     const paidInvoices = filteredInvoices.filter(invoice => invoice.status === 'paid')
     const partialInvoices = filteredInvoices.filter(invoice => invoice.status === 'partial' && invoice.total_paid)
 
-    console.log('=== TOTAL PAID CARD CALCULATION ===')
-    console.log('Period:', selectedPeriod)
-    console.log('Paid invoices:', paidInvoices.length, paidInvoices.map(i => ({ id: i.id, amount: i.amount, currency: i.currency, total_paid: i.total_paid })))
-    console.log('Partial invoices with payments:', partialInvoices.length, partialInvoices.map(i => ({ id: i.id, amount: i.amount, currency: i.currency, total_paid: i.total_paid })))
-
     return [...paidInvoices, ...partialInvoices]
   }, [invoices, selectedPeriod])
 
-  // Convert total to organization's default currency with per-invoice conversion
-  useEffect(() => {
-    const convertTotal = async () => {
-      if (filteredPaidInvoices.length === 0) {
-        setConvertedTotal(0)
-        setShowCurrencyIndicator(false)
-        return
-      }
+  const { totalConverted, showCurrencyIndicator, currencySymbol, isLoading } = useCurrencyConversion(
+    filteredPaidInvoices,
+    defaultCurrency,
+    organizationId
+  )
 
-      console.log('=== TOTAL PAID CURRENCY CONVERSION ===')
-      console.log('Target currency:', defaultCurrency)
-
-      let totalConverted = 0
-      let showIndicator = false
-
-      try {
-        for (const invoice of filteredPaidInvoices) {
-          // Use total_paid if available (for partial payments), otherwise use full amount
-          const amountToConvert = invoice.total_paid || invoice.amount
-          
-          const conversion = await convertCurrency(
-            amountToConvert,
-            invoice.currency || 'USD',
-            defaultCurrency,
-            organizationId
-          )
-          
-          totalConverted += conversion.convertedAmount
-          if (conversion.exchangeRate !== 1.0) showIndicator = true
-          
-          console.log(`Invoice ${invoice.id}: ${amountToConvert} ${invoice.currency} -> ${conversion.convertedAmount} ${defaultCurrency} (rate: ${conversion.exchangeRate})`)
-        }
-
-        console.log('Final total converted:', totalConverted)
-
-        setConvertedTotal(totalConverted)
-        setShowCurrencyIndicator(showIndicator)
-      } catch (error) {
-        console.error('Error converting currency in TotalPaidCard:', error)
-        // Fallback to original amounts without conversion
-        const fallbackTotal = filteredPaidInvoices.reduce((sum, invoice) => {
-          return sum + (invoice.total_paid || invoice.amount)
-        }, 0)
-        setConvertedTotal(fallbackTotal)
-        setShowCurrencyIndicator(false)
-      }
-    }
-
-    convertTotal()
-  }, [filteredPaidInvoices, defaultCurrency, organizationId])
-
-  const formatCurrency = (amount: number) => {
+  const formatCurrency = useCallback((amount: number) => {
     return formatCurrencyAmount(amount, defaultCurrency, currencySymbol)
-  }
+  }, [defaultCurrency, currencySymbol])
 
   return (
     <Card className="h-full rounded-2xl" style={{ backgroundColor: '#d1fae5' }}>
@@ -139,7 +82,7 @@ export function TotalPaidCard({ invoices }: TotalPaidCardProps) {
         <div className="space-y-2">
           <div className="space-y-1">
             <div className="text-3xl font-bold text-black">
-              {formatCurrency(convertedTotal)}
+              {isLoading ? '...' : formatCurrency(totalConverted)}
             </div>
           </div>
           
