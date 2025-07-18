@@ -1,11 +1,11 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip } from 'recharts'
 import { Invoice } from '@/hooks/useInvoices'
 import { TrendingUp, Globe } from 'lucide-react'
 import { useOrganizationCurrency } from '@/hooks/useOrganizationCurrency'
 import { useAuth } from '@/contexts/AuthContext'
-import { formatCurrencyAmount } from '@/utils/currencyUtils'
+import { formatCurrencyAmount, convertCurrency } from '@/utils/currencyUtils'
 import { useCurrencyConversion } from '@/hooks/useCurrencyConversion'
 
 interface InvoiceAnalyticsChartProps {
@@ -67,81 +67,123 @@ export function InvoiceAnalyticsChart({ invoices }: InvoiceAnalyticsChartProps) 
     organizationId
   )
 
-  const chartData = useMemo(() => {
+  const [convertedChartData, setConvertedChartData] = useState<any[]>([])
+  const [isChartLoading, setIsChartLoading] = useState(false)
 
-    // Determine grouping strategy based on period
-    const shouldGroupByMonth = ['3months', '6months', '1year', 'all'].includes(selectedPeriod)
-    
-    // Group invoices by period
-    const periodGroups: { [key: string]: { amount: number; date: Date; displayDate: string } } = {}
-    
-    filteredInvoices.forEach(invoice => {
-      const invoiceDate = new Date(invoice.issued_at)
-      let periodKey: string
-      let displayDate: string
-      
-      if (shouldGroupByMonth) {
-        // Group by month for longer periods
-        periodKey = `${invoiceDate.getFullYear()}-${String(invoiceDate.getMonth() + 1).padStart(2, '0')}`
-        displayDate = invoiceDate.toLocaleDateString('en-US', { 
-          month: 'short', 
-          year: selectedPeriod === '1year' || selectedPeriod === 'all' ? 'numeric' : undefined
-        })
-      } else {
-        // Group by day for shorter periods
-        periodKey = invoiceDate.toISOString().split('T')[0]
-        displayDate = invoiceDate.toLocaleDateString('en-US', { 
-          month: 'short', 
-          day: 'numeric'
-        })
-      }
-      
-      if (!periodGroups[periodKey]) {
-        periodGroups[periodKey] = {
-          amount: 0,
-          date: invoiceDate,
-          displayDate
-        }
-      }
-      
-      periodGroups[periodKey].amount += invoice.amount
-    })
-
-    // Convert to chart data sorted by date
-    const data = Object.entries(periodGroups)
-      .map(([periodKey, { amount, date, displayDate }]) => ({
-        periodKey,
-        amount,
-        date: date.toISOString().split('T')[0],
-        displayDate,
-        fullDate: date.toLocaleDateString('en-US', { 
-          weekday: 'short',
-          year: 'numeric', 
-          month: 'short', 
-          day: 'numeric' 
-        })
-      }))
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-
-    // If no data, show at least one point at zero
-    if (data.length === 0) {
-      const now = new Date()
-      return [{
-        periodKey: now.toISOString().split('T')[0],
-        amount: 0,
-        date: now.toISOString().split('T')[0],
-        displayDate: now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-        fullDate: now.toLocaleDateString('en-US', { 
-          weekday: 'short',
-          year: 'numeric', 
-          month: 'short', 
-          day: 'numeric' 
-        })
-      }]
+  // Generate chart data with currency conversion
+  useEffect(() => {
+    if (!defaultCurrency || filteredInvoices.length === 0) {
+      setConvertedChartData([])
+      return
     }
 
-    return data
-  }, [filteredInvoices, selectedPeriod])
+    const generateChartData = async () => {
+      setIsChartLoading(true)
+      
+      try {
+        // Determine grouping strategy based on period
+        const shouldGroupByMonth = ['3months', '6months', '1year', 'all'].includes(selectedPeriod)
+        
+        // Group invoices by period with currency conversion
+        const periodGroups: { [key: string]: { amount: number; date: Date; displayDate: string } } = {}
+        
+        // Convert each invoice amount to default currency before grouping
+        const conversionPromises = filteredInvoices.map(async (invoice) => {
+          const invoiceDate = new Date(invoice.issued_at)
+          let periodKey: string
+          let displayDate: string
+          
+          if (shouldGroupByMonth) {
+            // Group by month for longer periods
+            periodKey = `${invoiceDate.getFullYear()}-${String(invoiceDate.getMonth() + 1).padStart(2, '0')}`
+            displayDate = invoiceDate.toLocaleDateString('en-US', { 
+              month: 'short', 
+              year: selectedPeriod === '1year' || selectedPeriod === 'all' ? 'numeric' : undefined
+            })
+          } else {
+            // Group by day for shorter periods
+            periodKey = invoiceDate.toISOString().split('T')[0]
+            displayDate = invoiceDate.toLocaleDateString('en-US', { 
+              month: 'short', 
+              day: 'numeric'
+            })
+          }
+          
+          // Convert invoice amount to default currency
+          const convertedResult = await convertCurrency(
+            invoice.amount,
+            invoice.currency,
+            defaultCurrency,
+            organizationId
+          )
+          
+          return {
+            periodKey,
+            convertedAmount: convertedResult.convertedAmount,
+            date: invoiceDate,
+            displayDate
+          }
+        })
+        
+        const convertedInvoices = await Promise.all(conversionPromises)
+        
+        // Group converted amounts by period
+        convertedInvoices.forEach(({ periodKey, convertedAmount, date, displayDate }) => {
+          if (!periodGroups[periodKey]) {
+            periodGroups[periodKey] = {
+              amount: 0,
+              date,
+              displayDate
+            }
+          }
+          
+          periodGroups[periodKey].amount += convertedAmount
+        })
+
+        // Convert to chart data sorted by date
+        const data = Object.entries(periodGroups)
+          .map(([periodKey, { amount, date, displayDate }]) => ({
+            periodKey,
+            amount,
+            date: date.toISOString().split('T')[0],
+            displayDate,
+            fullDate: date.toLocaleDateString('en-US', { 
+              weekday: 'short',
+              year: 'numeric', 
+              month: 'short', 
+              day: 'numeric' 
+            })
+          }))
+          .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+
+        // If no data, show at least one point at zero
+        if (data.length === 0) {
+          const now = new Date()
+          setConvertedChartData([{
+            periodKey: now.toISOString().split('T')[0],
+            amount: 0,
+            date: now.toISOString().split('T')[0],
+            displayDate: now.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+            fullDate: now.toLocaleDateString('en-US', { 
+              weekday: 'short',
+              year: 'numeric', 
+              month: 'short', 
+              day: 'numeric' 
+            })
+          }])
+        } else {
+          setConvertedChartData(data)
+        }
+      } catch (error) {
+        console.error('Error generating chart data:', error)
+        setConvertedChartData([])
+      } finally {
+        setIsChartLoading(false)
+      }
+    }
+
+    generateChartData()
+  }, [filteredInvoices, selectedPeriod, defaultCurrency, organizationId])
 
   const formatCurrency = useCallback((amount: number) => {
     return formatCurrencyAmount(amount, defaultCurrency, currencySymbol)
@@ -190,7 +232,7 @@ export function InvoiceAnalyticsChart({ invoices }: InvoiceAnalyticsChartProps) 
         <div className="h-[160px] w-full mb-3">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart
-              data={chartData}
+              data={convertedChartData}
               margin={{
                 top: 5,
                 right: 20,
