@@ -10,7 +10,7 @@ import { Separator } from '@/components/ui/separator'
 import { FormField } from '@/components/ui/form-field'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Check, ChevronsUpDown, X, Plus, Upload, Loader } from 'lucide-react'
+import { Check, ChevronsUpDown, X, Plus } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/AuthContext'
@@ -95,7 +95,6 @@ export function CandidateForm({
   const [notes, setNotes] = useState('')
   const [skills, setSkills] = useState<string[]>([])
   const [newSkill, setNewSkill] = useState('')
-  const [isProcessingResume, setIsProcessingResume] = useState(false)
   const [currentCandidateId, setCurrentCandidateId] = useState<string | null>(null)
   const { user } = useAuth()
 
@@ -257,116 +256,6 @@ export function CandidateForm({
     }
   }
 
-  const handleResumeUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) return
-
-    if (file.type !== 'application/pdf') {
-      toast({
-        title: 'Invalid file type',
-        description: 'Please upload a PDF file only.',
-        variant: 'destructive'
-      })
-      return
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      toast({
-        title: 'File too large',
-        description: 'Please upload a file smaller than 5MB.',
-        variant: 'destructive'
-      })
-      return
-    }
-
-    setIsProcessingResume(true)
-
-    try {
-      const formData = new FormData()
-      formData.append('file', file)
-
-      const response = await fetch('https://etrxjxstjfcozdjumfsj.supabase.co/functions/v1/process-resume', {
-        method: 'POST',
-        body: formData,
-      })
-
-      const result = await response.json()
-
-      if (result.success && result.structured_profile) {
-        const profile = result.structured_profile
-        
-        // Auto-fill form fields
-        if (profile.candidate_name) {
-          form.setValue('candidate_name', profile.candidate_name)
-        }
-        if (profile.linkedin_url) {
-          form.setValue('linkedin_url', profile.linkedin_url)
-        }
-        if (profile.location_city) {
-          form.setValue('location_city', profile.location_city)
-        }
-        if (profile.location_state) {
-          form.setValue('location_state', profile.location_state)
-        }
-        if (profile.location_country) {
-          form.setValue('location_country', profile.location_country)
-        }
-        if (profile.salary_amount) {
-          form.setValue('salary_amount', profile.salary_amount.toString())
-        }
-        if (profile.salary_currency) {
-          form.setValue('salary_currency', profile.salary_currency)
-        }
-        if (profile.salary_period) {
-          form.setValue('salary_period', profile.salary_period)
-        }
-        
-        // Combine profile summary sections
-        let combinedSummary = ''
-        if (profile.profile_summary) {
-          if (profile.profile_summary.about_me) {
-            combinedSummary += profile.profile_summary.about_me + '\n\n'
-          }
-          if (profile.profile_summary.experience_highlights && profile.profile_summary.experience_highlights.length > 0) {
-            combinedSummary += 'Experience Highlights:\n'
-            profile.profile_summary.experience_highlights.forEach((highlight: string) => {
-              combinedSummary += `• ${highlight}\n`
-            })
-            combinedSummary += '\n'
-          }
-          if (profile.profile_summary.key_competencies && profile.profile_summary.key_competencies.length > 0) {
-            combinedSummary += 'Key Competencies: ' + profile.profile_summary.key_competencies.join(', ')
-          }
-        }
-        if (combinedSummary) {
-          setProfileSummary(combinedSummary.trim())
-        }
-        
-        // Set skills
-        if (profile.skills && profile.skills.length > 0) {
-          setSkills(profile.skills)
-        }
-
-        toast({
-          title: '✅ Resume processed successfully',
-          description: 'Form has been auto-filled with AI-extracted data. Please review and edit as needed.',
-        })
-      } else {
-        throw new Error(result.error || 'Failed to process resume')
-      }
-    } catch (error) {
-      console.error('Resume processing error:', error)
-      toast({
-        title: 'Resume processing failed',
-        description: 'We couldn\'t extract the resume content. Please enter manually.',
-        variant: 'destructive'
-      })
-    } finally {
-      setIsProcessingResume(false)
-      // Reset file input
-      event.target.value = ''
-    }
-  }
 
   const handleClose = () => {
     console.log('CandidateForm - Closing form:', {
@@ -398,36 +287,6 @@ export function CandidateForm({
         <div className="space-y-6">
           {/* Candidate Form */}
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Resume Upload */}
-            {!candidate && (
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium text-text-primary border-b border-border pb-2">
-                  Resume Upload (Optional)
-                </h3>
-                <FormField 
-                  label="Upload Resume (PDF only, max 5MB)" 
-                  htmlFor="resume"
-                  helpText="Upload a PDF resume to auto-fill the form with extracted information."
-                >
-                  <div className="flex items-center gap-2">
-                    <Input
-                      id="resume"
-                      type="file"
-                      accept=".pdf"
-                      onChange={handleResumeUpload}
-                      disabled={isProcessingResume || isLoading}
-                      className="file:mr-3 file:py-1 file:px-2 file:rounded file:border-0 file:text-sm file:bg-primary file:text-primary-foreground h-[44px]"
-                    />
-                    {isProcessingResume && (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Loader className="h-4 w-4 animate-spin" />
-                        Processing...
-                      </div>
-                    )}
-                  </div>
-                </FormField>
-              </div>
-            )}
 
             {/* Basic Information */}
             <div className="space-y-4">

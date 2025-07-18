@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
-import { X, Plus, Upload, Loader } from 'lucide-react'
+import { X, Plus } from 'lucide-react'
 import { CreateIndependentCandidateData } from '@/hooks/useIndependentCandidates'
 import { toast } from '@/hooks/use-toast'
 import { supabase } from '@/integrations/supabase/client'
@@ -54,7 +54,6 @@ export function IndependentCandidateForm({
 }: IndependentCandidateFormProps) {
   const [skills, setSkills] = useState<string[]>(initialData?.skills || [])
   const [newSkill, setNewSkill] = useState('')
-  const [isProcessingResume, setIsProcessingResume] = useState(false)
 
   const {
     register,
@@ -140,123 +139,6 @@ export function IndependentCandidateForm({
     }
   }
 
-  const handleResumeUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) return
-
-    if (file.type !== 'application/pdf') {
-      toast({
-        title: 'Invalid file type',
-        description: 'Please upload a PDF file only.',
-        variant: 'destructive'
-      })
-      return
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      toast({
-        title: 'File too large',
-        description: 'Please upload a file smaller than 5MB.',
-        variant: 'destructive'
-      })
-      return
-    }
-
-    setIsProcessingResume(true)
-
-    try {
-      const formData = new FormData()
-      formData.append('file', file)
-
-      const { data: response, error: functionError } = await supabase.functions.invoke('process-resume', {
-        body: formData,
-      })
-
-      if (functionError) {
-        throw new Error(functionError.message || 'Function invocation failed')
-      }
-
-      if (response?.success && response?.structured_profile) {
-        const profile = response.structured_profile
-        
-        // Auto-fill form fields
-        if (profile.candidate_name) {
-          setValue('candidate_name', profile.candidate_name)
-        }
-        if (profile.email) {
-          setValue('email', profile.email)
-        }
-        if (profile.phone) {
-          setValue('phone', profile.phone)
-        }
-        if (profile.linkedin_url) {
-          setValue('linkedin_url', profile.linkedin_url)
-        }
-        if (profile.location_city) {
-          setValue('location_city', profile.location_city)
-        }
-        if (profile.location_state) {
-          setValue('location_state', profile.location_state)
-        }
-        if (profile.location_country) {
-          setValue('location_country', profile.location_country)
-        }
-        if (profile.salary_amount) {
-          setValue('salary_amount', profile.salary_amount)
-        }
-        if (profile.salary_currency) {
-          setValue('salary_currency', profile.salary_currency)
-        }
-        if (profile.salary_period) {
-          setValue('salary_period', profile.salary_period)
-        }
-        
-        // Combine profile summary sections
-        let combinedSummary = ''
-        if (profile.profile_summary) {
-          if (profile.profile_summary.about_me) {
-            combinedSummary += profile.profile_summary.about_me + '\n\n'
-          }
-          if (profile.profile_summary.experience_highlights && profile.profile_summary.experience_highlights.length > 0) {
-            combinedSummary += 'Experience Highlights:\n'
-            profile.profile_summary.experience_highlights.forEach((highlight: string) => {
-              combinedSummary += `• ${highlight}\n`
-            })
-            combinedSummary += '\n'
-          }
-          if (profile.profile_summary.key_competencies && profile.profile_summary.key_competencies.length > 0) {
-            combinedSummary += 'Key Competencies: ' + profile.profile_summary.key_competencies.join(', ')
-          }
-        }
-        if (combinedSummary) {
-          setValue('profile_summary', combinedSummary.trim())
-        }
-        
-        // Set skills
-        if (profile.skills && profile.skills.length > 0) {
-          setSkills(profile.skills)
-        }
-
-        toast({
-          title: '✅ Resume processed successfully',
-          description: 'Form has been auto-filled with AI-extracted data. Please review and edit as needed.',
-        })
-      } else {
-        throw new Error(response?.error || 'Failed to process resume')
-      }
-    } catch (error) {
-      console.error('Resume processing error:', error)
-      toast({
-        title: 'Resume processing failed',
-        description: 'We couldn\'t extract the resume content. Please enter manually.',
-        variant: 'destructive'
-      })
-    } finally {
-      setIsProcessingResume(false)
-      // Reset file input
-      event.target.value = ''
-    }
-  }
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -269,32 +151,6 @@ export function IndependentCandidateForm({
         </DialogHeader>
 
         <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
-          {/* Resume Upload */}
-          <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-foreground">Resume Upload (Optional)</h3>
-            <div className="space-y-2">
-              <Label htmlFor="resume">Upload Resume (PDF only, max 5MB)</Label>
-              <div className="flex items-center gap-2">
-                <Input
-                  id="resume"
-                  type="file"
-                  accept=".pdf"
-                  onChange={handleResumeUpload}
-                  disabled={isProcessingResume || isLoading}
-                  className="file:mr-3 file:py-1 file:px-2 file:rounded file:border-0 file:text-sm file:bg-primary file:text-primary-foreground"
-                />
-                {isProcessingResume && (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Loader className="h-4 w-4 animate-spin" />
-                    Processing...
-                  </div>
-                )}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Upload a PDF resume to auto-fill the form with extracted information.
-              </p>
-            </div>
-          </div>
 
           {/* Basic Information */}
           <div className="space-y-4">
