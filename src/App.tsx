@@ -9,6 +9,7 @@ import { AuthProvider } from './contexts/AuthContext'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Layout } from './components/layout/Layout'
 import Dashboard from './pages/Dashboard'
+import PeopleHub from './pages/PeopleHub'
 import Jobs from './pages/Jobs'
 import JobDetail from './pages/JobDetail'
 import Members from './pages/Members'
@@ -55,6 +56,7 @@ function AppContent() {
         >
           <Route index element={<Dashboard />} />
           <Route path="dashboard" element={<Dashboard />} />
+          <Route path="people-hub/*" element={<PeopleHub />} />
           <Route path="jobs" element={<Jobs />} />
           <Route path="jobs/:id" element={<JobDetail />} />
           <Route path="jobs/:jobId/candidates/:candidateId" element={<CandidateProfile />} />
