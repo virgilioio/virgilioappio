@@ -4,13 +4,20 @@ import { Outlet, Link, useLocation } from 'react-router-dom'
 import { 
   Search,
   Network,
-  Calendar
+  Calendar,
+  LayoutDashboard
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import Workers from './Workers'
 
 const sidebarItems = [
+  {
+    href: '/people-hub',
+    icon: LayoutDashboard,
+    label: 'Dashboard',
+    description: 'Overview and quick actions'
+  },
   {
     href: '/people-hub/people',
     icon: Search,
