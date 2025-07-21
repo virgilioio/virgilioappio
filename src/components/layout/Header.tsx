@@ -24,12 +24,12 @@ import {
   LogOut,
   User,
   Users,
-  Globe,
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePermissions } from '@/hooks/usePermissions'
 import { VirgilioLogo } from '@/components/VirgilioLogo'
 import { AdminModeIndicator } from '@/components/admin/AdminModeIndicator'
+import { PlanetIcon } from '@/components/icons/PlanetIcon'
 
 export function Header() {
   const { user, logout } = useAuth()
@@ -77,7 +77,7 @@ export function Header() {
     },
     {
       href: '/people-hub',
-      icon: Globe,
+      icon: PlanetIcon,
       label: 'People Hub',
       show: true,
     },
