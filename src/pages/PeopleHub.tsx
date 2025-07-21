@@ -61,15 +61,10 @@ export default function PeopleHub() {
 
   return (
     <div className="flex h-full">
-      {/* Vertical Sidebar */}
-      <div className="w-64 bg-card border-r border-border flex-shrink-0">
-        <div className="p-6">
-          <div className="mb-6">
-            <h2 className="text-lg font-semibold text-foreground">People Hub</h2>
-            <p className="text-sm text-muted-foreground">Manage all your talent operations</p>
-          </div>
-          
-          <nav className="space-y-1">
+      {/* Floating Vertical Sidebar */}
+      <div className="w-16 flex-shrink-0 p-4">
+        <div className="bg-card border border-border rounded-full shadow-lg h-fit py-4">
+          <nav className="space-y-2">
             {sidebarItems.map((item) => {
               const Icon = item.icon
               const isActive = isExactMatch(item.href)
@@ -80,22 +75,14 @@ export default function PeopleHub() {
                   to={item.href}
                   onClick={() => setSelectedItem(item.href)}
                   className={cn(
-                    "flex items-start gap-3 px-3 py-3 text-sm font-medium rounded-lg transition-colors group",
+                    "flex items-center justify-center w-8 h-8 mx-auto rounded-full transition-colors",
                     isActive
                       ? "bg-primary text-primary-foreground"
                       : "text-muted-foreground hover:text-foreground hover:bg-muted"
                   )}
+                  title={item.label}
                 >
-                  <Icon className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium">{item.label}</div>
-                    <div className={cn(
-                      "text-xs mt-0.5 line-clamp-2",
-                      isActive ? "text-primary-foreground/80" : "text-muted-foreground"
-                    )}>
-                      {item.description}
-                    </div>
-                  </div>
+                  <Icon className="h-4 w-4" />
                 </Link>
               )
             })}
