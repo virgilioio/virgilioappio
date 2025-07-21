@@ -82,7 +82,7 @@ export default function PeopleHub() {
                   )}
                   title={item.label}
                 >
-                  <Icon className="h-4 w-4" />
+                  <Icon className="h-4 w-4 flex-shrink-0" />
                 </Link>
               )
             })}
