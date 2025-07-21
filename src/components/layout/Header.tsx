@@ -75,6 +75,12 @@ export function Header() {
       show: canViewJobs,
     },
     {
+      href: '/people-hub',
+      icon: Users,
+      label: 'People Hub',
+      show: true,
+    },
+    {
       href: '/candidates',
       icon: Users,
       label: 'Candidates',
