@@ -62,8 +62,8 @@ export default function PeopleHub() {
   return (
     <div className="flex h-full">
       {/* Floating Vertical Sidebar */}
-      <div className="w-20 flex-shrink-0 p-4 flex justify-center">
-        <div className="bg-card border border-border rounded-full shadow-lg h-fit py-6 flex flex-col items-center">
+      <div className="w-40 flex-shrink-0 p-4 flex justify-center">
+        <div className="bg-card border border-border rounded-full shadow-lg h-fit py-8 px-4 flex flex-col items-center">
           <nav className="space-y-3">
             {sidebarItems.map((item) => {
               const Icon = item.icon
@@ -75,14 +75,14 @@ export default function PeopleHub() {
                   to={item.href}
                   onClick={() => setSelectedItem(item.href)}
                   className={cn(
-                    "flex items-center justify-center w-10 h-10 rounded-full transition-colors",
+                    "flex items-center justify-center w-12 h-12 rounded-full transition-colors",
                     isActive
                       ? "bg-primary text-primary-foreground"
                       : "text-muted-foreground hover:text-foreground hover:bg-muted"
                   )}
                   title={item.label}
                 >
-                  <Icon className="h-4 w-4 flex-shrink-0" />
+                  <Icon className="h-5 w-5 flex-shrink-0" />
                 </Link>
               )
             })}
