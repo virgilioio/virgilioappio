@@ -157,24 +157,24 @@ function PeopleHubOverview() {
       <div className="bg-card border border-border rounded-lg p-6">
         <h3 className="text-lg font-semibold mb-4">Quick Actions</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          <Button asChild variant="outline" className="h-auto p-4">
-            <Link to="/people-hub/add-candidate" className="flex flex-col items-center gap-2">
+          <Link to="/people-hub/add-candidate">
+            <Button variant="outline" className="h-auto p-4 w-full flex flex-col items-center gap-2">
               <UserPlus className="h-6 w-6" />
               <span>Add New Candidate</span>
-            </Link>
-          </Button>
-          <Button asChild variant="outline" className="h-auto p-4">
-            <Link to="/people-hub/sourcing" className="flex flex-col items-center gap-2">
+            </Button>
+          </Link>
+          <Link to="/people-hub/sourcing">
+            <Button variant="outline" className="h-auto p-4 w-full flex flex-col items-center gap-2">
               <Search className="h-6 w-6" />
               <span>Source Talent</span>
-            </Link>
-          </Button>
-          <Button asChild variant="outline" className="h-auto p-4">
-            <Link to="/people-hub/talent-pool" className="flex flex-col items-center gap-2">
+            </Button>
+          </Link>
+          <Link to="/people-hub/talent-pool">
+            <Button variant="outline" className="h-auto p-4 w-full flex flex-col items-center gap-2">
               <TrendingUp className="h-6 w-6" />
               <span>View Talent Pool</span>
-            </Link>
-          </Button>
+            </Button>
+          </Link>
         </div>
       </div>
     </div>
