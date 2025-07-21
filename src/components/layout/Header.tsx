@@ -24,6 +24,7 @@ import {
   LogOut,
   User,
   Users,
+  Globe,
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -76,7 +77,7 @@ export function Header() {
     },
     {
       href: '/people-hub',
-      icon: Users,
+      icon: Globe,
       label: 'People Hub',
       show: true,
     },
