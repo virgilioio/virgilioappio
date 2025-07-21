@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent } from '@/components/ui/card'
 import { Worker, CreateWorkerData } from '@/hooks/useWorkers'
+import { PhoneInput } from '@/components/ui/phone-input'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useOrganizations } from '@/hooks/useOrganizations'
@@ -158,10 +159,11 @@ export function WorkerForm({ worker, onSubmit, onCancel }: WorkerFormProps) {
 
               <div>
                 <Label htmlFor="personal_phone">Personal Phone</Label>
-                <Input
+                <PhoneInput
                   id="personal_phone"
                   value={formData.personal_phone}
-                  onChange={(e) => handleChange('personal_phone', e.target.value)}
+                  onChange={(value) => handleChange('personal_phone', value)}
+                  placeholder="Enter phone number"
                 />
               </div>
 
