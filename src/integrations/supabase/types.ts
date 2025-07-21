@@ -2093,6 +2093,133 @@ export type Database = {
         }
         Relationships: []
       }
+      workers: {
+        Row: {
+          contract_status:
+            | Database["public"]["Enums"]["contract_status_enum"]
+            | null
+          contract_type:
+            | Database["public"]["Enums"]["contract_type_enum"]
+            | null
+          country: string | null
+          created_at: string
+          created_by: string | null
+          currency: string | null
+          department: string | null
+          end_date: string | null
+          entity: string | null
+          events: Json | null
+          full_name: string
+          id: string
+          job_title: string | null
+          manager_id: string | null
+          organization_id: string
+          pay_date: string | null
+          personal_email: string | null
+          personal_phone: string | null
+          roles_department: string | null
+          start_date: string | null
+          state_province: string | null
+          updated_at: string
+          work_email: string | null
+          worker_entity_type:
+            | Database["public"]["Enums"]["worker_entity_type_enum"]
+            | null
+          worker_status: Database["public"]["Enums"]["worker_status_enum"]
+          worker_type: Database["public"]["Enums"]["worker_type_enum"]
+        }
+        Insert: {
+          contract_status?:
+            | Database["public"]["Enums"]["contract_status_enum"]
+            | null
+          contract_type?:
+            | Database["public"]["Enums"]["contract_type_enum"]
+            | null
+          country?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string | null
+          department?: string | null
+          end_date?: string | null
+          entity?: string | null
+          events?: Json | null
+          full_name: string
+          id?: string
+          job_title?: string | null
+          manager_id?: string | null
+          organization_id: string
+          pay_date?: string | null
+          personal_email?: string | null
+          personal_phone?: string | null
+          roles_department?: string | null
+          start_date?: string | null
+          state_province?: string | null
+          updated_at?: string
+          work_email?: string | null
+          worker_entity_type?:
+            | Database["public"]["Enums"]["worker_entity_type_enum"]
+            | null
+          worker_status?: Database["public"]["Enums"]["worker_status_enum"]
+          worker_type: Database["public"]["Enums"]["worker_type_enum"]
+        }
+        Update: {
+          contract_status?:
+            | Database["public"]["Enums"]["contract_status_enum"]
+            | null
+          contract_type?:
+            | Database["public"]["Enums"]["contract_type_enum"]
+            | null
+          country?: string | null
+          created_at?: string
+          created_by?: string | null
+          currency?: string | null
+          department?: string | null
+          end_date?: string | null
+          entity?: string | null
+          events?: Json | null
+          full_name?: string
+          id?: string
+          job_title?: string | null
+          manager_id?: string | null
+          organization_id?: string
+          pay_date?: string | null
+          personal_email?: string | null
+          personal_phone?: string | null
+          roles_department?: string | null
+          start_date?: string | null
+          state_province?: string | null
+          updated_at?: string
+          work_email?: string | null
+          worker_entity_type?:
+            | Database["public"]["Enums"]["worker_entity_type_enum"]
+            | null
+          worker_status?: Database["public"]["Enums"]["worker_status_enum"]
+          worker_type?: Database["public"]["Enums"]["worker_type_enum"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workers_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "workers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "workers_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization_exchange_rates"
+            referencedColumns: ["organization_id"]
+          },
+          {
+            foreignKeyName: "workers_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       organization_exchange_rates: {
@@ -2344,6 +2471,18 @@ export type Database = {
         | "candidate_added"
         | "invoice_created"
         | "invoice_paid"
+      contract_status_enum:
+        | "active"
+        | "pending"
+        | "expired"
+        | "terminated"
+        | "suspended"
+      contract_type_enum:
+        | "permanent"
+        | "temporary"
+        | "freelance"
+        | "fixed_term"
+        | "seasonal"
       field_type:
         | "text"
         | "number"
@@ -2370,6 +2509,23 @@ export type Database = {
         | "platform_admin"
         | "client"
       user_type_enum: "platform_admin" | "workspace_owner" | "member" | "guest"
+      worker_entity_type_enum:
+        | "business_entity"
+        | "individual"
+        | "not_specified"
+      worker_status_enum:
+        | "active"
+        | "inactive"
+        | "on_leave"
+        | "terminated"
+        | "pending"
+      worker_type_enum:
+        | "full_time"
+        | "part_time"
+        | "contractor"
+        | "intern"
+        | "consultant"
+        | "temporary"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2511,6 +2667,20 @@ export const Constants = {
         "invoice_created",
         "invoice_paid",
       ],
+      contract_status_enum: [
+        "active",
+        "pending",
+        "expired",
+        "terminated",
+        "suspended",
+      ],
+      contract_type_enum: [
+        "permanent",
+        "temporary",
+        "freelance",
+        "fixed_term",
+        "seasonal",
+      ],
       field_type: [
         "text",
         "number",
@@ -2540,6 +2710,26 @@ export const Constants = {
         "client",
       ],
       user_type_enum: ["platform_admin", "workspace_owner", "member", "guest"],
+      worker_entity_type_enum: [
+        "business_entity",
+        "individual",
+        "not_specified",
+      ],
+      worker_status_enum: [
+        "active",
+        "inactive",
+        "on_leave",
+        "terminated",
+        "pending",
+      ],
+      worker_type_enum: [
+        "full_time",
+        "part_time",
+        "contractor",
+        "intern",
+        "consultant",
+        "temporary",
+      ],
     },
   },
 } as const
