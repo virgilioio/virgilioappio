@@ -1,3 +1,4 @@
+
 import { useState } from 'react'
 import { Outlet, Link, useLocation } from 'react-router-dom'
 import { 
@@ -7,7 +8,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import WorkersPage from './Workers'
+import Workers from './Workers'
 
 const sidebarItems = [
   {
@@ -86,7 +87,7 @@ export default function PeopleHub() {
             {location.pathname === '/people-hub' ? (
               <PeopleHubOverview />
             ) : location.pathname === '/people-hub/people' ? (
-              <WorkersPage />
+              <Workers />
             ) : (
               <Outlet />
             )}
