@@ -5,7 +5,6 @@ import {
   Network,
   Calendar
 } from 'lucide-react'
-import { PageHeader } from '@/components/layout/PageHeader'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
@@ -71,17 +70,24 @@ export default function PeopleHub() {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
-        <PageHeader 
-          title="People Hub" 
-          subtitle="Comprehensive talent management and sourcing platform" 
-        />
+        <div className="container mx-auto py-6 sm:py-8 lg:py-12 px-4 sm:px-6 lg:px-8">
+          <div className="mb-6 sm:mb-8 lg:mb-12">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
+              <Search className="h-6 w-6 sm:h-7 sm:w-7" />
+              People Hub
+            </h1>
+            <p className="text-muted-foreground mt-2 text-sm sm:text-md">
+              Comprehensive talent management and sourcing platform
+            </p>
+          </div>
         
-        <div className="flex-1 p-6">
-          {location.pathname === '/people-hub' ? (
-            <PeopleHubOverview />
-          ) : (
-            <Outlet />
-          )}
+          <div className="flex-1">
+            {location.pathname === '/people-hub' ? (
+              <PeopleHubOverview />
+            ) : (
+              <Outlet />
+            )}
+          </div>
         </div>
       </div>
     </div>
