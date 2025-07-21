@@ -37,6 +37,13 @@ export interface PermissionsState {
   canEditCandidates: boolean
   canDeleteCandidates: boolean
   canManageCandidates: boolean
+
+  // Workers permissions
+  canViewWorkers: boolean
+  canCreateWorkers: boolean
+  canEditWorkers: boolean
+  canDeleteWorkers: boolean
+  canManageWorkers: boolean
   
   // Navigation permissions
   canViewCandidatesNavigation: boolean
@@ -122,6 +129,13 @@ export function usePermissions(): PermissionsState {
     canEditCandidates: isPlatformAdmin || ['recruiter', 'admin', 'customer_success'].includes(memberRole || ''),
     canDeleteCandidates: isPlatformAdmin || memberRole === 'admin',
     canManageCandidates: isPlatformAdmin || ['recruiter', 'admin', 'customer_success'].includes(memberRole || ''),
+
+    // Workers permissions - Similar to members but for workforce management
+    canViewWorkers: !isGuest,
+    canCreateWorkers: isPlatformAdmin || isWorkspaceOwner || (memberRole === 'admin' && !isGuest),
+    canEditWorkers: isPlatformAdmin || isWorkspaceOwner || (memberRole === 'admin' && !isGuest),
+    canDeleteWorkers: isPlatformAdmin || isWorkspaceOwner || (memberRole === 'admin' && !isGuest),
+    canManageWorkers: isPlatformAdmin || isWorkspaceOwner || (memberRole === 'admin' && !isGuest),
     
     // Navigation permissions - Show candidates in header for Platform Admins and Virgilio recruiters
     canViewCandidatesNavigation: isPlatformAdmin || isVirgilioRecruiter,

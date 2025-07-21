@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import WorkersPage from './Workers'
 
 const sidebarItems = [
   {
@@ -84,6 +85,8 @@ export default function PeopleHub() {
           <div className="flex-1">
             {location.pathname === '/people-hub' ? (
               <PeopleHubOverview />
+            ) : location.pathname === '/people-hub/people' ? (
+              <WorkersPage />
             ) : (
               <Outlet />
             )}
