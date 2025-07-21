@@ -58,6 +58,12 @@ export function Header() {
       show: true,
     },
     {
+      href: '/people-hub',
+      icon: PlanetIcon,
+      label: 'People Hub',
+      show: true,
+    },
+    {
       href: '/organizations',
       icon: Building2,
       label: 'Organizations',
@@ -74,12 +80,6 @@ export function Header() {
       icon: Briefcase,
       label: 'Jobs',
       show: canViewJobs,
-    },
-    {
-      href: '/people-hub',
-      icon: PlanetIcon,
-      label: 'People Hub',
-      show: true,
     },
     {
       href: '/candidates',
