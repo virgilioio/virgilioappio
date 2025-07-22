@@ -222,7 +222,7 @@ export function WorkersTable({
                     <TableHead>Country</TableHead>
                     <TableHead>Worker Type</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Start Date</TableHead>
+                    <TableHead>Payment Schedule</TableHead>
                     {permissions.isPlatformAdmin && <TableHead>Organization</TableHead>}
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
@@ -250,7 +250,19 @@ export function WorkersTable({
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        {worker.start_date ? new Date(worker.start_date).toLocaleDateString() : 'Not set'}
+                        <div className="space-y-1">
+                          <div className="text-sm font-medium">
+                            {worker.payment_frequency === 'bi_monthly' && '15th & Last of Month'}
+                            {worker.payment_frequency === 'monthly' && 'Last of Month'}
+                            {worker.payment_frequency === 'custom' && `Days: ${worker.custom_pay_dates?.join(', ') || 'Not set'}`}
+                            {!worker.payment_frequency && 'Not set'}
+                          </div>
+                          {worker.next_payment_date && (
+                            <div className="text-xs text-muted-foreground">
+                              Next: {new Date(worker.next_payment_date).toLocaleDateString()}
+                            </div>
+                          )}
+                        </div>
                       </TableCell>
                       {permissions.isPlatformAdmin && (
                         <TableCell>{worker.organization_name}</TableCell>

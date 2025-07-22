@@ -24,7 +24,9 @@ export interface Worker {
   worker_entity_type?: 'business_entity' | 'individual' | 'not_specified'
   start_date?: string
   end_date?: string
-  pay_date?: string
+  payment_frequency?: 'bi_monthly' | 'monthly' | 'custom'
+  custom_pay_dates?: number[]
+  next_payment_date?: string
   department?: string
   roles_department?: string
   created_by?: string
@@ -54,7 +56,9 @@ export interface CreateWorkerData {
   worker_entity_type?: 'business_entity' | 'individual' | 'not_specified'
   start_date?: string
   end_date?: string
-  pay_date?: string
+  payment_frequency?: 'bi_monthly' | 'monthly' | 'custom'
+  custom_pay_dates?: number[]
+  next_payment_date?: string
   department?: string
   roles_department?: string
 }
@@ -78,7 +82,9 @@ export interface UpdateWorkerData {
   worker_entity_type?: 'business_entity' | 'individual' | 'not_specified'
   start_date?: string
   end_date?: string
-  pay_date?: string
+  payment_frequency?: 'bi_monthly' | 'monthly' | 'custom'
+  custom_pay_dates?: number[]
+  next_payment_date?: string
   department?: string
   roles_department?: string
 }

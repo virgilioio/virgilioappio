@@ -41,7 +41,9 @@ export function WorkerForm({ worker, onSubmit, onCancel }: WorkerFormProps) {
     worker_entity_type: 'not_specified',
     start_date: '',
     end_date: '',
-    pay_date: '',
+    payment_frequency: 'monthly',
+    custom_pay_dates: [],
+    next_payment_date: '',
     department: '',
     roles_department: ''
   })
@@ -66,7 +68,9 @@ export function WorkerForm({ worker, onSubmit, onCancel }: WorkerFormProps) {
         worker_entity_type: worker.worker_entity_type || 'not_specified',
         start_date: worker.start_date || '',
         end_date: worker.end_date || '',
-        pay_date: worker.pay_date || '',
+        payment_frequency: worker.payment_frequency || 'monthly',
+        custom_pay_dates: worker.custom_pay_dates || [],
+        next_payment_date: worker.next_payment_date || '',
         department: worker.department || '',
         roles_department: worker.roles_department || ''
       })
@@ -363,14 +367,44 @@ export function WorkerForm({ worker, onSubmit, onCancel }: WorkerFormProps) {
               </div>
 
               <div>
-                <Label htmlFor="pay_date">Pay Date</Label>
-                <Input
-                  id="pay_date"
-                  type="date"
-                  value={formData.pay_date}
-                  onChange={(e) => handleChange('pay_date', e.target.value)}
-                />
+                <Label htmlFor="payment_frequency">Payment Frequency</Label>
+                <Select
+                  value={formData.payment_frequency}
+                  onValueChange={(value) => handleChange('payment_frequency', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="bi_monthly">15th & Last of Month</SelectItem>
+                    <SelectItem value="monthly">Last of Month</SelectItem>
+                    <SelectItem value="custom">Specific Dates</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
+
+              {/* Custom Pay Dates - Only show when frequency is 'custom' */}
+              {formData.payment_frequency === 'custom' && (
+                <div>
+                  <Label htmlFor="custom_pay_dates">Custom Pay Dates (Days of Month)</Label>
+                  <Input
+                    id="custom_pay_dates"
+                    placeholder="e.g., 1, 15, 30"
+                    value={formData.custom_pay_dates?.join(', ') || ''}
+                    onChange={(e) => {
+                      const dates = e.target.value
+                        .split(',')
+                        .map(d => parseInt(d.trim()))
+                        .filter(d => !isNaN(d) && d >= 1 && d <= 31)
+                        .sort((a, b) => a - b)
+                      handleChange('custom_pay_dates', dates)
+                    }}
+                  />
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Enter day numbers (1-31) separated by commas
+                  </div>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
