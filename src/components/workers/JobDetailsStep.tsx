@@ -53,14 +53,14 @@ export function JobDetailsStep({ data, errors, onUpdate }: JobDetailsStepProps) 
             <div>
               <Label htmlFor="manager_id">Manager</Label>
               <Select
-                value={data.manager_id || ''}
-                onValueChange={(value) => handleChange('manager_id', value || undefined)}
+                value={data.manager_id || 'none'}
+                onValueChange={(value) => handleChange('manager_id', value === 'none' ? undefined : value)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select manager (optional)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No manager</SelectItem>
+                  <SelectItem value="none">No manager</SelectItem>
                   {availableManagers.map((manager) => (
                     <SelectItem key={manager.id} value={manager.id}>
                       {manager.full_name} - {manager.job_title || 'No title'}
@@ -128,14 +128,14 @@ export function JobDetailsStep({ data, errors, onUpdate }: JobDetailsStepProps) 
             <div>
               <Label htmlFor="seniority_level">Seniority Level</Label>
               <Select
-                value={data.seniority_level || ''}
-                onValueChange={(value) => handleChange('seniority_level', value || undefined)}
+                value={data.seniority_level || 'not_specified'}
+                onValueChange={(value) => handleChange('seniority_level', value === 'not_specified' ? undefined : value)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select seniority level (optional)" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Not specified</SelectItem>
+                  <SelectItem value="not_specified">Not specified</SelectItem>
                   {seniorityLevels.map((level) => (
                     <SelectItem key={level.value} value={level.value}>
                       {level.label}
