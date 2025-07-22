@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { CreateWorkerData } from '@/hooks/useWorkers'
 import { useWorkers } from '@/hooks/useWorkers'
 import { useState, useEffect } from 'react'
+import { supabase } from '@/integrations/supabase/client'
 
 interface JobDetailsStepProps {
   data: Partial<CreateWorkerData>
@@ -16,6 +17,7 @@ interface JobDetailsStepProps {
 export function JobDetailsStep({ data, errors, onUpdate }: JobDetailsStepProps) {
   const { workers } = useWorkers()
   const [availableManagers, setAvailableManagers] = useState<typeof workers>([])
+  const [nextWorkerId, setNextWorkerId] = useState<number>(1)
 
   useEffect(() => {
     // Filter workers who could be managers (active employees/contractors)
@@ -25,6 +27,30 @@ export function JobDetailsStep({ data, errors, onUpdate }: JobDetailsStepProps) 
     )
     setAvailableManagers(managers)
   }, [workers, data.organization_id])
+
+  useEffect(() => {
+    // Calculate next worker ID for the organization
+    const fetchNextWorkerId = async () => {
+      if (data.organization_id) {
+        try {
+          const { data: result, error } = await supabase
+            .rpc('generate_worker_id', { org_id: data.organization_id })
+          
+          if (!error && result) {
+            setNextWorkerId(result)
+          }
+        } catch (err) {
+          console.error('Error fetching next worker ID:', err)
+          // Fallback: calculate based on existing workers
+          const orgWorkers = workers.filter(w => w.organization_id === data.organization_id)
+          const maxId = Math.max(0, ...orgWorkers.map(w => w.worker_id || 0))
+          setNextWorkerId(maxId + 1)
+        }
+      }
+    }
+
+    fetchNextWorkerId()
+  }, [data.organization_id, workers])
 
   const handleChange = (field: keyof CreateWorkerData, value: any) => {
     onUpdate({ [field]: value })
@@ -72,8 +98,11 @@ export function JobDetailsStep({ data, errors, onUpdate }: JobDetailsStepProps) 
 
             <div>
               <Label>Worker ID</Label>
-              <div className="text-sm text-muted-foreground p-2 bg-muted rounded-md">
-                Auto-generated (starts from 1 for each organization)
+              <div className="text-sm font-medium p-2 bg-muted/50 rounded-md border">
+                {nextWorkerId}
+              </div>
+              <div className="text-xs text-muted-foreground mt-1">
+                Auto-generated for this organization
               </div>
             </div>
           </div>
