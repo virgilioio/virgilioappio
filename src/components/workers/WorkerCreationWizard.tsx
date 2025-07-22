@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { WorkerTypeSelection } from './WorkerTypeSelection'
 import { ContractorPaymentSelection } from './ContractorPaymentSelection'
-import { WorkerForm } from './WorkerForm'
+import { WorkerDetailsWizard } from './WorkerDetailsWizard'
 import { CreateWorkerData } from '@/hooks/useWorkers'
 import { DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -146,11 +146,11 @@ export function WorkerCreationWizard({ onSubmit, onCancel }: WorkerCreationWizar
         )}
 
         {currentStep === 3 && (
-          <WorkerForm
+          <WorkerDetailsWizard
             onSubmit={handleFormSubmit}
             onCancel={onCancel}
             prefilledData={getPrefilledFormData()}
-            hideWorkerType={true}
+            workerType={wizardData.workerType!}
             contractorPaymentType={wizardData.contractorPaymentType}
           />
         )}

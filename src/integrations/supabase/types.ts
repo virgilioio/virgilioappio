@@ -2095,6 +2095,8 @@ export type Database = {
       }
       workers: {
         Row: {
+          base_salary: number | null
+          citizenship: string | null
           contract_status:
             | Database["public"]["Enums"]["contract_status_enum"]
             | null
@@ -2106,18 +2108,31 @@ export type Database = {
           created_by: string | null
           currency: string | null
           department: string | null
+          employment_terms:
+            | Database["public"]["Enums"]["employment_terms_enum"]
+            | null
           end_date: string | null
           entity: string | null
           events: Json | null
           full_name: string
           id: string
           job_title: string | null
+          legal_first_name: string | null
+          legal_last_name: string | null
           manager_id: string | null
           organization_id: string
           pay_date: string | null
+          payment_period:
+            | Database["public"]["Enums"]["payment_period_enum"]
+            | null
           personal_email: string | null
           personal_phone: string | null
+          reports: Json | null
           roles_department: string | null
+          scope_of_work: string | null
+          seniority_level:
+            | Database["public"]["Enums"]["seniority_level_enum"]
+            | null
           start_date: string | null
           state_province: string | null
           updated_at: string
@@ -2125,10 +2140,14 @@ export type Database = {
           worker_entity_type:
             | Database["public"]["Enums"]["worker_entity_type_enum"]
             | null
+          worker_id: number | null
           worker_status: Database["public"]["Enums"]["worker_status_enum"]
           worker_type: Database["public"]["Enums"]["worker_type_enum"]
+          working_location: string | null
         }
         Insert: {
+          base_salary?: number | null
+          citizenship?: string | null
           contract_status?:
             | Database["public"]["Enums"]["contract_status_enum"]
             | null
@@ -2140,18 +2159,31 @@ export type Database = {
           created_by?: string | null
           currency?: string | null
           department?: string | null
+          employment_terms?:
+            | Database["public"]["Enums"]["employment_terms_enum"]
+            | null
           end_date?: string | null
           entity?: string | null
           events?: Json | null
           full_name: string
           id?: string
           job_title?: string | null
+          legal_first_name?: string | null
+          legal_last_name?: string | null
           manager_id?: string | null
           organization_id: string
           pay_date?: string | null
+          payment_period?:
+            | Database["public"]["Enums"]["payment_period_enum"]
+            | null
           personal_email?: string | null
           personal_phone?: string | null
+          reports?: Json | null
           roles_department?: string | null
+          scope_of_work?: string | null
+          seniority_level?:
+            | Database["public"]["Enums"]["seniority_level_enum"]
+            | null
           start_date?: string | null
           state_province?: string | null
           updated_at?: string
@@ -2159,10 +2191,14 @@ export type Database = {
           worker_entity_type?:
             | Database["public"]["Enums"]["worker_entity_type_enum"]
             | null
+          worker_id?: number | null
           worker_status?: Database["public"]["Enums"]["worker_status_enum"]
           worker_type: Database["public"]["Enums"]["worker_type_enum"]
+          working_location?: string | null
         }
         Update: {
+          base_salary?: number | null
+          citizenship?: string | null
           contract_status?:
             | Database["public"]["Enums"]["contract_status_enum"]
             | null
@@ -2174,18 +2210,31 @@ export type Database = {
           created_by?: string | null
           currency?: string | null
           department?: string | null
+          employment_terms?:
+            | Database["public"]["Enums"]["employment_terms_enum"]
+            | null
           end_date?: string | null
           entity?: string | null
           events?: Json | null
           full_name?: string
           id?: string
           job_title?: string | null
+          legal_first_name?: string | null
+          legal_last_name?: string | null
           manager_id?: string | null
           organization_id?: string
           pay_date?: string | null
+          payment_period?:
+            | Database["public"]["Enums"]["payment_period_enum"]
+            | null
           personal_email?: string | null
           personal_phone?: string | null
+          reports?: Json | null
           roles_department?: string | null
+          scope_of_work?: string | null
+          seniority_level?:
+            | Database["public"]["Enums"]["seniority_level_enum"]
+            | null
           start_date?: string | null
           state_province?: string | null
           updated_at?: string
@@ -2193,8 +2242,10 @@ export type Database = {
           worker_entity_type?:
             | Database["public"]["Enums"]["worker_entity_type_enum"]
             | null
+          worker_id?: number | null
           worker_status?: Database["public"]["Enums"]["worker_status_enum"]
           worker_type?: Database["public"]["Enums"]["worker_type_enum"]
+          working_location?: string | null
         }
         Relationships: [
           {
@@ -2315,6 +2366,10 @@ export type Database = {
       generate_invite_token: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      generate_worker_id: {
+        Args: { org_id: string }
+        Returns: number
       }
       get_active_organization_currencies: {
         Args: Record<PropertyKey, never>
@@ -2483,6 +2538,7 @@ export type Database = {
         | "freelance"
         | "fixed_term"
         | "seasonal"
+      employment_terms_enum: "indefinite" | "definite"
       field_type:
         | "text"
         | "number"
@@ -2508,6 +2564,24 @@ export type Database = {
         | "admin"
         | "platform_admin"
         | "client"
+      payment_period_enum:
+        | "annual"
+        | "monthly"
+        | "semimonthly"
+        | "biweekly"
+        | "weekly"
+        | "daily"
+        | "hourly"
+      seniority_level_enum:
+        | "entry"
+        | "junior"
+        | "mid"
+        | "senior"
+        | "lead"
+        | "principal"
+        | "director"
+        | "vp"
+        | "c_level"
       user_type_enum: "platform_admin" | "workspace_owner" | "member" | "guest"
       worker_entity_type_enum:
         | "business_entity"
@@ -2681,6 +2755,7 @@ export const Constants = {
         "fixed_term",
         "seasonal",
       ],
+      employment_terms_enum: ["indefinite", "definite"],
       field_type: [
         "text",
         "number",
@@ -2708,6 +2783,26 @@ export const Constants = {
         "admin",
         "platform_admin",
         "client",
+      ],
+      payment_period_enum: [
+        "annual",
+        "monthly",
+        "semimonthly",
+        "biweekly",
+        "weekly",
+        "daily",
+        "hourly",
+      ],
+      seniority_level_enum: [
+        "entry",
+        "junior",
+        "mid",
+        "senior",
+        "lead",
+        "principal",
+        "director",
+        "vp",
+        "c_level",
       ],
       user_type_enum: ["platform_admin", "workspace_owner", "member", "guest"],
       worker_entity_type_enum: [

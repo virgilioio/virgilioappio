@@ -7,19 +7,30 @@ export interface Worker {
   id: string
   organization_id: string
   full_name: string
+  legal_first_name?: string
+  legal_last_name?: string
+  citizenship?: string
   personal_email?: string
   work_email?: string
   personal_phone?: string
   worker_status: 'active' | 'inactive' | 'on_leave' | 'terminated' | 'pending'
   worker_type: 'employee' | 'contractor'
+  worker_id?: number
   job_title?: string
+  seniority_level?: 'entry' | 'junior' | 'mid' | 'senior' | 'lead' | 'principal' | 'director' | 'vp' | 'c_level'
   contract_type?: 'permanent' | 'temporary' | 'freelance' | 'fixed_term' | 'seasonal'
   contract_status?: 'active' | 'pending' | 'expired' | 'terminated' | 'suspended'
   country?: string
+  working_location?: string
+  scope_of_work?: string
   currency?: string
+  base_salary?: number
+  payment_period?: 'annual' | 'monthly' | 'semimonthly' | 'biweekly' | 'weekly' | 'daily' | 'hourly'
+  employment_terms?: 'indefinite' | 'definite'
   entity?: string
   events?: any
   manager_id?: string
+  reports?: any[]
   state_province?: string
   worker_entity_type?: 'business_entity' | 'individual' | 'not_specified'
   start_date?: string
@@ -43,19 +54,30 @@ export interface Worker {
 export interface CreateWorkerData {
   organization_id: string
   full_name: string
+  legal_first_name?: string
+  legal_last_name?: string
+  citizenship?: string
   personal_email?: string
   work_email?: string
   personal_phone?: string
   worker_status?: 'active' | 'inactive' | 'on_leave' | 'terminated' | 'pending'
   worker_type: 'employee' | 'contractor'
+  worker_id?: number
   job_title?: string
+  seniority_level?: 'entry' | 'junior' | 'mid' | 'senior' | 'lead' | 'principal' | 'director' | 'vp' | 'c_level'
   contract_type?: 'permanent' | 'temporary' | 'freelance' | 'fixed_term' | 'seasonal'
   contract_status?: 'active' | 'pending' | 'expired' | 'terminated' | 'suspended'
   country?: string
+  working_location?: string
+  scope_of_work?: string
   currency?: string
+  base_salary?: number
+  payment_period?: 'annual' | 'monthly' | 'semimonthly' | 'biweekly' | 'weekly' | 'daily' | 'hourly'
+  employment_terms?: 'indefinite' | 'definite'
   entity?: string
   events?: any
   manager_id?: string
+  reports?: any[]
   state_province?: string
   worker_entity_type?: 'business_entity' | 'individual' | 'not_specified'
   start_date?: string
@@ -73,19 +95,30 @@ export interface CreateWorkerData {
 
 export interface UpdateWorkerData {
   full_name?: string
+  legal_first_name?: string
+  legal_last_name?: string
+  citizenship?: string
   personal_email?: string
   work_email?: string
   personal_phone?: string
   worker_status?: 'active' | 'inactive' | 'on_leave' | 'terminated' | 'pending'
   worker_type?: 'employee' | 'contractor'
+  worker_id?: number
   job_title?: string
+  seniority_level?: 'entry' | 'junior' | 'mid' | 'senior' | 'lead' | 'principal' | 'director' | 'vp' | 'c_level'
   contract_type?: 'permanent' | 'temporary' | 'freelance' | 'fixed_term' | 'seasonal'
   contract_status?: 'active' | 'pending' | 'expired' | 'terminated' | 'suspended'
   country?: string
+  working_location?: string
+  scope_of_work?: string
   currency?: string
+  base_salary?: number
+  payment_period?: 'annual' | 'monthly' | 'semimonthly' | 'biweekly' | 'weekly' | 'daily' | 'hourly'
+  employment_terms?: 'indefinite' | 'definite'
   entity?: string
   events?: any
   manager_id?: string
+  reports?: any[]
   state_province?: string
   worker_entity_type?: 'business_entity' | 'individual' | 'not_specified'
   start_date?: string
