@@ -14,7 +14,7 @@ export function WorkerTypeSelection({ onSelect }: WorkerTypeSelectionProps) {
       
       <div className="space-y-3">
         <Card 
-          className="cursor-pointer transition-all duration-200 ease-out hover:shadow-md hover:scale-[1.02] hover:-translate-y-1 border-2 hover:border-primary/50"
+          className="cursor-pointer hover:shadow-md transition-shadow border-2 hover:border-primary/50"
           onClick={() => onSelect('employee')}
         >
           <CardHeader className="pb-3">
@@ -31,7 +31,7 @@ export function WorkerTypeSelection({ onSelect }: WorkerTypeSelectionProps) {
         </Card>
 
         <Card 
-          className="cursor-pointer transition-all duration-200 ease-out hover:shadow-md hover:scale-[1.02] hover:-translate-y-1 border-2 hover:border-primary/50"
+          className="cursor-pointer hover:shadow-md transition-shadow border-2 hover:border-primary/50"
           onClick={() => onSelect('contractor')}
         >
           <CardHeader className="pb-3">
