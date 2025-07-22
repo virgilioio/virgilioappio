@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { PermissionGate } from '@/components/auth/PermissionGate'
 import { WorkersTable } from '@/components/workers/WorkersTable'
 import { WorkerForm } from '@/components/workers/WorkerForm'
+import { WorkerCreationWizard } from '@/components/workers/WorkerCreationWizard'
 import { useWorkers, Worker } from '@/hooks/useWorkers'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -86,16 +87,23 @@ export default function Workers() {
 
       <Dialog open={isFormOpen} onOpenChange={handleCloseForm}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
-              {editingWorker ? 'Edit Worker' : 'Add New Worker'}
-            </DialogTitle>
-          </DialogHeader>
-          <WorkerForm
-            worker={editingWorker}
-            onSubmit={handleSubmit}
-            onCancel={handleCloseForm}
-          />
+          {editingWorker ? (
+            <>
+              <DialogHeader>
+                <DialogTitle>Edit Worker</DialogTitle>
+              </DialogHeader>
+              <WorkerForm
+                worker={editingWorker}
+                onSubmit={handleSubmit}
+                onCancel={handleCloseForm}
+              />
+            </>
+          ) : (
+            <WorkerCreationWizard
+              onSubmit={handleSubmit}
+              onCancel={handleCloseForm}
+            />
+          )}
         </DialogContent>
       </Dialog>
     </div>

@@ -16,9 +16,12 @@ interface WorkerFormProps {
   worker?: Worker | null
   onSubmit: (data: CreateWorkerData) => void
   onCancel: () => void
+  prefilledData?: Partial<CreateWorkerData>
+  hideWorkerType?: boolean
+  contractorPaymentType?: 'fixed_rate' | 'hourly_rate' | 'per_project'
 }
 
-export function WorkerForm({ worker, onSubmit, onCancel }: WorkerFormProps) {
+export function WorkerForm({ worker, onSubmit, onCancel, prefilledData, hideWorkerType, contractorPaymentType }: WorkerFormProps) {
   const { user } = useAuth()
   const permissions = usePermissions()
   const { organizations } = useOrganizations()
@@ -30,7 +33,7 @@ export function WorkerForm({ worker, onSubmit, onCancel }: WorkerFormProps) {
     work_email: '',
     personal_phone: '',
     worker_status: 'pending',
-    worker_type: 'full_time',
+    worker_type: 'employee',
     job_title: '',
     contract_type: 'permanent',
     contract_status: 'pending',
@@ -44,8 +47,13 @@ export function WorkerForm({ worker, onSubmit, onCancel }: WorkerFormProps) {
     payment_frequency: 'monthly',
     custom_pay_dates: [],
     next_payment_date: '',
+    contractor_payment_type: undefined,
+    hourly_rate: undefined,
+    monthly_fixed_amount: undefined,
+    project_details: '',
     department: '',
-    roles_department: ''
+    roles_department: '',
+    ...prefilledData
   })
 
   useEffect(() => {
@@ -71,6 +79,10 @@ export function WorkerForm({ worker, onSubmit, onCancel }: WorkerFormProps) {
         payment_frequency: worker.payment_frequency || 'monthly',
         custom_pay_dates: worker.custom_pay_dates || [],
         next_payment_date: worker.next_payment_date || '',
+        contractor_payment_type: worker.contractor_payment_type,
+        hourly_rate: worker.hourly_rate,
+        monthly_fixed_amount: worker.monthly_fixed_amount,
+        project_details: worker.project_details || '',
         department: worker.department || '',
         roles_department: worker.roles_department || ''
       })
@@ -207,25 +219,23 @@ export function WorkerForm({ worker, onSubmit, onCancel }: WorkerFormProps) {
                 </Select>
               </div>
 
-              <div>
-                <Label htmlFor="worker_type">Worker Type *</Label>
-                <Select
-                  value={formData.worker_type}
-                  onValueChange={(value) => handleChange('worker_type', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="full_time">Full Time</SelectItem>
-                    <SelectItem value="part_time">Part Time</SelectItem>
-                    <SelectItem value="contractor">Contractor</SelectItem>
-                    <SelectItem value="consultant">Consultant</SelectItem>
-                    <SelectItem value="intern">Intern</SelectItem>
-                    <SelectItem value="temporary">Temporary</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              {!hideWorkerType && (
+                <div>
+                  <Label htmlFor="worker_type">Worker Type *</Label>
+                  <Select
+                    value={formData.worker_type}
+                    onValueChange={(value) => handleChange('worker_type', value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="employee">Employee</SelectItem>
+                      <SelectItem value="contractor">Contractor</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
               <div>
                 <Label htmlFor="contract_type">Contract Type</Label>
@@ -405,7 +415,53 @@ export function WorkerForm({ worker, onSubmit, onCancel }: WorkerFormProps) {
                   </div>
                 </div>
               )}
+
+              {/* Contractor Payment Fields */}
+              {formData.worker_type === 'contractor' && contractorPaymentType === 'hourly_rate' && (
+                <div>
+                  <Label htmlFor="hourly_rate">Hourly Rate *</Label>
+                  <Input
+                    id="hourly_rate"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.hourly_rate || ''}
+                    onChange={(e) => handleChange('hourly_rate', parseFloat(e.target.value) || 0)}
+                    required
+                  />
+                </div>
+              )}
+
+              {formData.worker_type === 'contractor' && contractorPaymentType === 'fixed_rate' && (
+                <div>
+                  <Label htmlFor="monthly_fixed_amount">Monthly Fixed Amount *</Label>
+                  <Input
+                    id="monthly_fixed_amount"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.monthly_fixed_amount || ''}
+                    onChange={(e) => handleChange('monthly_fixed_amount', parseFloat(e.target.value) || 0)}
+                    required
+                  />
+                </div>
+              )}
             </div>
+
+            {/* Project Details for per-project contractors */}
+            {formData.worker_type === 'contractor' && contractorPaymentType === 'per_project' && (
+              <div className="mt-4">
+                <Label htmlFor="project_details">Project Details *</Label>
+                <Textarea
+                  id="project_details"
+                  value={formData.project_details || ''}
+                  onChange={(e) => handleChange('project_details', e.target.value)}
+                  placeholder="Describe the project scope, milestones, and payment schedule..."
+                  rows={4}
+                  required
+                />
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

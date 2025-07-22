@@ -57,17 +57,10 @@ export function WorkersTable({
 
   const getTypeBadgeVariant = (type: string) => {
     switch (type) {
-      case 'full_time':
+      case 'employee':
         return 'default'
-      case 'part_time':
-        return 'secondary'
       case 'contractor':
-      case 'consultant':
         return 'outline'
-      case 'intern':
-        return 'secondary'
-      case 'temporary':
-        return 'destructive'
       default:
         return 'outline'
     }
@@ -151,12 +144,8 @@ export function WorkersTable({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="full_time">Full Time</SelectItem>
-                <SelectItem value="part_time">Part Time</SelectItem>
+                <SelectItem value="employee">Employee</SelectItem>
                 <SelectItem value="contractor">Contractor</SelectItem>
-                <SelectItem value="consultant">Consultant</SelectItem>
-                <SelectItem value="intern">Intern</SelectItem>
-                <SelectItem value="temporary">Temporary</SelectItem>
               </SelectContent>
             </Select>
 

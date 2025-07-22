@@ -11,7 +11,7 @@ export interface Worker {
   work_email?: string
   personal_phone?: string
   worker_status: 'active' | 'inactive' | 'on_leave' | 'terminated' | 'pending'
-  worker_type: 'full_time' | 'part_time' | 'contractor' | 'intern' | 'consultant' | 'temporary'
+  worker_type: 'employee' | 'contractor'
   job_title?: string
   contract_type?: 'permanent' | 'temporary' | 'freelance' | 'fixed_term' | 'seasonal'
   contract_status?: 'active' | 'pending' | 'expired' | 'terminated' | 'suspended'
@@ -27,6 +27,10 @@ export interface Worker {
   payment_frequency?: 'bi_monthly' | 'monthly' | 'custom'
   custom_pay_dates?: number[]
   next_payment_date?: string
+  contractor_payment_type?: 'fixed_rate' | 'hourly_rate' | 'per_project'
+  hourly_rate?: number
+  monthly_fixed_amount?: number
+  project_details?: string
   department?: string
   roles_department?: string
   created_by?: string
@@ -43,7 +47,7 @@ export interface CreateWorkerData {
   work_email?: string
   personal_phone?: string
   worker_status?: 'active' | 'inactive' | 'on_leave' | 'terminated' | 'pending'
-  worker_type: 'full_time' | 'part_time' | 'contractor' | 'intern' | 'consultant' | 'temporary'
+  worker_type: 'employee' | 'contractor'
   job_title?: string
   contract_type?: 'permanent' | 'temporary' | 'freelance' | 'fixed_term' | 'seasonal'
   contract_status?: 'active' | 'pending' | 'expired' | 'terminated' | 'suspended'
@@ -59,6 +63,10 @@ export interface CreateWorkerData {
   payment_frequency?: 'bi_monthly' | 'monthly' | 'custom'
   custom_pay_dates?: number[]
   next_payment_date?: string
+  contractor_payment_type?: 'fixed_rate' | 'hourly_rate' | 'per_project'
+  hourly_rate?: number
+  monthly_fixed_amount?: number
+  project_details?: string
   department?: string
   roles_department?: string
 }
@@ -69,7 +77,7 @@ export interface UpdateWorkerData {
   work_email?: string
   personal_phone?: string
   worker_status?: 'active' | 'inactive' | 'on_leave' | 'terminated' | 'pending'
-  worker_type?: 'full_time' | 'part_time' | 'contractor' | 'intern' | 'consultant' | 'temporary'
+  worker_type?: 'employee' | 'contractor'
   job_title?: string
   contract_type?: 'permanent' | 'temporary' | 'freelance' | 'fixed_term' | 'seasonal'
   contract_status?: 'active' | 'pending' | 'expired' | 'terminated' | 'suspended'
@@ -85,6 +93,10 @@ export interface UpdateWorkerData {
   payment_frequency?: 'bi_monthly' | 'monthly' | 'custom'
   custom_pay_dates?: number[]
   next_payment_date?: string
+  contractor_payment_type?: 'fixed_rate' | 'hourly_rate' | 'per_project'
+  hourly_rate?: number
+  monthly_fixed_amount?: number
+  project_details?: string
   department?: string
   roles_department?: string
 }
