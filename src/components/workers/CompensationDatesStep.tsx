@@ -3,6 +3,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { CreateWorkerData } from '@/hooks/useWorkers'
+import { CURRENCIES } from '@/constants/currencies'
 
 interface CompensationDatesStepProps {
   data: Partial<CreateWorkerData>
@@ -33,18 +34,6 @@ export function CompensationDatesStep({
     { value: 'hourly', label: 'Hourly' }
   ]
 
-  const currencies = [
-    { value: 'USD', label: 'USD - US Dollar' },
-    { value: 'EUR', label: 'EUR - Euro' },
-    { value: 'GBP', label: 'GBP - British Pound' },
-    { value: 'CAD', label: 'CAD - Canadian Dollar' },
-    { value: 'AUD', label: 'AUD - Australian Dollar' },
-    { value: 'JPY', label: 'JPY - Japanese Yen' },
-    { value: 'CHF', label: 'CHF - Swiss Franc' },
-    { value: 'SEK', label: 'SEK - Swedish Krona' },
-    { value: 'NOK', label: 'NOK - Norwegian Krone' },
-    { value: 'DKK', label: 'DKK - Danish Krone' }
-  ]
 
   const employmentTypes = [
     { value: 'full_time', label: 'Full-time' },
@@ -128,7 +117,7 @@ export function CompensationDatesStep({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {currencies.map((currency) => (
+                  {CURRENCIES.map((currency) => (
                     <SelectItem key={currency.value} value={currency.value}>
                       {currency.label}
                     </SelectItem>

@@ -12,6 +12,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Check, ChevronsUpDown, X, Plus } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
+import { CURRENCIES } from '@/constants/currencies'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/AuthContext'
 import { useFormPersistence } from '@/hooks/useFormPersistence'
@@ -43,44 +44,6 @@ interface FormData {
   linkedin_url: string
 }
 
-const currencies = [
-  { value: 'USD', label: 'USD - US Dollar' },
-  { value: 'EUR', label: 'EUR - Euro' },
-  { value: 'GBP', label: 'GBP - British Pound' },
-  { value: 'JPY', label: 'JPY - Japanese Yen' },
-  { value: 'CHF', label: 'CHF - Swiss Franc' },
-  { value: 'CAD', label: 'CAD - Canadian Dollar' },
-  { value: 'AUD', label: 'AUD - Australian Dollar' },
-  { value: 'CNY', label: 'CNY - Chinese Yuan' },
-  { value: 'INR', label: 'INR - Indian Rupee' },
-  { value: 'KRW', label: 'KRW - South Korean Won' },
-  { value: 'SGD', label: 'SGD - Singapore Dollar' },
-  { value: 'HKD', label: 'HKD - Hong Kong Dollar' },
-  { value: 'NOK', label: 'NOK - Norwegian Krone' },
-  { value: 'SEK', label: 'SEK - Swedish Krona' },
-  { value: 'DKK', label: 'DKK - Danish Krone' },
-  { value: 'PLN', label: 'PLN - Polish Zloty' },
-  { value: 'CZK', label: 'CZK - Czech Koruna' },
-  { value: 'HUF', label: 'HUF - Hungarian Forint' },
-  { value: 'RUB', label: 'RUB - Russian Ruble' },
-  { value: 'BRL', label: 'BRL - Brazilian Real' },
-  { value: 'MXN', label: 'MXN - Mexican Peso' },
-  { value: 'ARS', label: 'ARS - Argentine Peso' },
-  { value: 'CLP', label: 'CLP - Chilean Peso' },
-  { value: 'COP', label: 'COP - Colombian Peso' },
-  { value: 'ZAR', label: 'ZAR - South African Rand' },
-  { value: 'TRY', label: 'TRY - Turkish Lira' },
-  { value: 'ILS', label: 'ILS - Israeli Shekel' },
-  { value: 'AED', label: 'AED - UAE Dirham' },
-  { value: 'SAR', label: 'SAR - Saudi Riyal' },
-  { value: 'EGP', label: 'EGP - Egyptian Pound' },
-  { value: 'THB', label: 'THB - Thai Baht' },
-  { value: 'MYR', label: 'MYR - Malaysian Ringgit' },
-  { value: 'IDR', label: 'IDR - Indonesian Rupiah' },
-  { value: 'PHP', label: 'PHP - Philippine Peso' },
-  { value: 'VND', label: 'VND - Vietnamese Dong' },
-  { value: 'NZD', label: 'NZD - New Zealand Dollar' }
-]
 
 export function CandidateForm({ 
   isOpen, 
@@ -410,7 +373,7 @@ export function CandidateForm({
                         className="w-full justify-between h-[44px]"
                       >
                         {form.watch('salary_currency')
-                          ? currencies.find((currency) => currency.value === form.watch('salary_currency'))?.label
+                          ? CURRENCIES.find((currency) => currency.value === form.watch('salary_currency'))?.label
                           : "Select currency..."}
                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                       </Button>
@@ -421,7 +384,7 @@ export function CandidateForm({
                         <CommandList>
                           <CommandEmpty>No currency found.</CommandEmpty>
                           <CommandGroup>
-                            {currencies.map((currency) => (
+                            {CURRENCIES.map((currency) => (
                               <CommandItem
                                 key={currency.value}
                                 value={currency.value}
