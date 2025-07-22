@@ -5,6 +5,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { CreateWorkerData } from '@/hooks/useWorkers'
 import { useWorkers } from '@/hooks/useWorkers'
+import { useDepartments } from '@/hooks/useDepartments'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 
@@ -16,6 +17,7 @@ interface JobDetailsStepProps {
 
 export function JobDetailsStep({ data, errors, onUpdate }: JobDetailsStepProps) {
   const { workers } = useWorkers()
+  const { data: departments = [], isLoading: departmentsLoading } = useDepartments(data.organization_id)
   const [availableManagers, setAvailableManagers] = useState<typeof workers>([])
   const [nextWorkerId, setNextWorkerId] = useState<number>(1)
 
@@ -128,12 +130,28 @@ export function JobDetailsStep({ data, errors, onUpdate }: JobDetailsStepProps) 
         <CardContent className="space-y-4">
           <div>
             <Label htmlFor="department">Department</Label>
-            <Input
-              id="department"
-              placeholder="e.g., Engineering, Sales, Marketing"
-              value={data.department || ''}
-              onChange={(e) => handleChange('department', e.target.value)}
-            />
+            <Select
+              value={data.department || 'none'}
+              onValueChange={(value) => handleChange('department', value === 'none' ? '' : value)}
+              disabled={departmentsLoading}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={departmentsLoading ? "Loading departments..." : "Select department (optional)"} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No department</SelectItem>
+                {departments.map((department) => (
+                  <SelectItem key={department.id} value={department.name}>
+                    {department.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {departments.length === 0 && !departmentsLoading && (
+              <div className="text-xs text-muted-foreground mt-1">
+                No departments found. Create departments in the People Hub to populate this list.
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
