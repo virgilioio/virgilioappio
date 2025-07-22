@@ -5,7 +5,8 @@ import {
   Search,
   Network,
   Calendar,
-  LayoutDashboard
+  LayoutDashboard,
+  Building2
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -35,6 +36,12 @@ const sidebarItems = [
     icon: Calendar,
     label: 'Time Off',
     description: 'Manage time off requests'
+  },
+  {
+    href: '/people-hub/departments',
+    icon: Building2,
+    label: 'Departments',
+    description: 'Manage organizational departments'
   }
 ]
 
