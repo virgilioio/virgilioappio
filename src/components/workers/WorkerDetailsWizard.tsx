@@ -38,19 +38,31 @@ export function WorkerDetailsWizard({
 
   const totalSteps = 4
 
-  const getStepTitle = () => {
-    switch (currentStep) {
-      case 1:
-        return 'Personal Details'
-      case 2:
-        return 'Job Details'
-      case 3:
-        return 'Compensation & Dates'
-      case 4:
-        return 'Review'
-      default:
-        return 'Worker Details'
+  const stepConfig = [
+    {
+      number: 1,
+      title: 'Personal Details',
+      description: 'Legal information and contact details'
+    },
+    {
+      number: 2,
+      title: 'Job Details',
+      description: 'Workplace and organizational information'
+    },
+    {
+      number: 3,
+      title: 'Compensation & Dates',
+      description: 'Salary, payment terms, and agreement dates'
+    },
+    {
+      number: 4,
+      title: 'Review',
+      description: 'Review all information before creation'
     }
+  ]
+
+  const getStepTitle = () => {
+    return stepConfig[currentStep - 1]?.title || 'Worker Details'
   }
 
   const validateStep = (step: number): boolean => {
@@ -193,67 +205,127 @@ export function WorkerDetailsWizard({
   }
 
   return (
-    <>
-      <DialogHeader>
-        <div className="flex items-center gap-3">
-          {currentStep > 1 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleBack}
-              className="p-1 h-8 w-8"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          )}
-          <DialogTitle>{getStepTitle()}</DialogTitle>
-        </div>
-        
-        {/* Step indicator */}
-        <div className="flex gap-2 mt-4">
-          {Array.from({ length: totalSteps }).map((_, index) => {
-            const step = index + 1
+    <div className="relative">
+      {/* Floating Step Indicator */}
+      <div className="absolute right-0 top-0 w-64 p-4 bg-muted/50 rounded-lg border animate-fade-in">
+        <h3 className="text-sm font-semibold mb-4 text-muted-foreground">Progress</h3>
+        <div className="space-y-3">
+          {stepConfig.map((step, index) => {
+            const isCompleted = step.number < currentStep
+            const isCurrent = step.number === currentStep
+            const isUpcoming = step.number > currentStep
+            
             return (
               <div
-                key={step}
-                className={`h-2 flex-1 rounded-full transition-colors ${
-                  step <= currentStep ? 'bg-primary' : 'bg-muted'
+                key={step.number}
+                className={`flex items-start gap-3 p-2 rounded-md transition-all duration-300 ${
+                  isCurrent ? 'bg-primary/10 border border-primary/20' : ''
                 }`}
-              />
+              >
+                <div
+                  className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold transition-all duration-300 ${
+                    isCompleted
+                      ? 'bg-primary text-primary-foreground'
+                      : isCurrent
+                      ? 'bg-primary text-primary-foreground animate-pulse'
+                      : 'bg-muted text-muted-foreground'
+                  }`}
+                >
+                  {isCompleted ? '✓' : step.number}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p
+                    className={`text-sm font-medium transition-colors duration-300 ${
+                      isCurrent
+                        ? 'text-primary'
+                        : isCompleted
+                        ? 'text-foreground'
+                        : 'text-muted-foreground'
+                    }`}
+                  >
+                    {step.title}
+                  </p>
+                  <p
+                    className={`text-xs transition-colors duration-300 ${
+                      isCurrent
+                        ? 'text-primary/70'
+                        : isCompleted
+                        ? 'text-muted-foreground'
+                        : 'text-muted-foreground/70'
+                    }`}
+                  >
+                    {step.description}
+                  </p>
+                </div>
+              </div>
             )
           })}
         </div>
-        
-        {/* Step counter */}
-        <div className="text-sm text-muted-foreground text-center">
-          Step {currentStep} of {totalSteps}
+      </div>
+
+      {/* Main Content Area */}
+      <div className="pr-72">
+        <DialogHeader>
+          <div className="flex items-center gap-3">
+            {currentStep > 1 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleBack}
+                className="p-1 h-8 w-8"
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+            )}
+            <DialogTitle>{getStepTitle()}</DialogTitle>
+          </div>
+          
+          {/* Horizontal Step indicator */}
+          <div className="flex gap-2 mt-4">
+            {Array.from({ length: totalSteps }).map((_, index) => {
+              const step = index + 1
+              return (
+                <div
+                  key={step}
+                  className={`h-2 flex-1 rounded-full transition-colors duration-300 ${
+                    step <= currentStep ? 'bg-primary' : 'bg-muted'
+                  }`}
+                />
+              )
+            })}
+          </div>
+          
+          {/* Step counter */}
+          <div className="text-sm text-muted-foreground text-center">
+            Step {currentStep} of {totalSteps}
+          </div>
+        </DialogHeader>
+
+        <div className="mt-6 space-y-6">
+          {renderCurrentStep()}
         </div>
-      </DialogHeader>
 
-      <div className="mt-6 space-y-6">
-        {renderCurrentStep()}
-      </div>
-
-      {/* Navigation buttons */}
-      <div className="flex justify-between mt-8 pt-6 border-t">
-        <Button
-          variant="outline"
-          onClick={currentStep === 1 ? onCancel : handleBack}
-        >
-          {currentStep === 1 ? 'Cancel' : 'Back'}
-        </Button>
-
-        {currentStep < totalSteps ? (
-          <Button onClick={handleNext}>
-            Next
-            <ArrowRight className="ml-2 h-4 w-4" />
+        {/* Navigation buttons */}
+        <div className="flex justify-between mt-8 pt-6 border-t">
+          <Button
+            variant="outline"
+            onClick={currentStep === 1 ? onCancel : handleBack}
+          >
+            {currentStep === 1 ? 'Cancel' : 'Back'}
           </Button>
-        ) : (
-          <Button onClick={handleSubmit}>
-            Create Worker
-          </Button>
-        )}
+
+          {currentStep < totalSteps ? (
+            <Button onClick={handleNext}>
+              Next
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          ) : (
+            <Button onClick={handleSubmit}>
+              Create Worker
+            </Button>
+          )}
+        </div>
       </div>
-    </>
+    </div>
   )
 }
