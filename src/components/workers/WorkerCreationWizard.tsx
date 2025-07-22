@@ -13,6 +13,7 @@ type ContractorPaymentType = 'fixed_rate' | 'hourly_rate' | 'per_project'
 interface WorkerCreationWizardProps {
   onSubmit: (data: CreateWorkerData) => void
   onCancel: () => void
+  onStepChange?: (step: number) => void
 }
 
 interface WizardData {
@@ -21,7 +22,7 @@ interface WizardData {
   formData?: Partial<CreateWorkerData>
 }
 
-export function WorkerCreationWizard({ onSubmit, onCancel }: WorkerCreationWizardProps) {
+export function WorkerCreationWizard({ onSubmit, onCancel, onStepChange }: WorkerCreationWizardProps) {
   const [currentStep, setCurrentStep] = useState(1)
   const [wizardData, setWizardData] = useState<WizardData>({})
 
@@ -31,15 +32,18 @@ export function WorkerCreationWizard({ onSubmit, onCancel }: WorkerCreationWizar
     if (type === 'employee') {
       // Go directly to form for employees
       setCurrentStep(3)
+      onStepChange?.(3)
     } else {
       // Go to contractor payment selection
       setCurrentStep(2)
+      onStepChange?.(2)
     }
   }
 
   const handleContractorPaymentSelect = (paymentType: ContractorPaymentType) => {
     setWizardData(prev => ({ ...prev, contractorPaymentType: paymentType }))
     setCurrentStep(3)
+    onStepChange?.(3)
   }
 
   const handleFormSubmit = (formData: CreateWorkerData) => {
@@ -66,11 +70,14 @@ export function WorkerCreationWizard({ onSubmit, onCancel }: WorkerCreationWizar
   const handleBack = () => {
     if (currentStep === 2) {
       setCurrentStep(1)
+      onStepChange?.(1)
     } else if (currentStep === 3) {
       if (wizardData.workerType === 'employee') {
         setCurrentStep(1)
+        onStepChange?.(1)
       } else {
         setCurrentStep(2)
+        onStepChange?.(2)
       }
     }
   }

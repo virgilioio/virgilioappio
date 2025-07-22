@@ -12,6 +12,7 @@ export default function Workers() {
   const { workers, isLoading, createWorker, updateWorker, deleteWorker } = useWorkers()
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingWorker, setEditingWorker] = useState<Worker | null>(null)
+  const [currentWizardStep, setCurrentWizardStep] = useState(1)
 
   const handleEdit = (worker: Worker) => {
     setEditingWorker(worker)
@@ -86,7 +87,7 @@ export default function Workers() {
       </PermissionGate>
 
       <Dialog open={isFormOpen} onOpenChange={handleCloseForm}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className={`max-h-[90vh] overflow-y-auto ${!editingWorker && currentWizardStep === 3 ? 'max-w-6xl' : 'max-w-2xl'}`}>
           {editingWorker ? (
             <>
               <DialogHeader>
@@ -102,6 +103,7 @@ export default function Workers() {
             <WorkerCreationWizard
               onSubmit={handleSubmit}
               onCancel={handleCloseForm}
+              onStepChange={setCurrentWizardStep}
             />
           )}
         </DialogContent>
