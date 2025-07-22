@@ -180,10 +180,16 @@ export function WorkerDetailsWizard({
         currency: formData.currency || 'USD',
         base_salary: formData.base_salary,
         payment_period: formData.payment_period || 'monthly',
+        payment_frequency: formData.payment_frequency || 'monthly',
         employment_terms: formData.employment_terms || 'indefinite',
         start_date: formData.start_date || '',
         end_date: formData.end_date || '',
-        seniority_level: formData.seniority_level
+        seniority_level: formData.seniority_level,
+        // Include contractor payment fields
+        contractor_payment_type: contractorPaymentType,
+        hourly_rate: formData.hourly_rate,
+        monthly_fixed_amount: formData.monthly_fixed_amount,
+        project_details: formData.project_details
       }
 
       onSubmit(finalData)
