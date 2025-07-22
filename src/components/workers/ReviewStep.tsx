@@ -22,7 +22,10 @@ export function ReviewStep({ data, workerType, contractorPaymentType }: ReviewSt
 
   const formatDate = (dateString: string | undefined) => {
     if (!dateString) return 'Not specified'
-    return new Date(dateString).toLocaleDateString('en-US', {
+    // Parse the date string directly without timezone conversion
+    const [year, month, day] = dateString.split('-').map(Number)
+    const date = new Date(year, month - 1, day)
+    return date.toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
       day: 'numeric'
