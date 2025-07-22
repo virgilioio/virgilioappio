@@ -143,7 +143,21 @@ export function WorkerDetailsWizard({
 
   const handleSubmit = () => {
     if (validateStep(currentStep)) {
-      // Ensure we have all required fields
+      // Map contractor payment type to contract type enum
+      const getContractType = (paymentType?: string) => {
+        switch (paymentType) {
+          case 'fixed_rate':
+            return 'fixed_term'
+          case 'hourly_rate':
+            return 'temporary'
+          case 'per_project':
+            return 'freelance'
+          default:
+            return 'permanent'
+        }
+      }
+
+      // Map form data to database schema
       const finalData: CreateWorkerData = {
         organization_id: formData.organization_id || '',
         full_name: `${formData.legal_first_name} ${formData.legal_last_name}`,
@@ -156,23 +170,20 @@ export function WorkerDetailsWizard({
         worker_status: formData.worker_status || 'pending',
         worker_type: workerType,
         job_title: formData.job_title || '',
-        seniority_level: formData.seniority_level,
+        contract_type: getContractType(contractorPaymentType),
         working_location: formData.working_location || '',
         scope_of_work: formData.scope_of_work || '',
         manager_id: formData.manager_id,
         reports: formData.reports || [],
         department: formData.department || '',
+        country: formData.country || '',
         currency: formData.currency || 'USD',
         base_salary: formData.base_salary,
         payment_period: formData.payment_period || 'monthly',
         employment_terms: formData.employment_terms || 'indefinite',
         start_date: formData.start_date || '',
         end_date: formData.end_date || '',
-        country: formData.country || '',
-        contractor_payment_type: contractorPaymentType,
-        hourly_rate: formData.hourly_rate,
-        monthly_fixed_amount: formData.monthly_fixed_amount,
-        project_details: formData.project_details || ''
+        seniority_level: formData.seniority_level
       }
 
       onSubmit(finalData)
