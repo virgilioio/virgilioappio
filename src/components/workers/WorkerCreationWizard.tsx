@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { WorkerTypeSelection } from './WorkerTypeSelection'
 import { ContractorPaymentSelection } from './ContractorPaymentSelection'
 import { WorkerForm } from './WorkerForm'
@@ -24,22 +24,31 @@ interface WizardData {
 export function WorkerCreationWizard({ onSubmit, onCancel }: WorkerCreationWizardProps) {
   const [currentStep, setCurrentStep] = useState(1)
   const [wizardData, setWizardData] = useState<WizardData>({})
+  const [isTransitioning, setIsTransitioning] = useState(false)
+
+  const changeStep = (newStep: number) => {
+    setIsTransitioning(true)
+    setTimeout(() => {
+      setCurrentStep(newStep)
+      setIsTransitioning(false)
+    }, 150) // Half of the transition duration
+  }
 
   const handleWorkerTypeSelect = (type: WorkerType) => {
     setWizardData(prev => ({ ...prev, workerType: type }))
     
     if (type === 'employee') {
       // Go directly to form for employees
-      setCurrentStep(3)
+      changeStep(3)
     } else {
       // Go to contractor payment selection
-      setCurrentStep(2)
+      changeStep(2)
     }
   }
 
   const handleContractorPaymentSelect = (paymentType: ContractorPaymentType) => {
     setWizardData(prev => ({ ...prev, contractorPaymentType: paymentType }))
-    setCurrentStep(3)
+    changeStep(3)
   }
 
   const handleFormSubmit = (formData: CreateWorkerData) => {
@@ -65,12 +74,12 @@ export function WorkerCreationWizard({ onSubmit, onCancel }: WorkerCreationWizar
 
   const handleBack = () => {
     if (currentStep === 2) {
-      setCurrentStep(1)
+      changeStep(1)
     } else if (currentStep === 3) {
       if (wizardData.workerType === 'employee') {
-        setCurrentStep(1)
+        changeStep(1)
       } else {
-        setCurrentStep(2)
+        changeStep(2)
       }
     }
   }
@@ -128,7 +137,7 @@ export function WorkerCreationWizard({ onSubmit, onCancel }: WorkerCreationWizar
           {[1, 2, 3].map((step) => (
             <div
               key={step}
-              className={`h-2 flex-1 rounded-full ${
+              className={`h-2 flex-1 rounded-full transition-all duration-300 ease-out ${
                 step <= currentStep ? 'bg-primary' : 'bg-muted'
               } ${step === 2 && wizardData.workerType === 'employee' ? 'opacity-30' : ''}`}
             />
@@ -136,7 +145,12 @@ export function WorkerCreationWizard({ onSubmit, onCancel }: WorkerCreationWizar
         </div>
       </DialogHeader>
 
-      <div className="mt-6">
+      <div className="mt-6 relative overflow-hidden">
+        <div 
+          className={`transition-all duration-300 ease-out ${
+            isTransitioning ? 'opacity-0 scale-95 translate-y-2' : 'opacity-100 scale-100 translate-y-0'
+          }`}
+        >
         {currentStep === 1 && (
           <WorkerTypeSelection onSelect={handleWorkerTypeSelect} />
         )}
@@ -154,6 +168,7 @@ export function WorkerCreationWizard({ onSubmit, onCancel }: WorkerCreationWizar
             contractorPaymentType={wizardData.contractorPaymentType}
           />
         )}
+        </div>
       </div>
     </>
   )

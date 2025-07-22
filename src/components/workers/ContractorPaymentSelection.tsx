@@ -14,7 +14,7 @@ export function ContractorPaymentSelection({ onSelect }: ContractorPaymentSelect
       
       <div className="space-y-3">
         <Card 
-          className="cursor-pointer hover:shadow-md transition-shadow border-2 hover:border-primary/50"
+          className="cursor-pointer transition-all duration-200 ease-out hover:shadow-md hover:scale-[1.02] hover:-translate-y-1 border-2 hover:border-primary/50"
           onClick={() => onSelect('fixed_rate')}
         >
           <CardHeader className="pb-3">
@@ -31,7 +31,7 @@ export function ContractorPaymentSelection({ onSelect }: ContractorPaymentSelect
         </Card>
 
         <Card 
-          className="cursor-pointer hover:shadow-md transition-shadow border-2 hover:border-primary/50"
+          className="cursor-pointer transition-all duration-200 ease-out hover:shadow-md hover:scale-[1.02] hover:-translate-y-1 border-2 hover:border-primary/50"
           onClick={() => onSelect('hourly_rate')}
         >
           <CardHeader className="pb-3">
@@ -48,7 +48,7 @@ export function ContractorPaymentSelection({ onSelect }: ContractorPaymentSelect
         </Card>
 
         <Card 
-          className="cursor-pointer hover:shadow-md transition-shadow border-2 hover:border-primary/50"
+          className="cursor-pointer transition-all duration-200 ease-out hover:shadow-md hover:scale-[1.02] hover:-translate-y-1 border-2 hover:border-primary/50"
           onClick={() => onSelect('per_project')}
         >
           <CardHeader className="pb-3">
