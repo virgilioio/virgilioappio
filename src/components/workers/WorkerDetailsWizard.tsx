@@ -207,7 +207,7 @@ export function WorkerDetailsWizard({
   return (
     <div className="relative">
       {/* Floating Step Indicator */}
-      <div className="absolute right-0 top-0 w-64 p-4 bg-muted/50 rounded-lg border animate-fade-in">
+      <div className="absolute right-0 top-0 w-64 p-4 bg-white rounded-lg border shadow-sm animate-fade-in">
         <h3 className="text-sm font-semibold mb-4 text-muted-foreground">Progress</h3>
         <div className="space-y-3">
           {stepConfig.map((step, index) => {
@@ -219,7 +219,7 @@ export function WorkerDetailsWizard({
               <div
                 key={step.number}
                 className={`flex items-start gap-3 p-2 rounded-md transition-all duration-300 ${
-                  isCurrent ? 'bg-primary/10 border border-primary/20' : ''
+                  isCurrent ? 'bg-[#d7c5fb] border border-[#c9b3f7]' : ''
                 }`}
               >
                 <div
@@ -227,7 +227,7 @@ export function WorkerDetailsWizard({
                     isCompleted
                       ? 'bg-primary text-primary-foreground'
                       : isCurrent
-                      ? 'bg-primary text-primary-foreground animate-pulse'
+                      ? 'bg-[#9b7df7] text-white animate-pulse'
                       : 'bg-muted text-muted-foreground'
                   }`}
                 >
@@ -237,7 +237,7 @@ export function WorkerDetailsWizard({
                   <p
                     className={`text-sm font-medium transition-colors duration-300 ${
                       isCurrent
-                        ? 'text-primary'
+                        ? 'text-[#7c3aed]'
                         : isCompleted
                         ? 'text-foreground'
                         : 'text-muted-foreground'
@@ -248,7 +248,7 @@ export function WorkerDetailsWizard({
                   <p
                     className={`text-xs transition-colors duration-300 ${
                       isCurrent
-                        ? 'text-primary/70'
+                        ? 'text-[#7c3aed]/80'
                         : isCompleted
                         ? 'text-muted-foreground'
                         : 'text-muted-foreground/70'
