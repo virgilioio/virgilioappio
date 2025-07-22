@@ -279,26 +279,6 @@ export function WorkerDetailsWizard({
             )}
             <DialogTitle>{getStepTitle()}</DialogTitle>
           </div>
-          
-          {/* Horizontal Step indicator */}
-          <div className="flex gap-2 mt-4">
-            {Array.from({ length: totalSteps }).map((_, index) => {
-              const step = index + 1
-              return (
-                <div
-                  key={step}
-                  className={`h-2 flex-1 rounded-full transition-colors duration-300 ${
-                    step <= currentStep ? 'bg-primary' : 'bg-muted'
-                  }`}
-                />
-              )
-            })}
-          </div>
-          
-          {/* Step counter */}
-          <div className="text-sm text-muted-foreground text-center">
-            Step {currentStep} of {totalSteps}
-          </div>
         </DialogHeader>
 
         <div className="mt-6 space-y-6">
