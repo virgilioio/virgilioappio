@@ -7,6 +7,7 @@ import { PersonalDetailsStep } from './PersonalDetailsStep'
 import { JobDetailsStep } from './JobDetailsStep'
 import { CompensationDatesStep } from './CompensationDatesStep'
 import { ReviewStep } from './ReviewStep'
+import { useAuth } from '@/contexts/AuthContext'
 
 interface WorkerDetailsWizardProps {
   onSubmit: (data: CreateWorkerData) => void
@@ -23,9 +24,11 @@ export function WorkerDetailsWizard({
   workerType, 
   contractorPaymentType 
 }: WorkerDetailsWizardProps) {
+  const { organizationId } = useAuth()
   const [currentStep, setCurrentStep] = useState(1)
   const [formData, setFormData] = useState<Partial<CreateWorkerData>>({
     ...prefilledData,
+    organization_id: organizationId || '',
     worker_type: workerType,
     contractor_payment_type: contractorPaymentType,
     worker_status: 'pending',
