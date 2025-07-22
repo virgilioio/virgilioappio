@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { PermissionGate } from '@/components/auth/PermissionGate'
 import Workers from './Workers'
+import Departments from './Departments'
 
 const sidebarItems = [
   {
@@ -128,6 +129,8 @@ function PeopleHubContent() {
               <PeopleHubOverview />
             ) : location.pathname === '/people-hub/people' ? (
               <Workers />
+            ) : location.pathname === '/people-hub/departments' ? (
+              <Departments />
             ) : (
               <Outlet />
             )}
