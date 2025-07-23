@@ -77,6 +77,8 @@ export default function WorkerProfile() {
 
 // Worker Profile Tab Content
 function WorkerProfileContent({ worker }: { worker: any }) {
+  const { contracts } = useWorkerContracts(worker.id)
+  const activeContract = contracts.find(contract => contract.is_active) || contracts[0] // Get active contract or first one
   return (
     <div className="space-y-6">
       {/* Worker Header */}
@@ -85,7 +87,7 @@ function WorkerProfileContent({ worker }: { worker: any }) {
           {worker.full_name}
         </h1>
         <p className="text-muted-foreground mt-2 text-sm sm:text-md">
-          {worker.full_name} • {worker.job_title || 'No title'} • {worker.organization_name || 'No organization'}
+          {worker.full_name} • {activeContract?.job_title || 'No title'} • {worker.organization_name || 'No organization'}
         </p>
       </div>
 
@@ -158,31 +160,50 @@ function WorkerProfileContent({ worker }: { worker: any }) {
                 Organization Information
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-muted-foreground">Department</span>
-                  <span className="text-sm">{worker.department || 'Not specified'}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-muted-foreground">Job Title</span>
-                  <span className="text-sm">{worker.job_title || 'Not specified'}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-muted-foreground">Manager Name</span>
-                  <span className="text-sm">{worker.manager_name || 'Not assigned'}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-muted-foreground">Reports</span>
-                  <span className="text-sm">
-                    {worker.reports && worker.reports.length > 0 
-                      ? `${worker.reports.length} direct report(s)`
-                      : 'No direct reports'
-                    }
-                  </span>
-                </div>
-              </div>
-            </CardContent>
+             <CardContent className="space-y-3">
+               {activeContract ? (
+                 <div className="space-y-3">
+                   <div className="flex justify-between items-center">
+                     <span className="text-sm font-medium text-muted-foreground">Department</span>
+                     <span className="text-sm">{activeContract.department || 'Not specified'}</span>
+                   </div>
+                   <div className="flex justify-between items-center">
+                     <span className="text-sm font-medium text-muted-foreground">Job Title</span>
+                     <span className="text-sm">{activeContract.job_title || 'Not specified'}</span>
+                   </div>
+                   <div className="flex justify-between items-center">
+                     <span className="text-sm font-medium text-muted-foreground">Manager Name</span>
+                     <span className="text-sm">{activeContract.manager_name || 'Not assigned'}</span>
+                   </div>
+                   <div className="flex justify-between items-center">
+                     <span className="text-sm font-medium text-muted-foreground">Contract Status</span>
+                     <Badge variant={activeContract.is_active ? "default" : "secondary"}>
+                       {activeContract.contract_status || 'Unknown'}
+                     </Badge>
+                   </div>
+                   <div className="flex justify-between items-center">
+                     <span className="text-sm font-medium text-muted-foreground">Worker Type</span>
+                     <span className="text-sm">
+                       {activeContract.worker_type === 'employee' ? 'Employee' : 'Contractor'}
+                     </span>
+                   </div>
+                   <div className="flex justify-between items-center">
+                     <span className="text-sm font-medium text-muted-foreground">Reports</span>
+                     <span className="text-sm">
+                       {worker.reports && worker.reports.length > 0 
+                         ? `${worker.reports.length} direct report(s)`
+                         : 'No direct reports'
+                       }
+                     </span>
+                   </div>
+                 </div>
+               ) : (
+                 <div className="text-center py-4">
+                   <p className="text-sm text-muted-foreground">No active contract found</p>
+                   <p className="text-xs text-muted-foreground">Organization information will be available when a contract is created</p>
+                 </div>
+               )}
+             </CardContent>
           </Card>
         </div>
 
