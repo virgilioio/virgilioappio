@@ -211,10 +211,8 @@ export function WorkersTable({
                   <TableRow>
                     <TableHead>Full Name</TableHead>
                     <TableHead>Country</TableHead>
-                    <TableHead>Worker Type</TableHead>
                     <TableHead>Status</TableHead>
-                    <TableHead>Payment Schedule</TableHead>
-                    {permissions.isPlatformAdmin && <TableHead>Organization</TableHead>}
+                    <TableHead>Department</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -231,33 +229,11 @@ export function WorkersTable({
                       </TableCell>
                       <TableCell>{worker.country || 'Not specified'}</TableCell>
                       <TableCell>
-                        <Badge variant={getTypeBadgeVariant(worker.worker_type)}>
-                          {formatWorkerType(worker.worker_type)}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
                         <Badge variant={getStatusBadgeVariant(worker.worker_status)}>
                           {formatWorkerStatus(worker.worker_status)}
                         </Badge>
                       </TableCell>
-                      <TableCell>
-                        <div className="space-y-1">
-                          <div className="text-sm font-medium">
-                            {worker.payment_frequency === 'bi_monthly' && '15th & Last of Month'}
-                            {worker.payment_frequency === 'monthly' && 'Last of Month'}
-                            {worker.payment_frequency === 'custom' && `Days: ${worker.custom_pay_dates?.join(', ') || 'Not set'}`}
-                            {!worker.payment_frequency && 'Not set'}
-                          </div>
-                          {worker.next_payment_date && (
-                            <div className="text-xs text-muted-foreground">
-                              Next: {new Date(worker.next_payment_date).toLocaleDateString()}
-                            </div>
-                          )}
-                        </div>
-                      </TableCell>
-                      {permissions.isPlatformAdmin && (
-                        <TableCell>{worker.organization_name}</TableCell>
-                      )}
+                      <TableCell>{worker.department || 'Not specified'}</TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
