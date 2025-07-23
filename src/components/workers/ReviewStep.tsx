@@ -245,7 +245,7 @@ export function ReviewStep({ data, workerType, contractorPaymentType }: ReviewSt
             <div>
               <p className="text-sm font-medium">Employment Terms</p>
               <Badge variant="outline">
-                {data.employment_terms === 'indefinite' ? 'Indefinite' : 'Definite'}
+                {data.employment_term === 'indefinite' ? 'Indefinite' : 'Definite'}
               </Badge>
             </div>
           </div>
@@ -259,7 +259,7 @@ export function ReviewStep({ data, workerType, contractorPaymentType }: ReviewSt
               </p>
             </div>
             
-            {data.employment_terms === 'definite' && data.end_date && (
+            {data.employment_term === 'definite' && data.end_date && (
               <div>
                 <p className="text-sm font-medium">End Date</p>
                 <p className="text-sm text-muted-foreground flex items-center gap-1">
