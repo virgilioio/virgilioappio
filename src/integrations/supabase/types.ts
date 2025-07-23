@@ -2143,18 +2143,182 @@ export type Database = {
       }
       worker_contracts: {
         Row: {
+          base_salary: number | null
+          contract_number: string
+          contract_status:
+            | Database["public"]["Enums"]["contract_status_enum"]
+            | null
+          contract_type:
+            | Database["public"]["Enums"]["contract_type_enum"]
+            | null
+          contractor_payment_type:
+            | Database["public"]["Enums"]["contractor_payment_type_enum"]
+            | null
           created_at: string
-          id: number
+          created_by: string | null
+          currency: string | null
+          custom_pay_dates: Json | null
+          department: string | null
+          employment_term:
+            | Database["public"]["Enums"]["employment_duration_enum"]
+            | null
+          employment_terms:
+            | Database["public"]["Enums"]["employment_type_enum"]
+            | null
+          end_date: string | null
+          hourly_rate: number | null
+          id: string
+          is_active: boolean | null
+          job_title: string | null
+          manager_id: string | null
+          monthly_fixed_amount: number | null
+          next_payment_date: string | null
+          organization_id: string
+          payment_frequency:
+            | Database["public"]["Enums"]["payment_frequency_enum"]
+            | null
+          payment_period:
+            | Database["public"]["Enums"]["payment_period_enum"]
+            | null
+          project_details: string | null
+          scope_of_work: string | null
+          seniority_level:
+            | Database["public"]["Enums"]["seniority_level_enum"]
+            | null
+          start_date: string | null
+          updated_at: string
+          worker_id: string
+          worker_type: Database["public"]["Enums"]["worker_type_enum"]
+          working_location: string | null
         }
         Insert: {
+          base_salary?: number | null
+          contract_number: string
+          contract_status?:
+            | Database["public"]["Enums"]["contract_status_enum"]
+            | null
+          contract_type?:
+            | Database["public"]["Enums"]["contract_type_enum"]
+            | null
+          contractor_payment_type?:
+            | Database["public"]["Enums"]["contractor_payment_type_enum"]
+            | null
           created_at?: string
-          id?: number
+          created_by?: string | null
+          currency?: string | null
+          custom_pay_dates?: Json | null
+          department?: string | null
+          employment_term?:
+            | Database["public"]["Enums"]["employment_duration_enum"]
+            | null
+          employment_terms?:
+            | Database["public"]["Enums"]["employment_type_enum"]
+            | null
+          end_date?: string | null
+          hourly_rate?: number | null
+          id?: string
+          is_active?: boolean | null
+          job_title?: string | null
+          manager_id?: string | null
+          monthly_fixed_amount?: number | null
+          next_payment_date?: string | null
+          organization_id: string
+          payment_frequency?:
+            | Database["public"]["Enums"]["payment_frequency_enum"]
+            | null
+          payment_period?:
+            | Database["public"]["Enums"]["payment_period_enum"]
+            | null
+          project_details?: string | null
+          scope_of_work?: string | null
+          seniority_level?:
+            | Database["public"]["Enums"]["seniority_level_enum"]
+            | null
+          start_date?: string | null
+          updated_at?: string
+          worker_id: string
+          worker_type: Database["public"]["Enums"]["worker_type_enum"]
+          working_location?: string | null
         }
         Update: {
+          base_salary?: number | null
+          contract_number?: string
+          contract_status?:
+            | Database["public"]["Enums"]["contract_status_enum"]
+            | null
+          contract_type?:
+            | Database["public"]["Enums"]["contract_type_enum"]
+            | null
+          contractor_payment_type?:
+            | Database["public"]["Enums"]["contractor_payment_type_enum"]
+            | null
           created_at?: string
-          id?: number
+          created_by?: string | null
+          currency?: string | null
+          custom_pay_dates?: Json | null
+          department?: string | null
+          employment_term?:
+            | Database["public"]["Enums"]["employment_duration_enum"]
+            | null
+          employment_terms?:
+            | Database["public"]["Enums"]["employment_type_enum"]
+            | null
+          end_date?: string | null
+          hourly_rate?: number | null
+          id?: string
+          is_active?: boolean | null
+          job_title?: string | null
+          manager_id?: string | null
+          monthly_fixed_amount?: number | null
+          next_payment_date?: string | null
+          organization_id?: string
+          payment_frequency?:
+            | Database["public"]["Enums"]["payment_frequency_enum"]
+            | null
+          payment_period?:
+            | Database["public"]["Enums"]["payment_period_enum"]
+            | null
+          project_details?: string | null
+          scope_of_work?: string | null
+          seniority_level?:
+            | Database["public"]["Enums"]["seniority_level_enum"]
+            | null
+          start_date?: string | null
+          updated_at?: string
+          worker_id?: string
+          worker_type?: Database["public"]["Enums"]["worker_type_enum"]
+          working_location?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "worker_contracts_manager_id_fkey"
+            columns: ["manager_id"]
+            isOneToOne: false
+            referencedRelation: "workers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_contracts_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization_exchange_rates"
+            referencedColumns: ["organization_id"]
+          },
+          {
+            foreignKeyName: "worker_contracts_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_contracts_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "workers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       workers: {
         Row: {
@@ -2464,6 +2628,10 @@ export type Database = {
       execute_candidate_sync: {
         Args: Record<PropertyKey, never>
         Returns: undefined
+      }
+      generate_contract_number: {
+        Args: { org_id: string }
+        Returns: string
       }
       generate_invite_token: {
         Args: Record<PropertyKey, never>
