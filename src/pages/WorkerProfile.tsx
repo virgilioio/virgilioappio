@@ -220,141 +220,9 @@ function WorkerProfileContent({ worker }: { worker: any }) {
           </Card>
         </div>
 
-        {/* Right Column - Contract Information */}
+        {/* Right Column - Empty for now */}
         <div className="space-y-4">
-          {/* Contract Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                Contract Information
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {activeContract ? (
-                <div className="space-y-6">
-                  {/* Agreement Details */}
-                  <div>
-                    <h4 className="font-medium text-sm mb-3">Agreement Details</h4>
-                    <div className="grid grid-cols-1 gap-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <span className="text-sm font-medium text-muted-foreground">Start Date</span>
-                          <p className="text-sm">{activeContract.start_date ? new Date(activeContract.start_date).toLocaleDateString() : 'Not specified'}</p>
-                        </div>
-                        <div className="space-y-2">
-                          <span className="text-sm font-medium text-muted-foreground">End Date</span>
-                          <p className="text-sm">{activeContract.end_date ? new Date(activeContract.end_date).toLocaleDateString() : 'Not specified'}</p>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <span className="text-sm font-medium text-muted-foreground">Worker Type</span>
-                          <p className="text-sm capitalize">{activeContract.worker_type || 'Not specified'}</p>
-                        </div>
-                        <div className="space-y-2">
-                          <span className="text-sm font-medium text-muted-foreground">Job Title</span>
-                          <p className="text-sm">{activeContract.job_title || 'Not specified'}</p>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <span className="text-sm font-medium text-muted-foreground">Seniority Level</span>
-                          <p className="text-sm capitalize">{activeContract.seniority_level?.replace('_', ' ') || 'Not specified'}</p>
-                        </div>
-                        <div className="space-y-2">
-                          <span className="text-sm font-medium text-muted-foreground">Contract Type</span>
-                          <p className="text-sm capitalize">{activeContract.contract_type || 'Not specified'}</p>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <span className="text-sm font-medium text-muted-foreground">Working Location</span>
-                          <p className="text-sm">{activeContract.working_location || 'Not specified'}</p>
-                        </div>
-                      </div>
-                      {activeContract.scope_of_work && (
-                        <div className="space-y-2">
-                          <span className="text-sm font-medium text-muted-foreground">Scope of Work</span>
-                          <p className="text-sm">{activeContract.scope_of_work}</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Payment Information */}
-                  <div className="border-t pt-6">
-                    <h4 className="font-medium text-sm mb-3">Payment Information</h4>
-                    <div className="grid grid-cols-1 gap-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <span className="text-sm font-medium text-muted-foreground">Currency</span>
-                          <p className="text-sm">{activeContract.currency || 'USD'}</p>
-                        </div>
-                        {activeContract.worker_type === 'employee' && (
-                          <>
-                            <div className="space-y-2">
-                              <span className="text-sm font-medium text-muted-foreground">Base Salary</span>
-                              <p className="text-sm">{activeContract.base_salary ? `${activeContract.currency || 'USD'} ${activeContract.base_salary}` : 'Not specified'}</p>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                      {activeContract.worker_type === 'employee' && (
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <span className="text-sm font-medium text-muted-foreground">Payment Period</span>
-                            <p className="text-sm capitalize">{activeContract.payment_period || 'Not specified'}</p>
-                          </div>
-                          <div className="space-y-2">
-                            <span className="text-sm font-medium text-muted-foreground">Payment Frequency</span>
-                            <p className="text-sm capitalize">{activeContract.payment_frequency?.replace('_', ' ') || 'Not specified'}</p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Contractor-Specific Payment Fields */}
-                  {activeContract.worker_type === 'contractor' && (
-                    <div className="border-t pt-6">
-                      <h4 className="font-medium text-sm mb-3">Contractor Payment Details</h4>
-                      <div className="grid grid-cols-1 gap-4">
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <span className="text-sm font-medium text-muted-foreground">Payment Type</span>
-                            <p className="text-sm capitalize">{activeContract.contractor_payment_type?.replace('_', ' ') || 'Not specified'}</p>
-                          </div>
-                          {activeContract.contractor_payment_type === 'hourly_rate' && activeContract.hourly_rate && (
-                            <div className="space-y-2">
-                              <span className="text-sm font-medium text-muted-foreground">Hourly Rate</span>
-                              <p className="text-sm">{activeContract.currency || 'USD'} {activeContract.hourly_rate}/hour</p>
-                            </div>
-                          )}
-                          {activeContract.contractor_payment_type === 'fixed_rate' && activeContract.monthly_fixed_amount && (
-                            <div className="space-y-2">
-                              <span className="text-sm font-medium text-muted-foreground">Monthly Fixed Amount</span>
-                              <p className="text-sm">{activeContract.currency || 'USD'} {activeContract.monthly_fixed_amount}/month</p>
-                            </div>
-                          )}
-                        </div>
-                        {activeContract.contractor_payment_type === 'per_project' && activeContract.project_details && (
-                          <div className="space-y-2">
-                            <span className="text-sm font-medium text-muted-foreground">Project Details</span>
-                            <p className="text-sm">{activeContract.project_details}</p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="text-sm text-muted-foreground">
-                  No contract information available
-                </div>
-              )}
-            </CardContent>
-          </Card>
+          {/* This column is reserved for future content */}
         </div>
       </div>
     </div>
@@ -489,7 +357,7 @@ function ContractProfileContent({ contract, worker }: { contract: any; worker: a
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left Column - Contract Information */}
         <div className="space-y-4">
-          {/* Basic Contract Details */}
+          {/* Contract Information */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -497,36 +365,124 @@ function ContractProfileContent({ contract, worker }: { contract: any; worker: a
                 Contract Information
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-muted-foreground">Contract Number</span>
-                  <span className="text-sm font-medium">{contract.contract_number}</span>
+            <CardContent>
+              <div className="space-y-6">
+                {/* Agreement Details */}
+                <div>
+                  <h4 className="font-medium text-sm mb-3">Agreement Details</h4>
+                  <div className="grid grid-cols-1 gap-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <span className="text-sm font-medium text-muted-foreground">Start Date</span>
+                        <p className="text-sm">{contract.start_date ? new Date(contract.start_date).toLocaleDateString() : 'Not specified'}</p>
+                      </div>
+                      <div className="space-y-2">
+                        <span className="text-sm font-medium text-muted-foreground">End Date</span>
+                        <p className="text-sm">{contract.end_date ? new Date(contract.end_date).toLocaleDateString() : 'Not specified'}</p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <span className="text-sm font-medium text-muted-foreground">Worker Type</span>
+                        <p className="text-sm capitalize">{contract.worker_type || 'Not specified'}</p>
+                      </div>
+                      <div className="space-y-2">
+                        <span className="text-sm font-medium text-muted-foreground">Job Title</span>
+                        <p className="text-sm">{contract.job_title || 'Not specified'}</p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <span className="text-sm font-medium text-muted-foreground">Seniority Level</span>
+                        <p className="text-sm capitalize">{contract.seniority_level?.replace('_', ' ') || 'Not specified'}</p>
+                      </div>
+                      <div className="space-y-2">
+                        <span className="text-sm font-medium text-muted-foreground">Contract Type</span>
+                        <p className="text-sm capitalize">{contract.contract_type || 'Not specified'}</p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <span className="text-sm font-medium text-muted-foreground">Working Location</span>
+                        <p className="text-sm">{contract.working_location || 'Not specified'}</p>
+                      </div>
+                      <div className="space-y-2">
+                        <span className="text-sm font-medium text-muted-foreground">Status</span>
+                        {getStatusBadge(contract.contract_status)}
+                      </div>
+                    </div>
+                    {contract.scope_of_work && (
+                      <div className="space-y-2">
+                        <span className="text-sm font-medium text-muted-foreground">Scope of Work</span>
+                        <p className="text-sm">{contract.scope_of_work}</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-muted-foreground">Worker Type</span>
-                  <Badge variant="outline">
-                    {contract.worker_type === 'employee' ? 'Employee' : 'Contractor'}
-                  </Badge>
+
+                {/* Payment Information */}
+                <div className="border-t pt-6">
+                  <h4 className="font-medium text-sm mb-3">Payment Information</h4>
+                  <div className="grid grid-cols-1 gap-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <span className="text-sm font-medium text-muted-foreground">Currency</span>
+                        <p className="text-sm">{contract.currency || 'USD'}</p>
+                      </div>
+                      {contract.worker_type === 'employee' && (
+                        <div className="space-y-2">
+                          <span className="text-sm font-medium text-muted-foreground">Base Salary</span>
+                          <p className="text-sm">{contract.base_salary ? `${contract.currency || 'USD'} ${contract.base_salary}` : 'Not specified'}</p>
+                        </div>
+                      )}
+                    </div>
+                    {contract.worker_type === 'employee' && (
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <span className="text-sm font-medium text-muted-foreground">Payment Period</span>
+                          <p className="text-sm capitalize">{contract.payment_period || 'Not specified'}</p>
+                        </div>
+                        <div className="space-y-2">
+                          <span className="text-sm font-medium text-muted-foreground">Payment Frequency</span>
+                          <p className="text-sm capitalize">{contract.payment_frequency?.replace('_', ' ') || 'Not specified'}</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-muted-foreground">Status</span>
-                  {getStatusBadge(contract.contract_status)}
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-muted-foreground">Job Title</span>
-                  <span className="text-sm">{contract.job_title || 'Not specified'}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-muted-foreground">Department</span>
-                  <span className="text-sm">{contract.department || 'Not specified'}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-muted-foreground">Active Contract</span>
-                  <Badge variant={contract.is_active ? "default" : "secondary"}>
-                    {contract.is_active ? 'Yes' : 'No'}
-                  </Badge>
-                </div>
+
+                {/* Contractor-Specific Payment Fields */}
+                {contract.worker_type === 'contractor' && (
+                  <div className="border-t pt-6">
+                    <h4 className="font-medium text-sm mb-3">Contractor Payment Details</h4>
+                    <div className="grid grid-cols-1 gap-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <span className="text-sm font-medium text-muted-foreground">Payment Type</span>
+                          <p className="text-sm capitalize">{contract.contractor_payment_type?.replace('_', ' ') || 'Not specified'}</p>
+                        </div>
+                        {contract.contractor_payment_type === 'hourly_rate' && contract.hourly_rate && (
+                          <div className="space-y-2">
+                            <span className="text-sm font-medium text-muted-foreground">Hourly Rate</span>
+                            <p className="text-sm">{contract.currency || 'USD'} {contract.hourly_rate}/hour</p>
+                          </div>
+                        )}
+                        {contract.contractor_payment_type === 'fixed_rate' && contract.monthly_fixed_amount && (
+                          <div className="space-y-2">
+                            <span className="text-sm font-medium text-muted-foreground">Monthly Fixed Amount</span>
+                            <p className="text-sm">{contract.currency || 'USD'} {contract.monthly_fixed_amount}/month</p>
+                          </div>
+                        )}
+                      </div>
+                      {contract.contractor_payment_type === 'per_project' && contract.project_details && (
+                        <div className="space-y-2">
+                          <span className="text-sm font-medium text-muted-foreground">Project Details</span>
+                          <p className="text-sm">{contract.project_details}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
