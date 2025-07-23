@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { PermissionGate } from '@/components/auth/PermissionGate'
 import { WorkersTable } from '@/components/workers/WorkersTable'
 import { WorkerForm } from '@/components/workers/WorkerForm'
@@ -9,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Plus, Users } from 'lucide-react'
 
 export default function Workers() {
+  const navigate = useNavigate()
   const { workers, isLoading, createWorker, updateWorker, deleteWorker } = useWorkers()
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingWorker, setEditingWorker] = useState<Worker | null>(null)
@@ -41,8 +43,7 @@ export default function Workers() {
   }
 
   const handleViewProfile = (worker: Worker) => {
-    // TODO: Navigate to worker profile page
-    console.log('Opening profile for:', worker.full_name)
+    navigate(`/people-hub/people/${worker.id}`)
   }
 
   const handleDelete = async (id: string) => {
