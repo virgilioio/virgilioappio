@@ -79,6 +79,21 @@ export default function WorkerProfile() {
 function WorkerProfileContent({ worker }: { worker: any }) {
   const { contracts } = useWorkerContracts(worker.id)
   const activeContract = contracts.find(contract => contract.is_active) || contracts[0] // Get active contract or first one
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'active':
+        return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Active</Badge>
+      case 'terminated':
+        return <Badge className="bg-red-100 text-red-800 hover:bg-red-100">Terminated</Badge>
+      case 'pending':
+        return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">Pending</Badge>
+      case 'suspended':
+        return <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-100">Suspended</Badge>
+      default:
+        return <Badge variant="secondary">{status}</Badge>
+    }
+  }
   return (
     <div className="space-y-6">
       {/* Worker Header */}
@@ -175,12 +190,10 @@ function WorkerProfileContent({ worker }: { worker: any }) {
                      <span className="text-sm font-medium text-muted-foreground">Manager Name</span>
                      <span className="text-sm">{activeContract.manager_name || 'Not assigned'}</span>
                    </div>
-                   <div className="flex justify-between items-center">
-                     <span className="text-sm font-medium text-muted-foreground">Contract Status</span>
-                     <Badge variant={activeContract.is_active ? "default" : "secondary"}>
-                       {activeContract.contract_status || 'Unknown'}
-                     </Badge>
-                   </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium text-muted-foreground">Contract Status</span>
+                      {getStatusBadge(activeContract.contract_status)}
+                    </div>
                    <div className="flex justify-between items-center">
                      <span className="text-sm font-medium text-muted-foreground">Worker Type</span>
                      <span className="text-sm">
