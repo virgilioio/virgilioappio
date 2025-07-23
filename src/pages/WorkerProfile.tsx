@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useWorkers } from '@/hooks/useWorkers'
+import { useWorkerContracts } from '@/hooks/useWorkerContracts'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
@@ -194,45 +195,18 @@ function WorkerProfileContent({ worker }: { worker: any }) {
 
 // Contract Tab Content
 function ContractContent({ worker }: { worker: any }) {
-  // Mock contract data for demonstration
-  const contracts = [
-    {
-      id: '1',
-      type: 'Employment Contract',
-      startDate: '2024-01-15',
-      endDate: null,
-      status: 'active',
-      signedDate: '2024-01-10',
-      version: '1.0'
-    },
-    {
-      id: '2',
-      type: 'NDA Agreement',
-      startDate: '2024-01-15',
-      endDate: '2025-01-15',
-      status: 'active',
-      signedDate: '2024-01-10',
-      version: '2.1'
-    },
-    {
-      id: '3',
-      type: 'Performance Agreement',
-      startDate: '2024-01-15',
-      endDate: '2024-12-31',
-      status: 'expired',
-      signedDate: '2024-01-10',
-      version: '1.5'
-    }
-  ]
+  const { contracts, isLoading: contractsLoading } = useWorkerContracts(worker.id)
 
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'active':
         return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Active</Badge>
-      case 'expired':
-        return <Badge className="bg-red-100 text-red-800 hover:bg-red-100">Expired</Badge>
+      case 'terminated':
+        return <Badge className="bg-red-100 text-red-800 hover:bg-red-100">Terminated</Badge>
       case 'pending':
         return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">Pending</Badge>
+      case 'suspended':
+        return <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-100">Suspended</Badge>
       default:
         return <Badge variant="secondary">{status}</Badge>
     }
@@ -252,50 +226,74 @@ function ContractContent({ worker }: { worker: any }) {
           </Button>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Contract Type</TableHead>
-                <TableHead>Start Date</TableHead>
-                <TableHead>End Date</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Signed Date</TableHead>
-                <TableHead>Version</TableHead>
-                <TableHead className="w-[50px]"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {contracts.map((contract) => (
-                <TableRow key={contract.id}>
-                  <TableCell className="font-medium">{contract.type}</TableCell>
-                  <TableCell>{new Date(contract.startDate).toLocaleDateString()}</TableCell>
-                  <TableCell>
-                    {contract.endDate ? new Date(contract.endDate).toLocaleDateString() : 'Ongoing'}
-                  </TableCell>
-                  <TableCell>{getStatusBadge(contract.status)}</TableCell>
-                  <TableCell>{new Date(contract.signedDate).toLocaleDateString()}</TableCell>
-                  <TableCell>{contract.version}</TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem>View Contract</DropdownMenuItem>
-                        <DropdownMenuItem>Download PDF</DropdownMenuItem>
-                        <DropdownMenuItem>Edit Contract</DropdownMenuItem>
-                        <DropdownMenuItem className="text-destructive">
-                          Terminate Contract
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
+          {contractsLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="h-6 w-6 rounded-full border-2 border-primary border-t-transparent animate-spin"></div>
+            </div>
+          ) : contracts.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">No contracts found for this worker.</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Contract Number</TableHead>
+                  <TableHead>Worker Type</TableHead>
+                  <TableHead>Job Title</TableHead>
+                  <TableHead>Start Date</TableHead>
+                  <TableHead>End Date</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Salary</TableHead>
+                  <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {contracts.map((contract) => (
+                  <TableRow key={contract.id}>
+                    <TableCell className="font-medium">{contract.contract_number}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline">
+                        {contract.worker_type === 'employee' ? 'Employee' : 'Contractor'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{contract.job_title || 'Not specified'}</TableCell>
+                    <TableCell>
+                      {contract.start_date ? new Date(contract.start_date).toLocaleDateString() : 'Not set'}
+                    </TableCell>
+                    <TableCell>
+                      {contract.end_date ? new Date(contract.end_date).toLocaleDateString() : 'Ongoing'}
+                    </TableCell>
+                    <TableCell>{getStatusBadge(contract.contract_status)}</TableCell>
+                    <TableCell>
+                      {contract.base_salary 
+                        ? `${contract.currency || 'USD'} ${contract.base_salary.toLocaleString()}`
+                        : 'Not specified'
+                      }
+                    </TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem>View Contract</DropdownMenuItem>
+                          <DropdownMenuItem>Edit Contract</DropdownMenuItem>
+                          {contract.is_active && (
+                            <DropdownMenuItem className="text-destructive">
+                              Terminate Contract
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
     </div>
