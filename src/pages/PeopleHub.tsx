@@ -1,6 +1,6 @@
 
 import { useState } from 'react'
-import { Outlet, Link, useLocation } from 'react-router-dom'
+import { Outlet, Link, useLocation, Routes, Route } from 'react-router-dom'
 import { 
   Search,
   Network,
@@ -126,17 +126,13 @@ function PeopleHubContent() {
           </div>
         
           <div className="flex-1">
-            {location.pathname === '/people-hub' ? (
-              <PeopleHubOverview />
-            ) : location.pathname === '/people-hub/people' ? (
-              <Workers />
-            ) : location.pathname === '/people-hub/departments' ? (
-              <Departments />
-            ) : location.pathname.startsWith('/people-hub/people/') ? (
-              <WorkerProfile />
-            ) : (
-              <Outlet />
-            )}
+            <Routes>
+              <Route path="/" element={<PeopleHubOverview />} />
+              <Route path="/people" element={<Workers />} />
+              <Route path="/people/:workerId" element={<WorkerProfile />} />
+              <Route path="/departments" element={<Departments />} />
+              <Route path="/*" element={<Outlet />} />
+            </Routes>
           </div>
         </div>
       </div>
