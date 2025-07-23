@@ -44,14 +44,15 @@ export function WorkersTable({
   const getStatusBadgeVariant = (status: string) => {
     switch (status) {
       case 'active':
-        return 'default'
+        return 'success'
       case 'pending':
-        return 'secondary'
+        return 'warning'
       case 'inactive':
+        return 'secondary'
       case 'terminated':
         return 'destructive'
       case 'on_leave':
-        return 'outline'
+        return 'info'
       default:
         return 'outline'
     }
