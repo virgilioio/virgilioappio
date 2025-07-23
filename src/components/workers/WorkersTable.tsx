@@ -229,19 +229,11 @@ export function WorkersTable({
                         </div>
                       </TableCell>
                       <TableCell>{worker.country || 'Not specified'}</TableCell>
-                       <TableCell>
-                         <Badge variant={getStatusBadgeVariant(worker.worker_status)} className="flex items-center gap-1.5">
-                           <div className={`w-1.5 h-1.5 rounded-full ${
-                             worker.worker_status === 'active' ? 'bg-green-700' :
-                             worker.worker_status === 'pending' ? 'bg-yellow-700' :
-                             worker.worker_status === 'inactive' ? 'bg-gray-600' :
-                             worker.worker_status === 'terminated' ? 'bg-red-700' :
-                             worker.worker_status === 'on_leave' ? 'bg-blue-700' :
-                             'bg-gray-500'
-                           }`} />
-                           {formatWorkerStatus(worker.worker_status)}
-                         </Badge>
-                       </TableCell>
+                      <TableCell>
+                        <Badge variant={getStatusBadgeVariant(worker.worker_status)}>
+                          {formatWorkerStatus(worker.worker_status)}
+                        </Badge>
+                      </TableCell>
                       <TableCell>{worker.department || 'Not specified'}</TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
