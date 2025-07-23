@@ -367,6 +367,10 @@ function ContractProfileContent({ contract, worker }: { contract: any; worker: a
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex justify-between items-center">
+                <span className="text-sm font-medium text-muted-foreground">Created At</span>
+                <span className="text-sm">{contract.created_at ? new Date(contract.created_at).toLocaleDateString() : 'Not specified'}</span>
+              </div>
+              <div className="flex justify-between items-center">
                 <span className="text-sm font-medium text-muted-foreground">Start Date</span>
                 <span className="text-sm">{contract.start_date ? new Date(contract.start_date).toLocaleDateString() : 'Not specified'}</span>
               </div>
