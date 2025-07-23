@@ -2326,14 +2326,11 @@ export type Database = {
           country: string | null
           created_at: string
           created_by: string | null
-          department: string | null
           events: Json | null
           full_name: string
           id: string
-          job_title: string | null
           legal_first_name: string | null
           legal_last_name: string | null
-          manager_id: string | null
           organization_id: string
           personal_email: string | null
           personal_phone: string | null
@@ -2349,14 +2346,11 @@ export type Database = {
           country?: string | null
           created_at?: string
           created_by?: string | null
-          department?: string | null
           events?: Json | null
           full_name: string
           id?: string
-          job_title?: string | null
           legal_first_name?: string | null
           legal_last_name?: string | null
-          manager_id?: string | null
           organization_id: string
           personal_email?: string | null
           personal_phone?: string | null
@@ -2372,14 +2366,11 @@ export type Database = {
           country?: string | null
           created_at?: string
           created_by?: string | null
-          department?: string | null
           events?: Json | null
           full_name?: string
           id?: string
-          job_title?: string | null
           legal_first_name?: string | null
           legal_last_name?: string | null
-          manager_id?: string | null
           organization_id?: string
           personal_email?: string | null
           personal_phone?: string | null
@@ -2391,13 +2382,6 @@ export type Database = {
           worker_status?: Database["public"]["Enums"]["worker_status_enum"]
         }
         Relationships: [
-          {
-            foreignKeyName: "workers_manager_id_fkey"
-            columns: ["manager_id"]
-            isOneToOne: false
-            referencedRelation: "workers"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "workers_organization_id_fkey"
             columns: ["organization_id"]
