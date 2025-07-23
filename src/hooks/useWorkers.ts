@@ -129,7 +129,7 @@ export function useWorkers() {
       
       // Fetch workers with their active contracts
       const { data: workersData, error: workersError } = await supabase
-        .from('workers' as any)
+        .from('workers')
         .select('*')
         .order('created_at', { ascending: false })
 
@@ -151,6 +151,8 @@ export function useWorkers() {
 
       // Get active contracts for all workers
       const workerIds = workersData.map((w: any) => w.id)
+      
+      // Get active contracts for all workers using direct query
       const { data: contractsData, error: contractsError } = await supabase
         .from('worker_contracts' as any)
         .select('*')
@@ -183,9 +185,9 @@ export function useWorkers() {
       
       if (managerIds.length > 0) {
         const { data: managersData } = await supabase
-          .from('workers' as any)
+          .from('workers')
           .select('id, full_name')
-          .in('id', managerIds)
+          .in('id', managerIds as string[])
         
         if (managersData) {
           managersMap = Object.fromEntries(managersData.map((manager: any) => [manager.id, manager.full_name]))
@@ -216,32 +218,32 @@ export function useWorkers() {
           updated_at: worker.updated_at,
           organization_name: organizationsMap[worker.organization_id] || null,
           current_contract: activeContract ? {
-            id: activeContract.id,
-            contract_number: activeContract.contract_number,
-            job_title: activeContract.job_title,
-            worker_type: activeContract.worker_type,
-            contract_type: activeContract.contract_type,
-            contract_status: activeContract.contract_status,
-            employment_terms: activeContract.employment_terms,
-            employment_term: activeContract.employment_term,
-            seniority_level: activeContract.seniority_level,
-            start_date: activeContract.start_date,
-            end_date: activeContract.end_date,
-            working_location: activeContract.working_location,
-            scope_of_work: activeContract.scope_of_work,
-            currency: activeContract.currency,
-            base_salary: activeContract.base_salary,
-            payment_period: activeContract.payment_period,
-            payment_frequency: activeContract.payment_frequency,
-            custom_pay_dates: activeContract.custom_pay_dates,
-            next_payment_date: activeContract.next_payment_date,
-            contractor_payment_type: activeContract.contractor_payment_type,
-            hourly_rate: activeContract.hourly_rate,
-            monthly_fixed_amount: activeContract.monthly_fixed_amount,
-            project_details: activeContract.project_details,
-            department: activeContract.department,
-            manager_id: activeContract.manager_id,
-            manager_name: activeContract.manager_id && managersMap ? managersMap[activeContract.manager_id] : null
+            id: (activeContract as any).id,
+            contract_number: (activeContract as any).contract_number,
+            job_title: (activeContract as any).job_title,
+            worker_type: (activeContract as any).worker_type,
+            contract_type: (activeContract as any).contract_type,
+            contract_status: (activeContract as any).contract_status,
+            employment_terms: (activeContract as any).employment_terms,
+            employment_term: (activeContract as any).employment_term,
+            seniority_level: (activeContract as any).seniority_level,
+            start_date: (activeContract as any).start_date,
+            end_date: (activeContract as any).end_date,
+            working_location: (activeContract as any).working_location,
+            scope_of_work: (activeContract as any).scope_of_work,
+            currency: (activeContract as any).currency,
+            base_salary: (activeContract as any).base_salary,
+            payment_period: (activeContract as any).payment_period,
+            payment_frequency: (activeContract as any).payment_frequency,
+            custom_pay_dates: (activeContract as any).custom_pay_dates,
+            next_payment_date: (activeContract as any).next_payment_date,
+            contractor_payment_type: (activeContract as any).contractor_payment_type,
+            hourly_rate: (activeContract as any).hourly_rate,
+            monthly_fixed_amount: (activeContract as any).monthly_fixed_amount,
+            project_details: (activeContract as any).project_details,
+            department: (activeContract as any).department,
+            manager_id: (activeContract as any).manager_id,
+            manager_name: (activeContract as any).manager_id && managersMap ? managersMap[(activeContract as any).manager_id] : null
           } : undefined
         }
         
@@ -326,7 +328,7 @@ export function useWorkers() {
 
       // Create worker first
       const { data: newWorker, error: createWorkerError } = await supabase
-        .from('workers' as any)
+        .from('workers')
         .insert([workerData])
         .select()
         .single()
@@ -345,7 +347,7 @@ export function useWorkers() {
 
       if (createContractError) {
         // If contract creation fails, we should clean up the worker
-        await supabase.from('workers' as any).delete().eq('id', newWorker.id)
+        await supabase.from('workers').delete().eq('id', newWorker.id)
         console.error('Error creating worker contract:', createContractError)
         throw createContractError
       }
@@ -381,7 +383,7 @@ export function useWorkers() {
     try {
       console.log('Updating worker:', id, data)
       const { data: updatedWorker, error: updateError } = await supabase
-        .from('workers' as any)
+        .from('workers')
         .update(data)
         .eq('id', id)
         .select()
@@ -422,7 +424,7 @@ export function useWorkers() {
     try {
       console.log('Deleting worker:', id)
       const { error: deleteError } = await supabase
-        .from('workers' as any)
+        .from('workers')
         .delete()
         .eq('id', id)
 
