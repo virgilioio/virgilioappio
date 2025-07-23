@@ -151,11 +151,16 @@ export function useWorkers() {
 
       // Get active contracts for all workers
       const workerIds = workersData.map((w: any) => w.id)
-      const { data: contractsData } = await supabase
+      const { data: contractsData, error: contractsError } = await supabase
         .from('worker_contracts' as any)
         .select('*')
         .in('worker_id', workerIds)
         .eq('is_active', true)
+
+      if (contractsError) {
+        console.error('Error fetching contracts:', contractsError)
+        // Continue without contracts for now
+      }
 
       // Get organization names
       const orgIds = [...new Set(workersData.map((w: any) => w.organization_id).filter(Boolean))]
@@ -189,16 +194,54 @@ export function useWorkers() {
 
       // Combine workers with their active contracts
       const workersWithDetails = workersData.map((worker: any) => {
-        const activeContract = contractsData?.find((c: any) => c.worker_id === worker.id)
+        const activeContract = contractsData ? contractsData.find((c: any) => c.worker_id === worker.id) : undefined
         
         const typedWorker: Worker = {
-          ...worker,
+          id: worker.id,
+          organization_id: worker.organization_id,
+          full_name: worker.full_name,
+          legal_first_name: worker.legal_first_name,
+          legal_last_name: worker.legal_last_name,
+          citizenship: worker.citizenship,
+          personal_email: worker.personal_email,
+          work_email: worker.work_email,
+          personal_phone: worker.personal_phone,
           worker_status: worker.worker_status as Worker['worker_status'],
+          worker_id: worker.worker_id,
+          country: worker.country,
+          state_province: worker.state_province,
           worker_entity_type: worker.worker_entity_type as Worker['worker_entity_type'],
+          created_by: worker.created_by,
+          created_at: worker.created_at,
+          updated_at: worker.updated_at,
           organization_name: organizationsMap[worker.organization_id] || null,
           current_contract: activeContract ? {
-            ...activeContract,
-            manager_name: activeContract.manager_id ? managersMap[activeContract.manager_id] : null
+            id: activeContract.id,
+            contract_number: activeContract.contract_number,
+            job_title: activeContract.job_title,
+            worker_type: activeContract.worker_type,
+            contract_type: activeContract.contract_type,
+            contract_status: activeContract.contract_status,
+            employment_terms: activeContract.employment_terms,
+            employment_term: activeContract.employment_term,
+            seniority_level: activeContract.seniority_level,
+            start_date: activeContract.start_date,
+            end_date: activeContract.end_date,
+            working_location: activeContract.working_location,
+            scope_of_work: activeContract.scope_of_work,
+            currency: activeContract.currency,
+            base_salary: activeContract.base_salary,
+            payment_period: activeContract.payment_period,
+            payment_frequency: activeContract.payment_frequency,
+            custom_pay_dates: activeContract.custom_pay_dates,
+            next_payment_date: activeContract.next_payment_date,
+            contractor_payment_type: activeContract.contractor_payment_type,
+            hourly_rate: activeContract.hourly_rate,
+            monthly_fixed_amount: activeContract.monthly_fixed_amount,
+            project_details: activeContract.project_details,
+            department: activeContract.department,
+            manager_id: activeContract.manager_id,
+            manager_name: activeContract.manager_id && managersMap ? managersMap[activeContract.manager_id] : null
           } : undefined
         }
         

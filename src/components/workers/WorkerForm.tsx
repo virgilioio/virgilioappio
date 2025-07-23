@@ -39,7 +39,6 @@ export function WorkerForm({ worker, onSubmit, onCancel, prefilledData, hideWork
     contract_status: 'pending',
     country: '',
     currency: 'USD',
-    entity: '',
     state_province: '',
     worker_entity_type: 'not_specified',
     start_date: '',
@@ -52,7 +51,6 @@ export function WorkerForm({ worker, onSubmit, onCancel, prefilledData, hideWork
     monthly_fixed_amount: undefined,
     project_details: '',
     department: '',
-    roles_department: '',
     ...prefilledData
   })
 
@@ -65,26 +63,24 @@ export function WorkerForm({ worker, onSubmit, onCancel, prefilledData, hideWork
         work_email: worker.work_email || '',
         personal_phone: worker.personal_phone || '',
         worker_status: worker.worker_status,
-        worker_type: worker.worker_type,
-        job_title: worker.job_title || '',
-        contract_type: worker.contract_type || 'permanent',
-        contract_status: worker.contract_status || 'pending',
+        worker_type: worker.current_contract?.worker_type || 'employee',
+        job_title: worker.current_contract?.job_title || '',
+        contract_type: worker.current_contract?.contract_type || 'permanent',
+        contract_status: worker.current_contract?.contract_status || 'pending',
         country: worker.country || '',
-        currency: worker.currency || 'USD',
-        entity: worker.entity || '',
+        currency: worker.current_contract?.currency || 'USD',
         state_province: worker.state_province || '',
         worker_entity_type: worker.worker_entity_type || 'not_specified',
-        start_date: worker.start_date || '',
-        end_date: worker.end_date || '',
-        payment_frequency: worker.payment_frequency || 'monthly',
-        custom_pay_dates: worker.custom_pay_dates || [],
-        next_payment_date: worker.next_payment_date || '',
-        contractor_payment_type: worker.contractor_payment_type,
-        hourly_rate: worker.hourly_rate,
-        monthly_fixed_amount: worker.monthly_fixed_amount,
-        project_details: worker.project_details || '',
-        department: worker.department || '',
-        roles_department: worker.roles_department || ''
+        start_date: worker.current_contract?.start_date || '',
+        end_date: worker.current_contract?.end_date || '',
+        payment_frequency: worker.current_contract?.payment_frequency || 'monthly',
+        custom_pay_dates: worker.current_contract?.custom_pay_dates || [],
+        next_payment_date: worker.current_contract?.next_payment_date || '',
+        contractor_payment_type: worker.current_contract?.contractor_payment_type,
+        hourly_rate: worker.current_contract?.hourly_rate,
+        monthly_fixed_amount: worker.current_contract?.monthly_fixed_amount,
+        project_details: worker.current_contract?.project_details || '',
+        department: worker.current_contract?.department || ''
       })
     } else {
       // For new workers, we'll determine the organization in the form submission
@@ -365,15 +361,6 @@ export function WorkerForm({ worker, onSubmit, onCancel, prefilledData, hideWork
                     <SelectItem value="individual">Individual</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-
-              <div>
-                <Label htmlFor="entity">Entity</Label>
-                <Input
-                  id="entity"
-                  value={formData.entity}
-                  onChange={(e) => handleChange('entity', e.target.value)}
-                />
               </div>
 
               <div>

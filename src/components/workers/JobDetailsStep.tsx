@@ -91,7 +91,7 @@ export function JobDetailsStep({ data, errors, onUpdate }: JobDetailsStepProps) 
                   <SelectItem value="none">No manager</SelectItem>
                   {availableManagers.map((manager) => (
                     <SelectItem key={manager.id} value={manager.id}>
-                      {manager.full_name} - {manager.job_title || 'No title'}
+                      {manager.full_name} - {manager.current_contract?.job_title || 'No title'}
                     </SelectItem>
                   ))}
                 </SelectContent>

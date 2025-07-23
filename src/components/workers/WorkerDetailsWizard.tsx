@@ -180,7 +180,6 @@ export function WorkerDetailsWizard({
         working_location: formData.working_location || '',
         scope_of_work: formData.scope_of_work || '',
         manager_id: formData.manager_id,
-        reports: formData.reports || [],
         department: formData.department || '',
         country: formData.country || '',
         currency: formData.currency || 'USD',
@@ -191,10 +190,9 @@ export function WorkerDetailsWizard({
         start_date: formData.start_date || undefined,
         end_date: formData.end_date || undefined,
         seniority_level: formData.seniority_level,
-        // Include contractor payment fields
-        contractor_payment_type: contractorPaymentType,
         hourly_rate: formData.hourly_rate,
         monthly_fixed_amount: formData.monthly_fixed_amount,
+        project_details: formData.project_details
         project_details: formData.project_details
       }
 
