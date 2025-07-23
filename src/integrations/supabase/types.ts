@@ -2176,7 +2176,6 @@ export type Database = {
           monthly_fixed_amount: number | null
           next_payment_date: string | null
           organization_id: string
-          pay_date: string | null
           payment_frequency:
             | Database["public"]["Enums"]["payment_frequency_enum"]
             | null
@@ -2238,7 +2237,6 @@ export type Database = {
           monthly_fixed_amount?: number | null
           next_payment_date?: string | null
           organization_id: string
-          pay_date?: string | null
           payment_frequency?:
             | Database["public"]["Enums"]["payment_frequency_enum"]
             | null
@@ -2300,7 +2298,6 @@ export type Database = {
           monthly_fixed_amount?: number | null
           next_payment_date?: string | null
           organization_id?: string
-          pay_date?: string | null
           payment_frequency?:
             | Database["public"]["Enums"]["payment_frequency_enum"]
             | null
@@ -2677,7 +2674,6 @@ export type Database = {
         | "terminated"
         | "pending"
       worker_type_enum: "employee" | "contractor"
-      worker_type_enum_1: "employee" | "contractor"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2902,7 +2898,6 @@ export const Constants = {
         "pending",
       ],
       worker_type_enum: ["employee", "contractor"],
-      worker_type_enum_1: ["employee", "contractor"],
     },
   },
 } as const
