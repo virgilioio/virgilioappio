@@ -399,9 +399,16 @@ function ContractProfileContent({ contract, worker }: { contract: any; worker: a
                 {getStatusBadge(contract.contract_status)}
               </div>
               {contract.scope_of_work && (
-                <div className="flex justify-between items-start">
+                <div className="space-y-2">
                   <span className="text-sm font-medium text-muted-foreground">Scope of Work</span>
-                  <span className="text-sm text-right max-w-[60%]">{contract.scope_of_work}</span>
+                  <ul className="text-sm space-y-1">
+                    {contract.scope_of_work.split('\n').map((item, index) => (
+                      <li key={index} className="flex items-start gap-2">
+                        <span className="text-muted-foreground">•</span>
+                        <span>{item.trim()}</span>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               )}
             </CardContent>
