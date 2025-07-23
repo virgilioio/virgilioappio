@@ -80,9 +80,9 @@ export function WorkersTable({
   const filteredWorkers = workers.filter(worker => {
     const matchesSearch = worker.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (worker.work_email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (worker.job_title || '').toLowerCase().includes(searchTerm.toLowerCase())
+                         (worker.current_contract?.job_title || '').toLowerCase().includes(searchTerm.toLowerCase())
     const matchesStatus = statusFilter === 'all' || worker.worker_status === statusFilter
-    const matchesType = typeFilter === 'all' || worker.worker_type === typeFilter
+    const matchesType = typeFilter === 'all' || worker.current_contract?.worker_type === typeFilter
     const matchesCountry = countryFilter === 'all' || worker.country === countryFilter
     const matchesOrganization = organizationFilter === 'all' || worker.organization_id === organizationFilter
     
@@ -223,8 +223,8 @@ export function WorkersTable({
                       <TableCell className="font-medium">
                         <div>
                           <div>{worker.full_name}</div>
-                          {worker.job_title && (
-                            <div className="text-sm text-muted-foreground">{worker.job_title}</div>
+                          {worker.current_contract?.job_title && (
+                            <div className="text-sm text-muted-foreground">{worker.current_contract.job_title}</div>
                           )}
                         </div>
                       </TableCell>
@@ -234,7 +234,7 @@ export function WorkersTable({
                           {formatWorkerStatus(worker.worker_status)}
                         </Badge>
                       </TableCell>
-                      <TableCell>{worker.department || 'Not specified'}</TableCell>
+                      <TableCell>{worker.current_contract?.department || 'Not specified'}</TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>

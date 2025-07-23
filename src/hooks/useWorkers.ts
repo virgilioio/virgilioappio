@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from '@/hooks/use-toast'
 
+// Updated Worker interface - now only contains core worker identity
 export interface Worker {
   id: string
   organization_id: string
@@ -14,45 +15,48 @@ export interface Worker {
   work_email?: string
   personal_phone?: string
   worker_status: 'active' | 'inactive' | 'on_leave' | 'terminated' | 'pending'
-  worker_type: 'employee' | 'contractor'
   worker_id?: number
-  job_title?: string
-  seniority_level?: 'entry' | 'junior' | 'mid' | 'senior' | 'lead' | 'principal' | 'director' | 'vp' | 'c_level'
-  contract_type?: 'permanent' | 'temporary' | 'freelance'
-  employment_terms?: 'full_time' | 'part_time' | 'temporary' | 'internship'
-  contract_status?: 'active' | 'pending' | 'expired' | 'terminated' | 'suspended'
   country?: string
-  working_location?: string
-  scope_of_work?: string
-  currency?: string
-  base_salary?: number
-  payment_period?: 'annual' | 'monthly' | 'semimonthly' | 'biweekly' | 'weekly' | 'daily' | 'hourly'
-  employment_term?: 'indefinite' | 'definite'
-  entity?: string
-  events?: any
-  manager_id?: string
-  reports?: any[]
   state_province?: string
   worker_entity_type?: 'business_entity' | 'individual' | 'not_specified'
-  start_date?: string
-  end_date?: string
-  payment_frequency?: 'bi_monthly' | 'monthly' | 'custom'
-  custom_pay_dates?: number[]
-  next_payment_date?: string
-  contractor_payment_type?: 'fixed_rate' | 'hourly_rate' | 'per_project'
-  hourly_rate?: number
-  monthly_fixed_amount?: number
-  project_details?: string
-  department?: string
-  roles_department?: string
   created_by?: string
   created_at: string
   updated_at: string
   organization_name?: string
-  manager_name?: string
+  // Current active contract information (populated from worker_contracts)
+  current_contract?: {
+    id: string
+    contract_number: string
+    job_title?: string
+    worker_type: 'employee' | 'contractor'
+    contract_type?: 'permanent' | 'temporary' | 'freelance' | 'fixed_term' | 'seasonal'
+    contract_status?: 'active' | 'pending' | 'expired' | 'terminated' | 'suspended'
+    employment_terms?: 'full_time' | 'part_time' | 'temporary' | 'internship'
+    employment_term?: 'indefinite' | 'definite'
+    seniority_level?: 'entry' | 'junior' | 'mid' | 'senior' | 'lead' | 'principal' | 'director' | 'vp' | 'c_level'
+    start_date?: string
+    end_date?: string
+    working_location?: string
+    scope_of_work?: string
+    currency?: string
+    base_salary?: number
+    payment_period?: 'annual' | 'monthly' | 'semimonthly' | 'biweekly' | 'weekly' | 'daily' | 'hourly'
+    payment_frequency?: 'bi_monthly' | 'monthly' | 'custom'
+    custom_pay_dates?: number[]
+    next_payment_date?: string
+    contractor_payment_type?: 'fixed_rate' | 'hourly_rate' | 'per_project'
+    hourly_rate?: number
+    monthly_fixed_amount?: number
+    project_details?: string
+    department?: string
+    manager_id?: string
+    manager_name?: string
+  }
 }
 
+// Updated CreateWorkerData - now separated into worker and contract data
 export interface CreateWorkerData {
+  // Worker core data
   organization_id: string
   full_name: string
   legal_first_name?: string
@@ -62,26 +66,24 @@ export interface CreateWorkerData {
   work_email?: string
   personal_phone?: string
   worker_status?: 'active' | 'inactive' | 'on_leave' | 'terminated' | 'pending'
-  worker_type: 'employee' | 'contractor'
   worker_id?: number
+  country?: string
+  state_province?: string
+  worker_entity_type?: 'business_entity' | 'individual' | 'not_specified'
+  
+  // Contract data (will be separated in creation process)
+  worker_type: 'employee' | 'contractor'
   job_title?: string
   seniority_level?: 'entry' | 'junior' | 'mid' | 'senior' | 'lead' | 'principal' | 'director' | 'vp' | 'c_level'
-  contract_type?: 'permanent' | 'temporary' | 'freelance'
+  contract_type?: 'permanent' | 'temporary' | 'freelance' | 'fixed_term' | 'seasonal'
   employment_terms?: 'full_time' | 'part_time' | 'temporary' | 'internship'
   contract_status?: 'active' | 'pending' | 'expired' | 'terminated' | 'suspended'
-  country?: string
   working_location?: string
   scope_of_work?: string
   currency?: string
   base_salary?: number
   payment_period?: 'annual' | 'monthly' | 'semimonthly' | 'biweekly' | 'weekly' | 'daily' | 'hourly'
   employment_term?: 'indefinite' | 'definite'
-  entity?: string
-  events?: any
-  manager_id?: string
-  reports?: any[]
-  state_province?: string
-  worker_entity_type?: 'business_entity' | 'individual' | 'not_specified'
   start_date?: string
   end_date?: string
   payment_frequency?: 'bi_monthly' | 'monthly' | 'custom'
@@ -92,7 +94,7 @@ export interface CreateWorkerData {
   monthly_fixed_amount?: number
   project_details?: string
   department?: string
-  roles_department?: string
+  manager_id?: string
 }
 
 export interface UpdateWorkerData {
@@ -104,37 +106,10 @@ export interface UpdateWorkerData {
   work_email?: string
   personal_phone?: string
   worker_status?: 'active' | 'inactive' | 'on_leave' | 'terminated' | 'pending'
-  worker_type?: 'employee' | 'contractor'
   worker_id?: number
-  job_title?: string
-  seniority_level?: 'entry' | 'junior' | 'mid' | 'senior' | 'lead' | 'principal' | 'director' | 'vp' | 'c_level'
-  contract_type?: 'permanent' | 'temporary' | 'freelance'
-  employment_terms?: 'full_time' | 'part_time' | 'temporary' | 'internship'
-  contract_status?: 'active' | 'pending' | 'expired' | 'terminated' | 'suspended'
   country?: string
-  working_location?: string
-  scope_of_work?: string
-  currency?: string
-  base_salary?: number
-  payment_period?: 'annual' | 'monthly' | 'semimonthly' | 'biweekly' | 'weekly' | 'daily' | 'hourly'
-  employment_term?: 'indefinite' | 'definite'
-  entity?: string
-  events?: any
-  manager_id?: string
-  reports?: any[]
   state_province?: string
   worker_entity_type?: 'business_entity' | 'individual' | 'not_specified'
-  start_date?: string
-  end_date?: string
-  payment_frequency?: 'bi_monthly' | 'monthly' | 'custom'
-  custom_pay_dates?: number[]
-  next_payment_date?: string
-  contractor_payment_type?: 'fixed_rate' | 'hourly_rate' | 'per_project'
-  hourly_rate?: number
-  monthly_fixed_amount?: number
-  project_details?: string
-  department?: string
-  roles_department?: string
 }
 
 export function useWorkers() {
@@ -152,7 +127,7 @@ export function useWorkers() {
     try {
       console.log('Fetching workers for user:', user.id)
       
-      // Use type casting since workers table is not yet in types
+      // Fetch workers with their active contracts
       const { data: workersData, error: workersError } = await supabase
         .from('workers' as any)
         .select('*')
@@ -168,13 +143,19 @@ export function useWorkers() {
         throw workersError
       }
 
-      console.log('Fetched workers:', workersData)
-
       if (!workersData || workersData.length === 0) {
         console.log('No workers found')
         setWorkers([])
         return
       }
+
+      // Get active contracts for all workers
+      const workerIds = workersData.map((w: any) => w.id)
+      const { data: contractsData } = await supabase
+        .from('worker_contracts' as any)
+        .select('*')
+        .in('worker_id', workerIds)
+        .eq('is_active', true)
 
       // Get organization names
       const orgIds = [...new Set(workersData.map((w: any) => w.organization_id).filter(Boolean))]
@@ -191,8 +172,8 @@ export function useWorkers() {
         }
       }
 
-      // Get manager names
-      const managerIds = [...new Set(workersData.map((w: any) => w.manager_id).filter(Boolean))]
+      // Get manager names from contracts
+      const managerIds = contractsData ? [...new Set(contractsData.map((c: any) => c.manager_id).filter(Boolean))] : []
       let managersMap: Record<string, string> = {}
       
       if (managerIds.length > 0) {
@@ -206,16 +187,19 @@ export function useWorkers() {
         }
       }
 
+      // Combine workers with their active contracts
       const workersWithDetails = workersData.map((worker: any) => {
+        const activeContract = contractsData?.find((c: any) => c.worker_id === worker.id)
+        
         const typedWorker: Worker = {
           ...worker,
           worker_status: worker.worker_status as Worker['worker_status'],
-          worker_type: worker.worker_type as Worker['worker_type'],
-          contract_type: worker.contract_type as Worker['contract_type'],
-          contract_status: worker.contract_status as Worker['contract_status'],
           worker_entity_type: worker.worker_entity_type as Worker['worker_entity_type'],
           organization_name: organizationsMap[worker.organization_id] || null,
-          manager_name: worker.manager_id ? managersMap[worker.manager_id] : null
+          current_contract: activeContract ? {
+            ...activeContract,
+            manager_name: activeContract.manager_id ? managersMap[activeContract.manager_id] : null
+          } : undefined
         }
         
         return typedWorker
@@ -248,31 +232,86 @@ export function useWorkers() {
     setError(null)
 
     try {
-      console.log('Creating worker with organization_id:', data.organization_id, 'Full data:', data)
+      console.log('Creating worker with separated data:', data)
       
+      // Separate worker and contract data
       const workerData = {
-        ...data,
+        organization_id: data.organization_id,
+        full_name: data.full_name,
+        legal_first_name: data.legal_first_name,
+        legal_last_name: data.legal_last_name,
+        citizenship: data.citizenship,
+        personal_email: data.personal_email,
+        work_email: data.work_email,
+        personal_phone: data.personal_phone,
+        worker_status: data.worker_status || 'pending',
+        worker_id: data.worker_id,
+        country: data.country,
+        state_province: data.state_province,
+        worker_entity_type: data.worker_entity_type,
         created_by: user.id
       }
 
-      console.log('Inserting worker data:', workerData)
+      const contractData = {
+        organization_id: data.organization_id,
+        job_title: data.job_title,
+        worker_type: data.worker_type,
+        seniority_level: data.seniority_level,
+        contract_type: data.contract_type,
+        employment_terms: data.employment_terms,
+        contract_status: data.contract_status || 'pending',
+        working_location: data.working_location,
+        scope_of_work: data.scope_of_work,
+        currency: data.currency,
+        base_salary: data.base_salary,
+        payment_period: data.payment_period,
+        employment_term: data.employment_term,
+        start_date: data.start_date,
+        end_date: data.end_date,
+        payment_frequency: data.payment_frequency,
+        custom_pay_dates: data.custom_pay_dates,
+        next_payment_date: data.next_payment_date,
+        contractor_payment_type: data.contractor_payment_type,
+        hourly_rate: data.hourly_rate,
+        monthly_fixed_amount: data.monthly_fixed_amount,
+        project_details: data.project_details,
+        department: data.department,
+        manager_id: data.manager_id,
+        is_active: true,
+        created_by: user.id
+      }
 
-      const { data: newWorker, error: createError } = await supabase
+      // Create worker first
+      const { data: newWorker, error: createWorkerError } = await supabase
         .from('workers' as any)
         .insert([workerData])
         .select()
         .single()
 
-      if (createError) {
-        console.error('Error creating worker:', createError)
-        throw createError
+      if (createWorkerError) {
+        console.error('Error creating worker:', createWorkerError)
+        throw createWorkerError
       }
 
-      console.log('Created worker:', newWorker)
+      // Create the worker's initial contract
+      const { data: newContract, error: createContractError } = await supabase
+        .from('worker_contracts' as any)
+        .insert([{ ...contractData, worker_id: newWorker.id }])
+        .select()
+        .single()
+
+      if (createContractError) {
+        // If contract creation fails, we should clean up the worker
+        await supabase.from('workers' as any).delete().eq('id', newWorker.id)
+        console.error('Error creating worker contract:', createContractError)
+        throw createContractError
+      }
+
+      console.log('Created worker with contract:', { worker: newWorker, contract: newContract })
 
       toast({
         title: 'Success',
-        description: 'Worker added successfully'
+        description: 'Worker and contract created successfully'
       })
 
       await getWorkers()
