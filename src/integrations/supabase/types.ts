@@ -2151,10 +2151,14 @@ export type Database = {
           contract_type:
             | Database["public"]["Enums"]["contract_type_enum"]
             | null
+          contractor_payment_type:
+            | Database["public"]["Enums"]["contractor_payment_type_enum"]
+            | null
           country: string | null
           created_at: string
           created_by: string | null
           currency: string | null
+          custom_pay_dates: Json | null
           department: string | null
           employment_terms:
             | Database["public"]["Enums"]["employment_terms_enum"]
@@ -2163,18 +2167,25 @@ export type Database = {
           entity: string | null
           events: Json | null
           full_name: string
+          hourly_rate: number | null
           id: string
           job_title: string | null
           legal_first_name: string | null
           legal_last_name: string | null
           manager_id: string | null
+          monthly_fixed_amount: number | null
+          next_payment_date: string | null
           organization_id: string
           pay_date: string | null
+          payment_frequency:
+            | Database["public"]["Enums"]["payment_frequency_enum"]
+            | null
           payment_period:
             | Database["public"]["Enums"]["payment_period_enum"]
             | null
           personal_email: string | null
           personal_phone: string | null
+          project_details: string | null
           reports: Json | null
           roles_department: string | null
           scope_of_work: string | null
@@ -2202,10 +2213,14 @@ export type Database = {
           contract_type?:
             | Database["public"]["Enums"]["contract_type_enum"]
             | null
+          contractor_payment_type?:
+            | Database["public"]["Enums"]["contractor_payment_type_enum"]
+            | null
           country?: string | null
           created_at?: string
           created_by?: string | null
           currency?: string | null
+          custom_pay_dates?: Json | null
           department?: string | null
           employment_terms?:
             | Database["public"]["Enums"]["employment_terms_enum"]
@@ -2214,18 +2229,25 @@ export type Database = {
           entity?: string | null
           events?: Json | null
           full_name: string
+          hourly_rate?: number | null
           id?: string
           job_title?: string | null
           legal_first_name?: string | null
           legal_last_name?: string | null
           manager_id?: string | null
+          monthly_fixed_amount?: number | null
+          next_payment_date?: string | null
           organization_id: string
           pay_date?: string | null
+          payment_frequency?:
+            | Database["public"]["Enums"]["payment_frequency_enum"]
+            | null
           payment_period?:
             | Database["public"]["Enums"]["payment_period_enum"]
             | null
           personal_email?: string | null
           personal_phone?: string | null
+          project_details?: string | null
           reports?: Json | null
           roles_department?: string | null
           scope_of_work?: string | null
@@ -2241,7 +2263,7 @@ export type Database = {
             | null
           worker_id?: number | null
           worker_status?: Database["public"]["Enums"]["worker_status_enum"]
-          worker_type: Database["public"]["Enums"]["worker_type_enum"]
+          worker_type?: Database["public"]["Enums"]["worker_type_enum"]
           working_location?: string | null
         }
         Update: {
@@ -2253,10 +2275,14 @@ export type Database = {
           contract_type?:
             | Database["public"]["Enums"]["contract_type_enum"]
             | null
+          contractor_payment_type?:
+            | Database["public"]["Enums"]["contractor_payment_type_enum"]
+            | null
           country?: string | null
           created_at?: string
           created_by?: string | null
           currency?: string | null
+          custom_pay_dates?: Json | null
           department?: string | null
           employment_terms?:
             | Database["public"]["Enums"]["employment_terms_enum"]
@@ -2265,18 +2291,25 @@ export type Database = {
           entity?: string | null
           events?: Json | null
           full_name?: string
+          hourly_rate?: number | null
           id?: string
           job_title?: string | null
           legal_first_name?: string | null
           legal_last_name?: string | null
           manager_id?: string | null
+          monthly_fixed_amount?: number | null
+          next_payment_date?: string | null
           organization_id?: string
           pay_date?: string | null
+          payment_frequency?:
+            | Database["public"]["Enums"]["payment_frequency_enum"]
+            | null
           payment_period?:
             | Database["public"]["Enums"]["payment_period_enum"]
             | null
           personal_email?: string | null
           personal_phone?: string | null
+          project_details?: string | null
           reports?: Json | null
           roles_department?: string | null
           scope_of_work?: string | null
@@ -2586,6 +2619,7 @@ export type Database = {
         | "freelance"
         | "fixed_term"
         | "seasonal"
+      contractor_payment_type_enum: "fixed_rate" | "hourly_rate" | "per_project"
       employment_terms_enum: "indefinite" | "definite"
       field_type:
         | "text"
@@ -2612,6 +2646,7 @@ export type Database = {
         | "admin"
         | "platform_admin"
         | "client"
+      payment_frequency_enum: "bi_monthly" | "monthly" | "custom"
       payment_period_enum:
         | "annual"
         | "monthly"
@@ -2641,13 +2676,8 @@ export type Database = {
         | "on_leave"
         | "terminated"
         | "pending"
-      worker_type_enum:
-        | "full_time"
-        | "part_time"
-        | "contractor"
-        | "intern"
-        | "consultant"
-        | "temporary"
+      worker_type_enum: "employee" | "contractor"
+      worker_type_enum_1: "employee" | "contractor"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2803,6 +2833,11 @@ export const Constants = {
         "fixed_term",
         "seasonal",
       ],
+      contractor_payment_type_enum: [
+        "fixed_rate",
+        "hourly_rate",
+        "per_project",
+      ],
       employment_terms_enum: ["indefinite", "definite"],
       field_type: [
         "text",
@@ -2832,6 +2867,7 @@ export const Constants = {
         "platform_admin",
         "client",
       ],
+      payment_frequency_enum: ["bi_monthly", "monthly", "custom"],
       payment_period_enum: [
         "annual",
         "monthly",
@@ -2865,14 +2901,8 @@ export const Constants = {
         "terminated",
         "pending",
       ],
-      worker_type_enum: [
-        "full_time",
-        "part_time",
-        "contractor",
-        "intern",
-        "consultant",
-        "temporary",
-      ],
+      worker_type_enum: ["employee", "contractor"],
+      worker_type_enum_1: ["employee", "contractor"],
     },
   },
 } as const
