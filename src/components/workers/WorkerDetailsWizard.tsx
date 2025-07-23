@@ -193,7 +193,6 @@ export function WorkerDetailsWizard({
         hourly_rate: formData.hourly_rate,
         monthly_fixed_amount: formData.monthly_fixed_amount,
         project_details: formData.project_details
-        project_details: formData.project_details
       }
 
       onSubmit(finalData)
