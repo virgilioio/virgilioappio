@@ -1,6 +1,6 @@
 
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, User, Mail, Phone, MapPin, Building, Calendar, DollarSign, FileText, Plus, MoreHorizontal } from 'lucide-react'
+import { ArrowLeft, User, Mail, Phone, MapPin, Building, Calendar, DollarSign, FileText, Plus, MoreHorizontal, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -10,6 +10,8 @@ import { useWorkerContracts } from '@/hooks/useWorkerContracts'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { useState } from 'react'
 
 export default function WorkerProfile() {
   const { workerId } = useParams()
@@ -196,6 +198,7 @@ function WorkerProfileContent({ worker }: { worker: any }) {
 // Contract Tab Content
 function ContractContent({ worker }: { worker: any }) {
   const { contracts, isLoading: contractsLoading } = useWorkerContracts(worker.id)
+  const [selectedContract, setSelectedContract] = useState<any>(null)
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -245,7 +248,11 @@ function ContractContent({ worker }: { worker: any }) {
               </TableHeader>
               <TableBody>
                 {contracts.map((contract) => (
-                  <TableRow key={contract.id}>
+                  <TableRow 
+                    key={contract.id} 
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => setSelectedContract(contract)}
+                  >
                     <TableCell className="font-medium">{contract.contract_number}</TableCell>
                     <TableCell>
                       {contract.base_salary 
@@ -261,6 +268,214 @@ function ContractContent({ worker }: { worker: any }) {
           )}
         </CardContent>
       </Card>
+
+      {/* Contract Details Modal */}
+      <Dialog open={!!selectedContract} onOpenChange={() => setSelectedContract(null)}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Contract Details - {selectedContract?.contract_number}
+            </DialogTitle>
+          </DialogHeader>
+          
+          {selectedContract && (
+            <ContractProfileContent contract={selectedContract} worker={worker} />
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}
+
+// Contract Profile Content
+function ContractProfileContent({ contract, worker }: { contract: any; worker: any }) {
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'active':
+        return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Active</Badge>
+      case 'terminated':
+        return <Badge className="bg-red-100 text-red-800 hover:bg-red-100">Terminated</Badge>
+      case 'pending':
+        return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">Pending</Badge>
+      case 'suspended':
+        return <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-100">Suspended</Badge>
+      default:
+        return <Badge variant="secondary">{status}</Badge>
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Contract Header */}
+      <div>
+        <h2 className="text-xl font-bold tracking-tight">
+          {contract.contract_number}
+        </h2>
+        <p className="text-muted-foreground mt-1">
+          {worker.full_name} • {contract.job_title || 'No title specified'}
+        </p>
+      </div>
+
+      {/* Main Content - Two columns in 1:1 ratio */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Left Column - Contract Information */}
+        <div className="space-y-4">
+          {/* Basic Contract Details */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Contract Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-muted-foreground">Contract Number</span>
+                  <span className="text-sm font-medium">{contract.contract_number}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-muted-foreground">Worker Type</span>
+                  <Badge variant="outline">
+                    {contract.worker_type === 'employee' ? 'Employee' : 'Contractor'}
+                  </Badge>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-muted-foreground">Status</span>
+                  {getStatusBadge(contract.contract_status)}
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-muted-foreground">Job Title</span>
+                  <span className="text-sm">{contract.job_title || 'Not specified'}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-muted-foreground">Department</span>
+                  <span className="text-sm">{contract.department || 'Not specified'}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-muted-foreground">Active Contract</span>
+                  <Badge variant={contract.is_active ? "default" : "secondary"}>
+                    {contract.is_active ? 'Yes' : 'No'}
+                  </Badge>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Employment Dates */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Calendar className="h-5 w-5" />
+                Employment Period
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-muted-foreground">Start Date</span>
+                  <span className="text-sm">
+                    {contract.start_date ? new Date(contract.start_date).toLocaleDateString() : 'Not set'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-muted-foreground">End Date</span>
+                  <span className="text-sm">
+                    {contract.end_date ? new Date(contract.end_date).toLocaleDateString() : 'Ongoing'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-muted-foreground">Probation Period</span>
+                  <span className="text-sm">
+                    {contract.probation_period_months 
+                      ? `${contract.probation_period_months} months`
+                      : 'Not specified'
+                    }
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-muted-foreground">Notice Period</span>
+                  <span className="text-sm">
+                    {contract.notice_period_days 
+                      ? `${contract.notice_period_days} days`
+                      : 'Not specified'
+                    }
+                  </span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Right Column - Compensation & Benefits */}
+        <div className="space-y-4">
+          {/* Salary Information */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <DollarSign className="h-5 w-5" />
+                Compensation
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-muted-foreground">Base Salary</span>
+                  <span className="text-sm font-medium">
+                    {contract.base_salary 
+                      ? `${contract.currency || 'USD'} ${contract.base_salary.toLocaleString()}`
+                      : 'Not specified'
+                    }
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-muted-foreground">Currency</span>
+                  <span className="text-sm">{contract.currency || 'USD'}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-muted-foreground">Salary Frequency</span>
+                  <span className="text-sm">{contract.salary_frequency || 'Not specified'}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-muted-foreground">Benefits Package</span>
+                  <span className="text-sm">{contract.benefits_package || 'Not specified'}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Work Details */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Building className="h-5 w-5" />
+                Work Details
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-muted-foreground">Work Location</span>
+                  <span className="text-sm">{contract.work_location || 'Not specified'}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-muted-foreground">Work Schedule</span>
+                  <span className="text-sm">{contract.work_schedule || 'Not specified'}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-muted-foreground">Manager Name</span>
+                  <span className="text-sm">{contract.manager_name || worker.manager_name || 'Not assigned'}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-medium text-muted-foreground">Reporting Structure</span>
+                  <span className="text-sm">{contract.reporting_structure || 'Not specified'}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   )
 }
