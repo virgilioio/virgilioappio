@@ -99,43 +99,43 @@ function WorkerProfileContent({ worker }: { worker: any }) {
             <CardContent className="space-y-3">
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
-                  <span className="font-medium text-muted-foreground">Worker ID</span>
+                  <span className="text-sm font-medium text-muted-foreground">Worker ID</span>
                   <span className="text-sm">{worker.worker_id || 'Not assigned'}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="font-medium text-muted-foreground flex items-center gap-1">
+                  <span className="text-sm font-medium text-muted-foreground flex items-center gap-1">
                     <Mail className="h-3 w-3" />
                     Personal Email
                   </span>
                   <span className="text-sm">{worker.personal_email || 'Not provided'}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="font-medium text-muted-foreground flex items-center gap-1">
+                  <span className="text-sm font-medium text-muted-foreground flex items-center gap-1">
                     <Mail className="h-3 w-3" />
                     Work Email
                   </span>
                   <span className="text-sm">{worker.work_email || 'Not provided'}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="font-medium text-muted-foreground flex items-center gap-1">
+                  <span className="text-sm font-medium text-muted-foreground flex items-center gap-1">
                     <Phone className="h-3 w-3" />
                     Personal Phone
                   </span>
                   <span className="text-sm">{worker.personal_phone || 'Not provided'}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="font-medium text-muted-foreground flex items-center gap-1">
+                  <span className="text-sm font-medium text-muted-foreground flex items-center gap-1">
                     <MapPin className="h-3 w-3" />
                     Country
                   </span>
                   <span className="text-sm">{worker.country || 'Not specified'}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="font-medium text-muted-foreground">State/Province</span>
+                  <span className="text-sm font-medium text-muted-foreground">State/Province</span>
                   <span className="text-sm">{worker.state_province || 'Not specified'}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="font-medium text-muted-foreground flex items-center gap-1">
+                  <span className="text-sm font-medium text-muted-foreground flex items-center gap-1">
                     <Calendar className="h-3 w-3" />
                     Birthday
                   </span>
@@ -156,19 +156,19 @@ function WorkerProfileContent({ worker }: { worker: any }) {
             <CardContent className="space-y-3">
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
-                  <span className="font-medium text-muted-foreground">Department</span>
+                  <span className="text-sm font-medium text-muted-foreground">Department</span>
                   <span className="text-sm">{worker.department || 'Not specified'}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="font-medium text-muted-foreground">Job Title</span>
+                  <span className="text-sm font-medium text-muted-foreground">Job Title</span>
                   <span className="text-sm">{worker.job_title || 'Not specified'}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="font-medium text-muted-foreground">Manager Name</span>
+                  <span className="text-sm font-medium text-muted-foreground">Manager Name</span>
                   <span className="text-sm">{worker.manager_name || 'Not assigned'}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="font-medium text-muted-foreground">Reports</span>
+                  <span className="text-sm font-medium text-muted-foreground">Reports</span>
                   <span className="text-sm">
                     {worker.reports && worker.reports.length > 0 
                       ? `${worker.reports.length} direct report(s)`
