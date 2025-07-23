@@ -450,42 +450,8 @@ function ContractProfileContent({ contract, worker }: { contract: any; worker: a
           </Card>
         </div>
 
-        {/* Right Column - Compensation & Benefits */}
+        {/* Right Column */}
         <div className="space-y-4">
-          {/* Salary Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <DollarSign className="h-5 w-5" />
-                Compensation
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-muted-foreground">Base Salary</span>
-                  <span className="text-sm font-medium">
-                    {contract.base_salary 
-                      ? `${contract.currency || 'USD'} ${contract.base_salary.toLocaleString()}`
-                      : 'Not specified'
-                    }
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-muted-foreground">Currency</span>
-                  <span className="text-sm">{contract.currency || 'USD'}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-muted-foreground">Salary Frequency</span>
-                  <span className="text-sm">{contract.salary_frequency || 'Not specified'}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-muted-foreground">Benefits Package</span>
-                  <span className="text-sm">{contract.benefits_package || 'Not specified'}</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
 
           {/* Work Details */}
           <Card>
