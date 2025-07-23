@@ -2160,6 +2160,7 @@ export type Database = {
           currency: string | null
           custom_pay_dates: Json | null
           department: string | null
+          employment_term: string | null
           employment_terms:
             | Database["public"]["Enums"]["employment_terms_enum"]
             | null
@@ -2221,6 +2222,7 @@ export type Database = {
           currency?: string | null
           custom_pay_dates?: Json | null
           department?: string | null
+          employment_term?: string | null
           employment_terms?:
             | Database["public"]["Enums"]["employment_terms_enum"]
             | null
@@ -2282,6 +2284,7 @@ export type Database = {
           currency?: string | null
           custom_pay_dates?: Json | null
           department?: string | null
+          employment_term?: string | null
           employment_terms?:
             | Database["public"]["Enums"]["employment_terms_enum"]
             | null
