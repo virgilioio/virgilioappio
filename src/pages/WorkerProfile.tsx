@@ -79,51 +79,7 @@ export default function WorkerProfile() {
   return (
     <div className="space-y-4">
 
-      {/* Profile Header */}
-      <Card>
-        <CardContent className="pt-6">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
-            <Avatar className="h-20 w-20">
-              <AvatarFallback className="text-lg">
-                {worker.full_name.split(' ').map(n => n[0]).join('')}
-              </AvatarFallback>
-            </Avatar>
-            
-            <div className="flex-1 space-y-2">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                <h1 className="text-2xl sm:text-3xl font-bold">{worker.full_name}</h1>
-                <div className="flex gap-2">
-                  <Badge variant={getStatusBadgeVariant(worker.worker_status)}>
-                    {formatWorkerStatus(worker.worker_status)}
-                  </Badge>
-                  <Badge variant={getTypeBadgeVariant(worker.worker_type)}>
-                    {formatWorkerType(worker.worker_type)}
-                  </Badge>
-                </div>
-              </div>
-              
-              {worker.job_title && (
-                <p className="text-lg text-muted-foreground">{worker.job_title}</p>
-              )}
-              
-              {worker.department && (
-                <p className="text-sm text-muted-foreground">{worker.department}</p>
-              )}
-            </div>
-            
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm">
-                <Mail className="h-4 w-4 mr-2" />
-                Message
-              </Button>
-              <Button variant="outline" size="sm">
-                <FileText className="h-4 w-4 mr-2" />
-                Documents
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Content */}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Personal Information */}
