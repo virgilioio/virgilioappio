@@ -77,9 +77,9 @@ export default function WorkerProfile() {
   }
 
   return (
-    <div className="container mx-auto py-6 sm:py-8 lg:py-12 px-4 sm:px-6 lg:px-8 space-y-6">
+    <div className="space-y-4">
       {/* Header */}
-      <div className="flex items-center gap-4 mb-6">
+      <div className="flex items-center gap-4">
         <Button 
           variant="outline" 
           size="sm" 
@@ -137,9 +137,9 @@ export default function WorkerProfile() {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Personal Information */}
-        <div className="space-y-6">
+        <div className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -235,7 +235,7 @@ export default function WorkerProfile() {
         </div>
 
         {/* Sidebar */}
-        <div className="space-y-6">
+        <div className="space-y-4">
           {/* Payment Information */}
           <Card>
             <CardHeader>
