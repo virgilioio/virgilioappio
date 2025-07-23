@@ -18,7 +18,8 @@ export interface Worker {
   worker_id?: number
   job_title?: string
   seniority_level?: 'entry' | 'junior' | 'mid' | 'senior' | 'lead' | 'principal' | 'director' | 'vp' | 'c_level'
-  contract_type?: 'permanent' | 'temporary' | 'freelance' | 'fixed_term' | 'seasonal'
+  contract_type?: 'permanent' | 'temporary' | 'freelance'
+  employment_term?: 'full_time' | 'part_time' | 'temporary' | 'internship'
   contract_status?: 'active' | 'pending' | 'expired' | 'terminated' | 'suspended'
   country?: string
   working_location?: string
@@ -65,7 +66,8 @@ export interface CreateWorkerData {
   worker_id?: number
   job_title?: string
   seniority_level?: 'entry' | 'junior' | 'mid' | 'senior' | 'lead' | 'principal' | 'director' | 'vp' | 'c_level'
-  contract_type?: 'permanent' | 'temporary' | 'freelance' | 'fixed_term' | 'seasonal'
+  contract_type?: 'permanent' | 'temporary' | 'freelance'
+  employment_term?: 'full_time' | 'part_time' | 'temporary' | 'internship'
   contract_status?: 'active' | 'pending' | 'expired' | 'terminated' | 'suspended'
   country?: string
   working_location?: string
@@ -106,7 +108,8 @@ export interface UpdateWorkerData {
   worker_id?: number
   job_title?: string
   seniority_level?: 'entry' | 'junior' | 'mid' | 'senior' | 'lead' | 'principal' | 'director' | 'vp' | 'c_level'
-  contract_type?: 'permanent' | 'temporary' | 'freelance' | 'fixed_term' | 'seasonal'
+  contract_type?: 'permanent' | 'temporary' | 'freelance'
+  employment_term?: 'full_time' | 'part_time' | 'temporary' | 'internship'
   contract_status?: 'active' | 'pending' | 'expired' | 'terminated' | 'suspended'
   country?: string
   working_location?: string

@@ -143,19 +143,23 @@ export function WorkerDetailsWizard({
 
   const handleSubmit = () => {
     if (validateStep(currentStep)) {
-      // Map contractor payment type to contract type enum
-      const getContractType = (paymentType?: string) => {
-        switch (paymentType) {
-          case 'fixed_rate':
-            return 'fixed_term'
-          case 'hourly_rate':
-            return 'temporary'
-          case 'per_project':
-            return 'freelance'
-          default:
-            return 'permanent'
+      // Auto-populate contract_type and employment_term based on worker type
+      const getContractTypeAndEmploymentTerm = () => {
+        if (workerType === 'employee') {
+          return {
+            contract_type: 'permanent' as const,
+            employment_term: formData.employment_term || 'full_time' as const
+          }
+        } else {
+          // Independent contractor
+          return {
+            contract_type: 'freelance' as const,
+            employment_term: undefined
+          }
         }
       }
+      
+      const { contract_type, employment_term } = getContractTypeAndEmploymentTerm()
 
       // Map form data to database schema
       const finalData: CreateWorkerData = {
@@ -170,7 +174,8 @@ export function WorkerDetailsWizard({
         worker_status: formData.worker_status || 'pending',
         worker_type: workerType,
         job_title: formData.job_title || '',
-        contract_type: getContractType(contractorPaymentType),
+        contract_type,
+        employment_term,
         working_location: formData.working_location || '',
         scope_of_work: formData.scope_of_work || '',
         manager_id: formData.manager_id,

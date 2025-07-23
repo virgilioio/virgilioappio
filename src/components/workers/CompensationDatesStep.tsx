@@ -35,13 +35,11 @@ export function CompensationDatesStep({
   ]
 
 
-  const employmentTypes = [
+  const employmentTerms = [
     { value: 'full_time', label: 'Full-time' },
     { value: 'part_time', label: 'Part-time' },
-    { value: 'contract', label: 'Contract' },
     { value: 'temporary', label: 'Temporary' },
-    { value: 'internship', label: 'Internship' },
-    { value: 'freelance', label: 'Freelance' }
+    { value: 'internship', label: 'Internship' }
   ]
 
   return (
@@ -151,24 +149,29 @@ export function CompensationDatesStep({
               )}
             </div>
 
-            <div>
-              <Label htmlFor="employment_type">Employment Type</Label>
-              <Select
-                value={data.contract_type || ''}
-                onValueChange={(value) => handleChange('contract_type', value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select employment type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {employmentTypes.map((type) => (
-                    <SelectItem key={type.value} value={type.value}>
-                      {type.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {workerType === 'employee' && (
+              <div>
+                <Label htmlFor="employment_term">Employment Term</Label>
+                <Select
+                  value={data.employment_term || ''}
+                  onValueChange={(value) => handleChange('employment_term', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select employment term" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {employmentTerms.map((term) => (
+                      <SelectItem key={term.value} value={term.value}>
+                        {term.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.employment_term && (
+                  <p className="text-sm text-destructive mt-1">{errors.employment_term}</p>
+                )}
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
