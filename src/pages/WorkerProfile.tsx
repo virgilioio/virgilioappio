@@ -1,12 +1,14 @@
 
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, User, Mail, Phone, MapPin, Building, Calendar, DollarSign, FileText } from 'lucide-react'
+import { ArrowLeft, User, Mail, Phone, MapPin, Building, Calendar, DollarSign, FileText, Plus, MoreHorizontal } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useWorkers } from '@/hooks/useWorkers'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 
 export default function WorkerProfile() {
   const { workerId } = useParams()
@@ -192,14 +194,108 @@ function WorkerProfileContent({ worker }: { worker: any }) {
 
 // Contract Tab Content
 function ContractContent({ worker }: { worker: any }) {
+  // Mock contract data for demonstration
+  const contracts = [
+    {
+      id: '1',
+      type: 'Employment Contract',
+      startDate: '2024-01-15',
+      endDate: null,
+      status: 'active',
+      signedDate: '2024-01-10',
+      version: '1.0'
+    },
+    {
+      id: '2',
+      type: 'NDA Agreement',
+      startDate: '2024-01-15',
+      endDate: '2025-01-15',
+      status: 'active',
+      signedDate: '2024-01-10',
+      version: '2.1'
+    },
+    {
+      id: '3',
+      type: 'Performance Agreement',
+      startDate: '2024-01-15',
+      endDate: '2024-12-31',
+      status: 'expired',
+      signedDate: '2024-01-10',
+      version: '1.5'
+    }
+  ]
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'active':
+        return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Active</Badge>
+      case 'expired':
+        return <Badge className="bg-red-100 text-red-800 hover:bg-red-100">Expired</Badge>
+      case 'pending':
+        return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">Pending</Badge>
+      default:
+        return <Badge variant="secondary">{status}</Badge>
+    }
+  }
+
   return (
     <div className="space-y-4">
       <Card>
-        <CardHeader>
-          <CardTitle>Contract Details</CardTitle>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            Contracts
+          </CardTitle>
+          <Button size="sm">
+            <Plus className="h-4 w-4 mr-2" />
+            New Contract
+          </Button>
         </CardHeader>
         <CardContent>
-          <p className="text-muted-foreground">Contract management features coming soon...</p>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Contract Type</TableHead>
+                <TableHead>Start Date</TableHead>
+                <TableHead>End Date</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Signed Date</TableHead>
+                <TableHead>Version</TableHead>
+                <TableHead className="w-[50px]"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {contracts.map((contract) => (
+                <TableRow key={contract.id}>
+                  <TableCell className="font-medium">{contract.type}</TableCell>
+                  <TableCell>{new Date(contract.startDate).toLocaleDateString()}</TableCell>
+                  <TableCell>
+                    {contract.endDate ? new Date(contract.endDate).toLocaleDateString() : 'Ongoing'}
+                  </TableCell>
+                  <TableCell>{getStatusBadge(contract.status)}</TableCell>
+                  <TableCell>{new Date(contract.signedDate).toLocaleDateString()}</TableCell>
+                  <TableCell>{contract.version}</TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem>View Contract</DropdownMenuItem>
+                        <DropdownMenuItem>Download PDF</DropdownMenuItem>
+                        <DropdownMenuItem>Edit Contract</DropdownMenuItem>
+                        <DropdownMenuItem className="text-destructive">
+                          Terminate Contract
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
     </div>
