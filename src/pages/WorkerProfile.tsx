@@ -407,46 +407,37 @@ function ContractProfileContent({ contract, worker }: { contract: any; worker: a
             </CardContent>
           </Card>
 
-          {/* Employment Dates */}
+          {/* Compensation Details */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Calendar className="h-5 w-5" />
-                Employment Period
+                <DollarSign className="h-5 w-5" />
+                Compensation Details
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-muted-foreground">Start Date</span>
-                  <span className="text-sm">
-                    {contract.start_date ? new Date(contract.start_date).toLocaleDateString() : 'Not set'}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-muted-foreground">End Date</span>
-                  <span className="text-sm">
-                    {contract.end_date ? new Date(contract.end_date).toLocaleDateString() : 'Ongoing'}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-muted-foreground">Probation Period</span>
-                  <span className="text-sm">
-                    {contract.probation_period_months 
-                      ? `${contract.probation_period_months} months`
-                      : 'Not specified'
-                    }
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-muted-foreground">Notice Period</span>
-                  <span className="text-sm">
-                    {contract.notice_period_days 
-                      ? `${contract.notice_period_days} days`
-                      : 'Not specified'
-                    }
-                  </span>
-                </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium text-muted-foreground">Base Salary</span>
+                <span className="text-sm">{contract.base_salary ? `${contract.currency || 'USD'} ${contract.base_salary.toLocaleString()}` : 'Not specified'}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium text-muted-foreground">Currency</span>
+                <span className="text-sm">{contract.currency || 'USD'}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium text-muted-foreground">Salary Frequency</span>
+                <span className="text-sm capitalize">{contract.payment_period || 'Not specified'}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium text-muted-foreground">Payment Cycle</span>
+                <span className="text-sm">
+                  {contract.payment_frequency === 'bi_monthly' 
+                    ? 'Every 15th and last of the month'
+                    : contract.payment_frequency === 'monthly'
+                    ? 'Last of every month'
+                    : contract.payment_frequency?.replace('_', ' ') || 'Not specified'
+                  }
+                </span>
               </div>
             </CardContent>
           </Card>
