@@ -2322,196 +2322,73 @@ export type Database = {
       }
       workers: {
         Row: {
-          base_salary: number | null
           citizenship: string | null
-          contract_status:
-            | Database["public"]["Enums"]["contract_status_enum"]
-            | null
-          contract_type:
-            | Database["public"]["Enums"]["contract_type_enum"]
-            | null
-          contractor_payment_type:
-            | Database["public"]["Enums"]["contractor_payment_type_enum"]
-            | null
           country: string | null
           created_at: string
           created_by: string | null
-          currency: string | null
-          custom_pay_dates: Json | null
           department: string | null
-          employment_term:
-            | Database["public"]["Enums"]["employment_duration_enum"]
-            | null
-          employment_terms:
-            | Database["public"]["Enums"]["employment_type_enum"]
-            | null
-          end_date: string | null
-          entity: string | null
           events: Json | null
           full_name: string
-          hourly_rate: number | null
           id: string
           job_title: string | null
           legal_first_name: string | null
           legal_last_name: string | null
           manager_id: string | null
-          monthly_fixed_amount: number | null
-          next_payment_date: string | null
           organization_id: string
-          payment_frequency:
-            | Database["public"]["Enums"]["payment_frequency_enum"]
-            | null
-          payment_period:
-            | Database["public"]["Enums"]["payment_period_enum"]
-            | null
           personal_email: string | null
           personal_phone: string | null
-          project_details: string | null
           reports: Json | null
-          roles_department: string | null
-          scope_of_work: string | null
-          seniority_level:
-            | Database["public"]["Enums"]["seniority_level_enum"]
-            | null
-          start_date: string | null
           state_province: string | null
           updated_at: string
           work_email: string | null
-          worker_entity_type:
-            | Database["public"]["Enums"]["worker_entity_type_enum"]
-            | null
           worker_id: number | null
           worker_status: Database["public"]["Enums"]["worker_status_enum"]
-          worker_type: Database["public"]["Enums"]["worker_type_enum"]
-          working_location: string | null
         }
         Insert: {
-          base_salary?: number | null
           citizenship?: string | null
-          contract_status?:
-            | Database["public"]["Enums"]["contract_status_enum"]
-            | null
-          contract_type?:
-            | Database["public"]["Enums"]["contract_type_enum"]
-            | null
-          contractor_payment_type?:
-            | Database["public"]["Enums"]["contractor_payment_type_enum"]
-            | null
           country?: string | null
           created_at?: string
           created_by?: string | null
-          currency?: string | null
-          custom_pay_dates?: Json | null
           department?: string | null
-          employment_term?:
-            | Database["public"]["Enums"]["employment_duration_enum"]
-            | null
-          employment_terms?:
-            | Database["public"]["Enums"]["employment_type_enum"]
-            | null
-          end_date?: string | null
-          entity?: string | null
           events?: Json | null
           full_name: string
-          hourly_rate?: number | null
           id?: string
           job_title?: string | null
           legal_first_name?: string | null
           legal_last_name?: string | null
           manager_id?: string | null
-          monthly_fixed_amount?: number | null
-          next_payment_date?: string | null
           organization_id: string
-          payment_frequency?:
-            | Database["public"]["Enums"]["payment_frequency_enum"]
-            | null
-          payment_period?:
-            | Database["public"]["Enums"]["payment_period_enum"]
-            | null
           personal_email?: string | null
           personal_phone?: string | null
-          project_details?: string | null
           reports?: Json | null
-          roles_department?: string | null
-          scope_of_work?: string | null
-          seniority_level?:
-            | Database["public"]["Enums"]["seniority_level_enum"]
-            | null
-          start_date?: string | null
           state_province?: string | null
           updated_at?: string
           work_email?: string | null
-          worker_entity_type?:
-            | Database["public"]["Enums"]["worker_entity_type_enum"]
-            | null
           worker_id?: number | null
           worker_status?: Database["public"]["Enums"]["worker_status_enum"]
-          worker_type?: Database["public"]["Enums"]["worker_type_enum"]
-          working_location?: string | null
         }
         Update: {
-          base_salary?: number | null
           citizenship?: string | null
-          contract_status?:
-            | Database["public"]["Enums"]["contract_status_enum"]
-            | null
-          contract_type?:
-            | Database["public"]["Enums"]["contract_type_enum"]
-            | null
-          contractor_payment_type?:
-            | Database["public"]["Enums"]["contractor_payment_type_enum"]
-            | null
           country?: string | null
           created_at?: string
           created_by?: string | null
-          currency?: string | null
-          custom_pay_dates?: Json | null
           department?: string | null
-          employment_term?:
-            | Database["public"]["Enums"]["employment_duration_enum"]
-            | null
-          employment_terms?:
-            | Database["public"]["Enums"]["employment_type_enum"]
-            | null
-          end_date?: string | null
-          entity?: string | null
           events?: Json | null
           full_name?: string
-          hourly_rate?: number | null
           id?: string
           job_title?: string | null
           legal_first_name?: string | null
           legal_last_name?: string | null
           manager_id?: string | null
-          monthly_fixed_amount?: number | null
-          next_payment_date?: string | null
           organization_id?: string
-          payment_frequency?:
-            | Database["public"]["Enums"]["payment_frequency_enum"]
-            | null
-          payment_period?:
-            | Database["public"]["Enums"]["payment_period_enum"]
-            | null
           personal_email?: string | null
           personal_phone?: string | null
-          project_details?: string | null
           reports?: Json | null
-          roles_department?: string | null
-          scope_of_work?: string | null
-          seniority_level?:
-            | Database["public"]["Enums"]["seniority_level_enum"]
-            | null
-          start_date?: string | null
           state_province?: string | null
           updated_at?: string
           work_email?: string | null
-          worker_entity_type?:
-            | Database["public"]["Enums"]["worker_entity_type_enum"]
-            | null
           worker_id?: number | null
           worker_status?: Database["public"]["Enums"]["worker_status_enum"]
-          worker_type?: Database["public"]["Enums"]["worker_type_enum"]
-          working_location?: string | null
         }
         Relationships: [
           {
