@@ -2160,9 +2160,11 @@ export type Database = {
           currency: string | null
           custom_pay_dates: Json | null
           department: string | null
-          employment_term: string | null
+          employment_term:
+            | Database["public"]["Enums"]["employment_duration_enum"]
+            | null
           employment_terms:
-            | Database["public"]["Enums"]["employment_terms_enum"]
+            | Database["public"]["Enums"]["employment_type_enum"]
             | null
           end_date: string | null
           entity: string | null
@@ -2222,9 +2224,11 @@ export type Database = {
           currency?: string | null
           custom_pay_dates?: Json | null
           department?: string | null
-          employment_term?: string | null
+          employment_term?:
+            | Database["public"]["Enums"]["employment_duration_enum"]
+            | null
           employment_terms?:
-            | Database["public"]["Enums"]["employment_terms_enum"]
+            | Database["public"]["Enums"]["employment_type_enum"]
             | null
           end_date?: string | null
           entity?: string | null
@@ -2284,9 +2288,11 @@ export type Database = {
           currency?: string | null
           custom_pay_dates?: Json | null
           department?: string | null
-          employment_term?: string | null
+          employment_term?:
+            | Database["public"]["Enums"]["employment_duration_enum"]
+            | null
           employment_terms?:
-            | Database["public"]["Enums"]["employment_terms_enum"]
+            | Database["public"]["Enums"]["employment_type_enum"]
             | null
           end_date?: string | null
           entity?: string | null
@@ -2620,7 +2626,12 @@ export type Database = {
         | "fixed_term"
         | "seasonal"
       contractor_payment_type_enum: "fixed_rate" | "hourly_rate" | "per_project"
-      employment_terms_enum: "indefinite" | "definite"
+      employment_duration_enum: "indefinite" | "definite"
+      employment_type_enum:
+        | "full_time"
+        | "part_time"
+        | "temporary"
+        | "internship"
       field_type:
         | "text"
         | "number"
@@ -2837,7 +2848,13 @@ export const Constants = {
         "hourly_rate",
         "per_project",
       ],
-      employment_terms_enum: ["indefinite", "definite"],
+      employment_duration_enum: ["indefinite", "definite"],
+      employment_type_enum: [
+        "full_time",
+        "part_time",
+        "temporary",
+        "internship",
+      ],
       field_type: [
         "text",
         "number",
