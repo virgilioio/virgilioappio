@@ -1,17 +1,19 @@
 
 import { useState } from 'react'
-import { Outlet, Link, useLocation, Routes, Route } from 'react-router-dom'
+import { Outlet, Link, useLocation, Routes, Route, useNavigate } from 'react-router-dom'
 import { 
   Search,
   Network,
   Calendar,
   LayoutDashboard,
-  Building2
+  Building2,
+  ArrowLeft
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { PermissionGate } from '@/components/auth/PermissionGate'
 import Workers from './Workers'
+import { useWorkers } from '@/hooks/useWorkers'
 import Departments from './Departments'
 import WorkerProfile from './WorkerProfile'
 
@@ -75,13 +77,22 @@ export default function PeopleHub() {
 
 function PeopleHubContent() {
   const location = useLocation()
+  const navigate = useNavigate()
   const [selectedItem, setSelectedItem] = useState(location.pathname)
+  const { workers } = useWorkers()
 
   const isExactMatch = (href: string) => {
     if (href === '/people-hub' && location.pathname === '/people-hub') return true
     if (href === '/people-hub/people' && location.pathname.startsWith('/people-hub/people')) return true
     return location.pathname === href
   }
+
+  // Check if we're on a worker profile page
+  const workerProfileMatch = location.pathname.match(/^\/people-hub\/people\/(.+)$/)
+  const isWorkerProfile = !!workerProfileMatch
+  const workerId = workerProfileMatch?.[1]
+  const currentWorker = workerId ? workers?.find(w => w.id === workerId) : null
+
 
   return (
     <div className="flex h-full">
@@ -118,24 +129,48 @@ function PeopleHubContent() {
       <div className="flex-1 flex flex-col">
         <div className="container mx-auto py-6 sm:py-8 lg:py-12 px-4 sm:px-6 lg:px-8">
           <div className="mb-6 sm:mb-8 lg:mb-12">
-            {(() => {
-              const currentItem = sidebarItems.find(item => isExactMatch(item.href))
-              const Icon = currentItem?.icon || Search
-              let title = currentItem?.label || 'People Hub'
-              if (title === 'Dashboard') title = 'People Dashboard'
-              
-              return (
-                <>
-                  <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
-                    <Icon className="h-6 w-6 sm:h-7 sm:w-7" />
-                    {title}
+            {isWorkerProfile && currentWorker ? (
+              // Worker Profile Header
+              <div className="space-y-4">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => navigate('/people-hub/people')}
+                  className="gap-2"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Back to People
+                </Button>
+                <div>
+                  <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
+                    {currentWorker.full_name}
                   </h1>
                   <p className="text-muted-foreground mt-2 text-sm sm:text-md">
-                    {currentItem?.description || 'Comprehensive talent management and sourcing platform'}
+                    {currentWorker.full_name} • {currentWorker.job_title || 'No title'} • {currentWorker.organization_name}
                   </p>
-                </>
-              )
-            })()}
+                </div>
+              </div>
+            ) : (
+              // Regular Section Headers
+              (() => {
+                const currentItem = sidebarItems.find(item => isExactMatch(item.href))
+                const Icon = currentItem?.icon || Search
+                let title = currentItem?.label || 'People Hub'
+                if (title === 'Dashboard') title = 'People Dashboard'
+                
+                return (
+                  <>
+                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
+                      <Icon className="h-6 w-6 sm:h-7 sm:w-7" />
+                      {title}
+                    </h1>
+                    <p className="text-muted-foreground mt-2 text-sm sm:text-md">
+                      {currentItem?.description || 'Comprehensive talent management and sourcing platform'}
+                    </p>
+                  </>
+                )
+              })()
+            )}
           </div>
         
           <div className="flex-1">

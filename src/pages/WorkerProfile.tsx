@@ -78,18 +78,6 @@ export default function WorkerProfile() {
 
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button 
-          variant="outline" 
-          size="sm" 
-          onClick={() => navigate('/people-hub/people')}
-          className="gap-2"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to People
-        </Button>
-      </div>
 
       {/* Profile Header */}
       <Card>
