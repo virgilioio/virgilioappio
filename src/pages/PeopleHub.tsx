@@ -129,27 +129,17 @@ function PeopleHubContent() {
       <div className="flex-1 flex flex-col">
         <div className="container mx-auto py-6 sm:py-8 lg:py-12 px-4 sm:px-6 lg:px-8">
           <div className="mb-6 sm:mb-8 lg:mb-12">
-            {isWorkerProfile && currentWorker ? (
-              // Worker Profile Header
-              <div className="space-y-4">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => navigate('/people-hub/people')}
-                  className="gap-2"
-                >
-                  <ArrowLeft className="h-4 w-4" />
-                  Back to People
-                </Button>
-                <div>
-                  <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
-                    {currentWorker.full_name}
-                  </h1>
-                  <p className="text-muted-foreground mt-2 text-sm sm:text-md">
-                    {currentWorker.full_name} • {currentWorker.job_title || 'No title'} • {currentWorker.organization_name}
-                  </p>
-                </div>
-              </div>
+            {isWorkerProfile ? (
+              // Worker Profile Header - Just Back Button
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => navigate('/people-hub/people')}
+                className="gap-2"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Back to People
+              </Button>
             ) : (
               // Regular Section Headers
               (() => {
