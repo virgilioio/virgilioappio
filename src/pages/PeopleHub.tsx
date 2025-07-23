@@ -78,7 +78,9 @@ function PeopleHubContent() {
   const [selectedItem, setSelectedItem] = useState(location.pathname)
 
   const isExactMatch = (href: string) => {
-    return location.pathname === href || (href === '/people-hub' && location.pathname === '/people-hub')
+    if (href === '/people-hub' && location.pathname === '/people-hub') return true
+    if (href === '/people-hub/people' && location.pathname.startsWith('/people-hub/people')) return true
+    return location.pathname === href
   }
 
   return (
