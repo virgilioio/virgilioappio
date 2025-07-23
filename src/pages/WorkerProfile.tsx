@@ -9,15 +9,29 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 export default function WorkerProfile() {
   const { workerId } = useParams()
   const navigate = useNavigate()
-  const { workers } = useWorkers()
+  const { workers, isLoading } = useWorkers()
+
+  console.log('WorkerProfile - workerId:', workerId)
+  console.log('WorkerProfile - workers:', workers)
 
   const worker = workers.find(w => w.id === workerId)
+
+  if (isLoading) {
+    return (
+      <div className="container mx-auto py-6 sm:py-8 lg:py-12 px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-center">
+          <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin"></div>
+        </div>
+      </div>
+    )
+  }
 
   if (!worker) {
     return (
       <div className="container mx-auto py-6 sm:py-8 lg:py-12 px-4 sm:px-6 lg:px-8">
         <div className="text-center">
           <h1 className="text-2xl font-semibold mb-4">Worker Not Found</h1>
+          <p className="text-muted-foreground mb-4">Worker ID: {workerId}</p>
           <Button onClick={() => navigate('/people-hub/people')}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to People
@@ -123,9 +137,9 @@ export default function WorkerProfile() {
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Personal Information */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="space-y-6">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
