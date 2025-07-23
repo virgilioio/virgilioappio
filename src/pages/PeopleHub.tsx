@@ -116,13 +116,24 @@ function PeopleHubContent() {
       <div className="flex-1 flex flex-col">
         <div className="container mx-auto py-6 sm:py-8 lg:py-12 px-4 sm:px-6 lg:px-8">
           <div className="mb-6 sm:mb-8 lg:mb-12">
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
-              <Search className="h-6 w-6 sm:h-7 sm:w-7" />
-              People Hub
-            </h1>
-            <p className="text-muted-foreground mt-2 text-sm sm:text-md">
-              Comprehensive talent management and sourcing platform
-            </p>
+            {(() => {
+              const currentItem = sidebarItems.find(item => isExactMatch(item.href))
+              const Icon = currentItem?.icon || Search
+              let title = currentItem?.label || 'People Hub'
+              if (title === 'Dashboard') title = 'People Dashboard'
+              
+              return (
+                <>
+                  <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
+                    <Icon className="h-6 w-6 sm:h-7 sm:w-7" />
+                    {title}
+                  </h1>
+                  <p className="text-muted-foreground mt-2 text-sm sm:text-md">
+                    {currentItem?.description || 'Comprehensive talent management and sourcing platform'}
+                  </p>
+                </>
+              )
+            })()}
           </div>
         
           <div className="flex-1">

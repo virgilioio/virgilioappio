@@ -62,25 +62,7 @@ export default function Workers() {
   }
 
   return (
-    <div className="container mx-auto py-6 sm:py-8 lg:py-12 px-4 sm:px-6 lg:px-8 space-y-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
-            <Users className="h-6 w-6 sm:h-7 sm:w-7" />
-            Workers
-          </h1>
-          <p className="text-muted-foreground mt-2 text-sm sm:text-md">
-            Manage your organization's workforce
-          </p>
-        </div>
-        
-        <PermissionGate permission="canCreateWorkers">
-          <Button onClick={handleCreate} className="gap-2">
-            <Plus className="h-4 w-4" />
-            Add Worker
-          </Button>
-        </PermissionGate>
-      </div>
+    <div className="space-y-6">
 
       <PermissionGate permission="canViewWorkers">
         <WorkersTable
