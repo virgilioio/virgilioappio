@@ -247,7 +247,7 @@ export function WorkersTable({
                       </TableCell>
                       <TableCell>{worker.country || 'Not specified'}</TableCell>
                       <TableCell>
-                        <Badge variant={getStatusBadgeVariant(worker.worker_status)} className="flex items-center gap-1.5 min-w-[90px] justify-start">
+                        <Badge variant={getStatusBadgeVariant(worker.worker_status)} className="flex items-center gap-1.5 min-w-[75px] justify-start">
                           <div className={`w-1.5 h-1.5 rounded-full ${getStatusDotColor(worker.worker_status)}`} />
                           {formatWorkerStatus(worker.worker_status)}
                         </Badge>
