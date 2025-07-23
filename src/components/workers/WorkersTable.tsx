@@ -17,6 +17,7 @@ interface WorkersTableProps {
   isLoading: boolean
   onEdit: (worker: Worker) => void
   onDelete: (id: string) => void
+  onViewProfile: (worker: Worker) => void
   onAddNew?: () => void
 }
 
@@ -25,6 +26,7 @@ export function WorkersTable({
   isLoading, 
   onEdit, 
   onDelete,
+  onViewProfile,
   onAddNew
 }: WorkersTableProps) {
   const [searchTerm, setSearchTerm] = useState('')
@@ -218,7 +220,7 @@ export function WorkersTable({
                 </TableHeader>
                 <TableBody>
                   {paginatedWorkers.map((worker) => (
-                    <TableRow key={worker.id} className="cursor-pointer" onClick={() => onEdit(worker)}>
+                    <TableRow key={worker.id} className="cursor-pointer" onClick={() => onViewProfile(worker)}>
                       <TableCell className="font-medium">
                         <div>
                           <div>{worker.full_name}</div>

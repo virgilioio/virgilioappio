@@ -40,6 +40,11 @@ export default function Workers() {
     }
   }
 
+  const handleViewProfile = (worker: Worker) => {
+    // TODO: Navigate to worker profile page
+    console.log('Opening profile for:', worker.full_name)
+  }
+
   const handleDelete = async (id: string) => {
     if (window.confirm('Are you sure you want to delete this worker?')) {
       try {
@@ -82,6 +87,7 @@ export default function Workers() {
           isLoading={isLoading}
           onEdit={handleEdit}
           onDelete={handleDelete}
+          onViewProfile={handleViewProfile}
           onAddNew={handleCreate}
         />
       </PermissionGate>
