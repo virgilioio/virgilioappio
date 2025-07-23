@@ -85,7 +85,7 @@ function WorkerProfileContent({ worker }: { worker: any }) {
           {worker.full_name}
         </h1>
         <p className="text-muted-foreground mt-2 text-sm sm:text-md">
-          {worker.full_name} • {worker.job_title || 'No title'} • {worker.organization_name}
+          {worker.full_name} • {worker.job_title || 'No title'} • {worker.organization_name || 'No organization'}
         </p>
       </div>
 
