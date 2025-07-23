@@ -215,6 +215,24 @@ function ContractContent({ worker }: { worker: any }) {
     }
   }
 
+  // If a contract is selected, show contract details
+  if (selectedContract) {
+    return (
+      <div className="space-y-4">
+        <Button 
+          variant="ghost" 
+          onClick={() => setSelectedContract(null)}
+          className="mb-4"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Contracts
+        </Button>
+        <ContractProfileContent contract={selectedContract} worker={worker} />
+      </div>
+    )
+  }
+
+  // Show contracts list
   return (
     <div className="space-y-4">
       <Card>
@@ -268,22 +286,6 @@ function ContractContent({ worker }: { worker: any }) {
           )}
         </CardContent>
       </Card>
-
-      {/* Contract Details Modal */}
-      <Dialog open={!!selectedContract} onOpenChange={() => setSelectedContract(null)}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              Contract Details - {selectedContract?.contract_number}
-            </DialogTitle>
-          </DialogHeader>
-          
-          {selectedContract && (
-            <ContractProfileContent contract={selectedContract} worker={worker} />
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }
