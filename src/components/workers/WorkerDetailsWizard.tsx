@@ -188,8 +188,8 @@ export function WorkerDetailsWizard({
         payment_period: formData.payment_period || 'monthly',
         payment_frequency: formData.payment_frequency || 'monthly',
         employment_term: formData.employment_term || 'indefinite',
-        start_date: formData.start_date || '',
-        end_date: formData.end_date || '',
+        start_date: formData.start_date || undefined,
+        end_date: formData.end_date || undefined,
         seniority_level: formData.seniority_level,
         // Include contractor payment fields
         contractor_payment_type: contractorPaymentType,
