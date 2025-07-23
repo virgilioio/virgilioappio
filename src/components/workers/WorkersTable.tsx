@@ -58,23 +58,6 @@ export function WorkersTable({
     }
   }
 
-  const getStatusDotColor = (status: string) => {
-    switch (status) {
-      case 'active':
-        return 'bg-green-700'
-      case 'pending':
-        return 'bg-yellow-700'
-      case 'inactive':
-        return 'bg-gray-700'
-      case 'terminated':
-        return 'bg-red-700'
-      case 'on_leave':
-        return 'bg-blue-700'
-      default:
-        return 'bg-gray-700'
-    }
-  }
-
   const getTypeBadgeVariant = (type: string) => {
     switch (type) {
       case 'employee':
@@ -247,8 +230,7 @@ export function WorkersTable({
                       </TableCell>
                       <TableCell>{worker.country || 'Not specified'}</TableCell>
                       <TableCell>
-                        <Badge variant={getStatusBadgeVariant(worker.worker_status)} className="flex items-center gap-1.5 min-w-[75px] justify-start">
-                          <div className={`w-1.5 h-1.5 rounded-full ${getStatusDotColor(worker.worker_status)}`} />
+                        <Badge variant={getStatusBadgeVariant(worker.worker_status)}>
                           {formatWorkerStatus(worker.worker_status)}
                         </Badge>
                       </TableCell>
