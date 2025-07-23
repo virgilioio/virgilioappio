@@ -104,51 +104,34 @@ function WorkerProfileContent({ worker }: { worker: any }) {
                 General Information
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Worker ID</label>
-                  <p className="text-sm">{worker.worker_id || 'Not assigned'}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Personal Email</label>
-                  <p className="text-sm flex items-center gap-1">
-                    <Mail className="h-3 w-3" />
-                    {worker.personal_email || 'Not provided'}
-                  </p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Work Email</label>
-                  <p className="text-sm flex items-center gap-1">
-                    <Mail className="h-3 w-3" />
-                    {worker.work_email || 'Not provided'}
-                  </p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Personal Phone</label>
-                  <p className="text-sm flex items-center gap-1">
-                    <Phone className="h-3 w-3" />
-                    {worker.personal_phone || 'Not provided'}
-                  </p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Country</label>
-                  <p className="text-sm flex items-center gap-1">
-                    <MapPin className="h-3 w-3" />
-                    {worker.country || 'Not specified'}
-                  </p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">State/Province</label>
-                  <p className="text-sm">{worker.state_province || 'Not specified'}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Birthday</label>
-                  <p className="text-sm flex items-center gap-1">
-                    <Calendar className="h-3 w-3" />
-                    Not available
-                  </p>
-                </div>
+            <CardContent className="space-y-3">
+              <div className="space-y-3">
+                <p className="text-sm">
+                  <span className="font-medium text-muted-foreground">Worker ID:</span> {worker.worker_id || 'Not assigned'}
+                </p>
+                <p className="text-sm flex items-center gap-1">
+                  <Mail className="h-3 w-3" />
+                  <span className="font-medium text-muted-foreground">Personal Email:</span> {worker.personal_email || 'Not provided'}
+                </p>
+                <p className="text-sm flex items-center gap-1">
+                  <Mail className="h-3 w-3" />
+                  <span className="font-medium text-muted-foreground">Work Email:</span> {worker.work_email || 'Not provided'}
+                </p>
+                <p className="text-sm flex items-center gap-1">
+                  <Phone className="h-3 w-3" />
+                  <span className="font-medium text-muted-foreground">Personal Phone:</span> {worker.personal_phone || 'Not provided'}
+                </p>
+                <p className="text-sm flex items-center gap-1">
+                  <MapPin className="h-3 w-3" />
+                  <span className="font-medium text-muted-foreground">Country:</span> {worker.country || 'Not specified'}
+                </p>
+                <p className="text-sm">
+                  <span className="font-medium text-muted-foreground">State/Province:</span> {worker.state_province || 'Not specified'}
+                </p>
+                <p className="text-sm flex items-center gap-1">
+                  <Calendar className="h-3 w-3" />
+                  <span className="font-medium text-muted-foreground">Birthday:</span> Not available
+                </p>
               </div>
             </CardContent>
           </Card>
@@ -161,29 +144,23 @@ function WorkerProfileContent({ worker }: { worker: any }) {
                 Organization Information
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Department</label>
-                  <p className="text-sm">{worker.department || 'Not specified'}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Job Title</label>
-                  <p className="text-sm">{worker.job_title || 'Not specified'}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Manager Name</label>
-                  <p className="text-sm">{worker.manager_name || 'Not assigned'}</p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-muted-foreground">Reports</label>
-                  <p className="text-sm">
-                    {worker.reports && worker.reports.length > 0 
-                      ? `${worker.reports.length} direct report(s)`
-                      : 'No direct reports'
-                    }
-                  </p>
-                </div>
+            <CardContent className="space-y-3">
+              <div className="space-y-3">
+                <p className="text-sm">
+                  <span className="font-medium text-muted-foreground">Department:</span> {worker.department || 'Not specified'}
+                </p>
+                <p className="text-sm">
+                  <span className="font-medium text-muted-foreground">Job Title:</span> {worker.job_title || 'Not specified'}
+                </p>
+                <p className="text-sm">
+                  <span className="font-medium text-muted-foreground">Manager Name:</span> {worker.manager_name || 'Not assigned'}
+                </p>
+                <p className="text-sm">
+                  <span className="font-medium text-muted-foreground">Reports:</span> {worker.reports && worker.reports.length > 0 
+                    ? `${worker.reports.length} direct report(s)`
+                    : 'No direct reports'
+                  }
+                </p>
               </div>
             </CardContent>
           </Card>
