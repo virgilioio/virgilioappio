@@ -239,13 +239,8 @@ function ContractContent({ worker }: { worker: any }) {
               <TableHeader>
                 <TableRow>
                   <TableHead>Contract Number</TableHead>
-                  <TableHead>Worker Type</TableHead>
-                  <TableHead>Job Title</TableHead>
-                  <TableHead>Start Date</TableHead>
-                  <TableHead>End Date</TableHead>
+                  <TableHead>Amount (Base Salary)</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Salary</TableHead>
-                  <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -253,42 +248,12 @@ function ContractContent({ worker }: { worker: any }) {
                   <TableRow key={contract.id}>
                     <TableCell className="font-medium">{contract.contract_number}</TableCell>
                     <TableCell>
-                      <Badge variant="outline">
-                        {contract.worker_type === 'employee' ? 'Employee' : 'Contractor'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{contract.job_title || 'Not specified'}</TableCell>
-                    <TableCell>
-                      {contract.start_date ? new Date(contract.start_date).toLocaleDateString() : 'Not set'}
-                    </TableCell>
-                    <TableCell>
-                      {contract.end_date ? new Date(contract.end_date).toLocaleDateString() : 'Ongoing'}
-                    </TableCell>
-                    <TableCell>{getStatusBadge(contract.contract_status)}</TableCell>
-                    <TableCell>
                       {contract.base_salary 
                         ? `${contract.currency || 'USD'} ${contract.base_salary.toLocaleString()}`
                         : 'Not specified'
                       }
                     </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem>View Contract</DropdownMenuItem>
-                          <DropdownMenuItem>Edit Contract</DropdownMenuItem>
-                          {contract.is_active && (
-                            <DropdownMenuItem className="text-destructive">
-                              Terminate Contract
-                            </DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
+                    <TableCell>{getStatusBadge(contract.contract_status)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
