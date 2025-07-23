@@ -45,14 +45,6 @@ export default function WorkerProfile() {
 
   return (
     <div className="space-y-4">
-      <Button 
-        variant="ghost" 
-        onClick={() => navigate('/people-hub/people')}
-        className="mb-4"
-      >
-        <ArrowLeft className="h-4 w-4 mr-2" />
-        Back to People
-      </Button>
 
       {/* Tabs */}
       <Tabs defaultValue="profile" className="w-full">
