@@ -1,3 +1,4 @@
+
 import { useState } from 'react'
 import { CreateWorkerData } from '@/hooks/useWorkers'
 import { DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -34,7 +35,7 @@ export function WorkerDetailsWizard({
     worker_status: 'pending',
     currency: 'USD',
     payment_period: 'monthly',
-    employment_terms: 'indefinite'
+    employment_term: 'indefinite'
   })
 
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -102,8 +103,8 @@ export function WorkerDetailsWizard({
         if (!formData.start_date?.trim()) {
           newErrors.start_date = 'Agreement start date is required'
         }
-        if (!formData.employment_terms?.trim()) {
-          newErrors.employment_terms = 'Employment terms are required'
+        if (!formData.employment_term?.trim()) {
+          newErrors.employment_term = 'Employment terms are required'
         }
         
         // Contractor-specific validations
@@ -143,23 +144,23 @@ export function WorkerDetailsWizard({
 
   const handleSubmit = () => {
     if (validateStep(currentStep)) {
-      // Auto-populate contract_type and employment_term based on worker type
-      const getContractTypeAndEmploymentTerm = () => {
+      // Auto-populate contract_type and employment_terms based on worker type
+      const getContractTypeAndEmploymentTerms = () => {
         if (workerType === 'employee') {
           return {
             contract_type: 'permanent' as const,
-            employment_term: formData.employment_term || 'full_time' as const
+            employment_terms: formData.employment_terms || 'full_time' as const
           }
         } else {
           // Independent contractor
           return {
             contract_type: 'freelance' as const,
-            employment_term: undefined
+            employment_terms: undefined
           }
         }
       }
       
-      const { contract_type, employment_term } = getContractTypeAndEmploymentTerm()
+      const { contract_type, employment_terms } = getContractTypeAndEmploymentTerms()
 
       // Map form data to database schema
       const finalData: CreateWorkerData = {
@@ -175,7 +176,7 @@ export function WorkerDetailsWizard({
         worker_type: workerType,
         job_title: formData.job_title || '',
         contract_type,
-        employment_term,
+        employment_terms,
         working_location: formData.working_location || '',
         scope_of_work: formData.scope_of_work || '',
         manager_id: formData.manager_id,
@@ -186,7 +187,7 @@ export function WorkerDetailsWizard({
         base_salary: formData.base_salary,
         payment_period: formData.payment_period || 'monthly',
         payment_frequency: formData.payment_frequency || 'monthly',
-        employment_terms: formData.employment_terms || 'indefinite',
+        employment_term: formData.employment_term || 'indefinite',
         start_date: formData.start_date || '',
         end_date: formData.end_date || '',
         seniority_level: formData.seniority_level,

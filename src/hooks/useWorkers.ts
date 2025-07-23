@@ -19,7 +19,7 @@ export interface Worker {
   job_title?: string
   seniority_level?: 'entry' | 'junior' | 'mid' | 'senior' | 'lead' | 'principal' | 'director' | 'vp' | 'c_level'
   contract_type?: 'permanent' | 'temporary' | 'freelance'
-  employment_term?: 'full_time' | 'part_time' | 'temporary' | 'internship'
+  employment_terms?: 'full_time' | 'part_time' | 'temporary' | 'internship'
   contract_status?: 'active' | 'pending' | 'expired' | 'terminated' | 'suspended'
   country?: string
   working_location?: string
@@ -27,7 +27,7 @@ export interface Worker {
   currency?: string
   base_salary?: number
   payment_period?: 'annual' | 'monthly' | 'semimonthly' | 'biweekly' | 'weekly' | 'daily' | 'hourly'
-  employment_terms?: 'indefinite' | 'definite'
+  employment_term?: 'indefinite' | 'definite'
   entity?: string
   events?: any
   manager_id?: string
@@ -67,7 +67,7 @@ export interface CreateWorkerData {
   job_title?: string
   seniority_level?: 'entry' | 'junior' | 'mid' | 'senior' | 'lead' | 'principal' | 'director' | 'vp' | 'c_level'
   contract_type?: 'permanent' | 'temporary' | 'freelance'
-  employment_term?: 'full_time' | 'part_time' | 'temporary' | 'internship'
+  employment_terms?: 'full_time' | 'part_time' | 'temporary' | 'internship'
   contract_status?: 'active' | 'pending' | 'expired' | 'terminated' | 'suspended'
   country?: string
   working_location?: string
@@ -75,7 +75,7 @@ export interface CreateWorkerData {
   currency?: string
   base_salary?: number
   payment_period?: 'annual' | 'monthly' | 'semimonthly' | 'biweekly' | 'weekly' | 'daily' | 'hourly'
-  employment_terms?: 'indefinite' | 'definite'
+  employment_term?: 'indefinite' | 'definite'
   entity?: string
   events?: any
   manager_id?: string
@@ -109,7 +109,7 @@ export interface UpdateWorkerData {
   job_title?: string
   seniority_level?: 'entry' | 'junior' | 'mid' | 'senior' | 'lead' | 'principal' | 'director' | 'vp' | 'c_level'
   contract_type?: 'permanent' | 'temporary' | 'freelance'
-  employment_term?: 'full_time' | 'part_time' | 'temporary' | 'internship'
+  employment_terms?: 'full_time' | 'part_time' | 'temporary' | 'internship'
   contract_status?: 'active' | 'pending' | 'expired' | 'terminated' | 'suspended'
   country?: string
   working_location?: string
@@ -117,7 +117,7 @@ export interface UpdateWorkerData {
   currency?: string
   base_salary?: number
   payment_period?: 'annual' | 'monthly' | 'semimonthly' | 'biweekly' | 'weekly' | 'daily' | 'hourly'
-  employment_terms?: 'indefinite' | 'definite'
+  employment_term?: 'indefinite' | 'definite'
   entity?: string
   events?: any
   manager_id?: string

@@ -1,3 +1,4 @@
+
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -33,7 +34,6 @@ export function CompensationDatesStep({
     { value: 'daily', label: 'Daily' },
     { value: 'hourly', label: 'Hourly' }
   ]
-
 
   const employmentTerms = [
     { value: 'full_time', label: 'Full-time' },
@@ -151,13 +151,13 @@ export function CompensationDatesStep({
 
             {workerType === 'employee' && (
               <div>
-                <Label htmlFor="employment_term">Employment Term</Label>
+                <Label htmlFor="employment_terms">Employment Terms</Label>
                 <Select
-                  value={data.employment_term || ''}
-                  onValueChange={(value) => handleChange('employment_term', value)}
+                  value={data.employment_terms || ''}
+                  onValueChange={(value) => handleChange('employment_terms', value)}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select employment term" />
+                    <SelectValue placeholder="Select employment terms" />
                   </SelectTrigger>
                   <SelectContent>
                     {employmentTerms.map((term) => (
@@ -167,8 +167,8 @@ export function CompensationDatesStep({
                     ))}
                   </SelectContent>
                 </Select>
-                {errors.employment_term && (
-                  <p className="text-sm text-destructive mt-1">{errors.employment_term}</p>
+                {errors.employment_terms && (
+                  <p className="text-sm text-destructive mt-1">{errors.employment_terms}</p>
                 )}
               </div>
             )}
@@ -197,12 +197,12 @@ export function CompensationDatesStep({
             </div>
 
             <div>
-              <Label htmlFor="employment_terms">Employment Terms *</Label>
+              <Label htmlFor="employment_term">Employment Term *</Label>
               <Select
-                value={data.employment_terms || 'indefinite'}
-                onValueChange={(value) => handleChange('employment_terms', value)}
+                value={data.employment_term || 'indefinite'}
+                onValueChange={(value) => handleChange('employment_term', value)}
               >
-                <SelectTrigger className={errors.employment_terms ? 'border-destructive' : ''}>
+                <SelectTrigger className={errors.employment_term ? 'border-destructive' : ''}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -210,12 +210,12 @@ export function CompensationDatesStep({
                   <SelectItem value="definite">Definite</SelectItem>
                 </SelectContent>
               </Select>
-              {errors.employment_terms && (
-                <p className="text-sm text-destructive mt-1">{errors.employment_terms}</p>
+              {errors.employment_term && (
+                <p className="text-sm text-destructive mt-1">{errors.employment_term}</p>
               )}
             </div>
 
-            {data.employment_terms === 'definite' && (
+            {data.employment_term === 'definite' && (
               <div>
                 <Label htmlFor="end_date">Agreement End Date</Label>
                 <Input
