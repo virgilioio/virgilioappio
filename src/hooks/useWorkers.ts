@@ -338,10 +338,30 @@ export function useWorkers() {
         throw createWorkerError
       }
 
+      // Generate contract number - simplified approach
+      let contractNumber = 'C0001'
+      try {
+        const { count, error: countError } = await supabase
+          .from('worker_contracts' as any)
+          .select('id', { count: 'exact', head: true })
+          .eq('organization_id', data.organization_id)
+
+        if (!countError && count !== null) {
+          contractNumber = `C${String(count + 1).padStart(4, '0')}`
+        }
+      } catch (err) {
+        console.error('Error generating contract number, using default:', err)
+        // Continue with default C0001
+      }
+
       // Create the worker's initial contract
       const { data: newContract, error: createContractError } = await supabase
         .from('worker_contracts' as any)
-        .insert([{ ...contractData, worker_id: newWorker.id }])
+        .insert([{ 
+          ...contractData, 
+          worker_id: newWorker.id,
+          contract_number: contractNumber
+        }])
         .select()
         .single()
 

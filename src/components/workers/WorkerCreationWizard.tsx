@@ -50,17 +50,15 @@ export function WorkerCreationWizard({ onSubmit, onCancel, onStepChange }: Worke
     // Merge wizard selections with form data
     const finalData: CreateWorkerData = {
       ...formData,
-      worker_type: wizardData.workerType as any, // Will be updated to new enum values
-      contractor_payment_type: wizardData.contractorPaymentType as any,
-      // Set default payment structure based on selections
-      ...(wizardData.contractorPaymentType === 'fixed_rate' && {
-        monthly_fixed_amount: 0 // Will be filled in form
-      }),
-      ...(wizardData.contractorPaymentType === 'hourly_rate' && {
-        hourly_rate: 0 // Will be filled in form
-      }),
-      ...(wizardData.contractorPaymentType === 'per_project' && {
-        project_details: '' // Will be filled in form
+      worker_type: wizardData.workerType!, // Now properly typed
+      contractor_payment_type: wizardData.contractorPaymentType,
+      // Ensure full name is set from legal names if not provided
+      full_name: formData.full_name || `${formData.legal_first_name || ''} ${formData.legal_last_name || ''}`.trim(),
+      // Set default contract type based on worker type
+      contract_type: wizardData.workerType === 'employee' ? 'permanent' : 'freelance',
+      // Set employment terms for employees
+      ...(wizardData.workerType === 'employee' && {
+        employment_terms: formData.employment_terms || 'full_time'
       })
     }
     
@@ -98,17 +96,20 @@ export function WorkerCreationWizard({ onSubmit, onCancel, onStepChange }: Worke
   // Pre-fill form data based on wizard selections
   const getPrefilledFormData = (): Partial<CreateWorkerData> => {
     const baseData: Partial<CreateWorkerData> = {
-      worker_type: wizardData.workerType as any,
+      worker_type: wizardData.workerType!,
       worker_status: 'pending',
       currency: 'USD',
-      payment_frequency: 'monthly'
+      payment_frequency: 'monthly',
+      payment_period: 'monthly',
+      contract_status: 'pending'
     }
 
     if (wizardData.workerType === 'contractor') {
-      baseData.contractor_payment_type = wizardData.contractorPaymentType as any
+      baseData.contractor_payment_type = wizardData.contractorPaymentType
       baseData.contract_type = 'freelance'
     } else {
       baseData.contract_type = 'permanent'
+      baseData.employment_terms = 'full_time'
     }
 
     return baseData

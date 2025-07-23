@@ -52,15 +52,15 @@ export function CompensationDatesStep({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {workerType === 'employee' && (
               <div>
-                <Label htmlFor="base_salary">Base Salary</Label>
+                <Label htmlFor="base_salary">Base Salary *</Label>
                 <Input
                   id="base_salary"
                   type="number"
                   step="0.01"
                   min="0"
-                  placeholder="Optional"
+                  placeholder="0.00"
                   value={data.base_salary || ''}
-                  onChange={(e) => handleChange('base_salary', parseFloat(e.target.value) || undefined)}
+                  onChange={(e) => handleChange('base_salary', parseFloat(e.target.value) || 0)}
                   className={errors.base_salary ? 'border-destructive' : ''}
                 />
                 {errors.base_salary && (
@@ -77,8 +77,9 @@ export function CompensationDatesStep({
                   type="number"
                   step="0.01"
                   min="0"
+                  placeholder="0.00"
                   value={data.hourly_rate || ''}
-                  onChange={(e) => handleChange('hourly_rate', parseFloat(e.target.value) || undefined)}
+                  onChange={(e) => handleChange('hourly_rate', parseFloat(e.target.value) || 0)}
                   className={errors.hourly_rate ? 'border-destructive' : ''}
                 />
                 {errors.hourly_rate && (
@@ -95,12 +96,29 @@ export function CompensationDatesStep({
                   type="number"
                   step="0.01"
                   min="0"
+                  placeholder="0.00"
                   value={data.monthly_fixed_amount || ''}
-                  onChange={(e) => handleChange('monthly_fixed_amount', parseFloat(e.target.value) || undefined)}
+                  onChange={(e) => handleChange('monthly_fixed_amount', parseFloat(e.target.value) || 0)}
                   className={errors.monthly_fixed_amount ? 'border-destructive' : ''}
                 />
                 {errors.monthly_fixed_amount && (
                   <p className="text-sm text-destructive mt-1">{errors.monthly_fixed_amount}</p>
+                )}
+              </div>
+            )}
+
+            {workerType === 'contractor' && contractorPaymentType === 'per_project' && (
+              <div className="md:col-span-2">
+                <Label htmlFor="project_details">Project Details *</Label>
+                <Input
+                  id="project_details"
+                  placeholder="Describe the project scope and payment terms..."
+                  value={data.project_details || ''}
+                  onChange={(e) => handleChange('project_details', e.target.value)}
+                  className={errors.project_details ? 'border-destructive' : ''}
+                />
+                {errors.project_details && (
+                  <p className="text-sm text-destructive mt-1">{errors.project_details}</p>
                 )}
               </div>
             )}
@@ -151,12 +169,12 @@ export function CompensationDatesStep({
 
             {workerType === 'employee' && (
               <div>
-                <Label htmlFor="employment_terms">Employment Terms</Label>
+                <Label htmlFor="employment_terms">Employment Terms *</Label>
                 <Select
-                  value={data.employment_terms || ''}
+                  value={data.employment_terms || 'full_time'}
                   onValueChange={(value) => handleChange('employment_terms', value)}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className={errors.employment_terms ? 'border-destructive' : ''}>
                     <SelectValue placeholder="Select employment terms" />
                   </SelectTrigger>
                   <SelectContent>
