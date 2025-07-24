@@ -33,19 +33,19 @@ export interface WorkerComplianceFieldWithRelations extends WorkerComplianceFiel
   }>
 }
 
-export function useWorkerComplianceFields(countryCode?: string) {
+export function useWorkerComplianceFields(countryNameOrCode?: string) {
   const [fields, setFields] = useState<WorkerComplianceFieldWithRelations[]>([])
   const [isLoading, setIsLoading] = useState(false)
 
-  const fetchFieldsForCountry = async (code: string) => {
+  const fetchFieldsForCountry = async (nameOrCode: string) => {
     try {
       setIsLoading(true)
       
-      // First get the country ID
+      // First get the country ID - try by name first, then by code
       const { data: countryData, error: countryError } = await supabase
         .from('worker_compliance_countries')
         .select('id')
-        .eq('code', code)
+        .or(`name.eq.${nameOrCode},code.eq.${nameOrCode}`)
         .single()
 
       if (countryError || !countryData) {
@@ -134,8 +134,8 @@ export function useWorkerComplianceFields(countryCode?: string) {
         await saveSelectOptions(data.id, selectOptions)
       }
 
-      if (countryCode) {
-        await fetchFieldsForCountry(countryCode)
+      if (countryNameOrCode) {
+        await fetchFieldsForCountry(countryNameOrCode)
       }
       
       return data
@@ -165,8 +165,8 @@ export function useWorkerComplianceFields(countryCode?: string) {
         await saveSelectOptions(id, selectOptions)
       }
 
-      if (countryCode) {
-        await fetchFieldsForCountry(countryCode)
+      if (countryNameOrCode) {
+        await fetchFieldsForCountry(countryNameOrCode)
       }
       
       return data
@@ -185,8 +185,8 @@ export function useWorkerComplianceFields(countryCode?: string) {
 
       if (error) throw error
 
-      if (countryCode) {
-        await fetchFieldsForCountry(countryCode)
+      if (countryNameOrCode) {
+        await fetchFieldsForCountry(countryNameOrCode)
       }
     } catch (error) {
       console.error('Error deleting worker compliance field:', error)
@@ -195,14 +195,17 @@ export function useWorkerComplianceFields(countryCode?: string) {
   }
 
   useEffect(() => {
-    if (countryCode) {
-      fetchFieldsForCountry(countryCode)
+    if (countryNameOrCode) {
+      fetchFieldsForCountry(countryNameOrCode)
+    } else {
+      setFields([])
+      setIsLoading(false)
     }
-  }, [countryCode])
+  }, [countryNameOrCode])
 
   const refetch = () => {
-    if (countryCode) {
-      fetchFieldsForCountry(countryCode)
+    if (countryNameOrCode) {
+      fetchFieldsForCountry(countryNameOrCode)
     }
   }
 
