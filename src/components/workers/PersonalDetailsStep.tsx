@@ -74,7 +74,7 @@ export function PersonalDetailsStep({ data, errors, onUpdate }: PersonalDetailsS
                 </SelectTrigger>
                 <SelectContent>
                   {countriesLoading ? (
-                    <SelectItem value="" disabled>Loading countries...</SelectItem>
+                    <SelectItem value="loading" disabled>Loading countries...</SelectItem>
                   ) : (
                     countries.map((country) => (
                       <SelectItem key={country.id} value={country.name}>
