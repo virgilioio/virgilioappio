@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react'
 import { supabase } from '@/integrations/supabase/client'
-import { useToast } from '@/hooks/use-toast'
+import { toast } from 'sonner'
 
 export interface Country {
   id: string
@@ -51,7 +51,6 @@ export interface FieldSelectOption {
 export function useCountries() {
   const [countries, setCountries] = useState<Country[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const { toast } = useToast()
 
   useEffect(() => {
     fetchCountries()
@@ -69,11 +68,7 @@ export function useCountries() {
       setCountries(data || [])
     } catch (error) {
       console.error('Error fetching countries:', error)
-      toast({
-        title: 'Error',
-        description: 'Failed to load countries',
-        variant: 'destructive'
-      })
+      toast.error('Failed to load countries')
     } finally {
       setIsLoading(false)
     }
@@ -90,18 +85,11 @@ export function useCountries() {
       if (error) throw error
 
       setCountries(prev => [...prev, data])
-      toast({
-        title: 'Success',
-        description: 'Country created successfully'
-      })
+      toast.success('Country created successfully')
       return data
     } catch (error) {
       console.error('Error creating country:', error)
-      toast({
-        title: 'Error',
-        description: 'Failed to create country',
-        variant: 'destructive'
-      })
+      toast.error('Failed to create country')
       throw error
     }
   }
@@ -120,18 +108,11 @@ export function useCountries() {
       setCountries(prev => prev.map(country => 
         country.id === id ? data : country
       ))
-      toast({
-        title: 'Success',
-        description: 'Country updated successfully'
-      })
+      toast.success('Country updated successfully')
       return data
     } catch (error) {
       console.error('Error updating country:', error)
-      toast({
-        title: 'Error',
-        description: 'Failed to update country',
-        variant: 'destructive'
-      })
+      toast.error('Failed to update country')
       throw error
     }
   }
@@ -146,17 +127,10 @@ export function useCountries() {
       if (error) throw error
 
       setCountries(prev => prev.filter(country => country.id !== id))
-      toast({
-        title: 'Success',
-        description: 'Country deactivated successfully'
-      })
+      toast.success('Country deactivated successfully')
     } catch (error) {
       console.error('Error deactivating country:', error)
-      toast({
-        title: 'Error',
-        description: 'Failed to deactivate country',
-        variant: 'destructive'
-      })
+      toast.error('Failed to deactivate country')
       throw error
     }
   }
