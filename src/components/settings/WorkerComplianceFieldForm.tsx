@@ -9,15 +9,15 @@ import { FormField } from '@/components/ui/form-field'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Plus, Trash2 } from 'lucide-react'
-import { useCountryFields } from '@/hooks/useCountryFields'
-import { CountryField } from '@/hooks/useCountries'
+import { useWorkerComplianceFields } from '@/hooks/useWorkerComplianceFields'
+import { WorkerComplianceField } from '@/hooks/useWorkerComplianceFields'
 
-interface CountryFieldFormProps {
+interface WorkerComplianceFieldFormProps {
   isOpen: boolean
   onClose: () => void
   countryId: string
   countryCode: string
-  field?: CountryField | null
+  field?: WorkerComplianceField | null
   onFieldChange?: () => void
 }
 
@@ -55,8 +55,8 @@ const FILE_TYPES = [
   { value: 'text/plain', label: 'Text File' }
 ]
 
-export function CountryFieldForm({ isOpen, onClose, countryId, countryCode, field, onFieldChange }: CountryFieldFormProps) {
-  const { createField, updateField, fields } = useCountryFields(countryCode)
+export function WorkerComplianceFieldForm({ isOpen, onClose, countryId, countryCode, field, onFieldChange }: WorkerComplianceFieldFormProps) {
+  const { createField, updateField, fields } = useWorkerComplianceFields(countryCode)
   const [isLoading, setIsLoading] = useState(false)
   
   const [formData, setFormData] = useState({
@@ -137,7 +137,7 @@ export function CountryFieldForm({ isOpen, onClose, countryId, countryCode, fiel
 
     try {
       const fieldData = {
-        country_id: countryId,
+        worker_country_id: countryId,
         field_name: formData.field_name,
         field_label: formData.field_label,
         field_type: formData.field_type,
@@ -208,7 +208,7 @@ export function CountryFieldForm({ isOpen, onClose, countryId, countryCode, fiel
             {field ? 'Edit Field' : 'Add Field'} for {countryCode}
           </DialogTitle>
           <DialogDescription>
-            {field ? 'Update field configuration' : 'Define a new custom field for organizations in this country'}
+            {field ? 'Update worker compliance field configuration' : 'Define a new custom field for workers from this country'}
           </DialogDescription>
         </DialogHeader>
         
@@ -219,7 +219,7 @@ export function CountryFieldForm({ isOpen, onClose, countryId, countryCode, fiel
                 id="field_name"
                 value={formData.field_name}
                 onChange={(e) => updateFormData('field_name', e.target.value)}
-                placeholder="e.g., rfc, ein, tax_id"
+                placeholder="e.g., work_permit, visa_status"
                 required
               />
             </FormField>
@@ -229,7 +229,7 @@ export function CountryFieldForm({ isOpen, onClose, countryId, countryCode, fiel
                 id="field_label"
                 value={formData.field_label}
                 onChange={(e) => updateFormData('field_label', e.target.value)}
-                placeholder="e.g., RFC Number, EIN"
+                placeholder="e.g., Work Permit Number, Visa Status"
                 required
               />
             </FormField>
@@ -290,7 +290,7 @@ export function CountryFieldForm({ isOpen, onClose, countryId, countryCode, fiel
               id="help_text"
               value={formData.help_text}
               onChange={(e) => updateFormData('help_text', e.target.value)}
-              placeholder="Additional help text to guide users"
+              placeholder="Additional help text to guide workers"
               rows={2}
             />
           </FormField>

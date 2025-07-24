@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Plus, ArrowLeft, Edit, Trash2, FileText, Type, Hash, Mail, Calendar, CheckSquare, Upload } from 'lucide-react'
 import { useWorkerComplianceFields } from '@/hooks/useWorkerComplianceFields'
 import { useWorkerComplianceCountries } from '@/hooks/useWorkerComplianceCountries'
-import { CountryFieldForm } from './CountryFieldForm'
+import { WorkerComplianceFieldForm } from './WorkerComplianceFieldForm'
 import { toast } from 'sonner'
 
 interface WorkerFieldsManagerProps {
@@ -193,7 +193,7 @@ export function WorkerFieldsManager({ countryId, countryName, onBack }: WorkerFi
       </Card>
 
       {isFormOpen && selectedCountry && (
-        <CountryFieldForm
+        <WorkerComplianceFieldForm
           isOpen={isFormOpen}
           onClose={handleCloseForm}
           countryId={countryId}
