@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Checkbox } from '@/components/ui/checkbox'
 import { Upload, File, X } from 'lucide-react'
 import { useWorkerComplianceFields } from '@/hooks/useWorkerComplianceFields'
-import { useWorkerCustomData } from '@/hooks/useWorkerCustomData'
+import { useWorkerComplianceData } from '@/hooks/useWorkerComplianceData'
 import { supabase } from '@/integrations/supabase/client'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
@@ -20,15 +20,15 @@ interface WorkerComplianceCardProps {
 export function WorkerComplianceCard({ worker }: WorkerComplianceCardProps) {
   const [uploading, setUploading] = useState<string | null>(null)
   const { fields, isLoading: fieldsLoading } = useWorkerComplianceFields(worker.country)
-  const { data: customData, saveWorkerData: saveCustomData, deleteWorkerData: deleteCustomData, isLoading: dataLoading } = useWorkerCustomData(worker.id)
+  const { data: complianceData, saveWorkerData, deleteWorkerData, isLoading: dataLoading } = useWorkerComplianceData(worker.id)
 
   const getFieldValue = (fieldId: string) => {
-    const data = customData.find(d => d.country_field_id === fieldId)
+    const data = complianceData.find(d => d.worker_compliance_field_id === fieldId)
     return data?.field_value || ''
   }
 
   const getFieldFile = (fieldId: string) => {
-    const data = customData.find(d => d.country_field_id === fieldId)
+    const data = complianceData.find(d => d.worker_compliance_field_id === fieldId)
     return data?.file_url ? {
       url: data.file_url,
       name: data.file_name || 'File',
@@ -51,7 +51,7 @@ export function WorkerComplianceCard({ worker }: WorkerComplianceCardProps) {
 
   const handleInputChange = async (fieldId: string, value: string) => {
     try {
-      await saveCustomData(worker.id, fieldId, value)
+      await saveWorkerData(worker.id, fieldId, value)
     } catch (error) {
       // Error is already handled in the hook
     }
@@ -75,7 +75,7 @@ export function WorkerComplianceCard({ worker }: WorkerComplianceCardProps) {
         .from('organization-files')
         .getPublicUrl(fileName)
 
-      await saveCustomData(worker.id, fieldId, getFieldValue(fieldId), {
+      await saveWorkerData(worker.id, fieldId, getFieldValue(fieldId), {
         file_url: urlData.publicUrl,
         file_name: file.name,
         file_size_bytes: file.size
@@ -90,9 +90,9 @@ export function WorkerComplianceCard({ worker }: WorkerComplianceCardProps) {
 
   const handleFileRemove = async (fieldId: string) => {
     try {
-      const currentData = customData.find(d => d.country_field_id === fieldId)
+      const currentData = complianceData.find(d => d.worker_compliance_field_id === fieldId)
       if (currentData) {
-        await saveCustomData(worker.id, fieldId, currentData.field_value || '')
+        await saveWorkerData(worker.id, fieldId, currentData.field_value || '')
       }
     } catch (error) {
       // Error is already handled in the hook
@@ -166,9 +166,9 @@ export function WorkerComplianceCard({ worker }: WorkerComplianceCardProps) {
               <SelectValue placeholder={field.placeholder_text || 'Select an option'} />
             </SelectTrigger>
             <SelectContent>
-              {field.validation_rules?.find((rule: any) => rule.rule_type === 'options')?.rule_value?.split('|')?.map((option: string, index: number) => (
-                <SelectItem key={index} value={option.trim()}>
-                  {option.trim()}
+              {field.select_options?.map((option: any) => (
+                <SelectItem key={option.id} value={option.option_value}>
+                  {option.option_label}
                 </SelectItem>
               )) || []}
             </SelectContent>

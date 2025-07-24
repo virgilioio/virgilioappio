@@ -2174,6 +2174,60 @@ export type Database = {
         }
         Relationships: []
       }
+      worker_compliance_data: {
+        Row: {
+          created_at: string
+          field_value: string | null
+          file_name: string | null
+          file_size_bytes: number | null
+          file_url: string | null
+          id: string
+          updated_at: string
+          uploaded_by: string | null
+          worker_compliance_field_id: string
+          worker_id: string
+        }
+        Insert: {
+          created_at?: string
+          field_value?: string | null
+          file_name?: string | null
+          file_size_bytes?: number | null
+          file_url?: string | null
+          id?: string
+          updated_at?: string
+          uploaded_by?: string | null
+          worker_compliance_field_id: string
+          worker_id: string
+        }
+        Update: {
+          created_at?: string
+          field_value?: string | null
+          file_name?: string | null
+          file_size_bytes?: number | null
+          file_url?: string | null
+          id?: string
+          updated_at?: string
+          uploaded_by?: string | null
+          worker_compliance_field_id?: string
+          worker_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "worker_compliance_data_worker_compliance_field_id_fkey"
+            columns: ["worker_compliance_field_id"]
+            isOneToOne: false
+            referencedRelation: "worker_compliance_fields"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "worker_compliance_data_worker_id_fkey"
+            columns: ["worker_id"]
+            isOneToOne: false
+            referencedRelation: "workers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       worker_compliance_field_options: {
         Row: {
           created_at: string
