@@ -193,12 +193,9 @@ export function WorkerComplianceCard({ worker }: WorkerComplianceCardProps) {
                     variant="outline"
                     size="sm"
                     disabled={uploading === field.id}
-                    asChild
                   >
-                    <span>
-                      <Upload className="h-4 w-4 mr-2" />
-                      {uploading === field.id ? 'Uploading...' : 'Upload File'}
-                    </span>
+                    <Upload className="h-4 w-4 mr-2" />
+                    {uploading === field.id ? 'Uploading...' : 'Upload File'}
                   </Button>
                 </label>
               </div>
