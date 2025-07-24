@@ -6,12 +6,13 @@ import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Upload, File, X } from 'lucide-react'
+import { Upload, File, X, Edit, Save, XCircle } from 'lucide-react'
 import { useWorkerComplianceFields } from '@/hooks/useWorkerComplianceFields'
 import { useWorkerComplianceData } from '@/hooks/useWorkerComplianceData'
 import { supabase } from '@/integrations/supabase/client'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
+import { PermissionGate } from '@/components/auth/PermissionGate'
 
 interface WorkerComplianceCardProps {
   worker: any
@@ -20,6 +21,7 @@ interface WorkerComplianceCardProps {
 export function WorkerComplianceCard({ worker }: WorkerComplianceCardProps) {
   const [uploading, setUploading] = useState<string | null>(null)
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
+  const [isEditing, setIsEditing] = useState(false)
   const { fields, isLoading: fieldsLoading } = useWorkerComplianceFields(worker.country)
   const { data: complianceData, saveWorkerData, deleteWorkerData, isLoading: dataLoading } = useWorkerComplianceData(worker.id)
 
@@ -186,7 +188,45 @@ export function WorkerComplianceCard({ worker }: WorkerComplianceCardProps) {
     }
   }
 
-  const renderField = (field: any) => {
+  const renderFieldDisplay = (field: any) => {
+    const fieldValue = getFieldValue(field.id)
+    const fieldFile = getFieldFile(field.id)
+
+    switch (field.field_type) {
+      case 'checkbox':
+        return (
+          <div className="p-2 rounded bg-muted/50">
+            {fieldValue === 'true' ? 'Yes' : 'No'}
+          </div>
+        )
+      case 'file':
+        return fieldFile ? (
+          <div className="flex items-center gap-2 p-2 border rounded">
+            <File className="h-4 w-4" />
+            <span className="flex-1 text-sm">{fieldFile.name}</span>
+          </div>
+        ) : (
+          <div className="p-2 rounded bg-muted/50 text-muted-foreground text-sm">
+            No file uploaded
+          </div>
+        )
+      case 'select':
+        const selectedOption = field.select_options?.find((opt: any) => opt.option_value === fieldValue)
+        return (
+          <div className="p-2 rounded bg-muted/50">
+            {selectedOption?.option_label || fieldValue || 'Not selected'}
+          </div>
+        )
+      default:
+        return (
+          <div className="p-2 rounded bg-muted/50">
+            {fieldValue || 'Not provided'}
+          </div>
+        )
+    }
+  }
+
+  const renderFieldEdit = (field: any) => {
     const fieldValue = getFieldValue(field.id)
     const fieldFile = getFieldFile(field.id)
 
@@ -346,10 +386,50 @@ export function WorkerComplianceCard({ worker }: WorkerComplianceCardProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Compliance Information</CardTitle>
-        <p className="text-sm text-muted-foreground">
-          Required compliance information for {worker.country}
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle>Compliance Information</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Required compliance information for {worker.country}
+            </p>
+          </div>
+          <PermissionGate permission="canManageWorkers">
+            <div className="flex items-center gap-2">
+              {isEditing ? (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsEditing(false)}
+                  >
+                    <XCircle className="h-4 w-4 mr-2" />
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => {
+                      setIsEditing(false)
+                      toast.success('Changes saved')
+                    }}
+                  >
+                    <Save className="h-4 w-4 mr-2" />
+                    Save
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsEditing(true)}
+                >
+                  <Edit className="h-4 w-4 mr-2" />
+                  Edit
+                </Button>
+              )}
+            </div>
+          </PermissionGate>
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
         {fields.map((field) => (
@@ -372,7 +452,7 @@ export function WorkerComplianceCard({ worker }: WorkerComplianceCardProps) {
             {field.help_text && (
               <p className="text-xs text-muted-foreground">{field.help_text}</p>
             )}
-            {renderField(field)}
+            {isEditing ? renderFieldEdit(field) : renderFieldDisplay(field)}
             {validationErrors[field.id] && (
               <p className="text-xs text-destructive">{validationErrors[field.id]}</p>
             )}
