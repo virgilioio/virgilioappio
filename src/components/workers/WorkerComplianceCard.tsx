@@ -208,6 +208,8 @@ export function WorkerComplianceCard({ worker }: WorkerComplianceCardProps) {
   }
 
   const handleFileUpload = async (fieldId: string, file: File) => {
+    console.log('handleFileUpload called:', { fieldId, fileName: file.name, fileSize: file.size })
+    
     try {
       setUploading(fieldId)
       
@@ -215,24 +217,35 @@ export function WorkerComplianceCard({ worker }: WorkerComplianceCardProps) {
       const fileExt = file.name.split('.').pop()
       const fileName = `${worker.id}/${fieldId}/${Date.now()}.${fileExt}`
       
+      console.log('Uploading file to:', fileName)
+      
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from('organization-files')
         .upload(fileName, file)
 
-      if (uploadError) throw uploadError
+      if (uploadError) {
+        console.error('Upload error:', uploadError)
+        throw uploadError
+      }
+
+      console.log('Upload successful:', uploadData)
 
       const { data: urlData } = supabase.storage
         .from('organization-files')
         .getPublicUrl(fileName)
+
+      console.log('Public URL generated:', urlData.publicUrl)
 
       await saveWorkerData(worker.id, fieldId, getFieldValue(fieldId), {
         file_url: urlData.publicUrl,
         file_name: file.name,
         file_size_bytes: file.size
       })
+
+      console.log('File data saved to database')
     } catch (error) {
       console.error('Error uploading file:', error)
-      toast.error('Failed to upload file')
+      toast.error('Failed to upload file: ' + (error as any).message)
     } finally {
       setUploading(null)
     }
