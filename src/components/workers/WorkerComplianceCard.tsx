@@ -18,29 +18,8 @@ interface WorkerComplianceCardProps {
 
 export function WorkerComplianceCard({ worker }: WorkerComplianceCardProps) {
   const [uploading, setUploading] = useState<string | null>(null)
-  const { fields, isLoading: fieldsLoading } = useWorkerComplianceFields(getCountryCode(worker.country))
+  const { fields, isLoading: fieldsLoading } = useWorkerComplianceFields(worker.country)
   const { data: customData, saveWorkerData: saveCustomData, deleteWorkerData: deleteCustomData, isLoading: dataLoading } = useWorkerCustomData(worker.id)
-
-  // Helper function to get country code from country name
-  function getCountryCode(countryName?: string): string | undefined {
-    if (!countryName) return undefined
-    
-    // Simple mapping - in a real app you'd want a proper country name to code mapping
-    const countryMappings: Record<string, string> = {
-      'United States': 'US',
-      'United Kingdom': 'UK', 
-      'Germany': 'DE',
-      'Canada': 'CA',
-      'Australia': 'AU',
-      'France': 'FR',
-      'Spain': 'ES',
-      'Italy': 'IT',
-      'Netherlands': 'NL',
-      'Sweden': 'SE'
-    }
-    
-    return countryMappings[countryName]
-  }
 
   const getFieldValue = (fieldId: string) => {
     const data = customData.find(d => d.country_field_id === fieldId)
