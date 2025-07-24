@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -22,10 +22,54 @@ export function WorkerComplianceCard({ worker }: WorkerComplianceCardProps) {
   const [uploading, setUploading] = useState<string | null>(null)
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
   const [isEditing, setIsEditing] = useState(false)
+  const [localValues, setLocalValues] = useState<Record<string, string>>({})
   const { fields, isLoading: fieldsLoading } = useWorkerComplianceFields(worker.country)
   const { data: complianceData, saveWorkerData, deleteWorkerData, isLoading: dataLoading } = useWorkerComplianceData(worker.id)
 
+  // Initialize local values when data loads
+  useEffect(() => {
+    const initialValues: Record<string, string> = {}
+    complianceData.forEach(data => {
+      initialValues[data.worker_compliance_field_id] = data.field_value || ''
+    })
+    setLocalValues(initialValues)
+  }, [complianceData])
+
+  // Debounced save function
+  const debouncedSave = useCallback(
+    async (fieldId: string, value: string) => {
+      try {
+        await saveWorkerData(worker.id, fieldId, value)
+        console.log('Data saved successfully')
+      } catch (error) {
+        console.error('Error saving data:', error)
+      }
+    },
+    [saveWorkerData, worker.id]
+  )
+
+  // Create debounced version with 500ms delay
+  useEffect(() => {
+    const timeouts: Record<string, NodeJS.Timeout> = {}
+    
+    Object.entries(localValues).forEach(([fieldId, value]) => {
+      if (timeouts[fieldId]) clearTimeout(timeouts[fieldId])
+      
+      timeouts[fieldId] = setTimeout(() => {
+        debouncedSave(fieldId, value)
+      }, 500)
+    })
+
+    return () => {
+      Object.values(timeouts).forEach(timeout => clearTimeout(timeout))
+    }
+  }, [localValues, debouncedSave])
+
   const getFieldValue = (fieldId: string) => {
+    // Use local value if editing, otherwise use saved value
+    if (isEditing && localValues[fieldId] !== undefined) {
+      return localValues[fieldId]
+    }
     const data = complianceData.find(d => d.worker_compliance_field_id === fieldId)
     return data?.field_value || ''
   }
@@ -114,7 +158,7 @@ export function WorkerComplianceCard({ worker }: WorkerComplianceCardProps) {
     return { isValid: true }
   }
 
-  const handleInputChange = async (fieldId: string, value: string) => {
+  const handleInputChange = (fieldId: string, value: string) => {
     console.log('handleInputChange called:', { fieldId, value, isEditing })
     
     // Only allow input changes when in edit mode
@@ -123,13 +167,11 @@ export function WorkerComplianceCard({ worker }: WorkerComplianceCardProps) {
       return
     }
 
-    // Always save the value first, then validate for display purposes only
-    try {
-      await saveWorkerData(worker.id, fieldId, value)
-      console.log('Data saved successfully')
-    } catch (error) {
-      console.error('Error saving data:', error)
-    }
+    // Update local state immediately for responsive UI
+    setLocalValues(prev => ({
+      ...prev,
+      [fieldId]: value
+    }))
     
     // Find the field to validate for error display
     const field = fields.find(f => f.id === fieldId)
