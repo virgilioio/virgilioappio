@@ -122,8 +122,16 @@ export function WorkerComplianceCard({ worker }: WorkerComplianceCardProps) {
       console.log('Not in edit mode, ignoring input change')
       return
     }
+
+    // Always save the value first, then validate for display purposes only
+    try {
+      await saveWorkerData(worker.id, fieldId, value)
+      console.log('Data saved successfully')
+    } catch (error) {
+      console.error('Error saving data:', error)
+    }
     
-    // Find the field to validate
+    // Find the field to validate for error display
     const field = fields.find(f => f.id === fieldId)
     
     if (field) {
@@ -131,13 +139,11 @@ export function WorkerComplianceCard({ worker }: WorkerComplianceCardProps) {
       console.log('Validation result:', validation)
       
       if (!validation.isValid && validation.message) {
-        // Set validation error
+        // Set validation error for display
         setValidationErrors(prev => ({
           ...prev,
           [fieldId]: validation.message!
         }))
-        // Don't save if validation fails
-        return
       } else {
         // Clear validation error if it exists
         setValidationErrors(prev => {
@@ -146,14 +152,6 @@ export function WorkerComplianceCard({ worker }: WorkerComplianceCardProps) {
           return newErrors
         })
       }
-    }
-    
-    try {
-      await saveWorkerData(worker.id, fieldId, value)
-      console.log('Data saved successfully')
-    } catch (error) {
-      console.error('Error saving data:', error)
-      // Error is already handled in the hook
     }
   }
 
