@@ -2320,6 +2320,53 @@ export type Database = {
           },
         ]
       }
+      worker_custom_data: {
+        Row: {
+          country_field_id: string
+          created_at: string
+          field_value: string | null
+          file_name: string | null
+          file_size_bytes: number | null
+          file_url: string | null
+          id: string
+          updated_at: string
+          uploaded_by: string | null
+          worker_id: string
+        }
+        Insert: {
+          country_field_id: string
+          created_at?: string
+          field_value?: string | null
+          file_name?: string | null
+          file_size_bytes?: number | null
+          file_url?: string | null
+          id?: string
+          updated_at?: string
+          uploaded_by?: string | null
+          worker_id: string
+        }
+        Update: {
+          country_field_id?: string
+          created_at?: string
+          field_value?: string | null
+          file_name?: string | null
+          file_size_bytes?: number | null
+          file_url?: string | null
+          id?: string
+          updated_at?: string
+          uploaded_by?: string | null
+          worker_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "worker_custom_data_country_field_id_fkey"
+            columns: ["country_field_id"]
+            isOneToOne: false
+            referencedRelation: "country_fields"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       workers: {
         Row: {
           citizenship: string | null
