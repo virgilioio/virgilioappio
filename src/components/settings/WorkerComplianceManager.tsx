@@ -3,15 +3,18 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Settings, Users, FileText } from 'lucide-react'
+import { Plus, Settings, Users, FileText, Edit, Trash2 } from 'lucide-react'
 import { useCountries } from '@/hooks/useCountries'
 import { useCountryFields } from '@/hooks/useCountryFields'
 import { WorkerFieldsManager } from './WorkerFieldsManager'
+import { CountryForm } from './CountryForm'
 
 export function WorkerComplianceManager() {
-  const { countries, isLoading: countriesLoading, createCountry } = useCountries()
+  const { countries, isLoading: countriesLoading, createCountry, deleteCountry } = useCountries()
   const [selectedCountryId, setSelectedCountryId] = useState<string | null>(null)
   const [isManagingFields, setIsManagingFields] = useState(false)
+  const [isFormOpen, setIsFormOpen] = useState(false)
+  const [editingCountry, setEditingCountry] = useState<any>(null)
 
   const selectedCountry = countries.find(c => c.id === selectedCountryId)
 
@@ -30,6 +33,22 @@ export function WorkerComplianceManager() {
     // For now, we'll just show a message since country creation
     // should probably be handled in the main Countries tab
     alert('Please use the Countries tab to add new countries, then return here to manage worker compliance fields.')
+  }
+
+  const handleEdit = (country: any) => {
+    setEditingCountry(country)
+    setIsFormOpen(true)
+  }
+
+  const handleCreate = () => {
+    setEditingCountry(null)
+    setIsFormOpen(true)
+  }
+
+  const handleDelete = async (id: string) => {
+    if (confirm('Are you sure you want to deactivate this country?')) {
+      await deleteCountry(id)
+    }
   }
 
   if (isManagingFields && selectedCountry) {
@@ -86,6 +105,8 @@ export function WorkerComplianceManager() {
                     key={country.id}
                     country={country}
                     onManageFields={() => handleManageFields(country.id)}
+                    onEdit={() => handleEdit(country)}
+                    onDelete={() => handleDelete(country.id)}
                   />
                 ))}
               </TableBody>
@@ -93,6 +114,12 @@ export function WorkerComplianceManager() {
           )}
         </CardContent>
       </Card>
+
+      <CountryForm
+        isOpen={isFormOpen}
+        onClose={() => setIsFormOpen(false)}
+        country={editingCountry}
+      />
     </div>
   )
 }
@@ -100,9 +127,11 @@ export function WorkerComplianceManager() {
 interface CountryComplianceRowProps {
   country: any
   onManageFields: () => void
+  onEdit: () => void
+  onDelete: () => void
 }
 
-function CountryComplianceRow({ country, onManageFields }: CountryComplianceRowProps) {
+function CountryComplianceRow({ country, onManageFields, onEdit, onDelete }: CountryComplianceRowProps) {
   const { fields, isLoading } = useCountryFields(country.code)
 
   const workerFields = fields.filter(field => 
@@ -130,18 +159,34 @@ function CountryComplianceRow({ country, onManageFields }: CountryComplianceRowP
           <span className="text-sm">
             {isLoading ? '...' : `${workerFields.length} fields`}
           </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onManageFields}
+            className="gap-2 ml-2"
+          >
+            <Settings className="h-3 w-3" />
+            Manage
+          </Button>
         </div>
       </TableCell>
       <TableCell className="text-right">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onManageFields}
-          className="gap-2"
-        >
-          <Settings className="h-3 w-3" />
-          Manage Fields
-        </Button>
+        <div className="flex items-center justify-end gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onEdit}
+          >
+            <Edit className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onDelete}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
       </TableCell>
     </TableRow>
   )
