@@ -115,11 +115,20 @@ export function WorkerComplianceCard({ worker }: WorkerComplianceCardProps) {
   }
 
   const handleInputChange = async (fieldId: string, value: string) => {
+    console.log('handleInputChange called:', { fieldId, value, isEditing })
+    
+    // Only allow input changes when in edit mode
+    if (!isEditing) {
+      console.log('Not in edit mode, ignoring input change')
+      return
+    }
+    
     // Find the field to validate
     const field = fields.find(f => f.id === fieldId)
     
     if (field) {
       const validation = validateField(field, value)
+      console.log('Validation result:', validation)
       
       if (!validation.isValid && validation.message) {
         // Set validation error
@@ -141,7 +150,9 @@ export function WorkerComplianceCard({ worker }: WorkerComplianceCardProps) {
     
     try {
       await saveWorkerData(worker.id, fieldId, value)
+      console.log('Data saved successfully')
     } catch (error) {
+      console.error('Error saving data:', error)
       // Error is already handled in the hook
     }
   }
