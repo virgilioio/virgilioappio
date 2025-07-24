@@ -61,8 +61,6 @@ export default function Settings() {
         return <CountryManagement />
       case 'platform-templates':
         return <OfferTemplatesManager />
-      case 'platform-worker-compliance':
-        return <WorkerComplianceManager />
       default:
         return <PlatformTab />
     }
@@ -147,9 +145,6 @@ export default function Settings() {
                       {renderPlatformContent()}
                     </TabsContent>
                     <TabsContent value="platform-templates">
-                      {renderPlatformContent()}
-                    </TabsContent>
-                    <TabsContent value="platform-worker-compliance">
                       {renderPlatformContent()}
                     </TabsContent>
                   </>
