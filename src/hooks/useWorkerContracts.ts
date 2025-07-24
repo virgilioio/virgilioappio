@@ -29,7 +29,8 @@ export interface WorkerContract {
   hourly_rate?: number
   monthly_fixed_amount?: number
   project_details?: string
-  department?: string
+  department_id?: string
+  department_name?: string
   manager_id?: string
   is_active: boolean
   created_by?: string
@@ -62,7 +63,7 @@ export interface CreateWorkerContractData {
   hourly_rate?: number
   monthly_fixed_amount?: number
   project_details?: string
-  department?: string
+  department_id?: string
   manager_id?: string
   is_active?: boolean
 }
@@ -89,7 +90,7 @@ export interface UpdateWorkerContractData {
   hourly_rate?: number
   monthly_fixed_amount?: number
   project_details?: string
-  department?: string
+  department_id?: string
   manager_id?: string
   is_active?: boolean
 }
@@ -109,7 +110,13 @@ export function useWorkerContracts(workerId?: string) {
     try {
       let query = supabase
         .from('worker_contracts' as any)
-        .select('*')
+        .select(`
+          *,
+          departments!department_id (
+            id,
+            name
+          )
+        `)
         .order('created_at', { ascending: false })
 
       if (targetWorkerId || workerId) {
@@ -145,7 +152,8 @@ export function useWorkerContracts(workerId?: string) {
 
       const contractsWithDetails = contractsData.map((contract: any) => ({
         ...contract,
-        manager_name: contract.manager_id ? managersMap[contract.manager_id] : null
+        manager_name: contract.manager_id ? managersMap[contract.manager_id] : null,
+        department_name: contract.departments?.name || null
       }))
 
       setContracts(contractsWithDetails)

@@ -2374,7 +2374,7 @@ export type Database = {
           created_by: string | null
           currency: string | null
           custom_pay_dates: Json | null
-          department: string | null
+          department_id: string | null
           employment_term:
             | Database["public"]["Enums"]["employment_duration_enum"]
             | null
@@ -2423,7 +2423,7 @@ export type Database = {
           created_by?: string | null
           currency?: string | null
           custom_pay_dates?: Json | null
-          department?: string | null
+          department_id?: string | null
           employment_term?:
             | Database["public"]["Enums"]["employment_duration_enum"]
             | null
@@ -2472,7 +2472,7 @@ export type Database = {
           created_by?: string | null
           currency?: string | null
           custom_pay_dates?: Json | null
-          department?: string | null
+          department_id?: string | null
           employment_term?:
             | Database["public"]["Enums"]["employment_duration_enum"]
             | null
@@ -2506,6 +2506,13 @@ export type Database = {
           working_location?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "worker_contracts_department_id_fkey"
+            columns: ["department_id"]
+            isOneToOne: false
+            referencedRelation: "departments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "worker_contracts_manager_id_fkey"
             columns: ["manager_id"]

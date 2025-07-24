@@ -179,10 +179,10 @@ function WorkerProfileContent({ worker }: { worker: any }) {
              <CardContent className="space-y-3">
                {activeContract ? (
                  <div className="space-y-3">
-                   <div className="flex justify-between items-center">
-                     <span className="text-sm font-medium text-muted-foreground">Department</span>
-                     <span className="text-sm">{activeContract.department || 'Not specified'}</span>
-                   </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium text-muted-foreground">Department</span>
+                      <span className="text-sm">{activeContract.department_name || 'Not specified'}</span>
+                    </div>
                    <div className="flex justify-between items-center">
                      <span className="text-sm font-medium text-muted-foreground">Job Title</span>
                      <span className="text-sm">{activeContract.job_title || 'Not specified'}</span>
