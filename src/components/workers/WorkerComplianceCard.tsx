@@ -396,23 +396,29 @@ export function WorkerComplianceCard({ worker }: WorkerComplianceCardProps) {
                 <input
                   type="file"
                   onChange={(e) => {
+                    console.log('File input changed', e.target.files)
                     const file = e.target.files?.[0]
-                    if (file) handleFileUpload(field.id, file)
+                    if (file) {
+                      console.log('File selected:', file.name)
+                      handleFileUpload(field.id, file)
+                    }
                   }}
                   className="hidden"
                   id={`file-${field.id}`}
                   accept={field.accepted_file_types || '*'}
                 />
-                <label htmlFor={`file-${field.id}`}>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={uploading === field.id}
-                  >
-                    <Upload className="h-4 w-4 mr-2" />
-                    {uploading === field.id ? 'Uploading...' : 'Upload File'}
-                  </Button>
-                </label>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={uploading === field.id}
+                  onClick={() => {
+                    console.log('Upload button clicked for field:', field.id)
+                    document.getElementById(`file-${field.id}`)?.click()
+                  }}
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  {uploading === field.id ? 'Uploading...' : 'Upload File'}
+                </Button>
               </div>
             )}
           </div>
