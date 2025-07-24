@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Plus, ArrowLeft, Edit, Trash2, FileText, Type, Hash, Mail, Calendar, CheckSquare, Upload } from 'lucide-react'
 import { useWorkerComplianceFields } from '@/hooks/useWorkerComplianceFields'
 import { useWorkerComplianceCountries } from '@/hooks/useWorkerComplianceCountries'
+// Force refresh - import worker compliance field form (not country field form)
 import { WorkerComplianceFieldForm } from './WorkerComplianceFieldForm'
 import { toast } from 'sonner'
 
