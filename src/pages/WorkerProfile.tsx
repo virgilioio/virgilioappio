@@ -1,6 +1,6 @@
 
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, User, Mail, Phone, MapPin, Building, Calendar, DollarSign, FileText, Plus, MoreHorizontal, X, Edit } from 'lucide-react'
+import { ArrowLeft, User, Mail, Phone, MapPin, Building, Calendar, DollarSign, FileText, Plus, MoreHorizontal, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -10,10 +10,7 @@ import { useWorkerContracts } from '@/hooks/useWorkerContracts'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { WorkerComplianceCard } from '@/components/workers/WorkerComplianceCard'
 import { useState } from 'react'
 
@@ -83,8 +80,6 @@ export default function WorkerProfile() {
 function WorkerProfileContent({ worker }: { worker: any }) {
   const { contracts } = useWorkerContracts(worker.id)
   const activeContract = contracts.find(contract => contract.is_active) || contracts[0] // Get active contract or first one
-  const [editGeneralOpen, setEditGeneralOpen] = useState(false)
-  const [editOrganizationOpen, setEditOrganizationOpen] = useState(false)
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -119,18 +114,9 @@ function WorkerProfileContent({ worker }: { worker: any }) {
           {/* General Information */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <User className="h-5 w-5" />
-                  General Information
-                </div>
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  onClick={() => setEditGeneralOpen(true)}
-                >
-                  <Edit className="h-4 w-4" />
-                </Button>
+              <CardTitle className="flex items-center gap-2">
+                <User className="h-5 w-5" />
+                General Information
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -185,19 +171,9 @@ function WorkerProfileContent({ worker }: { worker: any }) {
           {/* Organization Information */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Building className="h-5 w-5" />
-                  Organization Information
-                </div>
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  onClick={() => setEditOrganizationOpen(true)}
-                  disabled={!activeContract}
-                >
-                  <Edit className="h-4 w-4" />
-                </Button>
+              <CardTitle className="flex items-center gap-2">
+                <Building className="h-5 w-5" />
+                Organization Information
               </CardTitle>
             </CardHeader>
              <CardContent className="space-y-3">
@@ -250,21 +226,6 @@ function WorkerProfileContent({ worker }: { worker: any }) {
           {/* This column is reserved for future content */}
         </div>
       </div>
-
-      {/* Edit General Information Dialog */}
-      <EditGeneralDialog 
-        open={editGeneralOpen}
-        onOpenChange={setEditGeneralOpen}
-        worker={worker}
-      />
-
-      {/* Edit Organization Information Dialog */}
-      <EditOrganizationDialog 
-        open={editOrganizationOpen}
-        onOpenChange={setEditOrganizationOpen}
-        contract={activeContract}
-        worker={worker}
-      />
     </div>
   )
 }
@@ -549,178 +510,5 @@ function DocumentsContent({ worker }: { worker: any }) {
         </Card>
       </div>
     </div>
-  )
-}
-
-// Edit General Information Dialog
-function EditGeneralDialog({ 
-  open, 
-  onOpenChange, 
-  worker 
-}: { 
-  open: boolean; 
-  onOpenChange: (open: boolean) => void; 
-  worker: any 
-}) {
-  const [formData, setFormData] = useState({
-    personal_email: worker.personal_email || '',
-    work_email: worker.work_email || '',
-    personal_phone: worker.personal_phone || '',
-    country: worker.country || '',
-    state_province: worker.state_province || ''
-  })
-
-  const handleSave = () => {
-    // TODO: Implement save functionality
-    console.log('Saving general info:', formData)
-    onOpenChange(false)
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>Edit General Information</DialogTitle>
-        </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <div className="grid gap-2">
-            <Label htmlFor="personal_email">Personal Email</Label>
-            <Input
-              id="personal_email"
-              value={formData.personal_email}
-              onChange={(e) => setFormData(prev => ({ ...prev, personal_email: e.target.value }))}
-              placeholder="Enter personal email"
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="work_email">Work Email</Label>
-            <Input
-              id="work_email"
-              value={formData.work_email}
-              onChange={(e) => setFormData(prev => ({ ...prev, work_email: e.target.value }))}
-              placeholder="Enter work email"
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="personal_phone">Personal Phone</Label>
-            <Input
-              id="personal_phone"
-              value={formData.personal_phone}
-              onChange={(e) => setFormData(prev => ({ ...prev, personal_phone: e.target.value }))}
-              placeholder="Enter personal phone"
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="country">Country</Label>
-            <Input
-              id="country"
-              value={formData.country}
-              onChange={(e) => setFormData(prev => ({ ...prev, country: e.target.value }))}
-              placeholder="Enter country"
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="state_province">State/Province</Label>
-            <Input
-              id="state_province"
-              value={formData.state_province}
-              onChange={(e) => setFormData(prev => ({ ...prev, state_province: e.target.value }))}
-              placeholder="Enter state/province"
-            />
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button onClick={handleSave}>
-            Save Changes
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-// Edit Organization Information Dialog
-function EditOrganizationDialog({ 
-  open, 
-  onOpenChange, 
-  contract,
-  worker 
-}: { 
-  open: boolean; 
-  onOpenChange: (open: boolean) => void; 
-  contract: any;
-  worker: any 
-}) {
-  const [formData, setFormData] = useState({
-    job_title: contract?.job_title || '',
-    manager_name: contract?.manager_name || '',
-    worker_type: contract?.worker_type || '',
-    department_id: contract?.department_id || ''
-  })
-
-  const handleSave = () => {
-    // TODO: Implement save functionality
-    console.log('Saving organization info:', formData)
-    onOpenChange(false)
-  }
-
-  if (!contract) {
-    return null
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
-        <DialogHeader>
-          <DialogTitle>Edit Organization Information</DialogTitle>
-        </DialogHeader>
-        <div className="grid gap-4 py-4">
-          <div className="grid gap-2">
-            <Label htmlFor="job_title">Job Title</Label>
-            <Input
-              id="job_title"
-              value={formData.job_title}
-              onChange={(e) => setFormData(prev => ({ ...prev, job_title: e.target.value }))}
-              placeholder="Enter job title"
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="manager_name">Manager Name</Label>
-            <Input
-              id="manager_name"
-              value={formData.manager_name}
-              onChange={(e) => setFormData(prev => ({ ...prev, manager_name: e.target.value }))}
-              placeholder="Enter manager name"
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="worker_type">Worker Type</Label>
-            <Select 
-              value={formData.worker_type} 
-              onValueChange={(value) => setFormData(prev => ({ ...prev, worker_type: value }))}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select worker type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="employee">Employee</SelectItem>
-                <SelectItem value="contractor">Contractor</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button onClick={handleSave}>
-            Save Changes
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
   )
 }
