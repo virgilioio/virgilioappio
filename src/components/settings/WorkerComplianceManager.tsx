@@ -20,7 +20,7 @@ export function WorkerComplianceManager() {
   const [selectedCountryId, setSelectedCountryId] = useState<string>('')
   const [showFieldForm, setShowFieldForm] = useState(false)
   const [editingField, setEditingField] = useState<any>(null)
-  const { countries, isLoading: countriesLoading } = useCountries()
+  const { countries, isLoading: countriesLoading, deleteCountry } = useCountries()
   const { fields, isLoading: fieldsLoading, refetch } = useWorkerComplianceFields(selectedCountry)
 
   const handleFieldSaved = () => {
@@ -48,6 +48,12 @@ export function WorkerComplianceManager() {
 
   const handleManageFields = (countryCode: string) => {
     handleCountryChange(countryCode)
+  }
+
+  const handleDeleteCountry = async (countryId: string) => {
+    if (confirm('Are you sure you want to deactivate this country? This will affect all compliance configurations.')) {
+      await deleteCountry(countryId)
+    }
   }
 
   if (selectedCountry) {
@@ -113,7 +119,7 @@ export function WorkerComplianceManager() {
                   <TableHead>Country</TableHead>
                   <TableHead>Code</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Compliance Fields</TableHead>
+                  <TableHead>Fields</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -137,15 +143,22 @@ export function WorkerComplianceManager() {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleManageFields(country.code)}
-                        className="gap-2"
-                      >
-                        <Settings className="h-3 w-3" />
-                        Manage Fields
-                      </Button>
+                      <div className="flex items-center justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleManageFields(country.code)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleDeleteCountry(country.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
