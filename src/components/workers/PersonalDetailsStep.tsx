@@ -4,7 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { PhoneInput } from '@/components/ui/phone-input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { CreateWorkerData } from '@/hooks/useWorkers'
-import { COUNTRIES } from '@/constants/countries'
+import { useWorkerComplianceCountries } from '@/hooks/useWorkerComplianceCountries'
 
 interface PersonalDetailsStepProps {
   data: Partial<CreateWorkerData>
@@ -13,6 +13,8 @@ interface PersonalDetailsStepProps {
 }
 
 export function PersonalDetailsStep({ data, errors, onUpdate }: PersonalDetailsStepProps) {
+  const { countries, isLoading: countriesLoading } = useWorkerComplianceCountries()
+  
   const handleChange = (field: keyof CreateWorkerData, value: any) => {
     onUpdate({ [field]: value })
   }
@@ -71,11 +73,15 @@ export function PersonalDetailsStep({ data, errors, onUpdate }: PersonalDetailsS
                   <SelectValue placeholder="Select country" />
                 </SelectTrigger>
                 <SelectContent>
-                  {COUNTRIES.map((country) => (
-                    <SelectItem key={country.value} value={country.label}>
-                      {country.label}
-                    </SelectItem>
-                  ))}
+                  {countriesLoading ? (
+                    <SelectItem value="" disabled>Loading countries...</SelectItem>
+                  ) : (
+                    countries.map((country) => (
+                      <SelectItem key={country.id} value={country.name}>
+                        {country.name}
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
               {errors.country && (

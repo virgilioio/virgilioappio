@@ -25,12 +25,11 @@ export interface WorkerCustomDataWithField extends WorkerCustomData {
 }
 
 export function useWorkerCustomData(workerId?: string) {
-  const [data, setData] = useState<WorkerCustomDataWithField[]>([])
+  const [data, setData] = useState<WorkerCustomData[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
   const fetchWorkerData = async () => {
     if (!workerId) {
-      setData([])
       setIsLoading(false)
       return
     }
@@ -39,17 +38,8 @@ export function useWorkerCustomData(workerId?: string) {
       setIsLoading(true)
       const { data: workerData, error } = await supabase
         .from('worker_custom_data')
-        .select(`
-          *,
-          country_field:country_fields!inner(
-            field_name,
-            field_label,
-            field_type,
-            is_required
-          )
-        `)
+        .select('*')
         .eq('worker_id', workerId)
-        .order('created_at', { ascending: false })
 
       if (error) throw error
       setData(workerData || [])
@@ -86,7 +76,6 @@ export function useWorkerCustomData(workerId?: string) {
           onConflict: 'worker_id,country_field_id'
         })
         .select()
-        .single()
 
       if (error) throw error
       

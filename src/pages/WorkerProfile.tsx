@@ -11,6 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { WorkerComplianceCard } from '@/components/workers/WorkerComplianceCard'
 import { useState } from 'react'
 
 export default function WorkerProfile() {
@@ -495,15 +496,23 @@ function ContractProfileContent({ contract, worker }: { contract: any; worker: a
 // Documents Tab Content
 function DocumentsContent({ worker }: { worker: any }) {
   return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle>Documents</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-muted-foreground">Document management features coming soon...</p>
-        </CardContent>
-      </Card>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Left Column - Compliance Information */}
+      <div>
+        <WorkerComplianceCard worker={worker} />
+      </div>
+      
+      {/* Right Column - General Documents */}
+      <div>
+        <Card>
+          <CardHeader>
+            <CardTitle>General Documents</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground">General document management features coming soon...</p>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   )
 }
