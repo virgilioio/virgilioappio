@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Plus, ArrowLeft, Edit, Trash2, FileText, Type, Hash, Mail, Calendar, CheckSquare, Upload } from 'lucide-react'
 import { useCountryFields } from '@/hooks/useCountryFields'
+import { useCountries } from '@/hooks/useCountries'
 import { CountryFieldForm } from './CountryFieldForm'
 import { toast } from 'sonner'
 
@@ -14,7 +15,9 @@ interface WorkerFieldsManagerProps {
 }
 
 export function WorkerFieldsManager({ countryId, countryName, onBack }: WorkerFieldsManagerProps) {
-  const { fields, isLoading, createField, updateField, deleteField, refetch } = useCountryFields()
+  const { countries } = useCountries()
+  const selectedCountry = countries.find(c => c.id === countryId)
+  const { fields, isLoading, createField, updateField, deleteField, refetch } = useCountryFields(selectedCountry?.code)
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingField, setEditingField] = useState<any>(null)
 
@@ -189,12 +192,12 @@ export function WorkerFieldsManager({ countryId, countryName, onBack }: WorkerFi
         </CardContent>
       </Card>
 
-      {isFormOpen && (
+      {isFormOpen && selectedCountry && (
         <CountryFieldForm
           isOpen={isFormOpen}
           onClose={handleCloseForm}
           countryId={countryId}
-          countryCode={countryName}
+          countryCode={selectedCountry.code}
           field={editingField}
           onFieldChange={handleFieldChange}
         />
