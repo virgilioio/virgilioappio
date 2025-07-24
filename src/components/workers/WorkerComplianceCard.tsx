@@ -26,14 +26,16 @@ export function WorkerComplianceCard({ worker }: WorkerComplianceCardProps) {
   const { fields, isLoading: fieldsLoading } = useWorkerComplianceFields(worker.country)
   const { data: complianceData, saveWorkerData, deleteWorkerData, isLoading: dataLoading } = useWorkerComplianceData(worker.id)
 
-  // Initialize local values when data loads
+  // Initialize local values when data loads (only once or when not editing)
   useEffect(() => {
-    const initialValues: Record<string, string> = {}
-    complianceData.forEach(data => {
-      initialValues[data.worker_compliance_field_id] = data.field_value || ''
-    })
-    setLocalValues(initialValues)
-  }, [complianceData])
+    if (!isEditing) {
+      const initialValues: Record<string, string> = {}
+      complianceData.forEach(data => {
+        initialValues[data.worker_compliance_field_id] = data.field_value || ''
+      })
+      setLocalValues(initialValues)
+    }
+  }, [complianceData, isEditing])
 
   // Debounced save function
   const debouncedSave = useCallback(
@@ -48,22 +50,30 @@ export function WorkerComplianceCard({ worker }: WorkerComplianceCardProps) {
     [saveWorkerData, worker.id]
   )
 
-  // Create debounced version with 500ms delay
+  // Create debounced version with 1000ms delay and prevent loops
   useEffect(() => {
+    if (!isEditing) return // Only save when editing
+
     const timeouts: Record<string, NodeJS.Timeout> = {}
     
     Object.entries(localValues).forEach(([fieldId, value]) => {
-      if (timeouts[fieldId]) clearTimeout(timeouts[fieldId])
+      // Only save if there's actually a value and it's different from saved value
+      const savedData = complianceData.find(d => d.worker_compliance_field_id === fieldId)
+      const savedValue = savedData?.field_value || ''
       
-      timeouts[fieldId] = setTimeout(() => {
-        debouncedSave(fieldId, value)
-      }, 500)
+      if (value !== savedValue && value.trim() !== '') {
+        if (timeouts[fieldId]) clearTimeout(timeouts[fieldId])
+        
+        timeouts[fieldId] = setTimeout(() => {
+          debouncedSave(fieldId, value)
+        }, 1000)
+      }
     })
 
     return () => {
       Object.values(timeouts).forEach(timeout => clearTimeout(timeout))
     }
-  }, [localValues, debouncedSave])
+  }, [localValues, isEditing, debouncedSave, complianceData])
 
   const getFieldValue = (fieldId: string) => {
     // Use local value if editing, otherwise use saved value
