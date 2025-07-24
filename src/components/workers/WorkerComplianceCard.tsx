@@ -19,6 +19,7 @@ interface WorkerComplianceCardProps {
 
 export function WorkerComplianceCard({ worker }: WorkerComplianceCardProps) {
   const [uploading, setUploading] = useState<string | null>(null)
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
   const { fields, isLoading: fieldsLoading } = useWorkerComplianceFields(worker.country)
   const { data: complianceData, saveWorkerData, deleteWorkerData, isLoading: dataLoading } = useWorkerComplianceData(worker.id)
 
@@ -49,7 +50,93 @@ export function WorkerComplianceCard({ worker }: WorkerComplianceCardProps) {
     }
   }
 
+  const validateField = (field: any, value: string): { isValid: boolean; message?: string } => {
+    if (!field.validation_rules || field.validation_rules.length === 0) {
+      return { isValid: true }
+    }
+
+    for (const rule of field.validation_rules) {
+      const ruleType = rule.rule_type
+      const ruleValue = rule.rule_value
+      const errorMessage = rule.error_message
+
+      switch (ruleType) {
+        case 'min_length':
+          if (value.length < parseInt(ruleValue)) {
+            return { isValid: false, message: errorMessage }
+          }
+          break
+        case 'max_length':
+          if (value.length > parseInt(ruleValue)) {
+            return { isValid: false, message: errorMessage }
+          }
+          break
+        case 'exact_length':
+          if (value.length !== parseInt(ruleValue)) {
+            return { isValid: false, message: errorMessage }
+          }
+          break
+        case 'alphanumeric':
+          if (!/^[a-zA-Z0-9]*$/.test(value)) {
+            return { isValid: false, message: errorMessage }
+          }
+          break
+        case 'numeric_only':
+          if (!/^[0-9]*$/.test(value)) {
+            return { isValid: false, message: errorMessage }
+          }
+          break
+        case 'min_value':
+          if (field.field_type === 'number' && parseFloat(value) < parseFloat(ruleValue)) {
+            return { isValid: false, message: errorMessage }
+          }
+          break
+        case 'max_value':
+          if (field.field_type === 'number' && parseFloat(value) > parseFloat(ruleValue)) {
+            return { isValid: false, message: errorMessage }
+          }
+          break
+        case 'pattern':
+          try {
+            const regex = new RegExp(ruleValue)
+            if (!regex.test(value)) {
+              return { isValid: false, message: errorMessage }
+            }
+          } catch (e) {
+            console.error('Invalid regex pattern:', ruleValue)
+          }
+          break
+      }
+    }
+
+    return { isValid: true }
+  }
+
   const handleInputChange = async (fieldId: string, value: string) => {
+    // Find the field to validate
+    const field = fields.find(f => f.id === fieldId)
+    
+    if (field) {
+      const validation = validateField(field, value)
+      
+      if (!validation.isValid && validation.message) {
+        // Set validation error
+        setValidationErrors(prev => ({
+          ...prev,
+          [fieldId]: validation.message!
+        }))
+        // Don't save if validation fails
+        return
+      } else {
+        // Clear validation error if it exists
+        setValidationErrors(prev => {
+          const newErrors = { ...prev }
+          delete newErrors[fieldId]
+          return newErrors
+        })
+      }
+    }
+    
     try {
       await saveWorkerData(worker.id, fieldId, value)
     } catch (error) {
@@ -286,6 +373,9 @@ export function WorkerComplianceCard({ worker }: WorkerComplianceCardProps) {
               <p className="text-xs text-muted-foreground">{field.help_text}</p>
             )}
             {renderField(field)}
+            {validationErrors[field.id] && (
+              <p className="text-xs text-destructive">{validationErrors[field.id]}</p>
+            )}
           </div>
         ))}
       </CardContent>

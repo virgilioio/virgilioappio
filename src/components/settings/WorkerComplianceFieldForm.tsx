@@ -32,6 +32,17 @@ interface ValidationRule {
   message: string
 }
 
+const VALIDATION_RULE_TYPES = [
+  { value: 'min_length', label: 'Minimum Length', description: 'Minimum number of characters' },
+  { value: 'max_length', label: 'Maximum Length', description: 'Maximum number of characters' },
+  { value: 'exact_length', label: 'Exact Length', description: 'Exact number of characters required' },
+  { value: 'pattern', label: 'Pattern', description: 'Must match a specific pattern (regex)' },
+  { value: 'alphanumeric', label: 'Alphanumeric Only', description: 'Only letters and numbers allowed' },
+  { value: 'numeric_only', label: 'Numeric Only', description: 'Only numbers allowed' },
+  { value: 'min_value', label: 'Minimum Value', description: 'Minimum numeric value' },
+  { value: 'max_value', label: 'Maximum Value', description: 'Maximum numeric value' }
+]
+
 type FieldType = 'text' | 'number' | 'email' | 'textarea' | 'select' | 'checkbox' | 'date' | 'file'
 
 const FIELD_TYPES = [
@@ -98,6 +109,17 @@ export function WorkerComplianceFieldForm({ isOpen, onClose, countryId, countryC
         console.log('Loading existing select options:', options)
         setSelectOptions(options)
       }
+
+      // Load existing validation rules for this field
+      if (existingField && existingField.validation_rules) {
+        const rules = existingField.validation_rules.map(rule => ({
+          type: rule.rule_type,
+          value: rule.rule_value,
+          message: rule.error_message
+        }))
+        console.log('Loading existing validation rules:', rules)
+        setValidationRules(rules)
+      }
     } else {
       setFormData({
         field_name: '',
@@ -153,11 +175,12 @@ export function WorkerComplianceFieldForm({ isOpen, onClose, countryId, countryC
 
       console.log('Submitting field data:', fieldData)
       console.log('Select options to save:', selectOptions)
+      console.log('Validation rules to save:', validationRules)
 
       if (field) {
-        await updateField(field.id, fieldData, formData.field_type === 'select' ? selectOptions : undefined)
+        await updateField(field.id, fieldData, formData.field_type === 'select' ? selectOptions : undefined, validationRules)
       } else {
-        await createField(fieldData, formData.field_type === 'select' ? selectOptions : undefined)
+        await createField(fieldData, formData.field_type === 'select' ? selectOptions : undefined, validationRules)
       }
       
       // Call the callback to refresh the parent component
@@ -189,6 +212,32 @@ export function WorkerComplianceFieldForm({ isOpen, onClose, countryId, countryC
 
   const removeSelectOption = (index: number) => {
     setSelectOptions(prev => prev.filter((_, i) => i !== index))
+  }
+
+  const addValidationRule = () => {
+    setValidationRules(prev => [...prev, { type: '', value: '', message: '' }])
+  }
+
+  const updateValidationRule = (index: number, key: 'type' | 'value' | 'message', value: string) => {
+    setValidationRules(prev => prev.map((rule, i) => 
+      i === index ? { ...rule, [key]: value } : rule
+    ))
+  }
+
+  const removeValidationRule = (index: number) => {
+    setValidationRules(prev => prev.filter((_, i) => i !== index))
+  }
+
+  const getApplicableValidationTypes = () => {
+    const baseTypes = ['min_length', 'max_length', 'exact_length', 'pattern']
+    
+    if (formData.field_type === 'text' || formData.field_type === 'textarea') {
+      return [...baseTypes, 'alphanumeric', 'numeric_only']
+    } else if (formData.field_type === 'number') {
+      return ['min_value', 'max_value', 'exact_length']
+    } else {
+      return baseTypes
+    }
   }
 
   const toggleFileType = (fileType: string) => {
@@ -385,6 +434,101 @@ export function WorkerComplianceFieldForm({ isOpen, onClose, countryId, countryC
                   <p className="text-sm text-muted-foreground text-center py-4">
                     No options added yet. Click "Add Option" to create select options.
                   </p>
+                )}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Validation Rules Section */}
+          {(formData.field_type === 'text' || formData.field_type === 'textarea' || formData.field_type === 'number') && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm flex items-center justify-between">
+                  Validation Rules
+                  <Button type="button" variant="outline" size="sm" onClick={addValidationRule}>
+                    <Plus className="h-4 w-4 mr-1" />
+                    Add Rule
+                  </Button>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {validationRules.map((rule, index) => (
+                  <Card key={index} className="p-4">
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-2 gap-3">
+                        <FormField label="Rule Type" className="flex-1">
+                          <Select
+                            value={rule.type}
+                            onValueChange={(value) => updateValidationRule(index, 'type', value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select rule type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {VALIDATION_RULE_TYPES.filter(type => 
+                                getApplicableValidationTypes().includes(type.value)
+                              ).map(type => (
+                                <SelectItem key={type.value} value={type.value}>
+                                  <div>
+                                    <div className="font-medium">{type.label}</div>
+                                    <div className="text-xs text-muted-foreground">{type.description}</div>
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </FormField>
+                        
+                        <FormField label="Value" className="flex-1">
+                          <Input
+                            value={rule.value}
+                            onChange={(e) => updateValidationRule(index, 'value', e.target.value)}
+                            placeholder={
+                              rule.type === 'min_length' || rule.type === 'max_length' || rule.type === 'exact_length' ? 'Number of characters' :
+                              rule.type === 'min_value' || rule.type === 'max_value' ? 'Numeric value' :
+                              rule.type === 'pattern' ? 'Regular expression' :
+                              'Rule value'
+                            }
+                            required={!!rule.type}
+                          />
+                        </FormField>
+                      </div>
+                      
+                      <div className="flex gap-3 items-end">
+                        <FormField label="Error Message" className="flex-1">
+                          <Input
+                            value={rule.message}
+                            onChange={(e) => updateValidationRule(index, 'message', e.target.value)}
+                            placeholder="Message shown when validation fails"
+                            required={!!rule.type}
+                          />
+                        </FormField>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeValidationRule(index)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </Card>
+                ))}
+                {validationRules.length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    No validation rules added yet. Click "Add Rule" to create validation rules.
+                  </p>
+                )}
+                
+                {/* Show examples for common field types */}
+                {formData.field_type === 'text' && validationRules.length === 0 && (
+                  <div className="text-xs text-muted-foreground space-y-1">
+                    <p className="font-medium">Common examples:</p>
+                    <p>• RFC field: Alphanumeric Only + Exact Length (13 characters)</p>
+                    <p>• ID numbers: Numeric Only + Minimum Length</p>
+                    <p>• Tax ID: Pattern validation with specific format</p>
+                  </div>
                 )}
               </CardContent>
             </Card>

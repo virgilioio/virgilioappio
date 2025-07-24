@@ -116,9 +116,39 @@ export function useWorkerComplianceFields(countryNameOrCode?: string) {
     }
   }
 
+  const saveValidationRules = async (fieldId: string, rules: { type: string; value: string; message: string }[]) => {
+    try {
+      // Delete existing validation rules
+      await supabase
+        .from('worker_compliance_field_validation_rules')
+        .delete()
+        .eq('worker_compliance_field_id', fieldId)
+
+      // Insert new validation rules
+      if (rules.length > 0) {
+        const rulesToInsert = rules.map(rule => ({
+          worker_compliance_field_id: fieldId,
+          rule_type: rule.type,
+          rule_value: rule.value,
+          error_message: rule.message
+        }))
+
+        const { error } = await supabase
+          .from('worker_compliance_field_validation_rules')
+          .insert(rulesToInsert)
+
+        if (error) throw error
+      }
+    } catch (error) {
+      console.error('Error saving worker compliance field validation rules:', error)
+      throw error
+    }
+  }
+
   const createField = async (
     fieldData: Omit<WorkerComplianceField, 'id' | 'created_at' | 'updated_at' | 'created_by'>,
-    selectOptions?: { value: string; label: string }[]
+    selectOptions?: { value: string; label: string }[],
+    validationRules?: { type: string; value: string; message: string }[]
   ) => {
     try {
       const { data, error } = await supabase
@@ -132,6 +162,11 @@ export function useWorkerComplianceFields(countryNameOrCode?: string) {
       // Save select options if provided
       if (selectOptions && selectOptions.length > 0) {
         await saveSelectOptions(data.id, selectOptions)
+      }
+
+      // Save validation rules if provided
+      if (validationRules && validationRules.length > 0) {
+        await saveValidationRules(data.id, validationRules)
       }
 
       if (countryNameOrCode) {
@@ -148,7 +183,8 @@ export function useWorkerComplianceFields(countryNameOrCode?: string) {
   const updateField = async (
     id: string,
     updates: Partial<WorkerComplianceField>,
-    selectOptions?: { value: string; label: string }[]
+    selectOptions?: { value: string; label: string }[],
+    validationRules?: { type: string; value: string; message: string }[]
   ) => {
     try {
       const { data, error } = await supabase
@@ -163,6 +199,11 @@ export function useWorkerComplianceFields(countryNameOrCode?: string) {
       // Save select options if provided
       if (selectOptions !== undefined) {
         await saveSelectOptions(id, selectOptions)
+      }
+
+      // Save validation rules if provided
+      if (validationRules !== undefined) {
+        await saveValidationRules(id, validationRules)
       }
 
       if (countryNameOrCode) {
