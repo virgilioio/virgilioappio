@@ -11,6 +11,7 @@ import { useWorkerComplianceFields } from '@/hooks/useWorkerComplianceFields'
 import { useWorkerCustomData } from '@/hooks/useWorkerCustomData'
 import { supabase } from '@/integrations/supabase/client'
 import { toast } from 'sonner'
+import { Badge } from '@/components/ui/badge'
 
 interface WorkerComplianceCardProps {
   worker: any
@@ -33,6 +34,19 @@ export function WorkerComplianceCard({ worker }: WorkerComplianceCardProps) {
       name: data.file_name || 'File',
       size: data.file_size_bytes || 0
     } : null
+  }
+
+  const getFieldStatus = (field: any) => {
+    const fieldValue = getFieldValue(field.id)
+    const fieldFile = getFieldFile(field.id)
+    
+    if (field.field_type === 'file') {
+      return fieldFile ? 'completed' : 'pending'
+    } else if (field.field_type === 'checkbox') {
+      return fieldValue === 'true' ? 'completed' : 'pending'
+    } else {
+      return fieldValue.trim() ? 'completed' : 'pending'
+    }
   }
 
   const handleInputChange = async (fieldId: string, value: string) => {
@@ -253,10 +267,21 @@ export function WorkerComplianceCard({ worker }: WorkerComplianceCardProps) {
       <CardContent className="space-y-4">
         {fields.map((field) => (
           <div key={field.id} className="space-y-2">
-            <Label htmlFor={field.id}>
-              {field.field_label}
-              {field.is_required && <span className="text-destructive ml-1">*</span>}
-            </Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor={field.id}>
+                {field.field_label}
+                {field.is_required && <span className="text-destructive ml-1">*</span>}
+              </Label>
+              <Badge 
+                variant={getFieldStatus(field) === 'completed' ? 'default' : 'secondary'}
+                className={getFieldStatus(field) === 'completed' 
+                  ? 'bg-green-500 hover:bg-green-600 text-white' 
+                  : 'bg-yellow-500 hover:bg-yellow-600 text-white'
+                }
+              >
+                {getFieldStatus(field) === 'completed' ? 'Completed' : 'Pending'}
+              </Badge>
+            </div>
             {field.help_text && (
               <p className="text-xs text-muted-foreground">{field.help_text}</p>
             )}
