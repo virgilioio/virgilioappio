@@ -3,8 +3,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Plus, ArrowLeft, Edit, Trash2, FileText, Type, Hash, Mail, Calendar, CheckSquare, Upload } from 'lucide-react'
-import { useCountryFields } from '@/hooks/useCountryFields'
-import { useCountries } from '@/hooks/useCountries'
+import { useWorkerComplianceFields } from '@/hooks/useWorkerComplianceFields'
+import { useWorkerComplianceCountries } from '@/hooks/useWorkerComplianceCountries'
 import { CountryFieldForm } from './CountryFieldForm'
 import { toast } from 'sonner'
 
@@ -15,13 +15,13 @@ interface WorkerFieldsManagerProps {
 }
 
 export function WorkerFieldsManager({ countryId, countryName, onBack }: WorkerFieldsManagerProps) {
-  const { countries } = useCountries()
+  const { countries } = useWorkerComplianceCountries()
   const selectedCountry = countries.find(c => c.id === countryId)
-  const { fields, isLoading, createField, updateField, deleteField, refetch } = useCountryFields(selectedCountry?.code)
+  const { fields, isLoading, createField, updateField, deleteField, refetch } = useWorkerComplianceFields(selectedCountry?.code)
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [editingField, setEditingField] = useState<any>(null)
 
-  // Filter fields to show worker-related fields or all fields for this country
+  // All fields for this worker compliance country
   const countryFields = fields || []
 
   const handleCreateField = () => {

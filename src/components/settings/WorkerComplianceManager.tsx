@@ -4,13 +4,13 @@ import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Plus, Settings, Users, FileText, Edit, Trash2 } from 'lucide-react'
-import { useCountries } from '@/hooks/useCountries'
-import { useCountryFields } from '@/hooks/useCountryFields'
+import { useWorkerComplianceCountries } from '@/hooks/useWorkerComplianceCountries'
+import { useWorkerComplianceFields } from '@/hooks/useWorkerComplianceFields'
 import { WorkerFieldsManager } from './WorkerFieldsManager'
-import { CountryForm } from './CountryForm'
+import { WorkerComplianceCountryForm } from './WorkerComplianceCountryForm'
 
 export function WorkerComplianceManager() {
-  const { countries, isLoading: countriesLoading, createCountry, deleteCountry } = useCountries()
+  const { countries, isLoading: countriesLoading, createCountry, deleteCountry } = useWorkerComplianceCountries()
   const [selectedCountryId, setSelectedCountryId] = useState<string | null>(null)
   const [isManagingFields, setIsManagingFields] = useState(false)
   const [isFormOpen, setIsFormOpen] = useState(false)
@@ -29,10 +29,8 @@ export function WorkerComplianceManager() {
   }
 
   const handleAddCountry = () => {
-    // This would open a form to add a new country
-    // For now, we'll just show a message since country creation
-    // should probably be handled in the main Countries tab
-    alert('Please use the Countries tab to add new countries, then return here to manage worker compliance fields.')
+    setEditingCountry(null)
+    setIsFormOpen(true)
   }
 
   const handleEdit = (country: any) => {
@@ -75,9 +73,9 @@ export function WorkerComplianceManager() {
                 Manage country-specific compliance requirements for workers
               </CardDescription>
             </div>
-            <Button onClick={handleAddCountry} className="gap-2">
+            <Button onClick={handleCreate} className="gap-2">
               <Plus className="h-4 w-4" />
-              Add Country
+              Add Worker Compliance Country
             </Button>
           </div>
         </CardHeader>
@@ -115,7 +113,7 @@ export function WorkerComplianceManager() {
         </CardContent>
       </Card>
 
-      <CountryForm
+      <WorkerComplianceCountryForm
         isOpen={isFormOpen}
         onClose={() => setIsFormOpen(false)}
         country={editingCountry}
@@ -132,13 +130,7 @@ interface CountryComplianceRowProps {
 }
 
 function CountryComplianceRow({ country, onManageFields, onEdit, onDelete }: CountryComplianceRowProps) {
-  const { fields, isLoading } = useCountryFields(country.code)
-
-  const workerFields = fields.filter(field => 
-    field.field_name.includes('worker_') || 
-    field.field_label.toLowerCase().includes('worker') ||
-    field.field_label.toLowerCase().includes('employee')
-  )
+  const { fields, isLoading } = useWorkerComplianceFields(country.code)
 
   return (
     <TableRow>
@@ -157,7 +149,7 @@ function CountryComplianceRow({ country, onManageFields, onEdit, onDelete }: Cou
         <div className="flex items-center gap-2">
           <FileText className="h-4 w-4 text-muted-foreground" />
           <span className="text-sm">
-            {isLoading ? '...' : `${workerFields.length} fields`}
+            {isLoading ? '...' : `${fields.length} fields`}
           </span>
           <Button
             variant="outline"

@@ -2141,6 +2141,168 @@ export type Database = {
         }
         Relationships: []
       }
+      worker_compliance_countries: {
+        Row: {
+          code: string
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      worker_compliance_field_options: {
+        Row: {
+          created_at: string
+          display_order: number
+          id: string
+          option_label: string
+          option_value: string
+          worker_compliance_field_id: string
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number
+          id?: string
+          option_label: string
+          option_value: string
+          worker_compliance_field_id: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number
+          id?: string
+          option_label?: string
+          option_value?: string
+          worker_compliance_field_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "worker_compliance_field_options_worker_compliance_field_id_fkey"
+            columns: ["worker_compliance_field_id"]
+            isOneToOne: false
+            referencedRelation: "worker_compliance_fields"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      worker_compliance_field_validation_rules: {
+        Row: {
+          created_at: string
+          error_message: string
+          id: string
+          rule_type: string
+          rule_value: string
+          worker_compliance_field_id: string
+        }
+        Insert: {
+          created_at?: string
+          error_message: string
+          id?: string
+          rule_type: string
+          rule_value: string
+          worker_compliance_field_id: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string
+          id?: string
+          rule_type?: string
+          rule_value?: string
+          worker_compliance_field_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "worker_compliance_field_validat_worker_compliance_field_id_fkey"
+            columns: ["worker_compliance_field_id"]
+            isOneToOne: false
+            referencedRelation: "worker_compliance_fields"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      worker_compliance_fields: {
+        Row: {
+          accepted_file_types: string | null
+          created_at: string
+          created_by: string | null
+          display_order: number
+          field_label: string
+          field_name: string
+          field_type: Database["public"]["Enums"]["field_type"]
+          help_text: string | null
+          id: string
+          is_required: boolean
+          max_file_size_mb: number | null
+          placeholder_text: string | null
+          updated_at: string
+          worker_country_id: string
+        }
+        Insert: {
+          accepted_file_types?: string | null
+          created_at?: string
+          created_by?: string | null
+          display_order?: number
+          field_label: string
+          field_name: string
+          field_type?: Database["public"]["Enums"]["field_type"]
+          help_text?: string | null
+          id?: string
+          is_required?: boolean
+          max_file_size_mb?: number | null
+          placeholder_text?: string | null
+          updated_at?: string
+          worker_country_id: string
+        }
+        Update: {
+          accepted_file_types?: string | null
+          created_at?: string
+          created_by?: string | null
+          display_order?: number
+          field_label?: string
+          field_name?: string
+          field_type?: Database["public"]["Enums"]["field_type"]
+          help_text?: string | null
+          id?: string
+          is_required?: boolean
+          max_file_size_mb?: number | null
+          placeholder_text?: string | null
+          updated_at?: string
+          worker_country_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "worker_compliance_fields_worker_country_id_fkey"
+            columns: ["worker_country_id"]
+            isOneToOne: false
+            referencedRelation: "worker_compliance_countries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       worker_contracts: {
         Row: {
           base_salary: number | null
