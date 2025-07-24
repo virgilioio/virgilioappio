@@ -458,31 +458,27 @@ function ContractProfileContent({ contract, worker }: { contract: any; worker: a
         {/* Right Column */}
         <div className="space-y-4">
 
-          {/* Work Details */}
+          {/* Agreement */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Building className="h-5 w-5" />
-                Work Details
+                <FileText className="h-5 w-5" />
+                Agreement
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-muted-foreground">Work Location</span>
-                  <span className="text-sm">{contract.work_location || 'Not specified'}</span>
+                  <span className="text-sm font-medium text-muted-foreground">Agreement ID</span>
+                  <span className="text-sm">{contract.id || 'Not available'}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-muted-foreground">Work Schedule</span>
-                  <span className="text-sm">{contract.work_schedule || 'Not specified'}</span>
+                  <span className="text-sm font-medium text-muted-foreground">Contract Status</span>
+                  {getStatusBadge(contract.contract_status)}
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-muted-foreground">Manager Name</span>
-                  <span className="text-sm">{contract.manager_name || worker.manager_name || 'Not assigned'}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium text-muted-foreground">Reporting Structure</span>
-                  <span className="text-sm">{contract.reporting_structure || 'Not specified'}</span>
+                  <span className="text-sm font-medium text-muted-foreground">Creation Date</span>
+                  <span className="text-sm">{contract.created_at ? new Date(contract.created_at).toLocaleDateString() : 'Not available'}</span>
                 </div>
               </div>
             </CardContent>
