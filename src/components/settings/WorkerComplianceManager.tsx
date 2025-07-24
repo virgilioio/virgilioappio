@@ -1,185 +1,190 @@
 import { useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Settings, Users, FileText, Edit, Trash2 } from 'lucide-react'
-import { useWorkerComplianceCountries } from '@/hooks/useWorkerComplianceCountries'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Plus, Edit, Trash2, FileText, Globe } from 'lucide-react'
+import { WorkerComplianceFieldForm } from './WorkerComplianceFieldForm'
+import { CountryFieldsList } from './CountryFieldsList'
+import { useCountries } from '@/hooks/useCountries'
 import { useWorkerComplianceFields } from '@/hooks/useWorkerComplianceFields'
-import { WorkerFieldsManager } from './WorkerFieldsManager'
-import { WorkerComplianceCountryForm } from './WorkerComplianceCountryForm'
+import { toast } from 'sonner'
 
 export function WorkerComplianceManager() {
-  const { countries, isLoading: countriesLoading, createCountry, deleteCountry } = useWorkerComplianceCountries()
-  const [selectedCountryId, setSelectedCountryId] = useState<string | null>(null)
-  const [isManagingFields, setIsManagingFields] = useState(false)
-  const [isFormOpen, setIsFormOpen] = useState(false)
-  const [editingCountry, setEditingCountry] = useState<any>(null)
+  const [selectedCountry, setSelectedCountry] = useState<string>('')
+  const [selectedCountryId, setSelectedCountryId] = useState<string>('')
+  const [showFieldForm, setShowFieldForm] = useState(false)
+  const [editingField, setEditingField] = useState<any>(null)
+  const { countries, isLoading: countriesLoading } = useCountries()
+  const { fields, isLoading: fieldsLoading, refetch } = useWorkerComplianceFields(selectedCountry)
 
-  const selectedCountry = countries.find(c => c.id === selectedCountryId)
-
-  const handleManageFields = (countryId: string) => {
-    setSelectedCountryId(countryId)
-    setIsManagingFields(true)
+  const handleFieldSaved = () => {
+    setShowFieldForm(false)
+    setEditingField(null)
+    refetch()
+    toast.success('Field saved successfully')
   }
 
-  const handleBackToList = () => {
-    setIsManagingFields(false)
-    setSelectedCountryId(null)
+  const handleEditField = (field: any) => {
+    setEditingField(field)
+    setShowFieldForm(true)
   }
 
-  const handleAddCountry = () => {
-    setEditingCountry(null)
-    setIsFormOpen(true)
+  const handleAddField = () => {
+    setEditingField(null)
+    setShowFieldForm(true)
   }
 
-  const handleEdit = (country: any) => {
-    setEditingCountry(country)
-    setIsFormOpen(true)
-  }
-
-  const handleCreate = () => {
-    setEditingCountry(null)
-    setIsFormOpen(true)
-  }
-
-  const handleDelete = async (id: string) => {
-    if (confirm('Are you sure you want to deactivate this country?')) {
-      await deleteCountry(id)
-    }
-  }
-
-  if (isManagingFields && selectedCountry) {
-    return (
-      <WorkerFieldsManager 
-        countryId={selectedCountryId!}
-        countryName={selectedCountry.name}
-        onBack={handleBackToList}
-      />
-    )
+  const handleCountryChange = (countryCode: string) => {
+    setSelectedCountry(countryCode)
+    const country = countries?.find(c => c.code === countryCode)
+    setSelectedCountryId(country?.id || '')
   }
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader className="pb-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-3">
-                <Users className="h-5 w-5" />
-                Worker Compliance Management
-              </CardTitle>
+      <div>
+        <h2 className="text-2xl font-bold tracking-tight">Worker Compliance</h2>
+        <p className="text-muted-foreground">
+          Configure compliance fields and requirements for workers by country
+        </p>
+      </div>
+
+      <Tabs defaultValue="fields" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="fields" className="flex items-center gap-2">
+            <FileText className="h-4 w-4" />
+            Compliance Fields
+          </TabsTrigger>
+          <TabsTrigger value="countries" className="flex items-center gap-2">
+            <Globe className="h-4 w-4" />
+            Country Overview
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="fields" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Compliance Fields by Country</CardTitle>
               <CardDescription>
-                Manage country-specific compliance requirements for workers
+                Manage worker compliance requirements for different countries
               </CardDescription>
-            </div>
-            <Button onClick={handleCreate} className="gap-2">
-              <Plus className="h-4 w-4" />
-              Add Worker Compliance Country
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {countriesLoading ? (
-            <div className="space-y-3">
-              {[...Array(5)].map((_, i) => (
-                <div key={i} className="animate-pulse h-12 bg-gray-200 rounded"></div>
-              ))}
-            </div>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Country</TableHead>
-                  <TableHead>Code</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Worker Fields</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {countries.map((country) => (
-                  <CountryComplianceRow 
-                    key={country.id}
-                    country={country}
-                    onManageFields={() => handleManageFields(country.id)}
-                    onEdit={() => handleEdit(country)}
-                    onDelete={() => handleDelete(country.id)}
-                  />
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center gap-4">
+                <div className="flex-1">
+                  <Label htmlFor="country-select">Select Country</Label>
+                  <Select value={selectedCountry} onValueChange={handleCountryChange}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choose a country to manage compliance fields" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {countries?.map((country) => (
+                        <SelectItem key={country.id} value={country.code}>
+                          {country.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                {selectedCountry && (
+                  <Button onClick={handleAddField} className="mt-6">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Field
+                  </Button>
+                )}
+              </div>
 
-      <WorkerComplianceCountryForm
-        isOpen={isFormOpen}
-        onClose={() => setIsFormOpen(false)}
-        country={editingCountry}
-      />
+              {selectedCountry && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-semibold">
+                      Compliance Fields for {countries?.find(c => c.code === selectedCountry)?.name}
+                    </h3>
+                    <Badge variant="outline">
+                      {fields?.length || 0} fields configured
+                    </Badge>
+                  </div>
+
+                  {fieldsLoading ? (
+                    <div className="text-center py-8">
+                      <p className="text-muted-foreground">Loading fields...</p>
+                    </div>
+                  ) : (
+                    <CountryFieldsList 
+                      fields={fields || []}
+                      onEdit={handleEditField}
+                      onRefetch={refetch}
+                    />
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="countries" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Countries Overview</CardTitle>
+              <CardDescription>
+                Overview of compliance field configurations across all countries
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {countriesLoading ? (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">Loading countries...</p>
+                </div>
+              ) : (
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  {countries?.map((country) => (
+                    <Card key={country.id} className="cursor-pointer hover:shadow-md transition-shadow"
+                          onClick={() => {
+                            setSelectedCountry(country.code)
+                            // Switch to fields tab
+                            const tabsList = document.querySelector('[role="tablist"]')
+                            const fieldsTab = tabsList?.querySelector('[value="fields"]') as HTMLButtonElement
+                            fieldsTab?.click()
+                          }}>
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between">
+                          <h4 className="font-semibold">{country.name}</h4>
+                          <Badge variant="secondary">
+                            {country.code}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground mt-2">
+                          Click to configure compliance fields
+                        </p>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+
+      {showFieldForm && (
+        <WorkerComplianceFieldForm
+          isOpen={showFieldForm}
+          onClose={() => {
+            setShowFieldForm(false)
+            setEditingField(null)
+          }}
+          countryId={selectedCountryId}
+          countryCode={selectedCountry}
+          field={editingField}
+          onFieldChange={handleFieldSaved}
+        />
+      )}
     </div>
-  )
-}
-
-interface CountryComplianceRowProps {
-  country: any
-  onManageFields: () => void
-  onEdit: () => void
-  onDelete: () => void
-}
-
-function CountryComplianceRow({ country, onManageFields, onEdit, onDelete }: CountryComplianceRowProps) {
-  const { fields, isLoading } = useWorkerComplianceFields(country.code)
-
-  return (
-    <TableRow>
-      <TableCell className="font-medium">{country.name}</TableCell>
-      <TableCell>
-        <code className="bg-muted px-2 py-1 rounded text-sm">
-          {country.code}
-        </code>
-      </TableCell>
-      <TableCell>
-        <Badge variant={country.is_active ? 'default' : 'secondary'}>
-          {country.is_active ? 'Active' : 'Inactive'}
-        </Badge>
-      </TableCell>
-      <TableCell>
-        <div className="flex items-center gap-2">
-          <FileText className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm">
-            {isLoading ? '...' : `${fields.length} fields`}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onManageFields}
-            className="gap-2 ml-2"
-          >
-            <Settings className="h-3 w-3" />
-            Manage
-          </Button>
-        </div>
-      </TableCell>
-      <TableCell className="text-right">
-        <div className="flex items-center justify-end gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onEdit}
-          >
-            <Edit className="h-4 w-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onDelete}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
-      </TableCell>
-    </TableRow>
   )
 }
