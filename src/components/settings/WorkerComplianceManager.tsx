@@ -3,13 +3,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { Settings, Users, FileText } from 'lucide-react'
+import { Plus, Settings, Users, FileText } from 'lucide-react'
 import { useCountries } from '@/hooks/useCountries'
 import { useCountryFields } from '@/hooks/useCountryFields'
 import { WorkerFieldsManager } from './WorkerFieldsManager'
 
 export function WorkerComplianceManager() {
-  const { countries, isLoading: countriesLoading } = useCountries()
+  const { countries, isLoading: countriesLoading, createCountry } = useCountries()
   const [selectedCountryId, setSelectedCountryId] = useState<string | null>(null)
   const [isManagingFields, setIsManagingFields] = useState(false)
 
@@ -23,6 +23,13 @@ export function WorkerComplianceManager() {
   const handleBackToList = () => {
     setIsManagingFields(false)
     setSelectedCountryId(null)
+  }
+
+  const handleAddCountry = () => {
+    // This would open a form to add a new country
+    // For now, we'll just show a message since country creation
+    // should probably be handled in the main Countries tab
+    alert('Please use the Countries tab to add new countries, then return here to manage worker compliance fields.')
   }
 
   if (isManagingFields && selectedCountry) {
@@ -49,6 +56,10 @@ export function WorkerComplianceManager() {
                 Manage country-specific compliance requirements for workers
               </CardDescription>
             </div>
+            <Button onClick={handleAddCountry} className="gap-2">
+              <Plus className="h-4 w-4" />
+              Add Country
+            </Button>
           </div>
         </CardHeader>
         <CardContent>
