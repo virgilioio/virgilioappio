@@ -13,8 +13,9 @@ import { Plus, Edit, Trash2, FileText, Globe, Settings, UserCheck } from 'lucide
 import { WorkerComplianceFieldForm } from './WorkerComplianceFieldForm'
 import { WorkerComplianceCountryForm } from './WorkerComplianceCountryForm'
 import { CountryFieldsList } from './CountryFieldsList'
-import { useCountries } from '@/hooks/useCountries'
+import { useWorkerComplianceCountries } from '@/hooks/useWorkerComplianceCountries'
 import { useWorkerComplianceFields } from '@/hooks/useWorkerComplianceFields'
+import { useWorkerComplianceFieldCounts } from '@/hooks/useWorkerComplianceFieldCounts'
 import { toast } from 'sonner'
 
 export function WorkerComplianceManager() {
@@ -24,13 +25,15 @@ export function WorkerComplianceManager() {
   const [showFieldForm, setShowFieldForm] = useState(false)
   const [editingField, setEditingField] = useState<any>(null)
   const [showCountryForm, setShowCountryForm] = useState(false)
-  const { countries, isLoading: countriesLoading, deleteCountry } = useCountries()
+  const { countries, isLoading: countriesLoading, deleteCountry } = useWorkerComplianceCountries()
   const { fields, isLoading: fieldsLoading, refetch } = useWorkerComplianceFields(selectedCountry)
+  const { fieldCounts, refetch: refetchFieldCounts } = useWorkerComplianceFieldCounts()
 
   const handleFieldSaved = () => {
     setShowFieldForm(false)
     setEditingField(null)
     refetch()
+    refetchFieldCounts()
     toast.success('Field saved successfully')
   }
 
@@ -66,6 +69,7 @@ export function WorkerComplianceManager() {
 
   const handleCountryFormClose = () => {
     setShowCountryForm(false)
+    refetchFieldCounts()
   }
 
   const renderCountriesContent = () => {
@@ -155,7 +159,7 @@ export function WorkerComplianceManager() {
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline">
-                        0 fields configured
+                        {fieldCounts[country.code] || 0} fields configured
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
