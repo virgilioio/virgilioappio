@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Plus, Edit, Trash2, FileText, Globe, Settings, UserCheck } from 'lucide-react'
 import { WorkerComplianceFieldForm } from './WorkerComplianceFieldForm'
+import { WorkerComplianceCountryForm } from './WorkerComplianceCountryForm'
 import { CountryFieldsList } from './CountryFieldsList'
 import { useCountries } from '@/hooks/useCountries'
 import { useWorkerComplianceFields } from '@/hooks/useWorkerComplianceFields'
@@ -22,6 +23,7 @@ export function WorkerComplianceManager() {
   const [selectedCountryId, setSelectedCountryId] = useState<string>('')
   const [showFieldForm, setShowFieldForm] = useState(false)
   const [editingField, setEditingField] = useState<any>(null)
+  const [showCountryForm, setShowCountryForm] = useState(false)
   const { countries, isLoading: countriesLoading, deleteCountry } = useCountries()
   const { fields, isLoading: fieldsLoading, refetch } = useWorkerComplianceFields(selectedCountry)
 
@@ -56,6 +58,14 @@ export function WorkerComplianceManager() {
     if (confirm('Are you sure you want to deactivate this country? This will affect all compliance configurations.')) {
       await deleteCountry(countryId)
     }
+  }
+
+  const handleAddCountry = () => {
+    setShowCountryForm(true)
+  }
+
+  const handleCountryFormClose = () => {
+    setShowCountryForm(false)
   }
 
   const renderCountriesContent = () => {
@@ -105,6 +115,10 @@ export function WorkerComplianceManager() {
                 Configure compliance fields and requirements for workers by country
               </CardDescription>
             </div>
+            <Button onClick={handleAddCountry} className="gap-2">
+              <Plus className="h-4 w-4" />
+              Add Country
+            </Button>
           </div>
         </CardHeader>
         <CardContent>
@@ -245,6 +259,13 @@ export function WorkerComplianceManager() {
           countryCode={selectedCountry}
           field={editingField}
           onFieldChange={handleFieldSaved}
+        />
+      )}
+
+      {showCountryForm && (
+        <WorkerComplianceCountryForm
+          isOpen={showCountryForm}
+          onClose={handleCountryFormClose}
         />
       )}
     </div>
