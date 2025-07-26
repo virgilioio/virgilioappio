@@ -114,6 +114,14 @@ export function ReviewStep({ data, workerType, contractorPaymentType }: ReviewSt
                 )}
               </Badge>
             </div>
+            {workerType === 'contractor' && data.worker_entity_type && (
+              <div>
+                <p className="text-sm font-medium">Entity Type</p>
+                <Badge variant="outline">
+                  {data.worker_entity_type === 'individual' ? 'Individual' : 'Corporation'}
+                </Badge>
+              </div>
+            )}
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
