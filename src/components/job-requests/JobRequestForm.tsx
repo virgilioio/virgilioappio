@@ -480,11 +480,9 @@ export function JobRequestForm({ onSubmit, onCancel, isLoading = false }: JobReq
 
             {agreement?.agreement_content ? (
               <div className="border rounded-lg p-6 bg-background max-h-[500px] overflow-y-auto">
-                <div 
+                <SafeHtml 
+                  content={processAgreementContent(agreement.agreement_content)}
                   className="prose prose-sm max-w-none"
-                  dangerouslySetInnerHTML={{ 
-                    __html: processAgreementContent(agreement.agreement_content) 
-                  }}
                 />
               </div>
             ) : (

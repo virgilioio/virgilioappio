@@ -216,9 +216,9 @@ export function JobRequestAgreementsManager() {
             ) : (
               <div className="min-h-[300px] p-4 border rounded-md bg-muted/30">
                 {agreementContent ? (
-                  <div 
+                  <SafeHtml 
+                    content={agreementContent}
                     className="prose prose-sm max-w-none"
-                    dangerouslySetInnerHTML={{ __html: agreementContent }}
                   />
                 ) : (
                   <div className="text-center py-8">

@@ -362,9 +362,9 @@ export default function IndependentCandidateProfile() {
                   </CardHeader>
                   <CardContent>
                     <div className="prose prose-sm max-w-none text-text-primary">
-                      <div 
+                      <SafeHtml 
+                        content={candidate.profile_summary}
                         className="leading-relaxed [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:my-2 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0"
-                        dangerouslySetInnerHTML={{ __html: candidate.profile_summary }}
                       />
                     </div>
                   </CardContent>

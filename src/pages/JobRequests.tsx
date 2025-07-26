@@ -207,11 +207,9 @@ export default function JobRequests() {
                     <div>
                       <h4 className="font-medium">Agreement Content (At Time of Submission)</h4>
                       <div className="border rounded-lg p-4 bg-muted/30 max-h-[300px] overflow-y-auto">
-                        <div 
+                        <SafeHtml 
+                          content={selectedRequest.processed_agreement_content}
                           className="prose prose-sm max-w-none text-sm"
-                          dangerouslySetInnerHTML={{ 
-                            __html: selectedRequest.processed_agreement_content 
-                          }}
                         />
                       </div>
                     </div>

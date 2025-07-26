@@ -634,10 +634,10 @@ export function AIJobAssistant() {
                           autoFocus
                         />
                       ) : (
-                        <div 
+                        <SafeHtml 
+                          content={editableJobSpec.job_description}
                           className="p-4 bg-muted rounded-lg text-sm min-h-[300px] cursor-pointer" 
                           onClick={() => handleEditField('description')}
-                          dangerouslySetInnerHTML={{ __html: editableJobSpec.job_description }} 
                         />
                       )}
                     </div>

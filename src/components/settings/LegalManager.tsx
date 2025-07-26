@@ -166,9 +166,9 @@ export function LegalManager() {
               ) : (
                 <div className="min-h-[200px] p-4 border rounded-md bg-muted/30">
                   {termsContent ? (
-                    <div 
+                    <SafeHtml 
+                      content={termsContent}
                       className="prose prose-sm max-w-none"
-                      dangerouslySetInnerHTML={{ __html: termsContent }}
                     />
                   ) : (
                     <p className="text-muted-foreground italic">No terms and conditions set</p>
@@ -252,9 +252,9 @@ export function LegalManager() {
               ) : (
                 <div className="min-h-[200px] p-4 border rounded-md bg-muted/30">
                   {privacyContent ? (
-                    <div 
+                    <SafeHtml 
+                      content={privacyContent}
                       className="prose prose-sm max-w-none"
-                      dangerouslySetInnerHTML={{ __html: privacyContent }}
                     />
                   ) : (
                     <p className="text-muted-foreground italic">No privacy policy set</p>
