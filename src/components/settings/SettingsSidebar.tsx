@@ -25,7 +25,7 @@ interface SettingsSidebarProps {
 export function SettingsSidebar({ currentTab, onTabChange, className }: SettingsSidebarProps) {
   const permissions = usePermissions()
   const [platformOpen, setPlatformOpen] = useState(
-    ['platform-dashboard', 'platform-settings', 'platform-advertising', 'platform-legal', 'platform-countries', 'platform-templates', 'platform-worker-compliance'].includes(currentTab)
+    ['platform-dashboard', 'platform-settings', 'platform-legal', 'platform-countries', 'platform-templates', 'platform-worker-compliance'].includes(currentTab)
   )
 
   const navItems: SettingsNavItem[] = [
@@ -61,7 +61,6 @@ export function SettingsSidebar({ currentTab, onTabChange, className }: Settings
       submenu: [
         { id: 'platform-dashboard', label: 'Dashboard', icon: BarChart3, show: true },
         { id: 'platform-settings', label: 'App Personalization', icon: SettingsIcon, show: true },
-        { id: 'platform-advertising', label: 'Advertising', icon: Megaphone, show: true },
         { id: 'platform-legal', label: 'Legal', icon: FileText, show: true },
         { id: 'platform-countries', label: 'Countries', icon: Globe, show: true },
         { id: 'platform-templates', label: 'Templates', icon: FileText, show: true },

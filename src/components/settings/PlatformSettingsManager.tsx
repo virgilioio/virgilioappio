@@ -10,6 +10,7 @@ import { usePlatformSettings } from '@/hooks/usePlatformSettings'
 import { usePlatformAssets } from '@/hooks/usePlatformAssets'
 import { CurrencySettings } from './CurrencySettings'
 import { PlatformAssetUploader } from './PlatformAssetUploader'
+import { AdvertisingManager } from './AdvertisingManager'
 
 export function PlatformSettingsManager() {
   const { settings, isLoading, isUpdating, updateSetting, getSetting } = usePlatformSettings()
@@ -80,36 +81,50 @@ export function PlatformSettingsManager() {
           </TabsList>
           
           <TabsContent value="general" className="mt-6">
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="browser-title" className="text-sm font-medium">
-                  Browser Tab Title
-                </Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="browser-title"
-                    value={browserTitle}
-                    onChange={(e) => handleTitleChange(e.target.value)}
-                    placeholder="Enter the title that appears in browser tabs"
-                    className="flex-1"
-                  />
-                  <Button 
-                    onClick={handleSave}
-                    disabled={!hasChanges || isUpdating}
-                    size="sm"
-                  >
-                    {isUpdating ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Save className="h-4 w-4" />
-                    )}
-                    Save
-                  </Button>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  This title will appear in browser tabs across the entire platform
-                </p>
-              </div>
+            <div className="space-y-6">
+              {/* Browser Title Settings */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">Browser Settings</CardTitle>
+                  <CardDescription>Configure browser-related settings</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="browser-title" className="text-sm font-medium">
+                        Browser Tab Title
+                      </Label>
+                      <div className="flex gap-2">
+                        <Input
+                          id="browser-title"
+                          value={browserTitle}
+                          onChange={(e) => handleTitleChange(e.target.value)}
+                          placeholder="Enter the title that appears in browser tabs"
+                          className="flex-1"
+                        />
+                        <Button 
+                          onClick={handleSave}
+                          disabled={!hasChanges || isUpdating}
+                          size="sm"
+                        >
+                          {isUpdating ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Save className="h-4 w-4" />
+                          )}
+                          Save
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        This title will appear in browser tabs across the entire platform
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Advertising Manager */}
+              <AdvertisingManager />
             </div>
           </TabsContent>
           

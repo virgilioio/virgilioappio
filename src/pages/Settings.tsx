@@ -51,8 +51,6 @@ export default function Settings() {
         return <PlatformTab />
       case 'platform-settings':
         return <PlatformSettingsManager />
-      case 'platform-advertising':
-        return <AdvertisingManager />
       case 'platform-legal':
         return <LegalManager />
       case 'platform-countries':
@@ -128,9 +126,6 @@ export default function Settings() {
                       {renderPlatformContent()}
                     </TabsContent>
                     <TabsContent value="platform-settings">
-                      {renderPlatformContent()}
-                    </TabsContent>
-                    <TabsContent value="platform-advertising">
                       {renderPlatformContent()}
                     </TabsContent>
                     <TabsContent value="platform-legal">
