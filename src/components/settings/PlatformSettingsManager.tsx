@@ -5,12 +5,13 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Settings, Save, Loader2, Coins, Image } from 'lucide-react'
+import { Settings, Save, Loader2, Coins, Image, Search } from 'lucide-react'
 import { usePlatformSettings } from '@/hooks/usePlatformSettings'
 import { usePlatformAssets } from '@/hooks/usePlatformAssets'
 import { CurrencySettings } from './CurrencySettings'
 import { PlatformAssetUploader } from './PlatformAssetUploader'
 import { AdvertisingManager } from './AdvertisingManager'
+import { SEOSettings } from './SEOSettings'
 
 export function PlatformSettingsManager() {
   const { settings, isLoading, isUpdating, updateSetting, getSetting } = usePlatformSettings()
@@ -65,7 +66,7 @@ export function PlatformSettingsManager() {
       </CardHeader>
       <CardContent>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="general" className="flex items-center gap-2">
               <Settings className="h-4 w-4" />
               General
@@ -73,6 +74,10 @@ export function PlatformSettingsManager() {
             <TabsTrigger value="assets" className="flex items-center gap-2">
               <Image className="h-4 w-4" />
               Assets
+            </TabsTrigger>
+            <TabsTrigger value="seo" className="flex items-center gap-2">
+              <Search className="h-4 w-4" />
+              SEO
             </TabsTrigger>
             <TabsTrigger value="currency" className="flex items-center gap-2">
               <Coins className="h-4 w-4" />
@@ -130,6 +135,10 @@ export function PlatformSettingsManager() {
           
           <TabsContent value="assets" className="mt-6">
             <PlatformAssetUploader />
+          </TabsContent>
+          
+          <TabsContent value="seo" className="mt-6">
+            <SEOSettings />
           </TabsContent>
           
           <TabsContent value="currency" className="mt-6">
