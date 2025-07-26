@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Plus, Edit, Trash2, FileText, Globe, Settings, UserCheck } from 'lucide-react'
 import { WorkerComplianceFieldForm } from './WorkerComplianceFieldForm'
 import { CountryFieldsList } from './CountryFieldsList'
@@ -16,6 +17,7 @@ import { useWorkerComplianceFields } from '@/hooks/useWorkerComplianceFields'
 import { toast } from 'sonner'
 
 export function WorkerComplianceManager() {
+  const [activeTab, setActiveTab] = useState('countries')
   const [selectedCountry, setSelectedCountry] = useState<string>('')
   const [selectedCountryId, setSelectedCountryId] = useState<string>('')
   const [showFieldForm, setShowFieldForm] = useState(false)
@@ -56,48 +58,48 @@ export function WorkerComplianceManager() {
     }
   }
 
-  if (selectedCountry) {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setSelectedCountry('')
-                setSelectedCountryId('')
-              }}
-              className="mb-4"
-            >
-              ← Back to Countries
+  const renderCountriesContent = () => {
+    if (selectedCountry) {
+      return (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setSelectedCountry('')
+                  setSelectedCountryId('')
+                }}
+                className="mb-4"
+              >
+                ← Back to Countries
+              </Button>
+              <h2 className="text-xl font-semibold">
+                Worker Compliance for {countries?.find(c => c.code === selectedCountry)?.name}
+              </h2>
+            </div>
+            <Button onClick={handleAddField} className="gap-2">
+              <Plus className="h-4 w-4" />
+              Add Field
             </Button>
-            <h2 className="text-xl font-semibold">
-              Worker Compliance for {countries?.find(c => c.code === selectedCountry)?.name}
-            </h2>
           </div>
-          <Button onClick={handleAddField} className="gap-2">
-            <Plus className="h-4 w-4" />
-            Add Field
-          </Button>
+          <CountryFieldsList 
+            fields={fields || []}
+            onEdit={handleEditField}
+            onRefetch={refetch}
+          />
         </div>
-        <CountryFieldsList 
-          fields={fields || []}
-          onEdit={handleEditField}
-          onRefetch={refetch}
-        />
-      </div>
-    )
-  }
+      )
+    }
 
-  return (
-    <div className="space-y-6">
+    return (
       <Card>
         <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-3">
-                <UserCheck className="h-5 w-5" />
-                Worker Compliance
+                <Globe className="h-5 w-5" />
+                Countries
               </CardTitle>
               <CardDescription>
                 Configure compliance fields and requirements for workers by country
@@ -165,6 +167,70 @@ export function WorkerComplianceManager() {
               </TableBody>
             </Table>
           )}
+        </CardContent>
+      </Card>
+    )
+  }
+
+  const renderContractsContent = () => {
+    return (
+      <Card>
+        <CardHeader className="pb-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-3">
+                <FileText className="h-5 w-5" />
+                Contracts
+              </CardTitle>
+              <CardDescription>
+                Manage contract templates and compliance requirements
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center py-12 text-muted-foreground">
+            <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+            <p>Contract management functionality coming soon</p>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-3">
+            <UserCheck className="h-5 w-5" />
+            Payroll Compliance
+          </CardTitle>
+          <CardDescription>
+            Configure compliance settings, fields, and contract requirements
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="countries" className="flex items-center gap-2">
+                <Globe className="h-4 w-4" />
+                Countries
+              </TabsTrigger>
+              <TabsTrigger value="contracts" className="flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Contracts
+              </TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="countries" className="mt-6">
+              {renderCountriesContent()}
+            </TabsContent>
+            
+            <TabsContent value="contracts" className="mt-6">
+              {renderContractsContent()}
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
 
