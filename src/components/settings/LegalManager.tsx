@@ -10,6 +10,7 @@ import { usePlatformSettings } from '@/hooks/usePlatformSettings'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
 import { Edit, Lock, Save, X, FileText, Briefcase } from 'lucide-react'
 import { JobRequestAgreementsManager } from './JobRequestAgreementsManager'
+import { SafeHtml } from '@/components/ui/safe-html'
 
 export function LegalManager() {
   const { getSetting, updateSetting, isUpdating } = usePlatformSettings()

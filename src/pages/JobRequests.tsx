@@ -13,6 +13,7 @@ import { GuestRestriction } from '@/components/auth/GuestRestriction'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ListTodo } from 'lucide-react'
+import { SafeHtml } from '@/components/ui/safe-html'
 
 export default function JobRequests() {
   const {

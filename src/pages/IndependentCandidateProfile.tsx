@@ -16,6 +16,7 @@ import { CandidateWorkExperienceComponent } from '@/components/candidates/Candid
 import { CandidateEducationComponent } from '@/components/candidates/CandidateEducationComponent'
 import { cn } from '@/lib/utils'
 import { getSkillColor } from '@/utils/skillColors'
+import { SafeHtml } from '@/components/ui/safe-html'
 
 export default function IndependentCandidateProfile() {
   const { candidateId } = useParams<{ candidateId: string }>()

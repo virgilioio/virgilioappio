@@ -9,6 +9,7 @@ import { AgreementRichTextEditor } from '@/components/ui/agreement-rich-text-edi
 import { useJobRequestAgreements } from '@/hooks/useJobRequestAgreements'
 import { useCountries } from '@/hooks/useCountries'
 import { useToast } from '@/hooks/use-toast'
+import { SafeHtml } from '@/components/ui/safe-html'
 import { Edit, Lock, Save, X, FileText, Globe, Plus } from 'lucide-react'
 
 export function JobRequestAgreementsManager() {

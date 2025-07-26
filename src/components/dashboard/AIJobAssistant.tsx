@@ -16,6 +16,7 @@ import { validateJobPrompt, getValidationStats, type ValidationItem } from '@/ut
 import { SkillsEditor } from './SkillsEditor'
 import { useJobs } from '@/hooks/useJobs'
 import { useAuth } from '@/contexts/AuthContext'
+import { SafeHtml } from '@/components/ui/safe-html'
 
 interface JobSpec {
   job_title: string

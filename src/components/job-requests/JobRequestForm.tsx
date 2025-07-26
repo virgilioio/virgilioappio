@@ -18,6 +18,7 @@ import { useCountries } from '@/hooks/useCountries'
 import { useOrganizationCustomData } from '@/hooks/useOrganizationCustomData'
 import { useCountryFields } from '@/hooks/useCountryFields'
 import { CURRENCIES } from '@/constants/currencies'
+import { SafeHtml } from '@/components/ui/safe-html'
 
 interface JobRequestFormProps {
   onSubmit: (data: Omit<JobRequest, 'id' | 'submitted_by' | 'organization_id' | 'status' | 'approved_by' | 'created_at' | 'updated_at' | 'job_id'>) => Promise<void>
