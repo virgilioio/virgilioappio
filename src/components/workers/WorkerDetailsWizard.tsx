@@ -35,7 +35,8 @@ export function WorkerDetailsWizard({
     worker_status: 'pending',
     currency: 'USD',
     payment_period: 'monthly',
-    employment_term: 'indefinite'
+    employment_term: 'indefinite',
+    worker_entity_type: workerType === 'employee' ? 'individual' : undefined
   })
 
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -88,6 +89,9 @@ export function WorkerDetailsWizard({
         }
         if (!formData.personal_phone?.trim()) {
           newErrors.personal_phone = 'Personal phone number is required'
+        }
+        if (workerType === 'contractor' && !formData.worker_entity_type?.trim()) {
+          newErrors.worker_entity_type = 'Entity type is required for contractors'
         }
         break
       case 2:
@@ -192,7 +196,8 @@ export function WorkerDetailsWizard({
         seniority_level: formData.seniority_level,
         hourly_rate: formData.hourly_rate,
         monthly_fixed_amount: formData.monthly_fixed_amount,
-        project_details: formData.project_details
+        project_details: formData.project_details,
+        worker_entity_type: formData.worker_entity_type || 'individual'
       }
 
       onSubmit(finalData)

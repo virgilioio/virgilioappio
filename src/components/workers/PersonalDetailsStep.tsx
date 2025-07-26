@@ -12,9 +12,10 @@ interface PersonalDetailsStepProps {
   data: Partial<CreateWorkerData>
   errors: Record<string, string>
   onUpdate: (data: Partial<CreateWorkerData>) => void
+  workerType?: 'employee' | 'contractor'
 }
 
-export function PersonalDetailsStep({ data, errors, onUpdate }: PersonalDetailsStepProps) {
+export function PersonalDetailsStep({ data, errors, onUpdate, workerType }: PersonalDetailsStepProps) {
   const { countries, isLoading: countriesLoading } = useWorkerComplianceCountries()
   
   // Local state for date components to handle UI properly
@@ -206,6 +207,27 @@ export function PersonalDetailsStep({ data, errors, onUpdate }: PersonalDetailsS
                 <p className="text-sm text-destructive mt-1">{errors.country}</p>
               )}
             </div>
+
+            {workerType === 'contractor' && (
+              <div>
+                <Label htmlFor="worker_entity_type">Entity Type *</Label>
+                <Select
+                  value={data.worker_entity_type || ''}
+                  onValueChange={(value) => handleChange('worker_entity_type', value)}
+                >
+                  <SelectTrigger className={errors.worker_entity_type ? 'border-destructive' : ''}>
+                    <SelectValue placeholder="Select entity type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="individual">Individual</SelectItem>
+                    <SelectItem value="corporation">Corporation</SelectItem>
+                  </SelectContent>
+                </Select>
+                {errors.worker_entity_type && (
+                  <p className="text-sm text-destructive mt-1">{errors.worker_entity_type}</p>
+                )}
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

@@ -2609,6 +2609,7 @@ export type Database = {
           state_province: string | null
           updated_at: string
           work_email: string | null
+          worker_entity_type: Database["public"]["Enums"]["worker_entity_type_enum"]
           worker_id: number | null
           worker_status: Database["public"]["Enums"]["worker_status_enum"]
         }
@@ -2630,6 +2631,7 @@ export type Database = {
           state_province?: string | null
           updated_at?: string
           work_email?: string | null
+          worker_entity_type?: Database["public"]["Enums"]["worker_entity_type_enum"]
           worker_id?: number | null
           worker_status?: Database["public"]["Enums"]["worker_status_enum"]
         }
@@ -2651,6 +2653,7 @@ export type Database = {
           state_province?: string | null
           updated_at?: string
           work_email?: string | null
+          worker_entity_type?: Database["public"]["Enums"]["worker_entity_type_enum"]
           worker_id?: number | null
           worker_status?: Database["public"]["Enums"]["worker_status_enum"]
         }
