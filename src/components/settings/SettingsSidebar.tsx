@@ -62,7 +62,7 @@ export function SettingsSidebar({ currentTab, onTabChange, className }: Settings
         { id: 'platform-dashboard', label: 'Dashboard', icon: BarChart3, show: true },
         { id: 'platform-settings', label: 'App Personalization', icon: SettingsIcon, show: true },
         { id: 'platform-legal', label: 'Legal', icon: FileText, show: true },
-        { id: 'platform-countries', label: 'Countries', icon: Globe, show: true },
+        { id: 'platform-countries', label: 'Organization Compliance', icon: Globe, show: true },
         { id: 'platform-templates', label: 'Templates', icon: FileText, show: true },
         { id: 'platform-worker-compliance', label: 'Payroll Compliance', icon: UserCheck, show: true },
       ]
