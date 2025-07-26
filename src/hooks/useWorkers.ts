@@ -242,7 +242,7 @@ export function useWorkers() {
             hourly_rate: (activeContract as any).hourly_rate,
             monthly_fixed_amount: (activeContract as any).monthly_fixed_amount,
             project_details: (activeContract as any).project_details,
-            department: (activeContract as any).department,
+            // Note: department not available in worker_contracts table
             manager_id: (activeContract as any).manager_id,
             manager_name: (activeContract as any).manager_id && managersMap ? managersMap[(activeContract as any).manager_id] : null
           } : undefined
@@ -322,7 +322,7 @@ export function useWorkers() {
         hourly_rate: data.hourly_rate,
         monthly_fixed_amount: data.monthly_fixed_amount,
         project_details: data.project_details,
-        department: data.department,
+        // Note: department is not stored in worker_contracts table
         manager_id: data.manager_id,
         is_active: true,
         created_by: user.id
