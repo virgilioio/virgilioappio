@@ -8,6 +8,7 @@ import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { Switch } from '@/components/ui/switch'
 import { Megaphone, Save, Loader2, Eye, EyeOff } from 'lucide-react'
 import { usePlatformSettings } from '@/hooks/usePlatformSettings'
+import { SafeHtml } from '@/components/ui/safe-html'
 
 export function AdvertisingManager() {
   const { getSetting, updateSetting, isUpdating } = usePlatformSettings()
@@ -152,9 +153,9 @@ export function AdvertisingManager() {
               <h3 className="text-lg font-medium text-white mb-2">
                 {formData.title}
               </h3>
-              <div 
+              <SafeHtml 
+                content={formData.body}
                 className="text-sm text-white/90 leading-relaxed mb-4 prose prose-sm max-w-none [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6"
-                dangerouslySetInnerHTML={{ __html: formData.body }}
               />
               {formData.buttonText && (
                 <Button
