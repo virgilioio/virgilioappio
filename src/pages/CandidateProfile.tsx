@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
+import { SafeHtml } from '@/components/ui/safe-html'
 import { ArrowLeft, MapPin, DollarSign, Calendar, User, Edit, Zap, Linkedin, FileText, MessageSquare, ChevronLeft, ChevronRight, Clock } from 'lucide-react'
 import { AuthGate } from '@/components/auth/AuthGate'
 import { PermissionGate } from '@/components/auth/PermissionGate'
@@ -402,9 +403,9 @@ export default function CandidateProfile() {
                     </CardHeader>
                     <CardContent>
                       <div className="prose prose-sm max-w-none text-text-primary">
-                        <div 
+                        <SafeHtml
+                          content={candidate.profile_summary}
                           className="leading-relaxed [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:my-2 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0"
-                          dangerouslySetInnerHTML={{ __html: candidate.profile_summary }}
                         />
                       </div>
                     </CardContent>
@@ -419,9 +420,9 @@ export default function CandidateProfile() {
                     </CardHeader>
                     <CardContent>
                       <div className="prose prose-sm max-w-none text-text-primary">
-                        <div 
+                        <SafeHtml
+                          content={candidate.notes}
                           className="leading-relaxed [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:my-2 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0"
-                          dangerouslySetInnerHTML={{ __html: candidate.notes }}
                         />
                       </div>
                     </CardContent>

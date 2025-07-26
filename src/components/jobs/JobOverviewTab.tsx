@@ -2,6 +2,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { SafeHtml } from '@/components/ui/safe-html'
 import { Edit, Building, Briefcase, MapPin, DollarSign, Users, Calendar, UserCheck, User } from 'lucide-react'
 import { PermissionGate } from '@/components/auth/PermissionGate'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -163,9 +164,9 @@ export function JobOverviewTab({ job, onEdit }: JobOverviewTabProps) {
                 <Briefcase className="h-5 w-5 text-accent" />
                 Job Description
               </h3>
-              <div 
+              <SafeHtml
+                content={job.description}
                 className="text-md leading-relaxed text-text-primary bg-surface-secondary p-4 rounded-brand prose prose-sm max-w-none [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:my-2 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0"
-                dangerouslySetInnerHTML={{ __html: job.description }}
               />
             </div>
           )}

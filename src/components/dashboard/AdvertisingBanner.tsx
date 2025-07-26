@@ -1,6 +1,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { SafeHtml } from '@/components/ui/safe-html'
 import { usePlatformSettings } from '@/hooks/usePlatformSettings'
 import { usePermissions } from '@/hooks/usePermissions'
 
@@ -41,9 +42,9 @@ export function AdvertisingBanner() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div 
+        <SafeHtml 
+          content={adBody}
           className="text-sm text-white/90 leading-relaxed prose prose-sm max-w-none [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:my-2 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0"
-          dangerouslySetInnerHTML={{ __html: adBody }}
         />
         {adButtonText && (
           <div className="flex justify-start">

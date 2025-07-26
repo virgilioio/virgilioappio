@@ -1,3 +1,31 @@
+import DOMPurify from 'dompurify'
+
+/**
+ * Sanitizes HTML content for safe display, preventing XSS attacks
+ * Uses DOMPurify for robust HTML sanitization
+ */
+export function sanitizeHtml(html: string): string {
+  if (!html) {
+    return ''
+  }
+  
+  // Configure DOMPurify to allow basic formatting tags while preventing XSS
+  const config = {
+    ALLOWED_TAGS: [
+      'p', 'br', 'strong', 'b', 'em', 'i', 'u', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+      'ul', 'ol', 'li', 'a', 'span', 'div', 'blockquote', 'pre', 'code'
+    ],
+    ALLOWED_ATTR: ['href', 'title', 'class'],
+    ALLOW_DATA_ATTR: false,
+    FORBID_TAGS: ['script', 'object', 'embed', 'link', 'style', 'img', 'svg'],
+    FORBID_ATTR: ['style', 'on*'],
+    KEEP_CONTENT: true,
+    RETURN_DOM: false
+  }
+  
+  return DOMPurify.sanitize(html, config)
+}
+
 /**
  * Sanitizes HTML content for use in the RichTextEditor
  * Removes problematic CSS variables and data attributes that can break the editor
@@ -11,9 +39,12 @@ export function sanitizeHtmlForEditor(html: string): string {
   console.log('🧹 Sanitizing HTML:', html.substring(0, 200) + '...', `Total length: ${html.length}`)
   
   try {
-    // Create a temporary div to parse and clean the HTML
+    // First sanitize with DOMPurify for security
+    const secureHtml = sanitizeHtml(html)
+    
+    // Create a temporary div to parse and clean the HTML for editor compatibility
     const tempDiv = document.createElement('div')
-    tempDiv.innerHTML = html
+    tempDiv.innerHTML = secureHtml
     
     // Remove all problematic data attributes
     const elementsWithDataAttrs = tempDiv.querySelectorAll('[data-start], [data-end], [data-slate-node], [data-slate-inline], [data-slate-void]')
