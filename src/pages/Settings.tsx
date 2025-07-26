@@ -55,8 +55,6 @@ export default function Settings() {
         return <AdvertisingManager />
       case 'platform-legal':
         return <LegalManager />
-      case 'platform-assets':
-        return <PlatformAssetUploader />
       case 'platform-countries':
         return <CountryManagement />
       case 'platform-templates':
@@ -136,9 +134,6 @@ export default function Settings() {
                       {renderPlatformContent()}
                     </TabsContent>
                     <TabsContent value="platform-legal">
-                      {renderPlatformContent()}
-                    </TabsContent>
-                    <TabsContent value="platform-assets">
                       {renderPlatformContent()}
                     </TabsContent>
                     <TabsContent value="platform-countries">
