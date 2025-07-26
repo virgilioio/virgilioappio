@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -5,6 +6,7 @@ import { PhoneInput } from '@/components/ui/phone-input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { CreateWorkerData } from '@/hooks/useWorkers'
 import { useWorkerComplianceCountries } from '@/hooks/useWorkerComplianceCountries'
+import { cn } from '@/lib/utils'
 
 interface PersonalDetailsStepProps {
   data: Partial<CreateWorkerData>
@@ -15,32 +17,41 @@ interface PersonalDetailsStepProps {
 export function PersonalDetailsStep({ data, errors, onUpdate }: PersonalDetailsStepProps) {
   const { countries, isLoading: countriesLoading } = useWorkerComplianceCountries()
   
+  // Local state for date components to handle UI properly
+  const [dateComponents, setDateComponents] = useState({ day: '', month: '', year: '' })
+  
+  // Initialize date components from props
+  useEffect(() => {
+    if (data.date_of_birth) {
+      try {
+        const date = new Date(data.date_of_birth)
+        if (!isNaN(date.getTime())) {
+          setDateComponents({
+            day: date.getDate().toString(),
+            month: (date.getMonth() + 1).toString(),
+            year: date.getFullYear().toString()
+          })
+        }
+      } catch {
+        setDateComponents({ day: '', month: '', year: '' })
+      }
+    }
+  }, [data.date_of_birth])
+  
   const handleChange = (field: keyof CreateWorkerData, value: any) => {
     onUpdate({ [field]: value })
   }
 
-  // Helper function to get the current date components from data.date_of_birth
-  const getCurrentDateComponents = () => {
-    if (!data.date_of_birth) return { day: '', month: '', year: '' }
-    const date = new Date(data.date_of_birth)
-    return {
-      day: date.getDate().toString(),
-      month: (date.getMonth() + 1).toString(),
-      year: date.getFullYear().toString()
-    }
-  }
-
-  // Helper function to handle date component changes
+  // Handle date component changes
   const handleDateChange = (component: 'day' | 'month' | 'year', value: string) => {
-    const current = getCurrentDateComponents()
-    const updated = { ...current, [component]: value }
+    const updated = { ...dateComponents, [component]: value }
+    setDateComponents(updated)
     
-    // Only update if all three components are selected
+    // Update main form data when all components are selected
     if (updated.day && updated.month && updated.year) {
       const newDate = `${updated.year}-${updated.month.padStart(2, '0')}-${updated.day.padStart(2, '0')}`
       handleChange('date_of_birth', newDate)
     } else if (!updated.day && !updated.month && !updated.year) {
-      // Clear date if all components are empty
       handleChange('date_of_birth', '')
     }
   }
@@ -63,8 +74,6 @@ export function PersonalDetailsStep({ data, errors, onUpdate }: PersonalDetailsS
   ]
   const currentYear = new Date().getFullYear()
   const years = Array.from({ length: currentYear - 1900 + 1 }, (_, i) => currentYear - i)
-
-  const dateComponents = getCurrentDateComponents()
 
   return (
     <div className="space-y-6">
@@ -100,15 +109,15 @@ export function PersonalDetailsStep({ data, errors, onUpdate }: PersonalDetailsS
               )}
             </div>
 
-            <div className="md:col-span-2">
+            <div>
               <Label htmlFor="date_of_birth">Date of Birth</Label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-3 gap-1">
                 <div>
                   <Select
                     value={dateComponents.day}
                     onValueChange={(value) => handleDateChange('day', value)}
                   >
-                    <SelectTrigger className={errors.date_of_birth ? 'border-destructive' : ''}>
+                    <SelectTrigger className={cn(errors.date_of_birth ? 'border-destructive' : '', 'h-9 text-xs')}>
                       <SelectValue placeholder="Day" />
                     </SelectTrigger>
                     <SelectContent className="bg-background border shadow-lg z-50">
@@ -126,7 +135,7 @@ export function PersonalDetailsStep({ data, errors, onUpdate }: PersonalDetailsS
                     value={dateComponents.month}
                     onValueChange={(value) => handleDateChange('month', value)}
                   >
-                    <SelectTrigger className={errors.date_of_birth ? 'border-destructive' : ''}>
+                    <SelectTrigger className={cn(errors.date_of_birth ? 'border-destructive' : '', 'h-9 text-xs')}>
                       <SelectValue placeholder="Month" />
                     </SelectTrigger>
                     <SelectContent className="bg-background border shadow-lg z-50">
@@ -144,7 +153,7 @@ export function PersonalDetailsStep({ data, errors, onUpdate }: PersonalDetailsS
                     value={dateComponents.year}
                     onValueChange={(value) => handleDateChange('year', value)}
                   >
-                    <SelectTrigger className={errors.date_of_birth ? 'border-destructive' : ''}>
+                    <SelectTrigger className={cn(errors.date_of_birth ? 'border-destructive' : '', 'h-9 text-xs')}>
                       <SelectValue placeholder="Year" />
                     </SelectTrigger>
                     <SelectContent className="bg-background border shadow-lg z-50 max-h-48">
