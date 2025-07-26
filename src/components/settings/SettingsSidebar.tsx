@@ -60,7 +60,7 @@ export function SettingsSidebar({ currentTab, onTabChange, className }: Settings
       show: permissions.isPlatformAdmin || permissions.canCreateOrganizations,
       submenu: [
         { id: 'platform-dashboard', label: 'Dashboard', icon: BarChart3, show: true },
-        { id: 'platform-settings', label: 'Settings', icon: SettingsIcon, show: true },
+        { id: 'platform-settings', label: 'App Personalization', icon: SettingsIcon, show: true },
         { id: 'platform-advertising', label: 'Advertising', icon: Megaphone, show: true },
         { id: 'platform-legal', label: 'Legal', icon: FileText, show: true },
         { id: 'platform-assets', label: 'Assets', icon: Image, show: true },
