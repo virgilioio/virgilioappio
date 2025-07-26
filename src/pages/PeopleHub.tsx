@@ -7,7 +7,8 @@ import {
   Calendar,
   LayoutDashboard,
   Building2,
-  ArrowLeft
+  ArrowLeft,
+  DollarSign
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -47,6 +48,12 @@ const sidebarItems = [
     icon: Building2,
     label: 'Departments',
     description: 'Manage organizational departments'
+  },
+  {
+    href: '/people-hub/payroll',
+    icon: DollarSign,
+    label: 'Payroll',
+    description: 'Manage payroll and compensation'
   }
 ]
 
