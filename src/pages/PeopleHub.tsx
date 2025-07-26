@@ -32,6 +32,12 @@ const sidebarItems = [
     description: 'Browse and manage people'
   },
   {
+    href: '/people-hub/payroll',
+    icon: DollarSign,
+    label: 'Payroll',
+    description: 'Manage payroll and compensation'
+  },
+  {
     href: '/people-hub/org-chart',
     icon: Network,
     label: 'Org Chart',
@@ -48,12 +54,6 @@ const sidebarItems = [
     icon: Building2,
     label: 'Departments',
     description: 'Manage organizational departments'
-  },
-  {
-    href: '/people-hub/payroll',
-    icon: DollarSign,
-    label: 'Payroll',
-    description: 'Manage payroll and compensation'
   }
 ]
 
