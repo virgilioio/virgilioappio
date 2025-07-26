@@ -2596,6 +2596,7 @@ export type Database = {
           country: string | null
           created_at: string
           created_by: string | null
+          date_of_birth: string | null
           events: Json | null
           full_name: string
           id: string
@@ -2616,6 +2617,7 @@ export type Database = {
           country?: string | null
           created_at?: string
           created_by?: string | null
+          date_of_birth?: string | null
           events?: Json | null
           full_name: string
           id?: string
@@ -2636,6 +2638,7 @@ export type Database = {
           country?: string | null
           created_at?: string
           created_by?: string | null
+          date_of_birth?: string | null
           events?: Json | null
           full_name?: string
           id?: string

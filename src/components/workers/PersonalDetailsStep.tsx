@@ -3,8 +3,14 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { PhoneInput } from '@/components/ui/phone-input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Calendar } from '@/components/ui/calendar'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { CreateWorkerData } from '@/hooks/useWorkers'
 import { useWorkerComplianceCountries } from '@/hooks/useWorkerComplianceCountries'
+import { CalendarIcon } from 'lucide-react'
+import { format } from 'date-fns'
+import { cn } from '@/lib/utils'
 
 interface PersonalDetailsStepProps {
   data: Partial<CreateWorkerData>
@@ -50,6 +56,41 @@ export function PersonalDetailsStep({ data, errors, onUpdate }: PersonalDetailsS
               />
               {errors.legal_last_name && (
                 <p className="text-sm text-destructive mt-1">{errors.legal_last_name}</p>
+              )}
+            </div>
+
+            <div>
+              <Label htmlFor="date_of_birth">Date of Birth</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !data.date_of_birth && "text-muted-foreground",
+                      errors.date_of_birth && "border-destructive"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {data.date_of_birth ? 
+                      format(new Date(data.date_of_birth), "PPP") : 
+                      <span>Pick a date</span>
+                    }
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={data.date_of_birth ? new Date(data.date_of_birth) : undefined}
+                    onSelect={(date) => handleChange('date_of_birth', date ? format(date, 'yyyy-MM-dd') : '')}
+                    disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
+                    initialFocus
+                    className="p-3 pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
+              {errors.date_of_birth && (
+                <p className="text-sm text-destructive mt-1">{errors.date_of_birth}</p>
               )}
             </div>
 

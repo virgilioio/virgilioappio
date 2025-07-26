@@ -61,6 +61,7 @@ export interface CreateWorkerData {
   full_name: string
   legal_first_name?: string
   legal_last_name?: string
+  date_of_birth?: string
   citizenship?: string
   personal_email?: string
   work_email?: string
@@ -285,6 +286,7 @@ export function useWorkers() {
         full_name: data.full_name,
         legal_first_name: data.legal_first_name,
         legal_last_name: data.legal_last_name,
+        date_of_birth: data.date_of_birth,
         citizenship: data.citizenship,
         personal_email: data.personal_email,
         work_email: data.work_email,
