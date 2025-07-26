@@ -3,14 +3,8 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { PhoneInput } from '@/components/ui/phone-input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Calendar } from '@/components/ui/calendar'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { CreateWorkerData } from '@/hooks/useWorkers'
 import { useWorkerComplianceCountries } from '@/hooks/useWorkerComplianceCountries'
-import { CalendarIcon } from 'lucide-react'
-import { format } from 'date-fns'
-import { cn } from '@/lib/utils'
 
 interface PersonalDetailsStepProps {
   data: Partial<CreateWorkerData>
@@ -24,6 +18,53 @@ export function PersonalDetailsStep({ data, errors, onUpdate }: PersonalDetailsS
   const handleChange = (field: keyof CreateWorkerData, value: any) => {
     onUpdate({ [field]: value })
   }
+
+  // Helper function to get the current date components from data.date_of_birth
+  const getCurrentDateComponents = () => {
+    if (!data.date_of_birth) return { day: '', month: '', year: '' }
+    const date = new Date(data.date_of_birth)
+    return {
+      day: date.getDate().toString(),
+      month: (date.getMonth() + 1).toString(),
+      year: date.getFullYear().toString()
+    }
+  }
+
+  // Helper function to handle date component changes
+  const handleDateChange = (component: 'day' | 'month' | 'year', value: string) => {
+    const current = getCurrentDateComponents()
+    const updated = { ...current, [component]: value }
+    
+    // Only update if all three components are selected
+    if (updated.day && updated.month && updated.year) {
+      const newDate = `${updated.year}-${updated.month.padStart(2, '0')}-${updated.day.padStart(2, '0')}`
+      handleChange('date_of_birth', newDate)
+    } else if (!updated.day && !updated.month && !updated.year) {
+      // Clear date if all components are empty
+      handleChange('date_of_birth', '')
+    }
+  }
+
+  // Generate arrays for dropdowns
+  const days = Array.from({ length: 31 }, (_, i) => i + 1)
+  const months = [
+    { value: '1', label: 'January' },
+    { value: '2', label: 'February' },
+    { value: '3', label: 'March' },
+    { value: '4', label: 'April' },
+    { value: '5', label: 'May' },
+    { value: '6', label: 'June' },
+    { value: '7', label: 'July' },
+    { value: '8', label: 'August' },
+    { value: '9', label: 'September' },
+    { value: '10', label: 'October' },
+    { value: '11', label: 'November' },
+    { value: '12', label: 'December' }
+  ]
+  const currentYear = new Date().getFullYear()
+  const years = Array.from({ length: currentYear - 1900 + 1 }, (_, i) => currentYear - i)
+
+  const dateComponents = getCurrentDateComponents()
 
   return (
     <div className="space-y-6">
@@ -59,40 +100,63 @@ export function PersonalDetailsStep({ data, errors, onUpdate }: PersonalDetailsS
               )}
             </div>
 
-            <div>
+            <div className="md:col-span-2">
               <Label htmlFor="date_of_birth">Date of Birth</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !data.date_of_birth && "text-muted-foreground",
-                      errors.date_of_birth && "border-destructive"
-                    )}
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <Select
+                    value={dateComponents.day}
+                    onValueChange={(value) => handleDateChange('day', value)}
                   >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {data.date_of_birth ? 
-                      format(new Date(data.date_of_birth), "PPP") : 
-                      <span>Pick a date</span>
-                    }
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={data.date_of_birth ? new Date(data.date_of_birth) : undefined}
-                    onSelect={(date) => handleChange('date_of_birth', date ? format(date, 'yyyy-MM-dd') : '')}
-                    disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
-                    defaultMonth={data.date_of_birth ? new Date(data.date_of_birth) : new Date(1990, 0)}
-                    captionLayout="dropdown-buttons"
-                    fromYear={1900}
-                    toYear={new Date().getFullYear()}
-                    initialFocus
-                    className="p-3 pointer-events-auto"
-                  />
-                </PopoverContent>
-              </Popover>
+                    <SelectTrigger className={errors.date_of_birth ? 'border-destructive' : ''}>
+                      <SelectValue placeholder="Day" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-background border shadow-lg z-50">
+                      {days.map((day) => (
+                        <SelectItem key={day} value={day.toString()}>
+                          {day}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div>
+                  <Select
+                    value={dateComponents.month}
+                    onValueChange={(value) => handleDateChange('month', value)}
+                  >
+                    <SelectTrigger className={errors.date_of_birth ? 'border-destructive' : ''}>
+                      <SelectValue placeholder="Month" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-background border shadow-lg z-50">
+                      {months.map((month) => (
+                        <SelectItem key={month.value} value={month.value}>
+                          {month.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div>
+                  <Select
+                    value={dateComponents.year}
+                    onValueChange={(value) => handleDateChange('year', value)}
+                  >
+                    <SelectTrigger className={errors.date_of_birth ? 'border-destructive' : ''}>
+                      <SelectValue placeholder="Year" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-background border shadow-lg z-50 max-h-48">
+                      {years.map((year) => (
+                        <SelectItem key={year} value={year.toString()}>
+                          {year}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
               {errors.date_of_birth && (
                 <p className="text-sm text-destructive mt-1">{errors.date_of_birth}</p>
               )}
