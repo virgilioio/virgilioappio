@@ -3,130 +3,126 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Textarea } from '@/components/ui/textarea'
 import { Card, CardContent } from '@/components/ui/card'
-import { Worker, CreateWorkerData } from '@/hooks/useWorkers'
+import { Worker, UpdateWorkerData } from '@/hooks/useWorkers'
 import { PhoneInput } from '@/components/ui/phone-input'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useOrganizations } from '@/hooks/useOrganizations'
-import { COUNTRIES } from '@/constants/countries'
+import { useCountries } from '@/hooks/useCountries'
 
 interface WorkerFormProps {
   worker?: Worker | null
-  onSubmit: (data: CreateWorkerData) => void
+  onSubmit: (data: UpdateWorkerData) => void
   onCancel: () => void
-  prefilledData?: Partial<CreateWorkerData>
-  hideWorkerType?: boolean
-  contractorPaymentType?: 'fixed_rate' | 'hourly_rate' | 'per_project'
+  prefilledData?: Partial<UpdateWorkerData>
 }
 
-export function WorkerForm({ worker, onSubmit, onCancel, prefilledData, hideWorkerType, contractorPaymentType }: WorkerFormProps) {
+export function WorkerForm({ worker, onSubmit, onCancel, prefilledData }: WorkerFormProps) {
   const { user } = useAuth()
   const permissions = usePermissions()
   const { organizations } = useOrganizations()
+  const { countries, isLoading: countriesLoading } = useCountries()
   
-  const [formData, setFormData] = useState<CreateWorkerData>({
-    organization_id: '',
+  const [formData, setFormData] = useState<UpdateWorkerData>({
     full_name: '',
+    legal_first_name: '',
+    legal_last_name: '',
+    date_of_birth: '',
+    citizenship: '',
     personal_email: '',
     work_email: '',
     personal_phone: '',
     worker_status: 'pending',
-    worker_type: 'employee',
-    job_title: '',
-    contract_type: 'permanent',
-    contract_status: 'pending',
     country: '',
-    currency: 'USD',
     state_province: '',
-    worker_entity_type: 'not_specified',
-    start_date: '',
-    end_date: '',
-    payment_frequency: 'monthly',
-    custom_pay_dates: [],
-    next_payment_date: '',
-    contractor_payment_type: undefined,
-    hourly_rate: undefined,
-    monthly_fixed_amount: undefined,
-    project_details: '',
-    department: '',
+    worker_entity_type: 'individual',
     ...prefilledData
+  })
+
+  // State for date of birth components
+  const [dateComponents, setDateComponents] = useState({
+    day: '',
+    month: '',
+    year: ''
   })
 
   useEffect(() => {
     if (worker) {
       setFormData({
-        organization_id: worker.organization_id,
         full_name: worker.full_name,
+        legal_first_name: worker.legal_first_name || '',
+        legal_last_name: worker.legal_last_name || '',
+        date_of_birth: worker.date_of_birth || '',
+        citizenship: worker.citizenship || '',
         personal_email: worker.personal_email || '',
         work_email: worker.work_email || '',
         personal_phone: worker.personal_phone || '',
         worker_status: worker.worker_status,
-        worker_type: worker.current_contract?.worker_type || 'employee',
-        job_title: worker.current_contract?.job_title || '',
-        contract_type: worker.current_contract?.contract_type || 'permanent',
-        contract_status: worker.current_contract?.contract_status || 'pending',
         country: worker.country || '',
-        currency: worker.current_contract?.currency || 'USD',
         state_province: worker.state_province || '',
-        worker_entity_type: worker.worker_entity_type || 'not_specified',
-        start_date: worker.current_contract?.start_date || '',
-        end_date: worker.current_contract?.end_date || '',
-        payment_frequency: worker.current_contract?.payment_frequency || 'monthly',
-        custom_pay_dates: worker.current_contract?.custom_pay_dates || [],
-        next_payment_date: worker.current_contract?.next_payment_date || '',
-        contractor_payment_type: worker.current_contract?.contractor_payment_type,
-        hourly_rate: worker.current_contract?.hourly_rate,
-        monthly_fixed_amount: worker.current_contract?.monthly_fixed_amount,
-        project_details: worker.current_contract?.project_details || '',
-        department: worker.current_contract?.department || ''
+        worker_entity_type: worker.worker_entity_type || 'individual'
       })
-    } else {
-      // For new workers, we'll determine the organization in the form submission
-      // Since useOrganizations doesn't expose userOrganization, we'll handle this in the parent component
+
+      // Initialize date components if date_of_birth exists
+      if (worker.date_of_birth) {
+        const [year, month, day] = worker.date_of_birth.split('-')
+        setDateComponents({ day, month, year })
+      }
     }
-  }, [worker, permissions.isPlatformAdmin])
+  }, [worker])
+
+  // Update date_of_birth when date components change
+  useEffect(() => {
+    if (dateComponents.day && dateComponents.month && dateComponents.year) {
+      const dateString = `${dateComponents.year}-${dateComponents.month.padStart(2, '0')}-${dateComponents.day.padStart(2, '0')}`
+      setFormData(prev => ({ ...prev, date_of_birth: dateString }))
+    }
+  }, [dateComponents])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     onSubmit(formData)
   }
 
-  const handleChange = (field: keyof CreateWorkerData, value: any) => {
+  const handleChange = (field: keyof UpdateWorkerData, value: any) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
     }))
   }
 
+  const handleDateChange = (component: 'day' | 'month' | 'year', value: string) => {
+    setDateComponents(prev => ({
+      ...prev,
+      [component]: value
+    }))
+  }
+
+  // Generate arrays for date dropdowns
+  const days = Array.from({ length: 31 }, (_, i) => i + 1)
+  const months = [
+    { value: '01', label: 'January' },
+    { value: '02', label: 'February' },
+    { value: '03', label: 'March' },
+    { value: '04', label: 'April' },
+    { value: '05', label: 'May' },
+    { value: '06', label: 'June' },
+    { value: '07', label: 'July' },
+    { value: '08', label: 'August' },
+    { value: '09', label: 'September' },
+    { value: '10', label: 'October' },
+    { value: '11', label: 'November' },
+    { value: '12', label: 'December' }
+  ]
+  const currentYear = new Date().getFullYear()
+  const years = Array.from({ length: 100 }, (_, i) => currentYear - i)
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Organization Selection - Only visible to platform admins */}
-        {permissions.isPlatformAdmin && (
-          <div className="md:col-span-2">
-            <Label htmlFor="organization_id">Organization *</Label>
-            <Select
-              value={formData.organization_id}
-              onValueChange={(value) => handleChange('organization_id', value)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select organization" />
-              </SelectTrigger>
-              <SelectContent>
-                {organizations.map((org) => (
-                  <SelectItem key={org.id} value={org.id}>
-                    {org.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
-
+      <div className="grid grid-cols-1 gap-6">
         {/* Basic Information */}
-        <Card className="md:col-span-2">
+        <Card>
           <CardContent className="pt-6">
             <h3 className="text-lg font-semibold mb-4">Basic Information</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -141,14 +137,183 @@ export function WorkerForm({ worker, onSubmit, onCancel, prefilledData, hideWork
               </div>
 
               <div>
-                <Label htmlFor="job_title">Job Title</Label>
+                <Label htmlFor="worker_status">Worker Status</Label>
+                <Select
+                  value={formData.worker_status}
+                  onValueChange={(value) => handleChange('worker_status', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                    <SelectItem value="on_leave">On Leave</SelectItem>
+                    <SelectItem value="terminated">Terminated</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Legal Information */}
+        <Card>
+          <CardContent className="pt-6">
+            <h3 className="text-lg font-semibold mb-4">Legal Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="legal_first_name">Legal First Name</Label>
                 <Input
-                  id="job_title"
-                  value={formData.job_title}
-                  onChange={(e) => handleChange('job_title', e.target.value)}
+                  id="legal_first_name"
+                  value={formData.legal_first_name}
+                  onChange={(e) => handleChange('legal_first_name', e.target.value)}
                 />
               </div>
 
+              <div>
+                <Label htmlFor="legal_last_name">Legal Last Name</Label>
+                <Input
+                  id="legal_last_name"
+                  value={formData.legal_last_name}
+                  onChange={(e) => handleChange('legal_last_name', e.target.value)}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="citizenship">Citizenship</Label>
+                <Select
+                  value={formData.citizenship || ''}
+                  onValueChange={(value) => handleChange('citizenship', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select citizenship" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {countriesLoading ? (
+                      <SelectItem value="loading" disabled>Loading countries...</SelectItem>
+                    ) : (
+                      countries.map((country) => (
+                        <SelectItem key={country.id} value={country.name}>
+                          {country.name}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label>Date of Birth</Label>
+                <div className="flex gap-2">
+                  <Select
+                    value={dateComponents.day}
+                    onValueChange={(value) => handleDateChange('day', value)}
+                  >
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="Day" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-background border z-50">
+                      {days.map((day) => (
+                        <SelectItem key={day} value={day.toString().padStart(2, '0')}>
+                          {day}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  
+                  <Select
+                    value={dateComponents.month}
+                    onValueChange={(value) => handleDateChange('month', value)}
+                  >
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="Month" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-background border z-50">
+                      {months.map((month) => (
+                        <SelectItem key={month.value} value={month.value}>
+                          {month.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  
+                  <Select
+                    value={dateComponents.year}
+                    onValueChange={(value) => handleDateChange('year', value)}
+                  >
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="Year" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-background border z-50">
+                      {years.map((year) => (
+                        <SelectItem key={year} value={year.toString()}>
+                          {year}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="country">Country of Residence</Label>
+                <Select
+                  value={formData.country || ''}
+                  onValueChange={(value) => handleChange('country', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select country" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {countriesLoading ? (
+                      <SelectItem value="loading" disabled>Loading countries...</SelectItem>
+                    ) : (
+                      countries.map((country) => (
+                        <SelectItem key={country.id} value={country.name}>
+                          {country.name}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
+                <Label htmlFor="state_province">State/Province</Label>
+                <Input
+                  id="state_province"
+                  value={formData.state_province}
+                  onChange={(e) => handleChange('state_province', e.target.value)}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="worker_entity_type">Entity Type</Label>
+                <Select
+                  value={formData.worker_entity_type}
+                  onValueChange={(value) => handleChange('worker_entity_type', value)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="individual">Individual</SelectItem>
+                    <SelectItem value="business_entity">Business Entity</SelectItem>
+                    <SelectItem value="not_specified">Not Specified</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Contact Information */}
+        <Card>
+          <CardContent className="pt-6">
+            <h3 className="text-lg font-semibold mb-4">Contact Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="personal_email">Personal Email</Label>
                 <Input
@@ -169,7 +334,7 @@ export function WorkerForm({ worker, onSubmit, onCancel, prefilledData, hideWork
                 />
               </div>
 
-              <div>
+              <div className="md:col-span-2">
                 <Label htmlFor="personal_phone">Personal Phone</Label>
                 <PhoneInput
                   id="personal_phone"
@@ -178,283 +343,13 @@ export function WorkerForm({ worker, onSubmit, onCancel, prefilledData, hideWork
                   placeholder="Enter phone number"
                 />
               </div>
-
-              <div>
-                <Label htmlFor="department">Department</Label>
-                <Input
-                  id="department"
-                  value={formData.department}
-                  onChange={(e) => handleChange('department', e.target.value)}
-                />
-              </div>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Employment Details */}
-        <Card className="md:col-span-2">
-          <CardContent className="pt-6">
-            <h3 className="text-lg font-semibold mb-4">Employment Details</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="worker_status">Worker Status</Label>
-                <Select
-                  value={formData.worker_status}
-                  onValueChange={(value) => handleChange('worker_status', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="inactive">Inactive</SelectItem>
-                    <SelectItem value="on_leave">On Leave</SelectItem>
-                    <SelectItem value="terminated">Terminated</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {!hideWorkerType && (
-                <div>
-                  <Label htmlFor="worker_type">Worker Type *</Label>
-                  <Select
-                    value={formData.worker_type}
-                    onValueChange={(value) => handleChange('worker_type', value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="employee">Employee</SelectItem>
-                      <SelectItem value="contractor">Contractor</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-
-              <div>
-                <Label htmlFor="contract_type">Contract Type</Label>
-                <Select
-                  value={formData.contract_type}
-                  onValueChange={(value) => handleChange('contract_type', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="permanent">Permanent</SelectItem>
-                    <SelectItem value="temporary">Temporary</SelectItem>
-                    <SelectItem value="freelance">Freelance</SelectItem>
-                    <SelectItem value="fixed_term">Fixed Term</SelectItem>
-                    <SelectItem value="seasonal">Seasonal</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label htmlFor="contract_status">Contract Status</Label>
-                <Select
-                  value={formData.contract_status}
-                  onValueChange={(value) => handleChange('contract_status', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="expired">Expired</SelectItem>
-                    <SelectItem value="terminated">Terminated</SelectItem>
-                    <SelectItem value="suspended">Suspended</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label htmlFor="start_date">Start Date</Label>
-                <Input
-                  id="start_date"
-                  type="date"
-                  value={formData.start_date}
-                  onChange={(e) => handleChange('start_date', e.target.value)}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="end_date">End Date</Label>
-                <Input
-                  id="end_date"
-                  type="date"
-                  value={formData.end_date}
-                  onChange={(e) => handleChange('end_date', e.target.value)}
-                />
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Location & Administrative */}
-        <Card className="md:col-span-2">
-          <CardContent className="pt-6">
-            <h3 className="text-lg font-semibold mb-4">Location & Administrative</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="country">Country</Label>
-                <Select
-                  value={formData.country}
-                  onValueChange={(value) => handleChange('country', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select country" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {COUNTRIES.map((country) => (
-                      <SelectItem key={country.value} value={country.label}>
-                        {country.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label htmlFor="state_province">State/Province</Label>
-                <Input
-                  id="state_province"
-                  value={formData.state_province}
-                  onChange={(e) => handleChange('state_province', e.target.value)}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="currency">Currency</Label>
-                <Select
-                  value={formData.currency}
-                  onValueChange={(value) => handleChange('currency', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="USD">USD</SelectItem>
-                    <SelectItem value="EUR">EUR</SelectItem>
-                    <SelectItem value="GBP">GBP</SelectItem>
-                    <SelectItem value="CAD">CAD</SelectItem>
-                    <SelectItem value="AUD">AUD</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label htmlFor="worker_entity_type">Worker Entity Type</Label>
-                <Select
-                  value={formData.worker_entity_type}
-                  onValueChange={(value) => handleChange('worker_entity_type', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="not_specified">Not Specified</SelectItem>
-                    <SelectItem value="business_entity">Business Entity</SelectItem>
-                    <SelectItem value="individual">Individual</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label htmlFor="payment_frequency">Payment Frequency</Label>
-                <Select
-                  value={formData.payment_frequency}
-                  onValueChange={(value) => handleChange('payment_frequency', value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="bi_monthly">15th & Last of Month</SelectItem>
-                    <SelectItem value="monthly">Last of Month</SelectItem>
-                    <SelectItem value="custom">Specific Dates</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Custom Pay Dates - Only show when frequency is 'custom' */}
-              {formData.payment_frequency === 'custom' && (
-                <div>
-                  <Label htmlFor="custom_pay_dates">Custom Pay Dates (Days of Month)</Label>
-                  <Input
-                    id="custom_pay_dates"
-                    placeholder="e.g., 1, 15, 30"
-                    value={formData.custom_pay_dates?.join(', ') || ''}
-                    onChange={(e) => {
-                      const dates = e.target.value
-                        .split(',')
-                        .map(d => parseInt(d.trim()))
-                        .filter(d => !isNaN(d) && d >= 1 && d <= 31)
-                        .sort((a, b) => a - b)
-                      handleChange('custom_pay_dates', dates)
-                    }}
-                  />
-                  <div className="text-xs text-muted-foreground mt-1">
-                    Enter day numbers (1-31) separated by commas
-                  </div>
-                </div>
-              )}
-
-              {/* Contractor Payment Fields */}
-              {formData.worker_type === 'contractor' && contractorPaymentType === 'hourly_rate' && (
-                <div>
-                  <Label htmlFor="hourly_rate">Hourly Rate *</Label>
-                  <Input
-                    id="hourly_rate"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={formData.hourly_rate || ''}
-                    onChange={(e) => handleChange('hourly_rate', parseFloat(e.target.value) || 0)}
-                    required
-                  />
-                </div>
-              )}
-
-              {formData.worker_type === 'contractor' && contractorPaymentType === 'fixed_rate' && (
-                <div>
-                  <Label htmlFor="monthly_fixed_amount">Monthly Fixed Amount *</Label>
-                  <Input
-                    id="monthly_fixed_amount"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={formData.monthly_fixed_amount || ''}
-                    onChange={(e) => handleChange('monthly_fixed_amount', parseFloat(e.target.value) || 0)}
-                    required
-                  />
-                </div>
-              )}
-            </div>
-
-            {/* Project Details for per-project contractors */}
-            {formData.worker_type === 'contractor' && contractorPaymentType === 'per_project' && (
-              <div className="mt-4">
-                <Label htmlFor="project_details">Project Details *</Label>
-                <Textarea
-                  id="project_details"
-                  value={formData.project_details || ''}
-                  onChange={(e) => handleChange('project_details', e.target.value)}
-                  placeholder="Describe the project scope, milestones, and payment schedule..."
-                  rows={4}
-                  required
-                />
-              </div>
-            )}
           </CardContent>
         </Card>
       </div>
 
       {/* Form Actions */}
-      <div className="flex justify-end gap-4 pt-6 border-t">
+      <div className="flex justify-end space-x-3">
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
         </Button>

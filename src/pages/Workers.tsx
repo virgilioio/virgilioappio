@@ -4,7 +4,7 @@ import { PermissionGate } from '@/components/auth/PermissionGate'
 import { WorkersTable } from '@/components/workers/WorkersTable'
 import { WorkerForm } from '@/components/workers/WorkerForm'
 import { WorkerCreationWizard } from '@/components/workers/WorkerCreationWizard'
-import { useWorkers, Worker } from '@/hooks/useWorkers'
+import { useWorkers, Worker, UpdateWorkerData, CreateWorkerData } from '@/hooks/useWorkers'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Plus, Users } from 'lucide-react'
@@ -26,14 +26,14 @@ export default function Workers() {
     setIsFormOpen(true)
   }
 
-  const handleSubmit = async (data: any) => {
+  const handleSubmit = async (data: UpdateWorkerData | CreateWorkerData) => {
     try {
       if (editingWorker) {
-        await updateWorker(editingWorker.id, data)
+        // For editing, we know it's UpdateWorkerData
+        await updateWorker(editingWorker.id, data as UpdateWorkerData)
       } else {
-        // For new workers, we need to ensure organization_id is set
-        // This should be handled by the form or defaulted to user's organization
-        await createWorker(data)
+        // For creation, we know it's CreateWorkerData
+        await createWorker(data as CreateWorkerData)
       }
       setIsFormOpen(false)
       setEditingWorker(null)

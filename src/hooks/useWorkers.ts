@@ -10,6 +10,7 @@ export interface Worker {
   full_name: string
   legal_first_name?: string
   legal_last_name?: string
+  date_of_birth?: string
   citizenship?: string
   personal_email?: string
   work_email?: string
@@ -102,6 +103,7 @@ export interface UpdateWorkerData {
   full_name?: string
   legal_first_name?: string
   legal_last_name?: string
+  date_of_birth?: string
   citizenship?: string
   personal_email?: string
   work_email?: string
@@ -205,6 +207,7 @@ export function useWorkers() {
           full_name: worker.full_name,
           legal_first_name: worker.legal_first_name,
           legal_last_name: worker.legal_last_name,
+          date_of_birth: worker.date_of_birth,
           citizenship: worker.citizenship,
           personal_email: worker.personal_email,
           work_email: worker.work_email,
