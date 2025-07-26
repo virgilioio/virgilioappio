@@ -84,6 +84,10 @@ export function PersonalDetailsStep({ data, errors, onUpdate }: PersonalDetailsS
                     selected={data.date_of_birth ? new Date(data.date_of_birth) : undefined}
                     onSelect={(date) => handleChange('date_of_birth', date ? format(date, 'yyyy-MM-dd') : '')}
                     disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
+                    defaultMonth={data.date_of_birth ? new Date(data.date_of_birth) : new Date(1990, 0)}
+                    captionLayout="dropdown-buttons"
+                    fromYear={1900}
+                    toYear={new Date().getFullYear()}
                     initialFocus
                     className="p-3 pointer-events-auto"
                   />
