@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { WorkerComplianceCard } from '@/components/workers/WorkerComplianceCard'
+import { ContractCreationWizard } from '@/components/workers/ContractCreationWizard'
 import { useState } from 'react'
 
 export default function WorkerProfile() {
@@ -234,6 +235,7 @@ function WorkerProfileContent({ worker }: { worker: any }) {
 function ContractContent({ worker }: { worker: any }) {
   const { contracts, isLoading: contractsLoading } = useWorkerContracts(worker.id)
   const [selectedContract, setSelectedContract] = useState<any>(null)
+  const [showContractWizard, setShowContractWizard] = useState(false)
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -250,6 +252,12 @@ function ContractContent({ worker }: { worker: any }) {
     }
   }
 
+  const handleContractGeneration = (contractType: string) => {
+    // TODO: Implement contract generation logic based on type
+    console.log('Generating contract type:', contractType, 'for worker:', worker.id);
+    // This will be implemented in future phases
+  };
+
   // If a contract is selected, show contract details
   if (selectedContract) {
     return (
@@ -262,7 +270,18 @@ function ContractContent({ worker }: { worker: any }) {
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Contracts
         </Button>
-        <ContractProfileContent contract={selectedContract} worker={worker} />
+        <ContractProfileContent 
+          contract={selectedContract} 
+          worker={worker} 
+          onGenerateContract={() => setShowContractWizard(true)}
+        />
+        <ContractCreationWizard
+          open={showContractWizard}
+          onOpenChange={setShowContractWizard}
+          worker={worker}
+          contract={selectedContract}
+          onComplete={handleContractGeneration}
+        />
       </div>
     )
   }
@@ -326,7 +345,15 @@ function ContractContent({ worker }: { worker: any }) {
 }
 
 // Contract Profile Content
-function ContractProfileContent({ contract, worker }: { contract: any; worker: any }) {
+function ContractProfileContent({ 
+  contract, 
+  worker, 
+  onGenerateContract 
+}: { 
+  contract: any; 
+  worker: any; 
+  onGenerateContract: () => void;
+}) {
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'active':
@@ -345,13 +372,21 @@ function ContractProfileContent({ contract, worker }: { contract: any; worker: a
   return (
     <div className="space-y-6">
       {/* Contract Header */}
-      <div>
-        <h2 className="text-xl font-bold tracking-tight">
-          {contract.contract_number}
-        </h2>
-        <p className="text-muted-foreground mt-1">
-          {worker.full_name} • {contract.job_title || 'No title specified'}
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-bold tracking-tight">
+            {contract.contract_number}
+          </h2>
+          <p className="text-muted-foreground mt-1">
+            {worker.full_name} • {contract.job_title || 'No title specified'}
+          </p>
+        </div>
+        {contract.contract_status === 'pending' && (
+          <Button onClick={onGenerateContract} className="flex items-center gap-2">
+            <Plus className="h-4 w-4" />
+            Generate Contract
+          </Button>
+        )}
       </div>
 
       {/* Main Content - Two columns in 1:1 ratio */}
