@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, FileText, Building, UserCheck } from "lucide-react";
+import { ArrowLeft, FileText, Building, UserCheck, ChevronDown, ChevronUp } from "lucide-react";
 
 interface ContractCreationWizardProps {
   open: boolean;
@@ -69,6 +69,7 @@ export function ContractCreationWizard({
   onComplete 
 }: ContractCreationWizardProps) {
   const [selectedContractType, setSelectedContractType] = useState<ContractType | null>(null);
+  const [expandedFeatures, setExpandedFeatures] = useState<string | null>(null);
 
   const handleContractTypeSelect = (contractType: ContractType) => {
     setSelectedContractType(contractType);
@@ -83,6 +84,10 @@ export function ContractCreationWizard({
 
   const handleBack = () => {
     setSelectedContractType(null);
+  };
+
+  const toggleFeatures = (contractId: string) => {
+    setExpandedFeatures(expandedFeatures === contractId ? null : contractId);
   };
 
   return (
@@ -116,6 +121,7 @@ export function ContractCreationWizard({
               {contractOptions.map((option) => {
                 const Icon = option.icon;
                 const isSelected = selectedContractType === option.id;
+                const isExpanded = expandedFeatures === option.id;
                 
                 return (
                   <Card 
@@ -148,17 +154,42 @@ export function ContractCreationWizard({
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="pt-0">
-                      <div className="space-y-2">
-                        <span className="text-sm font-medium text-muted-foreground">Key Features:</span>
-                        <ul className="text-sm space-y-1">
-                          {option.features.map((feature, index) => (
-                            <li key={index} className="flex items-center gap-2">
-                              <div className="w-1.5 h-1.5 rounded-full bg-primary" />
-                              <span>{feature}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleFeatures(option.id);
+                        }}
+                        className="h-auto p-2 text-sm text-muted-foreground hover:text-foreground"
+                      >
+                        <span className="flex items-center gap-2">
+                          {isExpanded ? (
+                            <>
+                              <ChevronUp className="h-4 w-4" />
+                              Hide features
+                            </>
+                          ) : (
+                            <>
+                              <ChevronDown className="h-4 w-4" />
+                              Show key features
+                            </>
+                          )}
+                        </span>
+                      </Button>
+                      
+                      {isExpanded && (
+                        <div className="mt-3 space-y-2">
+                          <ul className="text-sm space-y-1">
+                            {option.features.map((feature, index) => (
+                              <li key={index} className="flex items-center gap-2">
+                                <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+                                <span>{feature}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 );
