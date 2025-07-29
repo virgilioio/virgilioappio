@@ -1,4 +1,5 @@
 
+import { format } from 'date-fns'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, User, Mail, Phone, MapPin, Building, Calendar, DollarSign, FileText, Plus, MoreHorizontal, X, Edit } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -100,6 +101,16 @@ function WorkerProfileContent({ worker }: { worker: any }) {
     }
   }
 
+  const formatBirthday = (dateOfBirth: string | null | undefined) => {
+    if (!dateOfBirth) return 'Not available'
+    try {
+      const date = new Date(dateOfBirth)
+      return format(date, 'MMMM d') // e.g., "January 15"
+    } catch (error) {
+      return 'Invalid date'
+    }
+  }
+
   const handleEditSubmit = async (data: any) => {
     try {
       await updateWorker(worker.id, data)
@@ -187,7 +198,7 @@ function WorkerProfileContent({ worker }: { worker: any }) {
                     <Calendar className="h-3 w-3" />
                     Birthday
                   </span>
-                  <span className="text-sm">Not available</span>
+                  <span className="text-sm">{formatBirthday(worker.date_of_birth)}</span>
                 </div>
               </div>
             </CardContent>
