@@ -1,6 +1,6 @@
 
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, User, Mail, Phone, MapPin, Building, Calendar, DollarSign, FileText, Plus, MoreHorizontal, X } from 'lucide-react'
+import { ArrowLeft, User, Mail, Phone, MapPin, Building, Calendar, DollarSign, FileText, Plus, MoreHorizontal, X, Edit } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -13,6 +13,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { WorkerComplianceCard } from '@/components/workers/WorkerComplianceCard'
 import { ContractCreationWizard } from '@/components/workers/ContractCreationWizard'
+import { WorkerForm } from '@/components/workers/WorkerForm'
 import { useState } from 'react'
 
 export default function WorkerProfile() {
@@ -80,7 +81,9 @@ export default function WorkerProfile() {
 // Worker Profile Tab Content
 function WorkerProfileContent({ worker }: { worker: any }) {
   const { contracts } = useWorkerContracts(worker.id)
+  const { updateWorker } = useWorkers()
   const activeContract = contracts.find(contract => contract.is_active) || contracts[0] // Get active contract or first one
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -96,16 +99,37 @@ function WorkerProfileContent({ worker }: { worker: any }) {
         return <Badge variant="secondary">{status}</Badge>
     }
   }
+
+  const handleEditSubmit = async (data: any) => {
+    try {
+      await updateWorker(worker.id, data)
+      setIsEditDialogOpen(false)
+    } catch (error) {
+      console.error('Failed to update worker:', error)
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Worker Header */}
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
-          {worker.full_name}
-        </h1>
-        <p className="text-muted-foreground mt-2 text-sm sm:text-md">
-          {worker.full_name} • {activeContract?.job_title || 'No title'} • {worker.organization_name || 'No organization'}
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
+            {worker.full_name}
+          </h1>
+          <p className="text-muted-foreground mt-2 text-sm sm:text-md">
+            {worker.full_name} • {activeContract?.job_title || 'No title'} • {worker.organization_name || 'No organization'}
+          </p>
+        </div>
+        <Button 
+          variant="outline" 
+          size="sm"
+          onClick={() => setIsEditDialogOpen(true)}
+          className="flex items-center gap-2"
+        >
+          <Edit className="h-4 w-4" />
+          Edit Profile
+        </Button>
       </div>
 
       {/* Main Content - Two columns */}
@@ -227,6 +251,20 @@ function WorkerProfileContent({ worker }: { worker: any }) {
           {/* This column is reserved for future content */}
         </div>
       </div>
+
+      {/* Edit Worker Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Worker Profile</DialogTitle>
+          </DialogHeader>
+          <WorkerForm
+            worker={worker}
+            onSubmit={handleEditSubmit}
+            onCancel={() => setIsEditDialogOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
