@@ -101,8 +101,10 @@ export function ContractCreationWizard({
   contract, 
   onComplete 
 }: ContractCreationWizardProps) {
-  const [currentStep, setCurrentStep] = useState(1);
-  const [wizardData, setWizardData] = useState<WizardData>({});
+  const [currentStep, setCurrentStep] = useState(contract ? 2 : 1); // Skip contract type selection if editing
+  const [wizardData, setWizardData] = useState<WizardData>({
+    contractType: contract ? (contract.contract_type === 'eor' ? 'eor' : contract.contract_type === 'cor' ? 'cor' : 'direct') : undefined
+  });
   const [expandedFeatures, setExpandedFeatures] = useState<string | null>(null);
   const [expandedPricing, setExpandedPricing] = useState<string | null>(null);
 
@@ -143,12 +145,23 @@ export function ContractCreationWizard({
   };
 
   const getStepTitle = () => {
-    switch (currentStep) {
-      case 1: return 'Choose Contract Type';
-      case 2: return 'Review Contract Details';
-      case 3: return 'Contract Preview';
-      case 4: return 'Final Review';
-      default: return 'Generate Contract';
+    if (contract) {
+      // When editing an existing contract
+      switch (currentStep) {
+        case 2: return 'Edit Contract Details';
+        case 3: return 'Contract Preview';
+        case 4: return 'Final Review';
+        default: return 'Edit Contract';
+      }
+    } else {
+      // When creating a new contract
+      switch (currentStep) {
+        case 1: return 'Choose Contract Type';
+        case 2: return 'Review Contract Details';
+        case 3: return 'Contract Preview';
+        case 4: return 'Final Review';
+        default: return 'Generate Contract';
+      }
     }
   };
 
