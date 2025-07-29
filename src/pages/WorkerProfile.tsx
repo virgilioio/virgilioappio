@@ -14,6 +14,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { WorkerComplianceCard } from '@/components/workers/WorkerComplianceCard'
 import { ContractCreationWizard } from '@/components/workers/ContractCreationWizard'
+import { ContractEditForm } from '@/components/workers/ContractEditForm'
 import { WorkerForm } from '@/components/workers/WorkerForm'
 import { useState } from 'react'
 
@@ -284,9 +285,10 @@ function WorkerProfileContent({ worker }: { worker: any }) {
 
 // Contract Tab Content
 function ContractContent({ worker }: { worker: any }) {
-  const { contracts, isLoading: contractsLoading } = useWorkerContracts(worker.id)
+  const { contracts, isLoading: contractsLoading, updateContract } = useWorkerContracts(worker.id)
   const [selectedContract, setSelectedContract] = useState<any>(null)
   const [showContractWizard, setShowContractWizard] = useState(false)
+  const [editingContract, setEditingContract] = useState<any>(null)
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -325,15 +327,39 @@ function ContractContent({ worker }: { worker: any }) {
           contract={selectedContract} 
           worker={worker} 
           onGenerateContract={() => setShowContractWizard(true)}
-          onEditContract={() => setShowContractWizard(true)}
+          onEditContract={() => setEditingContract(selectedContract)}
         />
+        {/* New Contract Wizard */}
         <ContractCreationWizard
           open={showContractWizard}
           onOpenChange={setShowContractWizard}
           worker={worker}
-          contract={selectedContract}
-          onComplete={handleContractGeneration}
+          contract={null}
+          onComplete={(data) => {
+            console.log('Contract data:', data);
+            setShowContractWizard(false);
+          }}
         />
+
+        {/* Edit Contract Form */}
+        <Dialog open={!!editingContract} onOpenChange={() => setEditingContract(null)}>
+          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Edit Contract</DialogTitle>
+            </DialogHeader>
+            {editingContract && (
+              <ContractEditForm
+                contract={editingContract}
+                onSave={(updatedData) => {
+                  updateContract(editingContract.id, updatedData);
+                  setEditingContract(null);
+                  setSelectedContract(null);
+                }}
+                onCancel={() => setEditingContract(null)}
+              />
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     )
   }

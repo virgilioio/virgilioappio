@@ -145,23 +145,12 @@ export function ContractCreationWizard({
   };
 
   const getStepTitle = () => {
-    if (contract) {
-      // When editing an existing contract
-      switch (currentStep) {
-        case 2: return 'Edit Contract Details';
-        case 3: return 'Contract Preview';
-        case 4: return 'Final Review';
-        default: return 'Edit Contract';
-      }
-    } else {
-      // When creating a new contract
-      switch (currentStep) {
-        case 1: return 'Choose Contract Type';
-        case 2: return 'Review Contract Details';
-        case 3: return 'Contract Preview';
-        case 4: return 'Final Review';
-        default: return 'Generate Contract';
-      }
+    switch (currentStep) {
+      case 1: return 'Choose Contract Type';
+      case 2: return 'Review Contract Details';
+      case 3: return 'Contract Preview';
+      case 4: return 'Final Review';
+      default: return 'Generate Contract';
     }
   };
 
