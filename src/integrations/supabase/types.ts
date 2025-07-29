@@ -2390,6 +2390,50 @@ export type Database = {
           },
         ]
       }
+      worker_contract_templates: {
+        Row: {
+          country_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          template_content: string | null
+          template_name: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          country_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          template_content?: string | null
+          template_name: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          country_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          template_content?: string | null
+          template_name?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "worker_contract_templates_country_id_fkey"
+            columns: ["country_id"]
+            isOneToOne: false
+            referencedRelation: "worker_compliance_countries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       worker_contracts: {
         Row: {
           base_salary: number | null

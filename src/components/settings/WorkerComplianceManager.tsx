@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Plus, Edit, Trash2, FileText, Globe, Settings, UserCheck } from 'lucide-react'
 import { WorkerComplianceFieldForm } from './WorkerComplianceFieldForm'
 import { WorkerComplianceCountryForm } from './WorkerComplianceCountryForm'
+import { WorkerContractTemplatesManager } from './WorkerContractTemplatesManager'
 import { CountryFieldsList } from './CountryFieldsList'
 import { useWorkerComplianceCountries } from '@/hooks/useWorkerComplianceCountries'
 import { useWorkerComplianceFields } from '@/hooks/useWorkerComplianceFields'
@@ -191,29 +192,7 @@ export function WorkerComplianceManager() {
   }
 
   const renderContractsContent = () => {
-    return (
-      <Card>
-        <CardHeader className="pb-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-3">
-                <FileText className="h-5 w-5" />
-                Contracts
-              </CardTitle>
-              <CardDescription>
-                Manage contract templates and compliance requirements
-              </CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-12 text-muted-foreground">
-            <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-            <p>Contract management functionality coming soon</p>
-          </div>
-        </CardContent>
-      </Card>
-    )
+    return <WorkerContractTemplatesManager />
   }
 
   return (
