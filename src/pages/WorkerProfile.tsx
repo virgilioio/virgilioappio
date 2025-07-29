@@ -325,6 +325,7 @@ function ContractContent({ worker }: { worker: any }) {
           contract={selectedContract} 
           worker={worker} 
           onGenerateContract={() => setShowContractWizard(true)}
+          onEditContract={() => setShowContractWizard(true)}
         />
         <ContractCreationWizard
           open={showContractWizard}
@@ -399,11 +400,13 @@ function ContractContent({ worker }: { worker: any }) {
 function ContractProfileContent({ 
   contract, 
   worker, 
-  onGenerateContract 
+  onGenerateContract,
+  onEditContract
 }: { 
   contract: any; 
   worker: any; 
   onGenerateContract: () => void;
+  onEditContract: (contract: any) => void;
 }) {
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -433,10 +436,20 @@ function ContractProfileContent({
           </p>
         </div>
         {contract.contract_status === 'pending' && (
-          <Button onClick={onGenerateContract} className="flex items-center gap-2">
-            <Plus className="h-4 w-4" />
-            Generate Contract
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => onEditContract(contract)} 
+              className="flex items-center gap-2"
+            >
+              <Edit className="h-4 w-4" />
+              Edit Contract
+            </Button>
+            <Button onClick={onGenerateContract} className="flex items-center gap-2">
+              <Plus className="h-4 w-4" />
+              Generate Contract
+            </Button>
+          </div>
         )}
       </div>
 
