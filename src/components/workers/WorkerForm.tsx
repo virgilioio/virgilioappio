@@ -9,7 +9,7 @@ import { PhoneInput } from '@/components/ui/phone-input'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useOrganizations } from '@/hooks/useOrganizations'
-import { useCountries } from '@/hooks/useCountries'
+import { useWorkerComplianceCountries } from '@/hooks/useWorkerComplianceCountries'
 
 interface WorkerFormProps {
   worker?: Worker | null
@@ -22,7 +22,7 @@ export function WorkerForm({ worker, onSubmit, onCancel, prefilledData }: Worker
   const { user } = useAuth()
   const permissions = usePermissions()
   const { organizations } = useOrganizations()
-  const { countries, isLoading: countriesLoading } = useCountries()
+  const { countries, isLoading: countriesLoading } = useWorkerComplianceCountries()
   
   const [formData, setFormData] = useState<UpdateWorkerData>({
     full_name: '',

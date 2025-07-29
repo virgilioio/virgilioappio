@@ -42,30 +42,14 @@ export function useWorkerComplianceFields(countryNameOrCode?: string) {
       setIsLoading(true)
       
       // First get the country ID - try by name first, then by code
-      // Also handle variations like Mexico vs México
-      let { data: countryData, error: countryError } = await supabase
+      const { data: countryData, error: countryError } = await supabase
         .from('worker_compliance_countries')
         .select('id')
         .or(`name.eq.${nameOrCode},code.eq.${nameOrCode}`)
         .single()
 
-      // If no exact match found, try case-insensitive search for variations
-      if (countryError && nameOrCode) {
-        const { data: alternativeData, error: alternativeError } = await supabase
-          .from('worker_compliance_countries')
-          .select('id')
-          .or(`name.ilike.${nameOrCode},code.ilike.${nameOrCode}`)
-          .single()
-        
-        if (!alternativeError && alternativeData) {
-          countryData = alternativeData
-          countryError = null
-        }
-      }
-
       if (countryError || !countryData) {
         console.error('Error fetching worker compliance country:', countryError)
-        console.log('Looking for country:', nameOrCode)
         setFields([])
         return
       }
