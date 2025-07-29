@@ -15,6 +15,7 @@ import { useToast } from '@/hooks/use-toast'
 
 interface PlaceholderHelperProps {
   selectedCountryId: string
+  selectedCountryName: string
   onInsertPlaceholder: (placeholder: string) => void
 }
 
@@ -92,9 +93,10 @@ function PlaceholderSection({ title, icon: Icon, placeholders, onInsert }: Place
 
 export function WorkerContractPlaceholderHelper({ 
   selectedCountryId, 
+  selectedCountryName,
   onInsertPlaceholder 
 }: PlaceholderHelperProps) {
-  const { getPlaceholdersByCategory } = useWorkerContractPlaceholders(selectedCountryId)
+  const { getPlaceholdersByCategory } = useWorkerContractPlaceholders(selectedCountryId, selectedCountryName)
 
   const systemPlaceholders = getPlaceholdersByCategory('system')
   const workerContractPlaceholders = getPlaceholdersByCategory('worker_contract')

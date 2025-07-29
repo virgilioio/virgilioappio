@@ -9,12 +9,14 @@ export interface PlaceholderItem {
   description?: string
 }
 
-export function useWorkerContractPlaceholders(selectedCountryId?: string) {
+export function useWorkerContractPlaceholders(selectedCountryId?: string, selectedCountryName?: string) {
   const [placeholders, setPlaceholders] = useState<PlaceholderItem[]>([])
-  const { fields: countryFields } = useWorkerComplianceFields(selectedCountryId)
+  const { fields: countryFields } = useWorkerComplianceFields(selectedCountryName)
   const { fields: organizationFields } = useCountryFields()
 
   useEffect(() => {
+    console.log('🔍 useWorkerContractPlaceholders: Country fields:', countryFields)
+    console.log('🔍 useWorkerContractPlaceholders: Selected country name:', selectedCountryName)
     const systemPlaceholders: PlaceholderItem[] = [
       { key: '{{current_date}}', label: 'Current Date', category: 'system', description: 'Today\'s date' },
       { key: '{{template_version}}', label: 'Template Version', category: 'system', description: 'Version of the contract template' },
@@ -69,7 +71,7 @@ export function useWorkerContractPlaceholders(selectedCountryId?: string) {
     ]
 
     setPlaceholders(allPlaceholders)
-  }, [countryFields, organizationFields])
+  }, [countryFields, organizationFields, selectedCountryName])
 
   const getPlaceholdersByCategory = (category: PlaceholderItem['category']) => {
     return placeholders.filter(p => p.category === category)

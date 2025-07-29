@@ -157,6 +157,7 @@ export function WorkerContractTemplateForm({
         <div className="lg:col-span-1">
           <WorkerContractPlaceholderHelper
             selectedCountryId={selectedCountry.id}
+            selectedCountryName={selectedCountry.name}
             onInsertPlaceholder={insertPlaceholder}
           />
         </div>
