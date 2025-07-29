@@ -104,7 +104,9 @@ function WorkerProfileContent({ worker }: { worker: any }) {
   const formatBirthday = (dateOfBirth: string | null | undefined) => {
     if (!dateOfBirth) return 'Not available'
     try {
-      const date = new Date(dateOfBirth)
+      // Parse the date string (YYYY-MM-DD) directly to avoid timezone issues
+      const [year, month, day] = dateOfBirth.split('-')
+      const date = new Date(parseInt(year), parseInt(month) - 1, parseInt(day))
       return format(date, 'MMMM d') // e.g., "January 15"
     } catch (error) {
       return 'Invalid date'
