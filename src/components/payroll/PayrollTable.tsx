@@ -90,8 +90,54 @@ export function PayrollTable() {
     return worker.country || 'Not Specified'
   }
 
+  const calculateTotalPayroll = () => {
+    return activeWorkers.reduce((total, worker) => {
+      const contract = worker.current_contract
+      if (!contract) return total
+      
+      const amount = contract.base_salary || contract.monthly_fixed_amount || contract.hourly_rate || 0
+      return total + amount
+    }, 0)
+  }
+
+  const totalPayroll = calculateTotalPayroll()
+
   return (
     <div className="space-y-6">
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Payroll</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              USD {totalPayroll.toLocaleString()}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {activeWorkers.length} active workers
+            </p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Current Balance</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              USD 125,000
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Available for payroll
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Active Workers Payroll Table */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
