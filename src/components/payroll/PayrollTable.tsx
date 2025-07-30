@@ -11,11 +11,13 @@ import {
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { useWorkers } from '@/hooks/useWorkers'
+import { useOrganizationCurrency } from '@/hooks/useOrganizationCurrency'
 import { toast } from '@/hooks/use-toast'
 import { DollarSign, PlayCircle } from 'lucide-react'
 
 export function PayrollTable() {
   const { workers } = useWorkers()
+  const { defaultCurrency } = useOrganizationCurrency()
   const [processingPayment, setProcessingPayment] = useState<string | null>(null)
   const [completingPayroll, setCompletingPayroll] = useState(false)
 
@@ -113,7 +115,7 @@ export function PayrollTable() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              USD {totalPayroll.toLocaleString()}
+              {defaultCurrency} {totalPayroll.toLocaleString()}
             </div>
             <p className="text-xs text-muted-foreground">
               {activeWorkers.length} active workers
@@ -128,7 +130,7 @@ export function PayrollTable() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              USD 125,000
+              {defaultCurrency} 125,000
             </div>
             <p className="text-xs text-muted-foreground">
               Available for payroll
