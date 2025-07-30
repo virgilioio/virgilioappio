@@ -17,6 +17,7 @@ import Workers from './Workers'
 import { useWorkers } from '@/hooks/useWorkers'
 import Departments from './Departments'
 import WorkerProfile from './WorkerProfile'
+import Payroll from './Payroll'
 
 const sidebarItems = [
   {
@@ -175,6 +176,7 @@ function PeopleHubContent() {
               <Route path="/" element={<PeopleHubOverview />} />
               <Route path="/people" element={<Workers />} />
               <Route path="/people/:workerId" element={<WorkerProfile />} />
+              <Route path="/payroll" element={<Payroll />} />
               <Route path="/departments" element={<Departments />} />
               <Route path="/*" element={<Outlet />} />
             </Routes>
