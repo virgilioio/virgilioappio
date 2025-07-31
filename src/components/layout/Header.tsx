@@ -61,7 +61,7 @@ export function Header() {
       href: '/people-hub',
       icon: PlanetIcon,
       label: 'People Hub',
-      show: true,
+      show: isPlatformAdmin,
     },
     {
       href: '/organizations',
