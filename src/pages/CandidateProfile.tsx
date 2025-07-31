@@ -27,7 +27,7 @@ import { getSkillColor } from '@/utils/skillColors'
 export default function CandidateProfile() {
   const { jobId, candidateId } = useParams<{ jobId: string; candidateId: string }>()
   const navigate = useNavigate()
-  const { user } = useAuth()
+  const { user, organizationId } = useAuth()
   const { profile, isLoading: profileLoading } = useUserProfile()
   const { organizations, isLoading: organizationsLoading } = useOrganizations()
   const [candidate, setCandidate] = useState<Candidate | null>(null)
@@ -439,7 +439,7 @@ export default function CandidateProfile() {
                       <CandidateComments
                         candidateId={candidate.id}
                         jobId={candidate.job_id}
-                        organizationId={jobOrganization?.id || 'default-org'}
+                        organizationId={organizationId || 'default-org'}
                       />
                     </CardContent>
                   </Card>

@@ -59,7 +59,7 @@ export function CandidateForm({
   const [skills, setSkills] = useState<string[]>([])
   const [newSkill, setNewSkill] = useState('')
   const [currentCandidateId, setCurrentCandidateId] = useState<string | null>(null)
-  const { user } = useAuth()
+  const { user, organizationId } = useAuth()
 
   const form = useForm<FormData>({
     defaultValues: {
@@ -553,7 +553,7 @@ export function CandidateForm({
                   <CandidateComments
                     candidateId={candidate.id}
                     jobId={candidate.job_id}
-                    organizationId={user.user_metadata?.organization_id || 'default-org'}
+                    organizationId={organizationId || 'default-org'}
                   />
                 </div>
               </div>
