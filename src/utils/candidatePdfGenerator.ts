@@ -67,21 +67,51 @@ interface GeneratePdfOptions {
 export const generateCandidatePdf = async ({ candidate, job, organization }: GeneratePdfOptions) => {
   const pdf = new jsPDF()
   const pageWidth = pdf.internal.pageSize.width
-  const margin = 20
+  const margin = 54 // 0.75 inch margins (72 points per inch * 0.75 = 54 points)
   const contentWidth = pageWidth - (margin * 2)
   let yPosition = margin
 
-  // Helper function to add text with line wrapping
-  const addWrappedText = (text: string, x: number, y: number, maxWidth: number, fontSize = 10) => {
+  // Typography helper functions with improved hierarchy
+  const setH1Style = () => {
+    pdf.setFontSize(18) // H1: 18pt
+    pdf.setFont('helvetica', 'bold') // Fallback for Poppins Bold (700)
+  }
+
+  const setH2Style = () => {
+    pdf.setFontSize(14) // H2: 14pt  
+    pdf.setFont('helvetica', 'bold') // Fallback for Poppins SemiBold (600)
+  }
+
+  const setH3Style = () => {
+    pdf.setFontSize(11) // H3: 11pt
+    pdf.setFont('helvetica', 'normal') // Fallback for Poppins Medium (500)
+  }
+
+  const setBodyStyle = () => {
+    pdf.setFontSize(10) // Body: 10pt
+    pdf.setFont('helvetica', 'normal') // Fallback for Lato Regular (400)
+  }
+
+  const setContactStyle = () => {
+    pdf.setFontSize(9) // Contact/Secondary: 9pt
+    pdf.setFont('helvetica', 'normal') // Fallback for Lato Regular (400)
+  }
+
+  // Helper function to add text with line wrapping and improved line spacing
+  const addWrappedText = (text: string, x: number, y: number, maxWidth: number, fontSize = 10, lineSpacing = 1.3) => {
     pdf.setFontSize(fontSize)
     const textLines = pdf.splitTextToSize(text, maxWidth)
-    pdf.text(textLines, x, y)
-    return y + (textLines.length * (fontSize * 0.4))
+    const lineHeight = fontSize * lineSpacing * 0.352778 // Convert to points (1 pt = 0.352778 mm)
+    
+    textLines.forEach((line: string, index: number) => {
+      pdf.text(line, x, y + (index * lineHeight))
+    })
+    
+    return y + (textLines.length * lineHeight)
   }
 
   // Add Virgilio logo (placeholder for now - you can replace with actual logo)
-  pdf.setFontSize(16)
-  pdf.setFont('helvetica', 'bold')
+  setH3Style()
   pdf.text('VIRGILIO', margin, yPosition)
   yPosition += 15
 
@@ -91,29 +121,25 @@ export const generateCandidatePdf = async ({ candidate, job, organization }: Gen
   yPosition += 20
 
   // Candidate Name as main title (H1)
-  pdf.setFontSize(20)
-  pdf.setFont('helvetica', 'bold')
+  setH1Style()
   pdf.text(candidate.candidate_name || 'Unnamed Candidate', margin, yPosition)
-  yPosition += 15
+  yPosition += 12 // 8-12pt spacing below H1
 
-  // Job title if available
+  // Job title if available (H3)
   if (job) {
-    pdf.setFontSize(14)
-    pdf.setFont('helvetica', 'normal')
+    setH3Style()
     pdf.text(job.title, margin, yPosition)
-    yPosition += 20
-  } else {
-    yPosition += 10
+    yPosition += 8 // 3-5pt spacing below H3 + some extra
   }
 
-  // Candidate Information Section
-  pdf.setFontSize(14)
-  pdf.setFont('helvetica', 'bold')
-  pdf.text('CANDIDATE INFORMATION', margin, yPosition)
-  yPosition += 10
+  yPosition += 8 // Additional spacing before next section
 
-  pdf.setFontSize(10)
-  pdf.setFont('helvetica', 'normal')
+  // Candidate Information Section (H2)
+  setH2Style()
+  pdf.text('CANDIDATE INFORMATION', margin, yPosition)
+  yPosition += 8 // 6-8pt spacing below H2
+
+  setContactStyle() // 9pt for contact/secondary details
 
   // Location
   const locationParts = [candidate.location_city, candidate.location_state, candidate.location_country].filter(Boolean)
@@ -133,17 +159,16 @@ export const generateCandidatePdf = async ({ candidate, job, organization }: Gen
 
   if (candidate.linkedin_url) {
     pdf.text(`LinkedIn: ${candidate.linkedin_url}`, margin, yPosition)
-    yPosition += 15
+    yPosition += 12
   } else {
-    yPosition += 10
+    yPosition += 8
   }
 
   // Skills Section
   if (candidate.skills && candidate.skills.length > 0) {
-    pdf.setFontSize(14)
-    pdf.setFont('helvetica', 'bold')
+    setH2Style()
     pdf.text('SKILLS', margin, yPosition)
-    yPosition += 15
+    yPosition += 8 // 6-8pt spacing below H2
 
     // Draw skills as colored pills
     let currentX = margin
@@ -161,7 +186,7 @@ export const generateCandidatePdf = async ({ candidate, job, organization }: Gen
       }
     })
     
-    yPosition = currentY + 6
+    yPosition = currentY + 12 // Extra spacing after skills section
   }
 
   // Work Experience Section - placeholder for future implementation
@@ -177,16 +202,14 @@ export const generateCandidatePdf = async ({ candidate, job, organization }: Gen
       yPosition = margin
     }
 
-    pdf.setFontSize(14)
-    pdf.setFont('helvetica', 'bold')
+    setH2Style()
     pdf.text('PROFILE SUMMARY', margin, yPosition)
-    yPosition += 10
+    yPosition += 8 // 6-8pt spacing below H2
 
-    pdf.setFontSize(10)
-    pdf.setFont('helvetica', 'normal')
-    // Strip HTML tags and format as plain text
+    setBodyStyle()
+    // Strip HTML tags and format as plain text with improved line spacing
     const cleanSummary = stripHtml(candidate.profile_summary)
-    yPosition = addWrappedText(cleanSummary, margin, yPosition, contentWidth)
+    yPosition = addWrappedText(cleanSummary, margin, yPosition, contentWidth, 10, 1.3)
     yPosition += 10
   }
 
