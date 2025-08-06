@@ -149,15 +149,35 @@ export const generateCandidatePdf = async ({ candidate, job, organization }: Gen
     return false
   }
 
-  // Add Virgilio logo (placeholder for now - you can replace with actual logo)
-  setH3Style()
-  pdf.text('VIRGILIO', margin, yPosition)
-  yPosition += 15
+  // Add Virgilio logo at the top left
+  try {
+    // Create an image element to load the logo
+    const logoImg = new Image()
+    logoImg.crossOrigin = 'anonymous'
+    
+    await new Promise((resolve, reject) => {
+      logoImg.onload = resolve
+      logoImg.onerror = reject
+      logoImg.src = '/virgilio-logo.png'
+    })
+    
+    // Add logo to PDF (scaled appropriately)
+    const logoWidth = 30
+    const logoHeight = (logoImg.height / logoImg.width) * logoWidth
+    pdf.addImage(logoImg, 'PNG', margin, yPosition, logoWidth, logoHeight)
+    yPosition += logoHeight + 10
+  } catch (error) {
+    // Fallback to text if logo fails to load
+    setH3Style()
+    pdf.text('VIRGILIO', margin, yPosition)
+    yPosition += 10
+  }
 
-  // Add a line separator
-  pdf.setLineWidth(0.5)
+  // Add a subtle line separator
+  pdf.setLineWidth(0.3)
+  pdf.setDrawColor(200, 200, 200)
   pdf.line(margin, yPosition, pageWidth - margin, yPosition)
-  yPosition += 20
+  yPosition += 12 // Reduced spacing
 
   // Candidate Name as main title (H1)
   setH1Style()
