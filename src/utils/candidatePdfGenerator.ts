@@ -37,14 +37,14 @@ const drawSkillPill = (pdf: jsPDF, skill: string, x: number, y: number): number 
   pdf.setFont('helvetica', 'normal')
   const textWidth = pdf.getTextWidth(skill)
   
-  // Pill dimensions (thinner vertically)
+  // Pill dimensions (4 points height)
   const pillWidth = textWidth + 4
-  const pillHeight = 3
+  const pillHeight = 4
   const borderRadius = 2
   
   // Draw rounded rectangle background
   pdf.setFillColor(colors.bg[0], colors.bg[1], colors.bg[2])
-  pdf.roundedRect(x, y - 2.5, pillWidth, pillHeight, borderRadius, borderRadius, 'F')
+  pdf.roundedRect(x, y - 3, pillWidth, pillHeight, borderRadius, borderRadius, 'F')
   
   // Draw text - centered horizontally and vertically
   pdf.setTextColor(colors.text[0], colors.text[1], colors.text[2])
@@ -157,11 +157,11 @@ export const generateCandidatePdf = async ({ candidate, job, organization }: Gen
       // Check if we need to wrap to next line
       if (currentX > margin + maxWidth - 25) { // Leave some margin for next skill
         currentX = margin
-        currentY += 7
+        currentY += 6
       }
     })
     
-    yPosition = currentY + 8
+    yPosition = currentY + 6
   }
 
   // Work Experience Section - placeholder for future implementation
