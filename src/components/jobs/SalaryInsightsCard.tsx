@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { MetricCard } from '@/components/invoices/MetricCard';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
+import { Switch } from '@/components/ui/switch';
 import { TrendingUp, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface Candidate {
@@ -31,6 +32,7 @@ export function SalaryInsightsCard({
 }: SalaryInsightsCardProps) {
   const [isOpen, setIsOpen] = useState(true);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const [showMonthly, setShowMonthly] = useState(false);
 
   // Move utility functions above useMemo to fix temporal dead zone error
   const formatCurrency = (value: number) => {
@@ -73,7 +75,7 @@ export function SalaryInsightsCard({
       return null;
     }
 
-    // Normalize all salaries to annual amounts
+    // Normalize all salaries to annual amounts first
     const annualSalaries = candidatesWithSalary.map(candidate => {
       let annualAmount = candidate.salary_amount!;
 
@@ -93,22 +95,37 @@ export function SalaryInsightsCard({
       return annualAmount;
     });
 
-    // Calculate basic stats for reference
-    const minSalary = Math.min(...annualSalaries);
-    const maxSalary = Math.max(...annualSalaries);
-    const avgSalary = annualSalaries.reduce((sum, salary) => sum + salary, 0) / annualSalaries.length;
+    // Convert to display currency (monthly or annual)
+    const displaySalaries = showMonthly 
+      ? annualSalaries.map(salary => salary / 12)
+      : annualSalaries;
+
+    // Calculate basic stats for display
+    const minSalary = Math.min(...displaySalaries);
+    const maxSalary = Math.max(...displaySalaries);
+    const avgSalary = displaySalaries.reduce((sum, salary) => sum + salary, 0) / displaySalaries.length;
 
     // Create salary bands
     const salaryRange = maxSalary - minSalary;
     let bandSize: number;
 
-    // Determine appropriate band size based on salary range
-    if (salaryRange <= 50000) {
-      bandSize = 10000; // $10k bands for smaller ranges
-    } else if (salaryRange <= 150000) {
-      bandSize = 20000; // $20k bands for medium ranges
+    // Determine appropriate band size based on salary range and view mode
+    if (showMonthly) {
+      if (salaryRange <= 5000) {
+        bandSize = 1000; // $1k bands for smaller monthly ranges
+      } else if (salaryRange <= 15000) {
+        bandSize = 2000; // $2k bands for medium monthly ranges
+      } else {
+        bandSize = 2500; // $2.5k bands for larger monthly ranges
+      }
     } else {
-      bandSize = 25000; // $25k bands for larger ranges
+      if (salaryRange <= 50000) {
+        bandSize = 10000; // $10k bands for smaller ranges
+      } else if (salaryRange <= 150000) {
+        bandSize = 20000; // $20k bands for medium ranges
+      } else {
+        bandSize = 25000; // $25k bands for larger ranges
+      }
     }
 
     // If all candidates have the same salary, create a single band
@@ -141,12 +158,12 @@ export function SalaryInsightsCard({
       const bandMax = salary + bandSize;
 
       // Count candidates in this band
-      const candidatesInBand = annualSalaries.filter(candidateSalary => candidateSalary >= bandMin && candidateSalary < bandMax).length;
+      const candidatesInBand = displaySalaries.filter(candidateSalary => candidateSalary >= bandMin && candidateSalary < bandMax).length;
 
       // Only include bands with candidates (except for the last band which should include the max)
       if (candidatesInBand > 0 || salary + bandSize >= maxSalary) {
         // For the last band, include candidates at exactly the max salary
-        const actualCount = salary + bandSize >= maxSalary ? annualSalaries.filter(candidateSalary => candidateSalary >= bandMin && candidateSalary <= bandMax).length : candidatesInBand;
+        const actualCount = salary + bandSize >= maxSalary ? displaySalaries.filter(candidateSalary => candidateSalary >= bandMin && candidateSalary <= bandMax).length : candidatesInBand;
         if (actualCount > 0) {
           bands.push({
             min: bandMin,
@@ -171,10 +188,10 @@ export function SalaryInsightsCard({
       maxSalary: Math.round(maxSalary),
       avgSalary: Math.round(avgSalary)
     };
-  }, [candidates]);
+  }, [candidates, showMonthly]);
 
   if (!salaryData) {
-    return <MetricCard title="Salary Insights (Annual)" value="No salary data available" icon={<TrendingUp />} tooltip="Add candidate salary expectations to see annual insights" />;
+    return <MetricCard title="Salary Insights" value="No salary data available" icon={<TrendingUp />} tooltip="Add candidate salary expectations to see salary insights" />;
   }
 
   return <Collapsible open={isOpen} onOpenChange={setIsOpen}>
@@ -183,9 +200,9 @@ export function SalaryInsightsCard({
           <div className="flex flex-col items-start gap-1">
             <div className="flex items-center gap-2">
               <TrendingUp className="h-5 w-5 text-muted-foreground" />
-              <h3 className="text-sm font-medium text-muted-foreground">Salary Insights (Annual)</h3>
+              <h3 className="text-sm font-medium text-muted-foreground">Salary Insights</h3>
             </div>
-            <p className="text-xs text-muted-foreground ml-7">All salaries normalized to annual amounts</p>
+            <p className="text-xs text-muted-foreground ml-7">Candidate salary distribution</p>
           </div>
           <div className="flex items-center gap-2">
             <div className="text-xs text-muted-foreground">
@@ -195,7 +212,27 @@ export function SalaryInsightsCard({
           </div>
         </CollapsibleTrigger>
 
-        <CollapsibleContent className="space-y-2">
+        <CollapsibleContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-muted-foreground">View:</span>
+              <div className="flex items-center gap-2">
+                <span className={`text-sm ${!showMonthly ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
+                  Annual
+                </span>
+                <Switch 
+                  checked={showMonthly} 
+                  onCheckedChange={setShowMonthly}
+                  aria-label="Toggle between annual and monthly view"
+                />
+                <span className={`text-sm ${showMonthly ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
+                  Monthly
+                </span>
+              </div>
+            </div>
+          </div>
+
+        
           <div className="h-60 w-full overflow-hidden">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart 
@@ -230,15 +267,15 @@ export function SalaryInsightsCard({
           <div className="grid grid-cols-3 gap-4 text-center">
             <div className="space-y-1">
               <div className="text-lg font-bold text-foreground">{formatCurrency(salaryData.minSalary)}</div>
-              <div className="text-xs text-muted-foreground">Minimum (Annual)</div>
+              <div className="text-xs text-muted-foreground">Minimum ({showMonthly ? 'Monthly' : 'Annual'})</div>
             </div>
             <div className="space-y-1">
               <div className="text-lg font-bold text-foreground">{formatCurrency(salaryData.avgSalary)}</div>
-              <div className="text-xs text-muted-foreground">Average (Annual)</div>
+              <div className="text-xs text-muted-foreground">Average ({showMonthly ? 'Monthly' : 'Annual'})</div>
             </div>
             <div className="space-y-1">
               <div className="text-lg font-bold text-foreground">{formatCurrency(salaryData.maxSalary)}</div>
-              <div className="text-xs text-muted-foreground">Maximum (Annual)</div>
+              <div className="text-xs text-muted-foreground">Maximum ({showMonthly ? 'Monthly' : 'Annual'})</div>
             </div>
           </div>
         </CollapsibleContent>
