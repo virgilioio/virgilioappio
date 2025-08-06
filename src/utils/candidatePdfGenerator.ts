@@ -37,14 +37,14 @@ const drawSkillPill = (pdf: jsPDF, skill: string, x: number, y: number): number 
   pdf.setFont('helvetica', 'normal')
   const textWidth = pdf.getTextWidth(skill)
   
-  // Pill dimensions (minimal padding to fit content)
+  // Pill dimensions (thinner vertically)
   const pillWidth = textWidth + 4
-  const pillHeight = 5
-  const borderRadius = 2.5
+  const pillHeight = 3
+  const borderRadius = 2
   
   // Draw rounded rectangle background
   pdf.setFillColor(colors.bg[0], colors.bg[1], colors.bg[2])
-  pdf.roundedRect(x, y - 3.5, pillWidth, pillHeight, borderRadius, borderRadius, 'F')
+  pdf.roundedRect(x, y - 2.5, pillWidth, pillHeight, borderRadius, borderRadius, 'F')
   
   // Draw text - centered horizontally and vertically
   pdf.setTextColor(colors.text[0], colors.text[1], colors.text[2])
