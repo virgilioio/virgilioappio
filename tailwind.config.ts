@@ -104,9 +104,11 @@ export default {
 				}
 			},
 			borderRadius: {
-				lg: 'var(--radius)',
-				md: 'calc(var(--radius) - 2px)',
-				sm: 'calc(var(--radius) - 4px)',
+				xs: '4px',
+				sm: '6px',
+				md: '8px',
+				lg: '12px',
+				xl: '16px',
 				brand: 'var(--radius)',
 				none: '0',
 				full: '9999px'
@@ -158,9 +160,25 @@ export default {
 				'table-row': 'var(--table-row-height)'
 			},
 			boxShadow: {
+				xs: 'var(--shadow-xs)',
+				sm: 'var(--shadow-sm)',
+				md: 'var(--shadow-md)',
+				lg: 'var(--shadow-lg)',
+				xl: 'var(--shadow-xl)',
+				'2xl': 'var(--shadow-2xl)',
+				button: 'var(--shadow-button)',
+				card: 'var(--shadow-card)',
+				elevated: 'var(--shadow-elevated)',
 				'neumorphic': 'var(--shadow-neumorphic-base)',
 				'neumorphic-hover': 'var(--shadow-neumorphic-hover)',
 				'neumorphic-active': 'var(--shadow-neumorphic-active)'
+			},
+			letterSpacing: {
+				tighter: '-0.05em',
+				tight: '-0.025em',
+				normal: '0em',
+				wide: '0.025em',
+				wider: '0.05em'
 			},
 			transitionDuration: {
 				'fast': 'var(--transition-fast)',

@@ -9,23 +9,23 @@
   :root {
     /* Light Mode Colors - World-class depth pattern */
     --background: 0 0% 98%; /* Changed to lighter gray #fafafa */
-    --foreground: 0 0% 20%;
+    --foreground: 0 0% 15%; /* Darker for better hierarchy */
 
     --card: 0 0% 100%; /* Keep cards pure white for contrast */
-    --card-foreground: 0 0% 20%;
+    --card-foreground: 0 0% 12%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 20%;
+    --popover-foreground: 0 0% 12%;
 
     /* Virgilio.io Primary Colors */
     --primary: 60 100% 4%; /* citron-noir #0d0d09 */
     --primary-foreground: 0 0% 100%;
 
     --secondary: 0 0% 97%; /* #f8f9fa */
-    --secondary-foreground: 0 0% 20%;
+    --secondary-foreground: 0 0% 25%;
 
     --muted: 210 17% 93%; /* #e9ecef */
-    --muted-foreground: 0 0% 60%; /* #999999 */
+    --muted-foreground: 0 0% 50%; /* Better contrast */
 
     /* Virgilio.io Brand Colors */
     --accent: 60 100% 85%; /* #fffead */
@@ -42,6 +42,11 @@
 
     --info: 180 100% 88%; /* #c5f5fb */
     --info-foreground: 180 100% 20%;
+
+    /* Enhanced text hierarchy */
+    --text-primary: 0 0% 12%; /* Darker primary text */
+    --text-secondary: 0 0% 40%; /* Better secondary text */
+    --text-tertiary: 0 0% 55%; /* Lighter tertiary text */
 
     /* Pastel colors for skills */
     --pastel-blue: 219 92% 95%;
@@ -119,10 +124,23 @@
     --transition-default: 200ms;
     --transition-slow: 300ms;
 
-    /* Enhanced Shadows for World-class Depth */
-    --shadow-neumorphic-base: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
-    --shadow-neumorphic-hover: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-    --shadow-neumorphic-active: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    /* Enhanced Shadow System */
+    --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    
+    /* Elevated shadows for premium feel */
+    --shadow-button: 0 2px 4px -1px rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.06);
+    --shadow-card: 0 4px 12px -2px rgba(0, 0, 0, 0.08), 0 2px 4px -1px rgba(0, 0, 0, 0.04);
+    --shadow-elevated: 0 8px 24px -4px rgba(0, 0, 0, 0.12), 0 4px 8px -2px rgba(0, 0, 0, 0.08);
+    
+    /* Enhanced Shadows for World-class Depth (backward compatibility) */
+    --shadow-neumorphic-base: var(--shadow-card);
+    --shadow-neumorphic-hover: var(--shadow-elevated);
+    --shadow-neumorphic-active: var(--shadow-xs);
 
     /* Component Heights - Compact and touch-friendly */
     --button-height-sm: 28px;
@@ -160,7 +178,7 @@
     --secondary-foreground: 210 40% 98%;
 
     --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted-foreground: 215 20.2% 65.1%; /* Better contrast */
 
     --accent: 60 100% 85%;
     --accent-foreground: 60 100% 4%;
@@ -201,16 +219,31 @@
     --surface-tertiary: 215.4 16.3% 26.1%; /* #334155 */
     --surface-overlay: 0 0% 0% / 0.8;
 
-    /* Dark mode text */
-    --text-primary: 210 40% 98%; /* #ffffff */
-    --text-secondary: 215 20.2% 65.1%;
-    --text-tertiary: 215.4 16.3% 46.9%;
+    /* Enhanced text hierarchy for dark mode */
+    --text-primary: 0 0% 95%;
+    --text-secondary: 0 0% 70%;
+    --text-tertiary: 0 0% 55%;
+    
+    /* Dark mode text (backward compatibility) */
     --text-muted: 217.2 32.6% 17.5%;
 
-    /* Dark mode enhanced shadows */
-    --shadow-neumorphic-base: 0 1px 3px 0 rgb(0 0 0 / 0.3), 0 1px 2px -1px rgb(0 0 0 / 0.3);
-    --shadow-neumorphic-hover: 0 4px 6px -1px rgb(0 0 0 / 0.3), 0 2px 4px -2px rgb(0 0 0 / 0.3);
-    --shadow-neumorphic-active: 0 1px 2px 0 rgb(0 0 0 / 0.2);
+    /* Enhanced Shadow System - Dark Mode */
+    --shadow-xs: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+    --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.3), 0 1px 2px 0 rgba(0, 0, 0, 0.2);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
+    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 10px 10px -5px rgba(0, 0, 0, 0.2);
+    --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    
+    /* Elevated shadows for premium feel - Dark Mode */
+    --shadow-button: 0 2px 4px -1px rgba(0, 0, 0, 0.3), 0 1px 2px -1px rgba(0, 0, 0, 0.2);
+    --shadow-card: 0 4px 12px -2px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+    --shadow-elevated: 0 8px 24px -4px rgba(0, 0, 0, 0.4), 0 4px 8px -2px rgba(0, 0, 0, 0.3);
+    
+    /* Dark mode enhanced shadows (backward compatibility) */
+    --shadow-neumorphic-base: var(--shadow-card);
+    --shadow-neumorphic-hover: var(--shadow-elevated);
+    --shadow-neumorphic-active: var(--shadow-xs);
 
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
