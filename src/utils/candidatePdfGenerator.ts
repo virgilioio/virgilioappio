@@ -120,29 +120,29 @@ export const generateCandidatePdf = async ({ candidate, job, organization }: Gen
 
   const fontsLoaded = await loadCustomFonts()
 
-  // Typography helper functions with custom fonts
+  // Typography helper functions with larger, more readable font sizes
   const setH1Style = () => {
-    pdf.setFontSize(18) // H1: Poppins Bold 18pt
+    pdf.setFontSize(24) // H1: Increased from 18pt to 24pt
     pdf.setFont(fontsLoaded ? 'Poppins' : 'helvetica', 'bold')
   }
 
   const setH2Style = () => {
-    pdf.setFontSize(14) // H2: Poppins SemiBold 14pt  
+    pdf.setFontSize(16) // H2: Increased from 14pt to 16pt
     pdf.setFont(fontsLoaded ? 'Poppins' : 'helvetica', 'bold')
   }
 
   const setH3Style = () => {
-    pdf.setFontSize(11) // H3: Poppins Medium 11pt
+    pdf.setFontSize(13) // H3: Increased from 11pt to 13pt
     pdf.setFont(fontsLoaded ? 'Poppins' : 'helvetica', 'bold')
   }
 
   const setBodyStyle = () => {
-    pdf.setFontSize(10) // Body: Lato Regular 10pt
+    pdf.setFontSize(11) // Body: Increased from 10pt to 11pt
     pdf.setFont(fontsLoaded ? 'Lato' : 'helvetica', 'normal')
   }
 
   const setContactStyle = () => {
-    pdf.setFontSize(9) // Contact/Secondary: Lato Regular 9pt
+    pdf.setFontSize(10) // Contact: Increased from 9pt to 10pt
     pdf.setFont(fontsLoaded ? 'Lato' : 'helvetica', 'normal')
   }
 
