@@ -1,5 +1,16 @@
 import { jsPDF } from 'jspdf'
 import { Candidate } from '@/hooks/useCandidates'
+import { getSkillColor, PastelColor } from '@/utils/skillColors'
+
+// Skill color mapping for PDF (HSL values converted to RGB)
+const skillColorMap: Record<PastelColor, { bg: [number, number, number], text: [number, number, number] }> = {
+  'pastel-blue': { bg: [173, 216, 230], text: [37, 99, 235] },
+  'pastel-purple': { bg: [221, 214, 254], text: [124, 58, 237] },
+  'pastel-green': { bg: [187, 247, 208], text: [34, 197, 94] },
+  'pastel-pink': { bg: [252, 231, 243], text: [236, 72, 153] },
+  'pastel-yellow': { bg: [254, 240, 138], text: [202, 138, 4] },
+  'pastel-orange': { bg: [255, 237, 213], text: [249, 115, 22] }
+}
 
 // Helper function to strip HTML tags and convert to plain text
 const stripHtml = (html: string): string => {
@@ -14,6 +25,35 @@ const stripHtml = (html: string): string => {
   return text
     .replace(/\s+/g, ' ')
     .trim()
+}
+
+// Helper function to draw a skill pill
+const drawSkillPill = (pdf: jsPDF, skill: string, x: number, y: number): number => {
+  const skillColor = getSkillColor(skill)
+  const colors = skillColorMap[skillColor]
+  
+  // Set font to measure text width
+  pdf.setFontSize(9)
+  pdf.setFont('helvetica', 'normal')
+  const textWidth = pdf.getTextWidth(skill)
+  
+  // Pill dimensions
+  const pillWidth = textWidth + 12
+  const pillHeight = 12
+  const borderRadius = 6
+  
+  // Draw rounded rectangle background
+  pdf.setFillColor(colors.bg[0], colors.bg[1], colors.bg[2])
+  pdf.roundedRect(x, y - 8, pillWidth, pillHeight, borderRadius, borderRadius, 'F')
+  
+  // Draw text
+  pdf.setTextColor(colors.text[0], colors.text[1], colors.text[2])
+  pdf.text(skill, x + 6, y - 2)
+  
+  // Reset text color
+  pdf.setTextColor(0, 0, 0)
+  
+  return pillWidth + 8 // Return width plus spacing
 }
 
 interface GeneratePdfOptions {
@@ -101,13 +141,25 @@ export const generateCandidatePdf = async ({ candidate, job, organization }: Gen
     pdf.setFontSize(14)
     pdf.setFont('helvetica', 'bold')
     pdf.text('SKILLS', margin, yPosition)
-    yPosition += 10
+    yPosition += 15
 
-    pdf.setFontSize(10)
-    pdf.setFont('helvetica', 'normal')
-    const skillsText = candidate.skills.join(', ')
-    yPosition = addWrappedText(skillsText, margin, yPosition, contentWidth)
-    yPosition += 10
+    // Draw skills as colored pills
+    let currentX = margin
+    let currentY = yPosition
+    const maxWidth = contentWidth
+    
+    candidate.skills.forEach((skill) => {
+      const skillWidth = drawSkillPill(pdf, skill, currentX, currentY)
+      currentX += skillWidth
+      
+      // Check if we need to wrap to next line
+      if (currentX > margin + maxWidth - 50) { // Leave some margin for next skill
+        currentX = margin
+        currentY += 20
+      }
+    })
+    
+    yPosition = currentY + 15
   }
 
   // Work Experience Section - placeholder for future implementation
