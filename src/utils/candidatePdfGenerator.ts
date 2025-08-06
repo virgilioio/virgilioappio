@@ -12,19 +12,40 @@ const skillColorMap: Record<PastelColor, { bg: [number, number, number], text: [
   'pastel-orange': { bg: [255, 237, 213], text: [249, 115, 22] }
 }
 
-// Helper function to strip HTML tags and convert to plain text
+// Helper function to convert HTML to formatted plain text preserving structure
 const stripHtml = (html: string): string => {
   // Create a temporary div to parse HTML
   const temp = document.createElement('div')
   temp.innerHTML = html
   
-  // Replace common HTML elements with appropriate spacing/formatting
+  // Convert common HTML elements to formatted text
+  // Convert <li> elements to bullet points
+  const listItems = temp.querySelectorAll('li')
+  listItems.forEach(item => {
+    const bullet = document.createTextNode('• ')
+    item.insertBefore(bullet, item.firstChild)
+  })
+  
+  // Convert <p> and <div> elements to add line breaks
+  const paragraphs = temp.querySelectorAll('p, div')
+  paragraphs.forEach(p => {
+    p.appendChild(document.createTextNode('\n'))
+  })
+  
+  // Convert <br> elements to line breaks
+  const breaks = temp.querySelectorAll('br')
+  breaks.forEach(br => {
+    br.replaceWith(document.createTextNode('\n'))
+  })
+  
+  // Get the text content
   const text = temp.textContent || temp.innerText || ''
   
-  // Clean up extra whitespace and normalize line breaks
+  // Clean up extra whitespace but preserve line breaks
   return text
-    .replace(/\s+/g, ' ')
-    .trim()
+    .replace(/[ \t]+/g, ' ') // Replace multiple spaces/tabs with single space
+    .replace(/\n\s*\n/g, '\n\n') // Preserve paragraph breaks
+    .replace(/^\s+|\s+$/g, '') // Trim leading/trailing whitespace
 }
 
 // Helper function to draw a skill pill
