@@ -93,28 +93,29 @@ export const generateCandidatePdf = async ({ candidate, job, organization }: Gen
   let yPosition = margin
 
   // Typography helper functions with improved hierarchy
+  // Note: jsPDF has limitations with custom fonts, using Helvetica as fallback for Poppins/Lato
   const setH1Style = () => {
-    pdf.setFontSize(18) // H1: 18pt
+    pdf.setFontSize(18) // H1: Poppins Bold 18pt
     pdf.setFont('helvetica', 'bold') // Fallback for Poppins Bold (700)
   }
 
   const setH2Style = () => {
-    pdf.setFontSize(14) // H2: 14pt  
+    pdf.setFontSize(14) // H2: Poppins SemiBold 14pt  
     pdf.setFont('helvetica', 'bold') // Fallback for Poppins SemiBold (600)
   }
 
   const setH3Style = () => {
-    pdf.setFontSize(11) // H3: 11pt
+    pdf.setFontSize(11) // H3: Poppins Medium 11pt
     pdf.setFont('helvetica', 'normal') // Fallback for Poppins Medium (500)
   }
 
   const setBodyStyle = () => {
-    pdf.setFontSize(10) // Body: 10pt
+    pdf.setFontSize(10) // Body: Lato Regular 10pt
     pdf.setFont('helvetica', 'normal') // Fallback for Lato Regular (400)
   }
 
   const setContactStyle = () => {
-    pdf.setFontSize(9) // Contact/Secondary: 9pt
+    pdf.setFontSize(9) // Contact/Secondary: Lato Regular 9pt
     pdf.setFont('helvetica', 'normal') // Fallback for Lato Regular (400)
   }
 
