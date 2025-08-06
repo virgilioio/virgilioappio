@@ -151,33 +151,43 @@ export const generateCandidatePdf = async ({ candidate, job, organization }: Gen
 
   // Add Virgilio logo at the top left
   try {
-    // Create an image element to load the logo
-    const logoImg = new Image()
-    logoImg.crossOrigin = 'anonymous'
+    // Load the logo image and convert to base64 for jsPDF
+    const response = await fetch('/virgilio-logo.png')
+    const blob = await response.blob()
     
+    // Convert blob to base64
+    const base64Logo = await new Promise<string>((resolve) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(reader.result as string)
+      reader.readAsDataURL(blob)
+    })
+    
+    // Create an image to get dimensions
+    const logoImg = new Image()
     await new Promise((resolve, reject) => {
       logoImg.onload = resolve
       logoImg.onerror = reject
-      logoImg.src = '/virgilio-logo.png'
+      logoImg.src = base64Logo
     })
     
     // Add logo to PDF (scaled appropriately)
-    const logoWidth = 30
+    const logoWidth = 25
     const logoHeight = (logoImg.height / logoImg.width) * logoWidth
-    pdf.addImage(logoImg, 'PNG', margin, yPosition, logoWidth, logoHeight)
-    yPosition += logoHeight + 10
+    pdf.addImage(base64Logo, 'PNG', margin, yPosition, logoWidth, logoHeight)
+    yPosition += logoHeight + 8
   } catch (error) {
+    console.error('Failed to load logo:', error)
     // Fallback to text if logo fails to load
     setH3Style()
     pdf.text('VIRGILIO', margin, yPosition)
-    yPosition += 10
+    yPosition += 8
   }
 
   // Add a subtle line separator
   pdf.setLineWidth(0.3)
   pdf.setDrawColor(200, 200, 200)
   pdf.line(margin, yPosition, pageWidth - margin, yPosition)
-  yPosition += 12 // Reduced spacing
+  yPosition += 10 // Reduced spacing
 
   // Candidate Name as main title (H1)
   setH1Style()
