@@ -124,11 +124,28 @@ export const generateCandidatePdf = async ({ candidate, job, organization }: Gen
     const textLines = pdf.splitTextToSize(text, maxWidth)
     const lineHeight = fontSize * lineSpacing * 0.352778 // Convert to points (1 pt = 0.352778 mm)
     
+    let currentY = y
     textLines.forEach((line: string, index: number) => {
-      pdf.text(line, x, y + (index * lineHeight))
+      // Check if we need a new page
+      if (currentY > pdf.internal.pageSize.height - margin - 20) {
+        pdf.addPage()
+        currentY = margin
+      }
+      pdf.text(line, x, currentY)
+      currentY += lineHeight
     })
     
-    return y + (textLines.length * lineHeight)
+    return currentY
+  }
+
+  // Helper function to check if we need a new page and add one if necessary
+  const checkPageBreak = (additionalSpace = 30) => {
+    if (yPosition > pdf.internal.pageSize.height - margin - additionalSpace) {
+      pdf.addPage()
+      yPosition = margin
+      return true
+    }
+    return false
   }
 
   // Add Virgilio logo (placeholder for now - you can replace with actual logo)
@@ -154,6 +171,9 @@ export const generateCandidatePdf = async ({ candidate, job, organization }: Gen
   }
 
   yPosition += 8 // Additional spacing before next section
+
+  // Check for page break before candidate information
+  checkPageBreak()
 
   // Candidate Information Section (H2)
   setH2Style()
@@ -187,6 +207,9 @@ export const generateCandidatePdf = async ({ candidate, job, organization }: Gen
 
   // Skills Section
   if (candidate.skills && candidate.skills.length > 0) {
+    // Check for page break before skills section
+    checkPageBreak(50) // More space needed for skills section
+    
     setH2Style()
     pdf.text('SKILLS', margin, yPosition)
     yPosition += 8 // 6-8pt spacing below H2
@@ -197,6 +220,13 @@ export const generateCandidatePdf = async ({ candidate, job, organization }: Gen
     const maxWidth = contentWidth
     
     candidate.skills.forEach((skill) => {
+      // Check if we need a page break for each skill row
+      if (currentY > pdf.internal.pageSize.height - margin - 30) {
+        pdf.addPage()
+        currentY = margin
+        currentX = margin
+      }
+      
       const skillWidth = drawSkillPill(pdf, skill, currentX, currentY)
       currentX += skillWidth
       
@@ -218,10 +248,8 @@ export const generateCandidatePdf = async ({ candidate, job, organization }: Gen
 
   // Profile Summary Section
   if (candidate.profile_summary) {
-    if (yPosition > 250) {
-      pdf.addPage()
-      yPosition = margin
-    }
+    // Check for page break before profile summary
+    checkPageBreak(40) // Need space for section header and some content
 
     setH2Style()
     pdf.text('PROFILE SUMMARY', margin, yPosition)
