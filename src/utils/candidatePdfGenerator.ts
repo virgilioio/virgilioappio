@@ -49,9 +49,9 @@ const stripHtml = (html: string): string => {
         
         const number = document.createTextNode(`\n${index + 1}. `)
         item.insertBefore(number, item.firstChild)
-        item.appendChild(document.createTextNode('\n'))
+        // Removed extra line break after each item for tighter spacing
       })
-      list.appendChild(document.createTextNode('\n'))
+      // Reduced spacing after list
     })
     
     // Process unordered lists with consistent bullet points and spacing
@@ -70,9 +70,9 @@ const stripHtml = (html: string): string => {
         const indent = '  '.repeat(nestingLevel)
         const bullet = document.createTextNode(`\n${indent}• `)
         item.insertBefore(bullet, item.firstChild)
-        item.appendChild(document.createTextNode('\n'))
+        // Removed extra line break after each item for tighter spacing
       })
-      list.appendChild(document.createTextNode('\n'))
+      // Reduced spacing after list
     })
     
     // Process standalone list items (not in ol/ul)
