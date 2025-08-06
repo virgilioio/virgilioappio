@@ -23,7 +23,71 @@ export function sanitizeHtml(html: string): string {
     RETURN_DOM: false
   }
   
-  return DOMPurify.sanitize(html, config)
+  const sanitized = DOMPurify.sanitize(html, config)
+  return normalizeTypography(sanitized)
+}
+
+/**
+ * Normalizes typography by removing inline font styles and ensuring consistent text presentation
+ */
+function normalizeTypography(html: string): string {
+  if (!html) return ''
+  
+  try {
+    const tempDiv = document.createElement('div')
+    tempDiv.innerHTML = html
+    
+    // Remove all font-related inline styles and normalize spacing
+    const allElements = tempDiv.querySelectorAll('*')
+    allElements.forEach(el => {
+      // Remove style attributes completely (they're already forbidden in DOMPurify config)
+      el.removeAttribute('style')
+      
+      // Remove font-related attributes that might exist
+      el.removeAttribute('face')
+      el.removeAttribute('size')
+      el.removeAttribute('color')
+      
+      // Normalize excessive nested spans that often come from Word/Google Docs
+      if (el.tagName === 'SPAN' && !el.hasAttributes() && el.children.length === 0) {
+        // Replace empty spans with their text content
+        const textContent = el.textContent || ''
+        if (textContent.trim()) {
+          el.outerHTML = textContent
+        } else {
+          el.remove()
+        }
+      }
+    })
+    
+    // Clean up excessive whitespace that often comes with pasted content
+    let cleanedHtml = tempDiv.innerHTML
+    
+    // Normalize multiple consecutive spaces
+    cleanedHtml = cleanedHtml.replace(/\s+/g, ' ')
+    
+    // Clean up empty paragraphs and divs
+    cleanedHtml = cleanedHtml.replace(/<p\s*><\/p>/gi, '')
+    cleanedHtml = cleanedHtml.replace(/<div\s*><\/div>/gi, '')
+    
+    // Ensure content is wrapped in paragraphs if it's not already structured
+    const testDiv = document.createElement('div')
+    testDiv.innerHTML = cleanedHtml
+    const hasBlockElements = testDiv.querySelector('p, div, h1, h2, h3, h4, h5, h6, ul, ol, blockquote')
+    
+    if (!hasBlockElements && cleanedHtml.trim()) {
+      // Wrap plain text content in paragraphs
+      const lines = cleanedHtml.split(/\n+/).filter(line => line.trim())
+      if (lines.length > 0) {
+        cleanedHtml = lines.map(line => `<p>${line.trim()}</p>`).join('')
+      }
+    }
+    
+    return cleanedHtml
+  } catch (error) {
+    console.warn('Error normalizing typography:', error)
+    return html
+  }
 }
 
 /**
