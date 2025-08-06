@@ -149,32 +149,40 @@ export const generateCandidatePdf = async ({ candidate, job, organization }: Gen
     return false
   }
 
-  // Add Virgilio logo at the top left
+  // Add Virgilio logo at the top left using canvas approach
   try {
-    // Load the logo image and convert to base64 for jsPDF
-    const response = await fetch('/virgilio-logo.png')
-    const blob = await response.blob()
-    
-    // Convert blob to base64
-    const base64Logo = await new Promise<string>((resolve) => {
-      const reader = new FileReader()
-      reader.onload = () => resolve(reader.result as string)
-      reader.readAsDataURL(blob)
-    })
-    
-    // Create an image to get dimensions
+    // Create image element and load logo
     const logoImg = new Image()
-    await new Promise((resolve, reject) => {
-      logoImg.onload = resolve
-      logoImg.onerror = reject
-      logoImg.src = base64Logo
+    logoImg.crossOrigin = 'anonymous'
+    
+    const imageLoaded = new Promise<HTMLImageElement>((resolve, reject) => {
+      logoImg.onload = () => resolve(logoImg)
+      logoImg.onerror = () => reject(new Error('Failed to load logo'))
+      logoImg.src = window.location.origin + '/virgilio-logo.png'
     })
+    
+    const loadedImage = await imageLoaded
+    
+    // Create canvas to convert image to base64
+    const canvas = document.createElement('canvas')
+    const ctx = canvas.getContext('2d')!
+    
+    // Set canvas size to match image
+    canvas.width = loadedImage.naturalWidth
+    canvas.height = loadedImage.naturalHeight
+    
+    // Draw image to canvas
+    ctx.drawImage(loadedImage, 0, 0)
+    
+    // Convert canvas to base64
+    const base64Logo = canvas.toDataURL('image/png')
     
     // Add logo to PDF (scaled appropriately)
     const logoWidth = 25
-    const logoHeight = (logoImg.height / logoImg.width) * logoWidth
+    const logoHeight = (loadedImage.naturalHeight / loadedImage.naturalWidth) * logoWidth
     pdf.addImage(base64Logo, 'PNG', margin, yPosition, logoWidth, logoHeight)
     yPosition += logoHeight + 8
+    
   } catch (error) {
     console.error('Failed to load logo:', error)
     // Fallback to text if logo fails to load
