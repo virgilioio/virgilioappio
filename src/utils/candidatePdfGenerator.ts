@@ -1,6 +1,21 @@
 import { jsPDF } from 'jspdf'
 import { Candidate } from '@/hooks/useCandidates'
 
+// Helper function to strip HTML tags and convert to plain text
+const stripHtml = (html: string): string => {
+  // Create a temporary div to parse HTML
+  const temp = document.createElement('div')
+  temp.innerHTML = html
+  
+  // Replace common HTML elements with appropriate spacing/formatting
+  const text = temp.textContent || temp.innerText || ''
+  
+  // Clean up extra whitespace and normalize line breaks
+  return text
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
 interface GeneratePdfOptions {
   candidate: Candidate
   job?: any
@@ -126,7 +141,9 @@ export const generateCandidatePdf = async ({ candidate, job, organization }: Gen
 
     pdf.setFontSize(10)
     pdf.setFont('helvetica', 'normal')
-    yPosition = addWrappedText(candidate.profile_summary, margin, yPosition, contentWidth)
+    // Strip HTML tags and format as plain text
+    const cleanSummary = stripHtml(candidate.profile_summary)
+    yPosition = addWrappedText(cleanSummary, margin, yPosition, contentWidth)
     yPosition += 10
   }
 
