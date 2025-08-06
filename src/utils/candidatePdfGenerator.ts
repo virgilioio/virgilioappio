@@ -19,11 +19,12 @@ const stripHtml = (html: string): string => {
   temp.innerHTML = html
   
   // Convert common HTML elements to formatted text
-  // Convert <li> elements to bullet points
+  // Convert <li> elements to bullet points with proper spacing
   const listItems = temp.querySelectorAll('li')
   listItems.forEach(item => {
-    const bullet = document.createTextNode('• ')
+    const bullet = document.createTextNode('\n• ')
     item.insertBefore(bullet, item.firstChild)
+    item.appendChild(document.createTextNode('\n'))
   })
   
   // Convert <p> and <div> elements to add line breaks
@@ -327,7 +328,7 @@ export const generateCandidatePdf = async ({ candidate, job, organization }: Gen
     setBodyStyle()
     // Strip HTML tags and format as plain text with improved line spacing
     const cleanSummary = stripHtml(candidate.profile_summary)
-    yPosition = addWrappedText(cleanSummary, margin, yPosition, contentWidth, 10, 1.3)
+    yPosition = addWrappedText(cleanSummary, margin, yPosition, contentWidth, 8, 1.3)
     yPosition += 10
   }
 
