@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf'
 import { Candidate } from '@/hooks/useCandidates'
 import { getSkillColor, PastelColor } from '@/utils/skillColors'
+import { supabase } from '@/integrations/supabase/client'
 
 // Skill color mapping for PDF (HSL values converted to RGB)
 const skillColorMap: Record<PastelColor, { bg: [number, number, number], text: [number, number, number] }> = {
@@ -121,6 +122,24 @@ export const generateCandidatePdf = async ({ candidate, job, organization }: Gen
 
   const fontsLoaded = await loadCustomFonts()
 
+  // Fetch current active logo from platform assets
+  let logoUrl = '/virgilio-logo.png' // Default fallback
+  try {
+    const { data, error } = await supabase
+      .from('platform_assets')
+      .select('file_url')
+      .eq('asset_type', 'logo')
+      .eq('is_active', true)
+      .single()
+
+    if (data && !error) {
+      logoUrl = data.file_url
+    }
+  } catch (error) {
+    console.log('Using default logo - no custom logo found')
+    // Keep default logo if no custom one is found
+  }
+
   // Typography helper functions with specified font sizes
   const setH1Style = () => {
     pdf.setFontSize(16) // H1: Candidate name
@@ -180,7 +199,7 @@ export const generateCandidatePdf = async ({ candidate, job, organization }: Gen
     return false
   }
 
-  // Add Virgilio logo at the top left using canvas approach
+  // Add logo at the top left using canvas approach
   try {
     // Create image element and load logo
     const logoImg = new Image()
@@ -189,7 +208,7 @@ export const generateCandidatePdf = async ({ candidate, job, organization }: Gen
     const imageLoaded = new Promise<HTMLImageElement>((resolve, reject) => {
       logoImg.onload = () => resolve(logoImg)
       logoImg.onerror = () => reject(new Error('Failed to load logo'))
-      logoImg.src = window.location.origin + '/virgilio-logo.png'
+      logoImg.src = logoUrl.startsWith('http') ? logoUrl : window.location.origin + logoUrl
     })
     
     const loadedImage = await imageLoaded
