@@ -296,11 +296,12 @@ export default function CandidateProfile() {
                         
                         <Button
                           variant="outline"
-                          className="gap-sm h-[44px]"
+                          size="icon"
+                          className="h-[44px] w-[44px]"
                           onClick={() => generateCandidatePdf({ candidate, job, organization: jobOrganization })}
+                          title="Download PDF"
                         >
                           <Download className="h-4 w-4" />
-                          Download PDF
                         </Button>
                       </div>
                     </div>
