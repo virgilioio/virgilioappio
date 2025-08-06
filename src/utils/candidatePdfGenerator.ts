@@ -13,41 +13,143 @@ const skillColorMap: Record<PastelColor, { bg: [number, number, number], text: [
   'pastel-orange': { bg: [255, 237, 213], text: [249, 115, 22] }
 }
 
-// Helper function to convert HTML to formatted plain text preserving structure
+// Enhanced HTML to formatted plain text converter with comprehensive formatting support
 const stripHtml = (html: string): string => {
-  // Create a temporary div to parse HTML
-  const temp = document.createElement('div')
-  temp.innerHTML = html
+  if (!html || html.trim() === '') return ''
   
-  // Convert common HTML elements to formatted text
-  // Convert <li> elements to bullet points with proper spacing
-  const listItems = temp.querySelectorAll('li')
-  listItems.forEach(item => {
-    const bullet = document.createTextNode('\n• ')
-    item.insertBefore(bullet, item.firstChild)
-    item.appendChild(document.createTextNode('\n'))
-  })
-  
-  // Convert <p> and <div> elements to add line breaks
-  const paragraphs = temp.querySelectorAll('p, div')
-  paragraphs.forEach(p => {
-    p.appendChild(document.createTextNode('\n'))
-  })
-  
-  // Convert <br> elements to line breaks
-  const breaks = temp.querySelectorAll('br')
-  breaks.forEach(br => {
-    br.replaceWith(document.createTextNode('\n'))
-  })
-  
-  // Get the text content
-  const text = temp.textContent || temp.innerText || ''
-  
-  // Clean up extra whitespace but preserve line breaks
-  return text
-    .replace(/[ \t]+/g, ' ') // Replace multiple spaces/tabs with single space
-    .replace(/\n\s*\n/g, '\n\n') // Preserve paragraph breaks
-    .replace(/^\s+|\s+$/g, '') // Trim leading/trailing whitespace
+  try {
+    // Create a temporary div to parse HTML
+    const temp = document.createElement('div')
+    temp.innerHTML = html
+    
+    // Process headings with proper spacing and formatting
+    const headings = temp.querySelectorAll('h1, h2, h3, h4, h5, h6')
+    headings.forEach(heading => {
+      const level = parseInt(heading.tagName.charAt(1))
+      const prefix = level <= 2 ? '\n\n' : '\n'
+      const suffix = '\n'
+      const marker = level === 1 ? '━'.repeat(20) + '\n' : level === 2 ? '─'.repeat(15) + '\n' : ''
+      
+      heading.insertBefore(document.createTextNode(prefix), heading.firstChild)
+      heading.appendChild(document.createTextNode(suffix + marker))
+    })
+    
+    // Process ordered lists with proper numbering and spacing
+    const orderedLists = temp.querySelectorAll('ol')
+    orderedLists.forEach(list => {
+      const items = list.querySelectorAll('li')
+      items.forEach((item, index) => {
+        // Clear any existing bullet markers
+        const existingBullets = item.querySelectorAll('*')
+        existingBullets.forEach(el => {
+          if (el.textContent?.trim().startsWith('•') || el.textContent?.trim().match(/^\d+\./)) {
+            el.remove()
+          }
+        })
+        
+        const number = document.createTextNode(`\n${index + 1}. `)
+        item.insertBefore(number, item.firstChild)
+        item.appendChild(document.createTextNode('\n'))
+      })
+      list.appendChild(document.createTextNode('\n'))
+    })
+    
+    // Process unordered lists with consistent bullet points and spacing
+    const unorderedLists = temp.querySelectorAll('ul')
+    unorderedLists.forEach(list => {
+      const items = list.querySelectorAll('li')
+      items.forEach(item => {
+        // Check nesting level for proper indentation
+        let nestingLevel = 0
+        let parent = item.parentElement
+        while (parent && parent !== list) {
+          if (parent.tagName === 'UL' || parent.tagName === 'OL') nestingLevel++
+          parent = parent.parentElement
+        }
+        
+        const indent = '  '.repeat(nestingLevel)
+        const bullet = document.createTextNode(`\n${indent}• `)
+        item.insertBefore(bullet, item.firstChild)
+        item.appendChild(document.createTextNode('\n'))
+      })
+      list.appendChild(document.createTextNode('\n'))
+    })
+    
+    // Process standalone list items (not in ol/ul)
+    const standaloneItems = temp.querySelectorAll('li')
+    standaloneItems.forEach(item => {
+      const parent = item.parentElement
+      if (parent && !['UL', 'OL'].includes(parent.tagName)) {
+        const bullet = document.createTextNode('\n• ')
+        item.insertBefore(bullet, item.firstChild)
+        item.appendChild(document.createTextNode('\n'))
+      }
+    })
+    
+    // Process emphasis tags
+    const strongElements = temp.querySelectorAll('strong, b')
+    strongElements.forEach(element => {
+      const text = element.textContent || ''
+      element.textContent = text.toUpperCase()
+    })
+    
+    const emphasisElements = temp.querySelectorAll('em, i')
+    emphasisElements.forEach(element => {
+      const text = element.textContent || ''
+      element.innerHTML = `*${text}*`
+    })
+    
+    // Process paragraphs and divs with proper spacing
+    const paragraphs = temp.querySelectorAll('p')
+    paragraphs.forEach(p => {
+      p.appendChild(document.createTextNode('\n\n'))
+    })
+    
+    const divs = temp.querySelectorAll('div')
+    divs.forEach(div => {
+      // Only add line breaks to divs that don't contain block elements
+      const hasBlockElements = div.querySelector('p, h1, h2, h3, h4, h5, h6, ul, ol, li')
+      if (!hasBlockElements) {
+        div.appendChild(document.createTextNode('\n'))
+      }
+    })
+    
+    // Convert line breaks
+    const breaks = temp.querySelectorAll('br')
+    breaks.forEach(br => {
+      br.replaceWith(document.createTextNode('\n'))
+    })
+    
+    // Get the processed text content
+    let text = temp.textContent || temp.innerText || ''
+    
+    // Clean up and normalize spacing
+    text = text
+      // Remove excessive whitespace but preserve intentional formatting
+      .replace(/[ \t]+/g, ' ')
+      // Normalize multiple line breaks (max 2 consecutive)
+      .replace(/\n{3,}/g, '\n\n')
+      // Clean up spaces around line breaks
+      .replace(/[ \t]*\n[ \t]*/g, '\n')
+      // Remove trailing spaces at line ends
+      .replace(/[ \t]+$/gm, '')
+      // Trim overall content
+      .trim()
+    
+    // Ensure consistent spacing after bullet points and numbered items
+    text = text
+      .replace(/^([ ]*[•▪▫‣⁃][ ]*)/gm, '$1')
+      .replace(/^([ ]*\d+\.[ ]*)/gm, '$1')
+    
+    return text
+    
+  } catch (error) {
+    console.warn('Error processing HTML content, falling back to plain text extraction:', error)
+    // Fallback: extract plain text content
+    const temp = document.createElement('div')
+    temp.innerHTML = html
+    return (temp.textContent || temp.innerText || '').trim()
+  }
 }
 
 // Helper function to draw a skill pill
