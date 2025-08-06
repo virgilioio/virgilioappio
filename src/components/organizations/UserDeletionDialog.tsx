@@ -14,10 +14,12 @@ interface UserDeletionDialogProps {
   isOpen: boolean
   onClose: () => void
   userToDelete: {
-    id: string
+    id: string | null  // null for invited members
+    memberId: string   // always present for member record
     email: string
     firstName?: string
     lastName?: string
+    userStatus: string // to determine if it's an invited member
   } | null
   organizationId?: string
   isBillingPoc?: boolean
@@ -45,43 +47,68 @@ export function UserDeletionDialog({
 
     setIsDeleting(true)
     try {
-      const requestBody: any = { userId: userToDelete.id }
-      
-      // If user is billing POC and we have a replacement, include it
-      if (isBillingPoc && organizationId) {
-        requestBody.reassignBillingPoc = {
-          organizationId,
-          newBillingPocUserId: newBillingPocUserId || null
+      // Handle invited members (no user_id) vs registered members differently
+      if (userToDelete.userStatus === 'invited' && !userToDelete.id) {
+        // For invited members, just delete from members table
+        const { error: deleteError } = await supabase
+          .from('members')
+          .delete()
+          .eq('id', userToDelete.memberId)
+
+        if (deleteError) {
+          console.error('Error deleting invited member:', deleteError)
+          toast({
+            title: 'Error',
+            description: deleteError.message || 'Failed to delete invited member',
+            variant: 'destructive'
+          })
+          return
         }
-      }
 
-      const { data, error } = await supabase.functions.invoke('delete-user', {
-        body: requestBody
-      })
-
-      if (error) {
-        console.error('Error deleting user:', error)
         toast({
-          title: 'Error',
-          description: error.message || 'Failed to delete user',
-          variant: 'destructive'
+          title: 'Success',
+          description: `Invited member ${userToDelete.email} has been removed from the system`
         })
-        return
-      }
+      } else {
+        // For registered members, use the edge function
+        const requestBody: any = { userId: userToDelete.id }
+        
+        // If user is billing POC and we have a replacement, include it
+        if (isBillingPoc && organizationId) {
+          requestBody.reassignBillingPoc = {
+            organizationId,
+            newBillingPocUserId: newBillingPocUserId || null
+          }
+        }
 
-      if (data.error) {
+        const { data, error } = await supabase.functions.invoke('delete-user', {
+          body: requestBody
+        })
+
+        if (error) {
+          console.error('Error deleting user:', error)
+          toast({
+            title: 'Error',
+            description: error.message || 'Failed to delete user',
+            variant: 'destructive'
+          })
+          return
+        }
+
+        if (data.error) {
+          toast({
+            title: 'Error',
+            description: data.error,
+            variant: 'destructive'
+          })
+          return
+        }
+
         toast({
-          title: 'Error',
-          description: data.error,
-          variant: 'destructive'
+          title: 'Success',
+          description: `User ${userToDelete.email} has been completely deleted from the system`
         })
-        return
       }
-
-      toast({
-        title: 'Success',
-        description: `User ${userToDelete.email} has been completely deleted from the system`
-      })
 
       onUserDeleted()
       onClose()
@@ -144,7 +171,7 @@ export function UserDeletionDialog({
               <Alert variant="destructive">
                 <AlertTriangle className="h-4 w-4" />
                 <AlertDescription>
-                  <strong>This action cannot be undone.</strong> This will permanently delete the user from all systems including authentication.
+                  <strong>This action cannot be undone.</strong> This will permanently delete the {userToDelete?.userStatus === 'invited' && !userToDelete?.id ? 'invited member' : 'user from all systems including authentication'}.
                 </AlertDescription>
               </Alert>
 

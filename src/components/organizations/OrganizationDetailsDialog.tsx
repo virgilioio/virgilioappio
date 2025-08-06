@@ -27,10 +27,12 @@ export function OrganizationDetailsDialog({
   const { members, isLoading: membersLoading, getMembers } = useMembers()
   const permissions = usePermissions()
   const [selectedUserForDeletion, setSelectedUserForDeletion] = useState<{
-    id: string
+    id: string | null
+    memberId: string
     email: string
     firstName?: string
     lastName?: string
+    userStatus: string
   } | null>(null)
   const [isDeletionDialogOpen, setIsDeletionDialogOpen] = useState(false)
   const [userIsBillingPoc, setUserIsBillingPoc] = useState(false)
@@ -86,15 +88,15 @@ export function OrganizationDetailsDialog({
   }
 
   const handleDeleteUser = (member: any) => {
-    if (!member.user_id) return // Can't delete invited users that haven't accepted
-    
     const isBillingPoc = organization.billing_poc_user_id === member.user_id
     
     setSelectedUserForDeletion({
       id: member.user_id,
+      memberId: member.id,
       email: getMemberEmail(member),
       firstName: member.user_first_name,
-      lastName: member.user_last_name
+      lastName: member.user_last_name,
+      userStatus: member.user_status
     })
     setUserIsBillingPoc(isBillingPoc)
     setIsDeletionDialogOpen(true)

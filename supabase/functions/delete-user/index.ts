@@ -58,6 +58,14 @@ Deno.serve(async (req) => {
     const body: DeleteUserRequest = await req.json()
     console.log('Delete user request:', body)
 
+    // Validate userId
+    if (!body.userId) {
+      return new Response(
+        JSON.stringify({ error: 'userId is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     // Step 1: Handle billing POC reassignment if provided
     if (body.reassignBillingPoc) {
       const { organizationId, newBillingPocUserId } = body.reassignBillingPoc
@@ -103,19 +111,25 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Step 3: Delete from auth.users using admin client
-    const { error: authDeleteError } = await supabaseAdmin.auth.admin.deleteUser(body.userId)
+    // Step 3: Delete from auth.users using admin client (only if user has auth record)
+    let authDeleteMessage = 'No auth user to delete (invited member only)';
+    
+    // Only try to delete from auth if userId is a valid UUID and user exists
+    if (body.userId) {
+      const { error: authDeleteError } = await supabaseAdmin.auth.admin.deleteUser(body.userId)
 
-    if (authDeleteError) {
-      console.error('Error deleting auth user:', authDeleteError)
-      return new Response(
-        JSON.stringify({ 
-          error: 'User data deleted but auth deletion failed', 
-          details: authDeleteError.message,
-          affectedTables: result.affected_tables
-        }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      )
+      if (authDeleteError) {
+        console.error('Error deleting auth user:', authDeleteError)
+        return new Response(
+          JSON.stringify({ 
+            error: 'User data deleted but auth deletion failed', 
+            details: authDeleteError.message,
+            affectedTables: result.affected_tables
+          }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        )
+      }
+      authDeleteMessage = 'Auth user successfully deleted';
     }
 
     console.log('User successfully deleted:', body.userId)
@@ -123,7 +137,7 @@ Deno.serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: 'User completely deleted from all systems',
+        message: `User completely deleted from all systems. ${authDeleteMessage}`,
         affectedTables: result.affected_tables
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

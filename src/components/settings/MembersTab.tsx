@@ -44,9 +44,11 @@ export function MembersTab() {
   const handleDeleteUser = (member) => {
     setUserToDelete({
       id: member.user_id,
+      memberId: member.id,
       email: member.user_email || member.invited_email,
       firstName: member.user_first_name,
-      lastName: member.user_last_name
+      lastName: member.user_last_name,
+      userStatus: member.user_status
     })
     setIsDeleteDialogOpen(true)
   }
