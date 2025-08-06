@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { SafeHtml } from '@/components/ui/safe-html'
-import { ArrowLeft, MapPin, DollarSign, Calendar, User, Edit, Zap, Linkedin, FileText, MessageSquare, ChevronLeft, ChevronRight, Clock } from 'lucide-react'
+import { ArrowLeft, MapPin, DollarSign, Calendar, User, Edit, Zap, Linkedin, FileText, MessageSquare, ChevronLeft, ChevronRight, Clock, Download } from 'lucide-react'
 import { AuthGate } from '@/components/auth/AuthGate'
 import { PermissionGate } from '@/components/auth/PermissionGate'
 import { JobAssignmentGuard } from '@/components/auth/JobAssignmentGuard'
@@ -23,6 +23,7 @@ import { CandidateAttachments } from '@/components/candidates/CandidateAttachmen
 import { CandidateUrls } from '@/components/candidates/CandidateUrls'
 import { CreateOfferLetterDialog } from '@/components/candidates/CreateOfferLetterDialog'
 import { getSkillColor } from '@/utils/skillColors'
+import { generateCandidatePdf } from '@/utils/candidatePdfGenerator'
 
 export default function CandidateProfile() {
   const { jobId, candidateId } = useParams<{ jobId: string; candidateId: string }>()
@@ -274,23 +275,34 @@ export default function CandidateProfile() {
                         )}
                       </div>
                       
-                      {candidate.linkedin_url ? (
-                        <Button 
-                          className="gap-sm h-[44px] bg-[#0078c7] text-white hover:bg-[#005a94]"
-                          onClick={() => window.open(candidate.linkedin_url!, '_blank')}
+                      <div className="flex items-center gap-sm">
+                        {candidate.linkedin_url ? (
+                          <Button 
+                            className="gap-sm h-[44px] bg-[#0078c7] text-white hover:bg-[#005a94]"
+                            onClick={() => window.open(candidate.linkedin_url!, '_blank')}
+                          >
+                            <Linkedin className="h-4 w-4" fill="white" />
+                            View LinkedIn
+                          </Button>
+                        ) : (
+                          <Button 
+                            className="gap-sm h-[44px] bg-[#0078c7] text-white hover:bg-[#005a94]"
+                            disabled
+                          >
+                            <Linkedin className="h-4 w-4" fill="white" />
+                            No LinkedIn
+                          </Button>
+                        )}
+                        
+                        <Button
+                          variant="outline"
+                          className="gap-sm h-[44px]"
+                          onClick={() => generateCandidatePdf({ candidate, job, organization: jobOrganization })}
                         >
-                          <Linkedin className="h-4 w-4" fill="white" />
-                          View LinkedIn
+                          <Download className="h-4 w-4" />
+                          Download PDF
                         </Button>
-                      ) : (
-                        <Button 
-                          className="gap-sm h-[44px] bg-[#0078c7] text-white hover:bg-[#005a94]"
-                          disabled
-                        >
-                          <Linkedin className="h-4 w-4" fill="white" />
-                          No LinkedIn
-                        </Button>
-                      )}
+                      </div>
                     </div>
 
                     {/* Tab Bar inside Header Card */}
