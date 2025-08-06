@@ -230,13 +230,13 @@ export const generateCandidatePdf = async ({ candidate, job, organization }: Gen
   // Candidate Name as main title (H1)
   setH1Style()
   pdf.text(candidate.candidate_name || 'Unnamed Candidate', margin, yPosition)
-  yPosition += 12 // 8-12pt spacing below H1
+  yPosition += 8 // Reduced spacing between name and job title
 
   // Job title if available (H3)
   if (job) {
     setH3Style()
     pdf.text(job.title, margin, yPosition)
-    yPosition += 8 // 3-5pt spacing below H3 + some extra
+    yPosition += 6 // Reduced spacing after job title
   }
 
   yPosition += 8 // Additional spacing before next section
@@ -246,7 +246,7 @@ export const generateCandidatePdf = async ({ candidate, job, organization }: Gen
 
   // Candidate Information Section (H2)
   setH2Style()
-  pdf.text('CANDIDATE INFORMATION', margin, yPosition)
+  pdf.text('Candidate Information', margin, yPosition)
   yPosition += 8 // 6-8pt spacing below H2
 
   setContactStyle() // 9pt for contact/secondary details
@@ -280,7 +280,7 @@ export const generateCandidatePdf = async ({ candidate, job, organization }: Gen
     checkPageBreak(50) // More space needed for skills section
     
     setH2Style()
-    pdf.text('SKILLS', margin, yPosition)
+    pdf.text('Skills', margin, yPosition)
     yPosition += 8 // 6-8pt spacing below H2
 
     // Draw skills as colored pills
@@ -321,7 +321,7 @@ export const generateCandidatePdf = async ({ candidate, job, organization }: Gen
     checkPageBreak(40) // Need space for section header and some content
 
     setH2Style()
-    pdf.text('PROFILE SUMMARY', margin, yPosition)
+    pdf.text('Profile Summary', margin, yPosition)
     yPosition += 8 // 6-8pt spacing below H2
 
     setBodyStyle()
