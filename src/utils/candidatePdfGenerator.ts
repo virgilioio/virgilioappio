@@ -92,34 +92,9 @@ export const generateCandidatePdf = async ({ candidate, job, organization }: Gen
   const contentWidth = pageWidth - (margin * 2)
   let yPosition = margin
 
-  // Load custom fonts
-  const loadCustomFonts = async () => {
-    try {
-      // Load Poppins Bold for headings
-      const poppinsBoldResponse = await fetch('https://fonts.gstatic.com/s/poppins/v20/pxiByp8kv8JHgFVrLGT9Z1xlFd2JQEk.woff2')
-      const poppinsBoldBuffer = await poppinsBoldResponse.arrayBuffer()
-      const poppinsBoldBase64 = btoa(String.fromCharCode(...new Uint8Array(poppinsBoldBuffer)))
-      
-      // Load Lato Regular for body text
-      const latoRegularResponse = await fetch('https://fonts.gstatic.com/s/lato/v24/S6uNw4ZXOJXAKKYAKSwPRhE.woff2')
-      const latoRegularBuffer = await latoRegularResponse.arrayBuffer()
-      const latoRegularBase64 = btoa(String.fromCharCode(...new Uint8Array(latoRegularBuffer)))
-      
-      // Add fonts to PDF
-      pdf.addFileToVFS('Poppins-Bold.ttf', poppinsBoldBase64)
-      pdf.addFont('Poppins-Bold.ttf', 'Poppins', 'bold')
-      
-      pdf.addFileToVFS('Lato-Regular.ttf', latoRegularBase64)
-      pdf.addFont('Lato-Regular.ttf', 'Lato', 'normal')
-      
-      return true
-    } catch (error) {
-      console.warn('Failed to load custom fonts, using fallbacks:', error)
-      return false
-    }
-  }
-
-  const fontsLoaded = await loadCustomFonts()
+  // Note: Custom font loading in jsPDF requires TTF format, not WOFF2
+  // For now, using improved Helvetica fallbacks with proper font weights
+  const fontsLoaded = false
 
   // Typography helper functions with custom fonts
   const setH1Style = () => {
