@@ -196,6 +196,31 @@ export function useMembers() {
     try {
       console.log('Creating member with organization_id:', data.organization_id, 'Full data:', data)
       
+      // Check for email duplication if email is provided
+      if (data.email) {
+        const emailToCheck = data.email;
+        console.log('Checking for existing member with email:', emailToCheck)
+        
+        // Check for existing member with the same email in any organization
+        const { data: existingMember, error: checkError } = await supabase
+          .from('members')
+          .select('id, invited_email, user_status, organization_name:organizations(name)')
+          .or(`invited_email.eq.${emailToCheck}`)
+          .limit(1)
+          .single()
+
+        if (checkError && checkError.code !== 'PGRST116') { // PGRST116 = no rows returned
+          console.error('Error checking for existing member:', checkError)
+          throw checkError
+        }
+
+        if (existingMember) {
+          const orgName = existingMember.organization_name?.name || 'Unknown Organization'
+          const memberStatus = existingMember.user_status === 'invited' ? 'pending invitation' : existingMember.user_status
+          throw new Error(`A member with email ${emailToCheck} already exists in ${orgName} with status: ${memberStatus}`)
+        }
+      }
+      
       const memberData = {
         organization_id: data.organization_id,
         member_role: data.member_role,
@@ -220,12 +245,14 @@ export function useMembers() {
 
       console.log('Created member:', newMember)
 
-      if (!data.user_id && data.email && newMember.invite_token) {
+      // Send invitation email if creating a new invitation with email
+      const emailToInvite = data.email;
+      if (!data.user_id && emailToInvite && newMember.invite_token) {
         try {
-          const inviteData = await sendInvitationEmail(newMember.id, data.email)
+          const inviteData = await sendInvitationEmail(newMember.id, emailToInvite)
           toast({
             title: 'Success',
-            description: `Invitation sent to ${data.email} successfully`
+            description: `Invitation sent to ${emailToInvite} successfully`
           })
           // Return the invite URL along with the member data
           return { ...newMember, inviteUrl: inviteData?.inviteUrl }
