@@ -49,13 +49,13 @@ const stripHtml = (html: string): string => {
 }
 
 // Helper function to draw a skill pill
-const drawSkillPill = (pdf: jsPDF, skill: string, x: number, y: number): number => {
+const drawSkillPill = (pdf: jsPDF, skill: string, x: number, y: number, fontsLoaded = false): number => {
   const skillColor = getSkillColor(skill)
   const colors = skillColorMap[skillColor]
   
   // Set font to measure text width
   pdf.setFontSize(7)
-  pdf.setFont('helvetica', 'normal')
+  pdf.setFont(fontsLoaded ? 'Lato' : 'helvetica', 'normal')
   const textWidth = pdf.getTextWidth(skill)
   
   // Pill dimensions (4 points height)
@@ -92,36 +92,67 @@ export const generateCandidatePdf = async ({ candidate, job, organization }: Gen
   const contentWidth = pageWidth - (margin * 2)
   let yPosition = margin
 
-  // Typography helper functions with improved hierarchy
-  // Note: jsPDF has limitations with custom fonts, using Helvetica as fallback for Poppins/Lato
+  // Load custom fonts
+  const loadCustomFonts = async () => {
+    try {
+      // Load Poppins Bold for headings
+      const poppinsBoldResponse = await fetch('https://fonts.gstatic.com/s/poppins/v20/pxiByp8kv8JHgFVrLGT9Z1xlFd2JQEk.woff2')
+      const poppinsBoldBuffer = await poppinsBoldResponse.arrayBuffer()
+      const poppinsBoldBase64 = btoa(String.fromCharCode(...new Uint8Array(poppinsBoldBuffer)))
+      
+      // Load Lato Regular for body text
+      const latoRegularResponse = await fetch('https://fonts.gstatic.com/s/lato/v24/S6uNw4ZXOJXAKKYAKSwPRhE.woff2')
+      const latoRegularBuffer = await latoRegularResponse.arrayBuffer()
+      const latoRegularBase64 = btoa(String.fromCharCode(...new Uint8Array(latoRegularBuffer)))
+      
+      // Add fonts to PDF
+      pdf.addFileToVFS('Poppins-Bold.ttf', poppinsBoldBase64)
+      pdf.addFont('Poppins-Bold.ttf', 'Poppins', 'bold')
+      
+      pdf.addFileToVFS('Lato-Regular.ttf', latoRegularBase64)
+      pdf.addFont('Lato-Regular.ttf', 'Lato', 'normal')
+      
+      return true
+    } catch (error) {
+      console.warn('Failed to load custom fonts, using fallbacks:', error)
+      return false
+    }
+  }
+
+  const fontsLoaded = await loadCustomFonts()
+
+  // Typography helper functions with custom fonts
   const setH1Style = () => {
     pdf.setFontSize(18) // H1: Poppins Bold 18pt
-    pdf.setFont('helvetica', 'bold') // Fallback for Poppins Bold (700)
+    pdf.setFont(fontsLoaded ? 'Poppins' : 'helvetica', 'bold')
   }
 
   const setH2Style = () => {
     pdf.setFontSize(14) // H2: Poppins SemiBold 14pt  
-    pdf.setFont('helvetica', 'bold') // Fallback for Poppins SemiBold (600)
+    pdf.setFont(fontsLoaded ? 'Poppins' : 'helvetica', 'bold')
   }
 
   const setH3Style = () => {
     pdf.setFontSize(11) // H3: Poppins Medium 11pt
-    pdf.setFont('helvetica', 'normal') // Fallback for Poppins Medium (500)
+    pdf.setFont(fontsLoaded ? 'Poppins' : 'helvetica', 'bold')
   }
 
   const setBodyStyle = () => {
     pdf.setFontSize(10) // Body: Lato Regular 10pt
-    pdf.setFont('helvetica', 'normal') // Fallback for Lato Regular (400)
+    pdf.setFont(fontsLoaded ? 'Lato' : 'helvetica', 'normal')
   }
 
   const setContactStyle = () => {
     pdf.setFontSize(9) // Contact/Secondary: Lato Regular 9pt
-    pdf.setFont('helvetica', 'normal') // Fallback for Lato Regular (400)
+    pdf.setFont(fontsLoaded ? 'Lato' : 'helvetica', 'normal')
   }
 
   // Helper function to add text with line wrapping and improved line spacing
   const addWrappedText = (text: string, x: number, y: number, maxWidth: number, fontSize = 10, lineSpacing = 1.3) => {
+    // Apply body style to ensure proper font
+    setBodyStyle()
     pdf.setFontSize(fontSize)
+    
     const textLines = pdf.splitTextToSize(text, maxWidth)
     const lineHeight = fontSize * lineSpacing * 0.352778 // Convert to points (1 pt = 0.352778 mm)
     
@@ -266,7 +297,7 @@ export const generateCandidatePdf = async ({ candidate, job, organization }: Gen
         currentX = margin
       }
       
-      const skillWidth = drawSkillPill(pdf, skill, currentX, currentY)
+      const skillWidth = drawSkillPill(pdf, skill, currentX, currentY, fontsLoaded)
       currentX += skillWidth
       
       // Check if we need to wrap to next line
