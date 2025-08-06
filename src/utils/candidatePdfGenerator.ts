@@ -67,7 +67,7 @@ interface GeneratePdfOptions {
 export const generateCandidatePdf = async ({ candidate, job, organization }: GeneratePdfOptions) => {
   const pdf = new jsPDF()
   const pageWidth = pdf.internal.pageSize.width
-  const margin = 54 // 0.75 inch margins (72 points per inch * 0.75 = 54 points)
+  const margin = 36 // 0.5 inch margins (72 points per inch * 0.5 = 36 points) - standard spacing
   const contentWidth = pageWidth - (margin * 2)
   let yPosition = margin
 
