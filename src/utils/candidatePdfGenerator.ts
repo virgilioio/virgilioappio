@@ -46,32 +46,28 @@ export const generateCandidatePdf = async ({ candidate, job, organization }: Gen
   // Add a line separator
   pdf.setLineWidth(0.5)
   pdf.line(margin, yPosition, pageWidth - margin, yPosition)
-  yPosition += 15
-
-  // Title
-  pdf.setFontSize(20)
-  pdf.setFont('helvetica', 'bold')
-  pdf.text('CANDIDATE PROFILE', margin, yPosition)
   yPosition += 20
 
-  // Candidate Name
-  pdf.setFontSize(16)
+  // Candidate Name as main title (H1)
+  pdf.setFontSize(20)
   pdf.setFont('helvetica', 'bold')
   pdf.text(candidate.candidate_name || 'Unnamed Candidate', margin, yPosition)
-  yPosition += 10
+  yPosition += 15
 
   // Job title if available
   if (job) {
-    pdf.setFontSize(12)
+    pdf.setFontSize(14)
     pdf.setFont('helvetica', 'normal')
-    pdf.text(`Position: ${job.title}`, margin, yPosition)
-    yPosition += 15
+    pdf.text(job.title, margin, yPosition)
+    yPosition += 20
+  } else {
+    yPosition += 10
   }
 
-  // Contact Information Section
+  // Candidate Information Section
   pdf.setFontSize(14)
   pdf.setFont('helvetica', 'bold')
-  pdf.text('CONTACT INFORMATION', margin, yPosition)
+  pdf.text('CANDIDATE INFORMATION', margin, yPosition)
   yPosition += 10
 
   pdf.setFontSize(10)
@@ -84,27 +80,20 @@ export const generateCandidatePdf = async ({ candidate, job, organization }: Gen
     yPosition += 6
   }
 
+  // Salary Expectations
+  if (candidate.salary_amount) {
+    const currency = candidate.salary_currency || 'USD'
+    const amount = candidate.salary_amount.toLocaleString()
+    const period = candidate.salary_period || 'annually'
+    pdf.text(`Salary Expectations: ${currency} ${amount} ${period}`, margin, yPosition)
+    yPosition += 6
+  }
+
   if (candidate.linkedin_url) {
     pdf.text(`LinkedIn: ${candidate.linkedin_url}`, margin, yPosition)
     yPosition += 15
   } else {
     yPosition += 10
-  }
-
-  // Salary Expectations
-  if (candidate.salary_amount) {
-    pdf.setFontSize(14)
-    pdf.setFont('helvetica', 'bold')
-    pdf.text('SALARY EXPECTATIONS', margin, yPosition)
-    yPosition += 10
-
-    pdf.setFontSize(10)
-    pdf.setFont('helvetica', 'normal')
-    const currency = candidate.salary_currency || 'USD'
-    const amount = candidate.salary_amount.toLocaleString()
-    const period = candidate.salary_period || 'annually'
-    pdf.text(`${currency} ${amount} ${period}`, margin, yPosition)
-    yPosition += 15
   }
 
   // Skills Section
