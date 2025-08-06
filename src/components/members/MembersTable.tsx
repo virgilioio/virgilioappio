@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
-import { Search, Edit, UserMinus, Mail, Plus, ChevronLeft, ChevronRight, MoreHorizontal, Users, Link, Copy } from 'lucide-react'
+import { Search, Edit, UserMinus, Mail, Plus, ChevronLeft, ChevronRight, MoreHorizontal, Users, Link, Copy, Trash2 } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Member, useMembers } from '@/hooks/useMembers'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -20,6 +20,7 @@ interface MembersTableProps {
   onEdit: (member: Member) => void
   onDeactivate: (id: string) => void
   onResendInvitation: (id: string, email: string) => void
+  onDeleteUser: (member: Member) => void
   onAddNew?: () => void
 }
 
@@ -29,6 +30,7 @@ export function MembersTable({
   onEdit, 
   onDeactivate, 
   onResendInvitation,
+  onDeleteUser,
   onAddNew
 }: MembersTableProps) {
   const [searchTerm, setSearchTerm] = useState('')
@@ -302,6 +304,15 @@ export function MembersTable({
                                 <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onDeactivate(member.id); }}>
                                   <UserMinus className="h-4 w-4 mr-2" />
                                   Deactivate Member
+                                </DropdownMenuItem>
+                              )}
+                              {permissions.canManageMembers && member.user_status === 'inactive' && (
+                                <DropdownMenuItem 
+                                  onClick={(e) => { e.stopPropagation(); onDeleteUser(member); }}
+                                  className="text-destructive focus:text-destructive"
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Delete User
                                 </DropdownMenuItem>
                               )}
                             </DropdownMenuContent>

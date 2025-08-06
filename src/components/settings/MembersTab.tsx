@@ -4,11 +4,14 @@ import { MembersTable } from '@/components/members/MembersTable'
 import { useMembers } from '@/hooks/useMembers'
 import { useState } from 'react'
 import { MemberForm } from '@/components/members/MemberForm'
+import { UserDeletionDialog } from '@/components/organizations/UserDeletionDialog'
 
 export function MembersTab() {
-  const { members, isLoading, updateMember, deactivateMember, createMember, resendInvitation } = useMembers()
+  const { members, isLoading, updateMember, deactivateMember, createMember, resendInvitation, getMembers } = useMembers()
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [editingMember, setEditingMember] = useState(null)
+  const [userToDelete, setUserToDelete] = useState(null)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
 
   const handleEdit = (member) => {
     setEditingMember(member)
@@ -38,6 +41,22 @@ export function MembersTab() {
     await resendInvitation(memberId, email)
   }
 
+  const handleDeleteUser = (member) => {
+    setUserToDelete({
+      id: member.user_id,
+      email: member.user_email || member.invited_email,
+      firstName: member.user_first_name,
+      lastName: member.user_last_name
+    })
+    setIsDeleteDialogOpen(true)
+  }
+
+  const handleUserDeleted = () => {
+    getMembers()
+    setUserToDelete(null)
+    setIsDeleteDialogOpen(false)
+  }
+
   return (
     <div className="space-y-6">
       <MembersTable 
@@ -46,6 +65,7 @@ export function MembersTab() {
         onEdit={handleEdit}
         onDeactivate={handleDeactivate}
         onResendInvitation={handleResendInvitation}
+        onDeleteUser={handleDeleteUser}
         onAddNew={handleCreateNew}
       />
 
@@ -65,6 +85,13 @@ export function MembersTab() {
           isLoading={isLoading}
         />
       )}
+
+      <UserDeletionDialog
+        isOpen={isDeleteDialogOpen}
+        onClose={() => setIsDeleteDialogOpen(false)}
+        userToDelete={userToDelete}
+        onUserDeleted={handleUserDeleted}
+      />
     </div>
   )
 }

@@ -5,6 +5,7 @@ import { AuthGate } from '@/components/auth/AuthGate'
 import { PermissionGate } from '@/components/auth/PermissionGate'
 import { MembersTable } from '@/components/members/MembersTable'
 import { MemberForm } from '@/components/members/MemberForm'
+import { UserDeletionDialog } from '@/components/organizations/UserDeletionDialog'
 import { useMembers, Member } from '@/hooks/useMembers'
 import { Users } from 'lucide-react'
 
@@ -12,6 +13,8 @@ export default function Members() {
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [selectedMember, setSelectedMember] = useState<Member | null>(null)
   const [deactivateMemberId, setDeactivateMemberId] = useState<string | null>(null)
+  const [userToDelete, setUserToDelete] = useState<any>(null)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   
   const {
     members,
@@ -19,7 +22,8 @@ export default function Members() {
     createMember,
     updateMember,
     deactivateMember,
-    resendInvitation
+    resendInvitation,
+    getMembers
   } = useMembers()
 
   const handleCreateNew = () => {
@@ -55,6 +59,22 @@ export default function Members() {
     await resendInvitation(memberId, email)
   }
 
+  const handleDeleteUser = (member: Member) => {
+    setUserToDelete({
+      id: member.user_id,
+      email: member.user_email || member.invited_email,
+      firstName: member.user_first_name,
+      lastName: member.user_last_name
+    })
+    setIsDeleteDialogOpen(true)
+  }
+
+  const handleUserDeleted = () => {
+    getMembers()
+    setUserToDelete(null)
+    setIsDeleteDialogOpen(false)
+  }
+
   return (
     <AuthGate>
       <PermissionGate permission="canManageMembers">
@@ -76,6 +96,7 @@ export default function Members() {
               onEdit={handleEdit}
               onDeactivate={handleDeactivate}
               onResendInvitation={handleResendInvitation}
+              onDeleteUser={handleDeleteUser}
               onAddNew={handleCreateNew}
             />
 
@@ -103,6 +124,13 @@ export default function Members() {
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
+
+            <UserDeletionDialog
+              isOpen={isDeleteDialogOpen}
+              onClose={() => setIsDeleteDialogOpen(false)}
+              userToDelete={userToDelete}
+              onUserDeleted={handleUserDeleted}
+            />
           </div>
         </div>
       </PermissionGate>
