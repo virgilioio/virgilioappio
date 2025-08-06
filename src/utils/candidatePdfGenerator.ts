@@ -155,11 +155,11 @@ export const generateCandidatePdf = async ({ candidate, job, organization }: Gen
       // Check if we need to wrap to next line
       if (currentX > margin + maxWidth - 25) { // Leave some margin for next skill
         currentX = margin
-        currentY += 10
+        currentY += 7
       }
     })
     
-    yPosition = currentY + 10
+    yPosition = currentY + 8
   }
 
   // Work Experience Section - placeholder for future implementation
