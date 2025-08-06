@@ -46,9 +46,11 @@ const drawSkillPill = (pdf: jsPDF, skill: string, x: number, y: number): number 
   pdf.setFillColor(colors.bg[0], colors.bg[1], colors.bg[2])
   pdf.roundedRect(x, y - 3.5, pillWidth, pillHeight, borderRadius, borderRadius, 'F')
   
-  // Draw text
+  // Draw text - centered horizontally and vertically
   pdf.setTextColor(colors.text[0], colors.text[1], colors.text[2])
-  pdf.text(skill, x + 2, y - 1)
+  const textX = x + (pillWidth / 2)
+  const textY = y - 1 + (pillHeight / 4) // Adjust for vertical centering
+  pdf.text(skill, textX, textY, { align: 'center' })
   
   // Reset text color
   pdf.setTextColor(0, 0, 0)
