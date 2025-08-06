@@ -142,10 +142,10 @@
     --shadow-neumorphic-hover: var(--shadow-elevated);
     --shadow-neumorphic-active: var(--shadow-xs);
 
-    /* Component Heights - Compact and touch-friendly */
-    --button-height-sm: 28px;
-    --button-height-default: 32px;
-    --button-height-lg: 36px;
+    /* Component Heights - Enhanced with better visual weight */
+    --button-height-sm: 32px;
+    --button-height-default: 36px;
+    --button-height-lg: 40px;
     --input-height: 32px;
     --table-row-height: 40px;
     --sidebar-item-height: 36px;

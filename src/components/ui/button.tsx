@@ -22,10 +22,10 @@ const buttonVariants = cva(
         info: "bg-info text-info-foreground shadow-[var(--shadow-button)] hover:bg-info/90 hover:-translate-y-0.5 hover:shadow-[var(--shadow-md)] active:scale-95 active:shadow-[var(--shadow-xs)]"
       },
       size: {
-        default: "h-button px-2 py-1 text-sm font-medium tracking-wide [&_svg]:size-3.5",
-        sm: "h-button-sm px-2 py-1 text-xs font-medium tracking-wide [&_svg]:size-3",
-        lg: "h-button-lg px-3 py-1 text-md font-medium tracking-wide [&_svg]:size-4",
-        icon: "h-button w-button [&_svg]:size-3.5",
+        default: "h-button px-3 py-2 text-sm font-medium tracking-wide [&_svg]:size-3.5 min-h-[40px] md:min-h-0",
+        sm: "h-button-sm px-2 py-1 text-xs font-medium tracking-wide [&_svg]:size-3 min-h-[40px] md:min-h-0",
+        lg: "h-button-lg px-4 py-2 text-md font-medium tracking-wide [&_svg]:size-4 min-h-[40px] md:min-h-0",
+        icon: "h-button w-button [&_svg]:size-3.5 min-h-[40px] min-w-[40px] md:min-h-0 md:min-w-0",
       },
     },
     defaultVariants: {
