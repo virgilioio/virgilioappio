@@ -32,7 +32,7 @@ export function SalaryInsightsCard({
 }: SalaryInsightsCardProps) {
   const [isOpen, setIsOpen] = useState(true);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
-  const [showMonthly, setShowMonthly] = useState(false);
+  const [showMonthly, setShowMonthly] = useState(true);
 
   // Move utility functions above useMemo to fix temporal dead zone error
   const formatCurrency = (value: number) => {
