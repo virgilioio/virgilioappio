@@ -40,18 +40,17 @@ export function DraggableStageItem({ stage, index, onRemove, isDragging }: Dragg
     transition,
   }
 
-  const getStageTypeVariant = (type: string) => {
-    switch (type) {
-      case 'application': return 'default'
-      case 'screening': return 'secondary'
-      case 'interview': return 'outline'
-      case 'assessment': return 'secondary'
-      case 'reference_check': return 'outline'
-      case 'offer': return 'default'
-      case 'onboarding': return 'secondary'
-      default: return 'outline'
-    }
+  const stageTypeVariants: Record<string, import("@/components/ui/badge").BadgeProps["variant"]> = {
+    application: 'pastel-blue',
+    screening: 'info',
+    interview: 'pastel-purple',
+    assessment: 'warning',
+    reference_check: 'pastel-orange',
+    offer: 'success',
+    onboarding: 'pastel-green',
+    custom: 'secondary',
   }
+
 
   const isDisabled = stage.is_default
   const showDragging = isDragging || isSortableDragging
@@ -97,7 +96,7 @@ export function DraggableStageItem({ stage, index, onRemove, isDragging }: Dragg
                 )}>
                   {stage.stage_name}
                 </h5>
-                <Badge variant={getStageTypeVariant(stage.stage_type)}>
+                <Badge variant={stageTypeVariants[stage.stage_type] ?? 'secondary'}>
                   {stage.stage_type.replace('_', ' ')}
                 </Badge>
                 {stage.is_default && (
