@@ -16,7 +16,7 @@ interface JobStage {
   stage_type: string
   stage_description?: string
   is_default: boolean
-  stage_priority?: number
+  stage_priority?: number | string
 }
 
 interface HiringPlanTabProps {
@@ -36,16 +36,25 @@ export function HiringPlanTab({ jobId }: HiringPlanTabProps) {
     })
   )
 
+  // Helper function to check if a stage has "last" priority
+  const isLastPriorityStage = (stage: JobStage) => {
+    return stage.stage_priority === "last" || stage.stage_priority === 999 || stage.stage_priority === "999"
+  }
+
   // Helper function to sort stages with proper priority handling
   const sortStagesByPriority = (stages: JobStage[]) => {
     return stages.sort((a, b) => {
       const aPriority = a.stage_priority
       const bPriority = b.stage_priority
       
-      // Handle "last" priority (assuming it's represented as a very high number like 999)
-      // Stages with no priority default to middle range (500)
-      const aValue = aPriority === null || aPriority === undefined ? 500 : aPriority
-      const bValue = bPriority === null || bPriority === undefined ? 500 : bPriority
+      // Handle "last" priority stages
+      if (isLastPriorityStage(a) && !isLastPriorityStage(b)) return 1
+      if (!isLastPriorityStage(a) && isLastPriorityStage(b)) return -1
+      if (isLastPriorityStage(a) && isLastPriorityStage(b)) return 0
+      
+      // For non-"last" stages, sort by numeric priority
+      const aValue = typeof aPriority === 'number' ? aPriority : (aPriority ? 500 : 500)
+      const bValue = typeof bPriority === 'number' ? bPriority : (bPriority ? 500 : 500)
       
       return aValue - bValue
     })
@@ -76,9 +85,9 @@ export function HiringPlanTab({ jobId }: HiringPlanTabProps) {
         const defaultStages = stages.filter(stage => stage.is_default)
         const customStages = stages.filter(stage => !stage.is_default)
 
-        // Find stages with "last" priority (assuming priority >= 900 means "last")
-        const defaultNormalStages = defaultStages.filter(stage => (stage.stage_priority || 0) < 900)
-        const defaultLastStages = defaultStages.filter(stage => (stage.stage_priority || 0) >= 900)
+        // Find stages with "last" priority
+        const defaultNormalStages = defaultStages.filter(stage => !isLastPriorityStage(stage))
+        const defaultLastStages = defaultStages.filter(stage => isLastPriorityStage(stage))
 
         const oldIndex = customStages.findIndex(stage => stage.id === active.id)
         const newIndex = customStages.findIndex(stage => stage.id === over.id)
@@ -107,8 +116,8 @@ export function HiringPlanTab({ jobId }: HiringPlanTabProps) {
       const customStages = prev.filter(s => !s.is_default)
 
       // Find stages with "last" priority
-      const defaultNormalStages = defaultStages.filter(s => (s.stage_priority || 0) < 900)
-      const defaultLastStages = defaultStages.filter(s => (s.stage_priority || 0) >= 900)
+      const defaultNormalStages = defaultStages.filter(s => !isLastPriorityStage(s))
+      const defaultLastStages = defaultStages.filter(s => isLastPriorityStage(s))
 
       // Add new stage to custom stages (it will be positioned between normal and "last")
       return [
@@ -142,9 +151,11 @@ export function HiringPlanTab({ jobId }: HiringPlanTabProps) {
     }
 
     setSelectedStages(prev => prev.filter(s => s.id !== stageId))
-    setAvailableStages(prev => [...prev, stage].sort((a, b) => 
-      (a.stage_priority || 500) - (b.stage_priority || 500)
-    ))
+    setAvailableStages(prev => [...prev, stage].sort((a, b) => {
+      const aPriority = typeof a.stage_priority === 'number' ? a.stage_priority : 500
+      const bPriority = typeof b.stage_priority === 'number' ? b.stage_priority : 500
+      return aPriority - bPriority
+    }))
     
     toast({
       title: 'Stage Removed',

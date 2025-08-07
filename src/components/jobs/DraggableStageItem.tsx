@@ -12,7 +12,7 @@ interface JobStage {
   stage_type: string
   stage_description?: string
   is_default: boolean
-  stage_priority?: number
+  stage_priority?: number | string
 }
 
 interface DraggableStageItemProps {
