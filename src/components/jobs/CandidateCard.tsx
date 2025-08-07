@@ -28,7 +28,7 @@ export default function CandidateCard({
   const availableStages = stageOptions.filter(s => s.jhsId !== currentStageJhsId)
 
   return (
-    <Card className="relative p-4 min-h-32 bg-background border-border">
+    <Card className="relative p-4 min-h-32 bg-white border-border">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2 min-w-0">
