@@ -13,6 +13,7 @@ import { JobOverviewTab } from '@/components/jobs/JobOverviewTab'
 import { CandidateTable } from '@/components/candidates/CandidateTable'
 import { CandidateForm } from '@/components/candidates/CandidateForm'
 import { JobAssignmentsPanel } from '@/components/jobs/JobAssignmentsPanel'
+import { JobSetupPanel } from '@/components/jobs/JobSetupPanel'
 import { JobForm } from '@/components/jobs/JobForm'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
@@ -281,9 +282,10 @@ export default function JobDetail() {
           {isMobile ? (
             // Mobile: Tabs
             <>
-              <TabsList className="grid w-full grid-cols-3 mb-6">
+              <TabsList className="grid w-full grid-cols-4 mb-6">
                 <TabsTrigger value="overview">Overview</TabsTrigger>
                 <TabsTrigger value="candidates">Candidates</TabsTrigger>
+                <TabsTrigger value="job-setup">Setup</TabsTrigger>
                 {userType === 'platform_admin' && (
                   <TabsTrigger value="assignments">Access</TabsTrigger>
                 )}
@@ -315,6 +317,13 @@ export default function JobDetail() {
                     isCandidateNewForUser={isCandidateNewForUser}
                   />
                 </div>
+              </TabsContent>
+              
+              <TabsContent value="job-setup">
+                <JobSetupPanel
+                  jobId={id!}
+                  jobTitle={job.title}
+                />
               </TabsContent>
               
               {userType === 'platform_admin' && (
@@ -363,6 +372,12 @@ export default function JobDetail() {
                       isCandidateNewForUser={isCandidateNewForUser}
                     />
                   </div>
+                </TabsContent>
+                <TabsContent value="job-setup">
+                  <JobSetupPanel
+                    jobId={id!}
+                    jobTitle={job.title}
+                  />
                 </TabsContent>
                 {activeTab === 'assignments' && userType === 'platform_admin' && (
                   <TabsContent value="assignments">

@@ -1,6 +1,6 @@
 
 import { cn } from '@/lib/utils'
-import { FileText, Users, UserCheck } from 'lucide-react'
+import { FileText, Users, UserCheck, Settings } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 
@@ -29,10 +29,15 @@ export function JobDetailFloatingSidebar({
       id: 'candidates',
       label: 'Candidates',
       icon: Users,
+    },
+    {
+      id: 'job-setup',
+      label: 'Job Setup',
+      icon: Settings,
     }
   ]
 
-  // Add assignments tab only if user has permission
+  // Add assignments tab only if user has permission (legacy fallback)
   if (canViewAssignments) {
     tabs.push({
       id: 'assignments',
