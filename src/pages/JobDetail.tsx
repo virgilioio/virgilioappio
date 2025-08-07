@@ -282,13 +282,10 @@ export default function JobDetail() {
           {isMobile ? (
             // Mobile: Tabs
             <>
-              <TabsList className="grid w-full grid-cols-4 mb-6">
+              <TabsList className="grid w-full grid-cols-3 mb-6">
                 <TabsTrigger value="overview">Overview</TabsTrigger>
                 <TabsTrigger value="candidates">Candidates</TabsTrigger>
                 <TabsTrigger value="job-setup">Setup</TabsTrigger>
-                {userType === 'platform_admin' && (
-                  <TabsTrigger value="assignments">Access</TabsTrigger>
-                )}
               </TabsList>
               
               <TabsContent value="overview">
@@ -325,15 +322,6 @@ export default function JobDetail() {
                   jobTitle={job.title}
                 />
               </TabsContent>
-              
-              {userType === 'platform_admin' && (
-                <TabsContent value="assignments">
-                  <JobAssignmentsPanel
-                    jobId={id!}
-                    jobTitle={job.title}
-                  />
-                </TabsContent>
-              )}
             </>
           ) : (
             // Desktop: Floating sidebar at same level as content
@@ -342,7 +330,6 @@ export default function JobDetail() {
                 currentTab={activeTab}
                 onTabChange={setActiveTab}
                 jobTitle={job.title}
-                canViewAssignments={userType === 'platform_admin'}
               />
               
               {/* Main content */}
@@ -379,14 +366,6 @@ export default function JobDetail() {
                     jobTitle={job.title}
                   />
                 </TabsContent>
-                {activeTab === 'assignments' && userType === 'platform_admin' && (
-                  <TabsContent value="assignments">
-                    <JobAssignmentsPanel
-                      jobId={id!}
-                      jobTitle={job.title}
-                    />
-                  </TabsContent>
-                )}
               </div>
             </div>
           )}

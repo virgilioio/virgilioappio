@@ -1,6 +1,6 @@
 
 import { cn } from '@/lib/utils'
-import { FileText, Users, UserCheck, Settings } from 'lucide-react'
+import { FileText, Users, Settings } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 
@@ -8,7 +8,6 @@ interface JobDetailFloatingSidebarProps {
   currentTab: string
   onTabChange: (tab: string) => void
   jobTitle: string
-  canViewAssignments?: boolean
   className?: string
 }
 
@@ -16,7 +15,6 @@ export function JobDetailFloatingSidebar({
   currentTab, 
   onTabChange, 
   jobTitle,
-  canViewAssignments = false,
   className 
 }: JobDetailFloatingSidebarProps) {
   const tabs = [
@@ -36,15 +34,6 @@ export function JobDetailFloatingSidebar({
       icon: Settings,
     }
   ]
-
-  // Add assignments tab only if user has permission (legacy fallback)
-  if (canViewAssignments) {
-    tabs.push({
-      id: 'assignments',
-      label: 'Assignments',
-      icon: UserCheck,
-    })
-  }
 
   return (
     <Card className={cn("w-64 h-fit", className)}>
