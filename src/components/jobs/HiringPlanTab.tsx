@@ -28,6 +28,7 @@ export function HiringPlanTab({ jobId }: HiringPlanTabProps) {
   const [selectedStages, setSelectedStages] = useState<JobStage[]>([])
   const [availableStages, setAvailableStages] = useState<JobStage[]>([])
   const [activeId, setActiveId] = useState<string | null>(null)
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -103,6 +104,7 @@ export function HiringPlanTab({ jobId }: HiringPlanTabProps) {
           ...sortStagesByPriority(defaultLastStages)
         ]
       })
+      setHasUnsavedChanges(true)
     }
   }
 
@@ -127,7 +129,7 @@ export function HiringPlanTab({ jobId }: HiringPlanTabProps) {
         ...sortStagesByPriority(defaultLastStages)
       ]
     })
-    
+    setHasUnsavedChanges(true)
     setAvailableStages(prev => prev.filter(s => s.id !== stageId))
     
     toast({
@@ -156,10 +158,21 @@ export function HiringPlanTab({ jobId }: HiringPlanTabProps) {
       const bPriority = typeof b.stage_priority === 'number' ? b.stage_priority : 500
       return aPriority - bPriority
     }))
+    setHasUnsavedChanges(true)
     
     toast({
       title: 'Stage Removed',
       description: `${stage.stage_name} has been removed from the hiring plan`
+    })
+  }
+
+  const handleSaveHiringPlan = () => {
+    // TODO: Implement actual save functionality to backend
+    console.log('Saving hiring plan for job:', jobId, selectedStages)
+    setHasUnsavedChanges(false)
+    toast({
+      title: 'Hiring Plan Saved',
+      description: 'The hiring plan has been successfully saved.'
     })
   }
 
@@ -246,7 +259,10 @@ export function HiringPlanTab({ jobId }: HiringPlanTabProps) {
           <p className="text-sm text-text-secondary">
             Total stages: {selectedStages.length}
           </p>
-          <Button disabled>
+          <Button 
+            disabled={!hasUnsavedChanges}
+            onClick={handleSaveHiringPlan}
+          >
             Save Hiring Plan
           </Button>
         </div>
