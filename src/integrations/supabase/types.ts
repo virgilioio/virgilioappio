@@ -1018,9 +1018,12 @@ export type Database = {
           added_by: string | null
           candidate_id: string
           created_at: string
+          current_stage_id: string | null
+          entered_stage_at: string | null
           id: string
           job_id: string
           notes: string | null
+          pipeline_position: number | null
           status: string | null
           updated_at: string
         }
@@ -1028,9 +1031,12 @@ export type Database = {
           added_by?: string | null
           candidate_id: string
           created_at?: string
+          current_stage_id?: string | null
+          entered_stage_at?: string | null
           id?: string
           job_id: string
           notes?: string | null
+          pipeline_position?: number | null
           status?: string | null
           updated_at?: string
         }
@@ -1038,9 +1044,12 @@ export type Database = {
           added_by?: string | null
           candidate_id?: string
           created_at?: string
+          current_stage_id?: string | null
+          entered_stage_at?: string | null
           id?: string
           job_id?: string
           notes?: string | null
+          pipeline_position?: number | null
           status?: string | null
           updated_at?: string
         }
@@ -1053,10 +1062,69 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "job_candidate_associations_current_stage_id_fkey"
+            columns: ["current_stage_id"]
+            isOneToOne: false
+            referencedRelation: "job_hiring_stages"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "job_candidate_associations_job_id_fkey"
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_candidate_stage_history: {
+        Row: {
+          association_id: string
+          from_stage_id: string | null
+          id: string
+          moved_at: string
+          moved_by: string
+          note: string | null
+          to_stage_id: string | null
+        }
+        Insert: {
+          association_id: string
+          from_stage_id?: string | null
+          id?: string
+          moved_at?: string
+          moved_by?: string
+          note?: string | null
+          to_stage_id?: string | null
+        }
+        Update: {
+          association_id?: string
+          from_stage_id?: string | null
+          id?: string
+          moved_at?: string
+          moved_by?: string
+          note?: string | null
+          to_stage_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_candidate_stage_history_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "job_candidate_associations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_candidate_stage_history_from_stage_id_fkey"
+            columns: ["from_stage_id"]
+            isOneToOne: false
+            referencedRelation: "job_hiring_stages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_candidate_stage_history_to_stage_id_fkey"
+            columns: ["to_stage_id"]
+            isOneToOne: false
+            referencedRelation: "job_hiring_stages"
             referencedColumns: ["id"]
           },
         ]
