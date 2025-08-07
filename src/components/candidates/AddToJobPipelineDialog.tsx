@@ -14,11 +14,11 @@ interface AddToJobPipelineDialogProps {
 export default function AddToJobPipelineDialog({ candidateId }: AddToJobPipelineDialogProps) {
   const [open, setOpen] = useState(false)
   const [selectedJobId, setSelectedJobId] = useState<string | undefined>(undefined)
-  const [stages, setStages] = useState<JobStage[]>([])
+  const [stageOptions, setStageOptions] = useState<{ jhsId: string; stage: { stage_name: string }; position: number }[]>([])
   const [selectedStageId, setSelectedStageId] = useState<string | undefined>(undefined)
   const [loadingStages, setLoadingStages] = useState(false)
   const { jobs, isLoading: jobsLoading, getJobs } = useJobs()
-  const { loadHiringPlan } = useJobHiringPlan()
+  const { loadHiringPlanInstances } = useJobHiringPlan()
   const { createAssociationAndMove } = usePipelineActions()
 
   useEffect(() => {
@@ -30,15 +30,15 @@ export default function AddToJobPipelineDialog({ candidateId }: AddToJobPipeline
       if (!selectedJobId) return
       setLoadingStages(true)
       try {
-        const plan = await loadHiringPlan(selectedJobId)
-        setStages(plan || [])
-        setSelectedStageId(plan?.[0]?.id)
+        const plan = await loadHiringPlanInstances(selectedJobId)
+        setStageOptions(plan || [])
+        setSelectedStageId(plan?.[0]?.jhsId)
       } finally {
         setLoadingStages(false)
       }
     }
     loadStages()
-  }, [selectedJobId, loadHiringPlan])
+  }, [selectedJobId, loadHiringPlanInstances])
 
   const onConfirm = async () => {
     if (!selectedJobId || !selectedStageId) return
@@ -80,13 +80,13 @@ export default function AddToJobPipelineDialog({ candidateId }: AddToJobPipeline
 
           <div className="space-y-2">
             <label className="text-sm text-text-secondary">Stage</label>
-            <Select value={selectedStageId} onValueChange={setSelectedStageId} disabled={!selectedJobId || loadingStages || stages.length === 0}>
+            <Select value={selectedStageId} onValueChange={setSelectedStageId} disabled={!selectedJobId || loadingStages || stageOptions.length === 0}>
               <SelectTrigger>
-                <SelectValue placeholder={!selectedJobId ? 'Select a job first' : (loadingStages ? 'Loading stages…' : (stages.length ? 'Select a stage' : 'No stages for this job'))} />
+                <SelectValue placeholder={!selectedJobId ? 'Select a job first' : (loadingStages ? 'Loading stages…' : (stageOptions.length ? 'Select a stage' : 'No stages for this job'))} />
               </SelectTrigger>
               <SelectContent>
-                {stages.map(stage => (
-                  <SelectItem key={stage.id} value={stage.id}>{stage.stage_name}</SelectItem>
+                {stageOptions.map(opt => (
+                  <SelectItem key={opt.jhsId} value={opt.jhsId}>{opt.stage.stage_name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
