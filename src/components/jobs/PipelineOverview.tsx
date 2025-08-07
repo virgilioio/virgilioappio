@@ -65,6 +65,27 @@ export function PipelineOverview({ jobId }: PipelineOverviewProps) {
     return { label: `${diffW}w`, variant: 'destructive' as const }
   }, [])
 
+  const getHeaderBgClass = (type: string) => {
+    switch (type) {
+      case 'application':
+        return 'bg-pastel-blue/20'
+      case 'screening':
+        return 'bg-info/20'
+      case 'interview':
+        return 'bg-pastel-purple/20'
+      case 'assessment':
+        return 'bg-warning/20'
+      case 'reference_check':
+        return 'bg-pastel-orange/20'
+      case 'offer':
+        return 'bg-success/20'
+      case 'onboarding':
+        return 'bg-pastel-green/20'
+      default:
+        return 'bg-secondary/20'
+    }
+  }
+
   const loadStages = useCallback(async () => {
     const plan = await loadHiringPlanInstances(jobId)
     if (plan.length > 0) {
@@ -145,14 +166,11 @@ export function PipelineOverview({ jobId }: PipelineOverviewProps) {
         {/* Render columns with candidate cards */}
         {!isLoadingPlan && stageOptions.map((opt) => (
           <Card key={opt.jhsId} className="w-72 flex-shrink-0">
-            <CardHeader className="pb-3">
+            <CardHeader className={`pb-3 rounded-t-md ${getHeaderBgClass(opt.stage.stage_type)}`}>
               <div className="flex items-center gap-2 flex-wrap">
                 <CardTitle className="text-base font-medium truncate max-w-[180px]" title={opt.stage.stage_name}>
                   {opt.stage.stage_name}
                 </CardTitle>
-                <Badge variant={stageTypeVariants[opt.stage.stage_type] ?? 'secondary'}>
-                  {opt.stage.stage_type.replace('_', ' ')}
-                </Badge>
                 {opt.stage.is_default && (
                   <Badge variant="outline">Default</Badge>
                 )}
