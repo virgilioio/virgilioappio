@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react'
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent } from '@dnd-kit/core'
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { useJobStages } from '@/hooks/useJobStages'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { SearchableSelect } from '@/components/ui/searchable-select'
-import { Trash2, Plus } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
+import { DraggableStageItem } from './DraggableStageItem'
 
 interface JobStage {
   id: string
@@ -25,15 +27,58 @@ export function HiringPlanTab({ jobId }: HiringPlanTabProps) {
   const { stages, isLoading } = useJobStages()
   const [selectedStages, setSelectedStages] = useState<JobStage[]>([])
   const [availableStages, setAvailableStages] = useState<JobStage[]>([])
+  const [activeId, setActiveId] = useState<string | null>(null)
 
-  // Initialize with default stages
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  )
+
+  // Initialize with default stages sorted by priority
   useEffect(() => {
     if (stages.length > 0) {
-      const defaultStages = stages.filter(stage => stage.is_default)
+      const defaultStages = stages
+        .filter(stage => stage.is_default)
+        .sort((a, b) => (a.stage_priority || 999) - (b.stage_priority || 999))
+      
       setSelectedStages(defaultStages)
       setAvailableStages(stages.filter(stage => !stage.is_default))
     }
   }, [stages])
+
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(event.active.id as string)
+  }
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    setActiveId(null)
+
+    if (!over) return
+
+    if (active.id !== over.id) {
+      setSelectedStages((stages) => {
+        // Only allow reordering of non-default stages
+        const nonDefaultStages = stages.filter(stage => !stage.is_default)
+        const defaultStages = stages.filter(stage => stage.is_default)
+
+        const oldIndex = nonDefaultStages.findIndex(stage => stage.id === active.id)
+        const newIndex = nonDefaultStages.findIndex(stage => stage.id === over.id)
+
+        if (oldIndex === -1 || newIndex === -1) return stages
+
+        const reorderedNonDefault = arrayMove(nonDefaultStages, oldIndex, newIndex)
+        
+        // Combine default stages (sorted by priority) with reordered non-default stages
+        return [
+          ...defaultStages.sort((a, b) => (a.stage_priority || 999) - (b.stage_priority || 999)),
+          ...reorderedNonDefault
+        ]
+      })
+    }
+  }
 
   const handleAddStage = (stageId: string) => {
     const stage = availableStages.find(s => s.id === stageId)
@@ -73,19 +118,6 @@ export function HiringPlanTab({ jobId }: HiringPlanTabProps) {
     })
   }
 
-  const getStageTypeVariant = (type: string) => {
-    switch (type) {
-      case 'application': return 'default'
-      case 'screening': return 'secondary'
-      case 'interview': return 'outline'
-      case 'assessment': return 'secondary'
-      case 'reference_check': return 'outline'
-      case 'offer': return 'default'
-      case 'onboarding': return 'secondary'
-      default: return 'outline'
-    }
-  }
-
   if (isLoading) {
     return <div>Loading stages...</div>
   }
@@ -95,7 +127,7 @@ export function HiringPlanTab({ jobId }: HiringPlanTabProps) {
       <div>
         <h3 className="text-lg font-medium text-text-primary mb-2">Hiring Plan</h3>
         <p className="text-sm text-text-secondary mb-4">
-          Customize the hiring process for this job by adding or removing stages. Default stages cannot be removed.
+          Customize the hiring process for this job. Default stages (grayed out) are fixed in priority order, while custom stages can be reordered by dragging.
         </p>
       </div>
 
@@ -109,47 +141,29 @@ export function HiringPlanTab({ jobId }: HiringPlanTabProps) {
               </CardContent>
             </Card>
           ) : (
-            <div className="space-y-3">
-              {selectedStages
-                .sort((a, b) => (a.stage_priority || 999) - (b.stage_priority || 999))
-                .map((stage, index) => (
-                <Card key={stage.id} className="transition-colors hover:bg-surface-secondary/30">
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary text-sm font-medium">
-                          {index + 1}
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2 mb-1">
-                            <h5 className="font-medium text-text-primary">{stage.stage_name}</h5>
-                            <Badge variant={getStageTypeVariant(stage.stage_type)}>
-                              {stage.stage_type.replace('_', ' ')}
-                            </Badge>
-                            {stage.is_default && (
-                              <Badge variant="secondary">Default</Badge>
-                            )}
-                          </div>
-                          {stage.stage_description && (
-                            <p className="text-sm text-text-secondary">{stage.stage_description}</p>
-                          )}
-                        </div>
-                      </div>
-                      {!stage.is_default && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleRemoveStage(stage.id)}
-                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+            <DndContext 
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext 
+                items={selectedStages.filter(stage => !stage.is_default).map(stage => stage.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                <div className="space-y-3">
+                  {selectedStages.map((stage, index) => (
+                    <DraggableStageItem
+                      key={stage.id}
+                      stage={stage}
+                      index={index}
+                      onRemove={handleRemoveStage}
+                      isDragging={activeId === stage.id}
+                    />
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
           )}
         </div>
 
