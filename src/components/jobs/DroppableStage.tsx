@@ -8,9 +8,10 @@ interface DroppableStageProps {
   className?: string
   children: ReactNode
   isEmpty?: boolean
+  tintClass?: string
 }
 
-export default function DroppableStage({ id, className, children, isEmpty }: DroppableStageProps) {
+export default function DroppableStage({ id, className, children, isEmpty, tintClass }: DroppableStageProps) {
   const { isOver, setNodeRef } = useDroppable({ id })
 
   return (
@@ -21,7 +22,7 @@ export default function DroppableStage({ id, className, children, isEmpty }: Dro
         'transition-colors relative'
       )}
     >
-      <DropZone active={isOver} size={isEmpty ? 'expanded' : 'compact'} />
+      <DropZone active={isOver} size={isEmpty ? 'expanded' : 'compact'} isEmpty={isEmpty} tintClass={tintClass} />
       <div className={cn('relative z-10')}>
         {children}
       </div>

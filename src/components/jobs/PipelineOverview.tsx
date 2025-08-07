@@ -193,7 +193,7 @@ export function PipelineOverview({ jobId }: PipelineOverviewProps) {
                 </div>
               </CardHeader>
               <CardContent className={`${getHeaderBgClass(opt.stage.stage_type)} rounded-b-md min-h-48`}>
-                <DroppableStage id={opt.jhsId} isEmpty={!byStage[opt.jhsId] || byStage[opt.jhsId].length === 0}>
+                <DroppableStage id={opt.jhsId} isEmpty={!byStage[opt.jhsId] || byStage[opt.jhsId].length === 0} tintClass={getHeaderBgClass(opt.stage.stage_type)}>
                   {isLoadingCandidates && (
                     <div className="text-xs text-text-tertiary">Loading candidates...</div>
                   )}
