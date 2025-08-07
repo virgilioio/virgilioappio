@@ -1,7 +1,7 @@
 
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
+import { Badge, type BadgeProps } from '@/components/ui/badge'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { ExternalLink, MoveRight, MoreVertical } from 'lucide-react'
 import { JobStage } from '@/hooks/useJobHiringPlan'
@@ -12,6 +12,7 @@ interface CandidateCardProps {
   stageOptions: { jhsId: string; stage: JobStage }[]
   currentStageJhsId?: string | null
   timeInStageLabel?: string
+  timeBadgeVariant?: BadgeProps['variant']
   onMove: (toStageId: string) => void | Promise<void>
 }
 
@@ -21,18 +22,19 @@ export default function CandidateCard({
   stageOptions,
   currentStageJhsId,
   timeInStageLabel,
+  timeBadgeVariant,
   onMove,
 }: CandidateCardProps) {
   const availableStages = stageOptions.filter(s => s.jhsId !== currentStageJhsId)
 
   return (
-    <Card className="p-3 bg-background border-border">
+    <Card className="p-4 min-h-24 bg-background border-border">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2 min-w-0">
             <div className="font-medium text-sm text-text-primary truncate">{candidateName}</div>
             {timeInStageLabel && (
-              <Badge variant="outline" className="shrink-0">{timeInStageLabel}</Badge>
+              <Badge variant={timeBadgeVariant ?? 'outline'} className="shrink-0">{timeInStageLabel}</Badge>
             )}
           </div>
           {linkedinUrl ? (

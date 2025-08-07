@@ -35,19 +35,34 @@ export function PipelineOverview({ jobId }: PipelineOverviewProps) {
   const [isLoadingCandidates, setIsLoadingCandidates] = useState(false)
   const [byStage, setByStage] = useState<Record<string, PipelineAssociation[]>>({})
 
-  const getTimeInStageLabel = useCallback((a: PipelineAssociation) => {
+  const getTimeInfo = useCallback((a: PipelineAssociation) => {
     const base = a.entered_stage_at || a.created_at
-    if (!base) return undefined
-    const started = new Date(base).getTime()
-    const now = Date.now()
-    const diffMin = Math.max(0, Math.floor((now - started) / 60000))
-    if (diffMin < 60) return `${diffMin}m`
+    const nowMs = Date.now()
+    const startedMs = base ? new Date(base).getTime() : nowMs
+    let diffSec = Math.max(0, Math.floor((nowMs - startedMs) / 1000))
+
+    if (diffSec < 60) {
+      return { label: `${diffSec}s`, variant: 'success' as const }
+    }
+    const diffMin = Math.floor(diffSec / 60)
+    if (diffMin < 60) {
+      return { label: `${diffMin}m`, variant: 'success' as const }
+    }
     const diffH = Math.floor(diffMin / 60)
-    if (diffH < 24) return `${diffH}h`
+    if (diffH < 24) {
+      return { label: `${diffH}h`, variant: 'success' as const }
+    }
     const diffD = Math.floor(diffH / 24)
-    if (diffD < 7) return `${diffD}d`
+    if (diffD < 7) {
+      return { label: `${diffD}d`, variant: 'warning' as const }
+    }
+    // Weeks and months -> red
+    if (diffD >= 28) {
+      const months = Math.max(1, Math.floor(diffD / 30))
+      return { label: `${months}mo`, variant: 'destructive' as const }
+    }
     const diffW = Math.floor(diffD / 7)
-    return `${diffW}w`
+    return { label: `${diffW}w`, variant: 'destructive' as const }
   }, [])
 
   const loadStages = useCallback(async () => {
@@ -158,17 +173,21 @@ export function PipelineOverview({ jobId }: PipelineOverviewProps) {
               )}
 
               <div className="space-y-2">
-                {(byStage[opt.jhsId] || []).map(assoc => (
-                  <CandidateCard
-                    key={assoc.id}
-                    candidateName={assoc.candidate_name}
-                    linkedinUrl={assoc.linkedin_url}
-                    stageOptions={stageOptions}
-                    currentStageJhsId={opt.jhsId}
-                    timeInStageLabel={getTimeInStageLabel(assoc)}
-                    onMove={(toId) => handleMove(assoc.id, toId)}
-                  />
-                ))}
+                {(byStage[opt.jhsId] || []).map(assoc => {
+                  const t = getTimeInfo(assoc)
+                  return (
+                    <CandidateCard
+                      key={assoc.id}
+                      candidateName={assoc.candidate_name}
+                      linkedinUrl={assoc.linkedin_url}
+                      stageOptions={stageOptions}
+                      currentStageJhsId={opt.jhsId}
+                      timeInStageLabel={t.label}
+                      timeBadgeVariant={t.variant}
+                      onMove={(toId) => handleMove(assoc.id, toId)}
+                    />
+                  )
+                })}
               </div>
             </CardContent>
           </Card>
