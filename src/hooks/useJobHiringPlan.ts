@@ -60,7 +60,7 @@ export function useJobHiringPlan() {
     }
   }, [toast])
 
-  const saveHiringPlan = useCallback(async (jobId: string, stages: JobStage[]) => {
+  const saveHiringPlan = useCallback(async (jobId: string, stages: { id: string }[]) => {
     setIsSavingPlan(true)
     try {
       // Get current user for created_by
