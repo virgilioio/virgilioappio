@@ -13,6 +13,7 @@ import { LegalManager } from '@/components/settings/LegalManager'
 import { PlatformAssetUploader } from '@/components/settings/PlatformAssetUploader'
 import { CountryManagement } from '@/components/settings/CountryManagement'
 import { OfferTemplatesManager } from '@/components/settings/OfferTemplatesManager'
+import { JobSettingsManager } from '@/components/settings/JobSettingsManager'
 import { WorkerComplianceManager } from '@/components/settings/WorkerComplianceManager'
 import { PlatformTab } from '@/components/settings/PlatformTab'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -59,6 +60,8 @@ export default function Settings() {
         return <OfferTemplatesManager />
       case 'platform-worker-compliance':
         return <WorkerComplianceManager />
+      case 'platform-job-settings':
+        return <JobSettingsManager />
       default:
         return <PlatformTab />
     }
@@ -140,6 +143,9 @@ export default function Settings() {
                       {renderPlatformContent()}
                     </TabsContent>
                     <TabsContent value="platform-worker-compliance">
+                      {renderPlatformContent()}
+                    </TabsContent>
+                    <TabsContent value="platform-job-settings">
                       {renderPlatformContent()}
                     </TabsContent>
                   </>
