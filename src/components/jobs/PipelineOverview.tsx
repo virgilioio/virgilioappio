@@ -6,6 +6,9 @@ import { useJobHiringPlan, JobStage } from '@/hooks/useJobHiringPlan'
 import CandidateCard from './CandidateCard'
 import { usePipelineActions, PipelineAssociation } from '@/hooks/usePipelineActions'
 import { toast } from '@/hooks/use-toast'
+import { DndContext, type DragEndEvent } from '@dnd-kit/core'
+import DraggableCandidateCard from './DraggableCandidateCard'
+import DroppableStage from './DroppableStage'
 
 interface PipelineOverviewProps {
   jobId: string
@@ -143,6 +146,15 @@ export function PipelineOverview({ jobId }: PipelineOverviewProps) {
     await loadPipeline()
   }
 
+  const onDragEnd = useCallback(async (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over) return
+    const assocId = String(active.id)
+    const toStageId = String(over.id)
+    await moveAssociationToStage(assocId, toStageId)
+    await loadPipeline()
+  }, [moveAssociationToStage, loadPipeline])
+
   return (
     <div className="space-y-4">
       <div>
@@ -150,67 +162,72 @@ export function PipelineOverview({ jobId }: PipelineOverviewProps) {
         <p className="text-sm text-text-secondary">Columns reflect the job's hiring plan stages.</p>
       </div>
 
-      <div className="flex gap-4 overflow-x-auto pb-2">
-        {isLoadingPlan && (
-          <div className="text-sm text-text-secondary">Loading pipeline...</div>
-        )}
+      <DndContext onDragEnd={onDragEnd}>
+        <div className="flex gap-4 overflow-x-auto pb-2">
+          {isLoadingPlan && (
+            <div className="text-sm text-text-secondary">Loading pipeline...</div>
+          )}
 
-        {!isLoadingPlan && stageOptions.length === 0 && (
-          <Card className="min-w-[280px]">
-            <CardContent className="py-8 text-center text-text-secondary text-sm">
-              No hiring plan defined yet.
-            </CardContent>
-          </Card>
-        )}
+          {!isLoadingPlan && stageOptions.length === 0 && (
+            <Card className="min-w-[280px]">
+              <CardContent className="py-8 text-center text-text-secondary text-sm">
+                No hiring plan defined yet.
+              </CardContent>
+            </Card>
+          )}
 
-        {/* Render columns with candidate cards */}
-        {!isLoadingPlan && stageOptions.map((opt) => (
-          <Card key={opt.jhsId} className="w-72 flex-shrink-0">
-            <CardHeader className={`pb-3 rounded-t-md ${getHeaderBgClass(opt.stage.stage_type)}`}>
-              <div className="flex items-center gap-2 flex-wrap">
-                <CardTitle className="text-base font-medium truncate max-w-[180px]" title={opt.stage.stage_name}>
-                  {opt.stage.stage_name}
-                </CardTitle>
-                {opt.stage.is_default && (
-                  <Badge variant="outline">Default</Badge>
-                )}
-                {isLastPriorityStage(opt.stage) && (
-                  <Badge variant="outline">Last</Badge>
-                )}
-              </div>
-            </CardHeader>
-            <CardContent className={`${getHeaderBgClass(opt.stage.stage_type)} rounded-b-md min-h-48`}>
-              {isLoadingCandidates && (
-                <div className="text-xs text-text-tertiary">Loading candidates...</div>
-              )}
-
-              {!isLoadingCandidates && (!byStage[opt.jhsId] || byStage[opt.jhsId].length === 0) && (
-                <div className="text-xs text-text-tertiary">
-                  No candidates in this stage
+          {/* Render columns with candidate cards */}
+          {!isLoadingPlan && stageOptions.map((opt) => (
+            <Card key={opt.jhsId} className="w-72 flex-shrink-0">
+              <CardHeader className={`pb-3 rounded-t-md ${getHeaderBgClass(opt.stage.stage_type)}`}>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <CardTitle className="text-base font-medium truncate max-w-[180px]" title={opt.stage.stage_name}>
+                    {opt.stage.stage_name}
+                  </CardTitle>
+                  {opt.stage.is_default && (
+                    <Badge variant="outline">Default</Badge>
+                  )}
+                  {isLastPriorityStage(opt.stage) && (
+                    <Badge variant="outline">Last</Badge>
+                  )}
                 </div>
-              )}
+              </CardHeader>
+              <CardContent className={`${getHeaderBgClass(opt.stage.stage_type)} rounded-b-md min-h-48`}>
+                <DroppableStage id={opt.jhsId}>
+                  {isLoadingCandidates && (
+                    <div className="text-xs text-text-tertiary">Loading candidates...</div>
+                  )}
 
-              <div className="space-y-2">
-                {(byStage[opt.jhsId] || []).map(assoc => {
-                  const t = getTimeInfo(assoc)
-                  return (
-                    <CandidateCard
-                      key={assoc.id}
-                      candidateName={assoc.candidate_name}
-                      linkedinUrl={assoc.linkedin_url}
-                      stageOptions={stageOptions}
-                      currentStageJhsId={opt.jhsId}
-                      timeInStageLabel={t.label}
-                      timeBadgeVariant={t.variant}
-                      onMove={(toId) => handleMove(assoc.id, toId)}
-                    />
-                  )
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+                  {!isLoadingCandidates && (!byStage[opt.jhsId] || byStage[opt.jhsId].length === 0) && (
+                    <div className="text-xs text-text-tertiary">
+                      No candidates in this stage
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    {(byStage[opt.jhsId] || []).map(assoc => {
+                      const t = getTimeInfo(assoc)
+                      return (
+                        <DraggableCandidateCard id={assoc.id} key={assoc.id}>
+                          <CandidateCard
+                            candidateName={assoc.candidate_name}
+                            linkedinUrl={assoc.linkedin_url}
+                            stageOptions={stageOptions}
+                            currentStageJhsId={opt.jhsId}
+                            timeInStageLabel={t.label}
+                            timeBadgeVariant={t.variant}
+                            onMove={(toId) => handleMove(assoc.id, toId)}
+                          />
+                        </DraggableCandidateCard>
+                      )
+                    })}
+                  </div>
+                </DroppableStage>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </DndContext>
     </div>
   )
 }
