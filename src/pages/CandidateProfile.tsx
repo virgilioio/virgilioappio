@@ -26,6 +26,7 @@ import { getSkillColor } from '@/utils/skillColors'
 import { generateCandidatePdf } from '@/utils/candidatePdfGenerator'
 import MoveToPipelineMenu from '@/components/candidates/MoveToPipelineMenu'
 import { usePipelineActions } from '@/hooks/usePipelineActions'
+import AddJobCandidateToPipelineDialog from '@/components/candidates/AddJobCandidateToPipelineDialog'
 
 export default function CandidateProfile() {
   const { jobId, candidateId } = useParams<{ jobId: string; candidateId: string }>()
@@ -326,9 +327,7 @@ export default function CandidateProfile() {
                             buttonText="Move to pipeline"
                           />
                         ) : (
-                          <Button size="sm" disabled className="gap-2">
-                            Move to pipeline
-                          </Button>
+                          <AddJobCandidateToPipelineDialog jobId={jobId!} jobCandidate={candidate} />
                         )}
                         
                         <Button
