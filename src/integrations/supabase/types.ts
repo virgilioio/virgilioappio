@@ -1138,6 +1138,51 @@ export type Database = {
           },
         ]
       }
+      job_hiring_stages: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          job_id: string
+          position: number
+          stage_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          job_id: string
+          position: number
+          stage_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          job_id?: string
+          position?: number
+          stage_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_hiring_stages_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_hiring_stages_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "job_stages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_request_agreements: {
         Row: {
           agreement_content: string | null

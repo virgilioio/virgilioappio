@@ -9,6 +9,7 @@ import { SearchableSelect } from '@/components/ui/searchable-select'
 import { Plus } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
 import { DraggableStageItem } from './DraggableStageItem'
+import { useJobHiringPlan } from '@/hooks/useJobHiringPlan'
 
 interface JobStage {
   id: string
@@ -29,6 +30,7 @@ export function HiringPlanTab({ jobId }: HiringPlanTabProps) {
   const [availableStages, setAvailableStages] = useState<JobStage[]>([])
   const [activeId, setActiveId] = useState<string | null>(null)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+  const { isSavingPlan, loadHiringPlan, saveHiringPlan } = useJobHiringPlan()
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -69,6 +71,20 @@ export function HiringPlanTab({ jobId }: HiringPlanTabProps) {
       setAvailableStages(stages.filter(stage => !stage.is_default))
     }
   }, [stages])
+
+  useEffect(() => {
+    if (!jobId) return
+    ;(async () => {
+      const planStages = await loadHiringPlan(jobId as string)
+      if (planStages.length > 0) {
+        const selectedIds = new Set(planStages.map(s => s.id))
+        setSelectedStages(planStages)
+        setAvailableStages(prev => prev.filter(s => !selectedIds.has(s.id)))
+        setHasUnsavedChanges(false)
+      }
+    })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jobId])
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(event.active.id as string)
@@ -166,14 +182,10 @@ export function HiringPlanTab({ jobId }: HiringPlanTabProps) {
     })
   }
 
-  const handleSaveHiringPlan = () => {
-    // TODO: Implement actual save functionality to backend
-    console.log('Saving hiring plan for job:', jobId, selectedStages)
+  const handleSaveHiringPlan = async () => {
+    if (!jobId) return
+    await saveHiringPlan(jobId as string, selectedStages)
     setHasUnsavedChanges(false)
-    toast({
-      title: 'Hiring Plan Saved',
-      description: 'The hiring plan has been successfully saved.'
-    })
   }
 
   if (isLoading) {
@@ -260,10 +272,10 @@ export function HiringPlanTab({ jobId }: HiringPlanTabProps) {
             Total stages: {selectedStages.length}
           </p>
           <Button 
-            disabled={!hasUnsavedChanges}
+            disabled={!hasUnsavedChanges || isSavingPlan}
             onClick={handleSaveHiringPlan}
           >
-            Save Hiring Plan
+            {isSavingPlan ? 'Saving...' : 'Save Hiring Plan'}
           </Button>
         </div>
       </div>
