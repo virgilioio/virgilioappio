@@ -1,14 +1,16 @@
 import { ReactNode } from 'react'
 import { useDroppable } from '@dnd-kit/core'
 import { cn } from '@/lib/utils'
+import DropZone from './DropZone'
 
 interface DroppableStageProps {
   id: string
   className?: string
   children: ReactNode
+  isEmpty?: boolean
 }
 
-export default function DroppableStage({ id, className, children }: DroppableStageProps) {
+export default function DroppableStage({ id, className, children, isEmpty }: DroppableStageProps) {
   const { isOver, setNodeRef } = useDroppable({ id })
 
   return (
@@ -16,11 +18,13 @@ export default function DroppableStage({ id, className, children }: DroppableSta
       ref={setNodeRef}
       className={cn(
         className,
-        'transition-colors',
-        isOver && 'outline outline-2 outline-primary/40'
+        'transition-colors relative'
       )}
     >
-      {children}
+      <DropZone active={isOver} size={isEmpty ? 'expanded' : 'compact'} />
+      <div className={cn('relative z-10')}>
+        {children}
+      </div>
     </div>
   )
 }
