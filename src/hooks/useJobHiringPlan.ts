@@ -68,37 +68,28 @@ export function useJobHiringPlan() {
       if (userError) throw userError
       const userId = userData.user?.id
 
-      // 1) Upsert all stage positions for this job
-      const payload = stages.map((stage, idx) => ({
-        job_id: jobId,
-        stage_id: stage.id,
-        position: idx + 1, // 1-based position
-        created_by: userId ?? null,
-      }))
-
-      const { error: upsertError } = await supabase
+      // 1) Remove all existing stage positions for this job first to avoid unique position conflicts
+      const { error: deleteExistingError } = await supabase
         .from('job_hiring_stages')
-        .upsert(payload, { onConflict: 'job_id,stage_id' })
+        .delete()
+        .eq('job_id', jobId)
+      if (deleteExistingError) throw deleteExistingError
 
-      if (upsertError) throw upsertError
+      // 2) Insert all stage positions in the new order
+      if (stages.length > 0) {
+        const payload = stages.map((stage, idx) => ({
+          job_id: jobId,
+          stage_id: stage.id,
+          position: idx + 1, // 1-based position
+          created_by: userId ?? null,
+        }))
 
-      // 2) Remove any stages no longer in the plan
-      if (stages.length === 0) {
-        const { error: deleteAllError } = await supabase
+        const { error: insertError } = await supabase
           .from('job_hiring_stages')
-          .delete()
-          .eq('job_id', jobId)
-        if (deleteAllError) throw deleteAllError
-      } else {
-        const ids = stages.map((s) => s.id)
-        const inList = `(${ids.map((id) => `"${id}"`).join(',')})`
-        const { error: deleteError } = await supabase
-          .from('job_hiring_stages')
-          .delete()
-          .eq('job_id', jobId)
-          .not('stage_id', 'in', inList)
-        if (deleteError) throw deleteError
+          .insert(payload)
+        if (insertError) throw insertError
       }
+
 
       toast({
         title: 'Hiring Plan Saved',
