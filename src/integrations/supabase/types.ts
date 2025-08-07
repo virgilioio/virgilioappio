@@ -1294,6 +1294,45 @@ export type Database = {
           },
         ]
       }
+      job_stages: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          is_default: boolean
+          stage_description: string | null
+          stage_name: string
+          stage_priority: number | null
+          stage_type: Database["public"]["Enums"]["stage_type_enum"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          stage_description?: string | null
+          stage_name: string
+          stage_priority?: number | null
+          stage_type: Database["public"]["Enums"]["stage_type_enum"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          stage_description?: string | null
+          stage_name?: string
+          stage_priority?: number | null
+          stage_type?: Database["public"]["Enums"]["stage_type_enum"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       jobs: {
         Row: {
           created_at: string | null
@@ -3073,6 +3112,15 @@ export type Database = {
         | "director"
         | "vp"
         | "c_level"
+      stage_type_enum:
+        | "application"
+        | "screening"
+        | "interview"
+        | "assessment"
+        | "reference_check"
+        | "offer"
+        | "onboarding"
+        | "custom"
       user_type_enum: "platform_admin" | "workspace_owner" | "member" | "guest"
       worker_entity_type_enum:
         | "business_entity"
@@ -3300,6 +3348,16 @@ export const Constants = {
         "director",
         "vp",
         "c_level",
+      ],
+      stage_type_enum: [
+        "application",
+        "screening",
+        "interview",
+        "assessment",
+        "reference_check",
+        "offer",
+        "onboarding",
+        "custom",
       ],
       user_type_enum: ["platform_admin", "workspace_owner", "member", "guest"],
       worker_entity_type_enum: [

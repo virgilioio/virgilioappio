@@ -7,12 +7,13 @@ import { AdvertisingManager } from './AdvertisingManager'
 import { LegalManager } from './LegalManager'
 import { PlatformDashboard } from '@/components/dashboard/PlatformDashboard'
 import { WorkerComplianceManager } from './WorkerComplianceManager'
+import { JobSettingsManager } from './JobSettingsManager'
 
 export function PlatformTab() {
   return (
     <div className="space-y-6">
       <Tabs defaultValue="dashboard" className="w-full">
-        <TabsList className="grid w-full grid-cols-7">
+        <TabsList className="grid w-full grid-cols-8">
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
           <TabsTrigger value="advertising">Advertising</TabsTrigger>
@@ -20,6 +21,7 @@ export function PlatformTab() {
           <TabsTrigger value="assets">Assets</TabsTrigger>
           <TabsTrigger value="countries">Countries</TabsTrigger>
           <TabsTrigger value="worker-compliance">Worker Compliance</TabsTrigger>
+          <TabsTrigger value="job-settings">Job Settings</TabsTrigger>
         </TabsList>
         
         <TabsContent value="dashboard" className="space-y-6">
@@ -48,6 +50,10 @@ export function PlatformTab() {
         
         <TabsContent value="worker-compliance" className="space-y-6">
           <WorkerComplianceManager />
+        </TabsContent>
+        
+        <TabsContent value="job-settings" className="space-y-6">
+          <JobSettingsManager />
         </TabsContent>
       </Tabs>
     </div>
