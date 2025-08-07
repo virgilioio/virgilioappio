@@ -1,6 +1,6 @@
 
 import { cn } from '@/lib/utils'
-import { FileText, Users, Settings } from 'lucide-react'
+import { FileText, Users, Settings, Kanban } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 
@@ -27,6 +27,11 @@ export function JobDetailFloatingSidebar({
       id: 'candidates',
       label: 'Candidates',
       icon: Users,
+    },
+    {
+      id: 'pipeline',
+      label: 'Pipeline Overview',
+      icon: Kanban,
     },
     {
       id: 'job-setup',

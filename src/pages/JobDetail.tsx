@@ -24,6 +24,7 @@ import { useIsMobile } from '@/hooks/use-mobile'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from '@/hooks/use-toast'
 import { SalaryInsightsCard } from '@/components/jobs/SalaryInsightsCard'
+import { PipelineOverview } from '@/components/jobs/PipelineOverview'
 
 export default function JobDetail() {
   const { id } = useParams<{ id: string }>()
@@ -282,9 +283,10 @@ export default function JobDetail() {
           {isMobile ? (
             // Mobile: Tabs
             <>
-              <TabsList className="grid w-full grid-cols-3 mb-6">
+              <TabsList className="grid w-full grid-cols-4 mb-6">
                 <TabsTrigger value="overview">Overview</TabsTrigger>
                 <TabsTrigger value="candidates">Candidates</TabsTrigger>
+                <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
                 <TabsTrigger value="job-setup">Setup</TabsTrigger>
               </TabsList>
               
@@ -321,6 +323,9 @@ export default function JobDetail() {
                   jobId={id!}
                   jobTitle={job.title}
                 />
+              </TabsContent>
+              <TabsContent value="pipeline">
+                <PipelineOverview jobId={id!} />
               </TabsContent>
             </>
           ) : (
@@ -365,6 +370,9 @@ export default function JobDetail() {
                     jobId={id!}
                     jobTitle={job.title}
                   />
+                </TabsContent>
+                <TabsContent value="pipeline">
+                  <PipelineOverview jobId={id!} />
                 </TabsContent>
               </div>
             </div>

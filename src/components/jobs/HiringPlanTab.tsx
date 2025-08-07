@@ -41,7 +41,8 @@ export function HiringPlanTab({ jobId }: HiringPlanTabProps) {
 
   // Helper function to check if a stage has "last" priority
   const isLastPriorityStage = (stage: JobStage) => {
-    return stage.stage_priority === "last" || stage.stage_priority === 999 || stage.stage_priority === "999"
+    const p = stage.stage_priority
+    return p === 'last' || p === 99 || p === '99' || p === 999 || p === '999'
   }
 
   // Helper function to sort stages with proper priority handling
