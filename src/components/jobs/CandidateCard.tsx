@@ -1,9 +1,7 @@
 
 import { Card } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import { Badge, type BadgeProps } from '@/components/ui/badge'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuGroup, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { ExternalLink, MoveRight, MoreVertical } from 'lucide-react'
+import { ExternalLink } from 'lucide-react'
 import { JobStage } from '@/hooks/useJobHiringPlan'
 
 interface CandidateCardProps {
@@ -16,16 +14,8 @@ interface CandidateCardProps {
   onMove: (toStageId: string) => void | Promise<void>
 }
 
-export default function CandidateCard({
-  candidateName,
-  linkedinUrl,
-  stageOptions,
-  currentStageJhsId,
-  timeInStageLabel,
-  timeBadgeVariant,
-  onMove,
-}: CandidateCardProps) {
-  const availableStages = stageOptions.filter(s => s.jhsId !== currentStageJhsId)
+export default function CandidateCard(props: CandidateCardProps) {
+  const { candidateName, linkedinUrl, timeInStageLabel, timeBadgeVariant } = props
 
   return (
     <Card className="relative p-4 min-h-32 bg-white border-border">
@@ -49,33 +39,6 @@ export default function CandidateCard({
           )}
         </div>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-text-secondary hover:text-text-primary">
-              <MoreVertical className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="min-w-[220px]">
-            <DropdownMenuLabel className="text-xs">Move to stage</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuGroup>
-              {availableStages.length === 0 ? (
-                <div className="px-2 py-1.5 text-xs text-text-tertiary">No other stages</div>
-              ) : (
-                availableStages.map(opt => (
-                  <DropdownMenuItem
-                    key={opt.jhsId}
-                    onClick={() => onMove(opt.jhsId)}
-                    className="text-sm"
-                  >
-                    <MoveRight className="mr-2 h-4 w-4" />
-                    <span>{opt.stage.stage_name}</span>
-                  </DropdownMenuItem>
-                ))
-              )}
-            </DropdownMenuGroup>
-          </DropdownMenuContent>
-        </DropdownMenu>
       </div>
 
       {timeInStageLabel && (
