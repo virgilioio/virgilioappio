@@ -11,6 +11,8 @@ export interface PipelineAssociation {
   pipeline_position: number | null
   candidate_name: string
   linkedin_url?: string | null
+  created_at: string
+  entered_stage_at: string | null
 }
 
 /**
@@ -24,7 +26,7 @@ export function usePipelineActions() {
     // 1) Load associations for job
     const { data: associations, error: assocError } = await supabase
       .from('job_candidate_associations')
-      .select('id, job_id, candidate_id, current_stage_id, pipeline_position')
+      .select('id, job_id, candidate_id, current_stage_id, pipeline_position, created_at, entered_stage_at')
       .eq('job_id', jobId)
       .order('pipeline_position', { ascending: true })
 
@@ -69,6 +71,8 @@ export function usePipelineActions() {
         pipeline_position: a.pipeline_position,
         candidate_name: c?.candidate_name || 'Unnamed Candidate',
         linkedin_url: c?.linkedin_url ?? null,
+        created_at: a.created_at,
+        entered_stage_at: a.entered_stage_at ?? null,
       }
     })
 

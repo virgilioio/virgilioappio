@@ -35,6 +35,21 @@ export function PipelineOverview({ jobId }: PipelineOverviewProps) {
   const [isLoadingCandidates, setIsLoadingCandidates] = useState(false)
   const [byStage, setByStage] = useState<Record<string, PipelineAssociation[]>>({})
 
+  const getTimeInStageLabel = useCallback((a: PipelineAssociation) => {
+    const base = a.entered_stage_at || a.created_at
+    if (!base) return undefined
+    const started = new Date(base).getTime()
+    const now = Date.now()
+    const diffMin = Math.max(0, Math.floor((now - started) / 60000))
+    if (diffMin < 60) return `${diffMin}m`
+    const diffH = Math.floor(diffMin / 60)
+    if (diffH < 24) return `${diffH}h`
+    const diffD = Math.floor(diffH / 24)
+    if (diffD < 7) return `${diffD}d`
+    const diffW = Math.floor(diffD / 7)
+    return `${diffW}w`
+  }, [])
+
   const loadStages = useCallback(async () => {
     const plan = await loadHiringPlan(jobId)
     if (plan.length > 0) {
@@ -150,6 +165,7 @@ export function PipelineOverview({ jobId }: PipelineOverviewProps) {
                     linkedinUrl={assoc.linkedin_url}
                     stages={stages}
                     currentStageId={stage.id}
+                    timeInStageLabel={getTimeInStageLabel(assoc)}
                     onMove={(toId) => handleMove(assoc.id, toId)}
                   />
                 ))}
