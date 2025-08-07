@@ -1,4 +1,5 @@
 
+import { useCallback } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 import { toast } from '@/hooks/use-toast'
 
@@ -19,7 +20,7 @@ export interface PipelineAssociation {
  * - createAssociationAndMove: creates association (if missing) and sets stage
  */
 export function usePipelineActions() {
-  const fetchAssociationsForJob = async (jobId: string): Promise<PipelineAssociation[]> => {
+  const fetchAssociationsForJob = useCallback(async (jobId: string): Promise<PipelineAssociation[]> => {
     // 1) Load associations for job
     const { data: associations, error: assocError } = await supabase
       .from('job_candidate_associations')
@@ -72,9 +73,9 @@ export function usePipelineActions() {
     })
 
     return result
-  }
+  }, [])
 
-  const moveAssociationToStage = async (associationId: string, toStageId: string) => {
+  const moveAssociationToStage = useCallback(async (associationId: string, toStageId: string) => {
     // Set pipeline_position to null so the trigger assigns the next position
     const { error } = await supabase
       .from('job_candidate_associations')
@@ -95,9 +96,9 @@ export function usePipelineActions() {
       title: 'Candidate moved',
       description: 'Candidate moved to the selected stage.',
     })
-  }
+  }, [])
 
-  const createAssociationAndMove = async (jobId: string, candidateId: string, toStageId: string) => {
+  const createAssociationAndMove = useCallback(async (jobId: string, candidateId: string, toStageId: string) => {
     // First check if association already exists
     const { data: existing, error: existingError } = await supabase
       .from('job_candidate_associations')
@@ -148,7 +149,7 @@ export function usePipelineActions() {
     })
 
     return created.id
-  }
+  }, [moveAssociationToStage])
 
   return {
     fetchAssociationsForJob,
