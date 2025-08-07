@@ -17,6 +17,7 @@ import { CandidateEducationComponent } from '@/components/candidates/CandidateEd
 import { cn } from '@/lib/utils'
 import { getSkillColor } from '@/utils/skillColors'
 import { SafeHtml } from '@/components/ui/safe-html'
+import AddToJobPipelineDialog from '@/components/candidates/AddToJobPipelineDialog'
 
 export default function IndependentCandidateProfile() {
   const { candidateId } = useParams<{ candidateId: string }>()
@@ -211,24 +212,28 @@ export default function IndependentCandidateProfile() {
                       </p>
                     </div>
                     
-                    {candidate.linkedin_url ? (
-                      <Button 
-                        className="gap-sm h-[44px] bg-[#0078c7] text-white hover:bg-[#005a94]"
-                        onClick={() => window.open(candidate.linkedin_url!, '_blank')}
-                      >
-                        <Linkedin className="h-4 w-4" fill="white" />
-                        View LinkedIn
-                      </Button>
-                    ) : (
-                      <Button 
-                        className="gap-sm h-[44px]"
-                        variant="outline"
-                        disabled
-                      >
-                        <Linkedin className="h-4 w-4" />
-                        No LinkedIn
-                      </Button>
-                    )}
+                    <div className="flex items-center gap-sm">
+                      {candidate.linkedin_url ? (
+                        <Button 
+                          className="gap-sm h-[44px] bg-[#0078c7] text-white hover:bg-[#005a94]"
+                          onClick={() => window.open(candidate.linkedin_url!, '_blank')}
+                        >
+                          <Linkedin className="h-4 w-4" fill="white" />
+                          View LinkedIn
+                        </Button>
+                      ) : (
+                        <Button 
+                          className="gap-sm h-[44px]"
+                          variant="outline"
+                          disabled
+                        >
+                          <Linkedin className="h-4 w-4" />
+                          No LinkedIn
+                        </Button>
+                      )}
+
+                      <AddToJobPipelineDialog candidateId={candidate.id} />
+                    </div>
                   </div>
 
                   {/* Tab Bar inside Header Card */}

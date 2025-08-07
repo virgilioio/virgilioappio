@@ -24,6 +24,8 @@ import { CandidateUrls } from '@/components/candidates/CandidateUrls'
 import { CreateOfferLetterDialog } from '@/components/candidates/CreateOfferLetterDialog'
 import { getSkillColor } from '@/utils/skillColors'
 import { generateCandidatePdf } from '@/utils/candidatePdfGenerator'
+import MoveToPipelineMenu from '@/components/candidates/MoveToPipelineMenu'
+import { usePipelineActions } from '@/hooks/usePipelineActions'
 
 export default function CandidateProfile() {
   const { jobId, candidateId } = useParams<{ jobId: string; candidateId: string }>()
@@ -39,6 +41,9 @@ export default function CandidateProfile() {
   const [activeTab, setActiveTab] = useState<'overview' | 'notes'>('overview')
   const { candidates, isLoading: candidatesLoading, updateCandidate } = useCandidates(jobId || '')
   const { getJob, isLoading: jobLoading } = useJobs()
+  const { fetchAssociationsForJob } = usePipelineActions()
+  const [independentCandidateId, setIndependentCandidateId] = useState<string | null>(null)
+  const [associationsLoading, setAssociationsLoading] = useState(false)
 
   // Get the job's organization data from the database
   const jobOrganization = job?.organization_id 
@@ -107,6 +112,26 @@ export default function CandidateProfile() {
       console.error('Failed to load job:', error)
     }
   }
+
+  useEffect(() => {
+    const resolveIndependentCandidate = async () => {
+      if (!jobId || !candidate) return
+      setAssociationsLoading(true)
+      try {
+        const associations = await fetchAssociationsForJob(jobId)
+        const match = associations.find(a =>
+          (candidate.linkedin_url && a.linkedin_url && a.linkedin_url === candidate.linkedin_url) ||
+          a.candidate_name === candidate.candidate_name
+        )
+        setIndependentCandidateId(match ? match.candidate_id : null)
+      } catch (e) {
+        setIndependentCandidateId(null)
+      } finally {
+        setAssociationsLoading(false)
+      }
+    }
+    resolveIndependentCandidate()
+  }, [jobId, candidate, fetchAssociationsForJob])
 
   const handleEdit = () => {
     console.log('CandidateProfile - Edit button clicked:', {
@@ -291,6 +316,18 @@ export default function CandidateProfile() {
                           >
                             <Linkedin className="h-4 w-4" fill="white" />
                             No LinkedIn
+                          </Button>
+                        )}
+
+                        {independentCandidateId ? (
+                          <MoveToPipelineMenu 
+                            jobId={jobId!}
+                            candidateId={independentCandidateId}
+                            buttonText="Move to pipeline"
+                          />
+                        ) : (
+                          <Button size="sm" disabled className="gap-2">
+                            Move to pipeline
                           </Button>
                         )}
                         
