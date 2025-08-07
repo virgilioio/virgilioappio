@@ -77,8 +77,20 @@ export function HiringPlanTab({ jobId }: HiringPlanTabProps) {
     ;(async () => {
       const planStages = await loadHiringPlan(jobId as string)
       if (planStages.length > 0) {
-        const selectedIds = new Set(planStages.map(s => s.id))
-        setSelectedStages(planStages)
+        // Re-enforce priority rules on load: ensure "last" default stages are at the end
+        const defaultStages = planStages.filter(s => s.is_default)
+        const customStages = planStages.filter(s => !s.is_default)
+        const defaultNormalStages = defaultStages.filter(s => !isLastPriorityStage(s))
+        const defaultLastStages = defaultStages.filter(s => isLastPriorityStage(s))
+
+        const ordered = [
+          ...sortStagesByPriority([...defaultNormalStages]),
+          ...customStages,
+          ...sortStagesByPriority([...defaultLastStages])
+        ]
+
+        const selectedIds = new Set(ordered.map(s => s.id))
+        setSelectedStages(ordered)
         setAvailableStages(prev => prev.filter(s => !selectedIds.has(s.id)))
         setHasUnsavedChanges(false)
       }
