@@ -28,14 +28,11 @@ export default function CandidateCard({
   const availableStages = stageOptions.filter(s => s.jhsId !== currentStageJhsId)
 
   return (
-    <Card className="p-4 min-h-24 bg-background border-border">
+    <Card className="relative p-4 min-h-32 bg-background border-border">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2 min-w-0">
             <div className="font-medium text-sm text-text-primary truncate">{candidateName}</div>
-            {timeInStageLabel && (
-              <Badge variant={timeBadgeVariant ?? 'outline'} className="shrink-0">{timeInStageLabel}</Badge>
-            )}
           </div>
           {linkedinUrl ? (
             <a
@@ -80,6 +77,12 @@ export default function CandidateCard({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      {timeInStageLabel && (
+        <div className="absolute left-4 bottom-3">
+          <Badge variant={timeBadgeVariant ?? 'outline'}>{timeInStageLabel}</Badge>
+        </div>
+      )}
     </Card>
   )
 }
