@@ -60,6 +60,52 @@ export function useJobHiringPlan() {
     }
   }, [toast])
 
+  // Returns plan with job_hiring_stages ids for safe pipeline moves
+  type HiringPlanStageOption = { jhsId: string; stage: JobStage; position: number }
+
+  const loadHiringPlanInstances = useCallback(async (jobId: string): Promise<HiringPlanStageOption[]> => {
+    setIsLoadingPlan(true)
+    try {
+      const { data: planEntries, error: planError } = await supabase
+        .from('job_hiring_stages')
+        .select('id, stage_id, position')
+        .eq('job_id', jobId)
+        .order('position', { ascending: true })
+
+      if (planError) throw planError
+      if (!planEntries || planEntries.length === 0) return []
+
+      const stageIds = planEntries.map((e: { stage_id: string }) => e.stage_id)
+      const { data: stages, error: stagesError } = await supabase
+        .from('job_stages')
+        .select('*')
+        .in('id', stageIds)
+        .eq('is_active', true)
+
+      if (stagesError) throw stagesError
+
+      const byId = new Map(stages.map((s) => [s.id, s]))
+      const ordered: HiringPlanStageOption[] = planEntries
+        .map((e: { id: string; stage_id: string; position: number }) => {
+          const s = byId.get(e.stage_id)
+          return s ? { jhsId: e.id, stage: s, position: e.position } : null
+        })
+        .filter(Boolean) as HiringPlanStageOption[]
+
+      return ordered
+    } catch (error) {
+      console.error('Error loading hiring plan instances:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to load the hiring plan for this job.',
+        variant: 'destructive',
+      })
+      return []
+    } finally {
+      setIsLoadingPlan(false)
+    }
+  }, [toast])
+
   const saveHiringPlan = useCallback(async (jobId: string, stages: { id: string }[]) => {
     setIsSavingPlan(true)
     try {
@@ -112,6 +158,7 @@ export function useJobHiringPlan() {
     isLoadingPlan,
     isSavingPlan,
     loadHiringPlan,
+    loadHiringPlanInstances,
     saveHiringPlan,
   }
 }

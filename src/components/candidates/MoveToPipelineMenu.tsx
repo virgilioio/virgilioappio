@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { useJobHiringPlan, JobStage } from '@/hooks/useJobHiringPlan'
+import { useJobHiringPlan } from '@/hooks/useJobHiringPlan'
 import { usePipelineActions } from '@/hooks/usePipelineActions'
 import { toast } from '@/hooks/use-toast'
 import { MoveRight } from 'lucide-react'
@@ -18,18 +18,18 @@ interface MoveToPipelineMenuProps {
  * Intended to be embedded in the candidate profile name card.
  */
 export default function MoveToPipelineMenu({ jobId, candidateId, buttonText = 'Move to pipeline' }: MoveToPipelineMenuProps) {
-  const { loadHiringPlan } = useJobHiringPlan()
+  const { loadHiringPlanInstances } = useJobHiringPlan()
   const { createAssociationAndMove } = usePipelineActions()
-  const [stages, setStages] = useState<JobStage[]>([])
+  const [stageOptions, setStageOptions] = useState<{ jhsId: string; stage: { stage_name: string }; position: number }[]>([])
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     if (!jobId) return
     ;(async () => {
-      const plan = await loadHiringPlan(jobId)
-      setStages(plan || [])
+      const options = await loadHiringPlanInstances(jobId)
+      setStageOptions(options || [])
     })()
-  }, [jobId, loadHiringPlan])
+  }, [jobId, loadHiringPlanInstances])
 
   const handleSelectStage = async (stageId: string) => {
     if (!jobId || !candidateId) return
@@ -50,20 +50,20 @@ export default function MoveToPipelineMenu({ jobId, candidateId, buttonText = 'M
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button size="sm" disabled={loading || stages.length === 0} className="gap-2">
+        <Button size="sm" disabled={loading || stageOptions.length === 0} className="gap-2">
           <MoveRight className="h-4 w-4" />
-          {stages.length === 0 ? 'No stages' : buttonText}
+          {stageOptions.length === 0 ? 'No stages' : buttonText}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-[220px]">
         <DropdownMenuLabel>Move to stage</DropdownMenuLabel>
         <DropdownMenuSeparator />
-        {stages.length === 0 ? (
+        {stageOptions.length === 0 ? (
           <div className="px-2 py-1.5 text-xs text-text-tertiary">No stages available</div>
         ) : (
-          stages.map(stage => (
-            <DropdownMenuItem key={stage.id} onClick={() => handleSelectStage(stage.id)}>
-              {stage.stage_name}
+          stageOptions.map(opt => (
+            <DropdownMenuItem key={opt.jhsId} onClick={() => handleSelectStage(opt.jhsId)}>
+              {opt.stage.stage_name}
             </DropdownMenuItem>
           ))
         )}

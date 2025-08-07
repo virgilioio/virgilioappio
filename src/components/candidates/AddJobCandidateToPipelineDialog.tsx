@@ -2,11 +2,12 @@ import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { useJobHiringPlan, JobStage } from '@/hooks/useJobHiringPlan'
+import { useJobHiringPlan } from '@/hooks/useJobHiringPlan'
 import { usePipelineActions } from '@/hooks/usePipelineActions'
 import { toast } from '@/hooks/use-toast'
 import { supabase } from '@/integrations/supabase/client'
 import type { Candidate } from '@/hooks/useCandidates'
+import type { JobStage } from '@/hooks/useJobStages'
 
 interface AddJobCandidateToPipelineDialogProps {
   jobId: string
@@ -15,12 +16,12 @@ interface AddJobCandidateToPipelineDialogProps {
 
 export default function AddJobCandidateToPipelineDialog({ jobId, jobCandidate }: AddJobCandidateToPipelineDialogProps) {
   const [open, setOpen] = useState(false)
-  const [stages, setStages] = useState<JobStage[]>([])
-  const [selectedStageId, setSelectedStageId] = useState<string | undefined>(undefined)
+  const [stageOptions, setStageOptions] = useState<{ jhsId: string; stage: JobStage; position: number }[]>([])
+  const [selectedJhsId, setSelectedJhsId] = useState<string | undefined>(undefined)
   const [loadingStages, setLoadingStages] = useState(false)
   const [submitting, setSubmitting] = useState(false)
 
-  const { loadHiringPlan } = useJobHiringPlan()
+  const { loadHiringPlanInstances } = useJobHiringPlan()
   const { createAssociationAndMove } = usePipelineActions()
 
   useEffect(() => {
@@ -28,15 +29,15 @@ export default function AddJobCandidateToPipelineDialog({ jobId, jobCandidate }:
       if (!open) return
       setLoadingStages(true)
       try {
-        const plan = await loadHiringPlan(jobId)
-        setStages(plan || [])
-        setSelectedStageId(plan?.[0]?.id)
+        const options = await loadHiringPlanInstances(jobId)
+        setStageOptions(options || [])
+        setSelectedJhsId(options?.[0]?.jhsId)
       } finally {
         setLoadingStages(false)
       }
     }
     load()
-  }, [open, jobId, loadHiringPlan])
+  }, [open, jobId, loadHiringPlanInstances])
 
   const ensureIndependentCandidateId = async (): Promise<string> => {
     // 1) Try to find by linkedin_url if available
@@ -88,11 +89,11 @@ export default function AddJobCandidateToPipelineDialog({ jobId, jobCandidate }:
   }
 
   const onConfirm = async () => {
-    if (!selectedStageId) return
+    if (!selectedJhsId) return
     setSubmitting(true)
     try {
       const independentCandidateId = await ensureIndependentCandidateId()
-      await createAssociationAndMove(jobId, independentCandidateId, selectedStageId)
+      await createAssociationAndMove(jobId, independentCandidateId, selectedJhsId)
       setOpen(false)
       toast({ title: 'Added to pipeline', description: 'Candidate moved to the selected stage.' })
     } catch (e) {
@@ -116,13 +117,13 @@ export default function AddJobCandidateToPipelineDialog({ jobId, jobCandidate }:
         <div className="space-y-4">
           <div className="space-y-2">
             <label className="text-sm text-text-secondary">Stage</label>
-            <Select value={selectedStageId} onValueChange={setSelectedStageId} disabled={loadingStages || stages.length === 0}>
+            <Select value={selectedJhsId} onValueChange={setSelectedJhsId} disabled={loadingStages || stageOptions.length === 0}>
               <SelectTrigger>
-                <SelectValue placeholder={loadingStages ? 'Loading stages…' : (stages.length ? 'Select a stage' : 'No stages configured')} />
+                <SelectValue placeholder={loadingStages ? 'Loading stages…' : (stageOptions.length ? 'Select a stage' : 'No stages configured')} />
               </SelectTrigger>
               <SelectContent>
-                {stages.map(stage => (
-                  <SelectItem key={stage.id} value={stage.id}>{stage.stage_name}</SelectItem>
+                {stageOptions.map(opt => (
+                  <SelectItem key={opt.jhsId} value={opt.jhsId}>{opt.stage.stage_name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -130,7 +131,7 @@ export default function AddJobCandidateToPipelineDialog({ jobId, jobCandidate }:
 
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setOpen(false)} disabled={submitting}>Cancel</Button>
-            <Button onClick={onConfirm} disabled={!selectedStageId || submitting}>Confirm</Button>
+            <Button onClick={onConfirm} disabled={!selectedJhsId || submitting}>Confirm</Button>
           </div>
         </div>
       </DialogContent>

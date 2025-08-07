@@ -3,7 +3,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useJobs } from '@/hooks/useJobs'
-import { useJobHiringPlan, JobStage } from '@/hooks/useJobHiringPlan'
+import { useJobHiringPlan } from '@/hooks/useJobHiringPlan'
 import { usePipelineActions } from '@/hooks/usePipelineActions'
 import { toast } from '@/hooks/use-toast'
 
