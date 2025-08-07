@@ -31,6 +31,17 @@ const priorityLabels: Record<number, string> = {
   99: 'Last'
 }
 
+const stageTypeVariants: Record<string, import("@/components/ui/badge").BadgeProps["variant"]> = {
+  application: 'pastel-blue',
+  screening: 'info',
+  interview: 'pastel-purple',
+  assessment: 'warning',
+  reference_check: 'pastel-orange',
+  offer: 'success',
+  onboarding: 'pastel-green',
+  custom: 'secondary'
+}
+
 export function JobStagesTable({ stages, isLoading, onEdit }: JobStagesTableProps) {
   const { deleteStage, isDeleting } = useJobStages()
 
@@ -75,7 +86,7 @@ export function JobStagesTable({ stages, isLoading, onEdit }: JobStagesTableProp
             <TableRow key={stage.id}>
               <TableCell className="font-medium">{stage.stage_name}</TableCell>
               <TableCell>
-                <Badge variant="secondary">
+                <Badge variant={stageTypeVariants[stage.stage_type] ?? 'secondary'}>
                   {stageTypeLabels[stage.stage_type] || stage.stage_type}
                 </Badge>
               </TableCell>
