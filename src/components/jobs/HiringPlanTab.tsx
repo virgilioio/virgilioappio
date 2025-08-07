@@ -36,13 +36,25 @@ export function HiringPlanTab({ jobId }: HiringPlanTabProps) {
     })
   )
 
+  // Helper function to sort stages with proper priority handling
+  const sortStagesByPriority = (stages: JobStage[]) => {
+    return stages.sort((a, b) => {
+      const aPriority = a.stage_priority
+      const bPriority = b.stage_priority
+      
+      // Handle "last" priority (assuming it's represented as a very high number like 999)
+      // Stages with no priority default to middle range (500)
+      const aValue = aPriority === null || aPriority === undefined ? 500 : aPriority
+      const bValue = bPriority === null || bPriority === undefined ? 500 : bPriority
+      
+      return aValue - bValue
+    })
+  }
+
   // Initialize with default stages sorted by priority
   useEffect(() => {
     if (stages.length > 0) {
-      const defaultStages = stages
-        .filter(stage => stage.is_default)
-        .sort((a, b) => (a.stage_priority || 999) - (b.stage_priority || 999))
-      
+      const defaultStages = sortStagesByPriority(stages.filter(stage => stage.is_default))
       setSelectedStages(defaultStages)
       setAvailableStages(stages.filter(stage => !stage.is_default))
     }
@@ -60,21 +72,26 @@ export function HiringPlanTab({ jobId }: HiringPlanTabProps) {
 
     if (active.id !== over.id) {
       setSelectedStages((stages) => {
-        // Only allow reordering of non-default stages
-        const nonDefaultStages = stages.filter(stage => !stage.is_default)
+        // Separate stages by category
         const defaultStages = stages.filter(stage => stage.is_default)
+        const customStages = stages.filter(stage => !stage.is_default)
 
-        const oldIndex = nonDefaultStages.findIndex(stage => stage.id === active.id)
-        const newIndex = nonDefaultStages.findIndex(stage => stage.id === over.id)
+        // Find stages with "last" priority (assuming priority >= 900 means "last")
+        const defaultNormalStages = defaultStages.filter(stage => (stage.stage_priority || 0) < 900)
+        const defaultLastStages = defaultStages.filter(stage => (stage.stage_priority || 0) >= 900)
+
+        const oldIndex = customStages.findIndex(stage => stage.id === active.id)
+        const newIndex = customStages.findIndex(stage => stage.id === over.id)
 
         if (oldIndex === -1 || newIndex === -1) return stages
 
-        const reorderedNonDefault = arrayMove(nonDefaultStages, oldIndex, newIndex)
+        const reorderedCustom = arrayMove(customStages, oldIndex, newIndex)
         
-        // Combine default stages (sorted by priority) with reordered non-default stages
+        // Combine: normal priority defaults + custom stages + "last" priority defaults
         return [
-          ...defaultStages.sort((a, b) => (a.stage_priority || 999) - (b.stage_priority || 999)),
-          ...reorderedNonDefault
+          ...sortStagesByPriority(defaultNormalStages),
+          ...reorderedCustom,
+          ...sortStagesByPriority(defaultLastStages)
         ]
       })
     }
@@ -84,7 +101,24 @@ export function HiringPlanTab({ jobId }: HiringPlanTabProps) {
     const stage = availableStages.find(s => s.id === stageId)
     if (!stage) return
 
-    setSelectedStages(prev => [...prev, stage])
+    setSelectedStages(prev => {
+      // Separate existing stages by category
+      const defaultStages = prev.filter(s => s.is_default)
+      const customStages = prev.filter(s => !s.is_default)
+
+      // Find stages with "last" priority
+      const defaultNormalStages = defaultStages.filter(s => (s.stage_priority || 0) < 900)
+      const defaultLastStages = defaultStages.filter(s => (s.stage_priority || 0) >= 900)
+
+      // Add new stage to custom stages (it will be positioned between normal and "last")
+      return [
+        ...sortStagesByPriority(defaultNormalStages),
+        ...customStages,
+        stage, // Add new stage here
+        ...sortStagesByPriority(defaultLastStages)
+      ]
+    })
+    
     setAvailableStages(prev => prev.filter(s => s.id !== stageId))
     
     toast({
@@ -109,7 +143,7 @@ export function HiringPlanTab({ jobId }: HiringPlanTabProps) {
 
     setSelectedStages(prev => prev.filter(s => s.id !== stageId))
     setAvailableStages(prev => [...prev, stage].sort((a, b) => 
-      (a.stage_priority || 999) - (b.stage_priority || 999)
+      (a.stage_priority || 500) - (b.stage_priority || 500)
     ))
     
     toast({
@@ -127,7 +161,7 @@ export function HiringPlanTab({ jobId }: HiringPlanTabProps) {
       <div>
         <h3 className="text-lg font-medium text-text-primary mb-2">Hiring Plan</h3>
         <p className="text-sm text-text-secondary mb-4">
-          Customize the hiring process for this job. Default stages (grayed out) are fixed in priority order, while custom stages can be reordered by dragging.
+          Customize the hiring process for this job. Default stages (grayed out) are fixed in priority order. Stages marked as "last" priority will always appear at the end, with custom stages positioned before them.
         </p>
       </div>
 
