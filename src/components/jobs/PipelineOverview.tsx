@@ -179,7 +179,7 @@ export function PipelineOverview({ jobId }: PipelineOverviewProps) {
                 )}
               </div>
             </CardHeader>
-            <CardContent className={`${getHeaderBgClass(opt.stage.stage_type)} rounded-b-md`}>
+            <CardContent className={`${getHeaderBgClass(opt.stage.stage_type)} rounded-b-md min-h-48`}>
               {isLoadingCandidates && (
                 <div className="text-xs text-text-tertiary">Loading candidates...</div>
               )}
