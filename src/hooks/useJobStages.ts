@@ -70,7 +70,8 @@ export function useJobStages() {
 
       if (error) throw error
 
-      setStages(prev => [...prev, data])
+      // Refetch stages to maintain proper sorting
+      await fetchStages()
       toast({
         title: 'Success',
         description: 'Job stage created successfully'
