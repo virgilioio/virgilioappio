@@ -28,10 +28,10 @@ const isLastPriorityStage = (stage: JobStage) => {
 }
 
 export function PipelineOverview({ jobId }: PipelineOverviewProps) {
-  const { loadHiringPlan, isLoadingPlan } = useJobHiringPlan()
+  const { loadHiringPlanInstances, isLoadingPlan } = useJobHiringPlan()
   const { fetchAssociationsForJob, moveAssociationToStage } = usePipelineActions()
 
-  const [stages, setStages] = useState<JobStage[]>([])
+  const [stageOptions, setStageOptions] = useState<{ jhsId: string; stage: JobStage; position: number }[]>([])
   const [isLoadingCandidates, setIsLoadingCandidates] = useState(false)
   const [byStage, setByStage] = useState<Record<string, PipelineAssociation[]>>({})
 
@@ -51,18 +51,18 @@ export function PipelineOverview({ jobId }: PipelineOverviewProps) {
   }, [])
 
   const loadStages = useCallback(async () => {
-    const plan = await loadHiringPlan(jobId)
+    const plan = await loadHiringPlanInstances(jobId)
     if (plan.length > 0) {
-      // Ensure any "last" priority stages appear at the end
-      const defaults = plan.filter(s => s.is_default)
-      const customs = plan.filter(s => !s.is_default)
-      const normalDefaults = defaults.filter(s => !isLastPriorityStage(s))
-      const lastDefaults = defaults.filter(s => isLastPriorityStage(s))
-      setStages([...normalDefaults, ...customs, ...lastDefaults])
+      // Ensure any "last" priority defaults appear at the end
+      const defaults = plan.filter(p => p.stage.is_default)
+      const customs = plan.filter(p => !p.stage.is_default)
+      const normalDefaults = defaults.filter(p => !isLastPriorityStage(p.stage))
+      const lastDefaults = defaults.filter(p => isLastPriorityStage(p.stage))
+      setStageOptions([...normalDefaults, ...customs, ...lastDefaults])
     } else {
-      setStages([])
+      setStageOptions([])
     }
-  }, [jobId, loadHiringPlan])
+  }, [jobId, loadHiringPlanInstances])
 
   const loadPipeline = useCallback(async () => {
     if (!jobId) return
@@ -100,7 +100,7 @@ export function PipelineOverview({ jobId }: PipelineOverviewProps) {
     ;(async () => {
       await loadPipeline()
     })()
-  }, [jobId, stages, loadPipeline])
+  }, [jobId, stageOptions, loadPipeline])
 
   const handleMove = async (associationId: string, toStageId: string) => {
     await moveAssociationToStage(associationId, toStageId)
@@ -119,7 +119,7 @@ export function PipelineOverview({ jobId }: PipelineOverviewProps) {
           <div className="text-sm text-text-secondary">Loading pipeline...</div>
         )}
 
-        {!isLoadingPlan && stages.length === 0 && (
+        {!isLoadingPlan && stageOptions.length === 0 && (
           <Card className="min-w-[280px]">
             <CardContent className="py-8 text-center text-text-secondary text-sm">
               No hiring plan defined yet.
@@ -128,20 +128,20 @@ export function PipelineOverview({ jobId }: PipelineOverviewProps) {
         )}
 
         {/* Render columns with candidate cards */}
-        {!isLoadingPlan && stages.map((stage) => (
-          <Card key={stage.id} className="w-72 flex-shrink-0">
+        {!isLoadingPlan && stageOptions.map((opt) => (
+          <Card key={opt.jhsId} className="w-72 flex-shrink-0">
             <CardHeader className="pb-3">
               <div className="flex items-center gap-2 flex-wrap">
-                <CardTitle className="text-base font-medium truncate max-w-[180px]" title={stage.stage_name}>
-                  {stage.stage_name}
+                <CardTitle className="text-base font-medium truncate max-w-[180px]" title={opt.stage.stage_name}>
+                  {opt.stage.stage_name}
                 </CardTitle>
-                <Badge variant={stageTypeVariants[stage.stage_type] ?? 'secondary'}>
-                  {stage.stage_type.replace('_', ' ')}
+                <Badge variant={stageTypeVariants[opt.stage.stage_type] ?? 'secondary'}>
+                  {opt.stage.stage_type.replace('_', ' ')}
                 </Badge>
-                {stage.is_default && (
+                {opt.stage.is_default && (
                   <Badge variant="outline">Default</Badge>
                 )}
-                {isLastPriorityStage(stage) && (
+                {isLastPriorityStage(opt.stage) && (
                   <Badge variant="outline">Last</Badge>
                 )}
               </div>
@@ -151,20 +151,20 @@ export function PipelineOverview({ jobId }: PipelineOverviewProps) {
                 <div className="text-xs text-text-tertiary">Loading candidates...</div>
               )}
 
-              {!isLoadingCandidates && (!byStage[stage.id] || byStage[stage.id].length === 0) && (
+              {!isLoadingCandidates && (!byStage[opt.jhsId] || byStage[opt.jhsId].length === 0) && (
                 <div className="text-xs text-text-tertiary">
                   No candidates in this stage
                 </div>
               )}
 
               <div className="space-y-2">
-                {(byStage[stage.id] || []).map(assoc => (
+                {(byStage[opt.jhsId] || []).map(assoc => (
                   <CandidateCard
                     key={assoc.id}
                     candidateName={assoc.candidate_name}
                     linkedinUrl={assoc.linkedin_url}
-                    stages={stages}
-                    currentStageId={stage.id}
+                    stageOptions={stageOptions}
+                    currentStageJhsId={opt.jhsId}
                     timeInStageLabel={getTimeInStageLabel(assoc)}
                     onMove={(toId) => handleMove(assoc.id, toId)}
                   />

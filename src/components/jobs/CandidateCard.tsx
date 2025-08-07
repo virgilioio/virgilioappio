@@ -9,8 +9,8 @@ import { JobStage } from '@/hooks/useJobHiringPlan'
 interface CandidateCardProps {
   candidateName: string
   linkedinUrl?: string | null
-  stages: JobStage[]
-  currentStageId?: string | null
+  stageOptions: { jhsId: string; stage: JobStage }[]
+  currentStageJhsId?: string | null
   timeInStageLabel?: string
   onMove: (toStageId: string) => void | Promise<void>
 }
@@ -18,12 +18,12 @@ interface CandidateCardProps {
 export default function CandidateCard({
   candidateName,
   linkedinUrl,
-  stages,
-  currentStageId,
+  stageOptions,
+  currentStageJhsId,
   timeInStageLabel,
   onMove,
 }: CandidateCardProps) {
-  const availableStages = stages.filter(s => s.id !== currentStageId)
+  const availableStages = stageOptions.filter(s => s.jhsId !== currentStageJhsId)
 
   return (
     <Card className="p-3 bg-background border-border">
@@ -63,14 +63,14 @@ export default function CandidateCard({
               {availableStages.length === 0 ? (
                 <div className="px-2 py-1.5 text-xs text-text-tertiary">No other stages</div>
               ) : (
-                availableStages.map(stage => (
+                availableStages.map(opt => (
                   <DropdownMenuItem
-                    key={stage.id}
-                    onClick={() => onMove(stage.id)}
+                    key={opt.jhsId}
+                    onClick={() => onMove(opt.jhsId)}
                     className="text-sm"
                   >
                     <MoveRight className="mr-2 h-4 w-4" />
-                    <span>{stage.stage_name}</span>
+                    <span>{opt.stage.stage_name}</span>
                   </DropdownMenuItem>
                 ))
               )}
