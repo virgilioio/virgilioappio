@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { HiringTeamTab } from './HiringTeamTab'
 import { HiringPlanTab } from './HiringPlanTab'
 import { JobOverviewTab } from './JobOverviewTab'
+import { usePermissions } from '@/hooks/usePermissions'
 
 interface JobSetupPanelProps {
   jobId: string
@@ -12,6 +13,7 @@ interface JobSetupPanelProps {
 }
 
 export function JobSetupPanel({ jobId, jobTitle, job, onEdit }: JobSetupPanelProps) {
+  const { isClient } = usePermissions()
   return (
     <Card>
       <CardHeader>
@@ -40,7 +42,7 @@ export function JobSetupPanel({ jobId, jobTitle, job, onEdit }: JobSetupPanelPro
           </TabsContent>
           
           <TabsContent value="hiring-plan" className="mt-6">
-            <HiringPlanTab jobId={jobId} />
+            <HiringPlanTab jobId={jobId} readOnly={isClient} />
           </TabsContent>
         </Tabs>
       </CardContent>

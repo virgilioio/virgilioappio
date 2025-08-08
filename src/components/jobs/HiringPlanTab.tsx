@@ -32,9 +32,10 @@ interface JobStage {
 
 interface HiringPlanTabProps {
   jobId: string
+  readOnly?: boolean
 }
 
-export function HiringPlanTab({ jobId }: HiringPlanTabProps) {
+export function HiringPlanTab({ jobId, readOnly = false }: HiringPlanTabProps) {
   const { stages, isLoading } = useJobStages()
   const [selectedStages, setSelectedStages] = useState<JobStage[]>([])
   const [availableStages, setAvailableStages] = useState<JobStage[]>([])
@@ -284,7 +285,13 @@ export function HiringPlanTab({ jobId }: HiringPlanTabProps) {
         </p>
       </div>
 
-      <div className="space-y-4">
+      {readOnly && (
+        <div className="rounded-md border border-border/50 bg-surface-secondary px-3 py-2 text-sm text-text-secondary">
+          View-only: Clients can see the hiring plan but cannot edit it.
+        </div>
+      )}
+
+      <div className={readOnly ? "space-y-4 opacity-60 pointer-events-none" : "space-y-4"}>
         <div>
           <h4 className="text-base font-medium text-text-primary mb-3">Current Hiring Stages</h4>
           {selectedStages.length === 0 ? (
@@ -355,7 +362,7 @@ export function HiringPlanTab({ jobId }: HiringPlanTabProps) {
             Total stages: {selectedStages.length}
           </p>
           <Button 
-            disabled={!hasUnsavedChanges || isSavingPlan}
+            disabled={readOnly || !hasUnsavedChanges || isSavingPlan}
             onClick={handleSaveHiringPlan}
           >
             {isSavingPlan ? 'Saving...' : 'Save Hiring Plan'}
