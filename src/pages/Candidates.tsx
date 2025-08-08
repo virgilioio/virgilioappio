@@ -101,13 +101,14 @@ export default function Candidates() {
               </p>
             </div>
 
-            <IndependentCandidateTable
-              candidates={candidates}
-              isLoading={isLoading}
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-              onAddNew={handleAddNew}
-            />
+<IndependentCandidateTable
+  candidates={candidates}
+  isLoading={isLoading}
+  onEdit={handleEdit}
+  onDelete={handleDelete}
+  onAddNew={handleAddNew}
+  onRefresh={getCandidates}
+/>
 
             <IndependentCandidateForm
               isOpen={isFormOpen}
