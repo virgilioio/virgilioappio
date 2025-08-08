@@ -10,7 +10,17 @@ import { Plus } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
 import { DraggableStageItem } from './DraggableStageItem'
 import { useJobHiringPlan } from '@/hooks/useJobHiringPlan'
-
+import { supabase } from '@/integrations/supabase/client'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 interface JobStage {
   id: string
   stage_name: string
@@ -30,8 +40,16 @@ export function HiringPlanTab({ jobId }: HiringPlanTabProps) {
   const [availableStages, setAvailableStages] = useState<JobStage[]>([])
   const [activeId, setActiveId] = useState<string | null>(null)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
-  const { isSavingPlan, loadHiringPlan, saveHiringPlan } = useJobHiringPlan()
+  const { isSavingPlan, loadHiringPlan, loadHiringPlanInstances, saveHiringPlan } = useJobHiringPlan()
 
+  // Map of stage_id -> { jhsId, position } for current persisted plan
+  const [instancesMap, setInstancesMap] = useState<Map<string, { jhsId: string; position: number }>>(new Map())
+
+  // Delete confirmation dialog state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [stagePendingDelete, setStagePendingDelete] = useState<JobStage | null>(null)
+  const [pendingDeleteCount, setPendingDeleteCount] = useState<number | null>(null)
+  const [countLoading, setCountLoading] = useState(false)
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
@@ -94,10 +112,17 @@ export function HiringPlanTab({ jobId }: HiringPlanTabProps) {
         setSelectedStages(ordered)
         setAvailableStages(prev => prev.filter(s => !selectedIds.has(s.id)))
         setHasUnsavedChanges(false)
+      } else {
+        setHasUnsavedChanges(false)
       }
+
+      // Also load current persisted instances (stage_id -> jhsId, position)
+      const opts = await loadHiringPlanInstances(jobId as string)
+      const map = new Map<string, { jhsId: string; position: number }>()
+      ;(opts || []).forEach(o => map.set(o.stage.id, { jhsId: o.jhsId, position: o.position }))
+      setInstancesMap(map)
     })()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [jobId])
+  }, [jobId, loadHiringPlan, loadHiringPlanInstances])
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(event.active.id as string)
@@ -167,7 +192,7 @@ export function HiringPlanTab({ jobId }: HiringPlanTabProps) {
     })
   }
 
-  const handleRemoveStage = (stageId: string) => {
+  const handleRemoveStageRequest = async (stageId: string) => {
     const stage = selectedStages.find(s => s.id === stageId)
     if (!stage) return
 
@@ -181,18 +206,63 @@ export function HiringPlanTab({ jobId }: HiringPlanTabProps) {
       return
     }
 
-    setSelectedStages(prev => prev.filter(s => s.id !== stageId))
-    setAvailableStages(prev => [...prev, stage].sort((a, b) => {
-      const aPriority = typeof a.stage_priority === 'number' ? a.stage_priority : 500
-      const bPriority = typeof b.stage_priority === 'number' ? b.stage_priority : 500
-      return aPriority - bPriority
-    }))
-    setHasUnsavedChanges(true)
-    
-    toast({
-      title: 'Stage Removed',
-      description: `${stage.stage_name} has been removed from the hiring plan`
-    })
+    setStagePendingDelete(stage)
+    setDeleteDialogOpen(true)
+    setPendingDeleteCount(null)
+    setCountLoading(true)
+
+    try {
+      const inst = instancesMap.get(stage.id)
+      if (inst?.jhsId) {
+        const { count, error } = await supabase
+          .from('job_candidate_associations')
+          .select('id', { count: 'exact', head: true })
+          .eq('job_id', jobId)
+          .eq('current_stage_id', inst.jhsId)
+        if (!error) setPendingDeleteCount(count ?? 0)
+        else setPendingDeleteCount(0)
+      } else {
+        // Not persisted yet -> no candidates in this stage
+        setPendingDeleteCount(0)
+      }
+    } catch (e) {
+      setPendingDeleteCount(0)
+    } finally {
+      setCountLoading(false)
+    }
+  }
+
+  const handleConfirmRemove = async () => {
+    if (!stagePendingDelete) return
+    const stage = stagePendingDelete
+
+    const newSelected = selectedStages.filter(s => s.id !== stage.id)
+
+    try {
+      await saveHiringPlan(jobId as string, newSelected)
+
+      setSelectedStages(newSelected)
+      setAvailableStages(prev => [...prev, stage].sort((a, b) => {
+        const aPriority = typeof a.stage_priority === 'number' ? a.stage_priority : 500
+        const bPriority = typeof b.stage_priority === 'number' ? b.stage_priority : 500
+        return aPriority - bPriority
+      }))
+      setHasUnsavedChanges(false)
+
+      // Refresh instances map
+      const opts = await loadHiringPlanInstances(jobId as string)
+      const map = new Map<string, { jhsId: string; position: number }>()
+      ;(opts || []).forEach(o => map.set(o.stage.id, { jhsId: o.jhsId, position: o.position }))
+      setInstancesMap(map)
+
+      toast({
+        title: 'Stage Removed',
+        description: `${stage.stage_name} was removed.${(pendingDeleteCount ?? 0) > 0 ? ` ${(pendingDeleteCount ?? 0)} candidate${(pendingDeleteCount ?? 0) !== 1 ? 's' : ''} moved to the previous stage.` : ''}`
+      })
+    } finally {
+      setDeleteDialogOpen(false)
+      setStagePendingDelete(null)
+    }
   }
 
   const handleSaveHiringPlan = async () => {
@@ -240,7 +310,7 @@ export function HiringPlanTab({ jobId }: HiringPlanTabProps) {
                       key={stage.id}
                       stage={stage}
                       index={index}
-                      onRemove={handleRemoveStage}
+                      onRemove={handleRemoveStageRequest}
                       isDragging={activeId === stage.id}
                     />
                   ))}
@@ -292,6 +362,36 @@ export function HiringPlanTab({ jobId }: HiringPlanTabProps) {
           </Button>
         </div>
       </div>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove stage?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {stagePendingDelete && (
+                <div>
+                  Are you sure you want to remove "{stagePendingDelete.stage_name}" from this hiring plan?
+                  {countLoading ? (
+                    <div className="mt-2">Checking candidates...</div>
+                  ) : (pendingDeleteCount ?? 0) > 0 ? (
+                    <div className="mt-2">
+                      {(pendingDeleteCount ?? 0)} candidate{(pendingDeleteCount ?? 0) !== 1 ? 's' : ''} currently in this stage will be moved to the previous stage.
+                    </div>
+                  ) : (
+                    <div className="mt-2">No candidates are currently in this stage.</div>
+                  )}
+                </div>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmRemove}>
+              Remove stage
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
