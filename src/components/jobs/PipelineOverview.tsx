@@ -1,5 +1,5 @@
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { useJobHiringPlan, JobStage } from '@/hooks/useJobHiringPlan'
@@ -162,6 +162,36 @@ export function PipelineOverview({ jobId }: PipelineOverviewProps) {
     await loadPipeline()
   }, [moveAssociationToStage, loadPipeline])
 
+  // Ordered list of candidate IDs across the pipeline (by stage order, then pipeline_position, then created_at)
+  const orderedCandidateIds = useMemo(() => {
+    const perStage = stageOptions.map(opt => {
+      const arr = (byStage[opt.jhsId] || []).slice().sort((a, b) => {
+        const pa = a.pipeline_position ?? Number.MAX_SAFE_INTEGER
+        const pb = b.pipeline_position ?? Number.MAX_SAFE_INTEGER
+        if (pa !== pb) return pa - pb
+        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      })
+      return arr
+    })
+    return perStage.flat().map(a => a.candidate_id)
+  }, [byStage, stageOptions])
+
+  const currentIndex = selectedCandidateId ? orderedCandidateIds.indexOf(selectedCandidateId) : -1
+  const hasPrev = currentIndex > 0
+  const hasNext = currentIndex >= 0 && currentIndex < orderedCandidateIds.length - 1
+
+  const handlePrevCandidate = useCallback(() => {
+    if (hasPrev) {
+      setSelectedCandidateId(orderedCandidateIds[currentIndex - 1])
+    }
+  }, [hasPrev, currentIndex, orderedCandidateIds])
+
+  const handleNextCandidate = useCallback(() => {
+    if (hasNext) {
+      setSelectedCandidateId(orderedCandidateIds[currentIndex + 1])
+    }
+  }, [hasNext, currentIndex, orderedCandidateIds])
+
   return (
     <div className="space-y-4">
       <div>
@@ -236,7 +266,7 @@ export function PipelineOverview({ jobId }: PipelineOverviewProps) {
           ))}
         </div>
       </DndContext>
-      <CandidateProfileSheet open={panelOpen} onOpenChange={(o) => setPanelOpen(o)} candidateId={selectedCandidateId} jobId={jobId} />
+      <CandidateProfileSheet open={panelOpen} onOpenChange={(o) => setPanelOpen(o)} candidateId={selectedCandidateId} jobId={jobId} hasPrev={hasPrev} hasNext={hasNext} onNavigatePrev={handlePrevCandidate} onNavigateNext={handleNextCandidate} />
     </div>
   )
 }

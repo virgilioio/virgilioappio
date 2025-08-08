@@ -11,7 +11,7 @@ import { CandidateUrls } from '@/components/candidates/CandidateUrls'
 import { CandidateWorkExperienceComponent } from '@/components/candidates/CandidateWorkExperience'
 import { CandidateEducationComponent } from '@/components/candidates/CandidateEducationComponent'
 import { useCandidateEnrichment } from '@/hooks/useCandidateEnrichment'
-import { ExternalLink, Edit, FileText, Clock, Download, Linkedin } from 'lucide-react'
+import { ExternalLink, Edit, FileText, Clock, Download, Linkedin, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Link } from 'react-router-dom'
 import { SafeHtml } from '@/components/ui/safe-html'
@@ -23,9 +23,13 @@ interface CandidateProfileSheetProps {
   onOpenChange: (open: boolean) => void
   candidateId: string | null
   jobId: string
+  hasPrev?: boolean
+  hasNext?: boolean
+  onNavigatePrev?: () => void
+  onNavigateNext?: () => void
 }
 
-export default function CandidateProfileSheet({ open, onOpenChange, candidateId, jobId }: CandidateProfileSheetProps) {
+export default function CandidateProfileSheet({ open, onOpenChange, candidateId, jobId, hasPrev, hasNext, onNavigatePrev, onNavigateNext }: CandidateProfileSheetProps) {
   const { organizationId } = useAuth()
   const [loading, setLoading] = useState(false)
   const [candidate, setCandidate] = useState<any | null>(null)
@@ -106,10 +110,38 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
       <SheetContent side="right" className="w-[80vw] sm:max-w-none h-full p-0">
         <div className="flex h-full flex-col">
           <SheetHeader className="p-6 border-b">
-            <SheetTitle className="text-xl flex items-center gap-3">
-              <span>{candidate?.candidate_name || 'Candidate'}</span>
-              {candidate?.status && <Badge variant="secondary">{candidate.status}</Badge>}
-            </SheetTitle>
+            <div className="flex items-center justify-between">
+              <SheetTitle className="text-xl flex items-center gap-3">
+                <span>{candidate?.candidate_name || 'Candidate'}</span>
+                {job?.title ? (
+                  <Badge variant="secondary">{job.title}</Badge>
+                ) : candidate?.status ? (
+                  <Badge variant="secondary">{candidate.status}</Badge>
+                ) : null}
+              </SheetTitle>
+              <div className="flex items-center gap-sm">
+                <Button
+                  variant="ghost"
+                  className="gap-sm h-[44px] text-text-secondary hover:text-text-primary"
+                  onClick={onNavigatePrev}
+                  disabled={!hasPrev}
+                  title="Previous candidate"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                  Previous
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="gap-sm h-[44px] text-text-secondary hover:text-text-primary"
+                  onClick={onNavigateNext}
+                  disabled={!hasNext}
+                  title="Next candidate"
+                >
+                  Next
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
             {candidate?.linkedin_url && (
               <a
                 href={candidate.linkedin_url}
