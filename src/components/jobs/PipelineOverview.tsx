@@ -74,21 +74,40 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
   const currentView = controlledView ?? internalViewMode
   const setCurrentView = onViewModeChange ?? setInternalViewMode
 
+  // Map of association id -> association and stage id (for quick lookups)
+  const assocMap = useMemo(() => {
+    const m = new Map<string, { assoc: PipelineAssociation; stageJhsId: string }>()
+    for (const opt of stageOptions) {
+      for (const a of byStage[opt.jhsId] || []) {
+        m.set(a.id, { assoc: a, stageJhsId: opt.jhsId })
+      }
+    }
+    return m
+  }, [byStage, stageOptions])
+
   // Selection mode (controlled or uncontrolled)
   const [internalSelectionMode, setInternalSelectionMode] = useState(false)
   const selectionMode = controlledSelectionMode ?? internalSelectionMode
   const setSelectionMode = onSelectionModeChange ?? setInternalSelectionMode
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
+  const emitSelectedCandidateIds = useCallback((idsSet: Set<string>) => {
+    if (!onSelectedIdsChange) return
+    const candidateIds = Array.from(idsSet)
+      .map((assocId) => assocMap.get(assocId)?.assoc.candidate_id)
+      .filter(Boolean) as string[]
+    onSelectedIdsChange(candidateIds)
+  }, [assocMap, onSelectedIdsChange])
+
   const toggleSelect = useCallback((id: string, checked: boolean) => {
     setSelectedIds((prev) => {
       const next = new Set(prev)
       if (checked) next.add(id)
       else next.delete(id)
-      onSelectedIdsChange?.([...next])
+      emitSelectedCandidateIds(next)
       return next
     })
-  }, [onSelectedIdsChange])
+  }, [emitSelectedCandidateIds])
 
   const isSelected = useCallback((id: string) => selectedIds.has(id), [selectedIds])
 
@@ -99,27 +118,30 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
       const allSelected = ids.every((i) => next.has(i))
       if (allSelected) ids.forEach((i) => next.delete(i))
       else ids.forEach((i) => next.add(i))
-      onSelectedIdsChange?.([...next])
+      emitSelectedCandidateIds(next)
       return next
     })
-  }, [byStage, onSelectedIdsChange])
+  }, [byStage, emitSelectedCandidateIds])
+
+  const toggleMultiple = useCallback((ids: string[]) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      const allSelected = ids.every((i) => next.has(i))
+      if (allSelected) ids.forEach((i) => next.delete(i))
+      else ids.forEach((i) => next.add(i))
+      emitSelectedCandidateIds(next)
+      return next
+    })
+  }, [emitSelectedCandidateIds])
 
   useEffect(() => {
     if (!selectionMode) {
       setSelectedIds(new Set())
-      onSelectedIdsChange?.([])
+      emitSelectedCandidateIds(new Set())
     }
-  }, [selectionMode, onSelectedIdsChange])
+  }, [selectionMode, emitSelectedCandidateIds])
 
-  const assocMap = useMemo(() => {
-    const m = new Map<string, { assoc: PipelineAssociation; stageJhsId: string }>()
-    for (const opt of stageOptions) {
-      for (const a of byStage[opt.jhsId] || []) {
-        m.set(a.id, { assoc: a, stageJhsId: opt.jhsId })
-      }
-    }
-    return m
-  }, [byStage, stageOptions])
+// (assocMap moved earlier)
 
   const onDragStart = useCallback((event: DragStartEvent) => {
     setActiveId(String(event.active.id))
@@ -227,6 +249,12 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
       await loadPipeline()
     })()
   }, [jobId, stageOptions, loadPipeline])
+
+  useEffect(() => {
+    if (typeof refreshToken !== 'undefined') {
+      loadPipeline()
+    }
+  }, [refreshToken, loadPipeline])
 
   const handleMove = async (associationId: string, toStageId: string) => {
     await moveAssociationToStage(associationId, toStageId)
@@ -405,16 +433,28 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
               {/* Render columns with candidate cards */}
               {!isLoadingPlan && stageOptions.map((opt) => (
                 <Card key={opt.jhsId} className="w-72 flex-shrink-0 h-full flex flex-col">
-                  <CardHeader className={`pb-3 rounded-t-md shrink-0 ${getHeaderBgClass(opt.stage.stage_type)}`}>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <CardTitle className="text-base font-medium truncate max-w-[180px]" title={opt.stage.stage_name}>
-                        {opt.stage.stage_name}
-                      </CardTitle>
-                      {opt.stage.is_default && (
-                        <Badge variant="outline">Default</Badge>
-                      )}
-                      {isLastPriorityStage(opt.stage) && (
-                        <Badge variant="outline">Last</Badge>
+                  <CardHeader className={`pb-2 rounded-t-md shrink-0 ${getHeaderBgClass(opt.stage.stage_type)}`}>
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <CardTitle className="text-base font-medium truncate max-w-[160px]" title={opt.stage.stage_name}>
+                          {opt.stage.stage_name}
+                        </CardTitle>
+                        {opt.stage.is_default && (
+                          <Badge variant="outline">Default</Badge>
+                        )}
+                        {isLastPriorityStage(opt.stage) && (
+                          <Badge variant="outline">Last</Badge>
+                        )}
+                      </div>
+                      {selectionMode && (
+                        <div className="flex items-center gap-2 pr-1" onClick={(e) => e.stopPropagation()}>
+                          <Checkbox
+                            checked={(byStage[opt.jhsId] || []).length > 0 && (byStage[opt.jhsId] || []).every(a => isSelected(a.id))}
+                            onCheckedChange={() => selectAllInStage(opt.jhsId)}
+                            aria-label="Select all in stage"
+                          />
+                          <span className="text-xs text-text-secondary">All</span>
+                        </div>
                       )}
                     </div>
                   </CardHeader>
@@ -444,6 +484,9 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
                                 timeBadgeVariant={t.variant}
                                 onMove={(toId) => handleMove(assoc.id, toId)}
                                 onClick={() => { setSelectedCandidateId(orderedCandidateIds.find(id => id === assoc.candidate_id) || assoc.candidate_id); setPanelOpen(true) }}
+                                showCheckbox={selectionMode}
+                                checked={isSelected(assoc.id)}
+                                onCheckedChange={(v) => toggleSelect(assoc.id, !!v)}
                               />
                             </DraggableCandidateCard>
                           )
@@ -527,7 +570,19 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
                         <div className={`${getHeaderBgClass(group.stageType)} rounded-md`}> 
                           <AccordionTrigger className="w-full rounded-t-md px-3 py-2 hover:no-underline">
                             <div className="flex w-full items-center justify-between">
-                              <span className="font-medium text-text-primary">{group.stageName}</span>
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium text-text-primary">{group.stageName}</span>
+                                {selectionMode && (
+                                  <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                                    <Checkbox
+                                      checked={group.rows.length > 0 && group.rows.every(r => isSelected(r.id))}
+                                      onCheckedChange={() => toggleMultiple(group.rows.map(r => r.id))}
+                                      aria-label="Select all in group"
+                                    />
+                                    <span className="text-xs text-text-secondary">All</span>
+                                  </div>
+                                )}
+                              </div>
                               <Badge variant="outline">{group.rows.length}</Badge>
                             </div>
                           </AccordionTrigger>
@@ -537,6 +592,15 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
                                 <TableBody>
                                   {group.rows.map((row) => (
                                     <TableRow key={row.id} interactive className="hover:bg-transparent" onClick={() => { setSelectedCandidateId(row.candidateId); setPanelOpen(true) }}>
+                                      {selectionMode && (
+                                        <TableCell className="w-10" onClick={(e) => e.stopPropagation()}>
+                                          <Checkbox
+                                            checked={isSelected(row.id)}
+                                            onCheckedChange={(v) => toggleSelect(row.id, !!v)}
+                                            aria-label="Select candidate"
+                                          />
+                                        </TableCell>
+                                      )}
                                       <TableCell className="w-full">
                                         <div className="flex items-center gap-3 min-w-0">
                                           <Avatar className="h-8 w-8">
