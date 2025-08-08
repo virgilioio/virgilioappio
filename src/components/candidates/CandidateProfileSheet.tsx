@@ -11,9 +11,11 @@ import { CandidateUrls } from '@/components/candidates/CandidateUrls'
 import { CandidateWorkExperienceComponent } from '@/components/candidates/CandidateWorkExperience'
 import { CandidateEducationComponent } from '@/components/candidates/CandidateEducationComponent'
 import { useCandidateEnrichment } from '@/hooks/useCandidateEnrichment'
-import { ExternalLink } from 'lucide-react'
+import { ExternalLink, Edit, FileText, Clock } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Link } from 'react-router-dom'
+import { SafeHtml } from '@/components/ui/safe-html'
+import { getSkillColor } from '@/utils/skillColors'
 
 interface CandidateProfileSheetProps {
   open: boolean
@@ -191,7 +193,7 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
                             {candidate.skills && candidate.skills.length > 0 ? (
                               <div className="flex flex-wrap gap-2">
                                 {candidate.skills.map((s: string, i: number) => (
-                                  <Badge key={`${s}-${i}`} variant="outline" className="text-xs">{s}</Badge>
+                                  <Badge key={`${s}-${i}`} variant={getSkillColor(s)} className="text-sm">{s}</Badge>
                                 ))}
                               </div>
                             ) : (
@@ -206,7 +208,16 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
                             <CardTitle className="text-lg">Profile Summary</CardTitle>
                           </CardHeader>
                           <CardContent>
-                            <p className="text-sm text-text-primary whitespace-pre-wrap">{candidate.profile_summary || 'No summary available.'}</p>
+                            {candidate.profile_summary ? (
+                              <div className="prose prose-sm max-w-none text-text-primary">
+                                <SafeHtml
+                                  content={candidate.profile_summary}
+                                  className="leading-relaxed [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:my-2 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0"
+                                />
+                              </div>
+                            ) : (
+                              <div className="text-sm text-text-secondary">No summary available.</div>
+                            )}
                           </CardContent>
                         </Card>
                       </>
@@ -233,16 +244,35 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
                       <CardHeader>
                         <CardTitle className="text-lg">Quick Actions</CardTitle>
                       </CardHeader>
-                      <CardContent className="flex flex-col gap-2">
+                      <CardContent className="space-y-3">
+                        {jobCandidateId ? (
+                          <>
+                            <Link to={`/jobs/${jobId}/candidates/${jobCandidateId}`}>
+                              <Button className="w-full gap-sm h-[44px]">
+                                <Edit className="h-4 w-4" />
+                                Edit Candidate
+                              </Button>
+                            </Link>
+                            <Link to={`/jobs/${jobId}/candidates/${jobCandidateId}`}>
+                              <Button variant="outline" className="w-full gap-sm h-[44px]">
+                                <FileText className="h-4 w-4" />
+                                Create Offer Letter
+                              </Button>
+                            </Link>
+                            <Link to={`/jobs/${jobId}/candidates/${jobCandidateId}`}>
+                              <Button variant="outline" className="w-full gap-sm h-[44px]">
+                                <Clock className="h-4 w-4" />
+                                Schedule
+                              </Button>
+                            </Link>
+                          </>
+                        ) : (
+                          <div className="text-sm text-text-secondary">No job candidate record linked for actions.</div>
+                        )}
                         {candidate.linkedin_url && (
-                          <Button variant="outline" className="justify-start gap-sm" onClick={() => window.open(candidate.linkedin_url!, '_blank')}>
+                          <Button variant="outline" className="w-full justify-start gap-sm" onClick={() => window.open(candidate.linkedin_url!, '_blank')}>
                             <ExternalLink className="h-4 w-4" /> View LinkedIn
                           </Button>
-                        )}
-                        {jobCandidateId && (
-                          <Link to={`/jobs/${jobId}/candidates/${jobCandidateId}`}>
-                            <Button variant="outline" className="w-full justify-start">Open full profile</Button>
-                          </Link>
                         )}
                       </CardContent>
                     </Card>
