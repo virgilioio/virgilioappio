@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -7,12 +7,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Trash2, UserPlus, MapPin, DollarSign, FileText, Search, ChevronLeft, ChevronRight, MoreHorizontal } from 'lucide-react'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Trash2, UserPlus, MapPin, DollarSign, FileText, Search, ChevronLeft, ChevronRight, MoreHorizontal, ListChecks, Archive } from 'lucide-react'
 import { Link, useParams } from 'react-router-dom'
 import { PermissionGate } from '@/components/auth/PermissionGate'
 import { usePermissions } from '@/hooks/usePermissions'
 import { NewBadge } from '@/components/ui/new-badge'
 import { getSkillColor } from '@/utils/skillColors'
+import BulkMoveJobCandidatesToPipelineDialog from '@/components/candidates/BulkMoveJobCandidatesToPipelineDialog'
 
 // Support both local job candidates and global candidates with job info
 interface BaseCandidate {
@@ -79,6 +81,10 @@ export function CandidateTable({
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
+
+  // Selection state
+  const [selectionMode, setSelectionMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<string[]>([])
 
   const handleDelete = (candidateId: string) => {
     if (confirm('Are you sure you want to delete this candidate?')) {
@@ -189,6 +195,22 @@ export function CandidateTable({
     setCurrentPage(1)
   }, [searchTerm, locationFilter, salaryFilter])
 
+  // Selection helpers
+  const pagedIds = useMemo(() => paginatedCandidates.map(c => c.id), [paginatedCandidates])
+  const isAllCurrentPageSelected = useMemo(() => pagedIds.length > 0 && pagedIds.every(id => selectedIds.includes(id)), [pagedIds, selectedIds])
+  const toggleSelectionMode = () => setSelectionMode((prev) => { const next = !prev; if (!next) setSelectedIds([]); return next })
+  const toggleSelectAllCurrentPage = () => {
+    if (isAllCurrentPageSelected) setSelectedIds(ids => ids.filter(id => !pagedIds.includes(id)))
+    else setSelectedIds(ids => Array.from(new Set([...ids, ...pagedIds])))
+  }
+  const toggleSelect = (id: string) => setSelectedIds(ids => ids.includes(id) ? ids.filter(i => i !== id) : [...ids, id])
+  const clearSelection = () => setSelectedIds([])
+  const archiveSelected = async () => {
+    if (selectedIds.length === 0) return
+    await Promise.allSettled(selectedIds.map(id => Promise.resolve(onDelete(id))))
+    clearSelection(); setSelectionMode(false)
+  }
+
   // Generate page numbers for pagination
   const getPageNumbers = () => {
     const pages: (number | 'ellipsis')[] = []
@@ -285,16 +307,39 @@ export function CandidateTable({
           </Select>
 
           <PermissionGate permission="canManageCandidates">
-            <div className="ml-auto">
-              <Button onClick={onAddNew} size="sm" className="gap-sm h-[40px]">
-                <UserPlus className="h-4 w-4" />
-                Add Candidate
+            <div className="ml-auto flex items-center gap-2">
+              {!selectionMode && (
+                <Button onClick={onAddNew} size="sm" className="gap-sm h-[40px]">
+                  <UserPlus className="h-4 w-4" />
+                  Add Candidate
+                </Button>
+              )}
+              <Button onClick={toggleSelectionMode} variant={selectionMode ? 'secondary' : 'outline'} size="sm" className="gap-2 h-[40px]">
+                <ListChecks className="h-4 w-4" />
+                {selectionMode ? 'Done' : 'Select'}
               </Button>
             </div>
           </PermissionGate>
         </div>
       </CardHeader>
       <CardContent>
+        {/* Bulk actions toolbar */}
+        {selectionMode && selectedIds.length > 0 && (
+          <div className="flex items-center justify-between mb-4">
+            <div className="text-sm text-text-secondary">{selectedIds.length} selected</div>
+            <div className="flex items-center gap-2">
+              <BulkMoveJobCandidatesToPipelineDialog
+                jobId={jobId!}
+                candidates={paginatedCandidates.filter(c => selectedIds.includes(c.id)) as any}
+                onCompleted={() => { clearSelection(); setSelectionMode(false) }}
+              />
+              <Button variant="outline" className="gap-2" onClick={archiveSelected}>
+                <Archive className="h-4 w-4" />
+                Archive
+              </Button>
+            </div>
+          </div>
+        )}
         {filteredCandidates.length === 0 ? (
           <div className="text-center py-xl bg-surface-secondary rounded-brand border border-border/50">
             <FileText className="h-12 w-12 mx-auto mb-md text-text-secondary opacity-50" />
@@ -313,6 +358,15 @@ export function CandidateTable({
                 <Table>
                   <TableHeader>
                     <TableRow>
+                       {selectionMode && (
+                         <TableHead className="w-10">
+                           <Checkbox
+                             checked={isAllCurrentPageSelected}
+                             onCheckedChange={toggleSelectAllCurrentPage}
+                             aria-label="Select all on page"
+                           />
+                         </TableHead>
+                       )}
                        <TableHead>Name</TableHead>
                        {showJobInfo && <TableHead>Job</TableHead>}
                        {showJobInfo && <TableHead>Organization</TableHead>}
@@ -330,6 +384,15 @@ export function CandidateTable({
                         interactive
                         className="cursor-pointer"
                       >
+                        {selectionMode && (
+                          <TableCell className="w-10" onClick={(e) => e.stopPropagation()}>
+                            <Checkbox
+                              checked={selectedIds.includes(candidate.id)}
+                              onCheckedChange={() => toggleSelect(candidate.id)}
+                              aria-label={`Select ${candidate.candidate_name}`}
+                            />
+                          </TableCell>
+                        )}
                         <TableCell>
                           <Link 
                             to={getCandidateLink(candidate)}

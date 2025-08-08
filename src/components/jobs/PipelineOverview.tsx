@@ -219,8 +219,8 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
 
           {/* Render columns with candidate cards */}
           {!isLoadingPlan && stageOptions.map((opt) => (
-            <Card key={opt.jhsId} className="w-72 flex-shrink-0">
-              <CardHeader className={`pb-3 rounded-t-md ${getHeaderBgClass(opt.stage.stage_type)}`}>
+            <Card key={opt.jhsId} className="w-72 flex-shrink-0 h-full flex flex-col">
+              <CardHeader className={`pb-3 rounded-t-md shrink-0 ${getHeaderBgClass(opt.stage.stage_type)}`}>
                 <div className="flex items-center gap-2 flex-wrap">
                   <CardTitle className="text-base font-medium truncate max-w-[180px]" title={opt.stage.stage_name}>
                     {opt.stage.stage_name}
@@ -233,7 +233,7 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
                   )}
                 </div>
               </CardHeader>
-              <CardContent className={`${getHeaderBgClass(opt.stage.stage_type)} rounded-b-md min-h-48`}>
+              <CardContent className={`${getHeaderBgClass(opt.stage.stage_type)} rounded-b-md flex-1 overflow-y-auto`}>  
                 <DroppableStage id={opt.jhsId} isEmpty={!byStage[opt.jhsId] || byStage[opt.jhsId].length === 0} tintClass={getHeaderBgClass(opt.stage.stage_type)}>
                   {isLoadingCandidates && (
                     <div className="text-xs text-text-tertiary">Loading candidates...</div>
@@ -258,7 +258,7 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
                             timeInStageLabel={t.label}
                             timeBadgeVariant={t.variant}
                             onMove={(toId) => handleMove(assoc.id, toId)}
-                            onClick={() => { setSelectedCandidateId(assoc.candidate_id); setPanelOpen(true) }}
+                            onClick={() => { setSelectedCandidateId(orderedCandidateIds.find(id => id === assoc.candidate_id) || assoc.candidate_id); setPanelOpen(true) }}
                           />
                         </DraggableCandidateCard>
                       )

@@ -379,7 +379,7 @@ export default function JobDetail() {
                       <p className="text-sm text-text-secondary">Drag candidates across stages. Scroll horizontally to view more columns.</p>
                     </CardHeader>
                     <CardContent className="p-0 h-0 flex-1">
-                      <ScrollArea className="h-full w-full">
+                      <ScrollArea className="h-full w-full scrollbar-black">
                         <div className="w-fit p-layout-md">
                           <PipelineOverview jobId={id!} showHeader={false} externalScroll />
                         </div>
@@ -436,7 +436,7 @@ export default function JobDetail() {
                         <p className="text-sm text-text-secondary">Drag candidates across stages. Scroll horizontally to view more columns.</p>
                       </CardHeader>
                       <CardContent className="p-0 h-0 flex-1">
-                        <ScrollArea className="h-full w-full">
+                        <ScrollArea className="h-full w-full scrollbar-black">
                           <div className="w-fit p-layout-md">
                             <PipelineOverview jobId={id!} showHeader={false} externalScroll />
                           </div>
