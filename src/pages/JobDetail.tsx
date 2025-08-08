@@ -47,6 +47,9 @@ export default function JobDetail() {
   useEffect(() => {
     try { localStorage.setItem('jobPipelineView', pipelineView) } catch {}
   }, [pipelineView])
+  const [selectionMode, setSelectionMode] = useState(false)
+  const [selectedCandidateIds, setSelectedCandidateIds] = useState<string[]>([])
+  const [pipelineRefresh, setPipelineRefresh] = useState(0)
 
   // Jobs hook for updating
   const { updateJob, isLoading: jobUpdateLoading } = useJobs()
@@ -231,6 +234,23 @@ export default function JobDetail() {
     }
   }
 
+  const handleArchiveSelected = async () => {
+    if (selectedCandidateIds.length === 0) return
+    try {
+      const { error } = await supabase
+        .from('candidates')
+        .update({ status: 'inactive' })
+        .in('id', selectedCandidateIds)
+      if (error) throw error
+      toast({ title: 'Archived', description: `${selectedCandidateIds.length} candidate(s) archived.` })
+      setPipelineRefresh((v) => v + 1)
+      setSelectedCandidateIds([])
+    } catch (e) {
+      console.error('Error archiving candidates:', e)
+      toast({ title: 'Error', description: 'Failed to archive selected candidates', variant: 'destructive' })
+    }
+  }
+
   const handleAddCandidate = async (candidateData: any) => {
     try {
       await addCandidate(candidateData)
@@ -390,39 +410,67 @@ export default function JobDetail() {
                           <h1 className="text-xl font-semibold text-text-primary">Pipeline Overview</h1>
                           <p className="text-sm text-text-secondary">Drag candidates across stages. Scroll horizontally to view more columns.</p>
                         </div>
-                        <TooltipProvider delayDuration={200}>
-                          <ToggleGroup
-                            type="single"
-                            value={pipelineView}
-                            onValueChange={(v) => v && setPipelineView(v as 'board' | 'list')}
+                        <div className="flex items-center gap-2">
+                          <Button
                             size="sm"
-                            variant="outline"
-                            className="rounded-full border border-border/40 bg-surface-secondary/60 p-1"
+                            variant="destructive"
+                            disabled={selectedCandidateIds.length === 0}
+                            onClick={handleArchiveSelected}
                           >
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <ToggleGroupItem value="board" aria-label="Board view" className="rounded-full">
-                                  <LayoutGrid className="h-4 w-4" />
-                                </ToggleGroupItem>
-                              </TooltipTrigger>
-                              <TooltipContent>Board</TooltipContent>
-                            </Tooltip>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <ToggleGroupItem value="list" aria-label="List view" className="rounded-full">
-                                  <List className="h-4 w-4" />
-                                </ToggleGroupItem>
-                              </TooltipTrigger>
-                              <TooltipContent>List</TooltipContent>
-                            </Tooltip>
-                          </ToggleGroup>
-                        </TooltipProvider>
+                            Archive
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant={selectionMode ? 'secondary' : 'outline'}
+                            onClick={() => setSelectionMode((v) => !v)}
+                            aria-pressed={selectionMode}
+                          >
+                            Select
+                          </Button>
+                          <TooltipProvider delayDuration={200}>
+                            <ToggleGroup
+                              type="single"
+                              value={pipelineView}
+                              onValueChange={(v) => v && setPipelineView(v as 'board' | 'list')}
+                              size="sm"
+                              variant="outline"
+                              className="rounded-full border border-border/40 bg-surface-secondary/60 p-1"
+                            >
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <ToggleGroupItem value="board" aria-label="Board view" className="rounded-full">
+                                    <LayoutGrid className="h-4 w-4" />
+                                  </ToggleGroupItem>
+                                </TooltipTrigger>
+                                <TooltipContent>Board</TooltipContent>
+                              </Tooltip>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <ToggleGroupItem value="list" aria-label="List view" className="rounded-full">
+                                    <List className="h-4 w-4" />
+                                  </ToggleGroupItem>
+                                </TooltipTrigger>
+                                <TooltipContent>List</TooltipContent>
+                              </Tooltip>
+                            </ToggleGroup>
+                          </TooltipProvider>
+                        </div>
                       </div>
                     </CardHeader>
                     <CardContent className="p-0 h-0 flex-1">
                       <ScrollArea className="h-full w-full scrollbar-black">
                         <div className={pipelineView === 'list' ? 'w-full p-layout-md' : 'w-fit p-layout-md'}>
-                          <PipelineOverview jobId={id!} showHeader={false} externalScroll viewMode={pipelineView} onViewModeChange={setPipelineView} />
+                          <PipelineOverview
+                            jobId={id!}
+                            showHeader={false}
+                            externalScroll
+                            viewMode={pipelineView}
+                            onViewModeChange={setPipelineView}
+                            selectionMode={selectionMode}
+                            onSelectionModeChange={setSelectionMode}
+                            onSelectedIdsChange={setSelectedCandidateIds}
+                            refreshToken={pipelineRefresh}
+                          />
                         </div>
                       </ScrollArea>
                     </CardContent>
@@ -478,39 +526,67 @@ export default function JobDetail() {
                             <h1 className="text-xl font-semibold text-text-primary">Pipeline Overview</h1>
                             <p className="text-sm text-text-secondary">Drag candidates across stages. Scroll horizontally to view more columns.</p>
                           </div>
-                          <TooltipProvider delayDuration={200}>
-                            <ToggleGroup
-                              type="single"
-                              value={pipelineView}
-                              onValueChange={(v) => v && setPipelineView(v as 'board' | 'list')}
+                          <div className="flex items-center gap-2">
+                            <Button
                               size="sm"
-                              variant="outline"
-                              className="rounded-full border border-border/40 bg-surface-secondary/60 p-1"
+                              variant="destructive"
+                              disabled={selectedCandidateIds.length === 0}
+                              onClick={handleArchiveSelected}
                             >
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <ToggleGroupItem value="board" aria-label="Board view" className="rounded-full">
-                                    <LayoutGrid className="h-4 w-4" />
-                                  </ToggleGroupItem>
-                                </TooltipTrigger>
-                                <TooltipContent>Board</TooltipContent>
-                              </Tooltip>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <ToggleGroupItem value="list" aria-label="List view" className="rounded-full">
-                                    <List className="h-4 w-4" />
-                                  </ToggleGroupItem>
-                                </TooltipTrigger>
-                                <TooltipContent>List</TooltipContent>
-                              </Tooltip>
-                            </ToggleGroup>
-                          </TooltipProvider>
+                              Archive
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant={selectionMode ? 'secondary' : 'outline'}
+                              onClick={() => setSelectionMode((v) => !v)}
+                              aria-pressed={selectionMode}
+                            >
+                              Select
+                            </Button>
+                            <TooltipProvider delayDuration={200}>
+                              <ToggleGroup
+                                type="single"
+                                value={pipelineView}
+                                onValueChange={(v) => v && setPipelineView(v as 'board' | 'list')}
+                                size="sm"
+                                variant="outline"
+                                className="rounded-full border border-border/40 bg-surface-secondary/60 p-1"
+                              >
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <ToggleGroupItem value="board" aria-label="Board view" className="rounded-full">
+                                      <LayoutGrid className="h-4 w-4" />
+                                    </ToggleGroupItem>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Board</TooltipContent>
+                                </Tooltip>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <ToggleGroupItem value="list" aria-label="List view" className="rounded-full">
+                                      <List className="h-4 w-4" />
+                                    </ToggleGroupItem>
+                                  </TooltipTrigger>
+                                  <TooltipContent>List</TooltipContent>
+                                </Tooltip>
+                              </ToggleGroup>
+                            </TooltipProvider>
+                          </div>
                         </div>
                       </CardHeader>
                       <CardContent className="p-0 h-0 flex-1">
                         <ScrollArea className="h-full w-full scrollbar-black">
                           <div className={pipelineView === 'list' ? 'w-full p-layout-md' : 'w-fit p-layout-md'}>
-                            <PipelineOverview jobId={id!} showHeader={false} externalScroll viewMode={pipelineView} onViewModeChange={setPipelineView} />
+                            <PipelineOverview
+                              jobId={id!}
+                              showHeader={false}
+                              externalScroll
+                              viewMode={pipelineView}
+                              onViewModeChange={setPipelineView}
+                              selectionMode={selectionMode}
+                              onSelectionModeChange={setSelectionMode}
+                              onSelectedIdsChange={setSelectedCandidateIds}
+                              refreshToken={pipelineRefresh}
+                            />
                           </div>
                         </ScrollArea>
                       </CardContent>
