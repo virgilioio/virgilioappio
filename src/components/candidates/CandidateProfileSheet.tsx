@@ -11,11 +11,12 @@ import { CandidateUrls } from '@/components/candidates/CandidateUrls'
 import { CandidateWorkExperienceComponent } from '@/components/candidates/CandidateWorkExperience'
 import { CandidateEducationComponent } from '@/components/candidates/CandidateEducationComponent'
 import { useCandidateEnrichment } from '@/hooks/useCandidateEnrichment'
-import { ExternalLink, Edit, FileText, Clock } from 'lucide-react'
+import { ExternalLink, Edit, FileText, Clock, Download, Linkedin } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Link } from 'react-router-dom'
 import { SafeHtml } from '@/components/ui/safe-html'
 import { getSkillColor } from '@/utils/skillColors'
+import { generateCandidatePdf } from '@/utils/candidatePdfGenerator'
 
 interface CandidateProfileSheetProps {
   open: boolean
@@ -136,11 +137,34 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
                       <CardContent className="p-6">
                         <div className="flex items-center justify-between">
                           <h2 className="text-2xl font-semibold text-text-primary truncate">{candidate.candidate_name}</h2>
-                          {candidate.linkedin_url && (
-                            <Button className="gap-sm" onClick={() => window.open(candidate.linkedin_url!, '_blank')}>
-                              <ExternalLink className="h-4 w-4" /> LinkedIn
+                          <div className="flex items-center gap-sm">
+                            {candidate.linkedin_url ? (
+                              <Button 
+                                className="gap-sm h-[44px] bg-[#0078c7] text-white hover:bg-[#005a94]"
+                                onClick={() => window.open(candidate.linkedin_url!, '_blank')}
+                              >
+                                <Linkedin className="h-4 w-4" fill="white" />
+                                View LinkedIn
+                              </Button>
+                            ) : (
+                              <Button 
+                                className="gap-sm h-[44px] bg-[#0078c7] text-white hover:bg-[#005a94]"
+                                disabled
+                              >
+                                <Linkedin className="h-4 w-4" fill="white" />
+                                No LinkedIn
+                              </Button>
+                            )}
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              className="h-[44px] w-[44px]"
+                              onClick={() => generateCandidatePdf({ candidate, job })}
+                              title="Download PDF"
+                            >
+                              <Download className="h-4 w-4" />
                             </Button>
-                          )}
+                          </div>
                         </div>
                         <div className="mt-4">
                           <TabsList>
