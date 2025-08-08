@@ -9,6 +9,7 @@ import { toast } from '@/hooks/use-toast'
 import { DndContext, type DragEndEvent } from '@dnd-kit/core'
 import DraggableCandidateCard from './DraggableCandidateCard'
 import DroppableStage from './DroppableStage'
+import CandidateProfileSheet from '@/components/candidates/CandidateProfileSheet'
 
 interface PipelineOverviewProps {
   jobId: string
@@ -37,6 +38,8 @@ export function PipelineOverview({ jobId }: PipelineOverviewProps) {
   const [stageOptions, setStageOptions] = useState<{ jhsId: string; stage: JobStage; position: number }[]>([])
   const [isLoadingCandidates, setIsLoadingCandidates] = useState(false)
   const [byStage, setByStage] = useState<Record<string, PipelineAssociation[]>>({})
+  const [panelOpen, setPanelOpen] = useState(false)
+  const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null)
 
   const getTimeInfo = useCallback((a: PipelineAssociation) => {
     const base = a.entered_stage_at || a.created_at
@@ -217,6 +220,7 @@ export function PipelineOverview({ jobId }: PipelineOverviewProps) {
                             timeInStageLabel={t.label}
                             timeBadgeVariant={t.variant}
                             onMove={(toId) => handleMove(assoc.id, toId)}
+                            onClick={() => { setSelectedCandidateId(assoc.candidate_id); setPanelOpen(true) }}
                           />
                         </DraggableCandidateCard>
                       )
@@ -228,6 +232,7 @@ export function PipelineOverview({ jobId }: PipelineOverviewProps) {
           ))}
         </div>
       </DndContext>
+      <CandidateProfileSheet open={panelOpen} onOpenChange={(o) => setPanelOpen(o)} candidateId={selectedCandidateId} jobId={jobId} />
     </div>
   )
 }
