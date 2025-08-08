@@ -23,7 +23,7 @@ export function PageHeader({
     )}>
       <div className="flex items-start justify-between">
         <div className="min-w-0 flex-1">
-          <h1 className="text-xl font-semibold text-text-primary">
+          <h1 className="text-text-primary">
             {title}
           </h1>
           {subtitle && (
