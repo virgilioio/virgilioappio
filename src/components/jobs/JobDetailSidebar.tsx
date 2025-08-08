@@ -24,9 +24,9 @@ export function JobDetailSidebar({
     },
     {
       id: 'candidates',
-      label: 'Candidates',
+      label: 'Application Review',
       icon: Users,
-      description: 'Manage job candidates'
+      description: 'Review new applications'
     }
   ]
 

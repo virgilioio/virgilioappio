@@ -25,7 +25,7 @@ export function JobDetailFloatingSidebar({
     },
     {
       id: 'candidates',
-      label: 'Candidates',
+      label: 'Application Review',
       icon: Users,
     },
     {

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/integrations/supabase/client'
@@ -58,6 +58,57 @@ export default function JobDetail() {
     markCandidateAsViewed,
     isCandidateNewForUser
   } = useCandidates(id!)
+
+  // In-pipeline associations for filtering Application Review
+  const [inPipelineKeys, setInPipelineKeys] = useState<Set<string>>(new Set())
+  const [pipelineLoading, setPipelineLoading] = useState(false)
+
+  const normalizeUrl = (url?: string | null) => url?.trim().replace(/\/+$/, '').toLowerCase() || ''
+  const makeNameLocKey = (
+    name?: string | null,
+    city?: string | null,
+    country?: string | null
+  ) => `${(name || '').trim().toLowerCase()}||${(city || '').trim().toLowerCase()}||${(country || '').trim().toLowerCase()}`
+
+  useEffect(() => {
+    if (!id || !user) return
+    const load = async () => {
+      setPipelineLoading(true)
+      try {
+        const { data, error } = await supabase
+          .from('job_candidate_associations')
+          .select(`id, current_stage_id, candidate:candidates(id, candidate_name, linkedin_url, location_city, location_country)`)
+          .eq('job_id', id)
+          .not('current_stage_id', 'is', null)
+        if (error) throw error
+        const keys = new Set<string>()
+        ;(data || []).forEach((row: any) => {
+          const c = (row as any).candidate || {}
+          const link = normalizeUrl(c.linkedin_url)
+          if (link) keys.add('link:' + link)
+          if (c.candidate_name) {
+            keys.add('name:' + makeNameLocKey(c.candidate_name, c.location_city, c.location_country))
+          }
+        })
+        setInPipelineKeys(keys)
+      } catch (e) {
+        console.error('Failed to load pipeline associations', e)
+      } finally {
+        setPipelineLoading(false)
+      }
+    }
+    load()
+  }, [id, user])
+
+  const applicationReviewCandidates = useMemo(() => {
+    if (!candidates?.length) return candidates
+    return candidates.filter((c: any) => {
+      const link = normalizeUrl(c.linkedin_url)
+      if (link && inPipelineKeys.has('link:' + link)) return false
+      const key = 'name:' + makeNameLocKey(c.candidate_name, c.location_city, c.location_country)
+      return !inPipelineKeys.has(key)
+    })
+  }, [candidates, inPipelineKeys])
 
   // Job query with improved error handling for assigned recruiters
   const { data: job, isLoading: jobLoading, error, refetch } = useQuery({
@@ -285,7 +336,7 @@ export default function JobDetail() {
             <>
               <TabsList className="grid w-full grid-cols-4 mb-6">
                 <TabsTrigger value="overview">Overview</TabsTrigger>
-                <TabsTrigger value="candidates">Candidates</TabsTrigger>
+                <TabsTrigger value="candidates">Application Review</TabsTrigger>
                 <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
                 <TabsTrigger value="job-setup">Setup</TabsTrigger>
               </TabsList>
@@ -303,11 +354,11 @@ export default function JobDetail() {
               <TabsContent value="candidates">
                 <div className="space-y-6">
                   <SalaryInsightsCard 
-                    candidates={candidates}
+                    candidates={applicationReviewCandidates}
                     jobCurrency={job.currency || 'USD'}
                   />
                   <CandidateTable
-                    candidates={candidates}
+                    candidates={applicationReviewCandidates}
                     isLoading={candidatesLoading}
                     onEdit={handleEditCandidate}
                     onDelete={handleDeleteCandidate}
@@ -351,11 +402,11 @@ export default function JobDetail() {
                 <TabsContent value="candidates">
                   <div className="space-y-6">
                     <SalaryInsightsCard 
-                      candidates={candidates}
+                      candidates={applicationReviewCandidates}
                       jobCurrency={job.currency || 'USD'}
                     />
                     <CandidateTable
-                      candidates={candidates}
+                      candidates={applicationReviewCandidates}
                       isLoading={candidatesLoading}
                       onEdit={handleEditCandidate}
                       onDelete={handleDeleteCandidate}
