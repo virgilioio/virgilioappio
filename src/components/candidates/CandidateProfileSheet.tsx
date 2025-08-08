@@ -167,8 +167,8 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
                     {/* Name Card with tabs */}
                     <Card className="bg-surface-primary border-border">
                       <CardContent className="p-6">
-                        <div className="flex items-center justify-between">
-                          <h2 className="text-2xl font-semibold text-text-primary truncate">{candidate.candidate_name}</h2>
+                        <div className="flex items-center justify-end">
+                          
                           <div className="flex items-center gap-sm">
                             {candidate.linkedin_url ? (
                               <Button 
