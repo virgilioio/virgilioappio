@@ -6,7 +6,7 @@ import { useJobHiringPlan, JobStage } from '@/hooks/useJobHiringPlan'
 import CandidateCard from './CandidateCard'
 import { usePipelineActions, PipelineAssociation } from '@/hooks/usePipelineActions'
 import { toast } from '@/hooks/use-toast'
-import { DndContext, type DragEndEvent, MouseSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core'
+import { DndContext, DragOverlay, type DragEndEvent, type DragStartEvent, MouseSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core'
 import DraggableCandidateCard from './DraggableCandidateCard'
 import DroppableStage from './DroppableStage'
 import CandidateProfileSheet from '@/components/candidates/CandidateProfileSheet'
@@ -46,6 +46,22 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
   const mouseSensor = useSensor(MouseSensor, { activationConstraint: { distance: 10 } })
   const touchSensor = useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 8 } })
   const sensors = useSensors(mouseSensor, touchSensor)
+
+  const [activeId, setActiveId] = useState<string | null>(null)
+
+  const assocMap = useMemo(() => {
+    const m = new Map<string, { assoc: PipelineAssociation; stageJhsId: string }>()
+    for (const opt of stageOptions) {
+      for (const a of byStage[opt.jhsId] || []) {
+        m.set(a.id, { assoc: a, stageJhsId: opt.jhsId })
+      }
+    }
+    return m
+  }, [byStage, stageOptions])
+
+  const onDragStart = useCallback((event: DragStartEvent) => {
+    setActiveId(String(event.active.id))
+  }, [])
 
   const getTimeInfo = useCallback((a: PipelineAssociation) => {
     const base = a.entered_stage_at || a.created_at
@@ -157,6 +173,7 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
 
   const onDragEnd = useCallback(async (event: DragEndEvent) => {
     const { active, over } = event
+    setActiveId(null)
     if (!over) return
     const assocId = String(active.id)
     const toStageId = String(over.id)
@@ -203,7 +220,7 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
         </div>
       )}
 
-      <DndContext sensors={sensors} onDragEnd={onDragEnd}>
+      <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
         <div className={`flex gap-4 ${externalScroll ? '' : 'overflow-x-auto'} pb-2`}>
           {isLoadingPlan && (
             <div className="text-sm text-text-secondary">Loading pipeline...</div>
@@ -269,6 +286,28 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
             </Card>
           ))}
         </div>
+        <DragOverlay>
+          {activeId && assocMap.get(activeId) ? (
+            (() => {
+              const { assoc, stageJhsId } = assocMap.get(activeId)!
+              const t = getTimeInfo(assoc)
+              return (
+                <div className="w-72 pointer-events-none" style={{ transform: 'rotate(-2deg) scale(1.02)', boxShadow: '0 12px 28px rgba(0,0,0,0.18)' }}>
+                  <CandidateCard
+                    candidateName={assoc.candidate_name}
+                    linkedinUrl={assoc.linkedin_url}
+                    stageOptions={stageOptions}
+                    currentStageJhsId={stageJhsId}
+                    timeInStageLabel={t.label}
+                    timeBadgeVariant={t.variant}
+                    onMove={(toId) => handleMove(assoc.id, toId)}
+                    onClick={() => { setSelectedCandidateId(orderedCandidateIds.find(id => id === assoc.candidate_id) || assoc.candidate_id); setPanelOpen(true) }}
+                  />
+                </div>
+              )
+            })()
+          ) : null}
+        </DragOverlay>
       </DndContext>
       <CandidateProfileSheet open={panelOpen} onOpenChange={(o) => setPanelOpen(o)} candidateId={selectedCandidateId} jobId={jobId} hasPrev={hasPrev} hasNext={hasNext} onNavigatePrev={handlePrevCandidate} onNavigateNext={handleNextCandidate} />
     </div>
