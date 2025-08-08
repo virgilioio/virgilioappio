@@ -47,11 +47,12 @@ export function JobDetailFloatingSidebar({
               <Button
                 key={tab.id}
                 variant="ghost"
+                size="icon"
                 className={cn(
-                  "w-12 h-12 !rounded-full p-0 flex items-center justify-center",
+                  "w-12 h-12 aspect-square !rounded-full p-0 flex items-center justify-center",
                   isActive
-                    ? "bg-foreground text-background hover:bg-foreground hover:text-background"
-                    : "border border-border text-muted-foreground hover:bg-transparent hover:text-inherit"
+                    ? "bg-foreground text-background hover:bg-foreground hover:text-background hover:scale-100 active:scale-100"
+                    : "border border-border text-muted-foreground hover:bg-transparent hover:text-inherit hover:scale-100 active:scale-100"
                 )}
                 onClick={() => onTabChange(tab.id)}
                 aria-label={tab.label}
