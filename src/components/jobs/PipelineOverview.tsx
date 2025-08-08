@@ -12,6 +12,15 @@ import DroppableStage from './DroppableStage'
 import CandidateProfileSheet from '@/components/candidates/CandidateProfileSheet'
 import { Button } from '@/components/ui/button'
 import { LayoutGrid, List } from 'lucide-react'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { SortableHeader } from '@/components/ui/sortable-header'
+import { useSortableTable } from '@/hooks/useSortableTable'
+import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { TableSkeleton } from '@/components/ui/skeleton'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { ExternalLink } from 'lucide-react'
 
 interface PipelineOverviewProps {
   jobId: string
@@ -219,6 +228,59 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
     return rows
   }, [byStage, stageOptions])
 
+  // List view helpers
+  const [search, setSearch] = useState('')
+  const [stageFilter, setStageFilter] = useState<string>('all')
+
+  const distinctStages = useMemo(() => {
+    return Array.from(new Set(stageOptions.map(opt => opt.stage.stage_name))).filter(Boolean)
+  }, [stageOptions])
+
+  type ListRow = {
+    id: string
+    candidateId: string
+    name: string
+    stageName: string
+    stageType: string
+    timeLabel: string
+    timeVariant: import('@/components/ui/badge').BadgeProps['variant']
+    timeSortValue: number
+    linkedinUrl?: string
+  }
+
+  const listRows: ListRow[] = useMemo(() => {
+    const now = Date.now()
+    return flatCandidates.map(({ assoc, stage }) => {
+      const base = assoc.entered_stage_at || assoc.created_at
+      const timeMs = Math.max(0, now - new Date(base).getTime())
+      const t = getTimeInfo(assoc)
+      return {
+        id: assoc.id,
+        candidateId: assoc.candidate_id,
+        name: assoc.candidate_name || 'Unnamed Candidate',
+        stageName: stage.stage_name,
+        stageType: stage.stage_type,
+        timeLabel: t.label,
+        timeVariant: t.variant,
+        timeSortValue: timeMs,
+        linkedinUrl: assoc.linkedin_url || undefined,
+      }
+    })
+  }, [flatCandidates, getTimeInfo])
+
+  const filteredRows = useMemo(() => {
+    const term = search.trim().toLowerCase()
+    return listRows.filter((r) =>
+      (stageFilter === 'all' || r.stageName === stageFilter) &&
+      (term === '' || r.name.toLowerCase().includes(term))
+    )
+  }, [listRows, stageFilter, search])
+
+  const { sortedData, sortConfig, requestSort } = useSortableTable<ListRow>(filteredRows, {
+    key: 'timeSortValue',
+    direction: 'desc',
+  })
+
   const currentIndex = selectedCandidateId ? orderedCandidateIds.indexOf(selectedCandidateId) : -1
   const hasPrev = currentIndex > 0
   const hasNext = currentIndex >= 0 && currentIndex < orderedCandidateIds.length - 1
@@ -362,35 +424,112 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
         <div>
           <Card className="w-full">
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">Candidates</CardTitle>
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <CardTitle className="text-base">Candidates</CardTitle>
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="w-56">
+                    <Input
+                      placeholder="Search candidates"
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                    />
+                  </div>
+                  <Select value={stageFilter} onValueChange={setStageFilter}>
+                    <SelectTrigger className="w-44">
+                      <SelectValue placeholder="Stage" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All stages</SelectItem>
+                      {distinctStages.map((s) => (
+                        <SelectItem key={s} value={s}>{s}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <div className="text-xs text-text-tertiary ml-1">
+                    {filteredRows.length} result{filteredRows.length === 1 ? '' : 's'}
+                  </div>
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
               {isLoadingCandidates ? (
-                <div className="text-sm text-text-secondary">Loading candidates...</div>
-              ) : flatCandidates.length === 0 ? (
-                <div className="text-sm text-text-secondary py-6">No candidates in pipeline.</div>
+                <TableSkeleton rows={6} />
+              ) : sortedData.length === 0 ? (
+                <div className="text-sm text-text-secondary py-6">No candidates match your filters.</div>
               ) : (
-                <div className="divide-y divide-border">
-                  {flatCandidates.map(({ assoc, stage }) => {
-                    const t = getTimeInfo(assoc)
-                    return (
-                      <div key={assoc.id} className="py-3 flex items-center justify-between">
-                        <div className="min-w-0">
-                          <div className="font-medium text-text-primary truncate">{assoc.candidate_name}</div>
-                          <div className="mt-1 flex items-center gap-2 text-xs text-text-secondary">
-                            <Badge variant={stageTypeVariants[stage.stage_type] || 'secondary'}>{stage.stage_name}</Badge>
-                            <Badge variant={t.variant}>{t.label}</Badge>
-                          </div>
-                        </div>
-                        <button
-                          className="text-primary hover:underline text-sm shrink-0"
-                          onClick={() => { setSelectedCandidateId(orderedCandidateIds.find(id => id === assoc.candidate_id) || assoc.candidate_id); setPanelOpen(true) }}
-                        >
-                          View
-                        </button>
-                      </div>
-                    )
-                  })}
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader className="sticky top-0 z-10 bg-surface-primary">
+                      <TableRow>
+                        <TableHead>
+                          <SortableHeader sortKey="name" currentSort={sortConfig} onSort={requestSort}>
+                            Candidate
+                          </SortableHeader>
+                        </TableHead>
+                        <TableHead className="w-48">
+                          <SortableHeader sortKey="stageName" currentSort={sortConfig} onSort={requestSort}>
+                            Stage
+                          </SortableHeader>
+                        </TableHead>
+                        <TableHead className="w-32">
+                          <SortableHeader sortKey="timeSortValue" currentSort={sortConfig} onSort={requestSort}>
+                            Time in stage
+                          </SortableHeader>
+                        </TableHead>
+                        <TableHead className="w-28 text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {sortedData.map((row) => (
+                        <TableRow key={row.id} interactive onClick={() => { setSelectedCandidateId(row.candidateId); setPanelOpen(true) }}>
+                          <TableCell>
+                            <div className="flex items-center gap-3 min-w-0">
+                              <Avatar className="h-8 w-8">
+                                <AvatarFallback>{row.name.split(' ').map(p=>p[0]).slice(0,2).join('').toUpperCase()}</AvatarFallback>
+                              </Avatar>
+                              <div className="min-w-0">
+                                <div className="truncate font-medium text-text-primary" title={row.name}>{row.name}</div>
+                                {row.linkedinUrl && (
+                                  <TooltipProvider>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <a
+                                          href={row.linkedinUrl}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="text-xs text-primary hover:underline"
+                                          onClick={(e) => e.stopPropagation()}
+                                        >
+                                          <ExternalLink className="inline-block h-3.5 w-3.5 mr-1" />
+                                          LinkedIn
+                                        </a>
+                                      </TooltipTrigger>
+                                      <TooltipContent>Open LinkedIn profile</TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                )}
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={stageTypeVariants[row.stageType] || 'secondary'}>{row.stageName}</Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={row.timeVariant}>{row.timeLabel}</Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={(e) => { e.stopPropagation(); setSelectedCandidateId(row.candidateId); setPanelOpen(true) }}
+                            >
+                              View
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
                 </div>
               )}
             </CardContent>

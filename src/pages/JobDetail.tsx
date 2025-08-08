@@ -26,6 +26,8 @@ import { toast } from '@/hooks/use-toast'
 import { SalaryInsightsCard } from '@/components/jobs/SalaryInsightsCard'
 import { PipelineOverview } from '@/components/jobs/PipelineOverview'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 export default function JobDetail() {
   const { id } = useParams<{ id: string }>()
@@ -37,7 +39,14 @@ export default function JobDetail() {
   const [editingCandidate, setEditingCandidate] = useState<any>(null)
   const [activeTab, setActiveTab] = useState('pipeline')
   const [showEditJobModal, setShowEditJobModal] = useState(false)
-  const [pipelineView, setPipelineView] = useState<'board' | 'list'>('board')
+  const [pipelineView, setPipelineView] = useState<'board' | 'list'>(() => {
+    if (typeof window === 'undefined') return 'board'
+    const saved = localStorage.getItem('jobPipelineView')
+    return saved === 'list' ? 'list' : 'board'
+  })
+  useEffect(() => {
+    try { localStorage.setItem('jobPipelineView', pipelineView) } catch {}
+  }, [pipelineView])
 
   // Jobs hook for updating
   const { updateJob, isLoading: jobUpdateLoading } = useJobs()
@@ -381,26 +390,33 @@ export default function JobDetail() {
                           <h1 className="text-xl font-semibold text-text-primary">Pipeline Overview</h1>
                           <p className="text-sm text-text-secondary">Drag candidates across stages. Scroll horizontally to view more columns.</p>
                         </div>
-                        <div className="flex gap-2">
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            aria-label="Board view"
-                            className={`${pipelineView === 'board' ? 'bg-foreground text-background hover:bg-foreground' : 'text-text-secondary hover:bg-transparent'} !rounded-full`}
-                            onClick={() => setPipelineView('board')}
+                        <TooltipProvider delayDuration={200}>
+                          <ToggleGroup
+                            type="single"
+                            value={pipelineView}
+                            onValueChange={(v) => v && setPipelineView(v as 'board' | 'list')}
+                            size="sm"
+                            variant="outline"
+                            className="rounded-full border border-border/40 bg-surface-secondary/60 p-1"
                           >
-                            <LayoutGrid className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            aria-label="List view"
-                            className={`${pipelineView === 'list' ? 'bg-foreground text-background hover:bg-foreground' : 'text-text-secondary hover:bg-transparent'} !rounded-full`}
-                            onClick={() => setPipelineView('list')}
-                          >
-                            <List className="h-4 w-4" />
-                          </Button>
-                        </div>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <ToggleGroupItem value="board" aria-label="Board view" className="rounded-full">
+                                  <LayoutGrid className="h-4 w-4" />
+                                </ToggleGroupItem>
+                              </TooltipTrigger>
+                              <TooltipContent>Board</TooltipContent>
+                            </Tooltip>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <ToggleGroupItem value="list" aria-label="List view" className="rounded-full">
+                                  <List className="h-4 w-4" />
+                                </ToggleGroupItem>
+                              </TooltipTrigger>
+                              <TooltipContent>List</TooltipContent>
+                            </Tooltip>
+                          </ToggleGroup>
+                        </TooltipProvider>
                       </div>
                     </CardHeader>
                     <CardContent className="p-0 h-0 flex-1">
@@ -462,26 +478,33 @@ export default function JobDetail() {
                             <h1 className="text-xl font-semibold text-text-primary">Pipeline Overview</h1>
                             <p className="text-sm text-text-secondary">Drag candidates across stages. Scroll horizontally to view more columns.</p>
                           </div>
-                          <div className="flex gap-2">
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              aria-label="Board view"
-                              className={`${pipelineView === 'board' ? 'bg-foreground text-background hover:bg-foreground' : 'text-text-secondary hover:bg-transparent'} !rounded-full`}
-                              onClick={() => setPipelineView('board')}
+                          <TooltipProvider delayDuration={200}>
+                            <ToggleGroup
+                              type="single"
+                              value={pipelineView}
+                              onValueChange={(v) => v && setPipelineView(v as 'board' | 'list')}
+                              size="sm"
+                              variant="outline"
+                              className="rounded-full border border-border/40 bg-surface-secondary/60 p-1"
                             >
-                              <LayoutGrid className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              aria-label="List view"
-                              className={`${pipelineView === 'list' ? 'bg-foreground text-background hover:bg-foreground' : 'text-text-secondary hover:bg-transparent'} !rounded-full`}
-                              onClick={() => setPipelineView('list')}
-                            >
-                              <List className="h-4 w-4" />
-                            </Button>
-                          </div>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <ToggleGroupItem value="board" aria-label="Board view" className="rounded-full">
+                                    <LayoutGrid className="h-4 w-4" />
+                                  </ToggleGroupItem>
+                                </TooltipTrigger>
+                                <TooltipContent>Board</TooltipContent>
+                              </Tooltip>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <ToggleGroupItem value="list" aria-label="List view" className="rounded-full">
+                                    <List className="h-4 w-4" />
+                                  </ToggleGroupItem>
+                                </TooltipTrigger>
+                                <TooltipContent>List</TooltipContent>
+                              </Tooltip>
+                            </ToggleGroup>
+                          </TooltipProvider>
                         </div>
                       </CardHeader>
                       <CardContent className="p-0 h-0 flex-1">
