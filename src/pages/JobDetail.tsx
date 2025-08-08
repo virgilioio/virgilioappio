@@ -19,7 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ArrowLeft, Archive } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from '@/hooks/use-toast'
@@ -375,8 +375,8 @@ export default function JobDetail() {
                 <div className="h-[calc(100svh-16rem)] sm:h-[calc(100svh-14rem)] min-h-0">
                   <Card className="h-full w-full overflow-hidden flex flex-col">
                     <CardHeader className="sticky top-0 z-10 bg-surface-primary/80 backdrop-blur supports-[backdrop-filter]:bg-surface-primary/60 border-b border-border">
-                      <CardTitle>Pipeline Overview</CardTitle>
-                      <CardDescription>Drag candidates across stages. Scroll horizontally to view more columns.</CardDescription>
+                      <h1 className="text-xl font-semibold text-text-primary">Pipeline Overview</h1>
+                      <p className="text-sm text-text-secondary">Drag candidates across stages. Scroll horizontally to view more columns.</p>
                     </CardHeader>
                     <CardContent className="p-0 h-0 flex-1">
                       <ScrollArea className="h-full w-full">
@@ -432,8 +432,8 @@ export default function JobDetail() {
                   <div className="h-[calc(100svh-14rem)] min-h-0">
                     <Card className="h-full w-full overflow-hidden flex flex-col">
                       <CardHeader className="sticky top-0 z-10 bg-surface-primary/80 backdrop-blur supports-[backdrop-filter]:bg-surface-primary/60 border-b border-border">
-                        <CardTitle>Pipeline Overview</CardTitle>
-                        <CardDescription>Drag candidates across stages. Scroll horizontally to view more columns.</CardDescription>
+                        <h1 className="text-xl font-semibold text-text-primary">Pipeline Overview</h1>
+                        <p className="text-sm text-text-secondary">Drag candidates across stages. Scroll horizontally to view more columns.</p>
                       </CardHeader>
                       <CardContent className="p-0 h-0 flex-1">
                         <ScrollArea className="h-full w-full">
