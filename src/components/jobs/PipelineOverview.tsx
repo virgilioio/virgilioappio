@@ -21,6 +21,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { TableSkeleton } from '@/components/ui/skeleton'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { ExternalLink } from 'lucide-react'
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 
 interface PipelineOverviewProps {
   jobId: string
@@ -281,6 +282,18 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
     direction: 'desc',
   })
 
+  const groupedByStage = useMemo(() => {
+    const map = new Map<string, { stageType: string; rows: ListRow[] }>()
+    for (const row of sortedData) {
+      const entry = map.get(row.stageName) || { stageType: row.stageType, rows: [] }
+      entry.rows.push(row)
+      map.set(row.stageName, entry)
+    }
+    return Array.from(map.entries()).map(([stageName, v]) => ({ stageName, stageType: v.stageType, rows: v.rows }))
+  }, [sortedData])
+
+  const defaultOpenGroups = useMemo(() => groupedByStage.map(g => g.stageName), [groupedByStage])
+
   const currentIndex = selectedCandidateId ? orderedCandidateIds.indexOf(selectedCandidateId) : -1
   const hasPrev = currentIndex > 0
   const hasNext = currentIndex >= 0 && currentIndex < orderedCandidateIds.length - 1
@@ -448,6 +461,11 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
                   <div className="text-xs text-text-tertiary ml-1">
                     {filteredRows.length} result{filteredRows.length === 1 ? '' : 's'}
                   </div>
+                  <div className="hidden sm:flex items-center gap-2 ml-4">
+                    <span className="text-xs text-text-tertiary">Sort:</span>
+                    <SortableHeader sortKey="name" currentSort={sortConfig} onSort={requestSort} className="text-xs">Name</SortableHeader>
+                    <SortableHeader sortKey="timeSortValue" currentSort={sortConfig} onSort={requestSort} className="text-xs">Time</SortableHeader>
+                  </div>
                 </div>
               </div>
             </CardHeader>
@@ -457,79 +475,62 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
               ) : sortedData.length === 0 ? (
                 <div className="text-sm text-text-secondary py-6">No candidates match your filters.</div>
               ) : (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader className="sticky top-0 z-10 bg-surface-primary">
-                      <TableRow>
-                        <TableHead>
-                          <SortableHeader sortKey="name" currentSort={sortConfig} onSort={requestSort}>
-                            Candidate
-                          </SortableHeader>
-                        </TableHead>
-                        <TableHead className="w-48">
-                          <SortableHeader sortKey="stageName" currentSort={sortConfig} onSort={requestSort}>
-                            Stage
-                          </SortableHeader>
-                        </TableHead>
-                        <TableHead className="w-32">
-                          <SortableHeader sortKey="timeSortValue" currentSort={sortConfig} onSort={requestSort}>
-                            Time in stage
-                          </SortableHeader>
-                        </TableHead>
-                        <TableHead className="w-28 text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {sortedData.map((row) => (
-                        <TableRow key={row.id} interactive onClick={() => { setSelectedCandidateId(row.candidateId); setPanelOpen(true) }}>
-                          <TableCell>
-                            <div className="flex items-center gap-3 min-w-0">
-                              <Avatar className="h-8 w-8">
-                                <AvatarFallback>{row.name.split(' ').map(p=>p[0]).slice(0,2).join('').toUpperCase()}</AvatarFallback>
-                              </Avatar>
-                              <div className="min-w-0">
-                                <div className="truncate font-medium text-text-primary" title={row.name}>{row.name}</div>
-                                {row.linkedinUrl && (
-                                  <TooltipProvider>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <a
-                                          href={row.linkedinUrl}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="text-xs text-primary hover:underline"
-                                          onClick={(e) => e.stopPropagation()}
-                                        >
-                                          <ExternalLink className="inline-block h-3.5 w-3.5 mr-1" />
-                                          LinkedIn
-                                        </a>
-                                      </TooltipTrigger>
-                                      <TooltipContent>Open LinkedIn profile</TooltipContent>
-                                    </Tooltip>
-                                  </TooltipProvider>
-                                )}
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={stageTypeVariants[row.stageType] || 'secondary'}>{row.stageName}</Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant={row.timeVariant}>{row.timeLabel}</Badge>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={(e) => { e.stopPropagation(); setSelectedCandidateId(row.candidateId); setPanelOpen(true) }}
-                            >
-                              View
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                <div className="space-y-3">
+                  <Accordion type="multiple" defaultValue={defaultOpenGroups} className="w-full">
+                    {groupedByStage.map((group) => (
+                      <AccordionItem key={group.stageName} value={group.stageName} className="border-none">
+                        <AccordionTrigger className={`w-full ${getHeaderBgClass(group.stageType)} rounded-md px-3 py-2 hover:no-underline`}>
+                          <div className="flex w-full items-center justify-between">
+                            <span className="font-medium text-text-primary">{group.stageName}</span>
+                            <Badge variant="outline">{group.rows.length}</Badge>
+                          </div>
+                        </AccordionTrigger>
+                        <AccordionContent className="pt-2">
+                          <div className="overflow-x-auto">
+                            <Table className="w-full">
+                              <TableBody>
+                                {group.rows.map((row) => (
+                                  <TableRow key={row.id} interactive onClick={() => { setSelectedCandidateId(row.candidateId); setPanelOpen(true) }}>
+                                    <TableCell className="w-full">
+                                      <div className="flex items-center gap-3 min-w-0">
+                                        <Avatar className="h-8 w-8">
+                                          <AvatarFallback>{row.name.split(' ').map(p=>p[0]).slice(0,2).join('').toUpperCase()}</AvatarFallback>
+                                        </Avatar>
+                                        <div className="min-w-0">
+                                          <div className="truncate font-medium text-text-primary" title={row.name}>{row.name}</div>
+                                          {row.linkedinUrl && (
+                                            <TooltipProvider>
+                                              <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                  <a href={row.linkedinUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline" onClick={(e) => e.stopPropagation()}>
+                                                    <ExternalLink className="inline-block h-3.5 w-3.5 mr-1" />
+                                                    LinkedIn
+                                                  </a>
+                                                </TooltipTrigger>
+                                                <TooltipContent>Open LinkedIn profile</TooltipContent>
+                                              </Tooltip>
+                                            </TooltipProvider>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </TableCell>
+                                    <TableCell className="w-32">
+                                      <Badge variant={row.timeVariant}>{row.timeLabel}</Badge>
+                                    </TableCell>
+                                    <TableCell className="w-28 text-right">
+                                      <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setSelectedCandidateId(row.candidateId); setPanelOpen(true) }}>
+                                        View
+                                      </Button>
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    ))}
+                  </Accordion>
                 </div>
               )}
             </CardContent>
