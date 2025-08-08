@@ -1,7 +1,7 @@
 
 import { cn } from '@/lib/utils'
 import { Users, Settings, Kanban } from 'lucide-react'
-import { Card, CardContent } from '@/components/ui/card'
+
 import { Button } from '@/components/ui/button'
 
 interface JobDetailFloatingSidebarProps {
@@ -36,15 +36,9 @@ export function JobDetailFloatingSidebar({
   ]
 
   return (
-    <Card className={cn("w-64 h-fit", className)}>
-      <CardContent className="p-4">
-        <div className="mb-4">
-          <h3 className="font-medium text-text-primary text-sm truncate" title={jobTitle}>
-            {jobTitle}
-          </h3>
-        </div>
-        
-        <div className="space-y-1">
+    <div className={cn("w-40 flex-shrink-0 p-4 flex justify-center", className)}>
+      <div className="bg-card border border-border rounded-full shadow-lg h-fit py-6 px-3 flex flex-col items-center">
+        <nav className="space-y-3">
           {tabs.map((tab) => {
             const Icon = tab.icon
             const isActive = currentTab === tab.id
@@ -54,21 +48,22 @@ export function JobDetailFloatingSidebar({
                 key={tab.id}
                 variant={isActive ? "default" : "ghost"}
                 className={cn(
-                  "w-full justify-start h-10 px-3 py-2",
-                  "text-sm font-medium transition-colors",
-                  isActive 
-                    ? "bg-primary text-primary-foreground shadow-sm" 
+                  "w-12 h-12 rounded-full p-0 flex items-center justify-center",
+                  isActive
+                    ? "bg-primary text-primary-foreground"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted"
                 )}
                 onClick={() => onTabChange(tab.id)}
+                aria-label={tab.label}
+                title={tab.label}
               >
-                <Icon className="h-4 w-4 mr-3 shrink-0" />
-                <span className="truncate">{tab.label}</span>
+                <Icon className="h-5 w-5" />
+                <span className="sr-only">{tab.label}</span>
               </Button>
             )
           })}
-        </div>
-      </CardContent>
-    </Card>
+        </nav>
+      </div>
+    </div>
   )
 }
