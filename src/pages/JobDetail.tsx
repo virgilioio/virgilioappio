@@ -372,20 +372,22 @@ export default function JobDetail() {
                 />
               </TabsContent>
               <TabsContent value="pipeline">
-                <Card className="h-[60vh] sm:h-[65vh] max-h-[calc(100svh-8rem)] sm:max-h-[calc(100svh-12rem)] w-full">
-                  <CardContent className="p-0">
-                    <ScrollArea className="h-full w-full">
-                      <div className="min-w-max overflow-x-auto p-layout-md">
-                        <PipelineOverview jobId={id!} />
-                      </div>
-                    </ScrollArea>
-                  </CardContent>
-                </Card>
+                <div className="h-[calc(100svh-16rem)] sm:h-[calc(100svh-14rem)] min-h-0">
+                  <Card className="h-full w-full overflow-hidden">
+                    <CardContent className="p-0 h-full">
+                      <ScrollArea className="h-full w-full">
+                        <div className="min-w-max overflow-x-auto p-layout-md">
+                          <PipelineOverview jobId={id!} />
+                        </div>
+                      </ScrollArea>
+                    </CardContent>
+                  </Card>
+                </div>
               </TabsContent>
             </>
           ) : (
             // Desktop: Floating sidebar at same level as content
-            <div className="flex gap-6">
+            <div className="flex gap-6 min-h-0">
               <JobDetailFloatingSidebar
                 currentTab={activeTab}
                 onTabChange={setActiveTab}
@@ -393,7 +395,7 @@ export default function JobDetail() {
               />
               
               {/* Main content */}
-              <div className="flex-1">
+              <div className="flex-1 min-h-0 flex flex-col">
                 <TabsContent value="candidates">
                   <div className="space-y-6">
                     <SalaryInsightsCard 
@@ -423,15 +425,17 @@ export default function JobDetail() {
                   />
                 </TabsContent>
                 <TabsContent value="pipeline">
-                  <Card className="h-[70vh] max-h-[calc(100svh-14rem)] w-full">
-                    <CardContent className="p-0">
-                      <ScrollArea className="h-full w-full">
-                        <div className="min-w-max overflow-x-auto p-layout-md">
-                          <PipelineOverview jobId={id!} />
-                        </div>
-                      </ScrollArea>
-                    </CardContent>
-                  </Card>
+                  <div className="h-[calc(100svh-14rem)] min-h-0">
+                    <Card className="h-full w-full overflow-hidden">
+                      <CardContent className="p-0 h-full">
+                        <ScrollArea className="h-full w-full">
+                          <div className="min-w-max overflow-x-auto p-layout-md">
+                            <PipelineOverview jobId={id!} />
+                          </div>
+                        </ScrollArea>
+                      </CardContent>
+                    </Card>
+                  </div>
                 </TabsContent>
               </div>
             </div>
