@@ -13,6 +13,7 @@ import CandidateProfileSheet from '@/components/candidates/CandidateProfileSheet
 
 interface PipelineOverviewProps {
   jobId: string
+  showHeader?: boolean
 }
 
 const stageTypeVariants: Record<string, import('@/components/ui/badge').BadgeProps['variant']> = {
@@ -31,7 +32,7 @@ const isLastPriorityStage = (stage: JobStage) => {
   return p === 'last' || p === 99 || p === '99' || p === 999 || p === '999'
 }
 
-export function PipelineOverview({ jobId }: PipelineOverviewProps) {
+export function PipelineOverview({ jobId, showHeader = true }: PipelineOverviewProps) {
   const { loadHiringPlanInstances, isLoadingPlan } = useJobHiringPlan()
   const { fetchAssociationsForJob, moveAssociationToStage } = usePipelineActions()
 
@@ -194,10 +195,12 @@ export function PipelineOverview({ jobId }: PipelineOverviewProps) {
 
   return (
     <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-semibold text-text-primary">Pipeline Overview</h1>
-        <p className="text-sm text-text-secondary">Columns reflect the job's hiring plan stages.</p>
-      </div>
+      {showHeader && (
+        <div>
+          <h1 className="text-xl font-semibold text-text-primary">Pipeline Overview</h1>
+          <p className="text-sm text-text-secondary">Columns reflect the job's hiring plan stages.</p>
+        </div>
+      )}
 
       <DndContext sensors={sensors} onDragEnd={onDragEnd}>
         <div className="flex gap-4 overflow-x-auto pb-2">
