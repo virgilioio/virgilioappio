@@ -372,9 +372,9 @@ export default function JobDetail() {
                 />
               </TabsContent>
               <TabsContent value="pipeline">
-                <Card className="h-[60vh] sm:h-[65vh]">
+                <Card className="h-[60vh] sm:h-[65vh] max-h-[calc(100svh-8rem)] sm:max-h-[calc(100svh-12rem)] w-full">
                   <CardContent className="p-0">
-                    <ScrollArea className="h-full">
+                    <ScrollArea className="h-full w-full">
                       <div className="min-w-max overflow-x-auto p-layout-md">
                         <PipelineOverview jobId={id!} />
                       </div>
@@ -423,9 +423,9 @@ export default function JobDetail() {
                   />
                 </TabsContent>
                 <TabsContent value="pipeline">
-                  <Card className="h-[70vh]">
+                  <Card className="h-[70vh] max-h-[calc(100svh-14rem)] w-full">
                     <CardContent className="p-0">
-                      <ScrollArea className="h-full">
+                      <ScrollArea className="h-full w-full">
                         <div className="min-w-max overflow-x-auto p-layout-md">
                           <PipelineOverview jobId={id!} />
                         </div>
