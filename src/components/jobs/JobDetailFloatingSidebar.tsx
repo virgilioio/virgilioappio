@@ -48,7 +48,7 @@ export function JobDetailFloatingSidebar({
                 key={tab.id}
                 variant="ghost"
                 className={cn(
-                  "w-12 h-12 rounded-full p-0 flex items-center justify-center",
+                  "w-12 h-12 !rounded-full p-0 flex items-center justify-center",
                   isActive
                     ? "bg-foreground text-background hover:bg-foreground hover:text-background"
                     : "border border-border text-muted-foreground hover:bg-transparent hover:text-inherit"
