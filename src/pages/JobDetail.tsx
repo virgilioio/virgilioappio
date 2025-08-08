@@ -35,7 +35,7 @@ export default function JobDetail() {
   const isMobile = useIsMobile()
   const [showAddCandidate, setShowAddCandidate] = useState(false)
   const [editingCandidate, setEditingCandidate] = useState<any>(null)
-  const [activeTab, setActiveTab] = useState('job-setup')
+  const [activeTab, setActiveTab] = useState('pipeline')
   const [showEditJobModal, setShowEditJobModal] = useState(false)
 
   // Jobs hook for updating
