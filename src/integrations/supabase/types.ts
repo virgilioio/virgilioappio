@@ -2960,6 +2960,10 @@ export type Database = {
           issue_description: string
         }[]
       }
+      backfill_default_stages_to_all_jobs: {
+        Args: Record<PropertyKey, never>
+        Returns: number
+      }
       categorize_skills: {
         Args: { manual_skills: string[]; generated_skills: Json }
         Returns: Json
