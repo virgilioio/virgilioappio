@@ -479,55 +479,57 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
                   <Accordion type="multiple" defaultValue={defaultOpenGroups} className="w-full">
                     {groupedByStage.map((group) => (
                       <AccordionItem key={group.stageName} value={group.stageName} className="border-none">
-                        <AccordionTrigger className={`w-full ${getHeaderBgClass(group.stageType)} rounded-md px-3 py-2 hover:no-underline`}>
-                          <div className="flex w-full items-center justify-between">
-                            <span className="font-medium text-text-primary">{group.stageName}</span>
-                            <Badge variant="outline">{group.rows.length}</Badge>
-                          </div>
-                        </AccordionTrigger>
-                        <AccordionContent className="pt-2">
-                          <div className="overflow-x-auto">
-                            <Table className="w-full">
-                              <TableBody>
-                                {group.rows.map((row) => (
-                                  <TableRow key={row.id} interactive onClick={() => { setSelectedCandidateId(row.candidateId); setPanelOpen(true) }}>
-                                    <TableCell className="w-full">
-                                      <div className="flex items-center gap-3 min-w-0">
-                                        <Avatar className="h-8 w-8">
-                                          <AvatarFallback>{row.name.split(' ').map(p=>p[0]).slice(0,2).join('').toUpperCase()}</AvatarFallback>
-                                        </Avatar>
-                                        <div className="min-w-0">
-                                          <div className="truncate font-medium text-text-primary" title={row.name}>{row.name}</div>
-                                          {row.linkedinUrl && (
-                                            <TooltipProvider>
-                                              <Tooltip>
-                                                <TooltipTrigger asChild>
-                                                  <a href={row.linkedinUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline" onClick={(e) => e.stopPropagation()}>
-                                                    <ExternalLink className="inline-block h-3.5 w-3.5 mr-1" />
-                                                    LinkedIn
-                                                  </a>
-                                                </TooltipTrigger>
-                                                <TooltipContent>Open LinkedIn profile</TooltipContent>
-                                              </Tooltip>
-                                            </TooltipProvider>
-                                          )}
+                        <div className={`${getHeaderBgClass(group.stageType)} rounded-md`}> 
+                          <AccordionTrigger className="w-full rounded-t-md px-3 py-2 hover:no-underline">
+                            <div className="flex w-full items-center justify-between">
+                              <span className="font-medium text-text-primary">{group.stageName}</span>
+                              <Badge variant="outline">{group.rows.length}</Badge>
+                            </div>
+                          </AccordionTrigger>
+                          <AccordionContent className="px-3 pb-3">
+                            <div className="w-full">
+                              <Table className="w-full">
+                                <TableBody>
+                                  {group.rows.map((row) => (
+                                    <TableRow key={row.id} interactive className="hover:bg-transparent" onClick={() => { setSelectedCandidateId(row.candidateId); setPanelOpen(true) }}>
+                                      <TableCell className="w-full">
+                                        <div className="flex items-center gap-3 min-w-0">
+                                          <Avatar className="h-8 w-8">
+                                            <AvatarFallback>{row.name.split(' ').map(p=>p[0]).slice(0,2).join('').toUpperCase()}</AvatarFallback>
+                                          </Avatar>
+                                          <div className="min-w-0">
+                                            <div className="truncate font-medium text-text-primary" title={row.name}>{row.name}</div>
+                                            {row.linkedinUrl && (
+                                              <TooltipProvider>
+                                                <Tooltip>
+                                                  <TooltipTrigger asChild>
+                                                    <a href={row.linkedinUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline" onClick={(e) => e.stopPropagation()}>
+                                                      <ExternalLink className="inline-block h-3.5 w-3.5 mr-1" />
+                                                      LinkedIn
+                                                    </a>
+                                                  </TooltipTrigger>
+                                                  <TooltipContent>Open LinkedIn profile</TooltipContent>
+                                                </Tooltip>
+                                              </TooltipProvider>
+                                            )}
+                                          </div>
                                         </div>
-                                      </div>
-                                    </TableCell>
-                                    <TableCell className="w-32">
-                                      <Badge variant={row.timeVariant}>{row.timeLabel}</Badge>
-                                    </TableCell>
-                                    <TableCell className="w-28 text-right">
-                                      <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setSelectedCandidateId(row.candidateId); setPanelOpen(true) }}>
-                                        View
-                                      </Button>
-                                    </TableCell>
-                                  </TableRow>
-                                ))}
-                              </TableBody>
-                            </Table>
-                          </div>
-                        </AccordionContent>
+                                      </TableCell>
+                                      <TableCell className="w-32">
+                                        <Badge variant={row.timeVariant}>{row.timeLabel}</Badge>
+                                      </TableCell>
+                                      <TableCell className="w-28 text-right">
+                                        <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setSelectedCandidateId(row.candidateId); setPanelOpen(true) }}>
+                                          View
+                                        </Button>
+                                      </TableCell>
+                                    </TableRow>
+                                  ))}
+                                </TableBody>
+                              </Table>
+                            </div>
+                          </AccordionContent>
+                        </div>
                       </AccordionItem>
                     ))}
                   </Accordion>
