@@ -22,6 +22,8 @@ import { TableSkeleton } from '@/components/ui/skeleton'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { ExternalLink } from 'lucide-react'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
+import { Checkbox } from '@/components/ui/checkbox'
+
 
 interface PipelineOverviewProps {
   jobId: string
@@ -29,7 +31,12 @@ interface PipelineOverviewProps {
   externalScroll?: boolean
   viewMode?: 'board' | 'list'
   onViewModeChange?: (mode: 'board' | 'list') => void
+  selectionMode?: boolean
+  onSelectionModeChange?: (mode: boolean) => void
+  onSelectedIdsChange?: (ids: string[]) => void
+  refreshToken?: number
 }
+
 
 const stageTypeVariants: Record<string, import('@/components/ui/badge').BadgeProps['variant']> = {
   application: 'pastel-blue',
@@ -42,12 +49,13 @@ const stageTypeVariants: Record<string, import('@/components/ui/badge').BadgePro
   custom: 'secondary',
 }
 
+
 const isLastPriorityStage = (stage: JobStage) => {
   const p = stage.stage_priority as any
   return p === 'last' || p === 99 || p === '99' || p === 999 || p === '999'
 }
 
-export function PipelineOverview({ jobId, showHeader = true, externalScroll = false, viewMode: controlledView, onViewModeChange }: PipelineOverviewProps) {
+export function PipelineOverview({ jobId, showHeader = true, externalScroll = false, viewMode: controlledView, onViewModeChange, selectionMode: controlledSelectionMode, onSelectionModeChange, onSelectedIdsChange, refreshToken }: PipelineOverviewProps) {
   const { loadHiringPlanInstances, isLoadingPlan } = useJobHiringPlan()
   const { fetchAssociationsForJob, moveAssociationToStage } = usePipelineActions()
 
@@ -65,6 +73,43 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
   const [internalViewMode, setInternalViewMode] = useState<'board' | 'list'>('board')
   const currentView = controlledView ?? internalViewMode
   const setCurrentView = onViewModeChange ?? setInternalViewMode
+
+  // Selection mode (controlled or uncontrolled)
+  const [internalSelectionMode, setInternalSelectionMode] = useState(false)
+  const selectionMode = controlledSelectionMode ?? internalSelectionMode
+  const setSelectionMode = onSelectionModeChange ?? setInternalSelectionMode
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+
+  const toggleSelect = useCallback((id: string, checked: boolean) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (checked) next.add(id)
+      else next.delete(id)
+      onSelectedIdsChange?.([...next])
+      return next
+    })
+  }, [onSelectedIdsChange])
+
+  const isSelected = useCallback((id: string) => selectedIds.has(id), [selectedIds])
+
+  const selectAllInStage = useCallback((stageJhsId: string) => {
+    const ids = (byStage[stageJhsId] || []).map((a) => a.id)
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      const allSelected = ids.every((i) => next.has(i))
+      if (allSelected) ids.forEach((i) => next.delete(i))
+      else ids.forEach((i) => next.add(i))
+      onSelectedIdsChange?.([...next])
+      return next
+    })
+  }, [byStage, onSelectedIdsChange])
+
+  useEffect(() => {
+    if (!selectionMode) {
+      setSelectedIds(new Set())
+      onSelectedIdsChange?.([])
+    }
+  }, [selectionMode, onSelectedIdsChange])
 
   const assocMap = useMemo(() => {
     const m = new Map<string, { assoc: PipelineAssociation; stageJhsId: string }>()

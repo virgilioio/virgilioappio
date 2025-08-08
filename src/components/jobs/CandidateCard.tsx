@@ -3,6 +3,7 @@ import { Card } from '@/components/ui/card'
 import { Badge, type BadgeProps } from '@/components/ui/badge'
 import { ExternalLink } from 'lucide-react'
 import { JobStage } from '@/hooks/useJobHiringPlan'
+import { Checkbox } from '@/components/ui/checkbox'
 
 interface CandidateCardProps {
   candidateName: string
@@ -13,6 +14,9 @@ interface CandidateCardProps {
   timeBadgeVariant?: BadgeProps['variant']
   onMove: (toStageId: string) => void | Promise<void>
   onClick?: () => void
+  showCheckbox?: boolean
+  checked?: boolean
+  onCheckedChange?: (checked: boolean) => void
 }
 
 export default function CandidateCard(props: CandidateCardProps) {
@@ -20,6 +24,11 @@ export default function CandidateCard(props: CandidateCardProps) {
 
   return (
     <Card className="relative p-4 min-h-32 bg-white border-border cursor-pointer" onClick={onClick} role="button" aria-label="Open candidate profile">
+      {props.showCheckbox && (
+        <div className="absolute top-3 right-3 z-10" onClick={(e) => e.stopPropagation()}>
+          <Checkbox checked={!!props.checked} onCheckedChange={(v) => props.onCheckedChange?.(!!v)} aria-label="Select candidate" />
+        </div>
+      )}
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2 min-w-0">
