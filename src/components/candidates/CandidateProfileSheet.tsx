@@ -1,10 +1,16 @@
 import { useEffect, useState } from 'react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { Button } from '@/components/ui/button'
 import { supabase } from '@/integrations/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
 import { Badge } from '@/components/ui/badge'
 import { CandidateAttachments } from '@/components/candidates/CandidateAttachments'
 import { CandidateComments } from '@/components/candidates/CandidateComments'
+import { CandidateUrls } from '@/components/candidates/CandidateUrls'
+import { CandidateWorkExperienceComponent } from '@/components/candidates/CandidateWorkExperience'
+import { CandidateEducationComponent } from '@/components/candidates/CandidateEducationComponent'
+import { useCandidateEnrichment } from '@/hooks/useCandidateEnrichment'
 import { ExternalLink } from 'lucide-react'
 
 interface CandidateProfileSheetProps {
@@ -18,6 +24,8 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
   const { organizationId } = useAuth()
   const [loading, setLoading] = useState(false)
   const [candidate, setCandidate] = useState<any | null>(null)
+  const [activeTab, setActiveTab] = useState<'overview' | 'notes'>('overview')
+  const { workExperience, education, fetchCandidateEnrichmentData } = useCandidateEnrichment()
 
   useEffect(() => {
     const load = async () => {
@@ -36,6 +44,12 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
     }
     load()
   }, [open, candidateId])
+
+  useEffect(() => {
+    if (open && candidateId) {
+      fetchCandidateEnrichmentData(candidateId)
+    }
+  }, [open, candidateId, fetchCandidateEnrichmentData])
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -58,45 +72,62 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
             )}
           </SheetHeader>
 
-          <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          <div className="flex-1 overflow-y-auto p-6">
             {loading ? (
               <div className="text-text-secondary text-sm">Loading profile…</div>
             ) : !candidate ? (
               <div className="text-text-secondary text-sm">No data available.</div>
             ) : (
-              <>
-                {/* Quick facts */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <div className="text-xs text-text-tertiary">Location</div>
-                    <div className="text-sm text-text-primary">
-                      {[candidate.location_city, candidate.location_state, candidate.location_country]
-                        .filter(Boolean)
-                        .join(', ') || 'Not specified'}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-text-tertiary">Salary</div>
-                    <div className="text-sm text-text-primary">
-                      {candidate.salary_amount ? `${candidate.salary_currency || 'USD'} ${candidate.salary_amount.toLocaleString()} ${candidate.salary_period || ''}` : 'Not specified'}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-text-tertiary">Skills</div>
-                    <div className="text-sm text-text-primary truncate">
-                      {candidate.skills?.join(', ') || '—'}
-                    </div>
-                  </div>
-                </div>
+              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'overview' | 'notes')}>
+                <TabsList className="mb-4">
+                  <TabsTrigger value="overview">Overview</TabsTrigger>
+                  <TabsTrigger value="notes">Notes</TabsTrigger>
+                </TabsList>
 
-                {/* Attachments */}
-                <CandidateAttachments candidateId={candidateId!} />
+                <TabsContent value="overview">
+                  <div className="space-y-6">
+                    {/* Quick facts */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div>
+                        <div className="text-xs text-text-tertiary">Location</div>
+                        <div className="text-sm text-text-primary">
+                          {[candidate.location_city, candidate.location_state, candidate.location_country]
+                            .filter(Boolean)
+                            .join(', ') || 'Not specified'}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-text-tertiary">Salary</div>
+                        <div className="text-sm text-text-primary">
+                          {candidate.salary_amount ? `${candidate.salary_currency || 'USD'} ${candidate.salary_amount.toLocaleString()} ${candidate.salary_period || ''}` : 'Not specified'}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-text-tertiary">Skills</div>
+                        <div className="text-sm text-text-primary truncate">
+                          {candidate.skills?.join(', ') || '—'}
+                        </div>
+                      </div>
+                    </div>
 
-                {/* Comments */}
-                {organizationId && (
-                  <CandidateComments candidateId={candidateId!} jobId={jobId} organizationId={organizationId} />
-                )}
-              </>
+                    {/* URLs */}
+                    <CandidateUrls candidateId={candidateId!} />
+
+                    {/* Attachments */}
+                    <CandidateAttachments candidateId={candidateId!} />
+
+                    {/* Experience & Education */}
+                    <CandidateWorkExperienceComponent experiences={workExperience} />
+                    <CandidateEducationComponent education={education} />
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="notes">
+                  {organizationId && (
+                    <CandidateComments candidateId={candidateId!} jobId={jobId} organizationId={organizationId} />
+                  )}
+                </TabsContent>
+              </Tabs>
             )}
           </div>
         </div>
