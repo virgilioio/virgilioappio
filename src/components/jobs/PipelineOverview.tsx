@@ -392,7 +392,7 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
             </CardContent>
           </Card>
         </div>
-      )
+      )}
       <CandidateProfileSheet open={panelOpen} onOpenChange={(o) => setPanelOpen(o)} candidateId={selectedCandidateId} jobId={jobId} hasPrev={hasPrev} hasNext={hasNext} onNavigatePrev={handlePrevCandidate} onNavigateNext={handleNextCandidate} />
     </div>
   )
