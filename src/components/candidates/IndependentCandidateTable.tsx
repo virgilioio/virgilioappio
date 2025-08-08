@@ -34,7 +34,7 @@ export function IndependentCandidateTable({
   onAddNew,
   onRefresh,
 }: IndependentCandidateTableProps) {
-  const permissions = usePermissions()
+  
   const navigate = useNavigate()
   const [searchTerm, setSearchTerm] = useState('')
   const [locationFilter, setLocationFilter] = useState<string>('all')
@@ -209,6 +209,39 @@ const archiveSelected = async () => {
   }
 }
 
+// Generate page numbers for pagination
+const getPageNumbers = () => {
+  const pages: (number | 'ellipsis')[] = []
+  
+  if (totalPages <= 7) {
+    for (let i = 1; i <= totalPages; i++) {
+      pages.push(i)
+    }
+  } else {
+    pages.push(1)
+    
+    if (currentPage > 4) {
+      pages.push('ellipsis')
+    }
+    
+    const start = Math.max(2, currentPage - 1)
+    const end = Math.min(totalPages - 1, currentPage + 1)
+    
+    for (let i = start; i <= end; i++) {
+      pages.push(i)
+    }
+    
+    if (currentPage < totalPages - 3) {
+      pages.push('ellipsis')
+    }
+    
+    if (totalPages > 1) {
+      pages.push(totalPages)
+    }
+  }
+  
+  return pages
+}
 
   if (isLoading) {
     return (
