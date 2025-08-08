@@ -302,7 +302,7 @@ export default function JobDetail() {
   if (!job) return null
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background overflow-x-hidden">
       <div className="container mx-auto py-6 sm:py-8 lg:py-12 px-4 sm:px-6 lg:px-8">
         {/* Mobile Header */}
         {isMobile && (
@@ -376,7 +376,7 @@ export default function JobDetail() {
                   <Card className="h-full w-full overflow-hidden">
                     <CardContent className="p-0 h-full">
                       <ScrollArea className="h-full w-full">
-                        <div className="min-w-max overflow-x-auto p-layout-md">
+                        <div className="w-fit p-layout-md">
                           <PipelineOverview jobId={id!} />
                         </div>
                       </ScrollArea>
@@ -387,7 +387,7 @@ export default function JobDetail() {
             </>
           ) : (
             // Desktop: Floating sidebar at same level as content
-            <div className="flex gap-6 min-h-0">
+            <div className="flex gap-6 min-h-0 min-w-0">
               <JobDetailFloatingSidebar
                 currentTab={activeTab}
                 onTabChange={setActiveTab}
@@ -395,7 +395,7 @@ export default function JobDetail() {
               />
               
               {/* Main content */}
-              <div className="flex-1 min-h-0 flex flex-col">
+              <div className="flex-1 min-h-0 min-w-0 flex flex-col">
                 <TabsContent value="candidates">
                   <div className="space-y-6">
                     <SalaryInsightsCard 
@@ -429,7 +429,7 @@ export default function JobDetail() {
                     <Card className="h-full w-full overflow-hidden">
                       <CardContent className="p-0 h-full">
                         <ScrollArea className="h-full w-full">
-                          <div className="min-w-max overflow-x-auto p-layout-md">
+                          <div className="w-fit p-layout-md">
                             <PipelineOverview jobId={id!} />
                           </div>
                         </ScrollArea>
