@@ -17,6 +17,8 @@ import { Link } from 'react-router-dom'
 import { SafeHtml } from '@/components/ui/safe-html'
 import { getSkillColor } from '@/utils/skillColors'
 import { generateCandidatePdf } from '@/utils/candidatePdfGenerator'
+import { CandidateForm } from '@/components/candidates/CandidateForm'
+import { toast } from '@/hooks/use-toast'
 
 interface CandidateProfileSheetProps {
   open: boolean
@@ -38,6 +40,8 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
   const [job, setJob] = useState<any | null>(null)
   const [activeTab, setActiveTab] = useState<'overview' | 'notes'>('overview')
   const { workExperience, education, fetchCandidateEnrichmentData } = useCandidateEnrichment()
+  const [editOpen, setEditOpen] = useState(false)
+  const [editLoading, setEditLoading] = useState(false)
 
   useEffect(() => {
     const load = async () => {
@@ -104,6 +108,28 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
     }
     loadRelated()
   }, [open, candidate, jobId])
+
+  const handleUpdateCandidate = async (candidateData: any) => {
+    if (!jobCandidateId) return
+    setEditLoading(true)
+    try {
+      const { data, error } = await supabase
+        .from('job_candidates')
+        .update(candidateData)
+        .eq('id', jobCandidateId)
+        .select('*')
+        .single()
+      if (error) throw error
+      setJobCandidate(data)
+      toast({ title: 'Success', description: 'Candidate updated successfully' })
+      setEditOpen(false)
+    } catch (err) {
+      console.error('Error updating candidate:', err)
+      toast({ title: 'Error', description: 'Failed to update candidate', variant: 'destructive' })
+    } finally {
+      setEditLoading(false)
+    }
+  }
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -303,12 +329,10 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
                       <CardContent className="space-y-3">
                         {jobCandidateId ? (
                           <>
-                            <Link to={`/jobs/${jobId}/candidates/${jobCandidateId}`}>
-                              <Button className="w-full gap-sm h-[44px]">
-                                <Edit className="h-4 w-4" />
-                                Edit Candidate
-                              </Button>
-                            </Link>
+                            <Button className="w-full gap-sm h-[44px]" onClick={() => setEditOpen(true)}>
+                              <Edit className="h-4 w-4" />
+                              Edit Candidate
+                            </Button>
                             <Link to={`/jobs/${jobId}/candidates/${jobCandidateId}`}>
                               <Button variant="outline" className="w-full gap-sm h-[44px]">
                                 <FileText className="h-4 w-4" />
@@ -374,6 +398,14 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
                 </div>
               </Tabs>
             )}
+          <CandidateForm
+            isOpen={editOpen}
+            onClose={() => setEditOpen(false)}
+            onSubmit={handleUpdateCandidate}
+            candidate={jobCandidate}
+            jobId={jobId}
+            isLoading={editLoading}
+          />
           </div>
         </div>
       </SheetContent>
