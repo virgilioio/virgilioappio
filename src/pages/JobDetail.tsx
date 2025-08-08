@@ -18,7 +18,7 @@ import { JobForm } from '@/components/jobs/JobForm'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { ArrowLeft, Archive } from 'lucide-react'
+import { ArrowLeft, Archive, LayoutGrid, List } from 'lucide-react'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -37,6 +37,7 @@ export default function JobDetail() {
   const [editingCandidate, setEditingCandidate] = useState<any>(null)
   const [activeTab, setActiveTab] = useState('pipeline')
   const [showEditJobModal, setShowEditJobModal] = useState(false)
+  const [pipelineView, setPipelineView] = useState<'board' | 'list'>('board')
 
   // Jobs hook for updating
   const { updateJob, isLoading: jobUpdateLoading } = useJobs()
@@ -375,13 +376,37 @@ export default function JobDetail() {
                 <div className="h-[calc(100svh-16rem)] sm:h-[calc(100svh-14rem)] min-h-0">
                   <Card className="h-full w-full overflow-hidden flex flex-col">
                     <CardHeader className="sticky top-0 z-10 bg-surface-primary/80 backdrop-blur supports-[backdrop-filter]:bg-surface-primary/60 border-b border-border">
-                      <h1 className="text-xl font-semibold text-text-primary">Pipeline Overview</h1>
-                      <p className="text-sm text-text-secondary">Drag candidates across stages. Scroll horizontally to view more columns.</p>
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <h1 className="text-xl font-semibold text-text-primary">Pipeline Overview</h1>
+                          <p className="text-sm text-text-secondary">Drag candidates across stages. Scroll horizontally to view more columns.</p>
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            aria-label="Board view"
+                            className={`${pipelineView === 'board' ? 'bg-foreground text-background hover:bg-foreground' : 'text-text-secondary hover:bg-transparent'} !rounded-full`}
+                            onClick={() => setPipelineView('board')}
+                          >
+                            <LayoutGrid className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            aria-label="List view"
+                            className={`${pipelineView === 'list' ? 'bg-foreground text-background hover:bg-foreground' : 'text-text-secondary hover:bg-transparent'} !rounded-full`}
+                            onClick={() => setPipelineView('list')}
+                          >
+                            <List className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
                     </CardHeader>
                     <CardContent className="p-0 h-0 flex-1">
                       <ScrollArea className="h-full w-full scrollbar-black">
                         <div className="w-fit p-layout-md">
-                          <PipelineOverview jobId={id!} showHeader={false} externalScroll />
+                          <PipelineOverview jobId={id!} showHeader={false} externalScroll viewMode={pipelineView} onViewModeChange={setPipelineView} />
                         </div>
                       </ScrollArea>
                     </CardContent>
@@ -432,13 +457,37 @@ export default function JobDetail() {
                   <div className="h-[calc(100svh-14rem)] min-h-0">
                     <Card className="h-full w-full overflow-hidden flex flex-col">
                       <CardHeader className="sticky top-0 z-10 bg-surface-primary/80 backdrop-blur supports-[backdrop-filter]:bg-surface-primary/60 border-b border-border">
-                        <h1 className="text-xl font-semibold text-text-primary">Pipeline Overview</h1>
-                        <p className="text-sm text-text-secondary">Drag candidates across stages. Scroll horizontally to view more columns.</p>
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <h1 className="text-xl font-semibold text-text-primary">Pipeline Overview</h1>
+                            <p className="text-sm text-text-secondary">Drag candidates across stages. Scroll horizontally to view more columns.</p>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              aria-label="Board view"
+                              className={`${pipelineView === 'board' ? 'bg-foreground text-background hover:bg-foreground' : 'text-text-secondary hover:bg-transparent'} !rounded-full`}
+                              onClick={() => setPipelineView('board')}
+                            >
+                              <LayoutGrid className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              aria-label="List view"
+                              className={`${pipelineView === 'list' ? 'bg-foreground text-background hover:bg-foreground' : 'text-text-secondary hover:bg-transparent'} !rounded-full`}
+                              onClick={() => setPipelineView('list')}
+                            >
+                              <List className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
                       </CardHeader>
                       <CardContent className="p-0 h-0 flex-1">
                         <ScrollArea className="h-full w-full scrollbar-black">
                           <div className="w-fit p-layout-md">
-                            <PipelineOverview jobId={id!} showHeader={false} externalScroll />
+                            <PipelineOverview jobId={id!} showHeader={false} externalScroll viewMode={pipelineView} onViewModeChange={setPipelineView} />
                           </div>
                         </ScrollArea>
                       </CardContent>

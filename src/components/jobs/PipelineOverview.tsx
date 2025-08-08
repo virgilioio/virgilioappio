@@ -17,6 +17,8 @@ interface PipelineOverviewProps {
   jobId: string
   showHeader?: boolean
   externalScroll?: boolean
+  viewMode?: 'board' | 'list'
+  onViewModeChange?: (mode: 'board' | 'list') => void
 }
 
 const stageTypeVariants: Record<string, import('@/components/ui/badge').BadgeProps['variant']> = {
@@ -35,7 +37,7 @@ const isLastPriorityStage = (stage: JobStage) => {
   return p === 'last' || p === 99 || p === '99' || p === 999 || p === '999'
 }
 
-export function PipelineOverview({ jobId, showHeader = true, externalScroll = false }: PipelineOverviewProps) {
+export function PipelineOverview({ jobId, showHeader = true, externalScroll = false, viewMode: controlledView, onViewModeChange }: PipelineOverviewProps) {
   const { loadHiringPlanInstances, isLoadingPlan } = useJobHiringPlan()
   const { fetchAssociationsForJob, moveAssociationToStage } = usePipelineActions()
 
@@ -50,7 +52,9 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
   const sensors = useSensors(mouseSensor, touchSensor)
 
   const [activeId, setActiveId] = useState<string | null>(null)
-  const [viewMode, setViewMode] = useState<'board' | 'list'>('board')
+  const [internalViewMode, setInternalViewMode] = useState<'board' | 'list'>('board')
+  const currentView = controlledView ?? internalViewMode
+  const setCurrentView = onViewModeChange ?? setInternalViewMode
 
   const assocMap = useMemo(() => {
     const m = new Map<string, { assoc: PipelineAssociation; stageJhsId: string }>()
@@ -244,8 +248,8 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
               size="icon"
               variant="ghost"
               aria-label="Board view"
-              className={`${viewMode === 'board' ? 'bg-foreground text-background hover:bg-foreground' : 'text-text-secondary hover:bg-transparent'} !rounded-full`}
-              onClick={() => setViewMode('board')}
+              className={`${currentView === 'board' ? 'bg-foreground text-background hover:bg-foreground' : 'text-text-secondary hover:bg-transparent'} !rounded-full`}
+              onClick={() => setCurrentView('board')}
             >
               <LayoutGrid className="h-4 w-4" />
             </Button>
@@ -253,8 +257,8 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
               size="icon"
               variant="ghost"
               aria-label="List view"
-              className={`${viewMode === 'list' ? 'bg-foreground text-background hover:bg-foreground' : 'text-text-secondary hover:bg-transparent'} !rounded-full`}
-              onClick={() => setViewMode('list')}
+              className={`${currentView === 'list' ? 'bg-foreground text-background hover:bg-foreground' : 'text-text-secondary hover:bg-transparent'} !rounded-full`}
+              onClick={() => setCurrentView('list')}
             >
               <List className="h-4 w-4" />
             </Button>
@@ -262,7 +266,7 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
         </div>
       )}
 
-      {viewMode === 'board' ? (
+      {currentView === 'board' ? (
         <>
           <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
             <div className={`flex gap-4 ${externalScroll ? '' : 'overflow-x-auto'} pb-2`}>
