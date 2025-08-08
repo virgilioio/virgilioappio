@@ -272,15 +272,30 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
                             <CardTitle className="text-lg">Skills</CardTitle>
                           </CardHeader>
                           <CardContent>
-                            {candidate.skills && candidate.skills.length > 0 ? (
-                              <div className="flex flex-wrap gap-2">
-                                {candidate.skills.map((s: string, i: number) => (
-                                  <Badge key={`${s}-${i}`} variant={getSkillColor(s)} className="text-sm">{s}</Badge>
-                                ))}
-                              </div>
-                            ) : (
-                              <div className="text-sm text-text-secondary">No skills specified</div>
-                            )}
+                            {(() => {
+                              // Prefer job-specific skills, then independent candidate skills, then AI suggestions
+                              const aiFromJob = Array.isArray((jobCandidate as any)?.auto_generated_skills)
+                                ? ((jobCandidate as any).auto_generated_skills as any[]).map((s) => typeof s === 'string' ? s : s?.name).filter(Boolean)
+                                : []
+                              const aiFromIndependent = Array.isArray((candidate as any)?.auto_generated_skills)
+                                ? ((candidate as any).auto_generated_skills as any[]).map((s) => typeof s === 'string' ? s : s?.name).filter(Boolean)
+                                : []
+                              const preferred = (jobCandidate?.skills && jobCandidate.skills.length > 0)
+                                ? jobCandidate.skills
+                                : (candidate?.skills && candidate.skills.length > 0)
+                                  ? candidate.skills
+                                  : (aiFromJob.length > 0 ? aiFromJob : aiFromIndependent)
+
+                              return preferred && preferred.length > 0 ? (
+                                <div className="flex flex-wrap gap-2">
+                                  {preferred.map((s: string, i: number) => (
+                                    <Badge key={`${s}-${i}`} variant={getSkillColor(s)} className="text-sm">{s}</Badge>
+                                  ))}
+                                </div>
+                              ) : (
+                                <div className="text-sm text-text-secondary">No skills specified</div>
+                              )
+                            })()}
                           </CardContent>
                         </Card>
 

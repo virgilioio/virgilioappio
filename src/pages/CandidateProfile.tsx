@@ -427,19 +427,31 @@ export default function CandidateProfile() {
                 )}
 
                 {/* Skills Card - Overview Tab */}
-                {activeTab === 'overview' && candidate.skills && candidate.skills.length > 0 && (
+                {activeTab === 'overview' && (
                   <Card className="bg-surface-primary">
                     <CardHeader>
                       <CardTitle className="text-lg font-medium text-text-primary">Skills</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="flex flex-wrap gap-2">
-                        {candidate.skills.map((skill) => (
-                          <Badge key={skill} variant={getSkillColor(skill)} className="text-sm">
-                            {skill}
-                          </Badge>
-                        ))}
-                      </div>
+                      {(() => {
+                        const aiFromJob = Array.isArray((candidate as any)?.auto_generated_skills)
+                          ? ((candidate as any).auto_generated_skills as any[]).map((s) => typeof s === 'string' ? s : s?.name).filter(Boolean)
+                          : []
+                        const preferred = candidate.skills && candidate.skills.length > 0
+                          ? candidate.skills
+                          : aiFromJob
+                        return preferred && preferred.length > 0 ? (
+                          <div className="flex flex-wrap gap-2">
+                            {preferred.map((skill: string) => (
+                              <Badge key={skill} variant={getSkillColor(skill)} className="text-sm">
+                                {skill}
+                              </Badge>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-sm text-text-secondary">No skills specified</div>
+                        )
+                      })()}
                     </CardContent>
                   </Card>
                 )}
