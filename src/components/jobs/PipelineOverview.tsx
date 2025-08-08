@@ -10,6 +10,8 @@ import { DndContext, DragOverlay, type DragEndEvent, type DragStartEvent, MouseS
 import DraggableCandidateCard from './DraggableCandidateCard'
 import DroppableStage from './DroppableStage'
 import CandidateProfileSheet from '@/components/candidates/CandidateProfileSheet'
+import { Button } from '@/components/ui/button'
+import { LayoutGrid, List } from 'lucide-react'
 
 interface PipelineOverviewProps {
   jobId: string
@@ -48,6 +50,7 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
   const sensors = useSensors(mouseSensor, touchSensor)
 
   const [activeId, setActiveId] = useState<string | null>(null)
+  const [viewMode, setViewMode] = useState<'board' | 'list'>('board')
 
   const assocMap = useMemo(() => {
     const m = new Map<string, { assoc: PipelineAssociation; stageJhsId: string }>()
@@ -195,6 +198,23 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
     return perStage.flat().map(a => a.candidate_id)
   }, [byStage, stageOptions])
 
+  // Flat list of candidates for list view
+  const flatCandidates = useMemo(() => {
+    const rows: { assoc: PipelineAssociation; stage: JobStage; stageJhsId: string }[] = []
+    for (const opt of stageOptions) {
+      const arr = (byStage[opt.jhsId] || []).slice().sort((a, b) => {
+        const pa = a.pipeline_position ?? Number.MAX_SAFE_INTEGER
+        const pb = b.pipeline_position ?? Number.MAX_SAFE_INTEGER
+        if (pa !== pb) return pa - pb
+        return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      })
+      for (const a of arr) {
+        rows.push({ assoc: a, stage: opt.stage, stageJhsId: opt.jhsId })
+      }
+    }
+    return rows
+  }, [byStage, stageOptions])
+
   const currentIndex = selectedCandidateId ? orderedCandidateIds.indexOf(selectedCandidateId) : -1
   const hasPrev = currentIndex > 0
   const hasNext = currentIndex >= 0 && currentIndex < orderedCandidateIds.length - 1
@@ -214,101 +234,165 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
   return (
     <div className="space-y-4">
       {showHeader && (
-        <div>
-          <h1 className="text-xl font-semibold text-text-primary">Pipeline Overview</h1>
-          <p className="text-sm text-text-secondary">Columns reflect the job's hiring plan stages.</p>
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-xl font-semibold text-text-primary">Pipeline Overview</h1>
+            <p className="text-sm text-text-secondary">Columns reflect the job's hiring plan stages.</p>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              size="icon"
+              variant="ghost"
+              aria-label="Board view"
+              className={`${viewMode === 'board' ? 'bg-foreground text-background hover:bg-foreground' : 'text-text-secondary hover:bg-transparent'} !rounded-full`}
+              onClick={() => setViewMode('board')}
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              aria-label="List view"
+              className={`${viewMode === 'list' ? 'bg-foreground text-background hover:bg-foreground' : 'text-text-secondary hover:bg-transparent'} !rounded-full`}
+              onClick={() => setViewMode('list')}
+            >
+              <List className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       )}
 
-      <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
-        <div className={`flex gap-4 ${externalScroll ? '' : 'overflow-x-auto'} pb-2`}>
-          {isLoadingPlan && (
-            <div className="text-sm text-text-secondary">Loading pipeline...</div>
-          )}
+      {viewMode === 'board' ? (
+        <>
+          <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
+            <div className={`flex gap-4 ${externalScroll ? '' : 'overflow-x-auto'} pb-2`}>
+              {isLoadingPlan && (
+                <div className="text-sm text-text-secondary">Loading pipeline...</div>
+              )}
 
-          {!isLoadingPlan && stageOptions.length === 0 && (
-            <Card className="min-w-[280px]">
-              <CardContent className="py-8 text-center text-text-secondary text-sm">
-                No hiring plan defined yet.
-              </CardContent>
-            </Card>
-          )}
+              {!isLoadingPlan && stageOptions.length === 0 && (
+                <Card className="min-w-[280px]">
+                  <CardContent className="py-8 text-center text-text-secondary text-sm">
+                    No hiring plan defined yet.
+                  </CardContent>
+                </Card>
+              )}
 
-          {/* Render columns with candidate cards */}
-          {!isLoadingPlan && stageOptions.map((opt) => (
-            <Card key={opt.jhsId} className="w-72 flex-shrink-0 h-full flex flex-col">
-              <CardHeader className={`pb-3 rounded-t-md shrink-0 ${getHeaderBgClass(opt.stage.stage_type)}`}>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <CardTitle className="text-base font-medium truncate max-w-[180px]" title={opt.stage.stage_name}>
-                    {opt.stage.stage_name}
-                  </CardTitle>
-                  {opt.stage.is_default && (
-                    <Badge variant="outline">Default</Badge>
-                  )}
-                  {isLastPriorityStage(opt.stage) && (
-                    <Badge variant="outline">Last</Badge>
-                  )}
-                </div>
-              </CardHeader>
-              <CardContent className={`${getHeaderBgClass(opt.stage.stage_type)} rounded-b-md flex-1 overflow-y-auto`}>  
-                <DroppableStage id={opt.jhsId} isEmpty={!byStage[opt.jhsId] || byStage[opt.jhsId].length === 0} tintClass={getHeaderBgClass(opt.stage.stage_type)}>
-                  {isLoadingCandidates && (
-                    <div className="text-xs text-text-tertiary">Loading candidates...</div>
-                  )}
-
-                  {!isLoadingCandidates && (!byStage[opt.jhsId] || byStage[opt.jhsId].length === 0) && (
-                    <div className="text-xs text-text-tertiary">
-                      No candidates in this stage
+              {/* Render columns with candidate cards */}
+              {!isLoadingPlan && stageOptions.map((opt) => (
+                <Card key={opt.jhsId} className="w-72 flex-shrink-0 h-full flex flex-col">
+                  <CardHeader className={`pb-3 rounded-t-md shrink-0 ${getHeaderBgClass(opt.stage.stage_type)}`}>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <CardTitle className="text-base font-medium truncate max-w-[180px]" title={opt.stage.stage_name}>
+                        {opt.stage.stage_name}
+                      </CardTitle>
+                      {opt.stage.is_default && (
+                        <Badge variant="outline">Default</Badge>
+                      )}
+                      {isLastPriorityStage(opt.stage) && (
+                        <Badge variant="outline">Last</Badge>
+                      )}
                     </div>
-                  )}
+                  </CardHeader>
+                  <CardContent className={`${getHeaderBgClass(opt.stage.stage_type)} rounded-b-md flex-1 overflow-y-auto`}>
+                    <DroppableStage id={opt.jhsId} isEmpty={!byStage[opt.jhsId] || byStage[opt.jhsId].length === 0} tintClass={getHeaderBgClass(opt.stage.stage_type)}>
+                      {isLoadingCandidates && (
+                        <div className="text-xs text-text-tertiary">Loading candidates...</div>
+                      )}
 
-                  <div className="space-y-2">
-                    {(byStage[opt.jhsId] || []).map(assoc => {
-                      const t = getTimeInfo(assoc)
-                      return (
-                        <DraggableCandidateCard id={assoc.id} key={assoc.id}>
-                          <CandidateCard
-                            candidateName={assoc.candidate_name}
-                            linkedinUrl={assoc.linkedin_url}
-                            stageOptions={stageOptions}
-                            currentStageJhsId={opt.jhsId}
-                            timeInStageLabel={t.label}
-                            timeBadgeVariant={t.variant}
-                            onMove={(toId) => handleMove(assoc.id, toId)}
-                            onClick={() => { setSelectedCandidateId(orderedCandidateIds.find(id => id === assoc.candidate_id) || assoc.candidate_id); setPanelOpen(true) }}
-                          />
-                        </DraggableCandidateCard>
-                      )
-                    })}
-                  </div>
-                </DroppableStage>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-        <DragOverlay>
-          {activeId && assocMap.get(activeId) ? (
-            (() => {
-              const { assoc, stageJhsId } = assocMap.get(activeId)!
-              const t = getTimeInfo(assoc)
-              return (
-                <div className="w-72 pointer-events-none" style={{ transform: 'rotate(-2deg) scale(1.02)', boxShadow: '0 12px 28px rgba(0,0,0,0.18)' }}>
-                  <CandidateCard
-                    candidateName={assoc.candidate_name}
-                    linkedinUrl={assoc.linkedin_url}
-                    stageOptions={stageOptions}
-                    currentStageJhsId={stageJhsId}
-                    timeInStageLabel={t.label}
-                    timeBadgeVariant={t.variant}
-                    onMove={(toId) => handleMove(assoc.id, toId)}
-                    onClick={() => { setSelectedCandidateId(orderedCandidateIds.find(id => id === assoc.candidate_id) || assoc.candidate_id); setPanelOpen(true) }}
-                  />
+                      {!isLoadingCandidates && (!byStage[opt.jhsId] || byStage[opt.jhsId].length === 0) && (
+                        <div className="text-xs text-text-tertiary">
+                          No candidates in this stage
+                        </div>
+                      )}
+
+                      <div className="space-y-2">
+                        {(byStage[opt.jhsId] || []).map(assoc => {
+                          const t = getTimeInfo(assoc)
+                          return (
+                            <DraggableCandidateCard id={assoc.id} key={assoc.id}>
+                              <CandidateCard
+                                candidateName={assoc.candidate_name}
+                                linkedinUrl={assoc.linkedin_url}
+                                stageOptions={stageOptions}
+                                currentStageJhsId={opt.jhsId}
+                                timeInStageLabel={t.label}
+                                timeBadgeVariant={t.variant}
+                                onMove={(toId) => handleMove(assoc.id, toId)}
+                                onClick={() => { setSelectedCandidateId(orderedCandidateIds.find(id => id === assoc.candidate_id) || assoc.candidate_id); setPanelOpen(true) }}
+                              />
+                            </DraggableCandidateCard>
+                          )
+                        })}
+                      </div>
+                    </DroppableStage>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+            <DragOverlay>
+              {activeId && assocMap.get(activeId) ? (
+                (() => {
+                  const { assoc, stageJhsId } = assocMap.get(activeId)!
+                  const t = getTimeInfo(assoc)
+                  return (
+                    <div className="w-72 pointer-events-none" style={{ transform: 'rotate(-2deg) scale(1.02)', boxShadow: '0 12px 28px rgba(0,0,0,0.18)' }}>
+                      <CandidateCard
+                        candidateName={assoc.candidate_name}
+                        linkedinUrl={assoc.linkedin_url}
+                        stageOptions={stageOptions}
+                        currentStageJhsId={stageJhsId}
+                        timeInStageLabel={t.label}
+                        timeBadgeVariant={t.variant}
+                        onMove={(toId) => handleMove(assoc.id, toId)}
+                        onClick={() => { setSelectedCandidateId(orderedCandidateIds.find(id => id === assoc.candidate_id) || assoc.candidate_id); setPanelOpen(true) }}
+                      />
+                    </div>
+                  )
+                })()
+              ) : null}
+            </DragOverlay>
+          </DndContext>
+        </>
+      ) : (
+        <div>
+          <Card className="w-full">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Candidates</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isLoadingCandidates ? (
+                <div className="text-sm text-text-secondary">Loading candidates...</div>
+              ) : flatCandidates.length === 0 ? (
+                <div className="text-sm text-text-secondary py-6">No candidates in pipeline.</div>
+              ) : (
+                <div className="divide-y divide-border">
+                  {flatCandidates.map(({ assoc, stage }) => {
+                    const t = getTimeInfo(assoc)
+                    return (
+                      <div key={assoc.id} className="py-3 flex items-center justify-between">
+                        <div className="min-w-0">
+                          <div className="font-medium text-text-primary truncate">{assoc.candidate_name}</div>
+                          <div className="mt-1 flex items-center gap-2 text-xs text-text-secondary">
+                            <Badge variant={stageTypeVariants[stage.stage_type] || 'secondary'}>{stage.stage_name}</Badge>
+                            <Badge variant={t.variant}>{t.label}</Badge>
+                          </div>
+                        </div>
+                        <button
+                          className="text-primary hover:underline text-sm shrink-0"
+                          onClick={() => { setSelectedCandidateId(orderedCandidateIds.find(id => id === assoc.candidate_id) || assoc.candidate_id); setPanelOpen(true) }}
+                        >
+                          View
+                        </button>
+                      </div>
+                    )
+                  })}
                 </div>
-              )
-            })()
-          ) : null}
-        </DragOverlay>
-      </DndContext>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )
       <CandidateProfileSheet open={panelOpen} onOpenChange={(o) => setPanelOpen(o)} candidateId={selectedCandidateId} jobId={jobId} hasPrev={hasPrev} hasNext={hasNext} onNavigatePrev={handlePrevCandidate} onNavigateNext={handleNextCandidate} />
     </div>
   )
