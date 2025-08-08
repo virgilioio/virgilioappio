@@ -14,6 +14,7 @@ import CandidateProfileSheet from '@/components/candidates/CandidateProfileSheet
 interface PipelineOverviewProps {
   jobId: string
   showHeader?: boolean
+  externalScroll?: boolean
 }
 
 const stageTypeVariants: Record<string, import('@/components/ui/badge').BadgeProps['variant']> = {
@@ -32,7 +33,7 @@ const isLastPriorityStage = (stage: JobStage) => {
   return p === 'last' || p === 99 || p === '99' || p === 999 || p === '999'
 }
 
-export function PipelineOverview({ jobId, showHeader = true }: PipelineOverviewProps) {
+export function PipelineOverview({ jobId, showHeader = true, externalScroll = false }: PipelineOverviewProps) {
   const { loadHiringPlanInstances, isLoadingPlan } = useJobHiringPlan()
   const { fetchAssociationsForJob, moveAssociationToStage } = usePipelineActions()
 
@@ -203,7 +204,7 @@ export function PipelineOverview({ jobId, showHeader = true }: PipelineOverviewP
       )}
 
       <DndContext sensors={sensors} onDragEnd={onDragEnd}>
-        <div className="flex gap-4 overflow-x-auto pb-2">
+        <div className={`flex gap-4 ${externalScroll ? '' : 'overflow-x-auto'} pb-2`}>
           {isLoadingPlan && (
             <div className="text-sm text-text-secondary">Loading pipeline...</div>
           )}

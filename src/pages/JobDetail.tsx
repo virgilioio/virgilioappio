@@ -381,7 +381,7 @@ export default function JobDetail() {
                     <CardContent className="p-0 h-0 flex-1">
                       <ScrollArea className="h-full w-full">
                         <div className="w-fit p-layout-md">
-                          <PipelineOverview jobId={id!} showHeader={false} />
+                          <PipelineOverview jobId={id!} showHeader={false} externalScroll />
                         </div>
                       </ScrollArea>
                     </CardContent>
@@ -438,7 +438,7 @@ export default function JobDetail() {
                       <CardContent className="p-0 h-0 flex-1">
                         <ScrollArea className="h-full w-full">
                           <div className="w-fit p-layout-md">
-                            <PipelineOverview jobId={id!} showHeader={false} />
+                            <PipelineOverview jobId={id!} showHeader={false} externalScroll />
                           </div>
                         </ScrollArea>
                       </CardContent>
