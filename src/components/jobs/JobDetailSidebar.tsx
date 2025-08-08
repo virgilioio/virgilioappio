@@ -1,6 +1,6 @@
 
 import { cn } from '@/lib/utils'
-import { FileText, Users, UserCheck } from 'lucide-react'
+import { Users, UserCheck } from 'lucide-react'
 
 interface JobDetailSidebarProps {
   currentTab: string
@@ -16,12 +16,6 @@ export function JobDetailSidebar({
   canViewAssignments = false 
 }: JobDetailSidebarProps) {
   const tabs = [
-    {
-      id: 'overview',
-      label: 'Overview',
-      icon: FileText,
-      description: 'Job details and information'
-    },
     {
       id: 'candidates',
       label: 'Application Review',

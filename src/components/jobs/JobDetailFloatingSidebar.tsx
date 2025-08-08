@@ -1,6 +1,6 @@
 
 import { cn } from '@/lib/utils'
-import { FileText, Users, Settings, Kanban } from 'lucide-react'
+import { Users, Settings, Kanban } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 
@@ -18,11 +18,6 @@ export function JobDetailFloatingSidebar({
   className 
 }: JobDetailFloatingSidebarProps) {
   const tabs = [
-    {
-      id: 'overview',
-      label: 'Overview',
-      icon: FileText,
-    },
     {
       id: 'candidates',
       label: 'Application Review',

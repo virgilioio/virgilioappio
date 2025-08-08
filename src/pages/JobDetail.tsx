@@ -9,7 +9,7 @@ import { useJobAssignments } from '@/hooks/useJobAssignments'
 import { useJobs } from '@/hooks/useJobs'
 import { JobDetailFloatingSidebar } from '@/components/jobs/JobDetailFloatingSidebar'
 import { JobDetailMobileHeader } from '@/components/jobs/JobDetailMobileHeader'
-import { JobOverviewTab } from '@/components/jobs/JobOverviewTab'
+
 import { CandidateTable } from '@/components/candidates/CandidateTable'
 import { CandidateForm } from '@/components/candidates/CandidateForm'
 import { JobAssignmentsPanel } from '@/components/jobs/JobAssignmentsPanel'
@@ -34,7 +34,7 @@ export default function JobDetail() {
   const isMobile = useIsMobile()
   const [showAddCandidate, setShowAddCandidate] = useState(false)
   const [editingCandidate, setEditingCandidate] = useState<any>(null)
-  const [activeTab, setActiveTab] = useState('overview')
+  const [activeTab, setActiveTab] = useState('job-setup')
   const [showEditJobModal, setShowEditJobModal] = useState(false)
 
   // Jobs hook for updating
@@ -334,22 +334,12 @@ export default function JobDetail() {
           {isMobile ? (
             // Mobile: Tabs
             <>
-              <TabsList className="grid w-full grid-cols-4 mb-6">
-                <TabsTrigger value="overview">Overview</TabsTrigger>
-                <TabsTrigger value="candidates">Application Review</TabsTrigger>
-                <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
-                <TabsTrigger value="job-setup">Setup</TabsTrigger>
-              </TabsList>
+                <TabsList className="grid w-full grid-cols-3 mb-6">
+                  <TabsTrigger value="candidates">Application Review</TabsTrigger>
+                  <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
+                  <TabsTrigger value="job-setup">Setup</TabsTrigger>
+                </TabsList>
               
-              <TabsContent value="overview">
-                <JobOverviewTab 
-                  job={{
-                    ...job,
-                    hiring_team: job.hiring_team as any[]
-                  }} 
-                  onEdit={handleEditJob}
-                />
-              </TabsContent>
               
               <TabsContent value="candidates">
                 <div className="space-y-6">
@@ -373,6 +363,11 @@ export default function JobDetail() {
                 <JobSetupPanel
                   jobId={id!}
                   jobTitle={job.title}
+                  job={{
+                    ...job,
+                    hiring_team: (job.hiring_team as any[]) || []
+                  }}
+                  onEdit={handleEditJob}
                 />
               </TabsContent>
               <TabsContent value="pipeline">
@@ -390,15 +385,6 @@ export default function JobDetail() {
               
               {/* Main content */}
               <div className="flex-1">
-                <TabsContent value="overview">
-                  <JobOverviewTab 
-                    job={{
-                      ...job,
-                      hiring_team: job.hiring_team as any[]
-                    }} 
-                    onEdit={handleEditJob}
-                  />
-                </TabsContent>
                 <TabsContent value="candidates">
                   <div className="space-y-6">
                     <SalaryInsightsCard 
@@ -420,6 +406,11 @@ export default function JobDetail() {
                   <JobSetupPanel
                     jobId={id!}
                     jobTitle={job.title}
+                    job={{
+                      ...job,
+                      hiring_team: (job.hiring_team as any[]) || []
+                    }}
+                    onEdit={handleEditJob}
                   />
                 </TabsContent>
                 <TabsContent value="pipeline">
