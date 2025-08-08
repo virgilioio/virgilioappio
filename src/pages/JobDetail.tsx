@@ -25,6 +25,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from '@/hooks/use-toast'
 import { SalaryInsightsCard } from '@/components/jobs/SalaryInsightsCard'
 import { PipelineOverview } from '@/components/jobs/PipelineOverview'
+import { ScrollArea } from '@/components/ui/scroll-area'
 
 export default function JobDetail() {
   const { id } = useParams<{ id: string }>()
@@ -371,7 +372,15 @@ export default function JobDetail() {
                 />
               </TabsContent>
               <TabsContent value="pipeline">
-                <PipelineOverview jobId={id!} />
+                <Card className="h-[60vh] sm:h-[65vh]">
+                  <CardContent className="p-0">
+                    <ScrollArea className="h-full">
+                      <div className="min-w-max overflow-x-auto p-layout-md">
+                        <PipelineOverview jobId={id!} />
+                      </div>
+                    </ScrollArea>
+                  </CardContent>
+                </Card>
               </TabsContent>
             </>
           ) : (
@@ -414,7 +423,15 @@ export default function JobDetail() {
                   />
                 </TabsContent>
                 <TabsContent value="pipeline">
-                  <PipelineOverview jobId={id!} />
+                  <Card className="h-[70vh]">
+                    <CardContent className="p-0">
+                      <ScrollArea className="h-full">
+                        <div className="min-w-max overflow-x-auto p-layout-md">
+                          <PipelineOverview jobId={id!} />
+                        </div>
+                      </ScrollArea>
+                    </CardContent>
+                  </Card>
                 </TabsContent>
               </div>
             </div>
