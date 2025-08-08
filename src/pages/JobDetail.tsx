@@ -9,6 +9,7 @@ import { useJobAssignments } from '@/hooks/useJobAssignments'
 import { useJobs } from '@/hooks/useJobs'
 import { JobDetailFloatingSidebar } from '@/components/jobs/JobDetailFloatingSidebar'
 import { JobDetailMobileHeader } from '@/components/jobs/JobDetailMobileHeader'
+import { PageHeader } from '@/components/layout/PageHeader'
 
 import { CandidateTable } from '@/components/candidates/CandidateTable'
 import { CandidateForm } from '@/components/candidates/CandidateForm'
@@ -342,6 +343,12 @@ export default function JobDetail() {
               onMenuToggle={() => {}}
               onBackToJobs={handleBackToJobs}
             />
+          </div>
+        )}
+
+        {!isMobile && (
+          <div className="mb-2">
+            <PageHeader title={job.title} compact />
           </div>
         )}
 
