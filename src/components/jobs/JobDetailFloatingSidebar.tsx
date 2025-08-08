@@ -50,7 +50,7 @@ export function JobDetailFloatingSidebar({
                 className={cn(
                   "w-12 h-12 rounded-full p-0 flex items-center justify-center",
                   isActive
-                    ? "border-2 border-foreground text-foreground"
+                    ? "bg-foreground text-background hover:bg-foreground hover:text-background"
                     : "border border-border text-muted-foreground hover:bg-transparent hover:text-inherit"
                 )}
                 onClick={() => onTabChange(tab.id)}
