@@ -6,7 +6,7 @@ import { useJobHiringPlan, JobStage } from '@/hooks/useJobHiringPlan'
 import CandidateCard from './CandidateCard'
 import { usePipelineActions, PipelineAssociation } from '@/hooks/usePipelineActions'
 import { toast } from '@/hooks/use-toast'
-import { DndContext, type DragEndEvent } from '@dnd-kit/core'
+import { DndContext, type DragEndEvent, MouseSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core'
 import DraggableCandidateCard from './DraggableCandidateCard'
 import DroppableStage from './DroppableStage'
 import CandidateProfileSheet from '@/components/candidates/CandidateProfileSheet'
@@ -40,6 +40,10 @@ export function PipelineOverview({ jobId }: PipelineOverviewProps) {
   const [byStage, setByStage] = useState<Record<string, PipelineAssociation[]>>({})
   const [panelOpen, setPanelOpen] = useState(false)
   const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null)
+
+  const mouseSensor = useSensor(MouseSensor, { activationConstraint: { distance: 10 } })
+  const touchSensor = useSensor(TouchSensor, { activationConstraint: { delay: 180, tolerance: 8 } })
+  const sensors = useSensors(mouseSensor, touchSensor)
 
   const getTimeInfo = useCallback((a: PipelineAssociation) => {
     const base = a.entered_stage_at || a.created_at
@@ -165,7 +169,7 @@ export function PipelineOverview({ jobId }: PipelineOverviewProps) {
         <p className="text-sm text-text-secondary">Columns reflect the job's hiring plan stages.</p>
       </div>
 
-      <DndContext onDragEnd={onDragEnd}>
+      <DndContext sensors={sensors} onDragEnd={onDragEnd}>
         <div className="flex gap-4 overflow-x-auto pb-2">
           {isLoadingPlan && (
             <div className="text-sm text-text-secondary">Loading pipeline...</div>
