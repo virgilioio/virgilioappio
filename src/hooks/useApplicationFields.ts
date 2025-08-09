@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 import { useToast } from '@/hooks/use-toast'
@@ -10,6 +11,7 @@ export interface ApplicationField {
   field_label: string
   field_type: FieldType
   is_required: boolean
+  is_default: boolean
   placeholder_text?: string | null
   help_text?: string | null
   display_order: number

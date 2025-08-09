@@ -42,7 +42,7 @@ export function ApplicationFieldForm({ field, onClose, onSaved }: { field?: Appl
     field_name: '',
     field_label: '',
     field_type: 'text' as FieldType,
-    is_required: false,
+    is_required: false, // repurposed as "is_default" toggle in the UI
     display_order: 1,
     placeholder_text: '',
     help_text: '',
@@ -59,7 +59,7 @@ export function ApplicationFieldForm({ field, onClose, onSaved }: { field?: Appl
         field_name: field.field_name,
         field_label: field.field_label,
         field_type: field.field_type,
-        is_required: field.is_required,
+        is_required: field.is_default, // initialize from is_default
         display_order: field.display_order,
         placeholder_text: field.placeholder_text || '',
         help_text: field.help_text || '',
@@ -81,7 +81,7 @@ export function ApplicationFieldForm({ field, onClose, onSaved }: { field?: Appl
         field_name: '',
         field_label: '',
         field_type: 'text',
-        is_required: false,
+        is_required: false, // default not auto-included
         display_order: 1,
         placeholder_text: '',
         help_text: '',
@@ -115,11 +115,14 @@ export function ApplicationFieldForm({ field, onClose, onSaved }: { field?: Appl
 
     setIsLoading(true)
     try {
-      const payload = {
+      const payload: any = {
         field_name: formData.field_name,
         field_label: formData.field_label,
         field_type: formData.field_type,
-        is_required: formData.is_required,
+        // For library: use is_default as the new semantic toggle.
+        is_default: formData.is_required,
+        // Keep is_required off at the library level for compatibility.
+        is_required: false,
         display_order: formData.display_order,
         placeholder_text: formData.placeholder_text || null,
         help_text: formData.help_text || null,
@@ -199,8 +202,8 @@ export function ApplicationFieldForm({ field, onClose, onSaved }: { field?: Appl
       </div>
 
       <div className="flex items-center space-x-2">
-        <Checkbox id="is_required" checked={formData.is_required} onCheckedChange={(c) => updateForm('is_required', c)} />
-        <label htmlFor="is_required" className="text-sm font-medium">Required field</label>
+        <Checkbox id="is_default" checked={formData.is_required} onCheckedChange={(c) => updateForm('is_required', c)} />
+        <label htmlFor="is_default" className="text-sm font-medium">Default field (auto-add to new job posts)</label>
       </div>
 
       <FormField label="Placeholder Text" htmlFor="placeholder_text">
@@ -273,7 +276,7 @@ export function ApplicationFieldForm({ field, onClose, onSaved }: { field?: Appl
         </Card>
       )}
 
-      {SHOW_SELECT_OPTIONS && (
+      {formData.field_type === 'select' && (
         <Card>
           <CardHeader>
             <CardTitle className="text-sm flex items-center justify-between">
@@ -304,7 +307,7 @@ export function ApplicationFieldForm({ field, onClose, onSaved }: { field?: Appl
         </Card>
       )}
 
-      {SHOW_VALIDATION && (
+      {['text', 'textarea', 'number'].includes(formData.field_type) && (
         <Card>
           <CardHeader>
             <CardTitle className="text-sm flex items-center justify-between">

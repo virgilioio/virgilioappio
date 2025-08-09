@@ -1,3 +1,4 @@
+
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -45,7 +46,7 @@ export function ApplicationFieldsManager() {
                   <TableHead>Label</TableHead>
                   <TableHead>Name</TableHead>
                   <TableHead>Type</TableHead>
-                  <TableHead>Required</TableHead>
+                  <TableHead>Default</TableHead>
                   <TableHead>Order</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -58,7 +59,7 @@ export function ApplicationFieldsManager() {
                     <TableCell>
                       <Badge variant="secondary" className="capitalize text-xs">{f.field_type}</Badge>
                     </TableCell>
-                    <TableCell>{f.is_required ? 'Yes' : 'No'}</TableCell>
+                    <TableCell>{f.is_default ? 'Yes' : 'No'}</TableCell>
                     <TableCell>{f.display_order}</TableCell>
                     <TableCell className="text-right space-x-2">
                       <Button variant="outline" size="sm" onClick={() => handleEdit(f)}>
