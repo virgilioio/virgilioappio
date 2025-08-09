@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { SafeHtml } from '@/components/ui/safe-html'
-import { ArrowLeft, MapPin, DollarSign, Calendar, User, Edit, Zap, FileText, MessageSquare, ChevronLeft, ChevronRight, Clock, Download } from 'lucide-react'
+import { ArrowLeft, MapPin, DollarSign, Calendar, User, Edit, Zap, FileText, MessageSquare, ChevronLeft, ChevronRight, Clock, Download, Briefcase } from 'lucide-react'
 import { AuthGate } from '@/components/auth/AuthGate'
 // removed unused LinkedInFilled import (now handled inside CandidateNameCard)
 import { PermissionGate } from '@/components/auth/PermissionGate'
@@ -41,7 +41,7 @@ export default function CandidateProfile() {
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [isOfferLetterDialogOpen, setIsOfferLetterDialogOpen] = useState(false)
   const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false)
-  const [activeTab, setActiveTab] = useState<'overview' | 'notes'>('overview')
+  const [activeTab, setActiveTab] = useState<'job' | 'resume' | 'overview' | 'notes'>('overview')
   const { candidates, isLoading: candidatesLoading, updateCandidate } = useCandidates(jobId || '')
   const { getJob, isLoading: jobLoading } = useJobs()
   const { fetchAssociationsForJob } = usePipelineActions()
@@ -295,11 +295,13 @@ export default function CandidateProfile() {
                   linkedinUrl={candidate.linkedin_url}
                   badgeText={job?.title || undefined}
                   tabs={[
+                    { value: 'job', label: 'Job Application', Icon: Briefcase },
+                    { value: 'resume', label: 'Resume', Icon: FileText },
                     { value: 'overview', label: 'Overview', Icon: FileText },
                     { value: 'notes', label: 'Notes', Icon: MessageSquare },
                   ]}
                   activeTab={activeTab}
-                  onTabChange={(v) => setActiveTab(v as 'overview' | 'notes')}
+                  onTabChange={(v) => setActiveTab(v as 'job' | 'resume' | 'overview' | 'notes')}
                   rightActions={
                     <>
                       {independentCandidateId ? (
@@ -322,6 +324,30 @@ export default function CandidateProfile() {
                     </>
                   }
                 />
+
+                {/* Job Application Tab */}
+                {activeTab === 'job' && (
+                  <Card className="bg-surface-primary">
+                    <CardHeader>
+                      <CardTitle className="text-lg font-medium text-text-primary">Job Application</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-sm text-text-secondary">Application details coming soon.</div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Resume Tab */}
+                {activeTab === 'resume' && (
+                  <Card className="bg-surface-primary">
+                    <CardHeader>
+                      <CardTitle className="text-lg font-medium text-text-primary">Resume</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-sm text-text-secondary">Resume preview coming soon.</div>
+                    </CardContent>
+                  </Card>
+                )}
 
                 {/* Independent Candidate Information Card - Overview Tab */}
                 {activeTab === 'overview' && (

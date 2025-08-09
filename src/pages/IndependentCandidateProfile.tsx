@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { ArrowLeft, MapPin, DollarSign, Calendar, User, Edit, Zap, FileText, Mail, Phone, ChevronLeft, ChevronRight } from 'lucide-react'
+import { ArrowLeft, MapPin, DollarSign, Calendar, User, Edit, Zap, FileText, Mail, Phone, ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react'
 import { AuthGate } from '@/components/auth/AuthGate'
 
 import { PermissionGate } from '@/components/auth/PermissionGate'

@@ -40,7 +40,7 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
   const [jobCandidate, setJobCandidate] = useState<any | null>(null)
   const [jobCandidateId, setJobCandidateId] = useState<string | null>(null)
   const [job, setJob] = useState<any | null>(null)
-  const [activeTab, setActiveTab] = useState<'overview' | 'notes'>('overview')
+  const [activeTab, setActiveTab] = useState<'job' | 'resume' | 'overview' | 'notes'>('overview')
   const { workExperience, education, fetchCandidateEnrichmentData } = useCandidateEnrichment()
   const [editOpen, setEditOpen] = useState(false)
   const [editLoading, setEditLoading] = useState(false)
@@ -171,7 +171,7 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
             ) : !candidate ? (
               <div className="text-text-secondary text-sm">No data available.</div>
             ) : (
-              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'overview' | 'notes')}>
+              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'job' | 'resume' | 'overview' | 'notes')}>
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   {/* Left column (2x) */}
                   <div className="lg:col-span-2 space-y-6">
@@ -180,11 +180,13 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
                       linkedinUrl={candidate.linkedin_url}
                       badgeText={job?.title ?? candidate.status}
                       tabs={[
+                        { value: 'job', label: 'Job Application', Icon: FileText },
+                        { value: 'resume', label: 'Resume', Icon: FileText },
                         { value: 'overview', label: 'Overview', Icon: FileText },
                         { value: 'notes', label: 'Notes', Icon: MessageSquare },
                       ]}
                       activeTab={activeTab}
-                      onTabChange={(v) => setActiveTab(v as 'overview' | 'notes')}
+                      onTabChange={(v) => setActiveTab(v as 'job' | 'resume' | 'overview' | 'notes')}
                       rightActions={
                         <>
                           <Button
@@ -198,6 +200,30 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
                         </>
                       }
                     />
+
+                    {/* Job Application Tab */}
+                    {activeTab === 'job' && (
+                      <Card className="bg-surface-primary border-border">
+                        <CardHeader>
+                          <CardTitle className="text-lg">Job Application</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="text-sm text-text-secondary">Application details coming soon.</div>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {/* Resume Tab */}
+                    {activeTab === 'resume' && (
+                      <Card className="bg-surface-primary border-border">
+                        <CardHeader>
+                          <CardTitle className="text-lg">Resume</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="text-sm text-text-secondary">Resume preview coming soon.</div>
+                        </CardContent>
+                      </Card>
+                    )}
 
                     {activeTab === 'overview' ? (
                       <>
