@@ -30,7 +30,6 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { usePipelineActions, PipelineAssociation } from '@/hooks/usePipelineActions'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
 export default function JobDetail() {
   const { id } = useParams<{ id: string }>()
@@ -717,22 +716,83 @@ export default function JobDetail() {
                             </TooltipProvider>
                           </div>
                         </div>
+                        <div className="mt-4">
+                          <Tabs value={pipelineSectionTab} onValueChange={(v) => setPipelineSectionTab(v as any)}>
+                            <TabsList className="flex flex-wrap gap-2">
+                              <TabsTrigger value="application">Application Review</TabsTrigger>
+                              <TabsTrigger value="recruiting">Recruiting Process</TabsTrigger>
+                              <TabsTrigger value="offers">Job Offers</TabsTrigger>
+                              <TabsTrigger value="hired">Hired Candidates</TabsTrigger>
+                              <TabsTrigger value="rejected">Rejected Candidates</TabsTrigger>
+                            </TabsList>
+                          </Tabs>
+                        </div>
                       </CardHeader>
                       <CardContent className="p-0 h-0 flex-1">
                         <ScrollArea className="h-full w-full scrollbar-black">
-                          <div className={pipelineView === 'list' ? 'w-full p-layout-md' : 'w-fit p-layout-md'}>
-                            <PipelineOverview
-                              jobId={id!}
-                              showHeader={false}
-                              externalScroll
-                              viewMode={pipelineView}
-                              onViewModeChange={setPipelineView}
-                              selectionMode={selectionMode}
-                              onSelectionModeChange={setSelectionMode}
-                              onSelectedIdsChange={setSelectedCandidateIds}
-                              refreshToken={pipelineRefresh}
-                            />
-                          </div>
+                          {pipelineSectionTab === 'recruiting' ? (
+                            <div className={pipelineView === 'list' ? 'w-full p-layout-md' : 'w-fit p-layout-md'}>
+                              <PipelineOverview
+                                jobId={id!}
+                                showHeader={false}
+                                externalScroll
+                                viewMode={pipelineView}
+                                onViewModeChange={setPipelineView}
+                                selectionMode={selectionMode}
+                                onSelectionModeChange={setSelectionMode}
+                                onSelectedIdsChange={setSelectedCandidateIds}
+                                refreshToken={pipelineRefresh}
+                              />
+                            </div>
+                          ) : pipelineSectionTab === 'application' ? (
+                            <div className="w-full p-layout-md">
+                              <CandidateTable
+                                candidates={applicationReviewCandidates}
+                                isLoading={candidatesLoading}
+                                onEdit={handleEditCandidate}
+                                onDelete={handleDeleteCandidate}
+                                onAddNew={() => setShowAddCandidate(true)}
+                                markCandidateAsViewed={markCandidateAsViewed}
+                                isCandidateNewForUser={isCandidateNewForUser}
+                              />
+                            </div>
+                          ) : pipelineSectionTab === 'offers' ? (
+                            <div className="w-full p-layout-md">
+                              <CandidateTable
+                                candidates={offersCandidates}
+                                isLoading={statusListsLoading}
+                                onEdit={handleEditCandidate}
+                                onDelete={handleDeleteCandidate}
+                                onAddNew={() => setShowAddCandidate(true)}
+                                markCandidateAsViewed={() => {}}
+                                isCandidateNewForUser={() => false}
+                              />
+                            </div>
+                          ) : pipelineSectionTab === 'hired' ? (
+                            <div className="w-full p-layout-md">
+                              <CandidateTable
+                                candidates={hiredCandidates}
+                                isLoading={statusListsLoading}
+                                onEdit={handleEditCandidate}
+                                onDelete={handleDeleteCandidate}
+                                onAddNew={() => setShowAddCandidate(true)}
+                                markCandidateAsViewed={() => {}}
+                                isCandidateNewForUser={() => false}
+                              />
+                            </div>
+                          ) : (
+                            <div className="w-full p-layout-md">
+                              <CandidateTable
+                                candidates={rejectedCandidates}
+                                isLoading={statusListsLoading}
+                                onEdit={handleEditCandidate}
+                                onDelete={handleDeleteCandidate}
+                                onAddNew={() => setShowAddCandidate(true)}
+                                markCandidateAsViewed={() => {}}
+                                isCandidateNewForUser={() => false}
+                              />
+                            </div>
+                          )}
                         </ScrollArea>
                       </CardContent>
                     </Card>
