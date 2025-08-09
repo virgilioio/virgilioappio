@@ -267,7 +267,6 @@ export function CandidateForm({
                   id="candidate_name"
                   {...form.register('candidate_name', { required: 'Name is required' })}
                   placeholder="Enter candidate name or alias"
-                  className="h-[44px]"
                 />
               </FormField>
 
@@ -283,7 +282,6 @@ export function CandidateForm({
                     validate: validateLinkedInUrl 
                   })}
                   placeholder="https://linkedin.com/in/username"
-                  className="h-[44px]"
                 />
               </FormField>
             </div>
@@ -302,7 +300,6 @@ export function CandidateForm({
                   id="location_country"
                   {...form.register('location_country')}
                   placeholder="Country"
-                  className="h-[44px]"
                 />
               </FormField>
 
@@ -315,7 +312,6 @@ export function CandidateForm({
                     id="location_state"
                     {...form.register('location_state')}
                     placeholder="State/Province"
-                    className="h-[44px]"
                   />
                 </FormField>
 
@@ -327,7 +323,6 @@ export function CandidateForm({
                     id="location_city"
                     {...form.register('location_city')}
                     placeholder="City"
-                    className="h-[44px]"
                   />
                 </FormField>
               </div>
@@ -355,7 +350,6 @@ export function CandidateForm({
                     }
                   })}
                   placeholder="50000"
-                  className="h-[44px]"
                 />
               </FormField>
 
@@ -370,7 +364,7 @@ export function CandidateForm({
                         variant="outline"
                         role="combobox"
                         aria-expanded={currencyOpen}
-                        className="w-full justify-between h-[44px]"
+                        className="w-full justify-between"
                       >
                         {form.watch('salary_currency')
                           ? CURRENCIES.find((currency) => currency.value === form.watch('salary_currency'))?.label
@@ -417,7 +411,7 @@ export function CandidateForm({
                     value={form.watch('salary_period')} 
                     onValueChange={(value) => form.setValue('salary_period', value)}
                   >
-                    <SelectTrigger className="h-[44px]">
+                    <SelectTrigger>
                       <SelectValue placeholder="Period" />
                     </SelectTrigger>
                     <SelectContent>
@@ -448,9 +442,9 @@ export function CandidateForm({
                       onChange={(e) => setNewSkill(e.target.value)}
                       onKeyPress={handleKeyPress}
                       placeholder="Add a skill (e.g., React, Python, etc.)"
-                      className="flex-1 h-[44px]"
+                      className="flex-1"
                     />
-                    <Button type="button" onClick={addSkill} variant="outline" size="sm" className="h-[44px]">
+                    <Button type="button" onClick={addSkill} variant="outline" size="sm">
                       <Plus className="h-4 w-4" />
                     </Button>
                   </div>
@@ -526,7 +520,7 @@ export function CandidateForm({
               <Button 
                 type="submit" 
                 disabled={isLoading} 
-                className="flex-1 h-[44px]"
+                className="flex-1"
               >
                 {isLoading ? 'Saving...' : candidate ? 'Update Candidate' : 'Add Candidate'}
               </Button>
@@ -534,7 +528,7 @@ export function CandidateForm({
                 type="button" 
                 variant="outline" 
                 onClick={handleClose}
-                className="h-[44px] sm:w-auto"
+                className="sm:w-auto"
               >
                 Cancel
               </Button>

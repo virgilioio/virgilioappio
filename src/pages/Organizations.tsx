@@ -90,8 +90,8 @@ export default function Organizations() {
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter className="flex-col sm:flex-row gap-3">
-                  <AlertDialogCancel className="w-full sm:w-auto min-h-[44px]">Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleConfirmDelete} className="w-full sm:w-auto min-h-[44px]">
+                  <AlertDialogCancel className="w-full sm:w-auto">Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleConfirmDelete} className="w-full sm:w-auto">
                     Deactivate
                   </AlertDialogAction>
                 </AlertDialogFooter>

@@ -148,7 +148,7 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
               <div className="flex items-center gap-sm">
                 <Button
                   variant="ghost"
-                  className="gap-sm h-[44px] text-text-secondary hover:text-text-primary"
+                   className="gap-sm text-text-secondary hover:text-text-primary"
                   onClick={onNavigatePrev}
                   disabled={!hasPrev}
                   title="Previous candidate"
@@ -158,7 +158,7 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
                 </Button>
                 <Button
                   variant="ghost"
-                  className="gap-sm h-[44px] text-text-secondary hover:text-text-primary"
+                  className="gap-sm text-text-secondary hover:text-text-primary"
                   onClick={onNavigateNext}
                   disabled={!hasNext}
                   title="Next candidate"
@@ -198,25 +198,26 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
                           <div className="flex items-center gap-sm">
                             {candidate.linkedin_url ? (
                               <Button 
-                                className="gap-sm h-[44px] bg-[#0078c7] text-white hover:bg-[#005a94]"
+                                variant="info"
+                                className="gap-sm"
                                 onClick={() => window.open(candidate.linkedin_url!, '_blank')}
                               >
-                                <Linkedin className="h-4 w-4" fill="white" />
+                                <Linkedin className="h-4 w-4" />
                                 View LinkedIn
                               </Button>
                             ) : (
                               <Button 
-                                className="gap-sm h-[44px] bg-[#0078c7] text-white hover:bg-[#005a94]"
+                                variant="info"
+                                className="gap-sm"
                                 disabled
                               >
-                                <Linkedin className="h-4 w-4" fill="white" />
+                                <Linkedin className="h-4 w-4" />
                                 No LinkedIn
                               </Button>
                             )}
                             <Button
                               variant="outline"
                               size="icon"
-                              className="h-[44px] w-[44px]"
                               onClick={() => generateCandidatePdf({ candidate, job })}
                               title="Download PDF"
                             >
@@ -344,18 +345,18 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
                       <CardContent className="space-y-3">
                         {jobCandidateId ? (
                           <>
-                            <Button className="w-full gap-sm h-[44px]" onClick={() => setEditOpen(true)}>
+                            <Button className="w-full gap-sm" onClick={() => setEditOpen(true)}>
                               <Edit className="h-4 w-4" />
                               Edit Candidate
                             </Button>
                             <Link to={`/jobs/${jobId}/candidates/${jobCandidateId}`}>
-                              <Button variant="outline" className="w-full gap-sm h-[44px]">
+                              <Button variant="outline" className="w-full gap-sm">
                                 <FileText className="h-4 w-4" />
                                 Create Offer Letter
                               </Button>
                             </Link>
                             <Link to={`/jobs/${jobId}/candidates/${jobCandidateId}`}>
-                              <Button variant="outline" className="w-full gap-sm h-[44px]">
+                              <Button variant="outline" className="w-full gap-sm">
                                 <Clock className="h-4 w-4" />
                                 Schedule
                               </Button>

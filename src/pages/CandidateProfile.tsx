@@ -253,7 +253,7 @@ export default function CandidateProfile() {
             {/* Navigation */}
             <div className="mb-lg flex items-center justify-between">
               <Link to={`/jobs/${jobId}?tab=candidates`}>
-                <Button variant="ghost" className="gap-sm h-[44px] text-text-secondary hover:text-text-primary">
+                <Button variant="ghost" className="gap-sm text-text-secondary hover:text-text-primary">
                   <ArrowLeft className="h-4 w-4" />
                   Back to Candidates
                 </Button>
@@ -263,7 +263,7 @@ export default function CandidateProfile() {
               <div className="flex items-center gap-sm">
                 <Button
                   variant="ghost"
-                  className="gap-sm h-[44px] text-text-secondary hover:text-text-primary"
+                  className="gap-sm text-text-secondary hover:text-text-primary"
                   onClick={() => previousCandidate && navigateToCandidate(previousCandidate.id)}
                   disabled={!hasPreviousCandidate}
                   title={previousCandidate ? `Previous: ${previousCandidate.candidate_name}` : 'No previous candidate'}
@@ -273,7 +273,7 @@ export default function CandidateProfile() {
                 </Button>
                 <Button
                   variant="ghost"
-                  className="gap-sm h-[44px] text-text-secondary hover:text-text-primary"
+                  className="gap-sm text-text-secondary hover:text-text-primary"
                   onClick={() => nextCandidate && navigateToCandidate(nextCandidate.id)}
                   disabled={!hasNextCandidate}
                   title={nextCandidate ? `Next: ${nextCandidate.candidate_name}` : 'No next candidate'}
@@ -304,18 +304,20 @@ export default function CandidateProfile() {
                       <div className="flex items-center gap-sm">
                         {candidate.linkedin_url ? (
                           <Button 
-                            className="gap-sm h-[44px] bg-[#0078c7] text-white hover:bg-[#005a94]"
+                            variant="info"
+                            className="gap-sm"
                             onClick={() => window.open(candidate.linkedin_url!, '_blank')}
                           >
-                            <Linkedin className="h-4 w-4" fill="white" />
+                            <Linkedin className="h-4 w-4" />
                             View LinkedIn
                           </Button>
                         ) : (
                           <Button 
-                            className="gap-sm h-[44px] bg-[#0078c7] text-white hover:bg-[#005a94]"
+                            variant="info"
+                            className="gap-sm"
                             disabled
                           >
-                            <Linkedin className="h-4 w-4" fill="white" />
+                            <Linkedin className="h-4 w-4" />
                             No LinkedIn
                           </Button>
                         )}
@@ -333,7 +335,6 @@ export default function CandidateProfile() {
                         <Button
                           variant="outline"
                           size="icon"
-                          className="h-[44px] w-[44px]"
                           onClick={() => generateCandidatePdf({ candidate, job, organization: jobOrganization })}
                           title="Download PDF"
                         >

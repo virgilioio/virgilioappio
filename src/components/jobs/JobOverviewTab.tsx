@@ -103,7 +103,7 @@ export function JobOverviewTab({ job, onEdit }: JobOverviewTabProps) {
             </div>
             
             {permissions.canEditJobs && (
-              <Button variant="outline" onClick={onEdit} className="min-h-[44px] gap-2">
+              <Button variant="outline" onClick={onEdit} className="gap-2">
                 <Edit className="h-5 w-5" />
                 Edit Job
               </Button>
