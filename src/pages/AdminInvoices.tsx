@@ -93,7 +93,7 @@ function AdminInvoicesContent() {
   if (!canManageInvoices) {
     return (
       <div className="min-h-screen bg-background">
-        <div className="container mx-auto py-4 sm:py-6 lg:py-8 px-4 sm:px-6 lg:px-8">
+        <Section container className="py-4 sm:py-6 lg:py-8 animate-fade-in">
           <Card>
             <CardContent className="pt-6">
               <p className="text-center text-muted-foreground">
@@ -107,8 +107,8 @@ function AdminInvoicesContent() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto py-4 sm:py-6 lg:py-8 px-4 sm:px-6 lg:px-8">
+  <div className="min-h-screen bg-background">
+    <Section container className="py-4 sm:py-6 lg:py-8 animate-fade-in">
         <div className="space-y-4 sm:space-y-6">
           {/* Header */}
           <div className="flex flex-col gap-3 sm:gap-4 sm:flex-row sm:items-center sm:justify-between">

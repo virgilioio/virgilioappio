@@ -6,7 +6,8 @@ import { PermissionGate } from '@/components/auth/PermissionGate'
 import { OrganizationsTable } from '@/components/organizations/OrganizationsTable'
 import { OrganizationForm } from '@/components/organizations/OrganizationForm'
 import { useOrganizations, Organization } from '@/hooks/useOrganizations'
-import { Briefcase } from 'lucide-react'
+import { PageHeader } from '@/components/layout/PageHeader'
+import { Section } from '@/components/layout/Section'
 
 export default function Organizations() {
   const [isFormOpen, setIsFormOpen] = useState(false)
@@ -54,17 +55,14 @@ export default function Organizations() {
     <AuthGate>
       <PermissionGate permission="canViewOrganizations">
         <div className="min-h-screen bg-background">
-          <div className="container mx-auto py-6 sm:py-8 lg:py-12 px-4 sm:px-6 lg:px-8">
-            <div className="mb-6 sm:mb-8 lg:mb-12">
-              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
-                <Briefcase className="h-6 w-6 sm:h-7 sm:w-7" />
-                Organizations
-              </h1>
-              <p className="text-muted-foreground mt-2 text-sm sm:text-md">
-                Manage organizations and their settings
-              </p>
-            </div>
+          <Section variant="default" banded container className="animate-fade-in">
+            <PageHeader
+              title="Organizations"
+              subtitle="Manage organizations and their settings"
+            />
+          </Section>
 
+          <Section container className="animate-fade-in">
             <OrganizationsTable
               organizations={organizations}
               isLoading={isLoading}
@@ -97,7 +95,7 @@ export default function Organizations() {
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
-          </div>
+          </Section>
         </div>
       </PermissionGate>
     </AuthGate>

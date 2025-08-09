@@ -10,7 +10,7 @@ const Index = () => {
   return (
     <AuthGate>
       <div className="min-h-screen bg-background">
-        <div className="container mx-auto py-token-xl px-token-lg">
+        <Section container className="py-token-xl animate-fade-in">
           <div className="text-center mb-token-xl">
             <h1 className="text-4xl font-bold tracking-tight">
               Welcome to Your Platform

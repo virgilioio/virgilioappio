@@ -17,6 +17,7 @@ import { useOrganizationProgress } from '@/hooks/useOrganizationProgress'
 import { useAuth } from '@/contexts/AuthContext'
 import { Briefcase } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
+import { Section } from '@/components/layout/Section'
 
 export default function Jobs() {
   const navigate = useNavigate()
@@ -106,16 +107,18 @@ export default function Jobs() {
         }
       >
         <div className="min-h-screen bg-background">
-          <div className="container mx-auto py-6 sm:py-8 lg:py-12 px-4 sm:px-6 lg:px-8">
-            <PageHeader title="Jobs" subtitle="Manage job postings and track hiring progress" className="animate-fade-in">
+          <Section variant="default" banded container className="animate-fade-in">
+            <PageHeader title="Jobs" subtitle="Manage job postings and track hiring progress">
               {/* Extra note for workspace owners without create permission */}
               {permissions.isWorkspaceOwner && !permissions.canCreateJobs && (
-                <p className="text-sm text-muted-foreground mt-2">
+                <p className="text-sm text-text-secondary mt-2">
                   Note: To create new jobs, please submit a job request instead.
                 </p>
               )}
             </PageHeader>
+          </Section>
 
+          <Section container className="animate-fade-in">
             <JobsTable
               jobs={jobs}
               isLoading={isLoading}
@@ -172,7 +175,7 @@ export default function Jobs() {
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
-          </div>
+          </Section>
         </div>
       </PermissionGate>
     </AuthGate>

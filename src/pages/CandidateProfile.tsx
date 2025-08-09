@@ -520,13 +520,14 @@ export default function CandidateProfile() {
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-3">
-                      <Button onClick={handleEdit} className="w-full gap-sm h-[44px]">
+                      <Button onClick={handleEdit} className="w-full gap-sm" size="lg">
                         <Edit className="h-4 w-4" />
                         Edit Candidate
                       </Button>
                       <Button 
                         onClick={() => setIsOfferLetterDialogOpen(true)} 
-                        className="w-full gap-sm h-[44px]"
+                        className="w-full gap-sm"
+                        size="lg"
                         variant="outline"
                       >
                         <FileText className="h-4 w-4" />
@@ -534,7 +535,8 @@ export default function CandidateProfile() {
                       </Button>
                       <Button 
                         onClick={() => setIsScheduleDialogOpen(true)} 
-                        className="w-full gap-sm h-[44px]"
+                        className="w-full gap-sm"
+                        size="lg"
                         variant="outline"
                       >
                         <Clock className="h-4 w-4" />

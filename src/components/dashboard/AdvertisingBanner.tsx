@@ -33,25 +33,24 @@ export function AdvertisingBanner() {
 
   return (
     <Card 
-      className="border-0 text-white" 
-      style={{ backgroundColor: '#0d0d09' }}
+      className="border-0 bg-surface-tertiary text-text-primary"
     >
       <CardHeader className="pb-3">
-        <CardTitle className="text-4xl font-medium text-white">
+        <CardTitle className="text-4xl font-medium">
           {adTitle}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <SafeHtml 
           content={adBody}
-          className="text-sm text-white/90 leading-relaxed prose prose-sm max-w-none [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:my-2 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0"
+          className="text-sm text-text-secondary leading-relaxed prose prose-sm max-w-none [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:my-2 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0"
         />
         {adButtonText && (
           <div className="flex justify-start">
             <Button
               onClick={handleButtonClick}
-              className="font-medium text-black hover:bg-[#fffead]/90"
-              style={{ backgroundColor: '#fffead' }}
+              variant="secondary"
+              className="font-medium"
             >
               {adButtonText}
             </Button>

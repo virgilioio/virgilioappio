@@ -347,7 +347,7 @@ export default function JobDetail() {
         )}
 
         {!isMobile && (
-          <div className="mb-2">
+          <div className="mb-2 animate-fade-in">
             <PageHeader title={job.title} compact />
           </div>
         )}

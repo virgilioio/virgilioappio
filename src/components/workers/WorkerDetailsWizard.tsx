@@ -247,7 +247,7 @@ export function WorkerDetailsWizard({
               <div
                 key={step.number}
                 className={`flex items-start gap-3 p-2 rounded-md transition-all duration-300 ${
-                  isCurrent ? 'bg-[#d7c5fb] border border-[#c9b3f7]' : ''
+                  isCurrent ? 'bg-accent/20 border border-accent/40' : ''
                 }`}
               >
                 <div
@@ -255,7 +255,7 @@ export function WorkerDetailsWizard({
                     isCompleted
                       ? 'bg-primary text-primary-foreground'
                       : isCurrent
-                      ? 'bg-[#9b7df7] text-white animate-pulse'
+                      ? 'bg-accent text-accent-foreground animate-pulse'
                       : 'bg-muted text-muted-foreground'
                   }`}
                 >
@@ -265,7 +265,7 @@ export function WorkerDetailsWizard({
                   <p
                     className={`text-sm font-medium transition-colors duration-300 ${
                       isCurrent
-                        ? 'text-[#7c3aed]'
+                        ? 'text-primary'
                         : isCompleted
                         ? 'text-foreground'
                         : 'text-muted-foreground'
@@ -276,7 +276,7 @@ export function WorkerDetailsWizard({
                   <p
                     className={`text-xs transition-colors duration-300 ${
                       isCurrent
-                        ? 'text-[#7c3aed]/80'
+                        ? 'text-primary/80'
                         : isCompleted
                         ? 'text-muted-foreground'
                         : 'text-muted-foreground/70'

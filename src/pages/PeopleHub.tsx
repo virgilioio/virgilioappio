@@ -10,6 +10,8 @@ import {
   ArrowLeft,
   DollarSign
 } from 'lucide-react'
+import { PageHeader } from '@/components/layout/PageHeader'
+import { Section } from '@/components/layout/Section'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { PermissionGate } from '@/components/auth/PermissionGate'
@@ -128,10 +130,9 @@ function PeopleHubContent() {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col">
-        <div className="container mx-auto py-6 sm:py-8 lg:py-12 px-4 sm:px-6 lg:px-8">
-          <div className="mb-6 sm:mb-8 lg:mb-12">
-            {isWorkerProfile ? (
-              // Worker Profile Header - Just Back Button
+        <Section variant="default" banded container className="animate-fade-in">
+          {isWorkerProfile ? (
+            <div className="flex items-center">
               <Button 
                 variant="outline" 
                 size="sm" 
@@ -141,29 +142,23 @@ function PeopleHubContent() {
                 <ArrowLeft className="h-4 w-4" />
                 Back to People
               </Button>
-            ) : (
-              // Regular Section Headers
-              (() => {
-                const currentItem = sidebarItems.find(item => isExactMatch(item.href))
-                const Icon = currentItem?.icon || Search
-                let title = currentItem?.label || 'People Hub'
-                if (title === 'Dashboard') title = 'People Dashboard'
-                
-                return (
-                  <>
-                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
-                      <Icon className="h-6 w-6 sm:h-7 sm:w-7" />
-                      {title}
-                    </h1>
-                    <p className="text-muted-foreground mt-2 text-sm sm:text-md">
-                      {currentItem?.description || 'Comprehensive talent management and sourcing platform'}
-                    </p>
-                  </>
-                )
-              })()
-            )}
-          </div>
-        
+            </div>
+          ) : (
+            (() => {
+              const currentItem = sidebarItems.find(item => isExactMatch(item.href))
+              let title = currentItem?.label || 'People Hub'
+              if (title === 'Dashboard') title = 'People Dashboard'
+              return (
+                <PageHeader
+                  title={title}
+                  subtitle={currentItem?.description || 'Comprehensive talent management and sourcing platform'}
+                />
+              )
+            })()
+          )}
+        </Section>
+
+        <Section container className="animate-fade-in">
           <div className="flex-1">
             <Routes>
               <Route path="/" element={<PeopleHubOverview />} />
@@ -174,7 +169,7 @@ function PeopleHubContent() {
               <Route path="/*" element={<Outlet />} />
             </Routes>
           </div>
-        </div>
+        </Section>
       </div>
     </div>
   )

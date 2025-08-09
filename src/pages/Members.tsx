@@ -7,7 +7,8 @@ import { MembersTable } from '@/components/members/MembersTable'
 import { MemberForm } from '@/components/members/MemberForm'
 import { UserDeletionDialog } from '@/components/organizations/UserDeletionDialog'
 import { useMembers, Member } from '@/hooks/useMembers'
-import { Users } from 'lucide-react'
+import { PageHeader } from '@/components/layout/PageHeader'
+import { Section } from '@/components/layout/Section'
 
 export default function Members() {
   const [isFormOpen, setIsFormOpen] = useState(false)
@@ -81,17 +82,14 @@ export default function Members() {
     <AuthGate>
       <PermissionGate permission="canManageMembers">
         <div className="min-h-screen bg-background">
-          <div className="container mx-auto py-6 sm:py-8 lg:py-12 px-4 sm:px-6 lg:px-8">
-            <div className="mb-6 sm:mb-8 lg:mb-12">
-              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
-                <Users className="h-6 w-6 sm:h-7 sm:w-7" />
-                Team Members
-              </h1>
-              <p className="text-muted-foreground mt-2 text-sm sm:text-md">
-                Manage team members and their roles within your organization
-              </p>
-            </div>
+          <Section variant="default" banded container className="animate-fade-in">
+            <PageHeader
+              title="Team Members"
+              subtitle="Manage team members and their roles within your organization"
+            />
+          </Section>
 
+          <Section container className="animate-fade-in">
             <MembersTable
               members={members}
               isLoading={isLoading}
@@ -133,7 +131,7 @@ export default function Members() {
               userToDelete={userToDelete}
               onUserDeleted={handleUserDeleted}
             />
-          </div>
+          </Section>
         </div>
       </PermissionGate>
     </AuthGate>

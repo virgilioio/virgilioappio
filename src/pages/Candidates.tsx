@@ -78,7 +78,7 @@ export default function Candidates() {
     <AuthGate>
       <PermissionGate permission="canViewCandidates">
         <div className="min-h-screen bg-background">
-          <Section variant="default" banded container className="animate-fade-in">
+          <Section variant="default" banded container className="animate-fade-in" role="region" aria-label="Candidates header">
             <PageHeader
               title="All Candidates"
               subtitle="Manage all candidates in your talent database. Use sync to import existing job candidates."
@@ -96,7 +96,7 @@ export default function Candidates() {
             </PageHeader>
           </Section>
 
-          <Section container className="animate-fade-in">
+          <Section container className="animate-fade-in" role="region" aria-label="Candidates table">
             <IndependentCandidateTable
               candidates={candidates}
               isLoading={isLoading}

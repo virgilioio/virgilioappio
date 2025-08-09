@@ -24,7 +24,7 @@ export default function Dashboard() {
   
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto py-6 sm:py-8 lg:py-12 px-4 sm:px-6 lg:px-8">
+      <Section container className="py-6 sm:py-8 lg:py-12 animate-fade-in">
         <InvoiceFilterProvider>
           <div className="space-y-6">
             <WelcomeHeader profile={profile} isLoading={isLoading} />

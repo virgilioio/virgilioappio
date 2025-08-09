@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/layout/PageHeader'
+import { Section } from '@/components/layout/Section'
 import { DepartmentTable } from '@/components/departments/DepartmentTable'
 import { DepartmentForm } from '@/components/departments/DepartmentForm'
 import { useDepartments } from '@/hooks/useDepartments'
@@ -38,28 +39,32 @@ export default function Departments() {
   }
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      <PageHeader
-        title="Departments"
-        subtitle="Manage organizational departments and their structure"
-      >
-        {canManageDepartments && (
-          <Button onClick={() => setShowCreateForm(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Department
-          </Button>
-        )}
-      </PageHeader>
+    <>
+      <Section variant="default" banded container className="animate-fade-in">
+        <PageHeader
+          title="Departments"
+          subtitle="Manage organizational departments and their structure"
+        >
+          {canManageDepartments && (
+            <Button onClick={() => setShowCreateForm(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Department
+            </Button>
+          )}
+        </PageHeader>
+      </Section>
 
-      <DepartmentTable 
-        departments={departments} 
-        isLoading={isLoading}
-      />
+      <Section container className="animate-fade-in">
+        <DepartmentTable 
+          departments={departments} 
+          isLoading={isLoading}
+        />
 
-      <DepartmentForm
-        open={showCreateForm}
-        onOpenChange={setShowCreateForm}
-      />
-    </div>
+        <DepartmentForm
+          open={showCreateForm}
+          onOpenChange={setShowCreateForm}
+        />
+      </Section>
+    </>
   )
 }
