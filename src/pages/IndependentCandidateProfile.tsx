@@ -4,8 +4,9 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { ArrowLeft, MapPin, DollarSign, Calendar, User, Edit, Zap, Linkedin, FileText, ExternalLink, Mail, Phone, ChevronLeft, ChevronRight } from 'lucide-react'
+import { ArrowLeft, MapPin, DollarSign, Calendar, User, Edit, Zap, FileText, ExternalLink, Mail, Phone, ChevronLeft, ChevronRight } from 'lucide-react'
 import { AuthGate } from '@/components/auth/AuthGate'
+import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
 import { PermissionGate } from '@/components/auth/PermissionGate'
 import { AppContainer } from '@/components/layout/AppContainer'
 import { useIndependentCandidates, IndependentCandidate } from '@/hooks/useIndependentCandidates'
@@ -211,7 +212,7 @@ export default function IndependentCandidateProfile() {
                           aria-label="Open LinkedIn profile"
                           title={candidate.linkedin_url ? "Open LinkedIn profile" : "No LinkedIn profile"}
                         >
-                          <Linkedin className="h-4 w-4" />
+                          <LinkedInFilled className="h-4 w-4" />
                         </Button>
                       </div>
                       <div className="mb-1">

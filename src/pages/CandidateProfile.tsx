@@ -6,8 +6,9 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { SafeHtml } from '@/components/ui/safe-html'
-import { ArrowLeft, MapPin, DollarSign, Calendar, User, Edit, Zap, Linkedin, FileText, MessageSquare, ChevronLeft, ChevronRight, Clock, Download } from 'lucide-react'
+import { ArrowLeft, MapPin, DollarSign, Calendar, User, Edit, Zap, FileText, MessageSquare, ChevronLeft, ChevronRight, Clock, Download } from 'lucide-react'
 import { AuthGate } from '@/components/auth/AuthGate'
+import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
 import { PermissionGate } from '@/components/auth/PermissionGate'
 import { JobAssignmentGuard } from '@/components/auth/JobAssignmentGuard'
 import { AppContainer } from '@/components/layout/AppContainer'
@@ -303,7 +304,7 @@ export default function CandidateProfile() {
                             aria-label="Open LinkedIn profile"
                             title={candidate.linkedin_url ? "Open LinkedIn profile" : "No LinkedIn profile"}
                           >
-                            <Linkedin className="h-4 w-4" />
+                            <LinkedInFilled className="h-4 w-4" />
                           </Button>
                         </div>
                         <div className="mt-1">

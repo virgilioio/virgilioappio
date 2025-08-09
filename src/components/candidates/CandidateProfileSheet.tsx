@@ -11,8 +11,9 @@ import { CandidateUrls } from '@/components/candidates/CandidateUrls'
 import { CandidateWorkExperienceComponent } from '@/components/candidates/CandidateWorkExperience'
 import { CandidateEducationComponent } from '@/components/candidates/CandidateEducationComponent'
 import { useCandidateEnrichment } from '@/hooks/useCandidateEnrichment'
-import { Edit, FileText, Clock, Download, Linkedin, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
 import { Link } from 'react-router-dom'
 import { SafeHtml } from '@/components/ui/safe-html'
 import { getSkillColor } from '@/utils/skillColors'
@@ -148,7 +149,7 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
                     aria-label="Open LinkedIn profile"
                     title={candidate?.linkedin_url ? 'Open LinkedIn profile' : 'No LinkedIn profile'}
                   >
-                    <Linkedin className="h-4 w-4" />
+                    <LinkedInFilled className="h-4 w-4" />
                   </Button>
                 </SheetTitle>
                 {(job?.title || candidate?.status) && (
