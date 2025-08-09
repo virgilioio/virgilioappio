@@ -43,7 +43,7 @@ const VALIDATION_RULE_TYPES = [
   { value: 'max_value', label: 'Maximum Value', description: 'Maximum numeric value' }
 ]
 
-type FieldType = 'text' | 'number' | 'email' | 'textarea' | 'select' | 'checkbox' | 'date' | 'file'
+type FieldType = 'text' | 'number' | 'email' | 'textarea' | 'select' | 'checkbox' | 'date' | 'file' | 'url'
 
 const FIELD_TYPES = [
   { value: 'text', label: 'Text' },

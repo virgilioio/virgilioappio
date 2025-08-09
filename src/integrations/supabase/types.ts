@@ -3283,6 +3283,7 @@ export type Database = {
         | "checkbox"
         | "date"
         | "file"
+        | "url"
       job_level:
         | "L1 - Specialists"
         | "L2 - Managers"
@@ -3515,6 +3516,7 @@ export const Constants = {
         "checkbox",
         "date",
         "file",
+        "url",
       ],
       job_level: [
         "L1 - Specialists",

@@ -17,6 +17,7 @@ const FIELD_TYPES: { value: FieldType; label: string }[] = [
   { value: 'text', label: 'Text' },
   { value: 'number', label: 'Number' },
   { value: 'email', label: 'Email' },
+  { value: 'url', label: 'URL' },
   { value: 'textarea', label: 'Textarea' },
   { value: 'select', label: 'Select' },
   { value: 'checkbox', label: 'Checkbox' },
@@ -150,7 +151,7 @@ export function ApplicationFieldForm({ field, onClose, onSaved }: { field?: Appl
 
   const FILE_VALIDATION_APPLIES = formData.field_type === 'file'
   const SHOW_SELECT_OPTIONS = formData.field_type === 'select'
-  const SHOW_VALIDATION = ['text', 'textarea', 'number'].includes(formData.field_type)
+  const SHOW_VALIDATION = ['text', 'textarea', 'number', 'url'].includes(formData.field_type)
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -307,7 +308,7 @@ export function ApplicationFieldForm({ field, onClose, onSaved }: { field?: Appl
         </Card>
       )}
 
-      {['text', 'textarea', 'number'].includes(formData.field_type) && (
+      {['text', 'textarea', 'number', 'url'].includes(formData.field_type) && (
         <Card>
           <CardHeader>
             <CardTitle className="text-sm flex items-center justify-between">

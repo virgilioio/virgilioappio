@@ -18,7 +18,7 @@ export interface CountryField {
   country_id: string
   field_name: string
   field_label: string
-  field_type: 'text' | 'number' | 'email' | 'textarea' | 'select' | 'checkbox' | 'date' | 'file'
+  field_type: 'text' | 'number' | 'email' | 'textarea' | 'select' | 'checkbox' | 'date' | 'file' | 'url'
   is_required: boolean
   display_order: number
   placeholder_text?: string

@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 import { useToast } from '@/hooks/use-toast'
 
-export type FieldType = 'text' | 'number' | 'email' | 'textarea' | 'select' | 'checkbox' | 'date' | 'file'
+export type FieldType = 'text' | 'number' | 'email' | 'textarea' | 'select' | 'checkbox' | 'date' | 'file' | 'url'
 
 export interface ApplicationField {
   id: string

@@ -32,7 +32,7 @@ interface ValidationRule {
   message: string
 }
 
-type FieldType = 'text' | 'number' | 'email' | 'textarea' | 'select' | 'checkbox' | 'date' | 'file'
+type FieldType = 'text' | 'number' | 'email' | 'textarea' | 'select' | 'checkbox' | 'date' | 'file' | 'url'
 
 const FIELD_TYPES = [
   { value: 'text', label: 'Text' },

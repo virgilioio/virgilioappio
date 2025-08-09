@@ -7,7 +7,7 @@ export interface OfferTemplateField {
   template_id: string
   field_name: string
   field_label: string
-  field_type: 'text' | 'textarea' | 'select' | 'date' | 'number' | 'file' | 'email' | 'checkbox'
+  field_type: 'text' | 'textarea' | 'select' | 'date' | 'number' | 'file' | 'email' | 'checkbox' | 'url'
   is_required: boolean
   display_order: number
   placeholder_text?: string
