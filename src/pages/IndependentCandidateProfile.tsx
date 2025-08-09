@@ -20,6 +20,7 @@ import { getSkillColor } from '@/utils/skillColors'
 import { SafeHtml } from '@/components/ui/safe-html'
 import AddToJobPipelineDialog from '@/components/candidates/AddToJobPipelineDialog'
 import CandidateNameCard from '@/components/candidates/CandidateNameCard'
+import { supabase } from '@/integrations/supabase/client'
 
 export default function IndependentCandidateProfile() {
   const { candidateId } = useParams<{ candidateId: string }>()
@@ -27,6 +28,7 @@ export default function IndependentCandidateProfile() {
   const [candidate, setCandidate] = useState<IndependentCandidate | null>(null)
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<'overview' | 'details' | 'experience' | 'education'>('overview')
+  const [isHired, setIsHired] = useState(false)
   
   const { 
     candidates, 
@@ -73,6 +75,19 @@ export default function IndependentCandidateProfile() {
       await fetchCandidateEnrichmentData(candidateId)
     }
   }
+
+  useEffect(() => {
+    if (!candidate) return
+    ;(async () => {
+      const { data } = await supabase
+        .from('job_candidate_associations')
+        .select('id')
+        .eq('candidate_id', candidate.id)
+        .eq('status', 'hired')
+        .limit(1)
+      setIsHired(!!(data && data.length > 0))
+    })()
+  }, [candidate])
 
   const handleEdit = () => {
     setIsFormOpen(true)

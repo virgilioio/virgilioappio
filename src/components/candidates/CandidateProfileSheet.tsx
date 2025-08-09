@@ -21,6 +21,7 @@ import { generateCandidatePdf } from '@/utils/candidatePdfGenerator'
 import { CandidateForm } from '@/components/candidates/CandidateForm'
 import { toast } from '@/hooks/use-toast'
 import CandidateNameCard from '@/components/candidates/CandidateNameCard'
+import { usePipelineActions } from '@/hooks/usePipelineActions'
 
 interface CandidateProfileSheetProps {
   open: boolean
@@ -44,6 +45,9 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
   const { workExperience, education, fetchCandidateEnrichmentData } = useCandidateEnrichment()
   const [editOpen, setEditOpen] = useState(false)
   const [editLoading, setEditLoading] = useState(false)
+  const { updateAssociationStatus } = usePipelineActions()
+  const [associationId, setAssociationId] = useState<string | null>(null)
+  const [associationStatus, setAssociationStatus] = useState<'active' | 'rejected' | 'hired' | null>(null)
 
   useEffect(() => {
     const load = async () => {
@@ -107,9 +111,21 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
         setJobCandidate(null)
         setJobCandidateId(null)
       }
+
+      // Resolve association for status/actions
+      if (candidateId) {
+        const { data: assoc } = await supabase
+          .from('job_candidate_associations')
+          .select('id, status')
+          .eq('job_id', jobId)
+          .eq('candidate_id', candidateId)
+          .maybeSingle()
+        setAssociationId(assoc?.id ?? null)
+        setAssociationStatus((assoc?.status as any) ?? null)
+      }
     }
     loadRelated()
-  }, [open, candidate, jobId])
+  }, [open, candidate, jobId, candidateId])
 
   const handleUpdateCandidate = async (candidateData: any) => {
     if (!jobCandidateId) return

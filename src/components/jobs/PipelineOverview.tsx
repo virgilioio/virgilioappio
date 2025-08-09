@@ -57,11 +57,13 @@ const isLastPriorityStage = (stage: JobStage) => {
 
 export function PipelineOverview({ jobId, showHeader = true, externalScroll = false, viewMode: controlledView, onViewModeChange, selectionMode: controlledSelectionMode, onSelectionModeChange, onSelectedIdsChange, refreshToken }: PipelineOverviewProps) {
   const { loadHiringPlanInstances, isLoadingPlan } = useJobHiringPlan()
-  const { fetchAssociationsForJob, moveAssociationToStage } = usePipelineActions()
+  const { fetchAssociationsForJob, moveAssociationToStage, updateAssociationStatus } = usePipelineActions()
 
   const [stageOptions, setStageOptions] = useState<{ jhsId: string; stage: JobStage; position: number }[]>([])
   const [isLoadingCandidates, setIsLoadingCandidates] = useState(false)
   const [byStage, setByStage] = useState<Record<string, PipelineAssociation[]>>({})
+  const [rejected, setRejected] = useState<PipelineAssociation[]>([])
+  const [hired, setHired] = useState<PipelineAssociation[]>([])
   const [panelOpen, setPanelOpen] = useState(false)
   const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null)
 
@@ -217,13 +219,18 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
     setIsLoadingCandidates(true)
     try {
       const associations = await fetchAssociationsForJob(jobId)
+      const active = associations.filter(a => a.status !== 'rejected' && a.status !== 'hired')
+      const rejectedList = associations.filter(a => a.status === 'rejected')
+      const hiredList = associations.filter(a => a.status === 'hired')
       const grouped: Record<string, PipelineAssociation[]> = {}
-      associations.forEach(a => {
+      active.forEach(a => {
         if (!a.current_stage_id) return
         if (!grouped[a.current_stage_id]) grouped[a.current_stage_id] = []
         grouped[a.current_stage_id].push(a)
       })
       setByStage(grouped)
+      setRejected(rejectedList)
+      setHired(hiredList)
     } catch (e) {
       console.error('Failed to load pipeline:', e)
       toast({
