@@ -3107,6 +3107,10 @@ export type Database = {
         Args: { enable_cron: boolean }
         Returns: string
       }
+      reassign_candidates_for_stage: {
+        Args: { stage_id_param: string }
+        Returns: undefined
+      }
       safe_delete_user: {
         Args: { target_user_id: string }
         Returns: {
@@ -3114,6 +3118,10 @@ export type Database = {
           message: string
           affected_tables: Json
         }[]
+      }
+      soft_delete_job_stage: {
+        Args: { stage_id_param: string }
+        Returns: undefined
       }
       sync_job_candidates_to_independent: {
         Args: Record<PropertyKey, never>

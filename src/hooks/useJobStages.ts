@@ -129,23 +129,25 @@ export function useJobStages() {
   const deleteStage = async (id: string) => {
     setIsDeleting(true)
     try {
-      const { error } = await supabase
-        .from('job_stages')
-        .update({ is_active: false })
-        .eq('id', id)
-
+      console.log('[useJobStages.deleteStage] soft deleting stage via RPC:', id)
+      const { error } = await supabase.rpc('soft_delete_job_stage', { stage_id_param: id })
       if (error) throw error
 
+      // Optimistically remove from local list
       setStages(prev => prev.filter(stage => stage.id !== id))
+
       toast({
-        title: 'Success',
-        description: 'Job stage deleted successfully'
+        title: 'Stage deleted',
+        description: 'Candidates were reassigned to the previous stage or moved to Application Review.'
       })
-    } catch (error) {
-      console.error('Error deleting job stage:', error)
+    } catch (error: any) {
+      console.error('Error deleting job stage via RPC:', error)
+      const message = error?.message || 'Failed to delete job stage'
       toast({
         title: 'Error',
-        description: 'Failed to delete job stage',
+        description: message.includes('Only platform administrators')
+          ? 'Only platform administrators can delete job stages.'
+          : message,
         variant: 'destructive'
       })
       throw error
