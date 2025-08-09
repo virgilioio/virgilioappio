@@ -55,9 +55,9 @@ export function FormField({
   }, [children, fieldId, error, ariaDescribedBy])
 
   return (
-    <div className={cn("space-y-1", className)}>
+    <div className={cn("space-y-1.5", className)}>
       {label && (
-        <Label htmlFor={fieldId} className="flex items-center gap-1 text-sm font-medium mb-1">
+        <Label htmlFor={fieldId} className="flex items-center gap-1">
           {label}
           {required && <span className="text-destructive">*</span>}
         </Label>
@@ -66,17 +66,17 @@ export function FormField({
         {clonedChild}
       </div>
       {error && (
-        <p id={errorId} className="text-xs text-destructive font-medium">
+        <p id={errorId} role="alert" aria-live="assertive" className="text-xs text-destructive font-medium">
           {error}
         </p>
       )}
       {success && !error && (
-        <p className="text-xs text-success font-medium">
+        <p aria-live="polite" className="text-xs text-success font-medium">
           {success}
         </p>
       )}
       {helpText && !error && !success && (
-        <p id={helpId} className="text-xs text-muted-foreground">
+        <p id={helpId} className="text-xs text-text-tertiary">
           {helpText}
         </p>
       )}
