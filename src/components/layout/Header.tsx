@@ -127,9 +127,10 @@ export function Header() {
                 key={item.href}
                 to={item.href}
                 onClick={() => setIsSheetOpen(false)}
-                className={`flex items-center gap-2 px-2 py-1 text-sm font-medium rounded-md transition-colors ${
+                aria-current={isActive ? 'page' : undefined}
+                className={`relative flex items-center gap-2 px-2 py-1 text-sm font-medium rounded-md transition-colors ${
                   isActive
-                    ? 'bg-primary text-primary-foreground'
+                    ? 'bg-primary text-primary-foreground after:absolute after:bottom-0 after:left-2 after:right-2 after:h-0.5 after:bg-primary-foreground/80 after:rounded-full'
                     : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                 }`}
               >
@@ -167,9 +168,10 @@ export function Header() {
                   <Link
                     key={item.href}
                     to={item.href}
-                    className={`flex items-center gap-2 px-2 py-1 text-sm font-medium rounded-md transition-colors ${
+                    aria-current={isActive ? 'page' : undefined}
+                    className={`relative flex items-center gap-2 px-2 py-1 text-sm font-medium rounded-md transition-colors ${
                       isActive
-                        ? 'bg-primary text-primary-foreground'
+                        ? 'bg-primary text-primary-foreground after:absolute after:bottom-0 after:left-2 after:right-2 after:h-0.5 after:bg-primary-foreground/80 after:rounded-full'
                         : 'text-muted-foreground hover:text-foreground hover:bg-muted'
                     }`}
                   >

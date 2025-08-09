@@ -13,7 +13,7 @@ const Card = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "rounded-brand bg-surface-primary text-card-foreground transition-all duration-200 ease-out max-w-none",
+      "rounded-brand bg-surface-primary text-card-foreground transition-all duration-200 ease-out max-w-none border border-border",
       hover && "hover:-translate-y-0.5",
       interactive && "cursor-pointer hover:-translate-y-1",
       className
