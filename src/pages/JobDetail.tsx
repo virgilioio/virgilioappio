@@ -484,9 +484,22 @@ export default function JobDetail() {
                   onEdit={handleEditJob}
                 />
               </TabsContent>
-              <TabsContent value="pipeline">
-                <div className="h-[calc(100svh-16rem)] sm:h-[calc(100svh-14rem)] min-h-0">
-                  <Card className="h-full w-full overflow-hidden flex flex-col">
+               <TabsContent value="pipeline">
+                 <div className="h-[calc(100svh-16rem)] sm:h-[calc(100svh-14rem)] min-h-0">
+                   <Card className="mb-4">
+                     <CardHeader className="py-3">
+                       <Tabs value={pipelineSectionTab} onValueChange={(v) => setPipelineSectionTab(v as any)}>
+                         <TabsList className="w-full h-14 p-2 gap-2">
+                           <TabsTrigger className="flex-1 h-10 md:h-12 text-base md:text-lg" value="application">Application Review</TabsTrigger>
+                           <TabsTrigger className="flex-1 h-10 md:h-12 text-base md:text-lg" value="recruiting">Recruiting Process</TabsTrigger>
+                           <TabsTrigger className="flex-1 h-10 md:h-12 text-base md:text-lg" value="offers">Job Offers</TabsTrigger>
+                           <TabsTrigger className="flex-1 h-10 md:h-12 text-base md:text-lg" value="hired">Hired Candidates</TabsTrigger>
+                           <TabsTrigger className="flex-1 h-10 md:h-12 text-base md:text-lg" value="rejected">Rejected Candidates</TabsTrigger>
+                         </TabsList>
+                       </Tabs>
+                     </CardHeader>
+                   </Card>
+                   <Card className="h-full w-full overflow-hidden flex flex-col">
                     <CardHeader className="sticky top-0 z-10 bg-surface-primary/80 backdrop-blur supports-[backdrop-filter]:bg-surface-primary/60 border-b border-border">
                       <div className="flex items-start justify-between">
                         <div>
@@ -538,19 +551,8 @@ export default function JobDetail() {
                             </ToggleGroup>
                           </TooltipProvider>
                         </div>
-                        </div>
-                        <div className="mt-4">
-                          <Tabs value={pipelineSectionTab} onValueChange={(v) => setPipelineSectionTab(v as any)}>
-                            <TabsList className="flex flex-wrap gap-2">
-                              <TabsTrigger value="application">Application Review</TabsTrigger>
-                              <TabsTrigger value="recruiting">Recruiting Process</TabsTrigger>
-                              <TabsTrigger value="offers">Job Offers</TabsTrigger>
-                              <TabsTrigger value="hired">Hired Candidates</TabsTrigger>
-                              <TabsTrigger value="rejected">Rejected Candidates</TabsTrigger>
-                            </TabsList>
-                          </Tabs>
-                        </div>
-                      </CardHeader>
+                          </div>
+                        </CardHeader>
                       <CardContent className="p-0 h-0 flex-1">
                         <ScrollArea className="h-full w-full scrollbar-black">
                           {pipelineSectionTab === 'recruiting' ? (
@@ -663,6 +665,19 @@ export default function JobDetail() {
                 </TabsContent>
                 <TabsContent value="pipeline">
                   <div className="h-[calc(100svh-14rem)] min-h-0">
+                    <Card className="mb-4">
+                      <CardHeader className="py-3">
+                        <Tabs value={pipelineSectionTab} onValueChange={(v) => setPipelineSectionTab(v as any)}>
+                          <TabsList className="w-full h-14 p-2 gap-2">
+                            <TabsTrigger className="flex-1 h-10 md:h-12 text-base md:text-lg" value="application">Application Review</TabsTrigger>
+                            <TabsTrigger className="flex-1 h-10 md:h-12 text-base md:text-lg" value="recruiting">Recruiting Process</TabsTrigger>
+                            <TabsTrigger className="flex-1 h-10 md:h-12 text-base md:text-lg" value="offers">Job Offers</TabsTrigger>
+                            <TabsTrigger className="flex-1 h-10 md:h-12 text-base md:text-lg" value="hired">Hired Candidates</TabsTrigger>
+                            <TabsTrigger className="flex-1 h-10 md:h-12 text-base md:text-lg" value="rejected">Rejected Candidates</TabsTrigger>
+                          </TabsList>
+                        </Tabs>
+                      </CardHeader>
+                    </Card>
                     <Card className="h-full w-full overflow-hidden flex flex-col">
                       <CardHeader className="sticky top-0 z-10 bg-surface-primary/80 backdrop-blur supports-[backdrop-filter]:bg-surface-primary/60 border-b border-border">
                         <div className="flex items-start justify-between">
@@ -715,17 +730,6 @@ export default function JobDetail() {
                               </ToggleGroup>
                             </TooltipProvider>
                           </div>
-                        </div>
-                        <div className="mt-4">
-                          <Tabs value={pipelineSectionTab} onValueChange={(v) => setPipelineSectionTab(v as any)}>
-                            <TabsList className="flex flex-wrap gap-2">
-                              <TabsTrigger value="application">Application Review</TabsTrigger>
-                              <TabsTrigger value="recruiting">Recruiting Process</TabsTrigger>
-                              <TabsTrigger value="offers">Job Offers</TabsTrigger>
-                              <TabsTrigger value="hired">Hired Candidates</TabsTrigger>
-                              <TabsTrigger value="rejected">Rejected Candidates</TabsTrigger>
-                            </TabsList>
-                          </Tabs>
                         </div>
                       </CardHeader>
                       <CardContent className="p-0 h-0 flex-1">
