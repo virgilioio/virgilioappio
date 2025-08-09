@@ -149,6 +149,12 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
     }
   }
 
+  const handleSetStatus = async (s: 'active' | 'rejected' | 'hired') => {
+    if (!associationId) return
+    await updateAssociationStatus(associationId, s)
+    setAssociationStatus(s)
+  }
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-[80vw] sm:max-w-none h-full p-0">
@@ -194,7 +200,7 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
                     <CandidateNameCard
                       name={candidate.candidate_name}
                       linkedinUrl={candidate.linkedin_url}
-                      badgeText={job?.title ?? candidate.status}
+                      badgeText={`${(job?.title ?? '')}${associationStatus && associationStatus !== 'active' ? ' • ' + (associationStatus[0].toUpperCase() + associationStatus.slice(1)) : ''}` || candidate.status}
                       tabs={[
                         { value: 'job', label: 'Job Application', Icon: FileText },
                         { value: 'resume', label: 'Resume', Icon: FileText },
@@ -350,24 +356,47 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
                         <CardTitle className="text-lg">Quick Actions</CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-3">
-                        {jobCandidateId ? (
+                        {associationId || jobCandidateId ? (
                           <>
                             <Button className="w-full gap-sm" onClick={() => setEditOpen(true)}>
                               <Edit className="h-4 w-4" />
                               Edit Candidate
                             </Button>
-                            <Link to={`/jobs/${jobId}/candidates/${jobCandidateId}`}>
-                              <Button variant="outline" className="w-full gap-sm">
-                                <FileText className="h-4 w-4" />
-                                Create Offer Letter
-                              </Button>
-                            </Link>
-                            <Link to={`/jobs/${jobId}/candidates/${jobCandidateId}`}>
-                              <Button variant="outline" className="w-full gap-sm">
-                                <Clock className="h-4 w-4" />
-                                Schedule
-                              </Button>
-                            </Link>
+                            {associationId && (
+                              <div className="grid grid-cols-3 gap-2">
+                                {associationStatus !== 'rejected' && (
+                                  <Button variant="destructive" className="w-full gap-sm" onClick={() => handleSetStatus('rejected')}>
+                                    Reject
+                                  </Button>
+                                )}
+                                {associationStatus !== 'hired' && (
+                                  <Button className="w-full gap-sm" onClick={() => handleSetStatus('hired')}>
+                                    Mark Hired
+                                  </Button>
+                                )}
+                                {associationStatus && associationStatus !== 'active' && (
+                                  <Button variant="outline" className="w-full gap-sm" onClick={() => handleSetStatus('active')}>
+                                    Restore
+                                  </Button>
+                                )}
+                              </div>
+                            )}
+                            {jobCandidateId && (
+                              <>
+                                <Link to={`/jobs/${jobId}/candidates/${jobCandidateId}`}>
+                                  <Button variant="outline" className="w-full gap-sm">
+                                    <FileText className="h-4 w-4" />
+                                    Create Offer Letter
+                                  </Button>
+                                </Link>
+                                <Link to={`/jobs/${jobId}/candidates/${jobCandidateId}`}>
+                                  <Button variant="outline" className="w-full gap-sm">
+                                    <Clock className="h-4 w-4" />
+                                    Schedule
+                                  </Button>
+                                </Link>
+                              </>
+                            )}
                           </>
                         ) : (
                           <div className="text-sm text-text-secondary">No job candidate record linked for actions.</div>
