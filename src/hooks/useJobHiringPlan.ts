@@ -152,7 +152,7 @@ export function useJobHiringPlan() {
           toInsert.push({
             job_id: jobId,
             stage_id,
-            position: idx + 1,
+            position: 1000 + (idx + 1), // temporary high position to avoid unique constraint collisions
             created_by: userId ?? null,
           })
         }
@@ -251,8 +251,17 @@ export function useJobHiringPlan() {
           .in('id', removedIds)
         if (delErr) throw delErr
       }
-
-
+      // 4) Normalize positions for newly inserted rows to their final positions
+      for (const ins of inserted) {
+        const finalPos = finalPositions.get(ins.stage_id)
+        if (finalPos && ins.position !== finalPos) {
+          const { error: updInsErr } = await supabase
+            .from('job_hiring_stages')
+            .update({ position: finalPos })
+            .eq('id', ins.id)
+          if (updInsErr) throw updInsErr
+        }
+      }
 
       toast({
         title: 'Hiring Plan Saved',
