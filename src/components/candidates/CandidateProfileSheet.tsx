@@ -11,7 +11,7 @@ import { CandidateUrls } from '@/components/candidates/CandidateUrls'
 import { CandidateWorkExperienceComponent } from '@/components/candidates/CandidateWorkExperience'
 import { CandidateEducationComponent } from '@/components/candidates/CandidateEducationComponent'
 import { useCandidateEnrichment } from '@/hooks/useCandidateEnrichment'
-import { ExternalLink, Edit, FileText, Clock, Download, Linkedin, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Edit, FileText, Clock, Download, Linkedin, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Link } from 'react-router-dom'
 import { SafeHtml } from '@/components/ui/safe-html'
@@ -142,7 +142,7 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
                   <span>{candidate?.candidate_name || 'Candidate'}</span>
                   <Button
                     size="icon"
-                    className="bg-foreground text-background hover:bg-foreground"
+                    className="aspect-square bg-foreground text-background hover:bg-foreground"
                     onClick={() => candidate?.linkedin_url && window.open(candidate.linkedin_url, '_blank')}
                     disabled={!candidate?.linkedin_url}
                     aria-label="Open LinkedIn profile"
@@ -198,25 +198,6 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
                         <div className="flex items-center justify-end">
                           
                           <div className="flex items-center gap-sm">
-                            {candidate.linkedin_url ? (
-                              <Button 
-                                variant="info"
-                                className="gap-sm"
-                                onClick={() => window.open(candidate.linkedin_url!, '_blank')}
-                              >
-                                <Linkedin className="h-4 w-4" />
-                                View LinkedIn
-                              </Button>
-                            ) : (
-                              <Button 
-                                variant="info"
-                                className="gap-sm"
-                                disabled
-                              >
-                                <Linkedin className="h-4 w-4" />
-                                No LinkedIn
-                              </Button>
-                            )}
                             <Button
                               variant="outline"
                               size="icon"
@@ -366,11 +347,6 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
                           </>
                         ) : (
                           <div className="text-sm text-text-secondary">No job candidate record linked for actions.</div>
-                        )}
-                        {candidate.linkedin_url && (
-                          <Button variant="outline" className="w-full justify-start gap-sm" onClick={() => window.open(candidate.linkedin_url!, '_blank')}>
-                            <ExternalLink className="h-4 w-4" /> View LinkedIn
-                          </Button>
                         )}
                       </CardContent>
                     </Card>

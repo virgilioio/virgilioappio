@@ -205,7 +205,7 @@ export default function IndependentCandidateProfile() {
                         <h1 className="text-2xl font-semibold text-text-primary">{candidate.candidate_name}</h1>
                         <Button
                           size="icon"
-                          className="bg-foreground text-background hover:bg-foreground"
+                          className="aspect-square bg-foreground text-background hover:bg-foreground"
                           onClick={() => candidate.linkedin_url && window.open(candidate.linkedin_url, '_blank')}
                           disabled={!candidate.linkedin_url}
                           aria-label="Open LinkedIn profile"

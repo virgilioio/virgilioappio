@@ -297,7 +297,7 @@ export default function CandidateProfile() {
                           <h1 className="text-2xl font-semibold text-text-primary">{candidate.candidate_name}</h1>
                           <Button
                             size="icon"
-                            className="bg-foreground text-background hover:bg-foreground"
+                            className="aspect-square bg-foreground text-background hover:bg-foreground"
                             onClick={() => candidate.linkedin_url && window.open(candidate.linkedin_url, '_blank')}
                             disabled={!candidate.linkedin_url}
                             aria-label="Open LinkedIn profile"
@@ -306,11 +306,11 @@ export default function CandidateProfile() {
                             <Linkedin className="h-4 w-4" />
                           </Button>
                         </div>
-                        {job && (
-                          <p className="text-text-secondary">
-                            Candidate for <span className="font-medium text-text-primary">{job.title}</span>
-                          </p>
-                        )}
+                        <div className="mt-1">
+                          {job?.title && (
+                            <Badge variant="secondary">{job.title}</Badge>
+                          )}
+                        </div>
                       </div>
                       
                       <div className="flex items-center gap-sm">
