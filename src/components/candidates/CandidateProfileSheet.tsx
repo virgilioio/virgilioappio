@@ -137,18 +137,30 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
         <div className="flex h-full flex-col">
           <SheetHeader className="p-6 border-b">
             <div className="flex items-center justify-between">
-              <SheetTitle className="text-xl flex items-center gap-3">
-                <span>{candidate?.candidate_name || 'Candidate'}</span>
-                {job?.title ? (
-                  <Badge variant="secondary">{job.title}</Badge>
-                ) : candidate?.status ? (
-                  <Badge variant="secondary">{candidate.status}</Badge>
-                ) : null}
-              </SheetTitle>
+              <div>
+                <SheetTitle className="text-xl flex items-center gap-3">
+                  <span>{candidate?.candidate_name || 'Candidate'}</span>
+                  <Button
+                    size="icon"
+                    className="bg-foreground text-background hover:bg-foreground"
+                    onClick={() => candidate?.linkedin_url && window.open(candidate.linkedin_url, '_blank')}
+                    disabled={!candidate?.linkedin_url}
+                    aria-label="Open LinkedIn profile"
+                    title={candidate?.linkedin_url ? 'Open LinkedIn profile' : 'No LinkedIn profile'}
+                  >
+                    <Linkedin className="h-4 w-4" />
+                  </Button>
+                </SheetTitle>
+                {(job?.title || candidate?.status) && (
+                  <div className="mt-1">
+                    <Badge variant="secondary">{job?.title ?? candidate?.status}</Badge>
+                  </div>
+                )}
+              </div>
               <div className="flex items-center gap-sm">
                 <Button
                   variant="ghost"
-                   className="gap-sm text-text-secondary hover:text-text-primary"
+                  className="gap-sm text-text-secondary hover:text-text-primary"
                   onClick={onNavigatePrev}
                   disabled={!hasPrev}
                   title="Previous candidate"
@@ -168,16 +180,6 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
                 </Button>
               </div>
             </div>
-            {candidate?.linkedin_url && (
-              <a
-                href={candidate.linkedin_url}
-                target="_blank"
-                rel="noreferrer"
-                className="text-primary text-sm inline-flex items-center gap-1"
-              >
-                <ExternalLink className="w-4 h-4" /> View LinkedIn
-              </a>
-            )}
           </SheetHeader>
 
           <div className="flex-1 overflow-y-auto p-6">

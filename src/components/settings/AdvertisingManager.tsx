@@ -17,7 +17,8 @@ export function AdvertisingManager() {
     title: '',
     body: '',
     buttonText: '',
-    buttonUrl: ''
+    buttonUrl: '',
+    bgColor: '#0d0d09'
   })
   const [hasChanges, setHasChanges] = useState(false)
 
@@ -28,8 +29,9 @@ export function AdvertisingManager() {
     const body = getSetting('ad_banner_body')?.setting_value || ''
     const buttonText = getSetting('ad_banner_button_text')?.setting_value || ''
     const buttonUrl = getSetting('ad_banner_button_url')?.setting_value || ''
+    const bgColor = getSetting('ad_banner_bg_color')?.setting_value || '#0d0d09'
 
-    setFormData({ enabled, title, body, buttonText, buttonUrl })
+    setFormData({ enabled, title, body, buttonText, buttonUrl, bgColor })
   }, [getSetting])
 
   const handleChange = (field: string, value: string | boolean) => {
@@ -43,7 +45,8 @@ export function AdvertisingManager() {
       updateSetting('ad_banner_title', formData.title),
       updateSetting('ad_banner_body', formData.body),
       updateSetting('ad_banner_button_text', formData.buttonText),
-      updateSetting('ad_banner_button_url', formData.buttonUrl)
+      updateSetting('ad_banner_button_url', formData.buttonUrl),
+      updateSetting('ad_banner_bg_color', formData.bgColor)
     ]
 
     const results = await Promise.all(updates)
@@ -139,6 +142,32 @@ export function AdvertisingManager() {
           </p>
         </div>
 
+        {/* Background Color */}
+        <div className="space-y-2">
+          <Label htmlFor="ad-bg-color" className="text-sm font-medium">
+            Banner Background Color
+          </Label>
+          <div className="flex items-center gap-3">
+            <input
+              type="color"
+              id="ad-bg-color"
+              value={formData.bgColor}
+              onChange={(e) => handleChange('bgColor', e.target.value)}
+              disabled={!formData.enabled}
+              className="h-9 w-9 rounded-md border border-border"
+            />
+            <Input
+              value={formData.bgColor}
+              onChange={(e) => handleChange('bgColor', e.target.value)}
+              placeholder="#0d0d09"
+              disabled={!formData.enabled}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Choose a background color for the banner.
+          </p>
+        </div>
+
         {/* Preview */}
         {formData.enabled && formData.title && formData.body && (
           <div className="space-y-2">
@@ -148,7 +177,7 @@ export function AdvertisingManager() {
             </Label>
             <div 
               className="p-4 rounded-lg border text-white"
-              style={{ backgroundColor: '#0d0d09' }}
+              style={{ backgroundColor: formData.bgColor }}
             >
               <h3 className="text-lg font-medium text-white mb-2">
                 {formData.title}

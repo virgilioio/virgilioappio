@@ -201,8 +201,20 @@ export default function IndependentCandidateProfile() {
                 <CardContent className="p-layout-md">
                   <div className="flex items-start justify-between mb-6">
                     <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
+                      <div className="flex items-center gap-2 mb-2">
                         <h1 className="text-2xl font-semibold text-text-primary">{candidate.candidate_name}</h1>
+                        <Button
+                          size="icon"
+                          className="bg-foreground text-background hover:bg-foreground"
+                          onClick={() => candidate.linkedin_url && window.open(candidate.linkedin_url, '_blank')}
+                          disabled={!candidate.linkedin_url}
+                          aria-label="Open LinkedIn profile"
+                          title={candidate.linkedin_url ? "Open LinkedIn profile" : "No LinkedIn profile"}
+                        >
+                          <Linkedin className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <div className="mb-1">
                         <Badge className={`text-xs ${getStatusColor(candidate.status)}`}>
                           {candidate.status}
                         </Badge>
@@ -213,26 +225,6 @@ export default function IndependentCandidateProfile() {
                     </div>
                     
                     <div className="flex items-center gap-sm">
-                      {candidate.linkedin_url ? (
-                        <Button 
-                          variant="info"
-                          className="gap-sm"
-                          onClick={() => window.open(candidate.linkedin_url!, '_blank')}
-                        >
-                          <Linkedin className="h-4 w-4" />
-                          View LinkedIn
-                        </Button>
-                      ) : (
-                        <Button 
-                          variant="outline"
-                          className="gap-sm"
-                          disabled
-                        >
-                          <Linkedin className="h-4 w-4" />
-                          No LinkedIn
-                        </Button>
-                      )}
-
                       <AddToJobPipelineDialog candidateId={candidate.id} />
                     </div>
                   </div>

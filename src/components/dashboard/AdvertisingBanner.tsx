@@ -19,6 +19,7 @@ export function AdvertisingBanner() {
   const adButtonText = getSetting('ad_banner_button_text')?.setting_value
   const adButtonUrl = getSetting('ad_banner_button_url')?.setting_value
   const adEnabled = getSetting('ad_banner_enabled')?.setting_value === 'true'
+  const adBgColor = getSetting('ad_banner_bg_color')?.setting_value || undefined
 
   // Don't show if disabled or missing required content
   if (!adEnabled || !adTitle || !adBody) {
@@ -33,7 +34,8 @@ export function AdvertisingBanner() {
 
   return (
     <Card 
-      className="border-0 bg-surface-tertiary text-text-primary"
+      className="border-0 text-text-primary"
+      style={{ backgroundColor: adBgColor }}
     >
       <CardHeader className="pb-3">
         <CardTitle className="text-4xl font-medium">
