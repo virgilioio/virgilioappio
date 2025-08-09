@@ -21,6 +21,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { ReadOnlyOverlay } from '@/components/ui/read-only-overlay'
 interface JobStage {
   id: string
   stage_name: string
@@ -285,76 +286,72 @@ export function HiringPlanTab({ jobId, readOnly = false }: HiringPlanTabProps) {
         </p>
       </div>
 
-      {readOnly && (
-        <div className="rounded-md border border-border/50 bg-surface-secondary px-3 py-2 text-sm text-text-secondary">
-          View-only: Clients can see the hiring plan but cannot edit it.
-        </div>
-      )}
-
-      <div className={readOnly ? "space-y-4 opacity-60 pointer-events-none" : "space-y-4"}>
-        <div>
-          <h4 className="text-base font-medium text-text-primary mb-3">Current Hiring Stages</h4>
-          {selectedStages.length === 0 ? (
-            <Card>
-              <CardContent className="py-8 text-center">
-                <p className="text-text-secondary">No stages in the hiring plan</p>
-              </CardContent>
-            </Card>
-          ) : (
-            <DndContext 
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragStart={handleDragStart}
-              onDragEnd={handleDragEnd}
-            >
-              <SortableContext 
-                items={selectedStages.filter(stage => !stage.is_default).map(stage => stage.id)}
-                strategy={verticalListSortingStrategy}
+      <ReadOnlyOverlay active={readOnly} message="Clients can view the hiring plan but cannot edit it.">
+        <div className="space-y-4">
+          <div>
+            <h4 className="text-base font-medium text-text-primary mb-3">Current Hiring Stages</h4>
+            {selectedStages.length === 0 ? (
+              <Card>
+                <CardContent className="py-8 text-center">
+                  <p className="text-text-secondary">No stages in the hiring plan</p>
+                </CardContent>
+              </Card>
+            ) : (
+              <DndContext 
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragStart={handleDragStart}
+                onDragEnd={handleDragEnd}
               >
-                <div className="space-y-3">
-                  {selectedStages.map((stage, index) => (
-                    <DraggableStageItem
-                      key={stage.id}
-                      stage={stage}
-                      index={index}
-                      onRemove={handleRemoveStageRequest}
-                      isDragging={activeId === stage.id}
+                <SortableContext 
+                  items={selectedStages.filter(stage => !stage.is_default).map(stage => stage.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <div className="space-y-3">
+                    {selectedStages.map((stage, index) => (
+                      <DraggableStageItem
+                        key={stage.id}
+                        stage={stage}
+                        index={index}
+                        onRemove={handleRemoveStageRequest}
+                        isDragging={activeId === stage.id}
+                      />
+                    ))}
+                  </div>
+                </SortableContext>
+              </DndContext>
+            )}
+          </div>
+
+          {availableStages.length > 0 && (
+            <>
+              <Separator />
+              <div>
+                <h4 className="text-base font-medium text-text-primary mb-3">Add Additional Stages</h4>
+                <div className="flex items-center gap-3">
+                  <div className="flex-1">
+                    <SearchableSelect
+                      value=""
+                      onValueChange={handleAddStage}
+                      options={availableStages.map(stage => ({
+                        value: stage.id,
+                        label: stage.stage_name,
+                        description: stage.stage_description
+                      }))}
+                      placeholder="Select a stage to add..."
+                      searchPlaceholder="Search stages..."
                     />
-                  ))}
+                  </div>
+                  <Plus className="h-4 w-4 text-text-secondary" />
                 </div>
-              </SortableContext>
-            </DndContext>
+                <p className="text-xs text-text-secondary mt-2">
+                  Available stages from the Stages Library
+                </p>
+              </div>
+            </>
           )}
         </div>
-
-        {availableStages.length > 0 && (
-          <>
-            <Separator />
-            <div>
-              <h4 className="text-base font-medium text-text-primary mb-3">Add Additional Stages</h4>
-              <div className="flex items-center gap-3">
-                <div className="flex-1">
-                  <SearchableSelect
-                    value=""
-                    onValueChange={handleAddStage}
-                    options={availableStages.map(stage => ({
-                      value: stage.id,
-                      label: stage.stage_name,
-                      description: stage.stage_description
-                    }))}
-                    placeholder="Select a stage to add..."
-                    searchPlaceholder="Search stages..."
-                  />
-                </div>
-                <Plus className="h-4 w-4 text-text-secondary" />
-              </div>
-              <p className="text-xs text-text-secondary mt-2">
-                Available stages from the Stages Library
-              </p>
-            </div>
-          </>
-        )}
-      </div>
+      </ReadOnlyOverlay>
 
       <div className="pt-4 border-t border-border/50">
         <div className="flex justify-between items-center">

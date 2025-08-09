@@ -1,5 +1,5 @@
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate, useLocation } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -31,6 +31,8 @@ import { VirgilioLogo } from '@/components/VirgilioLogo'
 import { AdminModeIndicator } from '@/components/admin/AdminModeIndicator'
 import { PlanetIcon } from '@/components/icons/PlanetIcon'
 
+import { cn } from '@/lib/utils'
+
 export function Header() {
   const { user, logout } = useAuth()
   const { 
@@ -44,11 +46,20 @@ export function Header() {
   const navigate = useNavigate()
   const location = useLocation()
   const [isSheetOpen, setIsSheetOpen] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
 
   const handleLogout = async () => {
     await logout()
     navigate('/auth')
   }
+
+  // Header scroll shadow
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 2)
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
 
   const navigationItems = [
     {
@@ -132,7 +143,10 @@ export function Header() {
   )
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-white border-b border-border">
+    <header className={cn(
+      "fixed top-0 left-0 right-0 z-50 border-b border-border transition-shadow supports-[backdrop-filter]:bg-surface-primary/60 bg-surface-primary/90 backdrop-blur",
+      scrolled && "shadow-sm"
+    )}>
       <div className="flex items-center justify-between px-md py-2 sm:px-lg">
         {/* Logo and Desktop Navigation */}
         <div className="flex items-center gap-6">

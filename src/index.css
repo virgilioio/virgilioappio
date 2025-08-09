@@ -62,7 +62,7 @@
     --pastel-orange: 25 100% 94%;
     --pastel-orange-foreground: 20 91% 35%;
 
-    --border: 0 0% 100%; /* Remove border visibility */
+    --border: 0 0% 88%; /* Subtle hairline border for separation */
     --input: 0 0% 100%; /* Remove input border visibility */
     --ring: 60 100% 85%;
 
@@ -209,7 +209,7 @@
     --pastel-orange: 20 91% 35%;
     --pastel-orange-foreground: 25 100% 94%;
 
-    --border: 0 0% 0% / 0; /* Remove border visibility in dark mode */
+    --border: 215 20% 30%; /* Subtle hairline border in dark mode */
     --input: 0 0% 0% / 0; /* Remove input border visibility in dark mode */
     --ring: 60 100% 85%;
 
@@ -257,10 +257,6 @@
 }
 
 @layer base {
-  * {
-    @apply border-0; /* Remove all borders by default */
-  }
-
   body {
     @apply bg-background text-foreground font-inter;
     font-size: var(--font-size-base);

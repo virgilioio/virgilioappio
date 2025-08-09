@@ -21,9 +21,9 @@ export function PageHeader({
       compact ? "pb-md" : "pb-lg",
       className
     )}>
-      <div className="flex items-start justify-between">
+       <div className="flex items-start justify-between">
         <div className="min-w-0 flex-1">
-          <h1 className="font-bold text-text-primary">
+          <h1 className="font-bold text-text-primary text-2xl md:text-3xl">
             {title}
           </h1>
           {subtitle && (
