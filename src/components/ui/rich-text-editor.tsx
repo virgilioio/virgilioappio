@@ -19,6 +19,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { saveTextCursorPosition, restoreTextCursorPosition, type TextCursorPosition } from '@/lib/cursorUtils'
+import { sanitizeHtml } from '@/utils/htmlSanitizer'
 
 interface RichTextEditorProps {
   value: string
@@ -192,16 +193,13 @@ export function RichTextEditor({
 
   const handlePaste = useCallback((e: React.ClipboardEvent<HTMLDivElement>) => {
     e.preventDefault()
-    
+
     const clipboardData = e.clipboardData
     const htmlData = clipboardData.getData('text/html')
     const textData = clipboardData.getData('text/plain')
-    
-    // Import sanitization function
-    const { sanitizeHtml } = require('@/utils/htmlSanitizer')
-    
+
     let contentToInsert = ''
-    
+
     if (htmlData) {
       // Sanitize and normalize HTML content
       contentToInsert = sanitizeHtml(htmlData)
@@ -210,34 +208,39 @@ export function RichTextEditor({
       const lines = textData.split(/\n+/).filter(line => line.trim())
       contentToInsert = lines.map(line => `<p>${line.trim()}</p>`).join('')
     }
-    
+
     if (contentToInsert && editorRef.current) {
       // Save cursor position
       cursorPositionRef.current = saveTextCursorPosition(editorRef.current)
-      
+
       // Insert the normalized content at cursor position
       const selection = window.getSelection()
       if (selection && selection.rangeCount > 0) {
         const range = selection.getRangeAt(0)
         range.deleteContents()
-        
+
         const tempDiv = document.createElement('div')
         tempDiv.innerHTML = contentToInsert
-        
+
         // Insert each node from the temp div
         const nodes = Array.from(tempDiv.childNodes)
         nodes.forEach(node => {
-          range.insertNode(node.cloneNode(true))
-          range.setStartAfter(node.cloneNode(true))
+          const toInsert = node.nodeType === Node.TEXT_NODE
+            ? document.createTextNode(node.textContent || '')
+            : (node.cloneNode(true) as Node)
+          range.insertNode(toInsert)
+          // Move caret after inserted node
+          range.setStartAfter(toInsert)
+          range.collapse(true)
         })
-        
+
         selection.removeAllRanges()
         selection.addRange(range)
       } else {
         // Fallback: append to end
         editorRef.current.innerHTML += contentToInsert
       }
-      
+
       // Update content
       updateContent(editorRef.current.innerHTML)
     }
