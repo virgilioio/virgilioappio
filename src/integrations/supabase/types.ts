@@ -848,7 +848,7 @@ export type Database = {
       field_validation_rules: {
         Row: {
           application_field_id: string | null
-          country_field_id: string
+          country_field_id: string | null
           created_at: string
           error_message: string
           id: string
@@ -858,7 +858,7 @@ export type Database = {
         }
         Insert: {
           application_field_id?: string | null
-          country_field_id: string
+          country_field_id?: string | null
           created_at?: string
           error_message: string
           id?: string
@@ -868,7 +868,7 @@ export type Database = {
         }
         Update: {
           application_field_id?: string | null
-          country_field_id?: string
+          country_field_id?: string | null
           created_at?: string
           error_message?: string
           id?: string
