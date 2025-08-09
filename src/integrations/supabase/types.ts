@@ -53,6 +53,54 @@ export type Database = {
         }
         Relationships: []
       }
+      application_fields: {
+        Row: {
+          accepted_file_types: string | null
+          created_at: string
+          created_by: string | null
+          display_order: number
+          field_label: string
+          field_name: string
+          field_type: Database["public"]["Enums"]["field_type"]
+          help_text: string | null
+          id: string
+          is_required: boolean
+          max_file_size_mb: number | null
+          placeholder_text: string | null
+          updated_at: string
+        }
+        Insert: {
+          accepted_file_types?: string | null
+          created_at?: string
+          created_by?: string | null
+          display_order?: number
+          field_label: string
+          field_name: string
+          field_type?: Database["public"]["Enums"]["field_type"]
+          help_text?: string | null
+          id?: string
+          is_required?: boolean
+          max_file_size_mb?: number | null
+          placeholder_text?: string | null
+          updated_at?: string
+        }
+        Update: {
+          accepted_file_types?: string | null
+          created_at?: string
+          created_by?: string | null
+          display_order?: number
+          field_label?: string
+          field_name?: string
+          field_type?: Database["public"]["Enums"]["field_type"]
+          help_text?: string | null
+          id?: string
+          is_required?: boolean
+          max_file_size_mb?: number | null
+          placeholder_text?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       audit_logs: {
         Row: {
           action: string
@@ -744,6 +792,7 @@ export type Database = {
       }
       field_select_options: {
         Row: {
+          application_field_id: string | null
           country_field_id: string | null
           created_at: string
           display_order: number
@@ -753,6 +802,7 @@ export type Database = {
           option_value: string
         }
         Insert: {
+          application_field_id?: string | null
           country_field_id?: string | null
           created_at?: string
           display_order?: number
@@ -762,6 +812,7 @@ export type Database = {
           option_value: string
         }
         Update: {
+          application_field_id?: string | null
           country_field_id?: string | null
           created_at?: string
           display_order?: number
@@ -771,6 +822,13 @@ export type Database = {
           option_value?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "field_select_options_application_field_id_fkey"
+            columns: ["application_field_id"]
+            isOneToOne: false
+            referencedRelation: "application_fields"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "field_select_options_country_field_id_fkey"
             columns: ["country_field_id"]
@@ -789,6 +847,7 @@ export type Database = {
       }
       field_validation_rules: {
         Row: {
+          application_field_id: string | null
           country_field_id: string
           created_at: string
           error_message: string
@@ -798,6 +857,7 @@ export type Database = {
           rule_value: string
         }
         Insert: {
+          application_field_id?: string | null
           country_field_id: string
           created_at?: string
           error_message: string
@@ -807,6 +867,7 @@ export type Database = {
           rule_value: string
         }
         Update: {
+          application_field_id?: string | null
           country_field_id?: string
           created_at?: string
           error_message?: string
@@ -816,6 +877,13 @@ export type Database = {
           rule_value?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "field_validation_rules_application_field_id_fkey"
+            columns: ["application_field_id"]
+            isOneToOne: false
+            referencedRelation: "application_fields"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "field_validation_rules_country_field_id_fkey"
             columns: ["country_field_id"]
@@ -3058,6 +3126,16 @@ export type Database = {
       get_organization_default_currency: {
         Args: { org_id: string }
         Returns: string
+      }
+      get_stage_deletion_impact: {
+        Args: { stage_id_param: string }
+        Returns: {
+          total_candidates_affected: number
+          candidates_to_prior_stage_count: number
+          candidates_to_application_review_count: number
+          total_jobs_affected: number
+          jobs_where_stage_is_first_count: number
+        }[]
       }
       get_user_member_data: {
         Args: Record<PropertyKey, never>
