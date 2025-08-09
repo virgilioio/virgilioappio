@@ -138,6 +138,12 @@ export default function JobDetail() {
     })
   }, [candidates, inPipelineKeys])
 
+  // Derived job stats
+  const offerCount = useMemo(() => associations.filter(a => a.current_stage_id && stageMap[a.current_stage_id!]?.type === 'offer' && a.status !== 'rejected').length, [associations, stageMap])
+  const hiredCount = useMemo(() => associations.filter(a => a.status === 'hired').length, [associations])
+  const rejectedCount = useMemo(() => associations.filter(a => a.status === 'rejected').length, [associations])
+  const activeCount = useMemo(() => associations.filter(a => a.status === 'active').length, [associations])
+
   // Load stage map for this job
   useEffect(() => {
     if (!id) return
@@ -449,7 +455,7 @@ export default function JobDetail() {
             // Mobile: Tabs
             <>
                 <TabsList className="grid w-full grid-cols-3 mb-6">
-                  <TabsTrigger value="candidates">Application Review</TabsTrigger>
+                  <TabsTrigger value="candidates">Job Dashboard</TabsTrigger>
                   <TabsTrigger value="pipeline">Pipeline</TabsTrigger>
                   <TabsTrigger value="job-setup">Setup</TabsTrigger>
                 </TabsList>
@@ -461,15 +467,32 @@ export default function JobDetail() {
                     candidates={applicationReviewCandidates}
                     jobCurrency={job.currency || 'USD'}
                   />
-                  <CandidateTable
-                    candidates={applicationReviewCandidates}
-                    isLoading={candidatesLoading}
-                    onEdit={handleEditCandidate}
-                    onDelete={handleDeleteCandidate}
-                    onAddNew={() => setShowAddCandidate(true)}
-                    markCandidateAsViewed={markCandidateAsViewed}
-                    isCandidateNewForUser={isCandidateNewForUser}
-                  />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <div className="text-sm text-text-secondary">Active Candidates</div>
+                        <div className="text-3xl font-semibold text-text-primary">{activeCount}</div>
+                      </CardHeader>
+                    </Card>
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <div className="text-sm text-text-secondary">Offers</div>
+                        <div className="text-3xl font-semibold text-text-primary">{offerCount}</div>
+                      </CardHeader>
+                    </Card>
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <div className="text-sm text-text-secondary">Hired</div>
+                        <div className="text-3xl font-semibold text-text-primary">{hiredCount}</div>
+                      </CardHeader>
+                    </Card>
+                    <Card>
+                      <CardHeader className="pb-2">
+                        <div className="text-sm text-text-secondary">Rejected</div>
+                        <div className="text-3xl font-semibold text-text-primary">{rejectedCount}</div>
+                      </CardHeader>
+                    </Card>
+                  </div>
                 </div>
               </TabsContent>
               
@@ -571,15 +594,32 @@ export default function JobDetail() {
                             </div>
                           ) : pipelineSectionTab === 'application' ? (
                             <div className="w-full p-layout-md">
-                              <CandidateTable
-                                candidates={applicationReviewCandidates}
-                                isLoading={candidatesLoading}
-                                onEdit={handleEditCandidate}
-                                onDelete={handleDeleteCandidate}
-                                onAddNew={() => setShowAddCandidate(true)}
-                                markCandidateAsViewed={markCandidateAsViewed}
-                                isCandidateNewForUser={isCandidateNewForUser}
-                              />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <Card>
+                        <CardHeader className="pb-2">
+                          <div className="text-sm text-text-secondary">Active Candidates</div>
+                          <div className="text-3xl font-semibold text-text-primary">{activeCount}</div>
+                        </CardHeader>
+                      </Card>
+                      <Card>
+                        <CardHeader className="pb-2">
+                          <div className="text-sm text-text-secondary">Offers</div>
+                          <div className="text-3xl font-semibold text-text-primary">{offerCount}</div>
+                        </CardHeader>
+                      </Card>
+                      <Card>
+                        <CardHeader className="pb-2">
+                          <div className="text-sm text-text-secondary">Hired</div>
+                          <div className="text-3xl font-semibold text-text-primary">{hiredCount}</div>
+                        </CardHeader>
+                      </Card>
+                      <Card>
+                        <CardHeader className="pb-2">
+                          <div className="text-sm text-text-secondary">Rejected</div>
+                          <div className="text-3xl font-semibold text-text-primary">{rejectedCount}</div>
+                        </CardHeader>
+                      </Card>
+                    </div>
                             </div>
                           ) : pipelineSectionTab === 'offers' ? (
                             <div className="w-full p-layout-md">
@@ -641,15 +681,32 @@ export default function JobDetail() {
                       candidates={applicationReviewCandidates}
                       jobCurrency={job.currency || 'USD'}
                     />
-                    <CandidateTable
-                      candidates={applicationReviewCandidates}
-                      isLoading={candidatesLoading}
-                      onEdit={handleEditCandidate}
-                      onDelete={handleDeleteCandidate}
-                      onAddNew={() => setShowAddCandidate(true)}
-                      markCandidateAsViewed={markCandidateAsViewed}
-                      isCandidateNewForUser={isCandidateNewForUser}
-                    />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <Card>
+                        <CardHeader className="pb-2">
+                          <div className="text-sm text-text-secondary">Active Candidates</div>
+                          <div className="text-3xl font-semibold text-text-primary">{activeCount}</div>
+                        </CardHeader>
+                      </Card>
+                      <Card>
+                        <CardHeader className="pb-2">
+                          <div className="text-sm text-text-secondary">Offers</div>
+                          <div className="text-3xl font-semibold text-text-primary">{offerCount}</div>
+                        </CardHeader>
+                      </Card>
+                      <Card>
+                        <CardHeader className="pb-2">
+                          <div className="text-sm text-text-secondary">Hired</div>
+                          <div className="text-3xl font-semibold text-text-primary">{hiredCount}</div>
+                        </CardHeader>
+                      </Card>
+                      <Card>
+                        <CardHeader className="pb-2">
+                          <div className="text-sm text-text-secondary">Rejected</div>
+                          <div className="text-3xl font-semibold text-text-primary">{rejectedCount}</div>
+                        </CardHeader>
+                      </Card>
+                    </div>
                   </div>
                 </TabsContent>
                 <TabsContent value="job-setup">

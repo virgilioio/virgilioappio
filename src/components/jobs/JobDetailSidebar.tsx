@@ -1,6 +1,6 @@
 
 import { cn } from '@/lib/utils'
-import { Users, UserCheck } from 'lucide-react'
+import { LayoutDashboard, UserCheck } from 'lucide-react'
 
 interface JobDetailSidebarProps {
   currentTab: string
@@ -18,9 +18,9 @@ export function JobDetailSidebar({
   const tabs = [
     {
       id: 'candidates',
-      label: 'Application Review',
-      icon: Users,
-      description: 'Review new applications'
+      label: 'Job Dashboard',
+      icon: LayoutDashboard,
+      description: 'Overview & stats'
     }
   ]
 
