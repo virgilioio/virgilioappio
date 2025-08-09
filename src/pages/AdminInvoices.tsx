@@ -1,4 +1,4 @@
-
+import { Section } from '@/components/layout/Section'
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Plus, Search, Filter, Calendar, Receipt } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -101,7 +101,7 @@ function AdminInvoicesContent() {
               </p>
             </CardContent>
           </Card>
-        </div>
+        </Section>
       </div>
     )
   }
@@ -296,7 +296,7 @@ function AdminInvoicesContent() {
             onOpenChange={setCreateModalOpen}
           />
         </div>
-      </div>
+      </Section>
     </div>
   )
 }

@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge'
 import { ListTodo } from 'lucide-react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Section } from '@/components/layout/Section'
+import { SafeHtml } from '@/components/ui/safe-html'
 
 export default function JobRequests() {
   const {

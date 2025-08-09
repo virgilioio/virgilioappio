@@ -11,6 +11,7 @@ import { InvoiceFilterProvider } from '@/utils/invoiceFilters'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { usePermissions } from '@/hooks/usePermissions'
 import { PermissionGate } from '@/components/auth/PermissionGate'
+import { Section } from '@/components/layout/Section'
 
 export default function Dashboard() {
   const { profile, isLoading } = useUserProfile()
@@ -87,7 +88,7 @@ export default function Dashboard() {
             )}
           </div>
         </InvoiceFilterProvider>
-      </div>
+      </Section>
     </div>
   )
 }

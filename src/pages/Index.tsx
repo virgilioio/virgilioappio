@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Building2, Users, Briefcase } from "lucide-react";
 import { AuthGate } from "@/components/auth/AuthGate";
 import { PermissionGate } from "@/components/auth/PermissionGate";
+import { Section } from '@/components/layout/Section'
 
 const Index = () => {
   return (
@@ -84,7 +85,7 @@ const Index = () => {
               </Card>
             </PermissionGate>
           </div>
-        </div>
+        </Section>
       </div>
     </AuthGate>
   );
