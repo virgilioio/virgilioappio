@@ -54,6 +54,18 @@ export default function JobDetail() {
   const [selectedCandidateIds, setSelectedCandidateIds] = useState<string[]>([])
   const [pipelineRefresh, setPipelineRefresh] = useState(0)
 
+  // Inner tabs for Pipeline section
+  const [pipelineSectionTab, setPipelineSectionTab] = useState<'application' | 'recruiting' | 'offers' | 'hired' | 'rejected'>('recruiting')
+
+  // Assocations and status-based lists
+  const { fetchAssociationsForJob } = usePipelineActions()
+  const [associations, setAssociations] = useState<PipelineAssociation[]>([])
+  const [stageMap, setStageMap] = useState<Record<string, { type: string; name: string }>>({})
+  const [offersCandidates, setOffersCandidates] = useState<any[]>([])
+  const [hiredCandidates, setHiredCandidates] = useState<any[]>([])
+  const [rejectedCandidates, setRejectedCandidates] = useState<any[]>([])
+  const [statusListsLoading, setStatusListsLoading] = useState(false)
+
   // Jobs hook for updating
   const { updateJob, isLoading: jobUpdateLoading } = useJobs()
 
@@ -126,6 +138,69 @@ export default function JobDetail() {
       return !inPipelineKeys.has(key)
     })
   }, [candidates, inPipelineKeys])
+
+  // Load stage map for this job
+  useEffect(() => {
+    if (!id) return
+    const load = async () => {
+      const { data, error } = await supabase
+        .from('job_hiring_stages')
+        .select('id, stage:job_stages(stage_type, stage_name)')
+        .eq('job_id', id)
+      if (!error && data) {
+        const m: Record<string, { type: string; name: string }> = {}
+        ;(data as any[]).forEach((row: any) => {
+          m[row.id] = { type: row.stage?.stage_type, name: row.stage?.stage_name }
+        })
+        setStageMap(m)
+      }
+    }
+    load()
+  }, [id])
+
+  // Load associations for status tabs
+  useEffect(() => {
+    if (!id) return
+    const load = async () => {
+      const list = await fetchAssociationsForJob(id)
+      setAssociations(list)
+    }
+    load()
+  }, [id, fetchAssociationsForJob, pipelineRefresh])
+
+  // Load candidate details for offers/hired/rejected
+  useEffect(() => {
+    const run = async () => {
+      if (!associations.length) {
+        setOffersCandidates([]); setHiredCandidates([]); setRejectedCandidates([]); return
+      }
+      const offerIds = associations
+        .filter(a => a.status !== 'rejected' && a.current_stage_id && stageMap[a.current_stage_id!]?.type === 'offer')
+        .map(a => a.candidate_id)
+      const hiredIds = associations.filter(a => a.status === 'hired').map(a => a.candidate_id)
+      const rejectedIds = associations.filter(a => a.status === 'rejected').map(a => a.candidate_id)
+      const allIds = Array.from(new Set([...offerIds, ...hiredIds, ...rejectedIds]))
+      if (allIds.length === 0) {
+        setOffersCandidates([]); setHiredCandidates([]); setRejectedCandidates([]); return
+      }
+      setStatusListsLoading(true)
+      const { data, error } = await supabase
+        .from('candidates')
+        .select('*')
+        .in('id', allIds)
+      if (error) {
+        console.error('Failed to load candidate details for status lists', error)
+        setStatusListsLoading(false)
+        return
+      }
+      const byId = new Map((data || []).map((c: any) => [c.id, c]))
+      setOffersCandidates(offerIds.map((id) => byId.get(id)).filter(Boolean))
+      setHiredCandidates(hiredIds.map((id) => byId.get(id)).filter(Boolean))
+      setRejectedCandidates(rejectedIds.map((id) => byId.get(id)).filter(Boolean))
+      setStatusListsLoading(false)
+    }
+    run()
+  }, [associations, stageMap])
 
   // Job query with improved error handling for assigned recruiters
   const { data: job, isLoading: jobLoading, error, refetch } = useQuery({
@@ -464,24 +539,85 @@ export default function JobDetail() {
                             </ToggleGroup>
                           </TooltipProvider>
                         </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="p-0 h-0 flex-1">
-                      <ScrollArea className="h-full w-full scrollbar-black">
-                        <div className={pipelineView === 'list' ? 'w-full p-layout-md' : 'w-fit p-layout-md'}>
-                          <PipelineOverview
-                            jobId={id!}
-                            showHeader={false}
-                            externalScroll
-                            viewMode={pipelineView}
-                            onViewModeChange={setPipelineView}
-                            selectionMode={selectionMode}
-                            onSelectionModeChange={setSelectionMode}
-                            onSelectedIdsChange={setSelectedCandidateIds}
-                            refreshToken={pipelineRefresh}
-                          />
                         </div>
-                      </ScrollArea>
+                        <div className="mt-4">
+                          <Tabs value={pipelineSectionTab} onValueChange={(v) => setPipelineSectionTab(v as any)}>
+                            <TabsList className="flex flex-wrap gap-2">
+                              <TabsTrigger value="application">Application Review</TabsTrigger>
+                              <TabsTrigger value="recruiting">Recruiting Process</TabsTrigger>
+                              <TabsTrigger value="offers">Job Offers</TabsTrigger>
+                              <TabsTrigger value="hired">Hired Candidates</TabsTrigger>
+                              <TabsTrigger value="rejected">Rejected Candidates</TabsTrigger>
+                            </TabsList>
+                          </Tabs>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="p-0 h-0 flex-1">
+                        <ScrollArea className="h-full w-full scrollbar-black">
+                          {pipelineSectionTab === 'recruiting' ? (
+                            <div className={pipelineView === 'list' ? 'w-full p-layout-md' : 'w-fit p-layout-md'}>
+                              <PipelineOverview
+                                jobId={id!}
+                                showHeader={false}
+                                externalScroll
+                                viewMode={pipelineView}
+                                onViewModeChange={setPipelineView}
+                                selectionMode={selectionMode}
+                                onSelectionModeChange={setSelectionMode}
+                                onSelectedIdsChange={setSelectedCandidateIds}
+                                refreshToken={pipelineRefresh}
+                              />
+                            </div>
+                          ) : pipelineSectionTab === 'application' ? (
+                            <div className="w-full p-layout-md">
+                              <CandidateTable
+                                candidates={applicationReviewCandidates}
+                                isLoading={candidatesLoading}
+                                onEdit={handleEditCandidate}
+                                onDelete={handleDeleteCandidate}
+                                onAddNew={() => setShowAddCandidate(true)}
+                                markCandidateAsViewed={markCandidateAsViewed}
+                                isCandidateNewForUser={isCandidateNewForUser}
+                              />
+                            </div>
+                          ) : pipelineSectionTab === 'offers' ? (
+                            <div className="w-full p-layout-md">
+                              <CandidateTable
+                                candidates={offersCandidates}
+                                isLoading={statusListsLoading}
+                                onEdit={handleEditCandidate}
+                                onDelete={handleDeleteCandidate}
+                                onAddNew={() => setShowAddCandidate(true)}
+                                markCandidateAsViewed={() => {}}
+                                isCandidateNewForUser={() => false}
+                              />
+                            </div>
+                          ) : pipelineSectionTab === 'hired' ? (
+                            <div className="w-full p-layout-md">
+                              <CandidateTable
+                                candidates={hiredCandidates}
+                                isLoading={statusListsLoading}
+                                onEdit={handleEditCandidate}
+                                onDelete={handleDeleteCandidate}
+                                onAddNew={() => setShowAddCandidate(true)}
+                                markCandidateAsViewed={() => {}}
+                                isCandidateNewForUser={() => false}
+                              />
+                            </div>
+                          ) : (
+                            <div className="w-full p-layout-md">
+                              <CandidateTable
+                                candidates={rejectedCandidates}
+                                isLoading={statusListsLoading}
+                                onEdit={handleEditCandidate}
+                                onDelete={handleDeleteCandidate}
+                                onAddNew={() => setShowAddCandidate(true)}
+                                markCandidateAsViewed={() => {}}
+                                isCandidateNewForUser={() => false}
+                              />
+                            </div>
+                          )}
+                        </ScrollArea>
                     </CardContent>
                   </Card>
                 </div>
