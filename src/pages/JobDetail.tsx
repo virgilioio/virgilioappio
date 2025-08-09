@@ -528,24 +528,28 @@ export default function JobDetail() {
                           <p className="text-sm text-text-secondary">Drag candidates across stages. Scroll horizontally to view more columns.</p>
                         </div>
                         <div className="flex items-center gap-2">
-                          {selectionMode && (
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              disabled={selectedCandidateIds.length === 0}
-                              onClick={handleRejectSelected}
-                            >
-                              Reject
-                            </Button>
+                          {pipelineSectionTab === 'recruiting' && (
+                            <>
+                              {selectionMode && (
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  disabled={selectedCandidateIds.length === 0}
+                                  onClick={handleRejectSelected}
+                                >
+                                  Reject
+                                </Button>
+                              )}
+                              <Button
+                                size="sm"
+                                variant={selectionMode ? 'secondary' : 'outline'}
+                                onClick={() => setSelectionMode((v) => !v)}
+                                aria-pressed={selectionMode}
+                              >
+                                Select
+                              </Button>
+                            </>
                           )}
-                          <Button
-                            size="sm"
-                            variant={selectionMode ? 'secondary' : 'outline'}
-                            onClick={() => setSelectionMode((v) => !v)}
-                            aria-pressed={selectionMode}
-                          >
-                            Select
-                          </Button>
                           <TooltipProvider delayDuration={200}>
                             <ToggleGroup
                               type="single"
@@ -743,24 +747,28 @@ export default function JobDetail() {
                             <p className="text-sm text-text-secondary">Drag candidates across stages. Scroll horizontally to view more columns.</p>
                           </div>
                           <div className="flex items-center gap-2">
-                            {selectionMode && (
-                              <Button
-                                size="sm"
-                                variant="destructive"
-                                disabled={selectedCandidateIds.length === 0}
-                                onClick={handleRejectSelected}
-                              >
-                                Reject
-                              </Button>
+                            {pipelineSectionTab === 'recruiting' && (
+                              <>
+                                {selectionMode && (
+                                  <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    disabled={selectedCandidateIds.length === 0}
+                                    onClick={handleRejectSelected}
+                                  >
+                                    Reject
+                                  </Button>
+                                )}
+                                <Button
+                                  size="sm"
+                                  variant={selectionMode ? 'secondary' : 'outline'}
+                                  onClick={() => setSelectionMode((v) => !v)}
+                                  aria-pressed={selectionMode}
+                                >
+                                  Select
+                                </Button>
+                              </>
                             )}
-                            <Button
-                              size="sm"
-                              variant={selectionMode ? 'secondary' : 'outline'}
-                              onClick={() => setSelectionMode((v) => !v)}
-                              aria-pressed={selectionMode}
-                            >
-                              Select
-                            </Button>
                             <TooltipProvider delayDuration={200}>
                               <ToggleGroup
                                 type="single"
