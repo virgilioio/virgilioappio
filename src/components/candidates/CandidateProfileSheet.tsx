@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { Tabs } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { supabase } from '@/integrations/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
@@ -11,15 +11,16 @@ import { CandidateUrls } from '@/components/candidates/CandidateUrls'
 import { CandidateWorkExperienceComponent } from '@/components/candidates/CandidateWorkExperience'
 import { CandidateEducationComponent } from '@/components/candidates/CandidateEducationComponent'
 import { useCandidateEnrichment } from '@/hooks/useCandidateEnrichment'
-import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight, MessageSquare } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
+
 import { Link } from 'react-router-dom'
 import { SafeHtml } from '@/components/ui/safe-html'
 import { getSkillColor } from '@/utils/skillColors'
 import { generateCandidatePdf } from '@/utils/candidatePdfGenerator'
 import { CandidateForm } from '@/components/candidates/CandidateForm'
 import { toast } from '@/hooks/use-toast'
+import CandidateNameCard from '@/components/candidates/CandidateNameCard'
 
 interface CandidateProfileSheetProps {
   open: boolean
@@ -138,26 +139,7 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
         <div className="flex h-full flex-col">
           <SheetHeader className="p-6 border-b">
             <div className="flex items-center justify-between">
-              <div>
-                <SheetTitle className="text-xl flex items-center gap-3">
-                  <span>{candidate?.candidate_name || 'Candidate'}</span>
-                  <Button
-                    size="icon"
-                    className="aspect-square bg-foreground text-background hover:bg-foreground"
-                    onClick={() => candidate?.linkedin_url && window.open(candidate.linkedin_url, '_blank')}
-                    disabled={!candidate?.linkedin_url}
-                    aria-label="Open LinkedIn profile"
-                    title={candidate?.linkedin_url ? 'Open LinkedIn profile' : 'No LinkedIn profile'}
-                  >
-                    <LinkedInFilled className="h-4 w-4" />
-                  </Button>
-                </SheetTitle>
-                {(job?.title || candidate?.status) && (
-                  <div className="mt-1">
-                    <Badge variant="secondary">{job?.title ?? candidate?.status}</Badge>
-                  </div>
-                )}
-              </div>
+              <div />
               <div className="flex items-center gap-sm">
                 <Button
                   variant="ghost"
@@ -193,30 +175,29 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   {/* Left column (2x) */}
                   <div className="lg:col-span-2 space-y-6">
-                    {/* Name Card with tabs */}
-                    <Card className="bg-surface-primary border-border">
-                      <CardContent className="p-6">
-                        <div className="flex items-center justify-end">
-                          
-                          <div className="flex items-center gap-sm">
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              onClick={() => generateCandidatePdf({ candidate, job })}
-                              title="Download PDF"
-                            >
-                              <Download className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                        <div className="mt-4">
-                          <TabsList>
-                            <TabsTrigger value="overview">Overview</TabsTrigger>
-                            <TabsTrigger value="notes">Notes</TabsTrigger>
-                          </TabsList>
-                        </div>
-                      </CardContent>
-                    </Card>
+                    <CandidateNameCard
+                      name={candidate.candidate_name}
+                      linkedinUrl={candidate.linkedin_url}
+                      badgeText={job?.title ?? candidate.status}
+                      tabs={[
+                        { value: 'overview', label: 'Overview', Icon: FileText },
+                        { value: 'notes', label: 'Notes', Icon: MessageSquare },
+                      ]}
+                      activeTab={activeTab}
+                      onTabChange={(v) => setActiveTab(v as 'overview' | 'notes')}
+                      rightActions={
+                        <>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            onClick={() => generateCandidatePdf({ candidate, job })}
+                            title="Download PDF"
+                          >
+                            <Download className="h-4 w-4" />
+                          </Button>
+                        </>
+                      }
+                    />
 
                     {activeTab === 'overview' ? (
                       <>

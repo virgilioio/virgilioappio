@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { SafeHtml } from '@/components/ui/safe-html'
 import { ArrowLeft, MapPin, DollarSign, Calendar, User, Edit, Zap, FileText, MessageSquare, ChevronLeft, ChevronRight, Clock, Download } from 'lucide-react'
 import { AuthGate } from '@/components/auth/AuthGate'
-import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
+// removed unused LinkedInFilled import (now handled inside CandidateNameCard)
 import { PermissionGate } from '@/components/auth/PermissionGate'
 import { JobAssignmentGuard } from '@/components/auth/JobAssignmentGuard'
 import { AppContainer } from '@/components/layout/AppContainer'
@@ -28,6 +28,7 @@ import { generateCandidatePdf } from '@/utils/candidatePdfGenerator'
 import MoveToPipelineMenu from '@/components/candidates/MoveToPipelineMenu'
 import { usePipelineActions } from '@/hooks/usePipelineActions'
 import AddJobCandidateToPipelineDialog from '@/components/candidates/AddJobCandidateToPipelineDialog'
+import CandidateNameCard from '@/components/candidates/CandidateNameCard'
 
 export default function CandidateProfile() {
   const { jobId, candidateId } = useParams<{ jobId: string; candidateId: string }>()
@@ -289,80 +290,38 @@ export default function CandidateProfile() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-lg">
               {/* Left Column - Header Card with Tab Bar and Independent Cards */}
               <div className="lg:col-span-2 space-y-md">
-                {/* Header Card with Tab Bar */}
-                <Card className="!bg-white">
-                  <CardContent className="p-layout-md">
-                    <div className="flex items-center justify-between mb-6">
-                      <div>
-                        <div className="flex items-center gap-2 mb-2">
-                          <h1 className="text-2xl font-semibold text-text-primary">{candidate.candidate_name}</h1>
-                          <Button
-                            size="icon"
-                            className="aspect-square bg-foreground text-background hover:bg-foreground"
-                            onClick={() => candidate.linkedin_url && window.open(candidate.linkedin_url, '_blank')}
-                            disabled={!candidate.linkedin_url}
-                            aria-label="Open LinkedIn profile"
-                            title={candidate.linkedin_url ? "Open LinkedIn profile" : "No LinkedIn profile"}
-                          >
-                            <LinkedInFilled className="h-4 w-4" />
-                          </Button>
-                        </div>
-                        <div className="mt-1">
-                          {job?.title && (
-                            <Badge variant="secondary">{job.title}</Badge>
-                          )}
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center gap-sm">
-                        {independentCandidateId ? (
-                          <MoveToPipelineMenu 
-                            jobId={jobId!}
-                            candidateId={independentCandidateId}
-                            buttonText="Move to pipeline"
-                          />
-                        ) : (
-                          <AddJobCandidateToPipelineDialog jobId={jobId!} jobCandidate={candidate} />
-                        )}
-                        
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          onClick={() => generateCandidatePdf({ candidate, job, organization: jobOrganization })}
-                          title="Download PDF"
-                        >
-                          <Download className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-
-                    {/* Tab Bar inside Header Card */}
-                    <div className="w-full bg-surface-primary rounded-xl p-1">
-                      <div className="inline-flex h-auto items-center justify-start rounded-xl bg-transparent p-0 text-muted-foreground w-full">
-                        <button 
-                          onClick={() => setActiveTab('overview')}
-                          className={cn(
-                            "inline-flex items-center justify-center whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-muted/50",
-                            activeTab === 'overview' && "bg-accent text-accent-foreground"
-                          )}
-                        >
-                          <FileText className="h-4 w-4 mr-2" />
-                          Overview
-                        </button>
-                        <button 
-                          onClick={() => setActiveTab('notes')}
-                          className={cn(
-                            "inline-flex items-center justify-center whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-muted/50",
-                            activeTab === 'notes' && "bg-accent text-accent-foreground"
-                          )}
-                        >
-                          <MessageSquare className="h-4 w-4 mr-2" />
-                          Notes
-                        </button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                <CandidateNameCard
+                  name={candidate.candidate_name}
+                  linkedinUrl={candidate.linkedin_url}
+                  badgeText={job?.title || undefined}
+                  tabs={[
+                    { value: 'overview', label: 'Overview', Icon: FileText },
+                    { value: 'notes', label: 'Notes', Icon: MessageSquare },
+                  ]}
+                  activeTab={activeTab}
+                  onTabChange={(v) => setActiveTab(v as 'overview' | 'notes')}
+                  rightActions={
+                    <>
+                      {independentCandidateId ? (
+                        <MoveToPipelineMenu 
+                          jobId={jobId!}
+                          candidateId={independentCandidateId}
+                          buttonText="Move to pipeline"
+                        />
+                      ) : (
+                        <AddJobCandidateToPipelineDialog jobId={jobId!} jobCandidate={candidate} />
+                      )}
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => generateCandidatePdf({ candidate, job, organization: jobOrganization })}
+                        title="Download PDF"
+                      >
+                        <Download className="h-4 w-4" />
+                      </Button>
+                    </>
+                  }
+                />
 
                 {/* Independent Candidate Information Card - Overview Tab */}
                 {activeTab === 'overview' && (

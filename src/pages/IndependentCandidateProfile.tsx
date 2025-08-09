@@ -4,9 +4,9 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
-import { ArrowLeft, MapPin, DollarSign, Calendar, User, Edit, Zap, FileText, ExternalLink, Mail, Phone, ChevronLeft, ChevronRight } from 'lucide-react'
+import { ArrowLeft, MapPin, DollarSign, Calendar, User, Edit, Zap, FileText, Mail, Phone, ChevronLeft, ChevronRight } from 'lucide-react'
 import { AuthGate } from '@/components/auth/AuthGate'
-import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
+
 import { PermissionGate } from '@/components/auth/PermissionGate'
 import { AppContainer } from '@/components/layout/AppContainer'
 import { useIndependentCandidates, IndependentCandidate } from '@/hooks/useIndependentCandidates'
@@ -19,6 +19,7 @@ import { cn } from '@/lib/utils'
 import { getSkillColor } from '@/utils/skillColors'
 import { SafeHtml } from '@/components/ui/safe-html'
 import AddToJobPipelineDialog from '@/components/candidates/AddToJobPipelineDialog'
+import CandidateNameCard from '@/components/candidates/CandidateNameCard'
 
 export default function IndependentCandidateProfile() {
   const { candidateId } = useParams<{ candidateId: string }>()
@@ -102,15 +103,6 @@ export default function IndependentCandidateProfile() {
     return `${currency} ${amount} ${period}`
   }
 
-  const getStatusColor = (status: string) => {
-    const colors: Record<string, string> = {
-      'available': 'bg-accent/20 text-accent-foreground',
-      'interviewing': 'bg-primary/20 text-primary-foreground',
-      'hired': 'bg-success/20 text-success-foreground',
-      'inactive': 'bg-muted text-muted-foreground'
-    }
-    return colors[status] || 'bg-muted text-muted-foreground'
-  }
 
   if (candidatesLoading) {
     return (
@@ -197,86 +189,25 @@ export default function IndependentCandidateProfile() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-lg">
             {/* Left Column - Header Card with Tab Bar */}
             <div className="lg:col-span-2 space-y-md">
-              {/* Header Card with Tab Bar */}
-              <Card className="!bg-white">
-                <CardContent className="p-layout-md">
-                  <div className="flex items-start justify-between mb-6">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <h1 className="text-2xl font-semibold text-text-primary">{candidate.candidate_name}</h1>
-                        <Button
-                          size="icon"
-                          className="aspect-square bg-foreground text-background hover:bg-foreground"
-                          onClick={() => candidate.linkedin_url && window.open(candidate.linkedin_url, '_blank')}
-                          disabled={!candidate.linkedin_url}
-                          aria-label="Open LinkedIn profile"
-                          title={candidate.linkedin_url ? "Open LinkedIn profile" : "No LinkedIn profile"}
-                        >
-                          <LinkedInFilled className="h-4 w-4" />
-                        </Button>
-                      </div>
-                      <div className="mb-1">
-                        <Badge className={`text-xs ${getStatusColor(candidate.status)}`}>
-                          {candidate.status}
-                        </Badge>
-                      </div>
-                      <p className="text-text-secondary">
-                        Independent candidate • Added {new Date(candidate.created_at).toLocaleDateString()}
-                      </p>
-                    </div>
-                    
-                    <div className="flex items-center gap-sm">
-                      <AddToJobPipelineDialog candidateId={candidate.id} />
-                    </div>
-                  </div>
-
-                  {/* Tab Bar inside Header Card */}
-                  <div className="w-full bg-surface-primary rounded-xl p-1">
-                    <div className="inline-flex h-auto items-center justify-start rounded-xl bg-transparent p-0 text-muted-foreground w-full">
-                      <button 
-                        onClick={() => setActiveTab('overview')}
-                        className={cn(
-                          "inline-flex items-center justify-center whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-muted/50",
-                          activeTab === 'overview' && "bg-accent text-accent-foreground"
-                        )}
-                      >
-                        <FileText className="h-4 w-4 mr-2" />
-                        Overview
-                      </button>
-                      <button 
-                        onClick={() => setActiveTab('experience')}
-                        className={cn(
-                          "inline-flex items-center justify-center whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-muted/50",
-                          activeTab === 'experience' && "bg-accent text-accent-foreground"
-                        )}
-                      >
-                        <Zap className="h-4 w-4 mr-2" />
-                        Experience
-                      </button>
-                      <button 
-                        onClick={() => setActiveTab('education')}
-                        className={cn(
-                          "inline-flex items-center justify-center whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-muted/50",
-                          activeTab === 'education' && "bg-accent text-accent-foreground"
-                        )}
-                      >
-                        <User className="h-4 w-4 mr-2" />
-                        Education
-                      </button>
-                      <button 
-                        onClick={() => setActiveTab('details')}
-                        className={cn(
-                          "inline-flex items-center justify-center whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-muted/50",
-                          activeTab === 'details' && "bg-accent text-accent-foreground"
-                        )}
-                      >
-                        <Calendar className="h-4 w-4 mr-2" />
-                        Details
-                      </button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              <CandidateNameCard
+                name={candidate.candidate_name}
+                linkedinUrl={candidate.linkedin_url}
+                badgeText={candidate.status}
+                subtitle={`Independent candidate • Added ${new Date(candidate.created_at).toLocaleDateString()}`}
+                tabs={[
+                  { value: 'overview', label: 'Overview', Icon: FileText },
+                  { value: 'experience', label: 'Experience', Icon: Zap },
+                  { value: 'education', label: 'Education', Icon: User },
+                  { value: 'details', label: 'Details', Icon: Calendar },
+                ]}
+                activeTab={activeTab}
+                onTabChange={(v) => setActiveTab(v as 'overview' | 'details' | 'experience' | 'education')}
+                rightActions={
+                  <>
+                    <AddToJobPipelineDialog candidateId={candidate.id} />
+                  </>
+                }
+              />
 
               {/* Contact Information Card - Overview Tab */}
               {activeTab === 'overview' && (
