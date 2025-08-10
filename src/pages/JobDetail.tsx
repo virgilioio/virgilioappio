@@ -334,8 +334,9 @@ export default function JobDetail() {
 
   const handleAddCandidate = async (candidateData: any) => {
     try {
-      await addCandidate(candidateData)
+      const created = await addCandidate(candidateData)
       setShowAddCandidate(false)
+      return created
     } catch (error) {
       console.error('Error adding candidate:', error)
     }

@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useForm } from 'react-hook-form'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,11 +10,12 @@ import { Separator } from '@/components/ui/separator'
 import { FormField } from '@/components/ui/form-field'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Check, ChevronsUpDown, X, Plus } from 'lucide-react'
+import { Check, ChevronsUpDown, X, Plus, Upload } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { CURRENCIES } from '@/constants/currencies'
 import { cn } from '@/lib/utils'
 import { useAuth } from '@/contexts/AuthContext'
+import { supabase } from '@/integrations/supabase/client'
 import { useFormPersistence } from '@/hooks/useFormPersistence'
 import { CandidateComments } from './CandidateComments'
 import type { Candidate } from '@/hooks/useCandidates'
@@ -62,6 +63,14 @@ export function CandidateForm({
   const [newSkill, setNewSkill] = useState('')
   const [currentCandidateId, setCurrentCandidateId] = useState<string | null>(null)
   const { user, organizationId } = useAuth()
+  const [pendingFiles, setPendingFiles] = useState<File[]>([])
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [dragOver, setDragOver] = useState(false)
+  const [isUploadingResume, setIsUploadingResume] = useState(false)
+  const isMountedRef = useRef(true)
+  useEffect(() => {
+    return () => { isMountedRef.current = false }
+  }, [])
 
   const form = useForm<FormData>({
     defaultValues: {
@@ -189,7 +198,95 @@ export function CandidateForm({
     return linkedinRegex.test(url) || 'Please enter a valid LinkedIn URL'
   }
 
-  const handleSubmit = form.handleSubmit((data) => {
+  // Resume upload helpers
+  const handleFileSelect = async (files: FileList | null) => {
+    if (!files || files.length === 0) return
+    const fileArray = Array.from(files)
+
+    // Validate file sizes (15MB max per file)
+    for (const f of fileArray) {
+      if (f.size > 15 * 1024 * 1024) {
+        toast({ title: 'Error', description: 'File size must be less than 15MB', variant: 'destructive' })
+        return
+      }
+    }
+
+    if (candidate?.id) {
+      // Editing existing candidate: upload immediately
+      try {
+        setIsUploadingResume(true)
+        for (const f of fileArray) {
+          await uploadFileForCandidate(candidate.id, f)
+        }
+        toast({ title: 'Resume uploaded', description: 'Attachment added to candidate.' })
+      } catch (e) {
+        // errors already toasted below
+      } finally {
+        setIsUploadingResume(false)
+      }
+    } else {
+      // New candidate: queue files to upload after creation
+      setPendingFiles((prev) => [...prev, ...fileArray])
+    }
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setDragOver(false)
+    void handleFileSelect(e.dataTransfer.files)
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    setDragOver(true)
+  }
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault()
+    setDragOver(false)
+  }
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    void handleFileSelect(e.target.files)
+    e.currentTarget.value = ''
+  }
+
+  const removePendingFile = (name: string, size: number) => {
+    setPendingFiles((prev) => prev.filter((f) => !(f.name === name && f.size === size)))
+  }
+
+  const uploadFileForCandidate = async (jobCandidateId: string, file: File) => {
+    if (!user) throw new Error('Not authenticated')
+    try {
+      const ext = file.name.split('.').pop()
+      const storagePath = `${jobCandidateId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+      const { error: storageError } = await supabase.storage
+        .from('candidate-attachments')
+        .upload(storagePath, file)
+      if (storageError) throw storageError
+
+      const { error: dbError } = await supabase
+        .from('candidate_attachments')
+        .insert({
+          candidate_id: jobCandidateId,
+          file_name: file.name,
+          file_url: storagePath,
+          file_size_bytes: file.size,
+          file_type: file.type,
+          uploaded_by: user.id,
+        })
+      if (dbError) {
+        await supabase.storage.from('candidate-attachments').remove([storagePath])
+        throw dbError
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to upload resume'
+      toast({ title: 'Error', description: msg, variant: 'destructive' })
+      throw err
+    }
+  }
+
+  const handleSubmit = form.handleSubmit(async (data) => {
     const submitData = {
       ...data,
       email: data.email?.trim() ? data.email.trim() : null,
@@ -200,11 +297,24 @@ export function CandidateForm({
       skills: skills.length > 0 ? skills : null,
       job_id: jobId
     }
-    
-    onSubmit(submitData)
-    
-    // Clear persisted data after successful submission
+
+    const result = await onSubmit(submitData as any)
+
+    // After create, upload any queued files
     if (!candidate) {
+      if (pendingFiles.length > 0 && (result as any)?.id) {
+        try {
+          setIsUploadingResume(true)
+          for (const f of pendingFiles) {
+            await uploadFileForCandidate((result as any).id, f)
+          }
+          toast({ title: 'Resume uploaded', description: 'Attachment added to candidate.' })
+          setPendingFiles([])
+        } finally {
+          setIsUploadingResume(false)
+        }
+      }
+      // Clear persisted data after successful submission
       clearPersistedData()
     }
   })
@@ -516,6 +626,57 @@ export function CandidateForm({
               }}
               existingSkills={skills}
             />
+
+            {/* Resume */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium text-text-primary border-b border-border pb-2">
+                Resume
+              </h3>
+              <div
+                className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${dragOver ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}`}
+                onDrop={handleDrop}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  className="hidden"
+                  onChange={handleFileInputChange}
+                  accept=".pdf,.doc,.docx,.txt,.rtf"
+                />
+                <Upload className="h-8 w-8 mx-auto text-text-secondary mb-2" />
+                <p className="text-sm text-text-secondary mb-2">
+                  Drag and drop a resume here, or click to browse
+                </p>
+                <p className="text-xs text-text-secondary mb-4">
+                  PDF, DOC, DOCX, TXT up to 15MB
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploadingResume}
+                  className="gap-sm"
+                >
+                  <Upload className="h-4 w-4" />
+                  {isUploadingResume ? 'Uploading...' : 'Choose File'}
+                </Button>
+              </div>
+
+              {!candidate && pendingFiles.length > 0 && (
+                <div className="mt-2 text-left space-y-2">
+                  {pendingFiles.map((f) => (
+                    <div key={f.name + f.size} className="flex items-center justify-between p-2 border border-border rounded-md">
+                      <span className="text-sm text-text-primary truncate mr-2">{f.name}</span>
+                      <Button type="button" variant="ghost" size="sm" onClick={() => removePendingFile(f.name, f.size)}>
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
             {/* Profile & Notes */}
             <div className="space-y-4">
