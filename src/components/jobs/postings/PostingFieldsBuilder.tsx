@@ -36,6 +36,7 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
   const [label, setLabel] = useState('')
   const [type, setType] = useState<FieldType>('text')
   const [required, setRequired] = useState(false)
+  const [selectedLibraryId, setSelectedLibraryId] = useState<string>('')
 
   const handleAddCustom = async () => {
     if (!label.trim()) return
@@ -242,26 +243,30 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
             {loadingLibrary ? (
               <p className="text-sm text-muted-foreground">Loading library...</p>
             ) : (
-              <div className="grid sm:grid-cols-2 gap-2">
-                {availableLibraryFields.map((f) => (
-                  <Button
-                    key={f.id}
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={async () => {
-                      await addFieldFromLibrary(f)
-                      await refetch()
-                    }}
-                    disabled={readOnly}
-                    className="justify-start"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    <span className="font-medium mr-2">{f.field_label}</span>
-                    <span className="text-xs text-muted-foreground">({f.field_type})</span>
-                  </Button>
-                ))}
-              </div>
+              <Select
+                value={selectedLibraryId}
+                onValueChange={async (id) => {
+                  setSelectedLibraryId(id)
+                  const f = availableLibraryFields.find((x) => x.id === id)
+                  if (f) {
+                    await addFieldFromLibrary(f)
+                    await refetch()
+                  }
+                  setSelectedLibraryId('')
+                }}
+                disabled={readOnly || availableLibraryFields.length === 0}
+              >
+                <SelectTrigger className="w-full sm:w-80">
+                  <SelectValue placeholder="Choose a field to add" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableLibraryFields.map((f) => (
+                    <SelectItem key={f.id} value={f.id}>
+                      {`${f.field_label} (${f.field_type})`}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             )}
           </div>
         </CardContent>
