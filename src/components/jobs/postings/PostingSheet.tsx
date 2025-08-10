@@ -35,6 +35,7 @@ export function PostingSheet({
   const [localId, setLocalId] = useState<string | undefined>(postingId)
   const [title, setTitle] = useState<string>(defaultTitle || '')
   const [description, setDescription] = useState<string>('')
+  const [isExternalUpdate, setIsExternalUpdate] = useState(false)
 
   useEffect(() => {
     setLocalId(postingId)
@@ -47,10 +48,12 @@ export function PostingSheet({
         if (p) {
           setTitle(p.title)
           setDescription(p.description || '')
+          setIsExternalUpdate(true)
         }
       } else {
         setTitle(defaultTitle || '')
         setDescription('')
+        setIsExternalUpdate(true)
       }
     }
     if (open) load()
@@ -97,6 +100,8 @@ export function PostingSheet({
                 onChange={(html) => setDescription(html)}
                 placeholder="Describe the role, responsibilities, etc."
                 minHeight="200px"
+                isExternalUpdate={isExternalUpdate}
+                onExternalUpdateComplete={() => setIsExternalUpdate(false)}
               />
             </FormField>
             <div className="flex justify-end gap-2">
