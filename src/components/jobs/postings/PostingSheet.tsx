@@ -3,7 +3,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
+import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { useEffect, useState } from 'react'
 import { useToast } from '@/hooks/use-toast'
 import { useJobPostings } from '@/hooks/useJobPostings'
@@ -92,11 +92,11 @@ export function PostingSheet({
               <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Enter job posting title" />
             </FormField>
             <FormField label="Description">
-              <Textarea
+              <RichTextEditor
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                onChange={(html) => setDescription(html)}
                 placeholder="Describe the role, responsibilities, etc."
-                rows={6}
+                minHeight="200px"
               />
             </FormField>
             <div className="flex justify-end gap-2">
