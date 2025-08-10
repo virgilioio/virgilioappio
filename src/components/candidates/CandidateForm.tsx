@@ -388,8 +388,6 @@ export function CandidateForm({
                 />
               </FormField>
 
-              {!candidate && (
-                <>
                   <FormField 
                     label="Email" 
                     htmlFor="email"
@@ -414,8 +412,6 @@ export function CandidateForm({
                       placeholder="+1 (555) 123-4567"
                     />
                   </FormField>
-                </>
-              )}
 
               <FormField 
                 label="LinkedIn Profile URL" 
