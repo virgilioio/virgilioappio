@@ -41,6 +41,14 @@ export default function PublicJobPosting() {
   const [fields, setFields] = useState<PostingField[]>([])
   const [options, setOptions] = useState<Record<string, SelectOption[]>>({})
   const [loading, setLoading] = useState(true)
+  const [scrolled, setScrolled] = useState(false)
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 2)
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
 
   useEffect(() => {
     const load = async () => {
@@ -112,14 +120,14 @@ export default function PublicJobPosting() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header with logo on the right */}
-      <header className="w-full border-b border-border">
+      <header className={`fixed top-0 left-0 right-0 z-50 border-b border-border transition-shadow supports-[backdrop-filter]:bg-surface-primary/60 bg-surface-primary/90 backdrop-blur ${scrolled ? 'shadow-sm' : ''}`}>
         <div className="max-w-3xl mx-auto flex items-center justify-start px-md py-2 sm:px-lg">
           <VirgilioLogo className="h-6 w-auto" />
         </div>
       </header>
 
       {/* Main content */}
-      <main className="max-w-3xl mx-auto px-6 py-10 space-y-8">
+      <main className="max-w-3xl mx-auto px-6 pt-20 pb-10 space-y-8">
         <section aria-labelledby="job-title">
           <h1 id="job-title" className="text-3xl font-semibold text-text-primary">
             {posting.title}
