@@ -514,31 +514,31 @@ export default function JobDetail() {
                      <CardHeader className="py-3">
                        <Tabs value={pipelineSectionTab} onValueChange={(v) => setPipelineSectionTab(v as any)}>
                          <TabsList className="w-full h-14 p-2 gap-2">
-                            <TabsTrigger className="flex-1 h-10 md:h-12 text-base md:text-lg" value="application">
+                            <TabsTrigger className="flex-1 h-10 md:h-12 text-base md:text-lg bg-pastel-purple/20 text-text-primary data-[state=active]:bg-pastel-purple data-[state=active]:text-background" value="application">
                               <span className="flex items-center gap-2">
                                 <span>Application Review</span>
                                 <Badge variant="pastel-purple">{applicationCount}</Badge>
                               </span>
                             </TabsTrigger>
-                            <TabsTrigger className="flex-1 h-10 md:h-12 text-base md:text-lg" value="recruiting">
+                            <TabsTrigger className="flex-1 h-10 md:h-12 text-base md:text-lg bg-warning/20 text-text-primary data-[state=active]:bg-warning data-[state=active]:text-background" value="recruiting">
                               <span className="flex items-center gap-2">
                                 <span>Recruiting Process</span>
                                 <Badge variant="warning">{recruitingCount}</Badge>
                               </span>
                             </TabsTrigger>
-                            <TabsTrigger className="flex-1 h-10 md:h-12 text-base md:text-lg" value="offers">
+                            <TabsTrigger className="flex-1 h-10 md:h-12 text-base md:text-lg bg-pastel-blue/20 text-text-primary data-[state=active]:bg-pastel-blue data-[state=active]:text-background" value="offers">
                               <span className="flex items-center gap-2">
                                 <span>Job Offers</span>
                                 <Badge variant="pastel-blue">{offerCount}</Badge>
                               </span>
                             </TabsTrigger>
-                            <TabsTrigger className="flex-1 h-10 md:h-12 text-base md:text-lg" value="hired">
+                            <TabsTrigger className="flex-1 h-10 md:h-12 text-base md:text-lg bg-success/20 text-text-primary data-[state=active]:bg-success data-[state=active]:text-background" value="hired">
                               <span className="flex items-center gap-2">
                                 <span>Hired Candidates</span>
                                 <Badge variant="success">{hiredCount}</Badge>
                               </span>
                             </TabsTrigger>
-                            <TabsTrigger className="flex-1 h-10 md:h-12 text-base md:text-lg" value="rejected">
+                            <TabsTrigger className="flex-1 h-10 md:h-12 text-base md:text-lg bg-destructive/20 text-text-primary data-[state=active]:bg-destructive data-[state=active]:text-background" value="rejected">
                               <span className="flex items-center gap-2">
                                 <span>Rejected Candidates</span>
                                 <Badge variant="destructive">{rejectedCount}</Badge>
@@ -758,31 +758,31 @@ export default function JobDetail() {
                       <CardHeader className="py-3">
                         <Tabs value={pipelineSectionTab} onValueChange={(v) => setPipelineSectionTab(v as any)}>
                           <TabsList className="w-full h-14 p-2 gap-2">
-                            <TabsTrigger className="flex-1 h-10 md:h-12 text-base md:text-lg" value="application">
+                            <TabsTrigger className="flex-1 h-10 md:h-12 text-base md:text-lg bg-pastel-purple/20 text-text-primary data-[state=active]:bg-pastel-purple data-[state=active]:text-background" value="application">
                               <span className="flex items-center gap-2">
                                 <span>Application Review</span>
                                 <Badge variant="pastel-purple">{applicationCount}</Badge>
                               </span>
                             </TabsTrigger>
-                            <TabsTrigger className="flex-1 h-10 md:h-12 text-base md:text-lg" value="recruiting">
+                            <TabsTrigger className="flex-1 h-10 md:h-12 text-base md:text-lg bg-warning/20 text-text-primary data-[state=active]:bg-warning data-[state=active]:text-background" value="recruiting">
                               <span className="flex items-center gap-2">
                                 <span>Recruiting Process</span>
                                 <Badge variant="warning">{recruitingCount}</Badge>
                               </span>
                             </TabsTrigger>
-                            <TabsTrigger className="flex-1 h-10 md:h-12 text-base md:text-lg" value="offers">
+                            <TabsTrigger className="flex-1 h-10 md:h-12 text-base md:text-lg bg-pastel-blue/20 text-text-primary data-[state=active]:bg-pastel-blue data-[state=active]:text-background" value="offers">
                               <span className="flex items-center gap-2">
                                 <span>Job Offers</span>
                                 <Badge variant="pastel-blue">{offerCount}</Badge>
                               </span>
                             </TabsTrigger>
-                            <TabsTrigger className="flex-1 h-10 md:h-12 text-base md:text-lg" value="hired">
+                            <TabsTrigger className="flex-1 h-10 md:h-12 text-base md:text-lg bg-success/20 text-text-primary data-[state=active]:bg-success data-[state=active]:text-background" value="hired">
                               <span className="flex items-center gap-2">
                                 <span>Hired Candidates</span>
                                 <Badge variant="success">{hiredCount}</Badge>
                               </span>
                             </TabsTrigger>
-                            <TabsTrigger className="flex-1 h-10 md:h-12 text-base md:text-lg" value="rejected">
+                            <TabsTrigger className="flex-1 h-10 md:h-12 text-base md:text-lg bg-destructive/20 text-text-primary data-[state=active]:bg-destructive data-[state=active]:text-background" value="rejected">
                               <span className="flex items-center gap-2">
                                 <span>Rejected Candidates</span>
                                 <Badge variant="destructive">{rejectedCount}</Badge>
