@@ -69,7 +69,7 @@ export function useJobPostings(jobId: string) {
     return data as JobPosting | null
   }, [])
 
-  const createPosting = useCallback(async ({ title, description }: { title: string; description?: string }) => {
+  const createPosting = useCallback(async ({ title, description, details }: { title: string; description?: string; details?: any }) => {
     const slug = generateSlug(title)
     const { data, error } = await supabase
       .from('job_postings')
@@ -78,6 +78,7 @@ export function useJobPostings(jobId: string) {
         title,
         description: description || null,
         slug,
+        details: details ?? {},
       })
       .select()
       .maybeSingle()
