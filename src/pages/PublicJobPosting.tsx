@@ -30,6 +30,7 @@ interface PostingField {
   field_type: FieldType
   is_required: boolean
   placeholder_text?: string | null
+  column_span?: number | null
 }
 
 interface SelectOption {
@@ -75,7 +76,7 @@ export default function PublicJobPosting() {
 
       const { data: f } = await supabase
         .from('job_posting_application_fields')
-        .select('id, field_label, field_type, is_required, placeholder_text')
+        .select('id, field_label, field_type, is_required, placeholder_text, column_span')
         .eq('posting_id', p.id)
         .order('display_order', { ascending: true })
 
@@ -270,38 +271,43 @@ export default function PublicJobPosting() {
                       {fields.length === 0 ? (
                         <p className="text-sm text-muted-foreground">No application form fields configured yet.</p>
                       ) : (
-                        fields.map((f) => (
-                          <div key={f.id}>
-                            <label className="text-sm font-medium">
-                              {f.field_label} {f.is_required && <Badge variant="secondary" className="ml-2">Required</Badge>}
-                            </label>
-                            <div className="mt-1">
-                              {f.field_type === 'text' && <Input placeholder={f.placeholder_text || ''} />}
-                              {f.field_type === 'url' && <Input type="url" placeholder={f.placeholder_text || 'https://'} />}
-                              {f.field_type === 'email' && <Input type="email" placeholder={f.placeholder_text || ''} />}
-                              {f.field_type === 'number' && <Input type="number" placeholder={f.placeholder_text || ''} />}
-                              {f.field_type === 'textarea' && <Textarea placeholder={f.placeholder_text || ''} rows={4} />}
-                              {f.field_type === 'checkbox' && (
-                                <div className="flex items-center gap-2">
-                                  <Checkbox />
-                                  <span className="text-sm text-muted-foreground">I acknowledge</span>
-                                </div>
-                              )}
-                              {f.field_type === 'select' && (
-                                <Select>
-                                  <SelectTrigger><SelectValue placeholder="Select an option" /></SelectTrigger>
-                                  <SelectContent>
-                                    {(options[f.id] || []).map((o) => (
-                                      <SelectItem key={o.id} value={o.option_value}>{o.option_label}</SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              )}
-                              {f.field_type === 'date' && <Input type="date" />}
-                              {f.field_type === 'file' && <Input type="file" />}
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                          {fields.map((f) => (
+                            <div
+                              key={f.id}
+                              style={{ gridColumn: `span ${f.column_span || 1} / span ${f.column_span || 1}` }}
+                            >
+                              <label className="text-sm font-medium">
+                                {f.field_label} {f.is_required && <Badge variant="secondary" className="ml-2">Required</Badge>}
+                              </label>
+                              <div className="mt-1">
+                                {f.field_type === 'text' && <Input placeholder={f.placeholder_text || ''} />}
+                                {f.field_type === 'url' && <Input type="url" placeholder={f.placeholder_text || 'https://'} />}
+                                {f.field_type === 'email' && <Input type="email" placeholder={f.placeholder_text || ''} />}
+                                {f.field_type === 'number' && <Input type="number" placeholder={f.placeholder_text || ''} />}
+                                {f.field_type === 'textarea' && <Textarea placeholder={f.placeholder_text || ''} rows={4} />}
+                                {f.field_type === 'checkbox' && (
+                                  <div className="flex items-center gap-2">
+                                    <Checkbox />
+                                    <span className="text-sm text-muted-foreground">I acknowledge</span>
+                                  </div>
+                                )}
+                                {f.field_type === 'select' && (
+                                  <Select>
+                                    <SelectTrigger><SelectValue placeholder="Select an option" /></SelectTrigger>
+                                    <SelectContent>
+                                      {(options[f.id] || []).map((o) => (
+                                        <SelectItem key={o.id} value={o.option_value}>{o.option_label}</SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                )}
+                                {f.field_type === 'date' && <Input type="date" />}
+                                {f.field_type === 'file' && <Input type="file" />}
+                              </div>
                             </div>
-                          </div>
-                        ))
+                          ))}
+                        </div>
                       )}
                       <div className="pt-4">
                         <Button type="button" onClick={handleSubmitApplication} className="w-full sm:w-auto" aria-label="Submit application">

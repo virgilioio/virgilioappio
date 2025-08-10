@@ -10,7 +10,7 @@ import { useJobPostingFields, FieldType, PostingField } from '@/hooks/useJobPost
 import { FormField } from '@/components/ui/form-field'
 import { GripVertical, Plus, Trash2 } from 'lucide-react'
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
-import { SortableContext, verticalListSortingStrategy, arrayMove, useSortable } from '@dnd-kit/sortable'
+import { SortableContext, rectSortingStrategy, arrayMove, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 
 interface PostingFieldsBuilderProps {
@@ -155,44 +155,13 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
             <p className="text-sm text-muted-foreground text-center py-6">No fields yet. Add from library or create a custom field.</p>
           ) : (
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-              <SortableContext items={fields.map((f) => f.id)} strategy={verticalListSortingStrategy}>
-                {fields.map((f) => (
-                  <SortableRow key={f.id} id={f.id}>
-                    {({ attributes, listeners }) => (
-                      <div className="p-3 border border-border/40 rounded-brand">
-                        <div className="grid md:grid-cols-6 gap-3 items-end">
-                          <FormField label="Label" className="md:col-span-2">
-                            <Input
-                              value={f.field_label}
-                              onChange={(e) => updateField(f.id, { field_label: e.target.value })}
-                              disabled={readOnly}
-                            />
-                          </FormField>
-                          <FormField label="Type">
-                            <Select
-                              value={f.field_type}
-                              onValueChange={(v: FieldType) => updateField(f.id, { field_type: v })}
-                              disabled={readOnly}
-                            >
-                              <SelectTrigger><SelectValue /></SelectTrigger>
-                              <SelectContent>
-                                {(['text','number','email','url','textarea','select','checkbox','date','file'] as FieldType[]).map((t) => (
-                                  <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </FormField>
-                          <FormField label="Required">
-                            <div className="flex items-center h-10">
-                              <Checkbox
-                                checked={f.is_required}
-                                onCheckedChange={(c) => updateField(f.id, { is_required: !!c })}
-                                disabled={readOnly}
-                              />
-                              <span className="ml-2 text-sm text-muted-foreground">Required</span>
-                            </div>
-                          </FormField>
-                          <div className="flex items-center gap-2 md:justify-end">
+              <SortableContext items={fields.map((f) => f.id)} strategy={rectSortingStrategy}>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                  {fields.map((f) => (
+                    <SortableRow key={f.id} id={f.id}>
+                      {({ attributes, listeners }) => (
+                        <div className="p-3 border border-border/40 rounded-brand" style={{ gridColumn: `span ${f.column_span || 1} / span ${f.column_span || 1}` }}>
+                          <div className="flex items-start gap-3">
                             <Button
                               variant="outline"
                               size="icon"
@@ -200,27 +169,80 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
                               {...listeners}
                               disabled={readOnly}
                               title="Drag to reorder"
+                              className="mt-6 shrink-0"
                             >
                               <GripVertical className="h-4 w-4" />
                             </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={async () => {
-                                await deleteField(f.id)
-                                await refetch()
-                              }}
-                              disabled={readOnly}
-                              title="Delete field"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                            <div className="flex-1">
+                              <div className="grid md:grid-cols-6 gap-3 items-end">
+                                <FormField label="Label" className="md:col-span-2">
+                                  <Input
+                                    value={f.field_label}
+                                    onChange={(e) => updateField(f.id, { field_label: e.target.value })}
+                                    disabled={readOnly}
+                                  />
+                                </FormField>
+                                <FormField label="Type">
+                                  <Select
+                                    value={f.field_type}
+                                    onValueChange={(v: FieldType) => updateField(f.id, { field_type: v })}
+                                    disabled={readOnly}
+                                  >
+                                    <SelectTrigger><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                      {(['text','number','email','url','textarea','select','checkbox','date','file'] as FieldType[]).map((t) => (
+                                        <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                </FormField>
+                                <FormField label="Width">
+                                  <Select
+                                    value={String(f.column_span || 1)}
+                                    onValueChange={(v) => updateField(f.id, { column_span: Number(v) as any })}
+                                    disabled={readOnly}
+                                  >
+                                    <SelectTrigger><SelectValue placeholder="Width" /></SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="1">1/4</SelectItem>
+                                      <SelectItem value="2">1/2</SelectItem>
+                                      <SelectItem value="3">3/4</SelectItem>
+                                      <SelectItem value="4">Full</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                </FormField>
+                                <FormField label="Required">
+                                  <div className="flex items-center h-10">
+                                    <Checkbox
+                                      checked={f.is_required}
+                                      onCheckedChange={(c) => updateField(f.id, { is_required: !!c })}
+                                      disabled={readOnly}
+                                    />
+                                    <span className="ml-2 text-sm text-muted-foreground">Required</span>
+                                  </div>
+                                </FormField>
+                                <div className="flex items-center gap-2 md:justify-end">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={async () => {
+                                      await deleteField(f.id)
+                                      await refetch()
+                                    }}
+                                    disabled={readOnly}
+                                    title="Delete field"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    )}
-                  </SortableRow>
-                ))}
+                      )}
+                    </SortableRow>
+                  ))}
+                </div>
               </SortableContext>
             </DndContext>
           )}

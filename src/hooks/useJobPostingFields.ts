@@ -16,6 +16,7 @@ export interface PostingField {
   field_type: FieldType
   is_required: boolean
   display_order: number
+  column_span: number
   placeholder_text?: string | null
   help_text?: string | null
   accepted_file_types?: string | null
@@ -41,7 +42,11 @@ export function useJobPostingFields(postingId: string) {
       toast({ title: 'Error', description: 'Failed to load form fields', variant: 'destructive' })
       setFields([])
     } else {
-      setFields((data || []) as PostingField[])
+      const rows = (data || []).map((row: any) => ({
+        ...row,
+        column_span: row.column_span ?? 1,
+      }))
+      setFields(rows as PostingField[])
     }
     setIsLoading(false)
   }, [postingId, toast])
@@ -83,7 +88,8 @@ export function useJobPostingFields(postingId: string) {
         field_name,
         field_label,
         field_type,
-        is_required
+        is_required,
+        column_span: 1
       })
     if (error) {
       console.error('Error adding custom field:', error)
@@ -106,6 +112,7 @@ export function useJobPostingFields(postingId: string) {
         field_label: lib.field_label,
         field_type: lib.field_type,
         is_required: false,
+        column_span: 1,
         placeholder_text: lib.placeholder_text,
         help_text: lib.help_text,
         accepted_file_types: lib.accepted_file_types || null,
