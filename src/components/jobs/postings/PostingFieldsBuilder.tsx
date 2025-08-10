@@ -9,7 +9,7 @@ import { useApplicationFields } from '@/hooks/useApplicationFields'
 import { useJobPostingFields, FieldType, PostingField } from '@/hooks/useJobPostingFields'
 import { FormField } from '@/components/ui/form-field'
 import { GripVertical, Plus, Trash2 } from 'lucide-react'
-import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, useDroppable } from '@dnd-kit/core'
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, useDroppable, DragOverlay } from '@dnd-kit/core'
 import { SortableContext, rectSortingStrategy, arrayMove, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { cn } from '@/lib/utils'
@@ -54,7 +54,7 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
 
   const [isDragging, setIsDragging] = useState(false)
   const [activeId, setActiveId] = useState<string | null>(null)
-
+  const activeField = useMemo(() => fields.find((f) => f.id === activeId) || null, [fields, activeId])
   const computeRows = (list: PostingField[]) => {
     const rows: PostingField[][] = []
     let current: PostingField[] = []
@@ -131,8 +131,10 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
     }
 
     // Drop beside a specific field
-    if (overId.startsWith('beside-')) {
-      const [, targetId, side] = overId.split('-') // beside, {id}, left|right
+    if (overId.startsWith('beside|')) {
+      const parts = overId.split('|') // beside|{id}|left|right
+      const targetId = parts[1]
+      const side = parts[2]
       const targetIndex = fields.findIndex((f) => f.id === targetId)
       if (targetIndex < 0) return
       const activeItem = fields[oldIndex]
@@ -190,7 +192,7 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
       opacity: isDragging ? 0.6 : undefined,
     }
     return (
-      <div ref={setNodeRef} style={style}>
+      <div ref={setNodeRef} style={style} className="w-full">
         {children({ attributes, listeners })}
       </div>
     )
@@ -280,11 +282,11 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
                 <div className="space-y-2">
                   {isDragging && <DropBox id={`row-0`} orientation="row" />}
                   {rows.map((row, rIdx) => (
-                    <div key={`row-${rIdx}`}>
-                      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <div key={`row-${rIdx}`} className="w-full">
+                      <div className="grid w-full grid-cols-1 md:grid-cols-4 gap-3">
                         {row.map((f) => (
-                          <div key={f.id} className="flex items-stretch" style={{ gridColumn: `span ${f.column_span || 4} / span ${f.column_span || 4}` }}>
-                            {isDragging && <DropBox id={`beside-${f.id}-left`} orientation="col" />}
+                          <div key={f.id} className="flex items-stretch w-full min-w-0" style={{ gridColumn: `span ${f.column_span || 4} / span ${f.column_span || 4}` }}>
+                            {isDragging && <DropBox id={`beside|${f.id}|left`} orientation="col" />}
                             <SortableRow id={f.id}>
                               {({ attributes, listeners }) => (
                                 <div className="p-3 border border-border/40 rounded-brand flex-1">
@@ -353,7 +355,7 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
                                 </div>
                               )}
                             </SortableRow>
-                            {isDragging && <DropBox id={`beside-${f.id}-right`} orientation="col" />}
+                            {isDragging && <DropBox id={`beside|${f.id}|right`} orientation="col" />}
                           </div>
                         ))}
                       </div>
@@ -362,6 +364,14 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
                   ))}
                 </div>
               </SortableContext>
+              <DragOverlay>
+                {activeId ? (
+                  <div className="p-3 border border-border/40 rounded-brand bg-background shadow-lg w-[280px]">
+                    <div className="text-sm font-medium">{activeField?.field_label || 'Field'}</div>
+                    <div className="text-xs text-muted-foreground capitalize">{activeField?.field_type}</div>
+                  </div>
+                ) : null}
+              </DragOverlay>
             </DndContext>
           )}
         </CardContent>
