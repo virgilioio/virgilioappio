@@ -46,7 +46,11 @@ export function PostingSheet({
   const [locationType, setLocationType] = useState<string>('onsite')
   const [salaryCurrency, setSalaryCurrency] = useState<string>('USD')
   const [salaryAmount, setSalaryAmount] = useState<string>('')
+  const [salaryPeriod, setSalaryPeriod] = useState<string>('annually')
   const [showSalary, setShowSalary] = useState<boolean>(false)
+  const [hasCommissions, setHasCommissions] = useState<boolean>(false)
+  const [commissionsCurrency, setCommissionsCurrency] = useState<string>('USD')
+  const [commissionsAmount, setCommissionsAmount] = useState<string>('')
 
   useEffect(() => {
     setLocalId(postingId)
@@ -65,7 +69,11 @@ export function PostingSheet({
           setLocationType(d.location_type || 'onsite')
           setSalaryCurrency(d.salary_currency || 'USD')
           setSalaryAmount(d.salary_amount != null ? String(d.salary_amount) : '')
+          setSalaryPeriod(d.salary_period || 'annually')
           setShowSalary(!!d.show_salary)
+          setHasCommissions(!!d.has_commissions)
+          setCommissionsCurrency(d.commissions_currency || 'USD')
+          setCommissionsAmount(d.commissions_amount != null ? String(d.commissions_amount) : '')
           setIsExternalUpdate(true)
         }
       } else {
@@ -76,7 +84,11 @@ export function PostingSheet({
         setLocationType('onsite')
         setSalaryCurrency('USD')
         setSalaryAmount('')
+        setSalaryPeriod('annually')
         setShowSalary(false)
+        setHasCommissions(false)
+        setCommissionsCurrency('USD')
+        setCommissionsAmount('')
         setIsExternalUpdate(true)
       }
     }
@@ -95,7 +107,11 @@ export function PostingSheet({
       location_type: locationType || null,
       salary_currency: salaryCurrency || null,
       salary_amount: salaryAmount ? Number(salaryAmount) : null,
+      salary_period: salaryPeriod || null,
       show_salary: !!showSalary,
+      has_commissions: !!hasCommissions,
+      commissions_currency: hasCommissions ? (commissionsCurrency || null) : null,
+      commissions_amount: hasCommissions && commissionsAmount ? Number(commissionsAmount) : null,
     }
 
     if (localId) {
@@ -166,7 +182,7 @@ export function PostingSheet({
                   </Select>
                 </FormField>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <FormField label="Salary Currency">
                     <Select value={salaryCurrency} onValueChange={setSalaryCurrency} disabled={!!readOnly}>
                       <SelectTrigger><SelectValue placeholder="Currency" /></SelectTrigger>
@@ -189,12 +205,56 @@ export function PostingSheet({
                       disabled={!!readOnly}
                     />
                   </FormField>
+                  <FormField label="Period">
+                    <Select value={salaryPeriod} onValueChange={setSalaryPeriod} disabled={!!readOnly}>
+                      <SelectTrigger><SelectValue placeholder="Select period" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="hourly">Hourly</SelectItem>
+                        <SelectItem value="weekly">Weekly</SelectItem>
+                        <SelectItem value="monthly">Monthly</SelectItem>
+                        <SelectItem value="annually">Annually</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </FormField>
                 </div>
 
-                <div className="flex items-center gap-2">
-                  <Checkbox checked={showSalary} onCheckedChange={(c) => setShowSalary(!!c)} disabled={!!readOnly} id="show-salary" />
-                  <Label htmlFor="show-salary">Show salary?</Label>
+                <div className="flex flex-wrap items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <Checkbox checked={showSalary} onCheckedChange={(c) => setShowSalary(!!c)} disabled={!!readOnly} id="show-salary" />
+                    <Label htmlFor="show-salary">Show salary?</Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox checked={hasCommissions} onCheckedChange={(c) => setHasCommissions(!!c)} disabled={!!readOnly} id="has-commissions" />
+                    <Label htmlFor="has-commissions">+ Commissions?</Label>
+                  </div>
                 </div>
+
+                {hasCommissions && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <FormField label="Average Commissions Currency">
+                      <Select value={commissionsCurrency} onValueChange={setCommissionsCurrency} disabled={!!readOnly}>
+                        <SelectTrigger><SelectValue placeholder="Currency" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="USD">USD</SelectItem>
+                          <SelectItem value="EUR">EUR</SelectItem>
+                          <SelectItem value="GBP">GBP</SelectItem>
+                          <SelectItem value="CAD">CAD</SelectItem>
+                          <SelectItem value="AUD">AUD</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </FormField>
+                    <FormField label="Average Commissions Amount">
+                      <Input
+                        type="number"
+                        inputMode="decimal"
+                        value={commissionsAmount}
+                        onChange={(e) => setCommissionsAmount(e.target.value)}
+                        placeholder="e.g., 15000"
+                        disabled={!!readOnly}
+                      />
+                    </FormField>
+                  </div>
+                )}
               </div>
             </section>
 
