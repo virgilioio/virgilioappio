@@ -14,6 +14,7 @@ interface CandidateResumeViewerProps {
 export function CandidateResumeViewer({ jobCandidateId, fallbackResumeUrl, className, height = 70 }: CandidateResumeViewerProps) {
   const { attachments } = useCandidateAttachments(jobCandidateId || '')
   const [signedUrl, setSignedUrl] = useState<string | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [fileName, setFileName] = useState<string>('resume')
   const resumeAttachment = useMemo(() => attachments.find(a => a.is_resume), [attachments])
 
@@ -63,6 +64,36 @@ export function CandidateResumeViewer({ jobCandidateId, fallbackResumeUrl, class
     return ['.jpg', '.jpeg', '.png', '.gif', '.webp'].some(ext => lower.endsWith(ext))
   }, [fileType, effectiveUrl])
 
+  useEffect(() => {
+    let createdUrl: string | null = null
+    let active = true
+    if (!signedUrl) {
+      setPreviewUrl(null)
+      return
+    }
+    if (isPdf) {
+      ;(async () => {
+        try {
+          const res = await fetch(signedUrl)
+          if (!res.ok) throw new Error('Failed to fetch file')
+          const blob = await res.blob()
+          if (!active) return
+          const url = URL.createObjectURL(blob)
+          createdUrl = url
+          setPreviewUrl(url)
+        } catch (e) {
+          if (active) setPreviewUrl(signedUrl)
+        }
+      })()
+    } else {
+      setPreviewUrl(null)
+    }
+    return () => {
+      active = false
+      if (createdUrl) URL.revokeObjectURL(createdUrl)
+    }
+  }, [signedUrl, isPdf])
+
   if (!effectiveUrl || !signedUrl) {
     return (
       <Card className={className}>
@@ -79,7 +110,7 @@ export function CandidateResumeViewer({ jobCandidateId, fallbackResumeUrl, class
         <div className="w-full border border-border rounded-lg overflow-hidden bg-surface-secondary">
           {isPdf ? (
             <iframe
-              src={signedUrl}
+              src={previewUrl || signedUrl}
               title="Resume preview"
               className="w-full"
               style={{ height: `${height}vh` }}
