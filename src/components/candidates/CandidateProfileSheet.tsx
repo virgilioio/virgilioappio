@@ -131,9 +131,10 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
     if (!jobCandidateId) return
     setEditLoading(true)
     try {
+      const { email, phone, ...jobCandidateData } = candidateData
       const { data, error } = await supabase
         .from('job_candidates')
-        .update(candidateData)
+        .update(jobCandidateData)
         .eq('id', jobCandidateId)
         .select('*')
         .single()
