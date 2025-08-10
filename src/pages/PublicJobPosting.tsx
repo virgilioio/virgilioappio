@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge'
 import { SafeHtml } from '@/components/ui/safe-html'
 import { VirgilioLogo } from '@/components/VirgilioLogo'
 import { MapPin, Briefcase, DollarSign } from 'lucide-react'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 type FieldType = 'text' | 'number' | 'email' | 'textarea' | 'select' | 'checkbox' | 'date' | 'file' | 'url'
 
@@ -154,117 +155,132 @@ export default function PublicJobPosting() {
 
       {/* Main content */}
       <main className="max-w-5xl mx-auto px-6 pt-20 pb-10">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 space-y-8">
-            <section aria-labelledby="job-title">
-              <h1 id="job-title" className="text-3xl font-semibold text-text-primary">
-                {posting.title}
-              </h1>
-              {posting.description && (
-                <SafeHtml content={posting.description} className="prose prose-sm text-text-secondary mt-4 max-w-none" />
-              )}
-            </section>
+        <Tabs defaultValue="overview" className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="overview">Job Overview</TabsTrigger>
+            <TabsTrigger value="application">Application</TabsTrigger>
+          </TabsList>
 
-            <section aria-labelledby="application-form">
-              <Card>
-                <CardHeader>
-                  <CardTitle id="application-form">Application Form</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {fields.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">No application form fields configured yet.</p>
-                  ) : (
-                    fields.map((f) => (
-                      <div key={f.id}>
-                        <label className="text-sm font-medium">
-                          {f.field_label} {f.is_required && <Badge variant="secondary" className="ml-2">Required</Badge>}
-                        </label>
-                        <div className="mt-1">
-                          {f.field_type === 'text' && <Input placeholder={f.placeholder_text || ''} />}
-                          {f.field_type === 'url' && <Input type="url" placeholder={f.placeholder_text || 'https://'} />}
-                          {f.field_type === 'email' && <Input type="email" placeholder={f.placeholder_text || ''} />}
-                          {f.field_type === 'number' && <Input type="number" placeholder={f.placeholder_text || ''} />}
-                          {f.field_type === 'textarea' && <Textarea placeholder={f.placeholder_text || ''} rows={4} />}
-                          {f.field_type === 'checkbox' && (
-                            <div className="flex items-center gap-2">
-                              <Checkbox />
-                              <span className="text-sm text-muted-foreground">I acknowledge</span>
+          <TabsContent value="overview">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              <div className="lg:col-span-2 space-y-8">
+                <section aria-labelledby="job-title">
+                  <h1 id="job-title" className="text-3xl font-semibold text-text-primary">
+                    {posting.title}
+                  </h1>
+                  {posting.description && (
+                    <SafeHtml content={posting.description} className="prose prose-sm text-text-secondary mt-6 max-w-none" />
+                  )}
+                </section>
+              </div>
+
+              <aside className="lg:col-span-1 lg:sticky lg:top-20 space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Job Details</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex items-start gap-3">
+                      <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
+                      <div>
+                        <div className="text-sm font-medium">Location</div>
+                        <div className="text-sm text-muted-foreground">
+                          {details.location || 'Not specified'}
+                          {details.locationType && (
+                            <span> • {formatLabel(details.locationType)}</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-3">
+                      <Briefcase className="h-4 w-4 text-muted-foreground mt-0.5" />
+                      <div>
+                        <div className="text-sm font-medium">Employment Type</div>
+                        <div className="text-sm text-muted-foreground">
+                          {formatLabel(details.employmentType) || 'Not specified'}
+                        </div>
+                      </div>
+                    </div>
+
+                    {(details.showSalary && details.salaryAmount) && (
+                      <div className="flex items-start gap-3">
+                        <DollarSign className="h-4 w-4 text-muted-foreground mt-0.5" />
+                        <div>
+                          <div className="text-sm font-medium">Compensation</div>
+                          <div className="text-sm text-muted-foreground">
+                            {details.salaryCurrency} {Number(details.salaryAmount).toLocaleString()} {formatLabel(details.salaryPeriod)}
+                          </div>
+                          {details.hasCommissions && details.commissionsAmount && (
+                            <div className="text-xs text-muted-foreground mt-1">
+                              Avg commissions: {details.commissionsCurrency} {Number(details.commissionsAmount).toLocaleString()}
                             </div>
                           )}
-                          {f.field_type === 'select' && (
-                            <Select>
-                              <SelectTrigger><SelectValue placeholder="Select an option" /></SelectTrigger>
-                              <SelectContent>
-                                {(options[f.id] || []).map((o) => (
-                                  <SelectItem key={o.id} value={o.option_value}>{o.option_label}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          )}
-                          {f.field_type === 'date' && <Input type="date" />}
-                          {f.field_type === 'file' && <Input type="file" />}
                         </div>
                       </div>
-                    ))
-                  )}
-                  {/* Submission flow can be added later */}
-                  <div className="pt-2">
-                    <p className="text-xs text-muted-foreground">Note: Submissions are not enabled yet.</p>
-                  </div>
-                </CardContent>
-              </Card>
-            </section>
-          </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </aside>
+            </div>
+          </TabsContent>
 
-          <aside className="lg:col-span-1 lg:sticky lg:top-20 space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Job Details</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-start gap-3">
-                  <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
-                  <div>
-                    <div className="text-sm font-medium">Location</div>
-                    <div className="text-sm text-muted-foreground">
-                      {details.location || 'Not specified'}
-                      {details.locationType && (
-                        <span> • {formatLabel(details.locationType)}</span>
+          <TabsContent value="application">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              <div className="lg:col-span-2">
+                <section aria-labelledby="application-form">
+                  <Card>
+                    <CardHeader>
+                      <CardTitle id="application-form">Application Form</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {fields.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">No application form fields configured yet.</p>
+                      ) : (
+                        fields.map((f) => (
+                          <div key={f.id}>
+                            <label className="text-sm font-medium">
+                              {f.field_label} {f.is_required && <Badge variant="secondary" className="ml-2">Required</Badge>}
+                            </label>
+                            <div className="mt-1">
+                              {f.field_type === 'text' && <Input placeholder={f.placeholder_text || ''} />}
+                              {f.field_type === 'url' && <Input type="url" placeholder={f.placeholder_text || 'https://'} />}
+                              {f.field_type === 'email' && <Input type="email" placeholder={f.placeholder_text || ''} />}
+                              {f.field_type === 'number' && <Input type="number" placeholder={f.placeholder_text || ''} />}
+                              {f.field_type === 'textarea' && <Textarea placeholder={f.placeholder_text || ''} rows={4} />}
+                              {f.field_type === 'checkbox' && (
+                                <div className="flex items-center gap-2">
+                                  <Checkbox />
+                                  <span className="text-sm text-muted-foreground">I acknowledge</span>
+                                </div>
+                              )}
+                              {f.field_type === 'select' && (
+                                <Select>
+                                  <SelectTrigger><SelectValue placeholder="Select an option" /></SelectTrigger>
+                                  <SelectContent>
+                                    {(options[f.id] || []).map((o) => (
+                                      <SelectItem key={o.id} value={o.option_value}>{o.option_label}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              )}
+                              {f.field_type === 'date' && <Input type="date" />}
+                              {f.field_type === 'file' && <Input type="file" />}
+                            </div>
+                          </div>
+                        ))
                       )}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <Briefcase className="h-4 w-4 text-muted-foreground mt-0.5" />
-                  <div>
-                    <div className="text-sm font-medium">Employment Type</div>
-                    <div className="text-sm text-muted-foreground">
-                      {formatLabel(details.employmentType) || 'Not specified'}
-                    </div>
-                  </div>
-                </div>
-
-                {(details.showSalary && details.salaryAmount) && (
-                  <div className="flex items-start gap-3">
-                    <DollarSign className="h-4 w-4 text-muted-foreground mt-0.5" />
-                    <div>
-                      <div className="text-sm font-medium">Compensation</div>
-                      <div className="text-sm text-muted-foreground">
-                        {details.salaryCurrency} {Number(details.salaryAmount).toLocaleString()} {formatLabel(details.salaryPeriod)}
+                      {/* Submission flow can be added later */}
+                      <div className="pt-2">
+                        <p className="text-xs text-muted-foreground">Note: Submissions are not enabled yet.</p>
                       </div>
-                      {details.hasCommissions && details.commissionsAmount && (
-                        <div className="text-xs text-muted-foreground mt-1">
-                          Avg commissions: {details.commissionsCurrency} {Number(details.commissionsAmount).toLocaleString()}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </aside>
-        </div>
+                    </CardContent>
+                  </Card>
+                </section>
+              </div>
+            </div>
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   )
