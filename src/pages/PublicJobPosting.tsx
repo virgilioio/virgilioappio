@@ -125,6 +125,57 @@ export default function PublicJobPosting() {
       .replace(/\b\w/g, (c) => c.toUpperCase())
   }
 
+  function JobDetailsCard({ details }: { details: { location: string | null; employmentType: string | null; locationType: string | null; salaryCurrency: string | null; salaryAmount: number | null; salaryPeriod: string | null; showSalary: boolean; hasCommissions: boolean; commissionsCurrency: string | null; commissionsAmount: number | null; } }) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Job Details</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-start gap-3">
+            <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
+            <div>
+              <div className="text-sm font-medium">Location</div>
+              <div className="text-sm text-muted-foreground">
+                {details.location || 'Not specified'}
+                {details.locationType && (
+                  <span> • {formatLabel(details.locationType)}</span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-3">
+            <Briefcase className="h-4 w-4 text-muted-foreground mt-0.5" />
+            <div>
+              <div className="text-sm font-medium">Employment Type</div>
+              <div className="text-sm text-muted-foreground">
+                {formatLabel(details.employmentType) || 'Not specified'}
+              </div>
+            </div>
+          </div>
+
+          {(details.showSalary && details.salaryAmount) && (
+            <div className="flex items-start gap-3">
+              <DollarSign className="h-4 w-4 text-muted-foreground mt-0.5" />
+              <div>
+                <div className="text-sm font-medium">Compensation</div>
+                <div className="text-sm text-muted-foreground">
+                  {details.salaryCurrency} {Number(details.salaryAmount).toLocaleString()} {formatLabel(details.salaryPeriod)}
+                </div>
+                {details.hasCommissions && details.commissionsAmount && (
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Avg commissions: {details.commissionsCurrency} {Number(details.commissionsAmount).toLocaleString()}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    )
+  }
+
   if (loading) {
     return <div className="max-w-3xl mx-auto p-6">Loading...</div>
   }
@@ -155,7 +206,10 @@ export default function PublicJobPosting() {
 
       {/* Main content */}
       <main className="max-w-5xl mx-auto px-6 pt-20 pb-10">
-        <Tabs defaultValue="overview" className="space-y-6">
+        <section aria-labelledby="job-title">
+          <h1 id="job-title" className="text-3xl font-semibold text-text-primary">{posting.title}</h1>
+        </section>
+        <Tabs defaultValue="overview" className="space-y-6 mt-4">
           <TabsList>
             <TabsTrigger value="overview">Job Overview</TabsTrigger>
             <TabsTrigger value="application">Application</TabsTrigger>
@@ -164,63 +218,19 @@ export default function PublicJobPosting() {
           <TabsContent value="overview">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               <div className="lg:col-span-2 space-y-8">
-                <section aria-labelledby="job-title">
-                  <h1 id="job-title" className="text-3xl font-semibold text-text-primary">
-                    {posting.title}
-                  </h1>
+                <section aria-labelledby="job-description">
                   {posting.description && (
-                    <SafeHtml content={posting.description} className="prose prose-sm text-text-secondary mt-6 max-w-none" />
+                    <Card>
+                      <CardContent>
+                        <SafeHtml content={posting.description} className="prose prose-sm text-text-secondary max-w-none" />
+                      </CardContent>
+                    </Card>
                   )}
                 </section>
               </div>
 
               <aside className="lg:col-span-1 lg:sticky lg:top-20 space-y-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Job Details</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex items-start gap-3">
-                      <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
-                      <div>
-                        <div className="text-sm font-medium">Location</div>
-                        <div className="text-sm text-muted-foreground">
-                          {details.location || 'Not specified'}
-                          {details.locationType && (
-                            <span> • {formatLabel(details.locationType)}</span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex items-start gap-3">
-                      <Briefcase className="h-4 w-4 text-muted-foreground mt-0.5" />
-                      <div>
-                        <div className="text-sm font-medium">Employment Type</div>
-                        <div className="text-sm text-muted-foreground">
-                          {formatLabel(details.employmentType) || 'Not specified'}
-                        </div>
-                      </div>
-                    </div>
-
-                    {(details.showSalary && details.salaryAmount) && (
-                      <div className="flex items-start gap-3">
-                        <DollarSign className="h-4 w-4 text-muted-foreground mt-0.5" />
-                        <div>
-                          <div className="text-sm font-medium">Compensation</div>
-                          <div className="text-sm text-muted-foreground">
-                            {details.salaryCurrency} {Number(details.salaryAmount).toLocaleString()} {formatLabel(details.salaryPeriod)}
-                          </div>
-                          {details.hasCommissions && details.commissionsAmount && (
-                            <div className="text-xs text-muted-foreground mt-1">
-                              Avg commissions: {details.commissionsCurrency} {Number(details.commissionsAmount).toLocaleString()}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+                <JobDetailsCard details={details} />
               </aside>
             </div>
           </TabsContent>
@@ -278,6 +288,9 @@ export default function PublicJobPosting() {
                   </Card>
                 </section>
               </div>
+              <aside className="lg:col-span-1 lg:sticky lg:top-20 space-y-4">
+                <JobDetailsCard details={details} />
+              </aside>
             </div>
           </TabsContent>
         </Tabs>
