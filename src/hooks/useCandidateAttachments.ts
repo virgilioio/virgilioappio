@@ -14,6 +14,7 @@ export interface CandidateAttachment {
   uploaded_by: string | null
   created_at: string
   updated_at: string
+  is_resume: boolean
 }
 
 export function useCandidateAttachments(candidateId: string) {
@@ -55,7 +56,7 @@ export function useCandidateAttachments(candidateId: string) {
     }
   }
 
-  const uploadAttachment = async (file: File) => {
+  const uploadAttachment = async (file: File, isResume: boolean = false) => {
     if (!user || !candidateId) {
       throw new Error('User not authenticated or candidate ID missing')
     }
@@ -91,7 +92,8 @@ export function useCandidateAttachments(candidateId: string) {
           file_url: fileName, // Store the storage path
           file_size_bytes: file.size,
           file_type: file.type,
-          uploaded_by: user.id
+          uploaded_by: user.id,
+          is_resume: isResume
         })
 
       if (dbError) {
@@ -209,6 +211,39 @@ export function useCandidateAttachments(candidateId: string) {
       })
     }
   }
+  const setPrimaryResume = async (attachmentId: string) => {
+    setIsLoading(true)
+    try {
+      console.log('Setting primary resume:', attachmentId)
+      const { error } = await supabase
+        .from('candidate_attachments')
+        .update({ is_resume: true })
+        .eq('id', attachmentId)
+
+      if (error) {
+        console.error('Error setting primary resume:', error)
+        throw error
+      }
+
+      toast({
+        title: 'Resume set',
+        description: 'This attachment is now the primary resume.'
+      })
+
+      await getAttachments()
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to set resume'
+      console.error('Set resume error:', err)
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive'
+      })
+      throw err
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   useEffect(() => {
     if (candidateId) {
@@ -223,6 +258,7 @@ export function useCandidateAttachments(candidateId: string) {
     uploadAttachment,
     deleteAttachment,
     downloadAttachment,
+    setPrimaryResume,
     getAttachments
   }
 }

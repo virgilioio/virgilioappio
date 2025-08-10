@@ -146,6 +146,7 @@ export type Database = {
           file_type: string | null
           file_url: string
           id: string
+          is_resume: boolean
           updated_at: string | null
           uploaded_by: string | null
         }
@@ -157,6 +158,7 @@ export type Database = {
           file_type?: string | null
           file_url: string
           id?: string
+          is_resume?: boolean
           updated_at?: string | null
           uploaded_by?: string | null
         }
@@ -168,6 +170,7 @@ export type Database = {
           file_type?: string | null
           file_url?: string
           id?: string
+          is_resume?: boolean
           updated_at?: string | null
           uploaded_by?: string | null
         }

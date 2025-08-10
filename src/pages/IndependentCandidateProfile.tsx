@@ -21,6 +21,7 @@ import { SafeHtml } from '@/components/ui/safe-html'
 import AddToJobPipelineDialog from '@/components/candidates/AddToJobPipelineDialog'
 import CandidateNameCard from '@/components/candidates/CandidateNameCard'
 import { supabase } from '@/integrations/supabase/client'
+import { CandidateResumeViewer } from '@/components/candidates/CandidateResumeViewer'
 
 export default function IndependentCandidateProfile() {
   const { candidateId } = useParams<{ candidateId: string }>()

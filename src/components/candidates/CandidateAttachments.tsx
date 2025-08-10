@@ -16,7 +16,7 @@ interface CandidateAttachmentsProps {
 }
 
 export function CandidateAttachments({ candidateId }: CandidateAttachmentsProps) {
-  const { attachments, isLoading, isUploading, uploadAttachment, deleteAttachment, downloadAttachment } = useCandidateAttachments(candidateId)
+  const { attachments, isLoading, isUploading, uploadAttachment, deleteAttachment, downloadAttachment, setPrimaryResume } = useCandidateAttachments(candidateId)
   const { canManageCandidates } = usePermissions()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [dragOver, setDragOver] = useState(false)
@@ -206,6 +206,9 @@ export function CandidateAttachments({ candidateId }: CandidateAttachmentsProps)
                           {attachment.file_type.split('/')[1]?.toUpperCase() || 'FILE'}
                         </Badge>
                       )}
+                      {attachment.is_resume && (
+                        <Badge variant="default" className="text-xs ml-2">Resume</Badge>
+                      )}
                     </div>
                     
                     <div className="flex items-center gap-sm">
@@ -218,6 +221,16 @@ export function CandidateAttachments({ candidateId }: CandidateAttachmentsProps)
                         <Download className="h-4 w-4" />
                       </Button>
                       
+                      {canManageCandidates && !attachment.is_resume && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setPrimaryResume(attachment.id)}
+                          className="gap-sm h-8 px-2"
+                        >
+                          Mark as Resume
+                        </Button>
+                      )}
                       {canManageCandidates && (
                         <Button
                           variant="ghost"

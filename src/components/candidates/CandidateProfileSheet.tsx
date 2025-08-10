@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { Badge } from '@/components/ui/badge'
 import { CandidateAttachments } from '@/components/candidates/CandidateAttachments'
 import { CandidateComments } from '@/components/candidates/CandidateComments'
+import { CandidateResumeViewer } from '@/components/candidates/CandidateResumeViewer'
 import { CandidateUrls } from '@/components/candidates/CandidateUrls'
 import { CandidateWorkExperienceComponent } from '@/components/candidates/CandidateWorkExperience'
 import { CandidateEducationComponent } from '@/components/candidates/CandidateEducationComponent'
@@ -244,7 +245,7 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
                         </CardHeader>
                         <CardContent>
                           {jobCandidateId ? (
-                            <CandidateAttachments candidateId={jobCandidateId} />
+                            <CandidateResumeViewer jobCandidateId={jobCandidateId} />
                           ) : (
                             <div className="text-sm text-text-secondary">No job candidate record linked.</div>
                           )}

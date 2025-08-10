@@ -22,6 +22,7 @@ import { CandidateForm } from '@/components/candidates/CandidateForm'
 import { cn } from '@/lib/utils'
 import { CandidateAttachments } from '@/components/candidates/CandidateAttachments'
 import { CandidateUrls } from '@/components/candidates/CandidateUrls'
+import { CandidateResumeViewer } from '@/components/candidates/CandidateResumeViewer'
 import { CreateOfferLetterDialog } from '@/components/candidates/CreateOfferLetterDialog'
 import { getSkillColor } from '@/utils/skillColors'
 import { generateCandidatePdf } from '@/utils/candidatePdfGenerator'
@@ -344,7 +345,7 @@ export default function CandidateProfile() {
                       <CardTitle className="text-lg font-medium text-text-primary">Resume</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <CandidateAttachments candidateId={candidate.id} />
+                      <CandidateResumeViewer jobCandidateId={candidate.id} />
                     </CardContent>
                   </Card>
                 )}
