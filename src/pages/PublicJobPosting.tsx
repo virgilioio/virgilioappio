@@ -1,0 +1,166 @@
+
+import { useEffect, useMemo, useState } from 'react'
+import { useParams } from 'react-router-dom'
+import { supabase } from '@/integrations/supabase/client'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Badge } from '@/components/ui/badge'
+
+type FieldType = 'text' | 'number' | 'email' | 'textarea' | 'select' | 'checkbox' | 'date' | 'file' | 'url'
+
+interface Posting {
+  id: string
+  title: string
+  description: string | null
+}
+
+interface PostingField {
+  id: string
+  field_label: string
+  field_type: FieldType
+  is_required: boolean
+  placeholder_text?: string | null
+}
+
+interface SelectOption {
+  id: string
+  option_value: string
+  option_label: string
+  display_order: number
+  posting_field_id: string
+}
+
+export default function PublicJobPosting() {
+  const { slug } = useParams<{ slug: string }>()
+  const [posting, setPosting] = useState<Posting | null>(null)
+  const [fields, setFields] = useState<PostingField[]>([])
+  const [options, setOptions] = useState<Record<string, SelectOption[]>>({})
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const load = async () => {
+      if (!slug) return
+      // Only active postings are selectable publicly due to RLS
+      const { data: p } = await supabase
+        .from('job_postings')
+        .select('id,title,description')
+        .eq('slug', slug)
+        .maybeSingle()
+      if (!p) {
+        setPosting(null)
+        setLoading(false)
+        return
+      }
+      setPosting(p as Posting)
+
+      const { data: f } = await supabase
+        .from('job_posting_application_fields')
+        .select('id, field_label, field_type, is_required, placeholder_text')
+        .eq('posting_id', p.id)
+        .order('display_order', { ascending: true })
+
+      const fieldRows = (f || []) as PostingField[]
+      setFields(fieldRows)
+
+      // Fetch select options for select fields
+      const selectFieldIds = fieldRows.filter((r) => r.field_type === 'select').map((r) => r.id)
+      if (selectFieldIds.length) {
+        const { data: allOpts } = await supabase
+          .from('posting_field_select_options')
+          .select('*')
+          .in('posting_field_id', selectFieldIds)
+          .order('display_order', { ascending: true })
+        const grouped: Record<string, SelectOption[]> = {}
+        ;(allOpts || []).forEach((o: any) => {
+          if (!grouped[o.posting_field_id]) grouped[o.posting_field_id] = []
+          grouped[o.posting_field_id].push(o as SelectOption)
+        })
+        setOptions(grouped)
+      } else {
+        setOptions({})
+      }
+
+      setLoading(false)
+    }
+    load()
+  }, [slug])
+
+  if (loading) {
+    return <div className="max-w-3xl mx-auto p-6">Loading...</div>
+  }
+
+  if (!posting) {
+    return (
+      <div className="max-w-3xl mx-auto p-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Posting Not Found</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">This job posting is not available.</p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  return (
+    <div className="max-w-3xl mx-auto p-6 space-y-6">
+      <div>
+        <h1 className="text-3xl font-semibold text-text-primary">{posting.title}</h1>
+        {posting.description && <p className="text-text-secondary mt-2 whitespace-pre-wrap">{posting.description}</p>}
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Application Form</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {fields.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No application form fields configured yet.</p>
+          ) : (
+            fields.map((f) => (
+              <div key={f.id}>
+                <label className="text-sm font-medium">
+                  {f.field_label} {f.is_required && <Badge variant="secondary" className="ml-2">Required</Badge>}
+                </label>
+                <div className="mt-1">
+                  {f.field_type === 'text' && <Input placeholder={f.placeholder_text || ''} />}
+                  {f.field_type === 'url' && <Input type="url" placeholder={f.placeholder_text || 'https://'} />}
+                  {f.field_type === 'email' && <Input type="email" placeholder={f.placeholder_text || ''} />}
+                  {f.field_type === 'number' && <Input type="number" placeholder={f.placeholder_text || ''} />}
+                  {f.field_type === 'textarea' && <Textarea placeholder={f.placeholder_text || ''} rows={4} />}
+                  {f.field_type === 'checkbox' && (
+                    <div className="flex items-center gap-2">
+                      <Checkbox />
+                      <span className="text-sm text-muted-foreground">I acknowledge</span>
+                    </div>
+                  )}
+                  {f.field_type === 'select' && (
+                    <Select>
+                      <SelectTrigger><SelectValue placeholder="Select an option" /></SelectTrigger>
+                      <SelectContent>
+                        {(options[f.id] || []).map((o) => (
+                          <SelectItem key={o.id} value={o.option_value}>{o.option_label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                  {f.field_type === 'date' && <Input type="date" />}
+                  {f.field_type === 'file' && <Input type="file" />}
+                </div>
+              </div>
+            ))
+          )}
+          {/* Submission flow can be added later */}
+          <div className="pt-2">
+            <p className="text-xs text-muted-foreground">Note: Submissions are not enabled yet.</p>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}

@@ -1,0 +1,209 @@
+
+import { useCallback, useEffect, useState } from 'react'
+import { supabase } from '@/integrations/supabase/client'
+import { useToast } from '@/hooks/use-toast'
+import { ApplicationFieldWithRelations } from './useApplicationFields'
+
+export type FieldType = 'text' | 'number' | 'email' | 'textarea' | 'select' | 'checkbox' | 'date' | 'file' | 'url'
+
+export interface PostingField {
+  id: string
+  posting_id: string
+  source: 'library' | 'custom'
+  application_field_id?: string | null
+  field_name: string
+  field_label: string
+  field_type: FieldType
+  is_required: boolean
+  display_order: number
+  placeholder_text?: string | null
+  help_text?: string | null
+  accepted_file_types?: string | null
+  max_file_size_mb?: number | null
+  created_at: string
+  updated_at: string
+}
+
+export function useJobPostingFields(postingId: string) {
+  const { toast } = useToast()
+  const [fields, setFields] = useState<PostingField[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+
+  const fetchFields = useCallback(async () => {
+    setIsLoading(true)
+    const { data, error } = await supabase
+      .from('job_posting_application_fields')
+      .select('*')
+      .eq('posting_id', postingId)
+      .order('display_order', { ascending: true })
+    if (error) {
+      console.error('Error loading posting fields:', error)
+      toast({ title: 'Error', description: 'Failed to load form fields', variant: 'destructive' })
+      setFields([])
+    } else {
+      setFields((data || []) as PostingField[])
+    }
+    setIsLoading(false)
+  }, [postingId, toast])
+
+  useEffect(() => {
+    fetchFields()
+  }, [fetchFields])
+
+  const sanitizeName = (label: string) => {
+    const base = label.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '')
+    return base || 'field'
+  }
+
+  const uniqueFieldName = async (label: string) => {
+    const base = sanitizeName(label)
+    let candidate = base
+    let i = 1
+    while (true) {
+      const { data } = await supabase
+        .from('job_posting_application_fields')
+        .select('id')
+        .eq('posting_id', postingId)
+        .eq('field_name', candidate)
+        .maybeSingle()
+      if (!data) return candidate
+      i += 1
+      candidate = `${base}_${i}`
+    }
+  }
+
+  const addCustomField = useCallback(async ({ field_label, field_type, is_required }: { field_label: string; field_type: FieldType; is_required: boolean; }) => {
+    const field_name = await uniqueFieldName(field_label)
+    const { error } = await supabase
+      .from('job_posting_application_fields')
+      .insert({
+        posting_id: postingId,
+        source: 'custom',
+        application_field_id: null,
+        field_name,
+        field_label,
+        field_type,
+        is_required
+      })
+    if (error) {
+      console.error('Error adding custom field:', error)
+      toast({ title: 'Error', description: 'Could not add custom field', variant: 'destructive' })
+    } else {
+      await fetchFields()
+      toast({ title: 'Added', description: 'Custom field added' })
+    }
+  }, [postingId, fetchFields, toast])
+
+  const addFieldFromLibrary = useCallback(async (lib: ApplicationFieldWithRelations) => {
+    // Insert the field row
+    const { data: inserted, error } = await supabase
+      .from('job_posting_application_fields')
+      .insert({
+        posting_id: postingId,
+        source: 'library',
+        application_field_id: lib.id,
+        field_name: lib.field_name,
+        field_label: lib.field_label,
+        field_type: lib.field_type,
+        is_required: false,
+        placeholder_text: lib.placeholder_text,
+        help_text: lib.help_text,
+        accepted_file_types: lib.accepted_file_types || null,
+        max_file_size_mb: lib.max_file_size_mb ?? null
+      })
+      .select()
+      .maybeSingle()
+    if (error || !inserted) {
+      console.error('Error adding library field:', error)
+      toast({ title: 'Error', description: 'Could not add library field', variant: 'destructive' })
+      return
+    }
+
+    // Copy select options (if any)
+    if (lib.field_type === 'select' && lib.select_options?.length) {
+      const rows = lib.select_options
+        .sort((a, b) => a.display_order - b.display_order)
+        .map((o) => ({
+          posting_field_id: inserted.id,
+          option_value: o.option_value,
+          option_label: o.option_label,
+          display_order: o.display_order
+        }))
+      const { error: optErr } = await supabase.from('posting_field_select_options').insert(rows as any)
+      if (optErr) console.error('Error copying select options:', optErr)
+    }
+
+    // Copy validation rules (if any)
+    if (lib.validation_rules?.length) {
+      const rows = lib.validation_rules.map((r) => ({
+        posting_field_id: inserted.id,
+        rule_type: r.rule_type,
+        rule_value: r.rule_value,
+        error_message: r.error_message
+      }))
+      const { error: vrErr } = await supabase.from('posting_field_validation_rules').insert(rows as any)
+      if (vrErr) console.error('Error copying validation rules:', vrErr)
+    }
+
+    await fetchFields()
+    toast({ title: 'Added', description: 'Field added from library' })
+  }, [postingId, fetchFields, toast])
+
+  const updateField = useCallback(async (id: string, updates: Partial<PostingField>) => {
+    const { error } = await supabase
+      .from('job_posting_application_fields')
+      .update(updates)
+      .eq('id', id)
+    if (error) {
+      console.error('Error updating field:', error)
+      toast({ title: 'Error', description: 'Could not update field', variant: 'destructive' })
+    } else {
+      setFields((prev) => prev.map((f) => (f.id === id ? { ...f, ...updates } as PostingField : f)))
+    }
+  }, [toast])
+
+  const deleteField = useCallback(async (id: string) => {
+    const { error } = await supabase
+      .from('job_posting_application_fields')
+      .delete()
+      .eq('id', id)
+    if (error) {
+      console.error('Error deleting field:', error)
+      toast({ title: 'Error', description: 'Could not delete field', variant: 'destructive' })
+    } else {
+      setFields((prev) => prev.filter((f) => f.id !== id))
+      toast({ title: 'Deleted', description: 'Field removed' })
+    }
+  }, [toast])
+
+  const moveField = useCallback(async (id: string, dir: 'up' | 'down') => {
+    // Simple swap with neighbor
+    const idx = fields.findIndex((f) => f.id === id)
+    if (idx < 0) return
+    const neighborIdx = dir === 'up' ? idx - 1 : idx + 1
+    if (neighborIdx < 0 || neighborIdx >= fields.length) return
+    const a = fields[idx]
+    const b = fields[neighborIdx]
+    // Swap display_order
+    const { error: e1 } = await supabase
+      .from('job_posting_application_fields')
+      .update({ display_order: b.display_order })
+      .eq('id', a.id)
+    const { error: e2 } = await supabase
+      .from('job_posting_application_fields')
+      .update({ display_order: a.display_order })
+      .eq('id', b.id)
+    if (e1 || e2) {
+      console.error('Error moving field:', e1 || e2)
+      toast({ title: 'Error', description: 'Could not reorder fields', variant: 'destructive' })
+    } else {
+      // Update local order
+      const next = [...fields]
+      next[idx] = { ...b }
+      next[neighborIdx] = { ...a }
+      setFields(next)
+    }
+  }, [fields, toast])
+
+  return { fields, isLoading, refetch: fetchFields, addCustomField, addFieldFromLibrary, updateField, deleteField, moveField }
+}

@@ -1322,6 +1322,122 @@ export type Database = {
           },
         ]
       }
+      job_posting_application_fields: {
+        Row: {
+          accepted_file_types: string | null
+          application_field_id: string | null
+          created_at: string
+          display_order: number
+          field_label: string
+          field_name: string
+          field_type: Database["public"]["Enums"]["field_type"]
+          help_text: string | null
+          id: string
+          is_required: boolean
+          max_file_size_mb: number | null
+          placeholder_text: string | null
+          posting_id: string
+          source: Database["public"]["Enums"]["application_field_source"]
+          updated_at: string
+        }
+        Insert: {
+          accepted_file_types?: string | null
+          application_field_id?: string | null
+          created_at?: string
+          display_order?: number
+          field_label: string
+          field_name: string
+          field_type?: Database["public"]["Enums"]["field_type"]
+          help_text?: string | null
+          id?: string
+          is_required?: boolean
+          max_file_size_mb?: number | null
+          placeholder_text?: string | null
+          posting_id: string
+          source: Database["public"]["Enums"]["application_field_source"]
+          updated_at?: string
+        }
+        Update: {
+          accepted_file_types?: string | null
+          application_field_id?: string | null
+          created_at?: string
+          display_order?: number
+          field_label?: string
+          field_name?: string
+          field_type?: Database["public"]["Enums"]["field_type"]
+          help_text?: string | null
+          id?: string
+          is_required?: boolean
+          max_file_size_mb?: number | null
+          placeholder_text?: string | null
+          posting_id?: string
+          source?: Database["public"]["Enums"]["application_field_source"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_posting_application_fields_application_field_id_fkey"
+            columns: ["application_field_id"]
+            isOneToOne: false
+            referencedRelation: "application_fields"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_posting_application_fields_posting_id_fkey"
+            columns: ["posting_id"]
+            isOneToOne: false
+            referencedRelation: "job_postings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_postings: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          details: Json
+          id: string
+          is_active: boolean
+          job_id: string
+          slug: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          details?: Json
+          id?: string
+          is_active?: boolean
+          job_id: string
+          slug: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          details?: Json
+          id?: string
+          is_active?: boolean
+          job_id?: string
+          slug?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_postings_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_request_agreements: {
         Row: {
           agreement_content: string | null
@@ -2114,6 +2230,76 @@ export type Database = {
           updated_by?: string | null
         }
         Relationships: []
+      }
+      posting_field_select_options: {
+        Row: {
+          created_at: string
+          display_order: number
+          id: string
+          option_label: string
+          option_value: string
+          posting_field_id: string
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number
+          id?: string
+          option_label: string
+          option_value: string
+          posting_field_id: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number
+          id?: string
+          option_label?: string
+          option_value?: string
+          posting_field_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "posting_field_select_options_posting_field_id_fkey"
+            columns: ["posting_field_id"]
+            isOneToOne: false
+            referencedRelation: "job_posting_application_fields"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      posting_field_validation_rules: {
+        Row: {
+          created_at: string
+          error_message: string
+          id: string
+          posting_field_id: string
+          rule_type: string
+          rule_value: string
+        }
+        Insert: {
+          created_at?: string
+          error_message: string
+          id?: string
+          posting_field_id: string
+          rule_type: string
+          rule_value: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string
+          id?: string
+          posting_field_id?: string
+          rule_type?: string
+          rule_value?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "posting_field_validation_rules_posting_field_id_fkey"
+            columns: ["posting_field_id"]
+            isOneToOne: false
+            referencedRelation: "job_posting_application_fields"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -3255,6 +3441,7 @@ export type Database = {
         | "candidate_added"
         | "invoice_created"
         | "invoice_paid"
+      application_field_source: "library" | "custom"
       contract_status_enum:
         | "active"
         | "pending"
@@ -3481,6 +3668,7 @@ export const Constants = {
         "invoice_created",
         "invoice_paid",
       ],
+      application_field_source: ["library", "custom"],
       contract_status_enum: [
         "active",
         "pending",

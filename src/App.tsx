@@ -30,6 +30,7 @@ import IndependentCandidateProfile from '@/pages/IndependentCandidateProfile'
 import { useFavicon } from './hooks/useFavicon'
 import { useBrowserTitle } from './hooks/useBrowserTitle'
 import { Toaster } from '@/components/ui/toaster'
+import PublicJobPosting from './pages/PublicJobPosting'
 
 const queryClient = new QueryClient()
 
@@ -46,6 +47,8 @@ function AppContent() {
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/accept-invite/:token" element={<AcceptInvite />} />
         <Route path="/verify-email" element={<VerifyEmail />} />
+        {/* Public job posting route */}
+        <Route path="/p/:slug" element={<PublicJobPosting />} />
         <Route
           path="/*"
           element={
