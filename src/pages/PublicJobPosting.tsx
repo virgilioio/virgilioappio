@@ -214,7 +214,7 @@ export default function PublicJobPosting() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       {/* Header with logo on the right */}
       <header className={`fixed top-0 left-0 right-0 z-50 border-b border-border transition-shadow supports-[backdrop-filter]:bg-surface-primary/60 bg-surface-primary/90 backdrop-blur ${scrolled ? 'shadow-sm' : ''}`}>
         <div className="max-w-5xl mx-auto flex items-center justify-start px-md py-2 sm:px-lg">
@@ -223,7 +223,7 @@ export default function PublicJobPosting() {
       </header>
 
       {/* Main content */}
-      <main className="max-w-5xl mx-auto px-6 pt-20 pb-10">
+      <main className="max-w-5xl mx-auto px-6 pt-20 pb-10 flex-1 w-full">
         <section aria-labelledby="job-title">
           <h1 id="job-title" className="text-3xl font-semibold text-text-primary">{posting.title}</h1>
         </section>
