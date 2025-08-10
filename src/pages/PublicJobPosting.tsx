@@ -113,8 +113,8 @@ export default function PublicJobPosting() {
     <div className="min-h-screen bg-background">
       {/* Header with logo on the right */}
       <header className="w-full border-b border-border">
-        <div className="max-w-3xl mx-auto flex items-center justify-end px-6 py-4">
-          <VirgilioLogo size="lg" />
+        <div className="max-w-3xl mx-auto flex items-center justify-start px-md py-2 sm:px-lg">
+          <VirgilioLogo className="h-6 w-auto" />
         </div>
       </header>
 
