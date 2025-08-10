@@ -48,6 +48,7 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
   }
 
   const availableLibraryFields = useMemo(() => libraryFields, [libraryFields])
+  const defaultLibraryIds = useMemo(() => new Set(availableLibraryFields.filter((f) => f.is_default).map((f) => f.id)), [availableLibraryFields])
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -223,7 +224,10 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
                             {isDragging && <DropBox id={`beside|${f.id}|left`} orientation="col" />}
                             <SortableRow id={f.id}>
                               {({ attributes, listeners }) => (
-                                <div className="p-3 border border-border/40 rounded-brand flex-1">
+                                <div className={cn(
+                                  "p-3 border border-border/40 rounded-brand flex-1",
+                                  (f.source === 'library' && f.application_field_id && defaultLibraryIds.has(f.application_field_id)) && 'bg-muted/20'
+                                )}>
                                   <div className="flex items-start gap-3">
                                     <Button
                                       variant="outline"
@@ -242,7 +246,7 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
                                           <Input
                                             value={f.field_label}
                                             onChange={(e) => updateField(f.id, { field_label: e.target.value })}
-                                            disabled={readOnly}
+                                            disabled={readOnly || (f.source === 'library' && f.application_field_id && defaultLibraryIds.has(f.application_field_id))}
                                             placeholder="Label"
                                           />
                                         </div>
@@ -250,7 +254,7 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
                                           <Select
                                             value={f.field_type}
                                             onValueChange={(v: FieldType) => updateField(f.id, { field_type: v })}
-                                            disabled={readOnly}
+                                            disabled={readOnly || (f.source === 'library' && f.application_field_id && defaultLibraryIds.has(f.application_field_id))}
                                           >
                                             <SelectTrigger><SelectValue placeholder="Type" /></SelectTrigger>
                                             <SelectContent>
@@ -264,7 +268,7 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
                                           <Checkbox
                                             checked={f.is_required}
                                             onCheckedChange={(c) => updateField(f.id, { is_required: !!c })}
-                                            disabled={readOnly}
+                                            disabled={readOnly || (f.source === 'library' && f.application_field_id && defaultLibraryIds.has(f.application_field_id))}
                                             id={`req-${f.id}`}
                                           />
                                           <label htmlFor={`req-${f.id}`} className="ml-2 text-sm text-muted-foreground">Required</label>
@@ -277,7 +281,7 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
                                               await deleteField(f.id)
                                               await refetch()
                                             }}
-                                            disabled={readOnly}
+                                            disabled={readOnly || (f.source === 'library' && f.application_field_id && defaultLibraryIds.has(f.application_field_id))}
                                             title="Delete field"
                                           >
                                             <Trash2 className="h-4 w-4" />
