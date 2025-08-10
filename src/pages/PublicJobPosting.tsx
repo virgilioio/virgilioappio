@@ -236,7 +236,7 @@ export default function PublicJobPosting() {
 
           <TabsContent value="overview">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              <div className="lg:col-span-2 space-y-8">
+              <div className="order-2 lg:order-1 lg:col-span-2 space-y-8">
                 <section aria-labelledby="job-description">
                   {posting.description && (
                     <Card>
@@ -253,7 +253,7 @@ export default function PublicJobPosting() {
                 </div>
               </div>
 
-              <aside className="lg:col-span-1 lg:sticky lg:top-20 space-y-4">
+              <aside className="order-1 lg:order-2 lg:col-span-1 lg:sticky lg:top-20 space-y-4">
                 <JobDetailsCard details={details} />
               </aside>
             </div>
@@ -261,7 +261,7 @@ export default function PublicJobPosting() {
 
           <TabsContent value="application">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              <div className="lg:col-span-2">
+              <div className="order-2 lg:order-1 lg:col-span-2">
                 <section aria-labelledby="application-form">
                   <Card>
                     <CardHeader>
@@ -318,7 +318,7 @@ export default function PublicJobPosting() {
                   </Card>
                 </section>
               </div>
-              <aside className="lg:col-span-1 lg:sticky lg:top-20 space-y-4">
+              <aside className="order-1 lg:order-2 lg:col-span-1 lg:sticky lg:top-20 space-y-4">
                 <JobDetailsCard details={details} />
               </aside>
             </div>
