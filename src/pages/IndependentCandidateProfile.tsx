@@ -148,6 +148,33 @@ export default function IndependentCandidateProfile() {
       setIsResumeUploading(false)
     }
   }
+
+  const replaceResumeInputRef = useRef<HTMLInputElement>(null)
+  const handleReplaceResumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      void handleResumeUpload(file)
+    }
+    e.currentTarget.value = ''
+  }
+  const handleDeleteResume = async () => {
+    if (!candidate) return
+    try {
+      if (candidate.resume_url && !/^https?:\/\//i.test(candidate.resume_url)) {
+        await supabase.storage.from('candidate-attachments').remove([candidate.resume_url])
+      }
+      const { error: dbError } = await supabase
+        .from('candidates')
+        .update({ resume_url: null })
+        .eq('id', candidate.id)
+      if (dbError) throw dbError
+      toast({ title: 'Resume deleted', description: 'The resume has been removed.' })
+      setCandidate({ ...candidate, resume_url: null })
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to delete resume'
+      toast({ title: 'Error', description: msg, variant: 'destructive' })
+    }
+  }
   if (candidatesLoading) {
     return (
       <AuthGate>
@@ -360,8 +387,28 @@ export default function IndependentCandidateProfile() {
                     <CardTitle className="text-lg font-medium text-text-primary">Resume</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <ResumeDropzone onUpload={handleResumeUpload} isUploading={isResumeUploading} />
-                    <CandidateResumeViewer fallbackResumeUrl={candidate.resume_url} />
+                    {candidate.resume_url ? (
+                      <>
+                        <div className="flex gap-2">
+                          <input
+                            ref={replaceResumeInputRef}
+                            type="file"
+                            className="hidden"
+                            onChange={handleReplaceResumeChange}
+                            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.webp"
+                          />
+                          <Button variant="outline" onClick={() => replaceResumeInputRef.current?.click()} disabled={isResumeUploading}>
+                            Replace Resume
+                          </Button>
+                          <Button variant="destructive" onClick={handleDeleteResume}>
+                            Delete Resume
+                          </Button>
+                        </div>
+                        <CandidateResumeViewer fallbackResumeUrl={candidate.resume_url} />
+                      </>
+                    ) : (
+                      <ResumeDropzone onUpload={handleResumeUpload} isUploading={isResumeUploading} />
+                    )}
                   </CardContent>
                 </Card>
               )}
