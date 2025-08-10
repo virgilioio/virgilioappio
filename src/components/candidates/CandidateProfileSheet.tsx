@@ -243,7 +243,11 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
                           <CardTitle className="text-lg">Resume</CardTitle>
                         </CardHeader>
                         <CardContent>
-                          <div className="text-sm text-text-secondary">Resume preview coming soon.</div>
+                          {jobCandidateId ? (
+                            <CandidateAttachments candidateId={jobCandidateId} />
+                          ) : (
+                            <div className="text-sm text-text-secondary">No job candidate record linked.</div>
+                          )}
                         </CardContent>
                       </Card>
                     )}

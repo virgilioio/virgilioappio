@@ -27,7 +27,7 @@ export default function IndependentCandidateProfile() {
   const navigate = useNavigate()
   const [candidate, setCandidate] = useState<IndependentCandidate | null>(null)
   const [isFormOpen, setIsFormOpen] = useState(false)
-  const [activeTab, setActiveTab] = useState<'overview' | 'details' | 'experience' | 'education'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'resume' | 'details' | 'experience' | 'education'>('overview')
   const [isHired, setIsHired] = useState(false)
   
   const { 
@@ -211,6 +211,7 @@ export default function IndependentCandidateProfile() {
                 subtitle={`Independent candidate • Added ${new Date(candidate.created_at).toLocaleDateString()}`}
                 tabs={[
                   { value: 'overview', label: 'Overview', Icon: FileText },
+                  { value: 'resume', label: 'Resume', Icon: FileText },
                   { value: 'experience', label: 'Experience', Icon: Zap },
                   { value: 'education', label: 'Education', Icon: User },
                   { value: 'details', label: 'Details', Icon: Calendar },
@@ -323,12 +324,34 @@ export default function IndependentCandidateProfile() {
                 <CandidateWorkExperienceComponent experiences={workExperience} />
               )}
 
-              {/* Education Tab */}
-              {activeTab === 'education' && (
-                <CandidateEducationComponent education={education} />
+              {/* Resume Tab */}
+              {activeTab === 'resume' && (
+                <Card className="bg-surface-primary">
+                  <CardHeader>
+                    <CardTitle className="text-lg font-medium text-text-primary">Resume</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {candidate.resume_url ? (
+                      <div className="space-y-3">
+                        <div className="aspect-[8.5/11] w-full border border-border rounded-lg overflow-hidden bg-surface-secondary">
+                          <iframe
+                            src={candidate.resume_url}
+                            title="Resume preview"
+                            className="w-full h-[70vh]"
+                          />
+                        </div>
+                        <a href={candidate.resume_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline text-sm">
+                          Open in new tab
+                        </a>
+                      </div>
+                    ) : (
+                      <div className="text-sm text-text-secondary">No resume available.</div>
+                    )}
+                  </CardContent>
+                </Card>
               )}
 
-              {/* Detailed Information Card - Details Tab */}
+              {/* Education Tab */}
               {activeTab === 'details' && (
                 <Card className="bg-surface-primary">
                   <CardHeader>

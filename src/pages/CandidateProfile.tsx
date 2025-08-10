@@ -344,7 +344,7 @@ export default function CandidateProfile() {
                       <CardTitle className="text-lg font-medium text-text-primary">Resume</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="text-sm text-text-secondary">Resume preview coming soon.</div>
+                      <CandidateAttachments candidateId={candidate.id} />
                     </CardContent>
                   </Card>
                 )}
