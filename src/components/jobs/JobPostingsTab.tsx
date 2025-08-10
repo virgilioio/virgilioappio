@@ -4,11 +4,12 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Switch } from '@/components/ui/switch'
-import { ExternalLink, Pencil, Plus, MoreVertical, Copy, Trash } from 'lucide-react'
+import { ExternalLink, Pencil, Plus, MoreVertical, Copy, Trash, Link as LinkIcon } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { useJobPostings, JobPosting } from '@/hooks/useJobPostings'
 import { PostingSheet } from './postings/PostingSheet'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { copyToClipboard } from '@/utils/clipboard'
 
 interface JobPostingsTabProps {
   jobId: string
@@ -116,18 +117,21 @@ export function JobPostingsTab({ jobId, jobTitle, readOnly }: JobPostingsTabProp
                             <MoreVertical className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="z-50 w-40 bg-popover">
-                          <DropdownMenuItem onClick={() => handleEdit(p.id)}>
-                            <Pencil className="h-4 w-4 mr-2" /> Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleDuplicate(p)}>
-                            <Copy className="h-4 w-4 mr-2" /> Duplicate
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => handleDelete(p.id)} className="text-destructive">
-                            <Trash className="h-4 w-4 mr-2" /> Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
+                          <DropdownMenuContent align="end" className="z-50 w-40 bg-popover">
+                            <DropdownMenuItem onClick={() => handleEdit(p.id)}>
+                              <Pencil className="h-4 w-4 mr-2" /> Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleDuplicate(p)}>
+                              <Copy className="h-4 w-4 mr-2" /> Duplicate
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => copyToClipboard(`${window.location.origin}/p/${p.slug}`, 'Public link copied')}>
+                              <LinkIcon className="h-4 w-4 mr-2" /> Copy public link
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => handleDelete(p.id)} className="text-destructive">
+                              <Trash className="h-4 w-4 mr-2" /> Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
                   </TableRow>

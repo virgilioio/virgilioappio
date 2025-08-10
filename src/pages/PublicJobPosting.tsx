@@ -51,6 +51,21 @@ export default function PublicJobPosting() {
   const [tab, setTab] = useState<'overview' | 'application'>('overview')
   const { toast } = useToast()
 
+  // Canonical host redirect to app.virgilio.io (skip local dev)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const { hostname } = window.location
+      const isLocal = hostname === 'localhost' || hostname === '127.0.0.1'
+      const targetHost = 'app.virgilio.io'
+      if (!isLocal && hostname !== targetHost) {
+        const url = new URL(window.location.href)
+        url.host = targetHost
+        url.protocol = 'https:'
+        window.location.replace(url.toString())
+      }
+    }
+  }, [])
+
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 2)
     onScroll()
