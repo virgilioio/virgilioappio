@@ -8,7 +8,10 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { useApplicationFields } from '@/hooks/useApplicationFields'
 import { useJobPostingFields, FieldType, PostingField } from '@/hooks/useJobPostingFields'
 import { FormField } from '@/components/ui/form-field'
-import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react'
+import { GripVertical, Plus, Trash2 } from 'lucide-react'
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
+import { SortableContext, verticalListSortingStrategy, arrayMove, useSortable } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 
 interface PostingFieldsBuilderProps {
   postingId: string
@@ -25,7 +28,7 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
     addFieldFromLibrary,
     updateField,
     deleteField,
-    moveField
+    reorderFields
   } = useJobPostingFields(postingId)
 
   // Add Custom Field form
@@ -43,6 +46,34 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
   }
 
   const availableLibraryFields = useMemo(() => libraryFields, [libraryFields])
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  )
+
+  function handleDragEnd(event: any) {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const oldIndex = fields.findIndex((f) => f.id === active.id)
+    const newIndex = fields.findIndex((f) => f.id === over.id)
+    if (oldIndex < 0 || newIndex < 0) return
+    const newOrder = arrayMove(fields, oldIndex, newIndex).map((f) => f.id)
+    reorderFields(newOrder)
+  }
+
+  function SortableRow({ id, children }: { id: string; children: (handlers: { attributes: any; listeners: any }) => React.ReactNode }) {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
+    const style: React.CSSProperties = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+      opacity: isDragging ? 0.6 : undefined,
+    }
+    return (
+      <div ref={setNodeRef} style={style}>
+        {children({ attributes, listeners })}
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -123,75 +154,75 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
           ) : fields.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-6">No fields yet. Add from library or create a custom field.</p>
           ) : (
-            fields.map((f, idx) => (
-              <div key={f.id} className="p-3 border border-border/40 rounded-brand">
-                <div className="grid md:grid-cols-6 gap-3 items-end">
-                  <FormField label="Label" className="md:col-span-2">
-                    <Input
-                      value={f.field_label}
-                      onChange={(e) => updateField(f.id, { field_label: e.target.value })}
-                      disabled={readOnly}
-                    />
-                  </FormField>
-                  <FormField label="Type">
-                    <Select
-                      value={f.field_type}
-                      onValueChange={(v: FieldType) => updateField(f.id, { field_type: v })}
-                      disabled={readOnly}
-                    >
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {(['text','number','email','url','textarea','select','checkbox','date','file'] as FieldType[]).map((t) => (
-                          <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </FormField>
-                  <FormField label="Required">
-                    <div className="flex items-center h-10">
-                      <Checkbox
-                        checked={f.is_required}
-                        onCheckedChange={(c) => updateField(f.id, { is_required: !!c })}
-                        disabled={readOnly}
-                      />
-                      <span className="ml-2 text-sm text-muted-foreground">Required</span>
-                    </div>
-                  </FormField>
-                  <div className="flex items-center gap-2 md:justify-end">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => moveField(f.id, 'up')}
-                      disabled={readOnly || idx === 0}
-                      title="Move up"
-                    >
-                      <ArrowUp className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => moveField(f.id, 'down')}
-                      disabled={readOnly || idx === fields.length - 1}
-                      title="Move down"
-                    >
-                      <ArrowDown className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={async () => {
-                        await deleteField(f.id)
-                        await refetch()
-                      }}
-                      disabled={readOnly}
-                      title="Delete field"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            ))
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <SortableContext items={fields.map((f) => f.id)} strategy={verticalListSortingStrategy}>
+                {fields.map((f) => (
+                  <SortableRow key={f.id} id={f.id}>
+                    {({ attributes, listeners }) => (
+                      <div className="p-3 border border-border/40 rounded-brand">
+                        <div className="grid md:grid-cols-6 gap-3 items-end">
+                          <FormField label="Label" className="md:col-span-2">
+                            <Input
+                              value={f.field_label}
+                              onChange={(e) => updateField(f.id, { field_label: e.target.value })}
+                              disabled={readOnly}
+                            />
+                          </FormField>
+                          <FormField label="Type">
+                            <Select
+                              value={f.field_type}
+                              onValueChange={(v: FieldType) => updateField(f.id, { field_type: v })}
+                              disabled={readOnly}
+                            >
+                              <SelectTrigger><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                {(['text','number','email','url','textarea','select','checkbox','date','file'] as FieldType[]).map((t) => (
+                                  <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </FormField>
+                          <FormField label="Required">
+                            <div className="flex items-center h-10">
+                              <Checkbox
+                                checked={f.is_required}
+                                onCheckedChange={(c) => updateField(f.id, { is_required: !!c })}
+                                disabled={readOnly}
+                              />
+                              <span className="ml-2 text-sm text-muted-foreground">Required</span>
+                            </div>
+                          </FormField>
+                          <div className="flex items-center gap-2 md:justify-end">
+                            <Button
+                              variant="outline"
+                              size="icon"
+                              {...attributes}
+                              {...listeners}
+                              disabled={readOnly}
+                              title="Drag to reorder"
+                            >
+                              <GripVertical className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={async () => {
+                                await deleteField(f.id)
+                                await refetch()
+                              }}
+                              disabled={readOnly}
+                              title="Delete field"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </SortableRow>
+                ))}
+              </SortableContext>
+            </DndContext>
           )}
         </CardContent>
       </Card>

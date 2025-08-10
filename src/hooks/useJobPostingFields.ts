@@ -205,5 +205,23 @@ export function useJobPostingFields(postingId: string) {
     }
   }, [fields, toast])
 
-  return { fields, isLoading, refetch: fetchFields, addCustomField, addFieldFromLibrary, updateField, deleteField, moveField }
+  const reorderFields = useCallback(async (orderedIds: string[]) => {
+    // Persist new display_order based on index
+    const updates = orderedIds.map((id, index) => ({ id, display_order: index }))
+    for (const u of updates) {
+      const { error } = await supabase
+        .from('job_posting_application_fields')
+        .update({ display_order: u.display_order })
+        .eq('id', u.id)
+      if (error) {
+        console.error('Error updating display_order:', error)
+        toast({ title: 'Error', description: 'Could not save new order', variant: 'destructive' })
+        return
+      }
+    }
+    // Update local state to reflect new order
+    setFields((prev) => orderedIds.map((id) => prev.find((f) => f.id === id)!).filter(Boolean) as PostingField[])
+  }, [toast])
+
+  return { fields, isLoading, refetch: fetchFields, addCustomField, addFieldFromLibrary, updateField, deleteField, moveField, reorderFields }
 }
