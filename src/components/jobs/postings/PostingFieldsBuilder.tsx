@@ -9,9 +9,10 @@ import { useApplicationFields } from '@/hooks/useApplicationFields'
 import { useJobPostingFields, FieldType, PostingField } from '@/hooks/useJobPostingFields'
 import { FormField } from '@/components/ui/form-field'
 import { GripVertical, Plus, Trash2 } from 'lucide-react'
-import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core'
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, useDroppable } from '@dnd-kit/core'
 import { SortableContext, rectSortingStrategy, arrayMove, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
+import { cn } from '@/lib/utils'
 
 interface PostingFieldsBuilderProps {
   postingId: string
@@ -51,72 +52,133 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   )
 
+  const [isDragging, setIsDragging] = useState(false)
+  const [activeId, setActiveId] = useState<string | null>(null)
+
+  const computeRows = (list: PostingField[]) => {
+    const rows: PostingField[][] = []
+    let current: PostingField[] = []
+    let sum = 0
+    for (const f of list) {
+      const span = f.column_span ?? 4
+      if (sum + span > 4) {
+        rows.push(current)
+        current = [f]
+        sum = span
+      } else {
+        current.push(f)
+        sum += span
+      }
+    }
+    if (current.length) rows.push(current)
+    return rows
+  }
+
+  const rows = useMemo(() => computeRows(fields), [fields])
+
+  function DropBox({ id, orientation }: { id: string; orientation: 'row' | 'col' }) {
+    const { setNodeRef, isOver } = useDroppable({ id })
+    return (
+      <div
+        ref={setNodeRef}
+        className={cn(
+          orientation === 'row' ? 'h-8 w-full my-2' : 'h-24 w-3 mx-1',
+          'rounded-brand border border-dashed transition-colors',
+          isOver ? 'border-primary bg-primary/10' : 'border-border/40 bg-transparent'
+        )}
+      />
+    )
+  }
+
+  function handleDragStart(event: any) {
+    setIsDragging(true)
+    setActiveId(event.active?.id as string)
+  }
+
   function handleDragEnd(event: any) {
+    setIsDragging(false)
+    setActiveId(null)
     const { active, over } = event
-    if (!over || active.id === over.id) return
+    if (!over) return
+    const overId: string = String(over.id)
+
     const oldIndex = fields.findIndex((f) => f.id === active.id)
-    const newIndex = fields.findIndex((f) => f.id === over.id)
-    if (oldIndex < 0 || newIndex < 0) return
+    if (oldIndex < 0) return
 
-    const newOrderFields = arrayMove(fields, oldIndex, newIndex)
-
-    // Build groups: keep existing compact groups (span < 4) contiguous, and ensure dropped pair forms a group
-    const isCompact = (f: PostingField) => (f.column_span ?? 4) < 4
-    const droppedIds = new Set<string>([active.id, over.id])
-
-    const groups: PostingField[][] = []
-    let i = 0
-    while (i < newOrderFields.length) {
-      let group: PostingField[] = [newOrderFields[i]]
-      let j = i + 1
-      // Extend group while items were compact previously or part of the drop pair
-      while (
-        j < newOrderFields.length &&
-        (isCompact(newOrderFields[j - 1]) || isCompact(newOrderFields[j]) ||
-          (droppedIds.has(newOrderFields[j - 1].id) || droppedIds.has(newOrderFields[j].id))) &&
-        group.length < 4
-      ) {
-        group.push(newOrderFields[j])
-        j++
-      }
-      groups.push(group)
-      i = j
+    const insertAt = (list: PostingField[], index: number, item: PostingField) => {
+      const copy = list.filter((x) => x.id !== item.id)
+      const pos = Math.max(0, Math.min(index, copy.length))
+      copy.splice(pos, 0, item)
+      return copy
     }
 
-    // For safety, split any group larger than 4 into chunks of 4
-    const normalizedGroups: PostingField[][] = []
-    for (const g of groups) {
-      for (let k = 0; k < g.length; k += 4) {
-        normalizedGroups.push(g.slice(k, k + 4))
+    // Drop into a row boundary
+    if (overId.startsWith('row-')) {
+      const rows = computeRows(fields)
+      const rowIdx = parseInt(overId.split('-')[1] || '0', 10)
+      // insertion index is the number of items in prior rows
+      const insertionIndex = rows.slice(0, rowIdx).reduce((acc, r) => acc + r.length, 0)
+      const activeItem = fields[oldIndex]
+      const newOrderFields = insertAt(fields, insertionIndex, activeItem)
+
+      // Ensure full-width in its own row
+      if ((activeItem.column_span ?? 4) !== 4) {
+        updateField(activeItem.id, { column_span: 4 } as any)
       }
+
+      reorderFields(newOrderFields.map((f) => f.id))
+      return
     }
 
-    // Assign spans per group
-    const newSpans = new Map<string, number>()
-    for (const g of normalizedGroups) {
-      if (g.length === 1) {
-        newSpans.set(g[0].id, 4)
-      } else if (g.length === 2) {
-        newSpans.set(g[0].id, 2)
-        newSpans.set(g[1].id, 2)
-      } else if (g.length === 3) {
-        newSpans.set(g[0].id, 1)
-        newSpans.set(g[1].id, 1)
-        newSpans.set(g[2].id, 2)
-      } else if (g.length === 4) {
-        g.forEach((f) => newSpans.set(f.id, 1))
+    // Drop beside a specific field
+    if (overId.startsWith('beside-')) {
+      const [, targetId, side] = overId.split('-') // beside, {id}, left|right
+      const targetIndex = fields.findIndex((f) => f.id === targetId)
+      if (targetIndex < 0) return
+      const activeItem = fields[oldIndex]
+      const after = side === 'right'
+      const insertionIndex = targetIndex + (after ? 1 : 0)
+      const newOrderFields = insertAt(fields, insertionIndex, activeItem)
+
+      // Recompute rows after insertion
+      const rowsAfter = computeRows(newOrderFields)
+      // Find the row containing targetId (and thus the active item now)
+      let rowContaining: PostingField[] | null = null
+      for (const r of rowsAfter) {
+        if (r.some((x) => x.id === targetId)) { rowContaining = r; break }
       }
+      if (!rowContaining) rowContaining = rowsAfter[0] || []
+
+      // Assign equalized spans for that row
+      const len = rowContaining.length
+      const spanMap = new Map<string, number>()
+      if (len <= 1) {
+        spanMap.set(rowContaining[0].id, 4)
+      } else if (len === 2) {
+        spanMap.set(rowContaining[0].id, 2)
+        spanMap.set(rowContaining[1].id, 2)
+      } else if (len === 3) {
+        spanMap.set(rowContaining[0].id, 1)
+        spanMap.set(rowContaining[1].id, 1)
+        spanMap.set(rowContaining[2].id, 2)
+      } else {
+        rowContaining.forEach((it) => spanMap.set(it.id, 1))
+      }
+      rowContaining.forEach((it) => {
+        const span = spanMap.get(it.id) ?? 4
+        if ((it.column_span ?? 4) !== span) {
+          updateField(it.id, { column_span: span } as any)
+        }
+      })
+
+      reorderFields(newOrderFields.map((f) => f.id))
+      return
     }
 
-    // Persist span changes where needed
-    newOrderFields.forEach((f) => {
-      const span = newSpans.get(f.id) ?? 4
-      if ((f.column_span ?? 4) !== span) {
-        updateField(f.id, { column_span: span } as any)
-      }
-    })
-
-    const newOrder = newOrderFields.map((f) => f.id)
+    // Default sortable behavior: reorder without changing spans
+    const overIndex = fields.findIndex((f) => f.id === over.id)
+    if (overIndex < 0) return
+    const newOrder = arrayMove(fields, oldIndex, overIndex).map((f) => f.id)
     reorderFields(newOrder)
   }
 
@@ -213,78 +275,90 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
           ) : fields.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-6">No fields yet. Add from library or create a custom field.</p>
           ) : (
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
               <SortableContext items={fields.map((f) => f.id)} strategy={rectSortingStrategy}>
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                  {fields.map((f) => (
-                    <SortableRow key={f.id} id={f.id}>
-                      {({ attributes, listeners }) => (
-                        <div className="p-3 border border-border/40 rounded-brand" style={{ gridColumn: `span ${f.column_span || 4} / span ${f.column_span || 4}` }}>
-                          <div className="flex items-start gap-3">
-                            <Button
-                              variant="outline"
-                              size="icon"
-                              {...attributes}
-                              {...listeners}
-                              disabled={readOnly}
-                              title="Drag to reorder"
-                              className="mt-6 shrink-0"
-                            >
-                              <GripVertical className="h-4 w-4" />
-                            </Button>
-                            <div className="flex-1">
-                              <div className="grid md:grid-cols-6 gap-3 items-end">
-                                <div className="md:col-span-2">
-                                  <Input
-                                    value={f.field_label}
-                                    onChange={(e) => updateField(f.id, { field_label: e.target.value })}
-                                    disabled={readOnly}
-                                    placeholder="Label"
-                                  />
+                <div className="space-y-2">
+                  {isDragging && <DropBox id={`row-0`} orientation="row" />}
+                  {rows.map((row, rIdx) => (
+                    <div key={`row-${rIdx}`}>
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                        {row.map((f) => (
+                          <div key={f.id} className="flex items-stretch" style={{ gridColumn: `span ${f.column_span || 4} / span ${f.column_span || 4}` }}>
+                            {isDragging && <DropBox id={`beside-${f.id}-left`} orientation="col" />}
+                            <SortableRow id={f.id}>
+                              {({ attributes, listeners }) => (
+                                <div className="p-3 border border-border/40 rounded-brand flex-1">
+                                  <div className="flex items-start gap-3">
+                                    <Button
+                                      variant="outline"
+                                      size="icon"
+                                      {...attributes}
+                                      {...listeners}
+                                      disabled={readOnly}
+                                      title="Drag to reorder"
+                                      className="mt-6 shrink-0"
+                                    >
+                                      <GripVertical className="h-4 w-4" />
+                                    </Button>
+                                    <div className="flex-1">
+                                      <div className="grid md:grid-cols-6 gap-3 items-end">
+                                        <div className="md:col-span-2">
+                                          <Input
+                                            value={f.field_label}
+                                            onChange={(e) => updateField(f.id, { field_label: e.target.value })}
+                                            disabled={readOnly}
+                                            placeholder="Label"
+                                          />
+                                        </div>
+                                        <div>
+                                          <Select
+                                            value={f.field_type}
+                                            onValueChange={(v: FieldType) => updateField(f.id, { field_type: v })}
+                                            disabled={readOnly}
+                                          >
+                                            <SelectTrigger><SelectValue placeholder="Type" /></SelectTrigger>
+                                            <SelectContent>
+                                              {(['text','number','email','url','textarea','select','checkbox','date','file'] as FieldType[]).map((t) => (
+                                                <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>
+                                              ))}
+                                            </SelectContent>
+                                          </Select>
+                                        </div>
+                                        <div className="flex items-center h-10">
+                                          <Checkbox
+                                            checked={f.is_required}
+                                            onCheckedChange={(c) => updateField(f.id, { is_required: !!c })}
+                                            disabled={readOnly}
+                                            id={`req-${f.id}`}
+                                          />
+                                          <label htmlFor={`req-${f.id}`} className="ml-2 text-sm text-muted-foreground">Required</label>
+                                        </div>
+                                        <div className="flex items-center gap-2 md:justify-end">
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            onClick={async () => {
+                                              await deleteField(f.id)
+                                              await refetch()
+                                            }}
+                                            disabled={readOnly}
+                                            title="Delete field"
+                                          >
+                                            <Trash2 className="h-4 w-4" />
+                                          </Button>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
                                 </div>
-                                <div>
-                                  <Select
-                                    value={f.field_type}
-                                    onValueChange={(v: FieldType) => updateField(f.id, { field_type: v })}
-                                    disabled={readOnly}
-                                  >
-                                    <SelectTrigger><SelectValue placeholder="Type" /></SelectTrigger>
-                                    <SelectContent>
-                                      {(['text','number','email','url','textarea','select','checkbox','date','file'] as FieldType[]).map((t) => (
-                                        <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                </div>
-                                <div className="flex items-center h-10">
-                                  <Checkbox
-                                    checked={f.is_required}
-                                    onCheckedChange={(c) => updateField(f.id, { is_required: !!c })}
-                                    disabled={readOnly}
-                                    id={`req-${f.id}`}
-                                  />
-                                  <label htmlFor={`req-${f.id}`} className="ml-2 text-sm text-muted-foreground">Required</label>
-                                </div>
-                                <div className="flex items-center gap-2 md:justify-end">
-                                  <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={async () => {
-                                      await deleteField(f.id)
-                                      await refetch()
-                                    }}
-                                    disabled={readOnly}
-                                    title="Delete field"
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              </div>
-                            </div>
+                              )}
+                            </SortableRow>
+                            {isDragging && <DropBox id={`beside-${f.id}-right`} orientation="col" />}
                           </div>
-                        </div>
-                      )}
-                    </SortableRow>
+                        ))}
+                      </div>
+                      {isDragging && <DropBox id={`row-${rIdx + 1}`} orientation="row" />}
+                    </div>
                   ))}
                 </div>
               </SortableContext>
