@@ -62,9 +62,8 @@ export function JobPostingsTab({ jobId, jobTitle, readOnly }: JobPostingsTabProp
               <TableHeader>
                 <TableRow>
                   <TableHead>Title</TableHead>
-                  <TableHead>Slug</TableHead>
-                  <TableHead>Active</TableHead>
-                  <TableHead>Created</TableHead>
+                  <TableHead className="hidden md:table-cell">Slug</TableHead>
+                  <TableHead className="hidden sm:table-cell">Created</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -72,28 +71,31 @@ export function JobPostingsTab({ jobId, jobTitle, readOnly }: JobPostingsTabProp
                 {postings.map((p) => (
                   <TableRow key={p.id}>
                     <TableCell className="font-medium">{p.title}</TableCell>
-                    <TableCell className="text-xs text-muted-foreground">{p.slug}</TableCell>
-                    <TableCell>
-                      <Switch
-                        checked={p.is_active}
-                        onCheckedChange={(c) => handleToggle(p.id, !!c)}
-                        disabled={readOnly}
-                      />
-                    </TableCell>
-                    <TableCell>{new Date(p.created_at).toLocaleDateString()}</TableCell>
-                    <TableCell className="text-right space-x-2">
-                      <Button variant="outline" size="sm" onClick={() => handleEdit(p.id)} disabled={readOnly}>
-                        <Pencil className="h-4 w-4 mr-1" /> Edit
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => window.open(`/p/${p.slug}`, '_blank')}
-                        disabled={!p.is_active}
-                        title={p.is_active ? 'Open public link' : 'Activate to open'}
-                      >
-                        <ExternalLink className="h-4 w-4 mr-1" /> Open
-                      </Button>
+                    <TableCell className="hidden md:table-cell text-xs text-muted-foreground">{p.slug}</TableCell>
+                    <TableCell className="hidden sm:table-cell">{new Date(p.created_at).toLocaleDateString()}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <div className="flex items-center gap-2 mr-2">
+                          <Switch
+                            checked={p.is_active}
+                            onCheckedChange={(c) => handleToggle(p.id, !!c)}
+                            disabled={readOnly}
+                          />
+                          <span className="text-xs text-muted-foreground hidden md:inline">Active</span>
+                        </div>
+                        <Button variant="outline" size="sm" onClick={() => handleEdit(p.id)} disabled={readOnly}>
+                          <Pencil className="h-4 w-4 mr-1" /> Edit
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => window.open(`/p/${p.slug}`, '_blank')}
+                          disabled={!p.is_active}
+                          title={p.is_active ? 'Open public link' : 'Activate to open'}
+                        >
+                          <ExternalLink className="h-4 w-4 mr-1" /> Open
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
