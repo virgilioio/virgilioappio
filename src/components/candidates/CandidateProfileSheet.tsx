@@ -225,10 +225,10 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
                         { value: 'job', label: 'Job Application', Icon: FileText },
                         { value: 'resume', label: 'Resume', Icon: FileText },
                         { value: 'overview', label: 'Overview', Icon: FileText },
-                        { value: 'notes', label: 'Notes', Icon: MessageSquare },
+                        
                       ]}
                       activeTab={activeTab}
-                      onTabChange={(v) => setActiveTab(v as 'job' | 'resume' | 'overview' | 'notes')}
+                      onTabChange={(v) => setActiveTab(v as 'job' | 'resume' | 'overview')}
                       rightActions={
                         <>
                           <Button
@@ -378,18 +378,7 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
                         </Card>
                       </>
                     ) : (
-                      <Card className="bg-surface-primary border-border">
-                        <CardHeader>
-                          <CardTitle className="text-lg">Notes</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          {organizationId && jobCandidateId ? (
-                            <CandidateComments candidateId={jobCandidateId} jobId={jobId} organizationId={organizationId} />
-                          ) : (
-                            <div className="text-sm text-text-secondary">No job candidate record linked for comments.</div>
-                          )}
-                        </CardContent>
-                      </Card>
+                      <></>
                     )}
                   </div>
 
@@ -445,6 +434,20 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
                           </>
                         ) : (
                           <div className="text-sm text-text-secondary">No job candidate record linked for actions.</div>
+                        )}
+                      </CardContent>
+                    </Card>
+
+                    {/* Notes */}
+                    <Card className="bg-surface-primary border-border">
+                      <CardHeader>
+                        <CardTitle className="text-lg">Notes</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        {organizationId && jobCandidateId ? (
+                          <CandidateComments candidateId={jobCandidateId} jobId={jobId} organizationId={organizationId} />
+                        ) : (
+                          <div className="text-sm text-text-secondary">No job candidate record linked for comments.</div>
                         )}
                       </CardContent>
                     </Card>

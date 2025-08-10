@@ -317,10 +317,10 @@ export default function CandidateProfile() {
                     { value: 'job', label: 'Job Application', Icon: Briefcase },
                     { value: 'resume', label: 'Resume', Icon: FileText },
                     { value: 'overview', label: 'Overview', Icon: FileText },
-                    { value: 'notes', label: 'Notes', Icon: MessageSquare },
+                    
                   ]}
                   activeTab={activeTab}
-                  onTabChange={(v) => setActiveTab(v as 'job' | 'resume' | 'overview' | 'notes')}
+                  onTabChange={(v) => setActiveTab(v as 'job' | 'resume' | 'overview')}}
                   rightActions={
                     <>
                       {independentCandidateId ? (
@@ -563,6 +563,20 @@ export default function CandidateProfile() {
                     </CardContent>
                   </Card>
                 </PermissionGate>
+
+                {/* Notes */}
+                <Card className="bg-surface-primary">
+                  <CardHeader>
+                    <CardTitle className="text-lg font-medium text-text-primary">Comments</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <CandidateComments
+                      candidateId={candidate.id}
+                      jobId={candidate.job_id}
+                      organizationId={organizationId || 'default-org'}
+                    />
+                  </CardContent>
+                </Card>
 
                 {/* Job Information */}
                 {job && (
