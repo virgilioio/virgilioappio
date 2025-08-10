@@ -140,7 +140,7 @@ export function PostingSheet({
             <TabsTrigger value="application-form" disabled={!localId}>Application Form</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="basics" className="mt-4 space-y-4">
+          <TabsContent value="basics" className="mt-4 space-y-4" forceMount>
             <FormField label="Title" required>
               <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Enter job posting title" />
             </FormField>
