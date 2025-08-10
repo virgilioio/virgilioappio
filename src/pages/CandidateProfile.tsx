@@ -320,7 +320,7 @@ export default function CandidateProfile() {
                     
                   ]}
                   activeTab={activeTab}
-                  onTabChange={(v) => setActiveTab(v as 'job' | 'resume' | 'overview')}}
+                  onTabChange={(v) => setActiveTab(v as 'job' | 'resume' | 'overview')}
                   rightActions={
                     <>
                       {independentCandidateId ? (
@@ -492,38 +492,6 @@ export default function CandidateProfile() {
                   </Card>
                 )}
 
-                {/* Independent Internal Notes Card - Notes Tab */}
-                {activeTab === 'notes' && candidate.notes && (
-                  <Card className="bg-surface-primary">
-                    <CardHeader>
-                      <CardTitle className="text-lg font-medium text-text-primary">Internal Notes</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="prose prose-sm max-w-none text-text-primary">
-                        <SafeHtml
-                          content={candidate.notes}
-                          className="leading-relaxed [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:my-2 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0"
-                        />
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                {/* Independent Comments Card - Notes Tab */}
-                {activeTab === 'notes' && (
-                  <Card className="bg-surface-primary">
-                    <CardHeader>
-                      <CardTitle className="text-lg font-medium text-text-primary">Comments</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <CandidateComments
-                        candidateId={candidate.id}
-                        jobId={candidate.job_id}
-                        organizationId={organizationId || 'default-org'}
-                      />
-                    </CardContent>
-                  </Card>
-                )}
               </div>
 
               {/* Right Column - Quick Actions, Job Info, URLs, and Attachments */}
