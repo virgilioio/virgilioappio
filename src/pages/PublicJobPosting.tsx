@@ -9,6 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { SafeHtml } from '@/components/ui/safe-html'
+import { VirgilioLogo } from '@/components/VirgilioLogo'
 
 type FieldType = 'text' | 'number' | 'email' | 'textarea' | 'select' | 'checkbox' | 'date' | 'file' | 'url'
 
@@ -109,61 +110,75 @@ export default function PublicJobPosting() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto p-6 space-y-6">
-      <div>
-        <h1 className="text-3xl font-semibold text-text-primary">{posting.title}</h1>
-        {posting.description && (
-          <SafeHtml content={posting.description} className="prose prose-sm text-text-secondary mt-2 max-w-none" />
-        )}
-      </div>
+    <div className="min-h-screen bg-background">
+      {/* Header with logo on the right */}
+      <header className="w-full border-b border-border">
+        <div className="max-w-3xl mx-auto flex items-center justify-end px-6 py-4">
+          <VirgilioLogo size="lg" />
+        </div>
+      </header>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Application Form</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {fields.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No application form fields configured yet.</p>
-          ) : (
-            fields.map((f) => (
-              <div key={f.id}>
-                <label className="text-sm font-medium">
-                  {f.field_label} {f.is_required && <Badge variant="secondary" className="ml-2">Required</Badge>}
-                </label>
-                <div className="mt-1">
-                  {f.field_type === 'text' && <Input placeholder={f.placeholder_text || ''} />}
-                  {f.field_type === 'url' && <Input type="url" placeholder={f.placeholder_text || 'https://'} />}
-                  {f.field_type === 'email' && <Input type="email" placeholder={f.placeholder_text || ''} />}
-                  {f.field_type === 'number' && <Input type="number" placeholder={f.placeholder_text || ''} />}
-                  {f.field_type === 'textarea' && <Textarea placeholder={f.placeholder_text || ''} rows={4} />}
-                  {f.field_type === 'checkbox' && (
-                    <div className="flex items-center gap-2">
-                      <Checkbox />
-                      <span className="text-sm text-muted-foreground">I acknowledge</span>
-                    </div>
-                  )}
-                  {f.field_type === 'select' && (
-                    <Select>
-                      <SelectTrigger><SelectValue placeholder="Select an option" /></SelectTrigger>
-                      <SelectContent>
-                        {(options[f.id] || []).map((o) => (
-                          <SelectItem key={o.id} value={o.option_value}>{o.option_label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                  {f.field_type === 'date' && <Input type="date" />}
-                  {f.field_type === 'file' && <Input type="file" />}
-                </div>
-              </div>
-            ))
+      {/* Main content */}
+      <main className="max-w-3xl mx-auto px-6 py-10 space-y-8">
+        <section aria-labelledby="job-title">
+          <h1 id="job-title" className="text-3xl font-semibold text-text-primary">
+            {posting.title}
+          </h1>
+          {posting.description && (
+            <SafeHtml content={posting.description} className="prose prose-sm text-text-secondary mt-4 max-w-none" />
           )}
-          {/* Submission flow can be added later */}
-          <div className="pt-2">
-            <p className="text-xs text-muted-foreground">Note: Submissions are not enabled yet.</p>
-          </div>
-        </CardContent>
-      </Card>
+        </section>
+
+        <section aria-labelledby="application-form">
+          <Card>
+            <CardHeader>
+              <CardTitle id="application-form">Application Form</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {fields.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No application form fields configured yet.</p>
+              ) : (
+                fields.map((f) => (
+                  <div key={f.id}>
+                    <label className="text-sm font-medium">
+                      {f.field_label} {f.is_required && <Badge variant="secondary" className="ml-2">Required</Badge>}
+                    </label>
+                    <div className="mt-1">
+                      {f.field_type === 'text' && <Input placeholder={f.placeholder_text || ''} />}
+                      {f.field_type === 'url' && <Input type="url" placeholder={f.placeholder_text || 'https://'} />}
+                      {f.field_type === 'email' && <Input type="email" placeholder={f.placeholder_text || ''} />}
+                      {f.field_type === 'number' && <Input type="number" placeholder={f.placeholder_text || ''} />}
+                      {f.field_type === 'textarea' && <Textarea placeholder={f.placeholder_text || ''} rows={4} />}
+                      {f.field_type === 'checkbox' && (
+                        <div className="flex items-center gap-2">
+                          <Checkbox />
+                          <span className="text-sm text-muted-foreground">I acknowledge</span>
+                        </div>
+                      )}
+                      {f.field_type === 'select' && (
+                        <Select>
+                          <SelectTrigger><SelectValue placeholder="Select an option" /></SelectTrigger>
+                          <SelectContent>
+                            {(options[f.id] || []).map((o) => (
+                              <SelectItem key={o.id} value={o.option_value}>{o.option_label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                      {f.field_type === 'date' && <Input type="date" />}
+                      {f.field_type === 'file' && <Input type="file" />}
+                    </div>
+                  </div>
+                ))
+              )}
+              {/* Submission flow can be added later */}
+              <div className="pt-2">
+                <p className="text-xs text-muted-foreground">Note: Submissions are not enabled yet.</p>
+              </div>
+            </CardContent>
+          </Card>
+        </section>
+      </main>
     </div>
   )
 }
