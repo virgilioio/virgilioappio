@@ -129,7 +129,7 @@ export function PostingSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-full sm:max-w-2xl overflow-y-auto">
+      <SheetContent side="right" className="w-full sm:max-w-3xl overflow-y-auto">
         <SheetHeader>
           <SheetTitle>{localId ? 'Edit Job Posting' : 'Create Job Posting'}</SheetTitle>
         </SheetHeader>
