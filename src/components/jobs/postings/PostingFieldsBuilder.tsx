@@ -203,77 +203,6 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm">Add Field</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-5">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <FormField label="Label">
-              <Input
-                value={label}
-                onChange={(e) => setLabel(e.target.value)}
-                placeholder="e.g., Portfolio URL"
-                disabled={readOnly}
-              />
-            </FormField>
-            <FormField label="Type">
-              <Select value={type} onValueChange={(v: FieldType) => setType(v)} disabled={readOnly}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {(['text','number','email','url','textarea','select','checkbox','date','file'] as FieldType[]).map((t) => (
-                    <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </FormField>
-            <FormField label="Required">
-              <div className="flex items-center h-10">
-                <Checkbox checked={required} onCheckedChange={(c) => setRequired(!!c)} disabled={readOnly} />
-                <span className="ml-2 text-sm text-muted-foreground">Applicants must fill this field</span>
-              </div>
-            </FormField>
-          </div>
-          <div className="flex justify-end">
-            <Button onClick={handleAddCustom} disabled={readOnly || !label.trim()}>
-              <Plus className="h-4 w-4 mr-2" /> Add Custom Field
-            </Button>
-          </div>
-
-          <div className="border-t border-border/40 pt-4">
-            <p className="text-sm font-medium mb-2">Add from Library</p>
-            {loadingLibrary ? (
-              <p className="text-sm text-muted-foreground">Loading library...</p>
-            ) : (
-              <Select
-                value={selectedLibraryId}
-                onValueChange={async (id) => {
-                  setSelectedLibraryId(id)
-                  const f = availableLibraryFields.find((x) => x.id === id)
-                  if (f) {
-                    await addFieldFromLibrary(f)
-                    await refetch()
-                  }
-                  setSelectedLibraryId('')
-                }}
-                disabled={readOnly || availableLibraryFields.length === 0}
-              >
-                <SelectTrigger className="w-full sm:w-80">
-                  <SelectValue placeholder="Choose a field to add" />
-                </SelectTrigger>
-                <SelectContent>
-                  {availableLibraryFields.map((f) => (
-                    <SelectItem key={f.id} value={f.id}>
-                      {`${f.field_label} (${f.field_type})`}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
           <CardTitle className="text-sm">Form Fields</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -379,6 +308,77 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
               </DragOverlay>
             </DndContext>
           )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm">Add Field</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <FormField label="Label">
+              <Input
+                value={label}
+                onChange={(e) => setLabel(e.target.value)}
+                placeholder="e.g., Portfolio URL"
+                disabled={readOnly}
+              />
+            </FormField>
+            <FormField label="Type">
+              <Select value={type} onValueChange={(v: FieldType) => setType(v)} disabled={readOnly}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {(['text','number','email','url','textarea','select','checkbox','date','file'] as FieldType[]).map((t) => (
+                    <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </FormField>
+            <FormField label="Required">
+              <div className="flex items-center h-10">
+                <Checkbox checked={required} onCheckedChange={(c) => setRequired(!!c)} disabled={readOnly} />
+                <span className="ml-2 text-sm text-muted-foreground">Applicants must fill this field</span>
+              </div>
+            </FormField>
+          </div>
+          <div className="flex justify-end">
+            <Button onClick={handleAddCustom} disabled={readOnly || !label.trim()}>
+              <Plus className="h-4 w-4 mr-2" /> Add Custom Field
+            </Button>
+          </div>
+
+          <div className="border-t border-border/40 pt-4">
+            <p className="text-sm font-medium mb-2">Add from Library</p>
+            {loadingLibrary ? (
+              <p className="text-sm text-muted-foreground">Loading library...</p>
+            ) : (
+              <Select
+                value={selectedLibraryId}
+                onValueChange={async (id) => {
+                  setSelectedLibraryId(id)
+                  const f = availableLibraryFields.find((x) => x.id === id)
+                  if (f) {
+                    await addFieldFromLibrary(f)
+                    await refetch()
+                  }
+                  setSelectedLibraryId('')
+                }}
+                disabled={readOnly || availableLibraryFields.length === 0}
+              >
+                <SelectTrigger className="w-full sm:w-80">
+                  <SelectValue placeholder="Choose a field to add" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableLibraryFields.map((f) => (
+                    <SelectItem key={f.id} value={f.id}>
+                      {`${f.field_label} (${f.field_type})`}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>
