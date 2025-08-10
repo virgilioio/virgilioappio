@@ -35,6 +35,9 @@ export interface CreateCandidateData {
   notes?: string | null
   linkedin_url?: string | null
   skills?: string[] | null
+  // Optional contact details captured during internal create flow
+  email?: string | null
+  phone?: string | null
 }
 
 export function useCandidates(jobId: string) {
@@ -193,6 +196,8 @@ export function useCandidates(jobId: string) {
           .from('candidates')
           .insert([{
             candidate_name: candidateData.candidate_name,
+            email: candidateData.email ?? null,
+            phone: candidateData.phone ?? null,
             location_country: candidateData.location_country,
             location_state: candidateData.location_state,
             location_city: candidateData.location_city,
@@ -213,13 +218,25 @@ export function useCandidates(jobId: string) {
           independentCandidateId = newIndependentCandidate.id
           console.log('Created independent candidate:', independentCandidateId)
         }
+      } else {
+        // If exists and we captured contact details, update the independent candidate record
+        if (candidateData.email || candidateData.phone) {
+          await supabase
+            .from('candidates')
+            .update({
+              ...(candidateData.email ? { email: candidateData.email } : {}),
+              ...(candidateData.phone ? { phone: candidateData.phone } : {}),
+            })
+            .eq('id', independentCandidateId)
+        }
       }
 
       // Step 3: Create job candidate (original functionality)
+      const { email, phone, ...jobCandidateData } = candidateData
       const { data: newCandidate, error: createError } = await supabase
         .from('job_candidates')
         .insert([{
-          ...candidateData,
+          ...jobCandidateData,
           job_id: jobId,
           added_by: user.id,
         }])
@@ -254,7 +271,7 @@ export function useCandidates(jobId: string) {
       console.log('Added candidate:', newCandidate)
       toast({
         title: 'Success',
-        description: 'Candidate added successfully'
+        description: 'Candidate added. You can attach a resume from the candidate panel.',
       })
 
       await getCandidates() // Refresh the list
@@ -280,9 +297,10 @@ export function useCandidates(jobId: string) {
 
     try {
       console.log('Updating candidate:', id, candidateData)
+      const { email, phone, ...jobCandidateData } = candidateData
       const { data: updatedCandidate, error: updateError } = await supabase
         .from('job_candidates')
-        .update(candidateData)
+        .update(jobCandidateData)
         .eq('id', id)
         .select()
         .single()

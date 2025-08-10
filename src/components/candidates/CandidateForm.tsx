@@ -42,6 +42,8 @@ interface FormData {
   profile_summary: string
   notes: string
   linkedin_url: string
+  email: string
+  phone: string
 }
 
 
@@ -72,7 +74,9 @@ export function CandidateForm({
       salary_period: 'annually',
       profile_summary: '',
       notes: '',
-      linkedin_url: ''
+      linkedin_url: '',
+      email: '',
+      phone: ''
     }
   })
 
@@ -164,7 +168,9 @@ export function CandidateForm({
           salary_period: 'annually',
           profile_summary: '',
           notes: '',
-          linkedin_url: ''
+          linkedin_url: '',
+          email: '',
+          phone: ''
         })
         
         // Reset rich text editor values only for new candidates
@@ -186,6 +192,8 @@ export function CandidateForm({
   const handleSubmit = form.handleSubmit((data) => {
     const submitData = {
       ...data,
+      email: data.email?.trim() ? data.email.trim() : null,
+      phone: data.phone?.trim() ? data.phone.trim() : null,
       salary_amount: data.salary_amount ? Number(data.salary_amount) : null,
       profile_summary: profileSummary,
       notes: notes,
@@ -269,6 +277,35 @@ export function CandidateForm({
                   placeholder="Enter candidate name or alias"
                 />
               </FormField>
+
+              {!candidate && (
+                <>
+                  <FormField 
+                    label="Email" 
+                    htmlFor="email"
+                    helpText="Optional"
+                  >
+                    <Input
+                      id="email"
+                      type="email"
+                      {...form.register('email')}
+                      placeholder="john@example.com"
+                    />
+                  </FormField>
+
+                  <FormField 
+                    label="Phone" 
+                    htmlFor="phone"
+                    helpText="Optional"
+                  >
+                    <Input
+                      id="phone"
+                      {...form.register('phone')}
+                      placeholder="+1 (555) 123-4567"
+                    />
+                  </FormField>
+                </>
+              )}
 
               <FormField 
                 label="LinkedIn Profile URL" 
