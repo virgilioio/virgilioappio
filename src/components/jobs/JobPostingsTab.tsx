@@ -36,7 +36,7 @@ export function JobPostingsTab({ jobId, jobTitle, readOnly }: JobPostingsTabProp
 
   return (
     <Card>
-      <CardHeader className="flex items-center justify-between">
+      <CardHeader className="flex-row items-center justify-between">
         <CardTitle>Job Postings</CardTitle>
         {!readOnly && (
           <Button onClick={handleCreate}>
