@@ -95,7 +95,7 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
     setActiveId(event.active?.id as string)
   }
 
-  function handleDragEnd(event: any) {
+  async function handleDragEnd(event: any) {
     setIsDragging(false)
     setActiveId(null)
     const { active, over } = event
@@ -123,10 +123,10 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
 
       // Ensure full-width in its own row
       if ((activeItem.column_span ?? 4) !== 4) {
-        updateField(activeItem.id, { column_span: 4 } as any)
+        await updateField(activeItem.id, { column_span: 4 } as any)
       }
 
-      reorderFields(newOrderFields.map((f) => f.id))
+      await reorderFields(newOrderFields.map((f) => f.id))
       return
     }
 
@@ -142,8 +142,9 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
       const insertionIndex = targetIndex + (after ? 1 : 0)
       const newOrderFields = insertAt(fields, insertionIndex, activeItem)
 
-      // Recompute rows after insertion
-      const rowsAfter = computeRows(newOrderFields)
+      // Recompute rows after insertion but force active to minimal span so it joins the target row
+      const tempForRows = newOrderFields.map((it) => it.id === activeItem.id ? { ...it, column_span: 1 } : it)
+      const rowsAfter = computeRows(tempForRows)
       // Find the row containing targetId (and thus the active item now)
       let rowContaining: PostingField[] | null = null
       for (const r of rowsAfter) {
@@ -166,14 +167,13 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
       } else {
         rowContaining.forEach((it) => spanMap.set(it.id, 1))
       }
-      rowContaining.forEach((it) => {
-        const span = spanMap.get(it.id) ?? 4
-        if ((it.column_span ?? 4) !== span) {
-          updateField(it.id, { column_span: span } as any)
-        }
-      })
 
-      reorderFields(newOrderFields.map((f) => f.id))
+      await Promise.all(rowContaining.map((it) => {
+        const span = spanMap.get(it.id) ?? 4
+        return (it.column_span ?? 4) !== span ? updateField(it.id, { column_span: span } as any) : Promise.resolve()
+      }))
+
+      await reorderFields(newOrderFields.map((f) => f.id))
       return
     }
 
@@ -181,7 +181,7 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
     const overIndex = fields.findIndex((f) => f.id === over.id)
     if (overIndex < 0) return
     const newOrder = arrayMove(fields, oldIndex, overIndex).map((f) => f.id)
-    reorderFields(newOrder)
+    await reorderFields(newOrder)
   }
 
   function SortableRow({ id, children }: { id: string; children: (handlers: { attributes: any; listeners: any }) => React.ReactNode }) {
