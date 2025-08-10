@@ -433,6 +433,57 @@ export function CandidateForm({
               </FormField>
             </div>
 
+            {/* Resume */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium text-text-primary border-b border-border pb-2">
+                Resume
+              </h3>
+              <div
+                className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${dragOver ? 'border-primary bg-primary/15' : 'border-primary/60 hover:border-primary bg-primary/10'}`}
+                onDrop={handleDrop}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  className="hidden"
+                  onChange={handleFileInputChange}
+                  accept=".pdf,.doc,.docx,.txt,.rtf"
+                />
+                <Upload className="h-8 w-8 mx-auto text-text-secondary mb-2" />
+                <p className="text-sm text-text-secondary mb-2">
+                  Drag and drop a resume here, or click to browse
+                </p>
+                <p className="text-xs text-text-secondary mb-4">
+                  PDF, DOC, DOCX, TXT up to 15MB
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploadingResume}
+                  className="gap-sm"
+                >
+                  <Upload className="h-4 w-4" />
+                  {isUploadingResume ? 'Uploading...' : 'Choose File'}
+                </Button>
+              </div>
+
+              {!candidate && pendingFiles.length > 0 && (
+                <div className="mt-2 text-left space-y-2">
+                  {pendingFiles.map((f) => (
+                    <div key={f.name + f.size} className="flex items-center justify-between p-2 border border-border rounded-md">
+                      <span className="text-sm text-text-primary truncate mr-2">{f.name}</span>
+                      <Button type="button" variant="ghost" size="sm" onClick={() => removePendingFile(f.name, f.size)}>
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {/* Location Information */}
             <div className="space-y-4">
               <h3 className="text-lg font-medium text-text-primary border-b border-border pb-2">
@@ -627,56 +678,6 @@ export function CandidateForm({
               existingSkills={skills}
             />
 
-            {/* Resume */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium text-text-primary border-b border-border pb-2">
-                Resume
-              </h3>
-              <div
-                className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${dragOver ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}`}
-                onDrop={handleDrop}
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-              >
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  className="hidden"
-                  onChange={handleFileInputChange}
-                  accept=".pdf,.doc,.docx,.txt,.rtf"
-                />
-                <Upload className="h-8 w-8 mx-auto text-text-secondary mb-2" />
-                <p className="text-sm text-text-secondary mb-2">
-                  Drag and drop a resume here, or click to browse
-                </p>
-                <p className="text-xs text-text-secondary mb-4">
-                  PDF, DOC, DOCX, TXT up to 15MB
-                </p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isUploadingResume}
-                  className="gap-sm"
-                >
-                  <Upload className="h-4 w-4" />
-                  {isUploadingResume ? 'Uploading...' : 'Choose File'}
-                </Button>
-              </div>
-
-              {!candidate && pendingFiles.length > 0 && (
-                <div className="mt-2 text-left space-y-2">
-                  {pendingFiles.map((f) => (
-                    <div key={f.name + f.size} className="flex items-center justify-between p-2 border border-border rounded-md">
-                      <span className="text-sm text-text-primary truncate mr-2">{f.name}</span>
-                      <Button type="button" variant="ghost" size="sm" onClick={() => removePendingFile(f.name, f.size)}>
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
 
             {/* Profile & Notes */}
             <div className="space-y-4">
