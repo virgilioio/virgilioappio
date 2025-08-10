@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { SafeHtml } from '@/components/ui/safe-html'
-import { ArrowLeft, MapPin, DollarSign, Calendar, User, Edit, Zap, FileText, MessageSquare, ChevronLeft, ChevronRight, Clock, Download, Briefcase } from 'lucide-react'
+import { ArrowLeft, MapPin, DollarSign, Calendar, User, Edit, Zap, FileText, ChevronLeft, ChevronRight, Clock, Download, Briefcase } from 'lucide-react'
 import { AuthGate } from '@/components/auth/AuthGate'
 // removed unused LinkedInFilled import (now handled inside CandidateNameCard)
 import { PermissionGate } from '@/components/auth/PermissionGate'
@@ -44,7 +44,7 @@ export default function CandidateProfile() {
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [isOfferLetterDialogOpen, setIsOfferLetterDialogOpen] = useState(false)
   const [isScheduleDialogOpen, setIsScheduleDialogOpen] = useState(false)
-  const [activeTab, setActiveTab] = useState<'job' | 'resume' | 'overview' | 'notes'>('overview')
+  const [activeTab, setActiveTab] = useState<'job' | 'resume' | 'overview'>('overview')
   const { candidates, isLoading: candidatesLoading, updateCandidate } = useCandidates(jobId || '')
   const { getJob, isLoading: jobLoading } = useJobs()
   const { fetchAssociationsForJob } = usePipelineActions()

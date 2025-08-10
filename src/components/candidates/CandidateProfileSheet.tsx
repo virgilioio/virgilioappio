@@ -12,7 +12,7 @@ import { CandidateUrls } from '@/components/candidates/CandidateUrls'
 import { CandidateWorkExperienceComponent } from '@/components/candidates/CandidateWorkExperience'
 import { CandidateEducationComponent } from '@/components/candidates/CandidateEducationComponent'
 import { useCandidateEnrichment } from '@/hooks/useCandidateEnrichment'
-import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight, MessageSquare } from 'lucide-react'
+import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 import { Link } from 'react-router-dom'
@@ -44,7 +44,7 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
   const [jobCandidate, setJobCandidate] = useState<any | null>(null)
   const [jobCandidateId, setJobCandidateId] = useState<string | null>(null)
   const [job, setJob] = useState<any | null>(null)
-  const [activeTab, setActiveTab] = useState<'job' | 'resume' | 'overview' | 'notes'>('overview')
+  const [activeTab, setActiveTab] = useState<'job' | 'resume' | 'overview'>('overview')
   const { workExperience, education, fetchCandidateEnrichmentData } = useCandidateEnrichment()
   const [editOpen, setEditOpen] = useState(false)
   const [editLoading, setEditLoading] = useState(false)
@@ -213,7 +213,7 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
             ) : !candidate ? (
               <div className="text-text-secondary text-sm">No data available.</div>
             ) : (
-              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'job' | 'resume' | 'overview' | 'notes')}>
+              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'job' | 'resume' | 'overview')}>
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   {/* Left column (2x) */}
                   <div className="lg:col-span-2 space-y-6">
