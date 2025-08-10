@@ -1326,6 +1326,7 @@ export type Database = {
         Row: {
           accepted_file_types: string | null
           application_field_id: string | null
+          column_span: number
           created_at: string
           display_order: number
           field_label: string
@@ -1343,6 +1344,7 @@ export type Database = {
         Insert: {
           accepted_file_types?: string | null
           application_field_id?: string | null
+          column_span?: number
           created_at?: string
           display_order?: number
           field_label: string
@@ -1360,6 +1362,7 @@ export type Database = {
         Update: {
           accepted_file_types?: string | null
           application_field_id?: string | null
+          column_span?: number
           created_at?: string
           display_order?: number
           field_label?: string
