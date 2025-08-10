@@ -44,7 +44,7 @@ export function useJobPostingFields(postingId: string) {
     } else {
       const rows = (data || []).map((row: any) => ({
         ...row,
-        column_span: row.column_span ?? 1,
+        column_span: row.column_span ?? 4,
       }))
       setFields(rows as PostingField[])
     }
@@ -89,7 +89,7 @@ export function useJobPostingFields(postingId: string) {
         field_label,
         field_type,
         is_required,
-        column_span: 1
+        column_span: 4
       })
     if (error) {
       console.error('Error adding custom field:', error)
@@ -112,7 +112,7 @@ export function useJobPostingFields(postingId: string) {
         field_label: lib.field_label,
         field_type: lib.field_type,
         is_required: false,
-        column_span: 1,
+        column_span: 4,
         placeholder_text: lib.placeholder_text,
         help_text: lib.help_text,
         accepted_file_types: lib.accepted_file_types || null,

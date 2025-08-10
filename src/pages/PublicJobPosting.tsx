@@ -275,7 +275,7 @@ export default function PublicJobPosting() {
                           {fields.map((f) => (
                             <div
                               key={f.id}
-                              style={{ gridColumn: `span ${f.column_span || 1} / span ${f.column_span || 1}` }}
+                              style={{ gridColumn: `span ${f.column_span || 4} / span ${f.column_span || 4}` }}
                             >
                               <label className="text-sm font-medium">
                                 {f.field_label} {f.is_required && <Badge variant="secondary" className="ml-2">Required</Badge>}

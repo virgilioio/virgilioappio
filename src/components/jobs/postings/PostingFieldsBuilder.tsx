@@ -57,7 +57,66 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
     const oldIndex = fields.findIndex((f) => f.id === active.id)
     const newIndex = fields.findIndex((f) => f.id === over.id)
     if (oldIndex < 0 || newIndex < 0) return
-    const newOrder = arrayMove(fields, oldIndex, newIndex).map((f) => f.id)
+
+    const newOrderFields = arrayMove(fields, oldIndex, newIndex)
+
+    // Build groups: keep existing compact groups (span < 4) contiguous, and ensure dropped pair forms a group
+    const isCompact = (f: PostingField) => (f.column_span ?? 4) < 4
+    const droppedIds = new Set<string>([active.id, over.id])
+
+    const groups: PostingField[][] = []
+    let i = 0
+    while (i < newOrderFields.length) {
+      let group: PostingField[] = [newOrderFields[i]]
+      let j = i + 1
+      // Extend group while items were compact previously or part of the drop pair
+      while (
+        j < newOrderFields.length &&
+        (isCompact(newOrderFields[j - 1]) || isCompact(newOrderFields[j]) ||
+          (droppedIds.has(newOrderFields[j - 1].id) || droppedIds.has(newOrderFields[j].id))) &&
+        group.length < 4
+      ) {
+        group.push(newOrderFields[j])
+        j++
+      }
+      groups.push(group)
+      i = j
+    }
+
+    // For safety, split any group larger than 4 into chunks of 4
+    const normalizedGroups: PostingField[][] = []
+    for (const g of groups) {
+      for (let k = 0; k < g.length; k += 4) {
+        normalizedGroups.push(g.slice(k, k + 4))
+      }
+    }
+
+    // Assign spans per group
+    const newSpans = new Map<string, number>()
+    for (const g of normalizedGroups) {
+      if (g.length === 1) {
+        newSpans.set(g[0].id, 4)
+      } else if (g.length === 2) {
+        newSpans.set(g[0].id, 2)
+        newSpans.set(g[1].id, 2)
+      } else if (g.length === 3) {
+        newSpans.set(g[0].id, 1)
+        newSpans.set(g[1].id, 1)
+        newSpans.set(g[2].id, 2)
+      } else if (g.length === 4) {
+        g.forEach((f) => newSpans.set(f.id, 1))
+      }
+    }
+
+    // Persist span changes where needed
+    newOrderFields.forEach((f) => {
+      const span = newSpans.get(f.id) ?? 4
+      if ((f.column_span ?? 4) !== span) {
+        updateField(f.id, { column_span: span } as any)
+      }
+    })
+
+    const newOrder = newOrderFields.map((f) => f.id)
     reorderFields(newOrder)
   }
 
@@ -160,7 +219,7 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
                   {fields.map((f) => (
                     <SortableRow key={f.id} id={f.id}>
                       {({ attributes, listeners }) => (
-                        <div className="p-3 border border-border/40 rounded-brand" style={{ gridColumn: `span ${f.column_span || 1} / span ${f.column_span || 1}` }}>
+                        <div className="p-3 border border-border/40 rounded-brand" style={{ gridColumn: `span ${f.column_span || 4} / span ${f.column_span || 4}` }}>
                           <div className="flex items-start gap-3">
                             <Button
                               variant="outline"
@@ -175,52 +234,37 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
                             </Button>
                             <div className="flex-1">
                               <div className="grid md:grid-cols-6 gap-3 items-end">
-                                <FormField label="Label" className="md:col-span-2">
+                                <div className="md:col-span-2">
                                   <Input
                                     value={f.field_label}
                                     onChange={(e) => updateField(f.id, { field_label: e.target.value })}
                                     disabled={readOnly}
+                                    placeholder="Label"
                                   />
-                                </FormField>
-                                <FormField label="Type">
+                                </div>
+                                <div>
                                   <Select
                                     value={f.field_type}
                                     onValueChange={(v: FieldType) => updateField(f.id, { field_type: v })}
                                     disabled={readOnly}
                                   >
-                                    <SelectTrigger><SelectValue /></SelectTrigger>
+                                    <SelectTrigger><SelectValue placeholder="Type" /></SelectTrigger>
                                     <SelectContent>
                                       {(['text','number','email','url','textarea','select','checkbox','date','file'] as FieldType[]).map((t) => (
                                         <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>
                                       ))}
                                     </SelectContent>
                                   </Select>
-                                </FormField>
-                                <FormField label="Width">
-                                  <Select
-                                    value={String(f.column_span || 1)}
-                                    onValueChange={(v) => updateField(f.id, { column_span: Number(v) as any })}
+                                </div>
+                                <div className="flex items-center h-10">
+                                  <Checkbox
+                                    checked={f.is_required}
+                                    onCheckedChange={(c) => updateField(f.id, { is_required: !!c })}
                                     disabled={readOnly}
-                                  >
-                                    <SelectTrigger><SelectValue placeholder="Width" /></SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="1">1/4</SelectItem>
-                                      <SelectItem value="2">1/2</SelectItem>
-                                      <SelectItem value="3">3/4</SelectItem>
-                                      <SelectItem value="4">Full</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                </FormField>
-                                <FormField label="Required">
-                                  <div className="flex items-center h-10">
-                                    <Checkbox
-                                      checked={f.is_required}
-                                      onCheckedChange={(c) => updateField(f.id, { is_required: !!c })}
-                                      disabled={readOnly}
-                                    />
-                                    <span className="ml-2 text-sm text-muted-foreground">Required</span>
-                                  </div>
-                                </FormField>
+                                    id={`req-${f.id}`}
+                                  />
+                                  <label htmlFor={`req-${f.id}`} className="ml-2 text-sm text-muted-foreground">Required</label>
+                                </div>
                                 <div className="flex items-center gap-2 md:justify-end">
                                   <Button
                                     variant="ghost"
