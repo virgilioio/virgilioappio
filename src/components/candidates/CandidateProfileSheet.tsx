@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Tabs } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
@@ -51,7 +51,22 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
   const { updateAssociationStatus } = usePipelineActions()
   const [associationId, setAssociationId] = useState<string | null>(null)
   const [associationStatus, setAssociationStatus] = useState<'active' | 'rejected' | 'hired' | null>(null)
-  const { uploadAttachment: uploadResume, isUploading: isResumeUploading } = useCandidateAttachments(jobCandidateId || '')
+  const { attachments, uploadAttachment: uploadResume, isUploading: isResumeUploading, deleteAttachment } = useCandidateAttachments(jobCandidateId || '')
+
+  // Resume helpers
+  const resumeAttachment = attachments.find((a) => a.is_resume)
+  const replaceResumeInputRef = useRef<HTMLInputElement>(null)
+  const handleReplaceResumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      void uploadResume(file, true)
+    }
+    e.currentTarget.value = ''
+  }
+  const handleDeleteResume = async () => {
+    if (!resumeAttachment) return
+    await deleteAttachment(resumeAttachment.id, resumeAttachment.file_url)
+  }
 
   useEffect(() => {
     const load = async () => {
@@ -248,10 +263,28 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
                         </CardHeader>
                         <CardContent className="space-y-4">
                           {jobCandidateId ? (
-                            <>
+                            resumeAttachment ? (
+                              <>
+                                <div className="flex gap-2">
+                                  <input
+                                    ref={replaceResumeInputRef}
+                                    type="file"
+                                    className="hidden"
+                                    onChange={handleReplaceResumeChange}
+                                    accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.webp"
+                                  />
+                                  <Button variant="outline" onClick={() => replaceResumeInputRef.current?.click()} disabled={isResumeUploading}>
+                                    Replace Resume
+                                  </Button>
+                                  <Button variant="destructive" onClick={handleDeleteResume}>
+                                    Delete Resume
+                                  </Button>
+                                </div>
+                                <CandidateResumeViewer jobCandidateId={jobCandidateId} />
+                              </>
+                            ) : (
                               <ResumeDropzone onUpload={(file) => uploadResume(file, true)} isUploading={isResumeUploading} />
-                              <CandidateResumeViewer jobCandidateId={jobCandidateId} />
-                            </>
+                            )
                           ) : (
                             <div className="text-sm text-text-secondary">No job candidate record linked.</div>
                           )}
