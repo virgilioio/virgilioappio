@@ -439,7 +439,7 @@ export function CandidateForm({
                 Resume
               </h3>
               <div
-                className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${dragOver ? 'border-primary bg-primary/15' : 'border-primary/60 hover:border-primary bg-primary/10'}`}
+                className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${dragOver ? 'border-accent bg-accent/15' : 'border-accent/60 hover:border-accent bg-accent/10'}`}
                 onDrop={handleDrop}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
@@ -451,7 +451,7 @@ export function CandidateForm({
                   onChange={handleFileInputChange}
                   accept=".pdf,.doc,.docx,.txt,.rtf"
                 />
-                <Upload className="h-8 w-8 mx-auto text-text-secondary mb-2" />
+                <Upload className="h-8 w-8 mx-auto text-accent mb-2" />
                 <p className="text-sm text-text-secondary mb-2">
                   Drag and drop a resume here, or click to browse
                 </p>
