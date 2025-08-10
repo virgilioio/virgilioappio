@@ -23,6 +23,8 @@ import { cn } from '@/lib/utils'
 import { CandidateAttachments } from '@/components/candidates/CandidateAttachments'
 import { CandidateUrls } from '@/components/candidates/CandidateUrls'
 import { CandidateResumeViewer } from '@/components/candidates/CandidateResumeViewer'
+import { useCandidateAttachments } from '@/hooks/useCandidateAttachments'
+import { ResumeDropzone } from '@/components/candidates/ResumeDropzone'
 import { CreateOfferLetterDialog } from '@/components/candidates/CreateOfferLetterDialog'
 import { getSkillColor } from '@/utils/skillColors'
 import { generateCandidatePdf } from '@/utils/candidatePdfGenerator'
@@ -48,6 +50,7 @@ export default function CandidateProfile() {
   const { fetchAssociationsForJob } = usePipelineActions()
   const [independentCandidateId, setIndependentCandidateId] = useState<string | null>(null)
   const [associationsLoading, setAssociationsLoading] = useState(false)
+  const { uploadAttachment: uploadResume, isUploading: isResumeUploading } = useCandidateAttachments(candidate?.id || '')
 
   // Get the job's organization data from the database
   const jobOrganization = job?.organization_id 
@@ -344,7 +347,8 @@ export default function CandidateProfile() {
                     <CardHeader>
                       <CardTitle className="text-lg font-medium text-text-primary">Resume</CardTitle>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="space-y-4">
+                      <ResumeDropzone onUpload={(file) => uploadResume(file, true)} isUploading={isResumeUploading} />
                       <CandidateResumeViewer jobCandidateId={candidate.id} />
                     </CardContent>
                   </Card>

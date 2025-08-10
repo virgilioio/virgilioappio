@@ -23,6 +23,8 @@ import { CandidateForm } from '@/components/candidates/CandidateForm'
 import { toast } from '@/hooks/use-toast'
 import CandidateNameCard from '@/components/candidates/CandidateNameCard'
 import { usePipelineActions } from '@/hooks/usePipelineActions'
+import { useCandidateAttachments } from '@/hooks/useCandidateAttachments'
+import { ResumeDropzone } from '@/components/candidates/ResumeDropzone'
 
 interface CandidateProfileSheetProps {
   open: boolean
@@ -49,6 +51,7 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
   const { updateAssociationStatus } = usePipelineActions()
   const [associationId, setAssociationId] = useState<string | null>(null)
   const [associationStatus, setAssociationStatus] = useState<'active' | 'rejected' | 'hired' | null>(null)
+  const { uploadAttachment: uploadResume, isUploading: isResumeUploading } = useCandidateAttachments(jobCandidateId || '')
 
   useEffect(() => {
     const load = async () => {
@@ -243,9 +246,12 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
                         <CardHeader>
                           <CardTitle className="text-lg">Resume</CardTitle>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="space-y-4">
                           {jobCandidateId ? (
-                            <CandidateResumeViewer jobCandidateId={jobCandidateId} />
+                            <>
+                              <ResumeDropzone onUpload={(file) => uploadResume(file, true)} isUploading={isResumeUploading} />
+                              <CandidateResumeViewer jobCandidateId={jobCandidateId} />
+                            </>
                           ) : (
                             <div className="text-sm text-text-secondary">No job candidate record linked.</div>
                           )}

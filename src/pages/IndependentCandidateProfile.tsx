@@ -22,6 +22,8 @@ import AddToJobPipelineDialog from '@/components/candidates/AddToJobPipelineDial
 import CandidateNameCard from '@/components/candidates/CandidateNameCard'
 import { supabase } from '@/integrations/supabase/client'
 import { CandidateResumeViewer } from '@/components/candidates/CandidateResumeViewer'
+import { ResumeDropzone } from '@/components/candidates/ResumeDropzone'
+import { toast } from '@/hooks/use-toast'
 
 export default function IndependentCandidateProfile() {
   const { candidateId } = useParams<{ candidateId: string }>()
@@ -116,10 +118,36 @@ export default function IndependentCandidateProfile() {
     const amount = candidate.salary_amount.toLocaleString()
     const period = candidate.salary_period || 'annually'
     
-    return `${currency} ${amount} ${period}`
+  return `${currency} ${amount} ${period}`
   }
 
+  const [isResumeUploading, setIsResumeUploading] = useState(false)
+  const handleResumeUpload = async (file: File) => {
+    if (!candidate) return
+    setIsResumeUploading(true)
+    try {
+      const ext = file.name.split('.').pop()
+      const path = `independent/${candidate.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+      const { error: storageError } = await supabase.storage
+        .from('candidate-attachments')
+        .upload(path, file)
+      if (storageError) throw storageError
 
+      const { error: dbError } = await supabase
+        .from('candidates')
+        .update({ resume_url: path })
+        .eq('id', candidate.id)
+      if (dbError) throw dbError
+
+      toast({ title: 'Resume uploaded', description: 'Resume updated successfully' })
+      setCandidate({ ...candidate, resume_url: path })
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to upload resume'
+      toast({ title: 'Error', description: msg, variant: 'destructive' })
+    } finally {
+      setIsResumeUploading(false)
+    }
+  }
   if (candidatesLoading) {
     return (
       <AuthGate>
@@ -331,23 +359,9 @@ export default function IndependentCandidateProfile() {
                   <CardHeader>
                     <CardTitle className="text-lg font-medium text-text-primary">Resume</CardTitle>
                   </CardHeader>
-                  <CardContent>
-                    {candidate.resume_url ? (
-                      <div className="space-y-3">
-                        <div className="aspect-[8.5/11] w-full border border-border rounded-lg overflow-hidden bg-surface-secondary">
-                          <iframe
-                            src={candidate.resume_url}
-                            title="Resume preview"
-                            className="w-full h-[70vh]"
-                          />
-                        </div>
-                        <a href={candidate.resume_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline text-sm">
-                          Open in new tab
-                        </a>
-                      </div>
-                    ) : (
-                      <div className="text-sm text-text-secondary">No resume available.</div>
-                    )}
+                  <CardContent className="space-y-4">
+                    <ResumeDropzone onUpload={handleResumeUpload} isUploading={isResumeUploading} />
+                    <CandidateResumeViewer fallbackResumeUrl={candidate.resume_url} />
                   </CardContent>
                 </Card>
               )}
