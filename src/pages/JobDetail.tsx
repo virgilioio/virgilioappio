@@ -21,6 +21,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ArrowLeft, Archive, LayoutGrid, List } from 'lucide-react'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from '@/hooks/use-toast'
@@ -143,7 +144,8 @@ export default function JobDetail() {
   const hiredCount = useMemo(() => associations.filter(a => a.status === 'hired').length, [associations])
   const rejectedCount = useMemo(() => associations.filter(a => a.status === 'rejected').length, [associations])
   const activeCount = useMemo(() => associations.filter(a => a.status === 'active').length, [associations])
-
+  const recruitingCount = useMemo(() => Math.max(0, activeCount - offerCount), [activeCount, offerCount])
+  const applicationCount = useMemo(() => (applicationReviewCandidates?.length ?? 0), [applicationReviewCandidates])
   // Load stage map for this job
   useEffect(() => {
     if (!id) return
@@ -512,11 +514,36 @@ export default function JobDetail() {
                      <CardHeader className="py-3">
                        <Tabs value={pipelineSectionTab} onValueChange={(v) => setPipelineSectionTab(v as any)}>
                          <TabsList className="w-full h-14 p-2 gap-2">
-                           <TabsTrigger className="flex-1 h-10 md:h-12 text-base md:text-lg" value="application">Application Review</TabsTrigger>
-                           <TabsTrigger className="flex-1 h-10 md:h-12 text-base md:text-lg" value="recruiting">Recruiting Process</TabsTrigger>
-                           <TabsTrigger className="flex-1 h-10 md:h-12 text-base md:text-lg" value="offers">Job Offers</TabsTrigger>
-                           <TabsTrigger className="flex-1 h-10 md:h-12 text-base md:text-lg" value="hired">Hired Candidates</TabsTrigger>
-                           <TabsTrigger className="flex-1 h-10 md:h-12 text-base md:text-lg" value="rejected">Rejected Candidates</TabsTrigger>
+                            <TabsTrigger className="flex-1 h-10 md:h-12 text-base md:text-lg" value="application">
+                              <span className="flex items-center gap-2">
+                                <span>Application Review</span>
+                                <Badge variant="pastel-purple">{applicationCount}</Badge>
+                              </span>
+                            </TabsTrigger>
+                            <TabsTrigger className="flex-1 h-10 md:h-12 text-base md:text-lg" value="recruiting">
+                              <span className="flex items-center gap-2">
+                                <span>Recruiting Process</span>
+                                <Badge variant="warning">{recruitingCount}</Badge>
+                              </span>
+                            </TabsTrigger>
+                            <TabsTrigger className="flex-1 h-10 md:h-12 text-base md:text-lg" value="offers">
+                              <span className="flex items-center gap-2">
+                                <span>Job Offers</span>
+                                <Badge variant="pastel-blue">{offerCount}</Badge>
+                              </span>
+                            </TabsTrigger>
+                            <TabsTrigger className="flex-1 h-10 md:h-12 text-base md:text-lg" value="hired">
+                              <span className="flex items-center gap-2">
+                                <span>Hired Candidates</span>
+                                <Badge variant="success">{hiredCount}</Badge>
+                              </span>
+                            </TabsTrigger>
+                            <TabsTrigger className="flex-1 h-10 md:h-12 text-base md:text-lg" value="rejected">
+                              <span className="flex items-center gap-2">
+                                <span>Rejected Candidates</span>
+                                <Badge variant="destructive">{rejectedCount}</Badge>
+                              </span>
+                            </TabsTrigger>
                          </TabsList>
                        </Tabs>
                      </CardHeader>
@@ -731,11 +758,36 @@ export default function JobDetail() {
                       <CardHeader className="py-3">
                         <Tabs value={pipelineSectionTab} onValueChange={(v) => setPipelineSectionTab(v as any)}>
                           <TabsList className="w-full h-14 p-2 gap-2">
-                            <TabsTrigger className="flex-1 h-10 md:h-12 text-base md:text-lg" value="application">Application Review</TabsTrigger>
-                            <TabsTrigger className="flex-1 h-10 md:h-12 text-base md:text-lg" value="recruiting">Recruiting Process</TabsTrigger>
-                            <TabsTrigger className="flex-1 h-10 md:h-12 text-base md:text-lg" value="offers">Job Offers</TabsTrigger>
-                            <TabsTrigger className="flex-1 h-10 md:h-12 text-base md:text-lg" value="hired">Hired Candidates</TabsTrigger>
-                            <TabsTrigger className="flex-1 h-10 md:h-12 text-base md:text-lg" value="rejected">Rejected Candidates</TabsTrigger>
+                            <TabsTrigger className="flex-1 h-10 md:h-12 text-base md:text-lg" value="application">
+                              <span className="flex items-center gap-2">
+                                <span>Application Review</span>
+                                <Badge variant="pastel-purple">{applicationCount}</Badge>
+                              </span>
+                            </TabsTrigger>
+                            <TabsTrigger className="flex-1 h-10 md:h-12 text-base md:text-lg" value="recruiting">
+                              <span className="flex items-center gap-2">
+                                <span>Recruiting Process</span>
+                                <Badge variant="warning">{recruitingCount}</Badge>
+                              </span>
+                            </TabsTrigger>
+                            <TabsTrigger className="flex-1 h-10 md:h-12 text-base md:text-lg" value="offers">
+                              <span className="flex items-center gap-2">
+                                <span>Job Offers</span>
+                                <Badge variant="pastel-blue">{offerCount}</Badge>
+                              </span>
+                            </TabsTrigger>
+                            <TabsTrigger className="flex-1 h-10 md:h-12 text-base md:text-lg" value="hired">
+                              <span className="flex items-center gap-2">
+                                <span>Hired Candidates</span>
+                                <Badge variant="success">{hiredCount}</Badge>
+                              </span>
+                            </TabsTrigger>
+                            <TabsTrigger className="flex-1 h-10 md:h-12 text-base md:text-lg" value="rejected">
+                              <span className="flex items-center gap-2">
+                                <span>Rejected Candidates</span>
+                                <Badge variant="destructive">{rejectedCount}</Badge>
+                              </span>
+                            </TabsTrigger>
                           </TabsList>
                         </Tabs>
                       </CardHeader>
