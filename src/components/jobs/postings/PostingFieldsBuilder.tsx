@@ -186,8 +186,8 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
     await reorderFields(newOrder)
   }
 
-  function SortableRow({ id, children }: { id: string; children: (handlers: { attributes: any; listeners: any }) => React.ReactNode }) {
-    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
+  function SortableRow({ id, disabled, children }: { id: string; disabled?: boolean; children: (handlers: { attributes: any; listeners: any }) => React.ReactNode }) {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id, disabled: !!disabled })
     const style: React.CSSProperties = {
       transform: CSS.Transform.toString(transform),
       transition,
@@ -222,7 +222,7 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
                         {row.map((f) => (
                           <div key={f.id} className="flex items-stretch w-full min-w-0" style={{ gridColumn: `span ${f.column_span || 4} / span ${f.column_span || 4}` }}>
                             {isDragging && <DropBox id={`beside|${f.id}|left`} orientation="col" />}
-                            <SortableRow id={f.id}>
+                            <SortableRow id={f.id} disabled={(f.source === 'library' && f.application_field_id && defaultLibraryIds.has(f.application_field_id))}>
                               {({ attributes, listeners }) => (
                                 <div className={cn(
                                   "p-3 border border-border/40 rounded-brand flex-1",
@@ -234,7 +234,7 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
                                       size="icon"
                                       {...attributes}
                                       {...listeners}
-                                      disabled={readOnly}
+                                      disabled={readOnly || (f.source === 'library' && f.application_field_id && defaultLibraryIds.has(f.application_field_id))}
                                       title="Drag to reorder"
                                       className="self-center shrink-0"
                                     >
