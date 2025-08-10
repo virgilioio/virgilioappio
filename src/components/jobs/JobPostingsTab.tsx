@@ -4,10 +4,11 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Switch } from '@/components/ui/switch'
-import { ExternalLink, Pencil, Plus } from 'lucide-react'
+import { ExternalLink, Pencil, Plus, MoreVertical, Copy, Trash } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
-import { useJobPostings } from '@/hooks/useJobPostings'
+import { useJobPostings, JobPosting } from '@/hooks/useJobPostings'
 import { PostingSheet } from './postings/PostingSheet'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 
 interface JobPostingsTabProps {
   jobId: string
@@ -17,7 +18,7 @@ interface JobPostingsTabProps {
 
 export function JobPostingsTab({ jobId, jobTitle, readOnly }: JobPostingsTabProps) {
   const { toast } = useToast()
-  const { postings, isLoading, refetch, createPosting, updatePosting } = useJobPostings(jobId)
+  const { postings, isLoading, refetch, createPosting, updatePosting, deletePosting } = useJobPostings(jobId)
   const [openSheet, setOpenSheet] = useState<{ mode: 'create' | 'edit', postingId?: string } | null>(null)
 
   const handleCreate = async () => {
@@ -34,6 +35,20 @@ export function JobPostingsTab({ jobId, jobTitle, readOnly }: JobPostingsTabProp
     refetch()
   }
 
+  const handleDuplicate = async (p: JobPosting) => {
+    const created = await createPosting({
+      title: `${p.title} (Copy)`,
+      description: p.description || undefined,
+      details: p.details || {},
+    })
+    if (created) {
+      toast({ title: 'Duplicated', description: 'Posting duplicated' })
+    }
+  }
+
+  const handleDelete = async (id: string) => {
+    await deletePosting(id)
+  }
   return (
     <Card>
       <CardHeader className="flex-row items-center justify-between">
@@ -64,6 +79,7 @@ export function JobPostingsTab({ jobId, jobTitle, readOnly }: JobPostingsTabProp
                   <TableHead>Title</TableHead>
                   <TableHead className="hidden md:table-cell">Slug</TableHead>
                   <TableHead className="hidden sm:table-cell">Created</TableHead>
+                  <TableHead className="hidden sm:table-cell">Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -73,29 +89,46 @@ export function JobPostingsTab({ jobId, jobTitle, readOnly }: JobPostingsTabProp
                     <TableCell className="font-medium">{p.title}</TableCell>
                     <TableCell className="hidden md:table-cell text-xs text-muted-foreground">{p.slug}</TableCell>
                     <TableCell className="hidden sm:table-cell">{new Date(p.created_at).toLocaleDateString()}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <div className="flex items-center gap-2 mr-2">
-                          <Switch
-                            checked={p.is_active}
-                            onCheckedChange={(c) => handleToggle(p.id, !!c)}
-                            disabled={readOnly}
-                          />
-                          <span className="text-xs text-muted-foreground hidden md:inline">Active</span>
-                        </div>
-                        <Button variant="outline" size="sm" onClick={() => handleEdit(p.id)} disabled={readOnly}>
-                          <Pencil className="h-4 w-4 mr-1" /> Edit
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => window.open(`/p/${p.slug}`, '_blank')}
-                          disabled={!p.is_active}
-                          title={p.is_active ? 'Open public link' : 'Activate to open'}
-                        >
-                          <ExternalLink className="h-4 w-4 mr-1" /> Open
-                        </Button>
+                    <TableCell className="hidden sm:table-cell">
+                      <div className="flex items-center gap-2">
+                        <Switch
+                          checked={p.is_active}
+                          onCheckedChange={(c) => handleToggle(p.id, !!c)}
+                          disabled={readOnly}
+                        />
+                        {p.is_active && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => window.open(`/p/${p.slug}`, '_blank')}
+                            title="Open public link"
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                            <span className="sr-only">Open</span>
+                          </Button>
+                        )}
                       </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="outline" size="icon" aria-label="Actions" className="data-[state=open]:bg-muted">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="z-50 w-40 bg-popover">
+                          <DropdownMenuItem onClick={() => handleEdit(p.id)}>
+                            <Pencil className="h-4 w-4 mr-2" /> Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleDuplicate(p)}>
+                            <Copy className="h-4 w-4 mr-2" /> Duplicate
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => handleDelete(p.id)} className="text-destructive">
+                            <Trash className="h-4 w-4 mr-2" /> Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </TableCell>
                   </TableRow>
                 ))}

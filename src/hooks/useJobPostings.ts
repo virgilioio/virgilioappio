@@ -104,5 +104,19 @@ export function useJobPostings(jobId: string) {
     }
   }, [fetchPostings, toast])
 
-  return { postings, isLoading, refetch: fetchPostings, createPosting, updatePosting, getPosting }
+  const deletePosting = useCallback(async (id: string) => {
+    const { error } = await supabase
+      .from('job_postings')
+      .delete()
+      .eq('id', id)
+    if (error) {
+      console.error('Error deleting posting:', error)
+      toast({ title: 'Error', description: 'Could not delete posting', variant: 'destructive' })
+    } else {
+      toast({ title: 'Deleted', description: 'Posting removed' })
+      await fetchPostings()
+    }
+  }, [fetchPostings, toast])
+
+  return { postings, isLoading, refetch: fetchPostings, createPosting, updatePosting, deletePosting, getPosting }
 }
