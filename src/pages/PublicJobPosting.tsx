@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
+import { SafeHtml } from '@/components/ui/safe-html'
 
 type FieldType = 'text' | 'number' | 'email' | 'textarea' | 'select' | 'checkbox' | 'date' | 'file' | 'url'
 
@@ -111,7 +112,9 @@ export default function PublicJobPosting() {
     <div className="max-w-3xl mx-auto p-6 space-y-6">
       <div>
         <h1 className="text-3xl font-semibold text-text-primary">{posting.title}</h1>
-        {posting.description && <p className="text-text-secondary mt-2 whitespace-pre-wrap">{posting.description}</p>}
+        {posting.description && (
+          <SafeHtml content={posting.description} className="prose prose-sm text-text-secondary mt-2 max-w-none" />
+        )}
       </div>
 
       <Card>
