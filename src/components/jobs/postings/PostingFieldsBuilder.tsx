@@ -298,7 +298,7 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
                                       {...listeners}
                                       disabled={readOnly}
                                       title="Drag to reorder"
-                                      className="mt-6 shrink-0"
+                                      className="self-center shrink-0"
                                     >
                                       <GripVertical className="h-4 w-4" />
                                     </Button>
