@@ -3251,6 +3251,15 @@ export type Database = {
           can_see_all_orgs: boolean
         }[]
       }
+      duplicate_job_posting: {
+        Args: {
+          source_posting_id: string
+          new_title?: string
+          new_description?: string
+          new_details?: Json
+        }
+        Returns: string
+      }
       execute_automatic_exchange_rate_update: {
         Args: Record<PropertyKey, never>
         Returns: undefined

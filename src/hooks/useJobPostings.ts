@@ -118,5 +118,21 @@ export function useJobPostings(jobId: string) {
     }
   }, [fetchPostings, toast])
 
-  return { postings, isLoading, refetch: fetchPostings, createPosting, updatePosting, deletePosting, getPosting }
+  const duplicatePosting = useCallback(async (sourcePostingId: string, overrides?: { title?: string; description?: string; details?: any }) => {
+    const { data, error } = await supabase.rpc('duplicate_job_posting', {
+      source_posting_id: sourcePostingId,
+      new_title: overrides?.title ?? null,
+      new_description: overrides?.description ?? null,
+      new_details: overrides?.details ?? null,
+    })
+    if (error) {
+      console.error('Error duplicating posting:', error)
+      toast({ title: 'Error', description: 'Could not duplicate posting', variant: 'destructive' })
+      return null
+    }
+    await fetchPostings()
+    return data as unknown as string | null
+  }, [fetchPostings, toast])
+
+  return { postings, isLoading, refetch: fetchPostings, createPosting, updatePosting, deletePosting, duplicatePosting, getPosting }
 }

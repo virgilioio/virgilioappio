@@ -19,7 +19,7 @@ interface JobPostingsTabProps {
 
 export function JobPostingsTab({ jobId, jobTitle, readOnly }: JobPostingsTabProps) {
   const { toast } = useToast()
-  const { postings, isLoading, refetch, createPosting, updatePosting, deletePosting } = useJobPostings(jobId)
+  const { postings, isLoading, refetch, createPosting, updatePosting, deletePosting, duplicatePosting } = useJobPostings(jobId)
   const [openSheet, setOpenSheet] = useState<{ mode: 'create' | 'edit', postingId?: string } | null>(null)
 
   const handleCreate = async () => {
@@ -37,13 +37,9 @@ export function JobPostingsTab({ jobId, jobTitle, readOnly }: JobPostingsTabProp
   }
 
   const handleDuplicate = async (p: JobPosting) => {
-    const created = await createPosting({
-      title: `${p.title} (Copy)`,
-      description: p.description || undefined,
-      details: p.details || {},
-    })
-    if (created) {
-      toast({ title: 'Duplicated', description: 'Posting duplicated' })
+    const newId = await duplicatePosting(p.id)
+    if (newId) {
+      toast({ title: 'Duplicated', description: 'Posting duplicated with form layout' })
     }
   }
 
