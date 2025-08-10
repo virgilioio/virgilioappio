@@ -16,6 +16,20 @@ export interface JobPosting {
   updated_at: string
 }
 
+// Helper to create a URL-friendly slug and reduce collisions with a short suffix
+function generateSlug(input: string) {
+  const base = input
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '')
+
+  const suffix = Math.random().toString(36).slice(2, 8)
+  return `${base}-${suffix}`
+}
+
 export function useJobPostings(jobId: string) {
   const { toast } = useToast()
   const [postings, setPostings] = useState<JobPosting[]>([])
@@ -56,9 +70,15 @@ export function useJobPostings(jobId: string) {
   }, [])
 
   const createPosting = useCallback(async ({ title, description }: { title: string; description?: string }) => {
+    const slug = generateSlug(title)
     const { data, error } = await supabase
       .from('job_postings')
-      .insert({ job_id: jobId, title, description: description || null })
+      .insert({
+        job_id: jobId,
+        title,
+        description: description || null,
+        slug,
+      })
       .select()
       .maybeSingle()
     if (error) {
