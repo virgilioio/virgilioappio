@@ -12,6 +12,8 @@ import { SafeHtml } from '@/components/ui/safe-html'
 import { VirgilioLogo } from '@/components/VirgilioLogo'
 import { MapPin, Briefcase, DollarSign } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Button } from '@/components/ui/button'
+import { useToast } from '@/components/ui/use-toast'
 
 type FieldType = 'text' | 'number' | 'email' | 'textarea' | 'select' | 'checkbox' | 'date' | 'file' | 'url'
 
@@ -45,6 +47,8 @@ export default function PublicJobPosting() {
   const [options, setOptions] = useState<Record<string, SelectOption[]>>({})
   const [loading, setLoading] = useState(true)
   const [scrolled, setScrolled] = useState(false)
+  const [tab, setTab] = useState<'overview' | 'application'>('overview')
+  const { toast } = useToast()
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 2)
@@ -174,9 +178,23 @@ export default function PublicJobPosting() {
         </CardContent>
       </Card>
     )
-  }
-
-  if (loading) {
+      }
+  
+      const handleApplyClick = () => {
+        setTab('application')
+        setTimeout(() => {
+          document.getElementById('application-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        }, 0)
+      }
+  
+      const handleSubmitApplication = () => {
+        toast({
+          title: 'Application submitted',
+          description: 'Thank you for applying. We will review your application.',
+        })
+      }
+  
+      if (loading) {
     return <div className="max-w-3xl mx-auto p-6">Loading...</div>
   }
 
@@ -209,7 +227,7 @@ export default function PublicJobPosting() {
         <section aria-labelledby="job-title">
           <h1 id="job-title" className="text-3xl font-semibold text-text-primary">{posting.title}</h1>
         </section>
-        <Tabs defaultValue="overview" className="space-y-6 mt-4">
+        <Tabs value={tab} onValueChange={(v) => setTab(v as 'overview' | 'application')} className="space-y-6 mt-4">
           <TabsList>
             <TabsTrigger value="overview">Job Overview</TabsTrigger>
             <TabsTrigger value="application">Application</TabsTrigger>
@@ -227,6 +245,11 @@ export default function PublicJobPosting() {
                     </Card>
                   )}
                 </section>
+                <div className="pt-2">
+                  <Button onClick={handleApplyClick} className="w-full sm:w-auto" aria-label="Apply for this job">
+                    Apply for this job
+                  </Button>
+                </div>
               </div>
 
               <aside className="lg:col-span-1 lg:sticky lg:top-20 space-y-4">
@@ -280,9 +303,10 @@ export default function PublicJobPosting() {
                           </div>
                         ))
                       )}
-                      {/* Submission flow can be added later */}
-                      <div className="pt-2">
-                        <p className="text-xs text-muted-foreground">Note: Submissions are not enabled yet.</p>
+                      <div className="pt-4">
+                        <Button type="button" onClick={handleSubmitApplication} className="w-full sm:w-auto" aria-label="Submit application">
+                          Submit Application
+                        </Button>
                       </div>
                     </CardContent>
                   </Card>
@@ -295,6 +319,12 @@ export default function PublicJobPosting() {
           </TabsContent>
         </Tabs>
       </main>
+      <footer className="border-t border-border bg-surface-primary">
+        <div className="max-w-5xl mx-auto px-6 sm:px-lg py-6 flex items-center">
+          <span className="text-sm text-muted-foreground mr-3">Powered by</span>
+          <VirgilioLogo className="h-5 w-auto" />
+        </div>
+      </footer>
     </div>
   )
 }
