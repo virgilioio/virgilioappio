@@ -270,11 +270,12 @@ export function RichTextEditor({
       isExternalUpdateRef.current = true
     }
     
-    // MAIN CONTENT UPDATE LOGIC - More permissive conditions for external updates
+    // MAIN CONTENT UPDATE LOGIC - ensure editor shows value on mount/remount
+    const editorEmpty = !!editorRef.current && (editorRef.current.innerHTML.trim() === '')
     const shouldUpdateContent = editorRef.current && 
                                value && 
                                value.trim() !== '' &&
-                               (isExternalUpdate || value !== lastContentRef.current) && 
+                               (isExternalUpdate || value !== lastContentRef.current || editorEmpty) && 
                                !isUpdatingRef.current
     
     console.log('🔍 Should update content:', shouldUpdateContent)
