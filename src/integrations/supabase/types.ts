@@ -2144,10 +2144,13 @@ export type Database = {
           default_currency: string | null
           id: string
           name: string
+          org_kind: Database["public"]["Enums"]["org_kind_enum"]
           organization_type: string
           owner_assigned_at: string | null
           owner_id: string | null
+          parent_organization_id: string | null
           status: string
+          tenant_id: string | null
           updated_at: string
         }
         Insert: {
@@ -2162,10 +2165,13 @@ export type Database = {
           default_currency?: string | null
           id?: string
           name: string
+          org_kind?: Database["public"]["Enums"]["org_kind_enum"]
           organization_type?: string
           owner_assigned_at?: string | null
           owner_id?: string | null
+          parent_organization_id?: string | null
           status?: string
+          tenant_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -2180,10 +2186,13 @@ export type Database = {
           default_currency?: string | null
           id?: string
           name?: string
+          org_kind?: Database["public"]["Enums"]["org_kind_enum"]
           organization_type?: string
           owner_assigned_at?: string | null
           owner_id?: string | null
+          parent_organization_id?: string | null
           status?: string
+          tenant_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -2200,6 +2209,34 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "organizations_parent_fk"
+            columns: ["parent_organization_id"]
+            isOneToOne: false
+            referencedRelation: "organization_exchange_rates"
+            referencedColumns: ["organization_id"]
+          },
+          {
+            foreignKeyName: "organizations_parent_fk"
+            columns: ["parent_organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organizations_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organization_exchange_rates"
+            referencedColumns: ["organization_id"]
+          },
+          {
+            foreignKeyName: "organizations_tenant_fk"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -3421,6 +3458,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      get_user_tenant_id: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
       get_user_type: {
         Args: Record<PropertyKey, never>
         Returns: string
@@ -3570,6 +3611,7 @@ export type Database = {
         | "admin"
         | "platform_admin"
         | "client"
+      org_kind_enum: "tenant" | "client" | "department"
       payment_frequency_enum: "bi_monthly" | "monthly" | "custom"
       payment_period_enum:
         | "annual"
@@ -3808,6 +3850,7 @@ export const Constants = {
         "platform_admin",
         "client",
       ],
+      org_kind_enum: ["tenant", "client", "department"],
       payment_frequency_enum: ["bi_monthly", "monthly", "custom"],
       payment_period_enum: [
         "annual",
