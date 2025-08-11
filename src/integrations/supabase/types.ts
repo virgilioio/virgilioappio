@@ -1649,7 +1649,7 @@ export type Database = {
             foreignKeyName: "job_stage_scorecards_candidate_id_fkey"
             columns: ["candidate_id"]
             isOneToOne: false
-            referencedRelation: "job_candidates"
+            referencedRelation: "candidates"
             referencedColumns: ["id"]
           },
           {
