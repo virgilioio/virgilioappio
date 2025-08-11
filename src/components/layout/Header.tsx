@@ -32,9 +32,12 @@ import { AdminModeIndicator } from '@/components/admin/AdminModeIndicator'
 import { PlanetIcon } from '@/components/icons/PlanetIcon'
 
 import { cn } from '@/lib/utils'
+import { useMembers } from '@/hooks/useMembers'
+import { useToast } from '@/components/ui/use-toast'
+import { supabase } from '@/integrations/supabase/client'
 
 export function Header() {
-  const { user, logout } = useAuth()
+  const { user, logout, organizationId } = useAuth()
   const { 
     canViewJobs, 
     canViewOrganizations, 
@@ -47,6 +50,8 @@ export function Header() {
   const location = useLocation()
   const [isSheetOpen, setIsSheetOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
+  const { members } = useMembers()
+  const { toast } = useToast()
 
   const handleLogout = async () => {
     await logout()
@@ -60,6 +65,27 @@ export function Header() {
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
+
+  // Workspace switcher data
+  const myOrgMemberships = (members || []).filter(m => m.user_id === user?.id && m.user_status === 'active')
+  const uniqueOrgs = Array.from(new Map(myOrgMemberships.map(m => [m.organization_id, { id: m.organization_id, name: m.organization_name || m.organization_id.slice(0,8) }] )).values())
+  const currentOrgName = uniqueOrgs.find(o => o.id === organizationId)?.name || 'Select workspace'
+
+  const switchWorkspace = async (orgId: string) => {
+    try {
+      const { error } = await supabase.functions.invoke('set-current-organization', {
+        body: { organizationId: orgId }
+      })
+      if (error) throw error
+      // Refresh the auth session so updated user_metadata is available immediately
+      await supabase.auth.refreshSession()
+      toast({ title: 'Workspace switched', description: 'Reloading your data...' })
+      window.location.reload()
+    } catch (e) {
+      console.error('Failed to switch workspace', e)
+      toast({ title: 'Failed to switch', description: 'Please try again or contact support.', variant: 'destructive' })
+    }
+  }
 
   const navigationItems = [
     {
@@ -185,6 +211,25 @@ export function Header() {
 
         {/* User Menu and Mobile Navigation */}
         <div className="flex items-center gap-sm">
+          {/* Workspace Switcher */}
+          {uniqueOrgs.length > 1 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="hidden sm:inline-flex">
+                  {currentOrgName}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Switch workspace</DropdownMenuLabel>
+                {uniqueOrgs.map((o) => (
+                  <DropdownMenuItem key={o.id} onClick={() => switchWorkspace(o.id)}>
+                    {o.name}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+
           {/* User Role Badge */}
           {(isPlatformAdmin || isWorkspaceOwner) && (
             <Badge variant="outline" className="hidden sm:inline-flex text-xs">

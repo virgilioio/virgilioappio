@@ -1,8 +1,10 @@
-
 project_id = "etrxjxstjfcozdjumfsj"
 
 [functions.create-dev-admin]
 verify_jwt = false
 
 [functions.coresignal-person-enrichment]
+verify_jwt = true
+
+[functions.set-current-organization]
 verify_jwt = true

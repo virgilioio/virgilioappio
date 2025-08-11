@@ -13,12 +13,14 @@ import { Organization, CreateOrganizationData, UpdateOrganizationData } from '@/
 import { usePermissions } from '@/hooks/usePermissions'
 import { useMembers } from '@/hooks/useMembers'
 import { useCountries } from '@/hooks/useCountries'
+import { useOrganizations } from '@/hooks/useOrganizations'
 
 const formSchema = z.object({
   name: z.string().min(1, 'Organization name is required'),
   country: z.string().min(1, 'Country is required'),
   status: z.enum(['active', 'inactive']),
-  owner_id: z.string().optional()
+  owner_id: z.string().optional(),
+  parent_organization_id: z.string().optional()
 })
 
 type FormData = z.infer<typeof formSchema>
@@ -41,6 +43,7 @@ export function OrganizationForm({
   const permissions = usePermissions()
   const { members } = useMembers()
   const { countries, isLoading: countriesLoading } = useCountries()
+  const { organizations: allOrganizations } = useOrganizations()
   const isEditing = !!organization
 
   // Transform countries data for SearchableSelect format
@@ -98,13 +101,14 @@ export function OrganizationForm({
   console.log('Workspace owners for select:', workspaceOwners)
   console.log('Owner options:', ownerOptions)
 
-  const form = useForm<FormData>({
+const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: '',
       country: '',
       status: 'active',
-      owner_id: 'none' // Use 'none' instead of empty string
+      owner_id: 'none', // Use 'none' instead of empty string
+      parent_organization_id: 'none'
     }
   })
 
@@ -114,24 +118,27 @@ export function OrganizationForm({
         name: organization.name,
         country: organization.country,
         status: organization.status,
-        owner_id: organization.owner_id || 'none' // Convert null to 'none'
+        owner_id: organization.owner_id || 'none', // Convert null to 'none'
+        parent_organization_id: organization.parent_organization_id || 'none'
       })
     } else {
       form.reset({
         name: '',
         country: '',
         status: 'active',
-        owner_id: 'none' // Use 'none' instead of empty string
+        owner_id: 'none', // Use 'none' instead of empty string
+        parent_organization_id: 'none'
       })
     }
   }, [organization, form])
 
   const handleSubmit = async (data: FormData) => {
     try {
-      const submitData = {
+      const submitData: any = {
         ...data,
         // Only set owner_id if it's not 'none' and doesn't start with 'invited_'
-        owner_id: data.owner_id === 'none' || data.owner_id?.startsWith('invited_') ? null : data.owner_id
+        owner_id: data.owner_id === 'none' || data.owner_id?.startsWith('invited_') ? null : data.owner_id,
+        parent_organization_id: data.parent_organization_id === 'none' ? null : data.parent_organization_id
       }
       console.log('Submitting organization data:', submitData)
       await onSubmit(submitData)
@@ -218,6 +225,39 @@ export function OrganizationForm({
               )}
             />
 
+            {/* Parent Organization */}
+            <FormField
+              control={form.control}
+              name="parent_organization_id"
+              render={({ field }) => {
+                const parentOptions = [
+                  { value: 'none', label: 'No parent (top-level)' },
+                  ...allOrganizations
+                    .filter(o => !isEditing || o.id !== organization?.id)
+                    .map(o => ({ value: o.id, label: o.name }))
+                ]
+                return (
+                  <FormItem>
+                    <FormLabel>Parent Organization</FormLabel>
+                    <FormControl>
+                      <SearchableSelect
+                        options={parentOptions}
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        placeholder="Select a parent (optional)"
+                        searchPlaceholder="Search organizations..."
+                        emptyMessage="No organizations found."
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Set a parent to create a hierarchy. Tenants should have no parent.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )
+              }}
+            />
+
             {permissions.canManageOrganization && (
               <FormField
                 control={form.control}
@@ -245,14 +285,14 @@ export function OrganizationForm({
               />
             )}
 
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={handleClose}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isLoading || countriesLoading}>
-                {isLoading ? 'Saving...' : (isEditing ? 'Update' : 'Create')}
-              </Button>
-            </DialogFooter>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={handleClose}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={isLoading || countriesLoading}>
+                  {isLoading ? 'Saving...' : (isEditing ? 'Update' : 'Create')}
+                </Button>
+              </DialogFooter>
           </form>
         </Form>
       </DialogContent>

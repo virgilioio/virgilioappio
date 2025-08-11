@@ -32,7 +32,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     organization_id: null
   })
 
-  const organizationId = memberData.organization_id
+  const organizationId = (session?.user?.user_metadata as any)?.organization_id || memberData.organization_id
   const hasOrganizationContext = !!organizationId
   const userType = memberData.user_type
   const memberRole = memberData.member_role

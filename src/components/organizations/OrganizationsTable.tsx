@@ -107,6 +107,9 @@ export function OrganizationsTable({
   // Get unique values for filters
   const uniqueCountries = [...new Set(organizations.map(org => org.country).filter(Boolean))]
   const uniqueTypes = [...new Set(organizations.map(org => org.organization_type).filter(Boolean))]
+  const orgNameMap: Record<string, string> = Object.fromEntries(
+    organizations.map(o => [o.id, o.name])
+  )
 
   // Filter organizations
   const filteredOrganizations = organizations.filter(org => {
@@ -281,6 +284,7 @@ export function OrganizationsTable({
                   <TableHeader>
                     <TableRow>
                       <TableHead>Name</TableHead>
+                      <TableHead>Parent</TableHead>
                       <TableHead>Country</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Type</TableHead>
@@ -294,6 +298,7 @@ export function OrganizationsTable({
                     {paginatedOrganizations.map((org) => (
                       <TableRow key={org.id} className="cursor-pointer hover:bg-muted/50" onClick={() => handleViewDetails(org)}>
                         <TableCell className="font-medium">{org.name}</TableCell>
+                        <TableCell className="text-sm text-muted-foreground">{org.parent_organization_id ? (orgNameMap[org.parent_organization_id] || '—') : '—'}</TableCell>
                         <TableCell>{org.country}</TableCell>
                         <TableCell>
                           <Badge variant={org.status === 'active' ? 'default' : 'secondary'}>

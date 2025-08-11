@@ -26,6 +26,9 @@ export interface Organization {
   billing_poc_user_email?: string | null
   billing_poc_user_name?: string | null
   default_currency?: string | null
+  parent_organization_id?: string | null
+  tenant_id?: string | null
+  org_kind?: string | null
 }
 
 export interface CreateOrganizationData {
@@ -33,6 +36,7 @@ export interface CreateOrganizationData {
   country: string
   status: 'active' | 'inactive'
   owner_id?: string | null
+  parent_organization_id?: string | null
 }
 
 export interface UpdateOrganizationData {
@@ -45,6 +49,7 @@ export interface UpdateOrganizationData {
   billing_poc_phone?: string | null
   billing_poc_updated_by?: string | null
   billing_poc_updated_at?: string | null
+  parent_organization_id?: string | null
 }
 
 // Helper function to fetch user display info
@@ -151,7 +156,10 @@ export function useOrganizations() {
           billing_poc_updated_at: org.billing_poc_updated_at,
           billing_poc_user_email: billingPocInfo?.email || null,
           billing_poc_user_name: billingPocInfo?.name || null,
-          default_currency: org.default_currency
+          default_currency: org.default_currency,
+          parent_organization_id: (org as any).parent_organization_id || null,
+          tenant_id: (org as any).tenant_id || null,
+          org_kind: (org as any).org_kind || null
         })
       }
 
