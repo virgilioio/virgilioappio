@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { AgreementRichTextEditor } from "@/components/ui/agreement-rich-text-editor";
 import { toast } from "@/hooks/use-toast";
 import type { ScoreRating, ScorecardRow } from "@/hooks/useScorecards";
-import { ThumbsDown, ThumbsUp } from "lucide-react";
+import { ThumbsDown, ThumbsUp, Star, Octagon } from "lucide-react";
 
 interface ScorecardSheetProps {
   open: boolean;
@@ -67,7 +67,7 @@ export function ScorecardSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-[900px] max-w-full p-0">
+      <SheetContent side="right" className="w-[1080px] max-w-full p-0">
         <div className="flex h-full flex-col">
           <SheetHeader className="p-6 border-b">
             <div className="flex items-center justify-between">
@@ -89,7 +89,6 @@ export function ScorecardSheet({
               >
                 {ratingOptions.map((opt) => {
                   const active = rating === opt.value;
-                  const isUp = opt.value === "yes" || opt.value === "strong_yes";
                   const base =
                     opt.value === "definitely_no"
                       ? `text-destructive border-destructive/60 ${active ? "bg-destructive/15 ring-2 ring-destructive" : "bg-destructive/10"}`
@@ -98,17 +97,23 @@ export function ScorecardSheet({
                       : opt.value === "strong_yes"
                       ? `text-success border-success/60 ${active ? "bg-success/15 ring-2 ring-success" : "bg-success/10"}`
                       : `text-success border-success/40 ${active ? "bg-success/10 ring-2 ring-success/80" : "bg-success/5"}`;
+
+                  const IconComp =
+                    opt.value === "definitely_no"
+                      ? Octagon
+                      : opt.value === "no"
+                      ? ThumbsDown
+                      : opt.value === "strong_yes"
+                      ? Star
+                      : ThumbsUp;
+
                   return (
                     <div
                       key={opt.value}
                       className={`flex items-center gap-2 rounded-md border p-2 transition-all ${base}`}
                     >
                       <RadioGroupItem value={opt.value} id={`rating-${opt.value}`} />
-                      {isUp ? (
-                        <ThumbsUp className="h-4 w-4" aria-hidden />
-                      ) : (
-                        <ThumbsDown className="h-4 w-4" aria-hidden />
-                      )}
+                      <IconComp className="h-5 w-5" aria-hidden />
                       <Label htmlFor={`rating-${opt.value}`}>{opt.label}</Label>
                     </div>
                   );

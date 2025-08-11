@@ -12,7 +12,7 @@ import { CandidateUrls } from '@/components/candidates/CandidateUrls'
 import { CandidateWorkExperienceComponent } from '@/components/candidates/CandidateWorkExperience'
 import { CandidateEducationComponent } from '@/components/candidates/CandidateEducationComponent'
 import { useCandidateEnrichment } from '@/hooks/useCandidateEnrichment'
-import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight, CheckCircle2, Circle, MoveRight } from 'lucide-react'
+import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight, CheckCircle2, Circle, MoveRight, ThumbsDown, ThumbsUp, Star, Octagon } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 
@@ -439,7 +439,25 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                     <div className="text-sm text-text-secondary">
                       {existing ? (
                         <>
-                          <span className="text-text-primary font-medium">Score:</span> {scoreLabel(existing.rating)}
+                          <span className="text-text-primary font-medium">Score:</span>{" "}
+                          {(() => {
+                            const r = existing.rating as 'definitely_no' | 'no' | 'yes' | 'strong_yes'
+                            const Icon = r === 'definitely_no' ? Octagon : r === 'no' ? ThumbsDown : r === 'strong_yes' ? Star : ThumbsUp
+                            const cls =
+                              r === 'definitely_no'
+                                ? 'text-destructive'
+                                : r === 'no'
+                                ? 'text-destructive/80'
+                                : r === 'strong_yes'
+                                ? 'text-success'
+                                : 'text-success/80'
+                            return (
+                              <span className={`inline-flex items-center gap-1 ${cls}`}>
+                                <Icon className="h-5 w-5" aria-hidden />
+                                {scoreLabel(r)}
+                              </span>
+                            )
+                          })()}
                         </>
                       ) : (
                         <span className="text-text-secondary">No score submitted yet.</span>
