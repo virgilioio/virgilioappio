@@ -55,10 +55,11 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
   const [associationStatus, setAssociationStatus] = useState<'active' | 'rejected' | 'hired' | null>(null)
   const { attachments, uploadAttachment: uploadResume, isUploading: isResumeUploading, deleteAttachment } = useCandidateAttachments(jobCandidateId || '')
 
-  // Hiring plan stages for horizontal accordion
-  const { loadHiringPlan } = useJobHiringPlan()
-  const [planStages, setPlanStages] = useState<JobStage[]>([])
-  const [openStageId, setOpenStageId] = useState<string | null>(null)
+// Hiring plan stages for vertical accordion
+const { loadHiringPlanInstances } = useJobHiringPlan()
+type PlanStageOption = { jhsId: string; stage: JobStage; position: number }
+const [planStages, setPlanStages] = useState<PlanStageOption[]>([])
+const [openStageId, setOpenStageId] = useState<string | null>(null)
   // Resume helpers
   const resumeAttachment = attachments.find((a) => a.is_resume)
   const replaceResumeInputRef = useRef<HTMLInputElement>(null)
@@ -96,16 +97,16 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
     if (!open || !jobId) return
     ;(async () => {
       try {
-        const stages = await loadHiringPlan(jobId)
+        const stages = await loadHiringPlanInstances(jobId)
         setPlanStages(stages)
         if (stages && stages.length && openStageId === null) {
-          setOpenStageId(stages[0].id)
+          setOpenStageId(stages[0].stage.id)
         }
       } catch (e) {
         console.error('Failed to load hiring plan stages', e)
       }
     })()
-  }, [open, jobId, loadHiringPlan])
+  }, [open, jobId, loadHiringPlanInstances])
 
   useEffect(() => {
     if (open && candidateId) {
@@ -319,18 +320,20 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
                               onValueChange={(v) => setOpenStageId((v as string) || null)}
                               className="w-full space-y-2"
                             >
-                              {planStages.map((stage) => (
-                                <AccordionItem key={stage.id} value={stage.id} className="border rounded-lg overflow-hidden">
-                                  <AccordionTrigger className={cn('px-3 py-2 no-underline text-text-primary', getHeaderBgClass(stage.stage_type))}>
-                                    <div className="text-sm font-medium">{stage.stage_name}</div>
-                                  </AccordionTrigger>
-                                  <AccordionContent className="px-3">
-                                    <div className="text-sm text-text-primary">
-                                      {stage.stage_description || 'No details for this stage yet.'}
-                                    </div>
-                                  </AccordionContent>
-                                </AccordionItem>
-                              ))}
+{[...planStages]
+  .sort((a, b) => a.position - b.position)
+  .map((opt) => (
+    <AccordionItem key={opt.stage.id} value={opt.stage.id} className="border rounded-lg overflow-hidden">
+      <AccordionTrigger className={cn('px-3 py-2 no-underline text-text-primary', getHeaderBgClass(opt.stage.stage_type))}>
+        <div className="text-sm font-medium">{opt.stage.stage_name}</div>
+      </AccordionTrigger>
+      <AccordionContent className="px-3">
+        <div className="text-sm text-text-primary">
+          {opt.stage.stage_description || 'No details for this stage yet.'}
+        </div>
+      </AccordionContent>
+    </AccordionItem>
+  ))}
                             </Accordion>
                           ) : (
                             <div className="text-sm text-text-secondary">No hiring stages configured for this job.</div>
