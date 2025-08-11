@@ -215,7 +215,7 @@ const [openStageId, setOpenStageId] = useState<string | null>(null)
     if (!associationId) return
     await updateAssociationStatus(associationId, s)
     setAssociationStatus(s)
-    if (s === 'rejected') onStageChanged?.()
+    onStageChanged?.()
   }
 
   const handleMoveToOffer = async () => {
