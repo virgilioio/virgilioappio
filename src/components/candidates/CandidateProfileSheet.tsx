@@ -429,6 +429,55 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
           <div className="text-sm text-text-primary">
             {opt.stage.stage_description || 'No details for this stage yet.'}
           </div>
+
+          {supportsScorecard(opt.stage.stage_type) && (
+            <div className="mt-3 space-y-2">
+              {(() => {
+                const existing = myScorecardsByStage[opt.jhsId]
+                return (
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm text-text-secondary">
+                      {existing ? (
+                        <>
+                          <span className="text-text-primary font-medium">Score:</span> {scoreLabel(existing.rating)}
+                        </>
+                      ) : (
+                        <span className="text-text-secondary">No score submitted yet.</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {existing && (
+                        <Button
+                          variant="link"
+                          size="sm"
+                          onClick={() => {
+                            setScoreStageInstId(opt.jhsId)
+                            setScoreStageName(opt.stage.stage_name)
+                            setScoreOpen(true)
+                          }}
+                        >
+                          See general overview
+                        </Button>
+                      )}
+                      {isCurrent && associationId && (
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            setScoreStageInstId(opt.jhsId)
+                            setScoreStageName(opt.stage.stage_name)
+                            setScoreOpen(true)
+                          }}
+                        >
+                          {existing ? 'Open Scorecard' : 'Submit Scorecard'}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                )
+              })()}
+            </div>
+          )}
+
           {!isCurrent && (
             <div className="mt-3">
               <Button
@@ -709,6 +758,27 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
             jobId={jobId}
             isLoading={editLoading}
           />
+
+          {scoreStageInstId && associationId && (
+            <ScorecardSheet
+              open={scoreOpen}
+              onOpenChange={(o) => {
+                setScoreOpen(o)
+                if (!o) setScoreStageInstId(null)
+              }}
+              stageName={scoreStageName}
+              associationId={associationId}
+              stageInstanceId={scoreStageInstId}
+              existing={myScorecardsByStage[scoreStageInstId] || null}
+              isAuthor={!!(myScorecardsByStage[scoreStageInstId] && user?.id === myScorecardsByStage[scoreStageInstId].created_by)}
+              onSubmit={async (rating, overview) => {
+                await upsertMyScorecard(scoreStageInstId!, rating, overview || '')
+                await refetchScorecards()
+                toast({ title: 'Scorecard saved', description: 'Your scorecard has been saved.' })
+              }}
+            />
+          )}
+
           </div>
         </div>
       </SheetContent>
