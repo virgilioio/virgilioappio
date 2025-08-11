@@ -14,6 +14,7 @@ import { CandidateEducationComponent } from '@/components/candidates/CandidateEd
 import { useCandidateEnrichment } from '@/hooks/useCandidateEnrichment'
 import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 
 import { Link } from 'react-router-dom'
 import { SafeHtml } from '@/components/ui/safe-html'
@@ -195,6 +196,26 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
     setAssociationStatus(s)
   }
 
+  const getHeaderBgClass = (type: string) => {
+    switch (type) {
+      case 'application':
+        return 'bg-pastel-blue/20'
+      case 'screening':
+        return 'bg-info/20'
+      case 'interview':
+        return 'bg-pastel-purple/20'
+      case 'assessment':
+        return 'bg-warning/20'
+      case 'reference_check':
+        return 'bg-pastel-orange/20'
+      case 'offer':
+        return 'bg-success/20'
+      case 'onboarding':
+        return 'bg-pastel-green/20'
+      default:
+        return 'bg-secondary/20'
+    }
+  }
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-[80vw] sm:max-w-none h-full p-0">
@@ -289,33 +310,29 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
                         <CardHeader>
                           <CardTitle className="text-lg">Job Application</CardTitle>
                         </CardHeader>
-                        <CardContent className="space-y-4">
-                          <div className="flex flex-wrap gap-2">
-                            {planStages.map((stage) => (
-                              <button
-                                key={stage.id}
-                                onClick={() => setOpenStageId((prev) => (prev === stage.id ? null : stage.id))}
-                                className={cn(
-                                  'px-3 py-2 rounded-md text-sm border border-border transition-colors',
-                                  openStageId === stage.id
-                                    ? 'bg-accent text-accent-foreground'
-                                    : 'bg-surface-secondary text-text-primary hover:bg-muted/50'
-                                )}
-                              >
-                                {stage.stage_name}
-                              </button>
-                            ))}
-                          </div>
-                          {openStageId ? (
-                            <div className="rounded-lg border border-border bg-surface-secondary p-4">
-                              <div className="text-sm text-text-primary">
-                                {planStages.find((s) => s.id === openStageId)?.stage_description || 'No details for this stage yet.'}
-                              </div>
-                            </div>
+                        <CardContent className="space-y-2">
+                          {planStages.length ? (
+                            <Accordion
+                              type="single"
+                              collapsible
+                              value={openStageId ?? undefined}
+                              onValueChange={(v) => setOpenStageId((v as string) || null)}
+                              className="w-full space-y-2"
+                            >
+                              {planStages.map((stage) => (
+                                <AccordionItem key={stage.id} value={stage.id} className="border rounded-lg overflow-hidden">
+                                  <AccordionTrigger className={cn('px-3 py-2 no-underline text-text-primary', getHeaderBgClass(stage.stage_type))}>
+                                    <div className="text-sm font-medium">{stage.stage_name}</div>
+                                  </AccordionTrigger>
+                                  <AccordionContent className="px-3">
+                                    <div className="text-sm text-text-primary">
+                                      {stage.stage_description || 'No details for this stage yet.'}
+                                    </div>
+                                  </AccordionContent>
+                                </AccordionItem>
+                              ))}
+                            </Accordion>
                           ) : (
-                            <div className="text-sm text-text-secondary">Select a stage to view details.</div>
-                          )}
-                          {!planStages.length && (
                             <div className="text-sm text-text-secondary">No hiring stages configured for this job.</div>
                           )}
                         </CardContent>
