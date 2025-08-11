@@ -67,7 +67,7 @@ export function ScorecardSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-[1080px] max-w-full p-0">
+      <SheetContent side="right" className="w-[80vw] max-w-[1080px] p-0">
         <div className="flex h-full flex-col">
           <SheetHeader className="p-6 border-b">
             <div className="flex items-center justify-between">
@@ -113,7 +113,7 @@ export function ScorecardSheet({
                       className={`flex items-center gap-2 rounded-md border p-2 transition-all ${base}`}
                     >
                       <RadioGroupItem value={opt.value} id={`rating-${opt.value}`} />
-                      <IconComp className="h-5 w-5" aria-hidden />
+                      <IconComp className="h-6 w-6" aria-hidden />
                       <Label htmlFor={`rating-${opt.value}`}>{opt.label}</Label>
                     </div>
                   );
