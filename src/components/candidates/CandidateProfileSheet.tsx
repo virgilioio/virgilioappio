@@ -220,12 +220,33 @@ const [openStageId, setOpenStageId] = useState<string | null>(null)
 
   const handleMoveToOffer = async () => {
     try {
-      const sorted = [...planStages].sort((a, b) => a.position - b.position)
-      const offer = sorted.find(s => s.stage.stage_type === 'offer') || sorted.find(s => s.stage.stage_name?.toLowerCase().includes('offer'))
+      // Prefer already loaded plan stages
+      let offer = [...planStages]
+        .sort((a, b) => a.position - b.position)
+        .find(s => s.stage.stage_type === 'offer')
+        || [...planStages]
+          .sort((a, b) => a.position - b.position)
+          .find(s => s.stage.stage_name?.toLowerCase().includes('offer'))
+
+      // Fallback: fetch from DB if not found yet
+      if (!offer) {
+        const { data, error } = await supabase
+          .from('job_hiring_stages')
+          .select('id, stage:job_stages(stage_type, stage_name)')
+          .eq('job_id', jobId)
+        if (error) throw error
+        const fromDb = (data as any[] | null) || []
+        const found = fromDb.find((r) => r.stage?.stage_type === 'offer') || fromDb.find((r) => (r.stage?.stage_name || '').toLowerCase().includes('offer'))
+        if (found) {
+          offer = { jhsId: found.id, stage: found.stage, position: 0 }
+        }
+      }
+
       if (!offer) {
         toast({ title: 'No offer stage', description: 'This job has no Offer stage in its hiring plan.', variant: 'destructive' })
         return
       }
+
       if (associationId) {
         await moveAssociationToStage(associationId, offer.jhsId)
       } else if (candidateId) {
@@ -237,7 +258,8 @@ const [openStageId, setOpenStageId] = useState<string | null>(null)
       setActiveTab('job')
       onStageChanged?.()
     } catch (e) {
-      // Error already handled with toast in hooks
+      console.error('Move to Offer failed:', e)
+      // Error already handled with toast in hooks or above
     }
   }
 
