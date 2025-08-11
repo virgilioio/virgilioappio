@@ -134,7 +134,7 @@ export function ScorecardSheet({
             </div>
           </div>
 
-          <div className="p-6 border-t flex justify-end gap-2">
+          <div className="p-6 border-t flex justify-end gap-2 relative z-30 pointer-events-auto">
             <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
             {(!existing || editMode) && (
               <Button onClick={handleSave} disabled={saving}>
