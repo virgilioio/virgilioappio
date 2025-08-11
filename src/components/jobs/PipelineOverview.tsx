@@ -211,7 +211,7 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
     setIsLoadingCandidates(true)
     try {
       const associations = await fetchAssociationsForJob(jobId)
-      const active = associations.filter(a => a.status !== 'rejected' && a.status !== 'hired')
+      const active = associations.filter(a => a.status !== 'rejected' && a.status !== 'hired' && a.status !== 'offer')
       const rejectedList = associations.filter(a => a.status === 'rejected')
       const hiredList = associations.filter(a => a.status === 'hired')
       const grouped: Record<string, PipelineAssociation[]> = {}

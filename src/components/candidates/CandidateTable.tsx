@@ -163,8 +163,8 @@ export function CandidateTable({
       // Global candidate with job info
       return `/jobs/${candidate.job.id}/candidates/${candidate.id}`
     } else {
-      // Local candidate
-      return `/jobs/${jobId}/candidates/${candidate.id}`
+      // Independent candidate (no job context) -> open independent profile
+      return `/candidates/${candidate.id}`
     }
   }
 
