@@ -12,7 +12,7 @@ import { CandidateUrls } from '@/components/candidates/CandidateUrls'
 import { CandidateWorkExperienceComponent } from '@/components/candidates/CandidateWorkExperience'
 import { CandidateEducationComponent } from '@/components/candidates/CandidateEducationComponent'
 import { useCandidateEnrichment } from '@/hooks/useCandidateEnrichment'
-import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight, CheckCircle2, Circle, MoveRight } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 
@@ -46,13 +46,14 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
   const [jobCandidate, setJobCandidate] = useState<any | null>(null)
   const [jobCandidateId, setJobCandidateId] = useState<string | null>(null)
   const [job, setJob] = useState<any | null>(null)
-  const [activeTab, setActiveTab] = useState<'job' | 'resume' | 'overview'>('overview')
+  const [activeTab, setActiveTab] = useState<'job' | 'resume' | 'overview'>('job')
   const { workExperience, education, fetchCandidateEnrichmentData } = useCandidateEnrichment()
   const [editOpen, setEditOpen] = useState(false)
   const [editLoading, setEditLoading] = useState(false)
-  const { updateAssociationStatus } = usePipelineActions()
+  const { updateAssociationStatus, moveAssociationToStage, createAssociationAndMove } = usePipelineActions()
   const [associationId, setAssociationId] = useState<string | null>(null)
   const [associationStatus, setAssociationStatus] = useState<'active' | 'rejected' | 'hired' | null>(null)
+  const [currentStageId, setCurrentStageId] = useState<string | null>(null)
   const { attachments, uploadAttachment: uploadResume, isUploading: isResumeUploading, deleteAttachment } = useCandidateAttachments(jobCandidateId || '')
 
 // Hiring plan stages for vertical accordion
@@ -76,6 +77,7 @@ const [openStageId, setOpenStageId] = useState<string | null>(null)
   }
 
   useEffect(() => {
+    if (open) setActiveTab('job')
     const load = async () => {
       if (!open || !candidateId) return
       setLoading(true)
@@ -157,12 +159,13 @@ const [openStageId, setOpenStageId] = useState<string | null>(null)
       if (candidateId) {
         const { data: assoc } = await supabase
           .from('job_candidate_associations')
-          .select('id, status')
+          .select('id, status, current_stage_id')
           .eq('job_id', jobId)
           .eq('candidate_id', candidateId)
           .maybeSingle()
         setAssociationId(assoc?.id ?? null)
         setAssociationStatus((assoc?.status as any) ?? null)
+        setCurrentStageId((assoc as any)?.current_stage_id ?? null)
       }
     }
     loadRelated()
@@ -195,6 +198,28 @@ const [openStageId, setOpenStageId] = useState<string | null>(null)
     if (!associationId) return
     await updateAssociationStatus(associationId, s)
     setAssociationStatus(s)
+  }
+
+  const handleMoveToOffer = async () => {
+    try {
+      const sorted = [...planStages].sort((a, b) => a.position - b.position)
+      const offer = sorted.find(s => s.stage.stage_type === 'offer') || sorted.find(s => s.stage.stage_name?.toLowerCase().includes('offer'))
+      if (!offer) {
+        toast({ title: 'No offer stage', description: 'This job has no Offer stage in its hiring plan.', variant: 'destructive' })
+        return
+      }
+      if (associationId) {
+        await moveAssociationToStage(associationId, offer.jhsId)
+      } else if (candidateId) {
+        const newId = await createAssociationAndMove(jobId, candidateId, offer.jhsId)
+        setAssociationId(newId)
+      }
+      setCurrentStageId(offer.jhsId)
+      setOpenStageId(offer.stage.id)
+      setActiveTab('job')
+    } catch (e) {
+      // Error already handled with toast in hooks
+    }
   }
 
   const getHeaderBgClass = (type: string) => {
@@ -320,20 +345,35 @@ const [openStageId, setOpenStageId] = useState<string | null>(null)
                               onValueChange={(v) => setOpenStageId((v as string) || null)}
                               className="w-full space-y-2"
                             >
-{[...planStages]
-  .sort((a, b) => a.position - b.position)
-  .map((opt) => (
-    <AccordionItem key={opt.stage.id} value={opt.stage.id} className="border rounded-lg overflow-hidden">
-      <AccordionTrigger className={cn('px-3 py-2 no-underline text-text-primary', getHeaderBgClass(opt.stage.stage_type))}>
-        <div className="text-sm font-medium">{opt.stage.stage_name}</div>
-      </AccordionTrigger>
-      <AccordionContent className="px-3">
-        <div className="text-sm text-text-primary">
-          {opt.stage.stage_description || 'No details for this stage yet.'}
-        </div>
-      </AccordionContent>
-    </AccordionItem>
-  ))}
+{(() => {
+  const sorted = [...planStages].sort((a, b) => a.position - b.position)
+  const currentIdx = currentStageId ? sorted.findIndex(s => s.jhsId === currentStageId) : -1
+  return sorted.map((opt, idx) => {
+    const isPast = currentIdx >= 0 && idx < currentIdx
+    const isCurrent = currentIdx >= 0 && idx === currentIdx
+    return (
+      <AccordionItem key={opt.stage.id} value={opt.stage.id} className="border rounded-lg overflow-hidden">
+        <AccordionTrigger className={cn('px-3 py-2 no-underline text-text-primary', getHeaderBgClass(opt.stage.stage_type))}>
+          <div className="flex items-center gap-2">
+            {isCurrent ? (
+              <CheckCircle2 className="h-4 w-4 text-primary" />
+            ) : isPast ? (
+              <CheckCircle2 className="h-4 w-4 text-primary/40" />
+            ) : (
+              <Circle className="h-4 w-4 text-text-tertiary" />
+            )}
+            <div className="text-sm font-medium">{opt.stage.stage_name}</div>
+          </div>
+        </AccordionTrigger>
+        <AccordionContent className="px-3">
+          <div className="text-sm text-text-primary">
+            {opt.stage.stage_description || 'No details for this stage yet.'}
+          </div>
+        </AccordionContent>
+      </AccordionItem>
+    )
+  })
+})()}
                             </Accordion>
                           ) : (
                             <div className="text-sm text-text-secondary">No hiring stages configured for this job.</div>
@@ -483,24 +523,10 @@ const [openStageId, setOpenStageId] = useState<string | null>(null)
                               <Edit className="h-4 w-4" />
                               Edit Candidate
                             </Button>
-                            {associationId && (
-                              <div className="grid grid-cols-3 gap-2">
-                                {associationStatus !== 'rejected' && (
-                                  <Button variant="destructive" className="w-full gap-sm" onClick={() => handleSetStatus('rejected')}>
-                                    Reject
-                                  </Button>
-                                )}
-                                {associationStatus !== 'hired' && (
-                                  <Button className="w-full gap-sm" onClick={() => handleSetStatus('hired')}>
-                                    Mark Hired
-                                  </Button>
-                                )}
-                                {associationStatus && associationStatus !== 'active' && (
-                                  <Button variant="outline" className="w-full gap-sm" onClick={() => handleSetStatus('active')}>
-                                    Restore
-                                  </Button>
-                                )}
-                              </div>
+                            {associationId && associationStatus && associationStatus !== 'active' && (
+                              <Button variant="outline" className="w-full gap-sm" onClick={() => handleSetStatus('active')}>
+                                Restore
+                              </Button>
                             )}
                             {jobCandidateId && (
                               <>
@@ -516,6 +542,10 @@ const [openStageId, setOpenStageId] = useState<string | null>(null)
                                     Schedule
                                   </Button>
                                 </Link>
+                                <Button variant="outline" className="w-full gap-sm" onClick={handleMoveToOffer}>
+                                  <MoveRight className="h-4 w-4" />
+                                  Move to Offer
+                                </Button>
                               </>
                             )}
                           </>
