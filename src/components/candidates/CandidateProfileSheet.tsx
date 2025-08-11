@@ -43,7 +43,7 @@ interface CandidateProfileSheetProps {
 }
 
 export default function CandidateProfileSheet({ open, onOpenChange, candidateId, jobId, hasPrev, hasNext, onNavigatePrev, onNavigateNext, onStageChanged }: CandidateProfileSheetProps) {
-  const { organizationId } = useAuth()
+  const { organizationId, user } = useAuth()
   const [loading, setLoading] = useState(false)
   const [candidate, setCandidate] = useState<any | null>(null)
   const [jobCandidate, setJobCandidate] = useState<any | null>(null)
@@ -65,6 +65,12 @@ const { loadHiringPlanInstances } = useJobHiringPlan()
 type PlanStageOption = { jhsId: string; stage: JobStage; position: number }
 const [planStages, setPlanStages] = useState<PlanStageOption[]>([])
 const [openStageId, setOpenStageId] = useState<string | null>(null)
+
+// Scorecards
+const { rows: myScorecards, byStage: myScorecardsByStage, upsertMyScorecard, refetch: refetchScorecards } = useMyScorecards(associationId)
+const [scoreOpen, setScoreOpen] = useState(false)
+const [scoreStageInstId, setScoreStageInstId] = useState<string | null>(null)
+const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefined)
   // Resume helpers
   const resumeAttachment = attachments.find((a) => a.is_resume)
   const replaceResumeInputRef = useRef<HTMLInputElement>(null)
@@ -272,6 +278,25 @@ const [openStageId, setOpenStageId] = useState<string | null>(null)
         return 'bg-secondary/20'
     }
   }
+
+  const supportsScorecard = (type?: string) =>
+    !!type && ['interview', 'screening', 'assessment'].includes(type)
+
+  const scoreLabel = (value?: string) => {
+    switch (value) {
+      case 'definitely_no':
+        return 'Definitely No'
+      case 'no':
+        return 'No'
+      case 'yes':
+        return 'Yes'
+      case 'strong_yes':
+        return 'Strong Yes'
+      default:
+        return '—'
+    }
+  }
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-[80vw] sm:max-w-none h-full p-0">
