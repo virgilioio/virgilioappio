@@ -202,16 +202,7 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
 
   const loadStages = useCallback(async () => {
     const plan = await loadHiringPlanInstances(jobId)
-    if (plan.length > 0) {
-      // Ensure any "last" priority defaults appear at the end
-      const defaults = plan.filter(p => p.stage.is_default)
-      const customs = plan.filter(p => !p.stage.is_default)
-      const normalDefaults = defaults.filter(p => !isLastPriorityStage(p.stage))
-      const lastDefaults = defaults.filter(p => isLastPriorityStage(p.stage))
-      setStageOptions([...normalDefaults, ...customs, ...lastDefaults])
-    } else {
-      setStageOptions([])
-    }
+    setStageOptions(plan.length > 0 ? plan : [])
   }, [jobId, loadHiringPlanInstances])
 
   const loadPipeline = useCallback(async () => {

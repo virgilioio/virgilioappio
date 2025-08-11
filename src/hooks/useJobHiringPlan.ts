@@ -112,10 +112,7 @@ export function useJobHiringPlan() {
       // Get current user for created_by
       const { data: userData, error: userError } = await supabase.auth.getUser()
       if (userError) throw userError
-      const userId = userData.user?.id
-
-      // New safer approach: preserve existing rows, update positions, insert new ones, and
-      // reassign candidates from removed stages BEFORE deleting them to avoid FK issues
+      const userId = userData.user?.id ?? null
 
       // Load current plan entries for this job
       const { data: currentPlan, error: currentPlanError } = await supabase
@@ -125,81 +122,63 @@ export function useJobHiringPlan() {
         .order('position', { ascending: true })
       if (currentPlanError) throw currentPlanError
 
-      // Map current plan by stage_id and keep list by id
-      const currentByStageId = new Map<string, { id: string; stage_id: string; position: number }>()
-      const currentIds = new Set<string>()
-      for (const row of currentPlan || []) {
-        currentByStageId.set(row.stage_id, row)
-        currentIds.add(row.id)
-      }
-
-      // Build desired new order from input
       type IncomingStage = { id: string; jhsId?: string }
       const incoming: IncomingStage[] = stages as any
 
-      // Determine which to keep (existing rows), which to insert, and which to delete
-      const toKeep: { id: string; stage_id: string; newPosition: number }[] = []
-      const toInsert: { stage_id: string; position: number; job_id: string; created_by: string | null }[] = []
+      // Map current plan by stage_id
+      const currentByStageId = new Map<string, { id: string; stage_id: string; position: number }>()
+      for (const row of currentPlan || []) {
+        currentByStageId.set(row.stage_id, row)
+      }
+
+      // Determine which to keep, insert, and delete
+      const toKeep: { id: string; stage_id: string }[] = []
+      const toInsert: { stage_id: string }[] = []
       const incomingStageIds = new Set<string>()
 
-      incoming.forEach((s, idx) => {
-        const stage_id = s.id
-        incomingStageIds.add(stage_id)
-        const existing = currentByStageId.get(stage_id)
-        if (existing) {
-          toKeep.push({ id: existing.id, stage_id, newPosition: idx + 1 })
-        } else {
-          toInsert.push({
-            job_id: jobId,
-            stage_id,
-            position: 1000 + (idx + 1), // temporary high position to avoid unique constraint collisions
-            created_by: userId ?? null,
-          })
-        }
+      incoming.forEach((s) => {
+        incomingStageIds.add(s.id)
+        const existing = currentByStageId.get(s.id)
+        if (existing) toKeep.push({ id: existing.id, stage_id: s.id })
+        else toInsert.push({ stage_id: s.id })
       })
 
       const toDelete = (currentPlan || []).filter((row) => !incomingStageIds.has(row.stage_id))
 
-      // 1) Insert new stages first and capture their IDs
-      let inserted: { id: string; stage_id: string; position: number }[] = []
-      if (toInsert.length > 0) {
-        const { data: insertedRows, error: insertError } = await supabase
+      // Phase 1: Move kept rows to temporary unique positions to avoid unique (job_id, position) conflicts
+      // Use a high offset block (10000 + index) guaranteed unique within this save operation
+      for (let i = 0; i < toKeep.length; i++) {
+        const { error: tmpErr } = await supabase
           .from('job_hiring_stages')
-          .insert(toInsert)
-          .select('id, stage_id, position')
-        if (insertError) throw insertError
+          .update({ position: 10000 + (i + 1) })
+          .eq('id', toKeep[i].id)
+        if (tmpErr) throw tmpErr
+      }
+
+      // Phase 2: Insert new stages with distinct temporary positions in a different block (20000 + index)
+      let inserted: { id: string; stage_id: string }[] = []
+      if (toInsert.length > 0) {
+        const payload = toInsert.map((s, idx) => ({
+          job_id: jobId,
+          stage_id: s.stage_id,
+          position: 20000 + (idx + 1),
+          created_by: userId,
+        }))
+        const { data: insertedRows, error: insertErr } = await supabase
+          .from('job_hiring_stages')
+          .insert(payload)
+          .select('id, stage_id')
+        if (insertErr) throw insertErr
         inserted = insertedRows || []
       }
 
-      // Build final plan map: stage_id -> jhsId and stage_id -> final position
+      // Build final mapping and desired order
+      const finalStageIds = incoming.map((s) => s.id)
       const finalStageIdToJhsId = new Map<string, string>()
-      const finalPositions = new Map<string, number>()
+      for (const k of toKeep) finalStageIdToJhsId.set(k.stage_id, k.id)
+      for (const ins of inserted) finalStageIdToJhsId.set(ins.stage_id, ins.id)
 
-      for (const keep of toKeep) {
-        finalStageIdToJhsId.set(keep.stage_id, keep.id)
-        finalPositions.set(keep.stage_id, keep.newPosition)
-      }
-      for (const ins of inserted) {
-        finalStageIdToJhsId.set(ins.stage_id, ins.id)
-        // Position for newly inserted is already correct in payload
-        const incomingPos = incoming.findIndex((s) => s.id === ins.stage_id)
-        if (incomingPos >= 0) finalPositions.set(ins.stage_id, incomingPos + 1)
-      }
-
-      // 2) Update positions for kept rows if they changed
-      for (const keep of toKeep) {
-        // Only update if position changed
-        const curr = (currentPlan || []).find((r) => r.id === keep.id)
-        if (!curr || curr.position !== keep.newPosition) {
-          const { error: updErr } = await supabase
-            .from('job_hiring_stages')
-            .update({ position: keep.newPosition })
-            .eq('id', keep.id)
-          if (updErr) throw updErr
-        }
-      }
-
-      // 3) Reassign candidates from stages that are being deleted to the previous remaining stage
+      // Phase 3: Reassign candidates away from stages being removed, then delete those stages
       if ((toKeep.length + inserted.length) === 0) {
         // Edge case: plan becomes empty -> set associations' stage to NULL first, then delete all
         const { error: updAllErr } = await supabase
@@ -214,26 +193,17 @@ export function useJobHiringPlan() {
           .eq('job_id', jobId)
         if (delAllErr) throw delAllErr
       } else if (toDelete.length > 0) {
-        // Compute helper: find previous remaining stage by old position
-        const finalStagesWithPos = Array.from(finalPositions.entries()) // [stage_id, pos]
-          .map(([stage_id, pos]) => ({ stage_id, pos }))
-
+        const finalStagesWithPos = finalStageIds.map((sid, idx) => ({ stage_id: sid, pos: idx + 1 }))
         for (const removed of toDelete) {
-          // Find previous remaining stage position strictly less than removed.position
           const previous = finalStagesWithPos
-            .filter((s) => s.pos < removed.position)
-            .sort((a, b) => b.pos - a.pos)[0]
-            || finalStagesWithPos.sort((a, b) => a.pos - b.pos)[0] // if none smaller, pick first
+            .filter((s) => s.pos < (removed.position ?? Number.MAX_SAFE_INTEGER))
+            .sort((a, b) => b.pos - a.pos)[0] || finalStagesWithPos[0]
 
           const targetStageId = previous?.stage_id
           const targetJhsId = targetStageId ? finalStageIdToJhsId.get(targetStageId) : null
 
           const updatePayload: any = { pipeline_position: null }
-          if (targetJhsId) {
-            updatePayload.current_stage_id = targetJhsId
-          } else {
-            updatePayload.current_stage_id = null
-          }
+          updatePayload.current_stage_id = targetJhsId ?? null
 
           const { error: moveErr } = await supabase
             .from('job_candidate_associations')
@@ -243,7 +213,6 @@ export function useJobHiringPlan() {
           if (moveErr) throw moveErr
         }
 
-        // After reassignment, delete removed rows
         const removedIds = toDelete.map((r) => r.id)
         const { error: delErr } = await supabase
           .from('job_hiring_stages')
@@ -251,16 +220,17 @@ export function useJobHiringPlan() {
           .in('id', removedIds)
         if (delErr) throw delErr
       }
-      // 4) Normalize positions for newly inserted rows to their final positions
-      for (const ins of inserted) {
-        const finalPos = finalPositions.get(ins.stage_id)
-        if (finalPos && ins.position !== finalPos) {
-          const { error: updInsErr } = await supabase
-            .from('job_hiring_stages')
-            .update({ position: finalPos })
-            .eq('id', ins.id)
-          if (updInsErr) throw updInsErr
-        }
+
+      // Phase 4: Finalize positions to 1..n according to incoming order
+      for (let i = 0; i < finalStageIds.length; i++) {
+        const sid = finalStageIds[i]
+        const jhsId = finalStageIdToJhsId.get(sid)
+        if (!jhsId) continue
+        const { error: finErr } = await supabase
+          .from('job_hiring_stages')
+          .update({ position: i + 1 })
+          .eq('id', jhsId)
+        if (finErr) throw finErr
       }
 
       toast({
