@@ -520,9 +520,9 @@ export default function JobDetail() {
                                 <Badge variant="pastel-purple">{applicationCount}</Badge>
                               </span>
                             </TabsTrigger>
-                            <TabsTrigger className="flex-1 h-10 md:h-12 text-base md:text-lg bg-pastel-yellow/20 text-text-primary data-[state=active]:bg-pastel-yellow data-[state=active]:text-background" value="recruiting">
+                            <TabsTrigger className="flex-1 h-10 md:h-12 text-base md:text-lg bg-pastel-yellow/20 text-text-primary data-[state=active]:bg-pastel-yellow data-[state=active]:text-background group" value="recruiting">
                               <span className="flex items-center gap-2">
-                                <span>Recruiting Process</span>
+                                <span className="text-text-primary group-data-[state=active]:text-background">Recruiting Process</span>
                                 <Badge variant="pastel-yellow">{recruitingCount}</Badge>
                               </span>
                             </TabsTrigger>
@@ -764,9 +764,9 @@ export default function JobDetail() {
                                 <Badge variant="pastel-purple">{applicationCount}</Badge>
                               </span>
                             </TabsTrigger>
-                            <TabsTrigger className="flex-1 h-10 md:h-12 text-base md:text-lg bg-pastel-yellow/20 text-text-primary data-[state=active]:bg-pastel-yellow data-[state=active]:text-background" value="recruiting">
+                            <TabsTrigger className="flex-1 h-10 md:h-12 text-base md:text-lg bg-pastel-yellow/20 text-text-primary data-[state=active]:bg-pastel-yellow data-[state=active]:text-background group" value="recruiting">
                               <span className="flex items-center gap-2">
-                                <span>Recruiting Process</span>
+                                <span className="text-text-primary group-data-[state=active]:text-background">Recruiting Process</span>
                                 <Badge variant="pastel-yellow">{recruitingCount}</Badge>
                               </span>
                             </TabsTrigger>
