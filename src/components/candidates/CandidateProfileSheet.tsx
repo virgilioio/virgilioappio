@@ -231,9 +231,29 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
                       onTabChange={(v) => setActiveTab(v as 'job' | 'resume' | 'overview')}
                       rightActions={
                         <>
+                          {associationId && associationStatus !== 'rejected' && (
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => handleSetStatus('rejected')}
+                              title="Reject candidate"
+                            >
+                              Reject
+                            </Button>
+                          )}
+                          {associationId && associationStatus !== 'hired' && (
+                            <Button
+                              size="sm"
+                              onClick={() => handleSetStatus('hired')}
+                              title="Mark candidate as hired"
+                            >
+                              Mark Hired
+                            </Button>
+                          )}
                           <Button
-                            variant="outline"
+                            variant="default"
                             size="icon"
+                            className="aspect-square rounded-md bg-foreground text-background hover:bg-foreground"
                             onClick={() => generateCandidatePdf({ candidate, job })}
                             title="Download PDF"
                           >
