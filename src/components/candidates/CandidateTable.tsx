@@ -60,6 +60,7 @@ interface CandidateTableProps {
   markCandidateAsViewed: (candidateId: string) => void
   isCandidateNewForUser: (candidate: CandidateTableCandidate) => boolean
   showJobInfo?: boolean // Whether to show job/organization columns
+  onRowClick?: (candidateId: string) => void
 }
 
 export function CandidateTable({ 
@@ -70,7 +71,8 @@ export function CandidateTable({
   onAddNew, 
   markCandidateAsViewed,
   isCandidateNewForUser,
-  showJobInfo = false
+  showJobInfo = false,
+  onRowClick
 }: CandidateTableProps) {
   const { id: jobId } = useParams<{ id: string }>()
   const permissions = usePermissions()
@@ -94,6 +96,16 @@ export function CandidateTable({
 
   const handleCandidateClick = (candidate: CandidateTableCandidate) => {
     markCandidateAsViewed(candidate.id)
+  }
+
+  const handleLinkClick = (e: React.MouseEvent, candidate: CandidateTableCandidate) => {
+    if (onRowClick) {
+      e.preventDefault()
+      e.stopPropagation()
+      onRowClick(candidate.id)
+    } else {
+      handleCandidateClick(candidate)
+    }
   }
 
   const formatLocation = (candidate: CandidateTableCandidate) => {
@@ -395,9 +407,9 @@ export function CandidateTable({
                         )}
                         <TableCell>
                           <Link 
-                            to={getCandidateLink(candidate)}
-                            className="block w-full h-full"
-                            onClick={() => handleCandidateClick(candidate)}
+                          to={getCandidateLink(candidate)}
+                          className="block w-full h-full"
+                          onClick={(e) => handleLinkClick(e, candidate)}
                           >
                             <div className="font-medium text-text-primary flex items-center">
                               {candidate.candidate_name}
@@ -408,9 +420,9 @@ export function CandidateTable({
                         {showJobInfo && 'job' in candidate && (
                           <TableCell>
                             <Link 
-                              to={getCandidateLink(candidate)}
-                              className="block w-full h-full"
-                              onClick={() => handleCandidateClick(candidate)}
+                               to={getCandidateLink(candidate)}
+                               className="block w-full h-full"
+                               onClick={(e) => handleLinkClick(e, candidate)}
                             >
                               <div className="text-sm text-text-secondary">
                                 {candidate.job.title}
@@ -421,9 +433,9 @@ export function CandidateTable({
                         {showJobInfo && 'job' in candidate && (
                           <TableCell>
                             <Link 
-                              to={getCandidateLink(candidate)}
-                              className="block w-full h-full"
-                              onClick={() => handleCandidateClick(candidate)}
+                               to={getCandidateLink(candidate)}
+                               className="block w-full h-full"
+                               onClick={(e) => handleLinkClick(e, candidate)}
                             >
                               <div className="text-sm text-text-secondary">
                                 {candidate.job.organization.name}
@@ -435,7 +447,7 @@ export function CandidateTable({
                            <Link 
                              to={getCandidateLink(candidate)}
                              className="block w-full h-full"
-                             onClick={() => handleCandidateClick(candidate)}
+                             onClick={(e) => handleLinkClick(e, candidate)}
                            >
                              <div className="flex items-center gap-1 text-sm text-text-secondary">
                                <MapPin className="h-3 w-3 shrink-0" />
@@ -445,9 +457,9 @@ export function CandidateTable({
                          </TableCell>
                          <TableCell>
                            <Link 
-                             to={getCandidateLink(candidate)}
-                             className="block w-full h-full"
-                             onClick={() => handleCandidateClick(candidate)}
+                              to={getCandidateLink(candidate)}
+                              className="block w-full h-full"
+                              onClick={(e) => handleLinkClick(e, candidate)}
                            >
                              {candidate.skills && candidate.skills.length > 0 ? (
                                <div className="flex flex-wrap gap-1">
@@ -469,9 +481,9 @@ export function CandidateTable({
                          </TableCell>
                         <TableCell>
                           <Link 
-                            to={getCandidateLink(candidate)}
-                            className="block w-full h-full"
-                            onClick={() => handleCandidateClick(candidate)}
+                             to={getCandidateLink(candidate)}
+                             className="block w-full h-full"
+                             onClick={(e) => handleLinkClick(e, candidate)}
                           >
                             <div className="flex items-center gap-1 text-sm text-text-secondary">
                               <DollarSign className="h-3 w-3 shrink-0" />
@@ -481,9 +493,9 @@ export function CandidateTable({
                         </TableCell>
                         <TableCell>
                           <Link 
-                            to={getCandidateLink(candidate)}
-                            className="block w-full h-full"
-                            onClick={() => handleCandidateClick(candidate)}
+                             to={getCandidateLink(candidate)}
+                             className="block w-full h-full"
+                             onClick={(e) => handleLinkClick(e, candidate)}
                           >
                             <div className="text-sm text-text-secondary">
                               {new Date(candidate.created_at).toLocaleDateString()}
@@ -522,7 +534,7 @@ export function CandidateTable({
                       <Link 
                         to={getCandidateLink(candidate)} 
                         className="block"
-                        onClick={() => handleCandidateClick(candidate)}
+                        onClick={(e) => handleLinkClick(e, candidate)}
                       >
                         <div className="space-y-sm">
                           <div className="flex items-start justify-between">

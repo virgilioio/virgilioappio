@@ -31,6 +31,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { usePipelineActions, PipelineAssociation } from '@/hooks/usePipelineActions'
+import CandidateProfileSheet from '@/components/candidates/CandidateProfileSheet'
 
 export default function JobDetail() {
   const { id } = useParams<{ id: string }>()
@@ -53,6 +54,11 @@ export default function JobDetail() {
   const [selectionMode, setSelectionMode] = useState(false)
   const [selectedCandidateIds, setSelectedCandidateIds] = useState<string[]>([])
   const [pipelineRefresh, setPipelineRefresh] = useState(0)
+
+  // In-place profile sheet state
+  const [profileOpen, setProfileOpen] = useState(false)
+  const [profileCandidateId, setProfileCandidateId] = useState<string | null>(null)
+  const openProfileInPlace = (candidateId: string) => { setProfileCandidateId(candidateId); setProfileOpen(true) }
 
   // Inner tabs for Pipeline section
   const [pipelineSectionTab, setPipelineSectionTab] = useState<'application' | 'recruiting' | 'offers' | 'hired' | 'rejected'>('recruiting')
@@ -664,6 +670,7 @@ export default function JobDetail() {
                                 onAddNew={() => setShowAddCandidate(true)}
                                 markCandidateAsViewed={() => {}}
                                 isCandidateNewForUser={() => false}
+                                onRowClick={openProfileInPlace}
                               />
                             </div>
                           ) : pipelineSectionTab === 'hired' ? (
@@ -688,6 +695,7 @@ export default function JobDetail() {
                                 onAddNew={() => setShowAddCandidate(true)}
                                 markCandidateAsViewed={() => {}}
                                 isCandidateNewForUser={() => false}
+                                onRowClick={openProfileInPlace}
                               />
                             </div>
                           )}
@@ -892,6 +900,7 @@ export default function JobDetail() {
                                 onAddNew={() => setShowAddCandidate(true)}
                                 markCandidateAsViewed={() => {}}
                                 isCandidateNewForUser={() => false}
+                                onRowClick={openProfileInPlace}
                               />
                             </div>
                           ) : pipelineSectionTab === 'hired' ? (
@@ -916,6 +925,7 @@ export default function JobDetail() {
                                 onAddNew={() => setShowAddCandidate(true)}
                                 markCandidateAsViewed={() => {}}
                                 isCandidateNewForUser={() => false}
+                                onRowClick={openProfileInPlace}
                               />
                             </div>
                           )}
@@ -973,6 +983,14 @@ export default function JobDetail() {
             />
           </DialogContent>
         </Dialog>
+
+        <CandidateProfileSheet
+          open={profileOpen}
+          onOpenChange={setProfileOpen}
+          candidateId={profileCandidateId}
+          jobId={id!}
+          onStageChanged={() => setPipelineRefresh((v) => v + 1)}
+        />
       </div>
     </div>
   )
