@@ -2664,6 +2664,42 @@ export type Database = {
         }
         Relationships: []
       }
+      subscribers: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          stripe_customer_id: string | null
+          subscribed: boolean
+          subscription_end: string | null
+          subscription_tier: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          stripe_customer_id?: string | null
+          subscribed?: boolean
+          subscription_end?: string | null
+          subscription_tier?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          stripe_customer_id?: string | null
+          subscribed?: boolean
+          subscription_end?: string | null
+          subscription_tier?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       supported_currencies: {
         Row: {
           code: string
@@ -2690,6 +2726,48 @@ export type Database = {
           is_active?: boolean
           name?: string
           symbol?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      tenant_subscriptions: {
+        Row: {
+          billing_interval: string | null
+          created_at: string
+          id: string
+          seat_quantity: number
+          stripe_customer_id: string | null
+          subscribed: boolean
+          subscription_end: string | null
+          subscription_tier: string | null
+          tenant_id: string
+          trial_end: string | null
+          updated_at: string
+        }
+        Insert: {
+          billing_interval?: string | null
+          created_at?: string
+          id?: string
+          seat_quantity?: number
+          stripe_customer_id?: string | null
+          subscribed?: boolean
+          subscription_end?: string | null
+          subscription_tier?: string | null
+          tenant_id: string
+          trial_end?: string | null
+          updated_at?: string
+        }
+        Update: {
+          billing_interval?: string | null
+          created_at?: string
+          id?: string
+          seat_quantity?: number
+          stripe_customer_id?: string | null
+          subscribed?: boolean
+          subscription_end?: string | null
+          subscription_tier?: string | null
+          tenant_id?: string
+          trial_end?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -3445,6 +3523,10 @@ export type Database = {
           total_jobs_affected: number
           jobs_where_stage_is_first_count: number
         }[]
+      }
+      get_tenant_billable_seat_count: {
+        Args: { tenant_id_param: string }
+        Returns: number
       }
       get_user_member_data: {
         Args: Record<PropertyKey, never>
