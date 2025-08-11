@@ -54,6 +54,7 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
   const [associationId, setAssociationId] = useState<string | null>(null)
   const [associationStatus, setAssociationStatus] = useState<'active' | 'rejected' | 'hired' | null>(null)
   const [currentStageId, setCurrentStageId] = useState<string | null>(null)
+  const [movingStageId, setMovingStageId] = useState<string | null>(null)
   const { attachments, uploadAttachment: uploadResume, isUploading: isResumeUploading, deleteAttachment } = useCandidateAttachments(jobCandidateId || '')
 
 // Hiring plan stages for vertical accordion
@@ -369,9 +370,39 @@ const [openStageId, setOpenStageId] = useState<string | null>(null)
           <div className="text-sm text-text-primary">
             {opt.stage.stage_description || 'No details for this stage yet.'}
           </div>
+          {!isCurrent && (
+            <div className="mt-3">
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={movingStageId === opt.jhsId}
+                onClick={async () => {
+                  try {
+                    setMovingStageId(opt.jhsId)
+                    if (associationId) {
+                      await moveAssociationToStage(associationId, opt.jhsId)
+                    } else if (candidateId) {
+                      const newId = await createAssociationAndMove(jobId, candidateId, opt.jhsId)
+                      setAssociationId(newId)
+                    }
+                    setCurrentStageId(opt.jhsId)
+                    setOpenStageId(opt.stage.id)
+                  } catch (e) {
+                    // Toasts are handled by hooks on error
+                  } finally {
+                    setMovingStageId(null)
+                  }
+                }}
+              >
+                <MoveRight className="h-4 w-4 mr-2" />
+                Move to this stage
+              </Button>
+            </div>
+          )}
         </AccordionContent>
       </AccordionItem>
-    )
+
+      )
   })
 })()}
                             </Accordion>
