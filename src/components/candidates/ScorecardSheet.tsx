@@ -67,7 +67,7 @@ export function ScorecardSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-[80vw] max-w-[1080px] p-0">
+      <SheetContent side="right" className="w-[80vw] sm:w-[80vw] max-w-[1080px] sm:max-w-[1080px] p-0">
         <div className="flex h-full flex-col">
           <SheetHeader className="p-6 border-b">
             <div className="flex items-center justify-between">
