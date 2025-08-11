@@ -484,7 +484,14 @@ export default function JobDetail() {
 
         {!isMobile && (
           <div className="mb-2 animate-fade-in">
-            <PageHeader title={job.title} compact />
+            <PageHeader title={job.title} compact>
+              {permissions.canEditJobs && job.status !== 'archived' && (
+                <Button variant="outline" onClick={handleArchiveJob} className="gap-2">
+                  <Archive className="h-4 w-4" />
+                  Archive Job
+                </Button>
+              )}
+            </PageHeader>
           </div>
         )}
 
@@ -495,12 +502,6 @@ export default function JobDetail() {
               <ArrowLeft className="h-4 w-4" />
               Back to Jobs
             </Button>
-            {permissions.canEditJobs && job.status !== 'archived' && (
-              <Button variant="outline" onClick={handleArchiveJob} className="gap-2">
-                <Archive className="h-4 w-4" />
-                Archive Job
-              </Button>
-            )}
           </div>
         )}
 
