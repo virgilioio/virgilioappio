@@ -183,6 +183,20 @@ export function useMembers() {
     }
   }
 
+  const syncSeatsAfterChange = async () => {
+    try {
+      console.log('Invoking update-seat-quantity after member change')
+      const { data, error } = await supabase.functions.invoke('update-seat-quantity')
+      if (error) {
+        console.warn('update-seat-quantity error (non-fatal):', error)
+      } else {
+        console.log('update-seat-quantity success:', data)
+      }
+    } catch (e) {
+      console.warn('update-seat-quantity failed (ignored):', e)
+    }
+  }
+
   const createMember = async (data: CreateMemberData) => {
     if (!user) throw new Error('User not authenticated')
     
@@ -272,6 +286,7 @@ export function useMembers() {
       }
 
       await getMembers()
+      await syncSeatsAfterChange()
       return newMember
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to create member'
@@ -313,6 +328,7 @@ export function useMembers() {
       })
 
       await getMembers()
+      await syncSeatsAfterChange()
       return updatedMember
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to update member'
@@ -352,6 +368,7 @@ export function useMembers() {
       })
 
       await getMembers()
+      await syncSeatsAfterChange()
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to deactivate member'
       console.error('Member deactivation error:', err)

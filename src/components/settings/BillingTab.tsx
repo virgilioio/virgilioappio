@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Plus, Search, Filter, CreditCard, RefreshCw, Settings2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -74,6 +74,17 @@ export function BillingTab() {
   }
 
   const statusCounts = getStatusCounts()
+
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search)
+      if (params.get('billing') === 'success') {
+        handleRefreshStatus()
+      }
+    } catch (e) {
+      console.warn('BillingTab: failed to parse URL params', e)
+    }
+  }, [])
 
   // Generate month options for the last 12 months
   const getMonthOptions = () => {
