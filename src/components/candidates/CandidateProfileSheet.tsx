@@ -25,7 +25,8 @@ import CandidateNameCard from '@/components/candidates/CandidateNameCard'
 import { usePipelineActions } from '@/hooks/usePipelineActions'
 import { useCandidateAttachments } from '@/hooks/useCandidateAttachments'
 import { ResumeDropzone } from '@/components/candidates/ResumeDropzone'
-
+import { useJobHiringPlan, JobStage } from '@/hooks/useJobHiringPlan'
+import { cn } from '@/lib/utils'
 interface CandidateProfileSheetProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -53,6 +54,10 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
   const [associationStatus, setAssociationStatus] = useState<'active' | 'rejected' | 'hired' | null>(null)
   const { attachments, uploadAttachment: uploadResume, isUploading: isResumeUploading, deleteAttachment } = useCandidateAttachments(jobCandidateId || '')
 
+  // Hiring plan stages for horizontal accordion
+  const { loadHiringPlan } = useJobHiringPlan()
+  const [planStages, setPlanStages] = useState<JobStage[]>([])
+  const [openStageId, setOpenStageId] = useState<string | null>(null)
   // Resume helpers
   const resumeAttachment = attachments.find((a) => a.is_resume)
   const replaceResumeInputRef = useRef<HTMLInputElement>(null)
@@ -85,6 +90,21 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
     }
     load()
   }, [open, candidateId])
+
+  useEffect(() => {
+    if (!open || !jobId) return
+    ;(async () => {
+      try {
+        const stages = await loadHiringPlan(jobId)
+        setPlanStages(stages)
+        if (stages && stages.length && openStageId === null) {
+          setOpenStageId(stages[0].id)
+        }
+      } catch (e) {
+        console.error('Failed to load hiring plan stages', e)
+      }
+    })()
+  }, [open, jobId, loadHiringPlan])
 
   useEffect(() => {
     if (open && candidateId) {
@@ -269,8 +289,35 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
                         <CardHeader>
                           <CardTitle className="text-lg">Job Application</CardTitle>
                         </CardHeader>
-                        <CardContent>
-                          <div className="text-sm text-text-secondary">Application details coming soon.</div>
+                        <CardContent className="space-y-4">
+                          <div className="flex flex-wrap gap-2">
+                            {planStages.map((stage) => (
+                              <button
+                                key={stage.id}
+                                onClick={() => setOpenStageId((prev) => (prev === stage.id ? null : stage.id))}
+                                className={cn(
+                                  'px-3 py-2 rounded-md text-sm border border-border transition-colors',
+                                  openStageId === stage.id
+                                    ? 'bg-accent text-accent-foreground'
+                                    : 'bg-surface-secondary text-text-primary hover:bg-muted/50'
+                                )}
+                              >
+                                {stage.stage_name}
+                              </button>
+                            ))}
+                          </div>
+                          {openStageId ? (
+                            <div className="rounded-lg border border-border bg-surface-secondary p-4">
+                              <div className="text-sm text-text-primary">
+                                {planStages.find((s) => s.id === openStageId)?.stage_description || 'No details for this stage yet.'}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="text-sm text-text-secondary">Select a stage to view details.</div>
+                          )}
+                          {!planStages.length && (
+                            <div className="text-sm text-text-secondary">No hiring stages configured for this job.</div>
+                          )}
                         </CardContent>
                       </Card>
                     )}
