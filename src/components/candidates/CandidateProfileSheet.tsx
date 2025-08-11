@@ -301,25 +301,20 @@ const [openStageId, setOpenStageId] = useState<string | null>(null)
                       onTabChange={(v) => setActiveTab(v as 'job' | 'resume' | 'overview')}
                       rightActions={
                         <>
-                          {associationId && associationStatus !== 'rejected' && (
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              onClick={() => handleSetStatus('rejected')}
-                              title="Reject candidate"
-                            >
-                              Reject
-                            </Button>
-                          )}
-                          {associationId && associationStatus !== 'hired' && (
-                            <Button
-                              size="sm"
-                              onClick={() => handleSetStatus('hired')}
-                              title="Mark candidate as hired"
-                            >
-                              Mark Hired
-                            </Button>
-                          )}
+                          {/* Mark Hired only when in Offer stage */}
+                          {(() => {
+                            const current = planStages.find(s => s.jhsId === currentStageId)
+                            const canMarkHired = !!associationId && associationStatus !== 'hired' && current?.stage.stage_type === 'offer'
+                            return canMarkHired ? (
+                              <Button
+                                size="sm"
+                                onClick={() => handleSetStatus('hired')}
+                                title="Mark candidate as hired"
+                              >
+                                Mark Hired
+                              </Button>
+                            ) : null
+                          })()}
                           <Button
                             variant="default"
                             size="icon"
