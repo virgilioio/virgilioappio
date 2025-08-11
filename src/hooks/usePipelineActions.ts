@@ -13,7 +13,7 @@ export interface PipelineAssociation {
   linkedin_url?: string | null
   created_at: string
   entered_stage_at: string | null
-  status: 'active' | 'rejected' | 'hired' | string
+  status: 'active' | 'rejected' | 'hired' | 'offer' | string
 }
 
 /**
@@ -157,7 +157,7 @@ export function usePipelineActions() {
     return created.id
   }, [moveAssociationToStage])
 
-  const updateAssociationStatus = useCallback(async (associationId: string, status: 'active' | 'rejected' | 'hired') => {
+  const updateAssociationStatus = useCallback(async (associationId: string, status: 'active' | 'rejected' | 'hired' | 'offer') => {
     const { error } = await supabase
       .from('job_candidate_associations')
       .update({ status })

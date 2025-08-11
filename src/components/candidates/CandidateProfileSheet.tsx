@@ -53,7 +53,7 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
   const [editLoading, setEditLoading] = useState(false)
   const { updateAssociationStatus, moveAssociationToStage, createAssociationAndMove } = usePipelineActions()
   const [associationId, setAssociationId] = useState<string | null>(null)
-  const [associationStatus, setAssociationStatus] = useState<'active' | 'rejected' | 'hired' | null>(null)
+  const [associationStatus, setAssociationStatus] = useState<'active' | 'rejected' | 'hired' | 'offer' | null>(null)
   const [currentStageId, setCurrentStageId] = useState<string | null>(null)
   const [movingStageId, setMovingStageId] = useState<string | null>(null)
   const { attachments, uploadAttachment: uploadResume, isUploading: isResumeUploading, deleteAttachment } = useCandidateAttachments(jobCandidateId || '')
@@ -220,46 +220,33 @@ const [openStageId, setOpenStageId] = useState<string | null>(null)
 
   const handleMoveToOffer = async () => {
     try {
-      // Prefer already loaded plan stages
-      let offer = [...planStages]
-        .sort((a, b) => a.position - b.position)
-        .find(s => s.stage.stage_type === 'offer')
-        || [...planStages]
-          .sort((a, b) => a.position - b.position)
-          .find(s => s.stage.stage_name?.toLowerCase().includes('offer'))
-
-      // Fallback: fetch from DB if not found yet
-      if (!offer) {
-        const { data, error } = await supabase
-          .from('job_hiring_stages')
-          .select('id, stage:job_stages(stage_type, stage_name)')
-          .eq('job_id', jobId)
-        if (error) throw error
-        const fromDb = (data as any[] | null) || []
-        const found = fromDb.find((r) => r.stage?.stage_type === 'offer') || fromDb.find((r) => (r.stage?.stage_name || '').toLowerCase().includes('offer'))
-        if (found) {
-          offer = { jhsId: found.id, stage: found.stage, position: 0 }
+      if (!associationId) {
+        // If no association yet, create a basic one with status 'offer'
+        if (candidateId) {
+          const { data, error } = await supabase
+            .from('job_candidate_associations')
+            .insert([{
+              job_id: jobId,
+              candidate_id: candidateId,
+              status: 'offer',
+            }])
+            .select('id')
+            .single()
+          if (error) throw error
+          setAssociationId(data!.id)
+        } else {
+          toast({ title: 'No candidate', description: 'Candidate not found for this job.', variant: 'destructive' })
+          return
         }
+      } else {
+        await updateAssociationStatus(associationId, 'offer')
       }
 
-      if (!offer) {
-        toast({ title: 'No offer stage', description: 'This job has no Offer stage in its hiring plan.', variant: 'destructive' })
-        return
-      }
-
-      if (associationId) {
-        await moveAssociationToStage(associationId, offer.jhsId)
-      } else if (candidateId) {
-        const newId = await createAssociationAndMove(jobId, candidateId, offer.jhsId)
-        setAssociationId(newId)
-      }
-      setCurrentStageId(offer.jhsId)
-      setOpenStageId(offer.stage.id)
-      setActiveTab('job')
+      setAssociationStatus('offer')
       onStageChanged?.()
     } catch (e) {
-      console.error('Move to Offer failed:', e)
-      // Error already handled with toast in hooks or above
+      console.error('Move to Offers failed:', e)
+      toast({ title: 'Error', description: 'Could not move candidate to Job Offers.', variant: 'destructive' })
     }
   }
 
@@ -352,7 +339,7 @@ const [openStageId, setOpenStageId] = useState<string | null>(null)
                           {/* Mark Hired only when in Offer stage */}
                           {(() => {
                             const current = planStages.find(s => s.jhsId === currentStageId)
-                            const canMarkHired = !!associationId && associationStatus !== 'hired' && current?.stage.stage_type === 'offer'
+                            const canMarkHired = !!associationId && associationStatus !== 'hired' && (associationStatus === 'offer' || current?.stage.stage_type === 'offer')
                             return canMarkHired ? (
                               <Button
                                 size="sm"

@@ -140,10 +140,10 @@ export default function JobDetail() {
   }, [candidates, inPipelineKeys])
 
   // Derived job stats
-  const offerCount = useMemo(() => associations.filter(a => a.current_stage_id && stageMap[a.current_stage_id!]?.type === 'offer' && a.status !== 'rejected').length, [associations, stageMap])
+  const offerCount = useMemo(() => associations.filter(a => a.status !== 'rejected' && (a.status === 'offer' || (a.current_stage_id && stageMap[a.current_stage_id!]?.type === 'offer'))).length, [associations, stageMap])
   const hiredCount = useMemo(() => associations.filter(a => a.status === 'hired').length, [associations])
   const rejectedCount = useMemo(() => associations.filter(a => a.status === 'rejected').length, [associations])
-  const activeCount = useMemo(() => associations.filter(a => a.status === 'active').length, [associations])
+  const activeCount = useMemo(() => associations.filter(a => a.status !== 'rejected').length, [associations])
   const recruitingCount = useMemo(() => Math.max(0, activeCount - offerCount), [activeCount, offerCount])
   const applicationCount = useMemo(() => (applicationReviewCandidates?.length ?? 0), [applicationReviewCandidates])
   // Load stage map for this job
@@ -182,7 +182,7 @@ export default function JobDetail() {
         setOffersCandidates([]); setHiredCandidates([]); setRejectedCandidates([]); return
       }
       const offerIds = associations
-        .filter(a => a.status !== 'rejected' && a.current_stage_id && stageMap[a.current_stage_id!]?.type === 'offer')
+        .filter(a => a.status !== 'rejected' && (a.status === 'offer' || (a.current_stage_id && stageMap[a.current_stage_id!]?.type === 'offer')))
         .map(a => a.candidate_id)
       const hiredIds = associations.filter(a => a.status === 'hired').map(a => a.candidate_id)
       const rejectedIds = associations.filter(a => a.status === 'rejected').map(a => a.candidate_id)
