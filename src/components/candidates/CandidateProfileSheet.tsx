@@ -37,9 +37,10 @@ interface CandidateProfileSheetProps {
   hasNext?: boolean
   onNavigatePrev?: () => void
   onNavigateNext?: () => void
+  onStageChanged?: () => void
 }
 
-export default function CandidateProfileSheet({ open, onOpenChange, candidateId, jobId, hasPrev, hasNext, onNavigatePrev, onNavigateNext }: CandidateProfileSheetProps) {
+export default function CandidateProfileSheet({ open, onOpenChange, candidateId, jobId, hasPrev, hasNext, onNavigatePrev, onNavigateNext, onStageChanged }: CandidateProfileSheetProps) {
   const { organizationId } = useAuth()
   const [loading, setLoading] = useState(false)
   const [candidate, setCandidate] = useState<any | null>(null)
@@ -218,6 +219,7 @@ const [openStageId, setOpenStageId] = useState<string | null>(null)
       setCurrentStageId(offer.jhsId)
       setOpenStageId(offer.stage.id)
       setActiveTab('job')
+      onStageChanged?.()
     } catch (e) {
       // Error already handled with toast in hooks
     }
@@ -387,6 +389,7 @@ const [openStageId, setOpenStageId] = useState<string | null>(null)
                     }
                     setCurrentStageId(opt.jhsId)
                     setOpenStageId(opt.stage.id)
+                    onStageChanged?.()
                   } catch (e) {
                     // Toasts are handled by hooks on error
                   } finally {
