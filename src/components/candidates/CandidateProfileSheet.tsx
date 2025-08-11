@@ -444,16 +444,12 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                             const r = existing.rating as 'definitely_no' | 'no' | 'yes' | 'strong_yes'
                             const Icon = r === 'definitely_no' ? Octagon : r === 'no' ? ThumbsDown : r === 'strong_yes' ? Star : ThumbsUp
                             const cls =
-                              r === 'definitely_no'
+                              r === 'definitely_no' || r === 'no'
                                 ? 'text-destructive'
-                                : r === 'no'
-                                ? 'text-destructive/80'
-                                : r === 'strong_yes'
-                                ? 'text-success'
-                                : 'text-success/80'
+                                : 'text-success'
                             return (
                               <span className={`inline-flex items-center gap-1 ${cls}`}>
-                                <Icon className="h-5 w-5" aria-hidden />
+                                <Icon className="h-5 w-5" aria-hidden fill="currentColor" />
                                 {scoreLabel(r)}
                               </span>
                             )

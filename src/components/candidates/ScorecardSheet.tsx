@@ -91,12 +91,12 @@ export function ScorecardSheet({
                   const active = rating === opt.value;
                   const base =
                     opt.value === "definitely_no"
-                      ? `text-destructive border-destructive/60 ${active ? "bg-destructive/15 ring-2 ring-destructive" : "bg-destructive/10"}`
+                      ? `text-destructive border-destructive ${active ? "bg-destructive/30 ring-2 ring-destructive" : "bg-destructive/25"}`
                       : opt.value === "no"
-                      ? `text-destructive border-destructive/40 ${active ? "bg-destructive/10 ring-2 ring-destructive/80" : "bg-destructive/5"}`
+                      ? `text-destructive border-destructive/80 ${active ? "bg-destructive/25 ring-2 ring-destructive/90" : "bg-destructive/20"}`
                       : opt.value === "strong_yes"
-                      ? `text-success border-success/60 ${active ? "bg-success/15 ring-2 ring-success" : "bg-success/10"}`
-                      : `text-success border-success/40 ${active ? "bg-success/10 ring-2 ring-success/80" : "bg-success/5"}`;
+                      ? `text-success border-success ${active ? "bg-success/30 ring-2 ring-success" : "bg-success/25"}`
+                      : `text-success border-success/80 ${active ? "bg-success/25 ring-2 ring-success/90" : "bg-success/20"}`;
 
                   const IconComp =
                     opt.value === "definitely_no"
@@ -113,7 +113,7 @@ export function ScorecardSheet({
                       className={`flex items-center gap-2 rounded-md border p-2 transition-all ${base}`}
                     >
                       <RadioGroupItem value={opt.value} id={`rating-${opt.value}`} />
-                      <IconComp className="h-6 w-6" aria-hidden />
+                      <IconComp className="h-[22px] w-[22px]" aria-hidden fill="currentColor" />
                       <Label htmlFor={`rating-${opt.value}`}>{opt.label}</Label>
                     </div>
                   );
