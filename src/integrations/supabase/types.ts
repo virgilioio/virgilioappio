@@ -1600,6 +1600,74 @@ export type Database = {
           },
         ]
       }
+      job_stage_scorecards: {
+        Row: {
+          association_id: string
+          candidate_id: string
+          created_at: string
+          created_by: string
+          general_overview: string | null
+          id: string
+          job_id: string
+          rating: Database["public"]["Enums"]["score_rating"]
+          stage_instance_id: string
+          updated_at: string
+        }
+        Insert: {
+          association_id: string
+          candidate_id: string
+          created_at?: string
+          created_by: string
+          general_overview?: string | null
+          id?: string
+          job_id: string
+          rating: Database["public"]["Enums"]["score_rating"]
+          stage_instance_id: string
+          updated_at?: string
+        }
+        Update: {
+          association_id?: string
+          candidate_id?: string
+          created_at?: string
+          created_by?: string
+          general_overview?: string | null
+          id?: string
+          job_id?: string
+          rating?: Database["public"]["Enums"]["score_rating"]
+          stage_instance_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_stage_scorecards_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "job_candidate_associations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_stage_scorecards_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "job_candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_stage_scorecards_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_stage_scorecards_stage_instance_id_fkey"
+            columns: ["stage_instance_id"]
+            isOneToOne: false
+            referencedRelation: "job_hiring_stages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_stages: {
         Row: {
           created_at: string
@@ -3511,6 +3579,7 @@ export type Database = {
         | "weekly"
         | "daily"
         | "hourly"
+      score_rating: "definitely_no" | "no" | "yes" | "strong_yes"
       seniority_level_enum:
         | "entry"
         | "junior"
@@ -3749,6 +3818,7 @@ export const Constants = {
         "daily",
         "hourly",
       ],
+      score_rating: ["definitely_no", "no", "yes", "strong_yes"],
       seniority_level_enum: [
         "entry",
         "junior",

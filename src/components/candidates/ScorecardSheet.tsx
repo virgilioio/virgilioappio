@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { AgreementRichTextEditor } from "@/components/ui/agreement-rich-text-editor";
+import { toast } from "@/hooks/use-toast";
 import type { ScoreRating, ScorecardRow } from "@/hooks/useScorecards";
 
 interface ScorecardSheetProps {
@@ -47,6 +48,9 @@ export function ScorecardSheet({
     try {
       await onSubmit(rating, overview);
       setEditMode(false);
+    } catch (err: any) {
+      const msg = err?.message || 'Failed to save scorecard';
+      toast({ title: 'Save failed', description: msg, variant: 'destructive' });
     } finally {
       setSaving(false);
     }
