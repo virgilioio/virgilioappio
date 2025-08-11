@@ -95,8 +95,8 @@ export function ScorecardSheet({
                       : opt.value === "no"
                       ? `text-destructive border-destructive/80 ${active ? "bg-destructive/25 ring-2 ring-destructive/90" : "bg-destructive/20"}`
                       : opt.value === "strong_yes"
-                      ? `text-success border-success ${active ? "bg-success/30 ring-2 ring-success" : "bg-success/25"}`
-                      : `text-success border-success/80 ${active ? "bg-success/25 ring-2 ring-success/90" : "bg-success/20"}`;
+                      ? `text-success border-success ${active ? "bg-success/45 ring-2 ring-success" : "bg-success/35"}`
+                      : `text-success border-success/90 ${active ? "bg-success/30 ring-2 ring-success/90" : "bg-success/25"}`;
 
                   const IconComp =
                     opt.value === "definitely_no"

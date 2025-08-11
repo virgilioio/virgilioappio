@@ -446,7 +446,9 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                             const cls =
                               r === 'definitely_no' || r === 'no'
                                 ? 'text-destructive'
-                                : 'text-success'
+                                : r === 'strong_yes'
+                                ? 'text-success'
+                                : 'text-success/90'
                             return (
                               <span className={`inline-flex items-center gap-1 ${cls}`}>
                                 <Icon className="h-5 w-5" aria-hidden fill="currentColor" />
