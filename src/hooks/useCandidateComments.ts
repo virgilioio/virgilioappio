@@ -40,9 +40,10 @@ export function useCandidateComments(candidateId?: string) {
       console.log('Fetching comments for candidate:', queryCandidate)
       const { data, error: fetchError } = await supabase
         .from('candidate_comments')
-        .select('*')
+        .select('id, candidate_id, job_id, organization_id, author_id, author_email, content, created_at, updated_at')
         .eq('candidate_id', queryCandidate)
-        .order('created_at', { ascending: true })
+        .order('created_at', { ascending: false })
+        .limit(200)
 
       if (fetchError) {
         console.error('Error fetching comments:', fetchError)
@@ -50,7 +51,7 @@ export function useCandidateComments(candidateId?: string) {
       }
 
       console.log('Fetched comments:', data)
-      setComments(data || [])
+      setComments((data || []).reverse())
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch comments'
       console.error('Comments fetch error:', err)

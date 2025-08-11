@@ -112,6 +112,21 @@ const [openStageId, setOpenStageId] = useState<string | null>(null)
     })()
   }, [open, jobId, loadHiringPlanInstances])
 
+  // Ensure the accordion opens the CURRENT stage by default and when stage changes
+  useEffect(() => {
+    if (!open || planStages.length === 0) return
+    if (currentStageId) {
+      const current = planStages.find(s => s.jhsId === currentStageId)
+      if (current) {
+        setOpenStageId(current.stage.id)
+        return
+      }
+    }
+    if (openStageId === null) {
+      setOpenStageId(planStages[0].stage.id)
+    }
+  }, [open, planStages, currentStageId])
+
   useEffect(() => {
     if (open && candidateId) {
       fetchCandidateEnrichmentData(candidateId)
@@ -200,6 +215,7 @@ const [openStageId, setOpenStageId] = useState<string | null>(null)
     if (!associationId) return
     await updateAssociationStatus(associationId, s)
     setAssociationStatus(s)
+    if (s === 'rejected') onStageChanged?.()
   }
 
   const handleMoveToOffer = async () => {
@@ -301,6 +317,16 @@ const [openStageId, setOpenStageId] = useState<string | null>(null)
                       onTabChange={(v) => setActiveTab(v as 'job' | 'resume' | 'overview')}
                       rightActions={
                         <>
+                          {associationId && associationStatus !== 'rejected' && (
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => handleSetStatus('rejected')}
+                              title="Reject candidate"
+                            >
+                              Reject
+                            </Button>
+                          )}
                           {/* Mark Hired only when in Offer stage */}
                           {(() => {
                             const current = planStages.find(s => s.jhsId === currentStageId)

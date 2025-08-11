@@ -30,9 +30,10 @@ export function useCandidateUrls(candidateId: string) {
       
       const { data, error } = await supabase
         .from('candidate_urls')
-        .select('*')
+        .select('id, candidate_id, label, url, icon_name, created_at, updated_at, created_by')
         .eq('candidate_id', candidateId)
         .order('created_at', { ascending: false })
+        .limit(100)
 
       if (error) {
         console.error('Error fetching URLs:', error)
