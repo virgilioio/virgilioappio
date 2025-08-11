@@ -145,6 +145,53 @@ export default function JobDetail() {
     })
   }, [candidates, inPipelineKeys])
 
+  // Open in-place sheet for Application Review rows (job_candidates)
+  const handleApplicationRowClick = async (jobCandidateId: string) => {
+    const jc = (applicationReviewCandidates as any[])?.find((c) => c.id === jobCandidateId)
+    if (!jc) return
+
+    const norm = normalizeUrl(jc.linkedin_url)
+    // Try association match by linkedin
+    let assoc = associations.find((a) => norm && normalizeUrl(a.linkedin_url || '') === norm)
+    // Fallback: match by name (best-effort)
+    if (!assoc) {
+      const jcName = (jc.candidate_name || '').trim().toLowerCase()
+      assoc = associations.find((a) => (a.candidate_name || '').trim().toLowerCase() === jcName)
+    }
+
+    if (assoc?.candidate_id) {
+      openProfileInPlace(assoc.candidate_id)
+      return
+    }
+
+    // Final fallback: try to find independent candidate by linkedin or by name+location
+    try {
+      let candId: string | null = null
+      if (norm) {
+        const { data } = await supabase.from('candidates').select('id').eq('linkedin_url', jc.linkedin_url).maybeSingle()
+        candId = data?.id ?? null
+      }
+      if (!candId) {
+        const { data } = await supabase
+          .from('candidates')
+          .select('id')
+          .eq('candidate_name', jc.candidate_name)
+          .eq('location_country', jc.location_country ?? null)
+          .eq('location_city', jc.location_city ?? null)
+          .maybeSingle()
+        candId = data?.id ?? null
+      }
+      if (candId) {
+        openProfileInPlace(candId)
+      } else {
+        toast({ title: 'Not found', description: 'Could not locate profile for this candidate yet.', variant: 'destructive' })
+      }
+    } catch (e) {
+      console.error('Error resolving profile candidate id', e)
+      toast({ title: 'Error', description: 'Could not open candidate profile.', variant: 'destructive' })
+    }
+  }
+
   // Derived job stats
   const offerCount = useMemo(() => associations.filter(a => a.status !== 'rejected' && (a.status === 'offer' || (a.current_stage_id && stageMap[a.current_stage_id!]?.type === 'offer'))).length, [associations, stageMap])
   const hiredCount = useMemo(() => associations.filter(a => a.status === 'hired').length, [associations])
@@ -888,6 +935,7 @@ export default function JobDetail() {
                                 onAddNew={() => setShowAddCandidate(true)}
                                 markCandidateAsViewed={markCandidateAsViewed}
                                 isCandidateNewForUser={isCandidateNewForUser}
+                                onRowClick={handleApplicationRowClick}
                               />
                             </div>
                           ) : pipelineSectionTab === 'offers' ? (
