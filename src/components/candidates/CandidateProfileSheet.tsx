@@ -19,6 +19,8 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Link } from 'react-router-dom'
 import { SafeHtml } from '@/components/ui/safe-html'
 import { getSkillColor } from '@/utils/skillColors'
+import { ScorecardSheet } from '@/components/candidates/ScorecardSheet'
+import { useMyScorecards } from '@/hooks/useScorecards'
 import { generateCandidatePdf } from '@/utils/candidatePdfGenerator'
 import { CandidateForm } from '@/components/candidates/CandidateForm'
 import { toast } from '@/hooks/use-toast'
