@@ -162,7 +162,7 @@ export default function Login() {
               <Button
                 type="button"
                 variant="outline"
-                className="w-full h-12 text-base font-medium"
+                className="w-full h-12 text-base font-medium hover:text-[hsl(var(--google-blue))] hover:border-[hsl(var(--google-blue))]"
                 onClick={async () => {
                   setError('')
                   try {

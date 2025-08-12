@@ -158,6 +158,9 @@
     --sidebar-accent-foreground: 240 5.9% 10%;
     --sidebar-border: 0 0% 100%; /* Remove sidebar border visibility */
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* Provider brand colors */
+    --google-blue: 217 90% 61%;
   }
 
   .dark {
@@ -253,6 +256,9 @@
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 0 0% 0% / 0; /* Remove sidebar border visibility in dark mode */
     --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* Provider brand colors */
+    --google-blue: 217 90% 61%;
   }
 }
 
