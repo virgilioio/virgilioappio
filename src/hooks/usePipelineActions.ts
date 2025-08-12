@@ -1,4 +1,3 @@
-
 import { useCallback } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 import { toast } from '@/hooks/use-toast'
@@ -82,11 +81,12 @@ export function usePipelineActions() {
   }, [])
 
   const moveAssociationToStage = useCallback(async (associationId: string, toStageId: string) => {
-    // Set pipeline_position to null so the trigger assigns the next position
-    const { error } = await supabase
+    console.log('[usePipelineActions.moveAssociationToStage] moving', { associationId, toStageId })
+    const { data, error } = await supabase
       .from('job_candidate_associations')
       .update({ current_stage_id: toStageId, pipeline_position: null })
       .eq('id', associationId)
+      .select('id') // ensure we know if any row was actually updated
 
     if (error) {
       console.error('Error moving candidate:', error)
@@ -98,6 +98,16 @@ export function usePipelineActions() {
       throw error
     }
 
+    if (!data || data.length === 0) {
+      console.warn('[usePipelineActions.moveAssociationToStage] no rows updated (RLS or invalid ids)', { associationId, toStageId })
+      toast({
+        title: 'Not moved',
+        description: 'The candidate was not moved. You may not have permission, the stage/association may be invalid, or the hiring plan/stage isn't accessible.',
+        variant: 'destructive',
+      })
+      throw new Error('No rows updated when moving candidate')
+    }
+
     toast({
       title: 'Candidate moved',
       description: 'Candidate moved to the selected stage.',
@@ -105,6 +115,7 @@ export function usePipelineActions() {
   }, [])
 
   const createAssociationAndMove = useCallback(async (jobId: string, candidateId: string, toStageId: string) => {
+    console.log('[usePipelineActions.createAssociationAndMove] creating/moving', { jobId, candidateId, toStageId })
     // First check if association already exists
     const { data: existing, error: existingError } = await supabase
       .from('job_candidate_associations')
@@ -136,7 +147,7 @@ export function usePipelineActions() {
         candidate_id: candidateId,
         current_stage_id: toStageId,
       }])
-      .select('id')
+      .select('id') // ensure we get back the id if insert succeeded
       .single()
 
     if (createError) {
@@ -149,6 +160,16 @@ export function usePipelineActions() {
       throw createError
     }
 
+    if (!created?.id) {
+      console.warn('[usePipelineActions.createAssociationAndMove] insert returned no id (RLS?)', { jobId, candidateId, toStageId })
+      toast({
+        title: 'Not added',
+        description: 'Candidate was not added to the pipeline. You may not have permission for this job.',
+        variant: 'destructive',
+      })
+      throw new Error('Association not created')
+    }
+
     toast({
       title: 'Added to pipeline',
       description: 'Candidate added to the selected stage.',
@@ -158,15 +179,27 @@ export function usePipelineActions() {
   }, [moveAssociationToStage])
 
   const updateAssociationStatus = useCallback(async (associationId: string, status: 'active' | 'rejected' | 'hired' | 'offer') => {
-    const { error } = await supabase
+    console.log('[usePipelineActions.updateAssociationStatus] updating', { associationId, status })
+    const { data, error } = await supabase
       .from('job_candidate_associations')
       .update({ status })
       .eq('id', associationId)
+      .select('id')
 
     if (error) {
       console.error('Error updating status:', error)
       toast({ title: 'Error', description: 'Failed to update status.', variant: 'destructive' })
       throw error
+    }
+
+    if (!data || data.length === 0) {
+      console.warn('[usePipelineActions.updateAssociationStatus] no rows updated (RLS or invalid id)', { associationId })
+      toast({
+        title: 'Not updated',
+        description: 'The status was not changed. You may not have permission for this candidate/job.',
+        variant: 'destructive',
+      })
+      throw new Error('No rows updated when changing status')
     }
 
     toast({ title: 'Status updated', description: `Candidate marked as ${status}.` })
