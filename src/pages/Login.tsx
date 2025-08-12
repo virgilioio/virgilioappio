@@ -18,6 +18,7 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false)
 
   // Redirect if already authenticated
   if (isAuthenticated) {
@@ -163,21 +164,24 @@ export default function Login() {
                 type="button"
                 variant="outline"
                 className="w-full h-12 text-base font-medium hover:!bg-transparent hover:text-[hsl(var(--google-blue))] hover:border-[hsl(var(--google-blue))]"
+                disabled={isGoogleSubmitting}
                 onClick={async () => {
                   setError('')
+                  setIsGoogleSubmitting(true)
                   try {
                     await supabase.auth.signInWithOAuth({
                       provider: 'google',
-                      options: { redirectTo: `${window.location.origin}/auth` },
+                      options: { redirectTo: `${window.location.origin}/dashboard` },
                     })
                   } catch (err: any) {
                     setError(err.message || 'Google sign-in failed')
+                    setIsGoogleSubmitting(false)
                   }
                 }}
               >
                 <span className="inline-flex items-center justify-center gap-2">
                   <GoogleLogo className="h-5 w-5" />
-                  <span>Continue with Google</span>
+                  <span>{isGoogleSubmitting ? 'Redirecting to Google…' : 'Continue with Google'}</span>
                 </span>
               </Button>
             </form>
