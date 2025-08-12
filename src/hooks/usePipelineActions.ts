@@ -102,7 +102,7 @@ export function usePipelineActions() {
       console.warn('[usePipelineActions.moveAssociationToStage] no rows updated (RLS or invalid ids)', { associationId, toStageId })
       toast({
         title: 'Not moved',
-        description: 'The candidate was not moved. You may not have permission, the stage/association may be invalid, or the hiring plan/stage isn't accessible.',
+        description: "The candidate was not moved. You may not have permission, the stage/association may be invalid, or the hiring plan/stage isn't accessible.",
         variant: 'destructive',
       })
       throw new Error('No rows updated when moving candidate')
