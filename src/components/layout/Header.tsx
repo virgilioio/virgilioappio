@@ -35,6 +35,7 @@ import { cn } from '@/lib/utils'
 import { useMembers } from '@/hooks/useMembers'
 import { useToast } from '@/components/ui/use-toast'
 import { supabase } from '@/integrations/supabase/client'
+import { useUserProfile } from '@/hooks/useUserProfile'
 
 export function Header() {
   const { user, logout, organizationId } = useAuth()
@@ -52,6 +53,7 @@ export function Header() {
   const [scrolled, setScrolled] = useState(false)
   const { members } = useMembers()
   const { toast } = useToast()
+  const { profile } = useUserProfile()
 
   const handleLogout = async () => {
     await logout()
@@ -132,9 +134,11 @@ export function Header() {
     },
   ]
 
-  const userDisplayName = user?.user_metadata?.first_name || user?.email?.split('@')[0] || 'User'
-  const userInitials = user?.user_metadata?.first_name && user?.user_metadata?.last_name
-    ? `${user.user_metadata.first_name[0]}${user.user_metadata.last_name[0]}`
+  const userDisplayName = (profile?.first_name && profile?.last_name
+    ? `${profile.first_name} ${profile.last_name}`
+    : profile?.first_name) || user?.user_metadata?.first_name || user?.email?.split('@')[0] || 'User'
+  const userInitials = (profile?.first_name || user?.user_metadata?.first_name) && (profile?.last_name || user?.user_metadata?.last_name)
+    ? `${(profile?.first_name || user?.user_metadata?.first_name)[0]}${(profile?.last_name || user?.user_metadata?.last_name)[0]}`.toUpperCase()
     : user?.email?.[0]?.toUpperCase() || 'U'
 
   const NavigationContent = () => (
@@ -242,7 +246,7 @@ export function Header() {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-7 w-7 rounded-full">
                 <Avatar className="h-7 w-7">
-                  <AvatarImage src={user?.user_metadata?.avatar_url} alt={userDisplayName} />
+                  <AvatarImage src={profile?.avatar_url || user?.user_metadata?.avatar_url} alt={userDisplayName} />
                   <AvatarFallback className="text-xs">{userInitials}</AvatarFallback>
                 </Avatar>
               </Button>
