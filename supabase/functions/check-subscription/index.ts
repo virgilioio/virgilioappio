@@ -84,34 +84,59 @@ serve(async (req) => {
     }
 
     if (!customerId) {
-      // No customer means not subscribed; update DB state accordingly
+      // No Stripe customer – honor active DB trial if present
+      const now = new Date();
+      const dbTrialActive = tenantSubRow?.trial_end ? new Date(tenantSubRow.trial_end as string) > now : false;
+      const effectiveSubscribed = dbTrialActive;
+      const effectiveTier = dbTrialActive ? "Trial" : null;
+      const effectiveInterval = null;
+      const effectiveTrialEnd = tenantSubRow?.trial_end ?? null;
+      const effectiveSubEnd = dbTrialActive ? (tenantSubRow?.trial_end as string) : null;
+      const seatQty = (tenantSubRow as any)?.seat_quantity ?? null;
+
+      // Update per-user subscribers table
       await supabase.from("subscribers").upsert(
         {
           email: user.email,
           user_id: user.id,
           stripe_customer_id: null,
-          subscribed: false,
-          subscription_tier: null,
-          subscription_end: null,
+          subscribed: effectiveSubscribed,
+          subscription_tier: effectiveTier,
+          subscription_end: effectiveSubEnd,
           updated_at: new Date().toISOString(),
         },
         { onConflict: "email" }
       );
+
+      // Update tenant_subscriptions but DO NOT clear trial_end
       await supabase
         .from("tenant_subscriptions")
         .update({
-          subscribed: false,
-          subscription_tier: null,
-          billing_interval: null,
-          trial_end: null,
-          subscription_end: null,
+          subscribed: effectiveSubscribed,
+          subscription_tier: effectiveTier,
+          billing_interval: effectiveInterval,
+          trial_end: effectiveTrialEnd,
+          subscription_end: effectiveSubEnd,
           updated_at: new Date().toISOString(),
         })
         .eq("tenant_id", tenantId);
-      return new Response(JSON.stringify({ subscribed: false }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
-      });
+
+      log("No Stripe customer – using DB trial status", { tenantId, dbTrialActive, trial_end: effectiveTrialEnd });
+
+      return new Response(
+        JSON.stringify({
+          subscribed: effectiveSubscribed,
+          subscription_tier: effectiveTier,
+          billing_interval: effectiveInterval,
+          trial_end: effectiveTrialEnd,
+          subscription_end: effectiveSubEnd,
+          seat_quantity: seatQty,
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        }
+      );
     } else if (!tenantSubRow?.stripe_customer_id) {
       // Persist discovered customer id if not stored yet
       const { error: updErr } = await supabase
