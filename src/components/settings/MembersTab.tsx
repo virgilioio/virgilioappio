@@ -8,6 +8,8 @@ import { UserDeletionDialog } from '@/components/organizations/UserDeletionDialo
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { useAuth } from '@/contexts/AuthContext'
 import { useOrganizations } from '@/hooks/useOrganizations'
+import { useTenantSubscription } from '@/hooks/useTenantSubscription'
+import { addMonths, addYears, format } from 'date-fns'
 
 export function MembersTab() {
   const { members, isLoading, updateMember, deactivateMember, createMember, resendInvitation, getMembers } = useMembers()
@@ -31,6 +33,21 @@ export function MembersTab() {
     (m) => (isPayingRole(m.member_role) || m.user_type === 'workspace_owner') && (!parentOrgId || m.organization_id === parentOrgId)
   )
   const guestMembers = members.filter((m) => m.member_role === 'client')
+
+  const { data: subscriptionData } = useTenantSubscription()
+  const subscription = subscriptionData?.subscription || null
+  const nextBillingDate = (() => {
+    if (!subscription?.created_at) return null
+    const start = new Date(subscription.created_at)
+    const interval = subscription.billing_interval || 'month'
+    let next = new Date(start)
+    const now = new Date()
+    while (next <= now) {
+      next = interval === 'year' ? addYears(next, 1) : addMonths(next, 1)
+    }
+    return next
+  })()
+  const nextBillingLabel = nextBillingDate ? format(nextBillingDate, 'PPP') : '—'
 
   const handleEdit = (member) => {
     setEditingMember(member)
@@ -108,6 +125,28 @@ export function MembersTab() {
           />
         </TabsContent>
       </Tabs>
+
+      <Card>
+        <CardContent className="py-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="rounded-brand border border-border/50 bg-surface-secondary/40 p-4 shadow-[var(--shadow-xs)]">
+              <div className="text-text-secondary text-sm">Paid Seats</div>
+              <div className="text-3xl font-semibold text-text-primary mt-1">{paidMembers.length}</div>
+              <div className="text-xs text-text-tertiary mt-1">Admins, Recruiters, Sales, CS, Billing, Owner</div>
+            </div>
+            <div className="rounded-brand border border-border/50 bg-surface-secondary/40 p-4 shadow-[var(--shadow-xs)]">
+              <div className="text-text-secondary text-sm">Guests</div>
+              <div className="text-3xl font-semibold text-text-primary mt-1">{guestMembers.length}</div>
+              <div className="text-xs text-text-tertiary mt-1">Clients (non-billing)</div>
+            </div>
+            <div className="rounded-brand border border-border/50 bg-surface-secondary/40 p-4 shadow-[var(--shadow-xs)]">
+              <div className="text-text-secondary text-sm">Next Billing</div>
+              <div className="text-3xl font-semibold text-text-primary mt-1">{nextBillingLabel}</div>
+              <div className="text-xs text-text-tertiary mt-1">Based on subscription start date</div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <MemberForm
         isOpen={isCreateModalOpen}
