@@ -18,6 +18,8 @@ import { useOrganizations } from '@/hooks/useOrganizations'
 import { useMembers } from '@/hooks/useMembers'
 import { useAuth } from '@/contexts/AuthContext'
 import { CURRENCIES } from '@/constants/currencies'
+import type { CategorizedSkill } from '@/hooks/useSkillsGeneration'
+import { JobSkillsGenerationPanel } from './JobSkillsGenerationPanel'
 
 interface JobFormProps {
   isOpen: boolean
@@ -46,6 +48,9 @@ export function JobForm({ isOpen, onClose, onSubmit, job, isLoading }: JobFormPr
     hiring_team: [] as string[]
   })
 
+  const [selectedSkills, setSelectedSkills] = useState<string[]>([])
+  const [autoSkills, setAutoSkills] = useState<CategorizedSkill[]>([])
+
   const [currencyOpen, setCurrencyOpen] = useState(false)
   const [hiringTeamOpen, setHiringTeamOpen] = useState(false)
 
@@ -69,6 +74,7 @@ export function JobForm({ isOpen, onClose, onSubmit, job, isLoading }: JobFormPr
         organization_id: job.organization_id,
         hiring_team: job.hiring_team || []
       })
+      setSelectedSkills(job.skills || [])
     } else {
       // Creating new job - set appropriate default organization
       let defaultOrganizationId = ''
@@ -88,6 +94,8 @@ export function JobForm({ isOpen, onClose, onSubmit, job, isLoading }: JobFormPr
         ...prev,
         organization_id: defaultOrganizationId
       }))
+      setSelectedSkills([])
+      setAutoSkills([])
     }
   }, [job, organizations, userType, organizationId])
 
@@ -105,6 +113,9 @@ export function JobForm({ isOpen, onClose, onSubmit, job, isLoading }: JobFormPr
       currency: formData.currency || null,
       status: formData.status,
       organization_id: formData.organization_id,
+      skills: selectedSkills,
+      auto_generated_skills: autoSkills.length > 0 ? autoSkills : undefined,
+      last_skills_generation: autoSkills.length > 0 ? new Date().toISOString() : undefined,
       hiring_team: formData.hiring_team
     }
 
@@ -126,6 +137,8 @@ export function JobForm({ isOpen, onClose, onSubmit, job, isLoading }: JobFormPr
         organization_id: defaultOrgId,
         hiring_team: []
       })
+      setSelectedSkills([])
+      setAutoSkills([])
     } catch (error) {
       // Error is handled in the hook
     }
@@ -325,6 +338,31 @@ export function JobForm({ isOpen, onClose, onSubmit, job, isLoading }: JobFormPr
                 minHeight="300px"
                 className="mt-1"
                 isExternalUpdate={!!job}
+              />
+            </div>
+
+            <div className="col-span-2">
+              <Label>Required Skills</Label>
+              <div className="mt-2 mb-3">
+                {selectedSkills.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {selectedSkills.map((skill) => (
+                      <Badge key={skill} variant="secondary" className="flex items-center gap-1">
+                        {skill}
+                        <X className="h-3 w-3 cursor-pointer" onClick={() => setSelectedSkills(selectedSkills.filter(s => s !== skill))} />
+                      </Badge>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-text-secondary">No skills selected yet</p>
+                )}
+              </div>
+              <JobSkillsGenerationPanel
+                descriptionHtml={formData.description}
+                title={formData.title}
+                existingSkills={selectedSkills}
+                onAccept={(skills) => setSelectedSkills(skills)}
+                onGenerated={(items) => setAutoSkills(items)}
               />
             </div>
 

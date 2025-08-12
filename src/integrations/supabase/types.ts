@@ -1709,6 +1709,7 @@ export type Database = {
       }
       jobs: {
         Row: {
+          auto_generated_skills: Json | null
           created_at: string | null
           created_by: string | null
           currency: string | null
@@ -1716,6 +1717,7 @@ export type Database = {
           description: string | null
           hiring_team: Json | null
           id: string
+          last_skills_generation: string | null
           level: Database["public"]["Enums"]["job_level"]
           location: string | null
           normalization_metadata: Json | null
@@ -1731,6 +1733,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          auto_generated_skills?: Json | null
           created_at?: string | null
           created_by?: string | null
           currency?: string | null
@@ -1738,6 +1741,7 @@ export type Database = {
           description?: string | null
           hiring_team?: Json | null
           id?: string
+          last_skills_generation?: string | null
           level: Database["public"]["Enums"]["job_level"]
           location?: string | null
           normalization_metadata?: Json | null
@@ -1753,6 +1757,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          auto_generated_skills?: Json | null
           created_at?: string | null
           created_by?: string | null
           currency?: string | null
@@ -1760,6 +1765,7 @@ export type Database = {
           description?: string | null
           hiring_team?: Json | null
           id?: string
+          last_skills_generation?: string | null
           level?: Database["public"]["Enums"]["job_level"]
           location?: string | null
           normalization_metadata?: Json | null

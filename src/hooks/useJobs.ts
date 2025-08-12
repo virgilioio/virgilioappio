@@ -17,6 +17,8 @@ export interface Job {
   currency: string | null
   status: 'draft' | 'open' | 'closed' | 'archived'
   skills: string[] | null
+  auto_generated_skills?: any
+  last_skills_generation?: string | null
   hiring_team: any[] | null
   hiring_team_names: string[] | null // Add resolved names for filtering
   organization_id: string
@@ -42,6 +44,8 @@ export interface CreateJobData {
   currency?: string
   status?: 'draft' | 'open' | 'closed' | 'archived'
   skills?: string[]
+  auto_generated_skills?: any
+  last_skills_generation?: string
   hiring_team?: any[]
   organization_id?: string
 }
@@ -57,6 +61,8 @@ export interface UpdateJobData {
   currency?: string
   status?: 'draft' | 'open' | 'closed' | 'archived'
   skills?: string[]
+  auto_generated_skills?: any
+  last_skills_generation?: string
   hiring_team?: any[]
 }
 
