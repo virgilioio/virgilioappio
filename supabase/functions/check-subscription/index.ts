@@ -145,15 +145,23 @@ serve(async (req) => {
       }
     }
 
+    // Determine effective subscription taking DB trial into account if no active Stripe sub
+    const dbTrialActive = tenantSubRow?.trial_end ? new Date(tenantSubRow.trial_end as string) > new Date() : false;
+    let effectiveSubscribed = hasActive || dbTrialActive;
+    let effectiveTier = hasActive ? tier : dbTrialActive ? "Trial" : null;
+    let effectiveInterval = hasActive ? interval : null;
+    let effectiveTrialEnd = hasActive ? trialEnd : tenantSubRow?.trial_end ?? null;
+    let effectiveSubEnd = hasActive ? subEnd : dbTrialActive ? (tenantSubRow?.trial_end as string) : null;
+
     // Update tenant_subscriptions
     await supabase
       .from("tenant_subscriptions")
       .update({
-        subscribed: hasActive,
-        subscription_tier: tier,
-        billing_interval: interval,
-        trial_end: trialEnd,
-        subscription_end: subEnd,
+        subscribed: effectiveSubscribed,
+        subscription_tier: effectiveTier,
+        billing_interval: effectiveInterval,
+        trial_end: effectiveTrialEnd,
+        subscription_end: effectiveSubEnd,
         seat_quantity: quantity ?? undefined,
         updated_at: new Date().toISOString(),
         stripe_customer_id: customerId,
@@ -166,23 +174,23 @@ serve(async (req) => {
         email: user.email,
         user_id: user.id,
         stripe_customer_id: customerId,
-        subscribed: hasActive,
-        subscription_tier: tier,
-        subscription_end: subEnd,
+        subscribed: effectiveSubscribed,
+        subscription_tier: effectiveTier,
+        subscription_end: effectiveSubEnd,
         updated_at: new Date().toISOString(),
       },
       { onConflict: "email" }
     );
 
-    log("Sync complete", { hasActive, tier, interval, trialEnd, subEnd, quantity, tenantId });
+    log("Sync complete", { hasActive: effectiveSubscribed, tier: effectiveTier, interval: effectiveInterval, trialEnd: effectiveTrialEnd, subEnd: effectiveSubEnd, quantity, tenantId });
 
     return new Response(
       JSON.stringify({
-        subscribed: hasActive,
-        subscription_tier: tier,
-        billing_interval: interval,
-        trial_end: trialEnd,
-        subscription_end: subEnd,
+        subscribed: effectiveSubscribed,
+        subscription_tier: effectiveTier,
+        billing_interval: effectiveInterval,
+        trial_end: effectiveTrialEnd,
+        subscription_end: effectiveSubEnd,
         seat_quantity: quantity,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }

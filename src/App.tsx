@@ -31,6 +31,7 @@ import { useFavicon } from './hooks/useFavicon'
 import { useBrowserTitle } from './hooks/useBrowserTitle'
 import { Toaster } from '@/components/ui/toaster'
 import PublicJobPosting from './pages/PublicJobPosting'
+import Onboarding from './pages/Onboarding'
 
 const queryClient = new QueryClient()
 
@@ -49,6 +50,8 @@ function AppContent() {
         <Route path="/verify-email" element={<VerifyEmail />} />
         {/* Public job posting route */}
         <Route path="/p/:slug" element={<PublicJobPosting />} />
+        {/* Onboarding for authenticated users without org context */}
+        <Route path="/onboarding" element={<RequireAuth><Onboarding /></RequireAuth>} />
         <Route
           path="/*"
           element={
@@ -92,7 +95,8 @@ function App() {
 }
 
 function RequireAuth({ children }: { children: JSX.Element }) {
-  const { isAuthenticated, isLoading } = useAuth()
+  const { isAuthenticated, isLoading, hasOrganizationContext } = useAuth()
+  const location = window.location
 
   if (isLoading) {
     return <div>Loading...</div> // Show a loading indicator while checking authentication
@@ -101,6 +105,11 @@ function RequireAuth({ children }: { children: JSX.Element }) {
   if (!isAuthenticated) {
     // Redirect to the auth page if not authenticated
     return <Navigate to="/auth" replace />
+  }
+
+  // Redirect authenticated users without org context to onboarding, except when already there or on public routes
+  if (!hasOrganizationContext && location.pathname !== '/onboarding') {
+    return <Navigate to="/onboarding" replace />
   }
 
   return children

@@ -12,6 +12,8 @@ import { useUserProfile } from '@/hooks/useUserProfile'
 import { usePermissions } from '@/hooks/usePermissions'
 import { PermissionGate } from '@/components/auth/PermissionGate'
 import { Section } from '@/components/layout/Section'
+import { useTenantSubscription } from '@/hooks/useTenantSubscription'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 
 export default function Dashboard() {
   const { profile, isLoading } = useUserProfile()
@@ -29,6 +31,9 @@ export default function Dashboard() {
         <InvoiceFilterProvider>
           <div className="space-y-6">
             <WelcomeHeader profile={profile} isLoading={isLoading} />
+
+            {/* Trial banner */}
+            <TrialBanner />
             
             {/* AI Job Assistant - Top Section */}
             {permissions.isPlatformAdmin && (
@@ -90,5 +95,21 @@ export default function Dashboard() {
         </InvoiceFilterProvider>
       </Section>
     </div>
+  )
+}
+
+function TrialBanner() {
+  const { data } = useTenantSubscription()
+  const sub = (data as any)?.subscription || null
+  const trialEnd = sub?.trial_end ? new Date(sub.trial_end) : null
+  const isOnTrial = !!trialEnd && trialEnd > new Date() && !sub?.subscribed
+  if (!isOnTrial) return null
+  const endStr = trialEnd.toLocaleDateString()
+  return (
+    <Alert>
+      <AlertDescription>
+        Your 30‑day free trial is active. It ends on {endStr}. No credit card required. When ready, go to Billing to start your subscription.
+      </AlertDescription>
+    </Alert>
   )
 }

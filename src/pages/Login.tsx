@@ -8,9 +8,10 @@ import { Card, CardContent } from '@/components/ui/card'
 import { VirgilioLogo } from '@/components/VirgilioLogo'
 import { TypingAnimation } from '@/components/TypingAnimation'
 import { useAuth } from '@/contexts/AuthContext'
+import { supabase } from '@/integrations/supabase/client'
 
 export default function Login() {
-  const { login, isAuthenticated, isLoading } = useAuth()
+  const { login, isAuthenticated, isLoading, hasOrganizationContext } = useAuth()
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -19,7 +20,7 @@ export default function Login() {
 
   // Redirect if already authenticated
   if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />
+    return <Navigate to={hasOrganizationContext ? '/dashboard' : '/onboarding'} replace />
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -32,6 +33,7 @@ export default function Login() {
       if (error) {
         setError(error.message)
       } else {
+        // Let the auth guard redirect appropriately once org context is resolved
         navigate('/dashboard')
       }
     } catch (err) {
@@ -145,6 +147,34 @@ export default function Login() {
                 size="lg"
               >
                 {isSubmitting ? 'Signing in...' : 'Sign in'}
+              </Button>
+
+              <div className="relative text-center">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-white px-2 text-muted-foreground">Or continue with</span>
+                </div>
+              </div>
+
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full h-12 text-base font-medium"
+                onClick={async () => {
+                  setError('')
+                  try {
+                    await supabase.auth.signInWithOAuth({
+                      provider: 'google',
+                      options: { redirectTo: `${window.location.origin}/auth` },
+                    })
+                  } catch (err: any) {
+                    setError(err.message || 'Google sign-in failed')
+                  }
+                }}
+              >
+                Continue with Google
               </Button>
             </form>
           </CardContent>
