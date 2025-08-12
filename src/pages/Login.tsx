@@ -179,6 +179,14 @@ export default function Login() {
             </form>
           </CardContent>
         </Card>
+        <footer className="mt-6 text-xs text-secondary">
+          <nav className="flex flex-wrap items-center gap-3">
+            <Link to="/privacy" className="underline underline-offset-2 hover:no-underline">Privacy Policy</Link>
+            <span aria-hidden="true">•</span>
+            <Link to="/terms" className="underline underline-offset-2 hover:no-underline">Terms of Service</Link>
+          </nav>
+          <p className="mt-2">© {new Date().getFullYear()} Virgilio</p>
+        </footer>
       </div>
     </div>
   )

@@ -32,7 +32,8 @@ import { useBrowserTitle } from './hooks/useBrowserTitle'
 import { Toaster } from '@/components/ui/toaster'
 import PublicJobPosting from './pages/PublicJobPosting'
 import Onboarding from './pages/Onboarding'
-
+import Privacy from './pages/Privacy'
+import Terms from './pages/Terms'
 const queryClient = new QueryClient()
 
 function AppContent() {
@@ -48,6 +49,8 @@ function AppContent() {
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/accept-invite/:token" element={<AcceptInvite />} />
         <Route path="/verify-email" element={<VerifyEmail />} />
+        <Route path="/privacy" element={<Privacy />} />
+        <Route path="/terms" element={<Terms />} />
         {/* Public job posting route */}
         <Route path="/p/:slug" element={<PublicJobPosting />} />
         {/* Onboarding for authenticated users without org context */}
