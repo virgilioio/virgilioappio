@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
 import { VirgilioLogo } from '@/components/VirgilioLogo'
 import { TypingAnimation } from '@/components/TypingAnimation'
+import { GoogleLogo } from '@/components/icons/GoogleLogo'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/integrations/supabase/client'
 
@@ -174,7 +175,10 @@ export default function Login() {
                   }
                 }}
               >
-                Continue with Google
+                <span className="inline-flex items-center justify-center gap-2">
+                  <GoogleLogo className="h-5 w-5" />
+                  <span>Continue with Google</span>
+                </span>
               </Button>
             </form>
           </CardContent>
