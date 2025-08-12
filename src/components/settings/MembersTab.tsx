@@ -5,6 +5,7 @@ import { useMembers } from '@/hooks/useMembers'
 import { useState } from 'react'
 import { MemberForm } from '@/components/members/MemberForm'
 import { UserDeletionDialog } from '@/components/organizations/UserDeletionDialog'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 
 export function MembersTab() {
   const { members, isLoading, updateMember, deactivateMember, createMember, resendInvitation, getMembers } = useMembers()
@@ -12,6 +13,10 @@ export function MembersTab() {
   const [editingMember, setEditingMember] = useState(null)
   const [userToDelete, setUserToDelete] = useState(null)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+
+  const [tab, setTab] = useState<'paid' | 'guests'>('paid')
+  const paidMembers = members.filter((m) => m.member_role !== 'client' || m.user_type === 'workspace_owner')
+  const guestMembers = members.filter((m) => m.member_role === 'client')
 
   const handleEdit = (member) => {
     setEditingMember(member)
@@ -61,15 +66,34 @@ export function MembersTab() {
 
   return (
     <div className="space-y-6">
-      <MembersTable 
-        members={members}
-        isLoading={isLoading}
-        onEdit={handleEdit}
-        onDeactivate={handleDeactivate}
-        onResendInvitation={handleResendInvitation}
-        onDeleteUser={handleDeleteUser}
-        onAddNew={handleCreateNew}
-      />
+      <Tabs value={tab} onValueChange={(v) => setTab(v as 'paid' | 'guests')} className="w-full">
+        <TabsList>
+          <TabsTrigger value="paid">Paid Users</TabsTrigger>
+          <TabsTrigger value="guests">Guests</TabsTrigger>
+        </TabsList>
+        <TabsContent value="paid">
+          <MembersTable 
+            members={paidMembers}
+            isLoading={isLoading}
+            onEdit={handleEdit}
+            onDeactivate={handleDeactivate}
+            onResendInvitation={handleResendInvitation}
+            onDeleteUser={handleDeleteUser}
+            onAddNew={handleCreateNew}
+          />
+        </TabsContent>
+        <TabsContent value="guests">
+          <MembersTable 
+            members={guestMembers}
+            isLoading={isLoading}
+            onEdit={handleEdit}
+            onDeactivate={handleDeactivate}
+            onResendInvitation={handleResendInvitation}
+            onDeleteUser={handleDeleteUser}
+            onAddNew={handleCreateNew}
+          />
+        </TabsContent>
+      </Tabs>
 
       <MemberForm
         isOpen={isCreateModalOpen}
