@@ -102,6 +102,29 @@ export function MembersTab() {
           <TabsTrigger value="members">Members</TabsTrigger>
           <TabsTrigger value="guests">Guests</TabsTrigger>
         </TabsList>
+
+        <Card>
+          <CardContent className="py-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="rounded-brand border border-border/50 bg-surface-secondary/40 p-4 shadow-[var(--shadow-xs)]">
+                <div className="text-text-secondary text-sm">Paid Seats</div>
+                <div className="text-3xl font-semibold text-text-primary mt-1">{paidMembers.length}</div>
+                <div className="text-xs text-text-tertiary mt-1">Admins, Recruiters, Sales, CS, Billing, Owner</div>
+              </div>
+              <div className="rounded-brand border border-border/50 bg-surface-secondary/40 p-4 shadow-[var(--shadow-xs)]">
+                <div className="text-text-secondary text-sm">Guests</div>
+                <div className="text-3xl font-semibold text-text-primary mt-1">{guestMembers.length}</div>
+                <div className="text-xs text-text-tertiary mt-1">Clients (non-billing)</div>
+              </div>
+              <div className="rounded-brand border border-border/50 bg-surface-secondary/40 p-4 shadow-[var(--shadow-xs)]">
+                <div className="text-text-secondary text-sm">Next Billing</div>
+                <div className="text-3xl font-semibold text-text-primary mt-1">{nextBillingLabel}</div>
+                <div className="text-xs text-text-tertiary mt-1">Based on subscription start date</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         <TabsContent value="members">
           <MembersTable 
             members={paidMembers}
@@ -126,27 +149,6 @@ export function MembersTab() {
         </TabsContent>
       </Tabs>
 
-      <Card>
-        <CardContent className="py-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="rounded-brand border border-border/50 bg-surface-secondary/40 p-4 shadow-[var(--shadow-xs)]">
-              <div className="text-text-secondary text-sm">Paid Seats</div>
-              <div className="text-3xl font-semibold text-text-primary mt-1">{paidMembers.length}</div>
-              <div className="text-xs text-text-tertiary mt-1">Admins, Recruiters, Sales, CS, Billing, Owner</div>
-            </div>
-            <div className="rounded-brand border border-border/50 bg-surface-secondary/40 p-4 shadow-[var(--shadow-xs)]">
-              <div className="text-text-secondary text-sm">Guests</div>
-              <div className="text-3xl font-semibold text-text-primary mt-1">{guestMembers.length}</div>
-              <div className="text-xs text-text-tertiary mt-1">Clients (non-billing)</div>
-            </div>
-            <div className="rounded-brand border border-border/50 bg-surface-secondary/40 p-4 shadow-[var(--shadow-xs)]">
-              <div className="text-text-secondary text-sm">Next Billing</div>
-              <div className="text-3xl font-semibold text-text-primary mt-1">{nextBillingLabel}</div>
-              <div className="text-xs text-text-tertiary mt-1">Based on subscription start date</div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
       <MemberForm
         isOpen={isCreateModalOpen}
