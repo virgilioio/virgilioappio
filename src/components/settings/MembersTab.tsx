@@ -6,6 +6,8 @@ import { useState } from 'react'
 import { MemberForm } from '@/components/members/MemberForm'
 import { UserDeletionDialog } from '@/components/organizations/UserDeletionDialog'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { useAuth } from '@/contexts/AuthContext'
+import { useOrganizations } from '@/hooks/useOrganizations'
 
 export function MembersTab() {
   const { members, isLoading, updateMember, deactivateMember, createMember, resendInvitation, getMembers } = useMembers()
@@ -14,8 +16,20 @@ export function MembersTab() {
   const [userToDelete, setUserToDelete] = useState(null)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
 
-  const [tab, setTab] = useState<'paid' | 'guests'>('paid')
-  const paidMembers = members.filter((m) => m.member_role !== 'client' || m.user_type === 'workspace_owner')
+  const { organizationId } = useAuth()
+  const { organizations } = useOrganizations()
+
+  const currentOrg = organizations.find((o) => o.id === organizationId)
+  const parentOrgId = currentOrg?.parent_organization_id || organizationId
+
+  const isPayingRole = (r: 'recruiter' | 'customer_success' | 'billing' | 'sales' | 'admin' | 'client') =>
+    r === 'admin' || r === 'recruiter' || r === 'sales' || r === 'customer_success' || r === 'billing'
+
+  const [tab, setTab] = useState<'members' | 'guests'>('members')
+
+  const paidMembers = members.filter(
+    (m) => (isPayingRole(m.member_role) || m.user_type === 'workspace_owner') && (!parentOrgId || m.organization_id === parentOrgId)
+  )
   const guestMembers = members.filter((m) => m.member_role === 'client')
 
   const handleEdit = (member) => {
@@ -66,12 +80,12 @@ export function MembersTab() {
 
   return (
     <div className="space-y-6">
-      <Tabs value={tab} onValueChange={(v) => setTab(v as 'paid' | 'guests')} className="w-full">
+      <Tabs value={tab} onValueChange={(v) => setTab(v as 'members' | 'guests')} className="w-full">
         <TabsList>
-          <TabsTrigger value="paid">Paid Users</TabsTrigger>
+          <TabsTrigger value="members">Members</TabsTrigger>
           <TabsTrigger value="guests">Guests</TabsTrigger>
         </TabsList>
-        <TabsContent value="paid">
+        <TabsContent value="members">
           <MembersTable 
             members={paidMembers}
             isLoading={isLoading}
