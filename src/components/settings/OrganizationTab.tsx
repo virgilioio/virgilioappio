@@ -27,6 +27,7 @@ interface OrganizationFormData {
   billing_poc_user_id: string | null
   billing_poc_additional_email: string
   billing_poc_phone: string
+  parent_organization_id: string | null
 }
 
 export function OrganizationTab() {
@@ -79,14 +80,15 @@ export function OrganizationTab() {
   const userOrganization = getUserOrganization()
   console.log('OrganizationTab - selected userOrganization:', userOrganization?.name, 'id:', userOrganization?.id, 'owner_id:', userOrganization?.owner_id)
   
-  const [orgFormData, setOrgFormData] = useState<OrganizationFormData>({
-    name: '',
-    country: '',
-    status: 'active',
-    billing_poc_user_id: null,
-    billing_poc_additional_email: '',
-    billing_poc_phone: ''
-  })
+const [orgFormData, setOrgFormData] = useState<OrganizationFormData>({
+  name: '',
+  country: '',
+  status: 'active',
+  billing_poc_user_id: null,
+  billing_poc_additional_email: '',
+  billing_poc_phone: '',
+  parent_organization_id: null
+})
 
   useEffect(() => {
     if (userOrganization) {
@@ -97,7 +99,8 @@ export function OrganizationTab() {
         status: userOrganization.status || 'active',
         billing_poc_user_id: userOrganization.billing_poc_user_id || null,
         billing_poc_additional_email: userOrganization.billing_poc_additional_email || '',
-        billing_poc_phone: userOrganization.billing_poc_phone || ''
+        billing_poc_phone: userOrganization.billing_poc_phone || '',
+        parent_organization_id: userOrganization.parent_organization_id || null
       })
     }
   }, [userOrganization])
@@ -121,7 +124,8 @@ export function OrganizationTab() {
             status: userOrganization.status || 'active',
             billing_poc_user_id: userOrganization.billing_poc_user_id || null,
             billing_poc_additional_email: userOrganization.billing_poc_additional_email || '',
-            billing_poc_phone: userOrganization.billing_poc_phone || ''
+            billing_poc_phone: userOrganization.billing_poc_phone || '',
+            parent_organization_id: userOrganization.parent_organization_id || null
           })
         }
         setHasUnsavedChanges(false)
@@ -141,7 +145,8 @@ export function OrganizationTab() {
         status: userOrganization.status || 'active',
         billing_poc_user_id: userOrganization.billing_poc_user_id || null,
         billing_poc_additional_email: userOrganization.billing_poc_additional_email || '',
-        billing_poc_phone: userOrganization.billing_poc_phone || ''
+        billing_poc_phone: userOrganization.billing_poc_phone || '',
+        parent_organization_id: userOrganization.parent_organization_id || null
       })
     }
   }

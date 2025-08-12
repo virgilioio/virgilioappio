@@ -12,6 +12,8 @@ import { useOrganizationCustomData } from '@/hooks/useOrganizationCustomData'
 import { CustomFieldInput } from '@/components/organizations/CustomFieldInput'
 import { BillingPOCSection } from './BillingPOCSection'
 import { useToast } from '@/hooks/use-toast'
+import { SearchableSelect } from '@/components/ui/searchable-select'
+import { useOrganizations } from '@/hooks/useOrganizations'
 
 interface OrganizationFormData {
   name: string
@@ -20,6 +22,7 @@ interface OrganizationFormData {
   billing_poc_user_id: string | null
   billing_poc_additional_email: string
   billing_poc_phone: string
+  parent_organization_id: string | null
 }
 
 interface Organization {
@@ -33,6 +36,7 @@ interface Organization {
   billing_poc_phone?: string | null
   billing_poc_user_email?: string | null
   billing_poc_user_name?: string | null
+  parent_organization_id?: string | null
 }
 
 interface OrganizationFormProps {
@@ -65,6 +69,13 @@ export function OrganizationForm({
     isLoading: customDataLoading 
   } = useOrganizationCustomData(organization?.id)
   const { toast } = useToast()
+  const { organizations: allOrganizations } = useOrganizations()
+  const parentOptions = [
+    { value: 'none', label: 'No parent (top-level)' },
+    ...allOrganizations
+      .filter(o => o.id !== organization?.id)
+      .map(o => ({ value: o.id, label: o.name }))
+  ]
 
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, string>>({})
   const [customFieldFiles, setCustomFieldFiles] = useState<Record<string, File>>({})
@@ -465,6 +476,16 @@ export function OrganizationForm({
                 </div>
               </FormField>
             )}
+            <FormField label="Parent Organization" htmlFor="org-parent">
+              <SearchableSelect
+                options={parentOptions}
+                value={formData.parent_organization_id || 'none'}
+                onValueChange={(value) => updateFormData('parent_organization_id', value === 'none' ? null : value)}
+                placeholder="Select a parent (optional)"
+                searchPlaceholder="Search organizations..."
+                emptyMessage="No organizations found."
+              />
+            </FormField>
           </div>
         </CardContent>
       </Card>

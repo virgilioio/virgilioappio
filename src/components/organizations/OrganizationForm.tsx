@@ -14,6 +14,7 @@ import { usePermissions } from '@/hooks/usePermissions'
 import { useMembers } from '@/hooks/useMembers'
 import { useCountries } from '@/hooks/useCountries'
 import { useOrganizations } from '@/hooks/useOrganizations'
+import { useAuth } from '@/contexts/AuthContext'
 
 const formSchema = z.object({
   name: z.string().min(1, 'Organization name is required'),
@@ -45,6 +46,7 @@ export function OrganizationForm({
   const { countries, isLoading: countriesLoading } = useCountries()
   const { organizations: allOrganizations } = useOrganizations()
   const isEditing = !!organization
+  const { organizationId } = useAuth()
 
   // Transform countries data for SearchableSelect format
   const countryOptions = countries.map(country => ({
@@ -108,7 +110,7 @@ const form = useForm<FormData>({
       country: '',
       status: 'active',
       owner_id: 'none', // Use 'none' instead of empty string
-      parent_organization_id: 'none'
+      parent_organization_id: organizationId || 'none'
     }
   })
 
@@ -127,7 +129,7 @@ const form = useForm<FormData>({
         country: '',
         status: 'active',
         owner_id: 'none', // Use 'none' instead of empty string
-        parent_organization_id: 'none'
+        parent_organization_id: organizationId || 'none'
       })
     }
   }, [organization, form])

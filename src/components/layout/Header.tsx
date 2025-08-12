@@ -212,7 +212,7 @@ export function Header() {
         {/* User Menu and Mobile Navigation */}
         <div className="flex items-center gap-sm">
           {/* Workspace Switcher */}
-          {uniqueOrgs.length > 1 && (
+          {isPlatformAdmin && uniqueOrgs.length > 1 && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" className="hidden sm:inline-flex">
