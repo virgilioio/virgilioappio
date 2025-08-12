@@ -9,6 +9,7 @@ import { usePermissions } from '@/hooks/usePermissions'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/integrations/supabase/client'
 import type { Job } from '@/hooks/useJobs'
+import { getSkillColor } from '@/utils/skillColors'
 
 interface JobOverviewTabProps {
   job: Job
@@ -171,7 +172,7 @@ export function JobOverviewTab({ job, onEdit }: JobOverviewTabProps) {
                 </h3>
                 <div className="flex flex-wrap gap-2">
                   {skills.map((skill, idx) => (
-                    <Badge key={`${skill}-${idx}`} variant="secondary">{skill}</Badge>
+                    <Badge key={`${skill}-${idx}`} variant={getSkillColor(skill)} className="text-sm">{skill}</Badge>
                   ))}
                 </div>
               </div>

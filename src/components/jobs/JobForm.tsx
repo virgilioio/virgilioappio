@@ -20,6 +20,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { CURRENCIES } from '@/constants/currencies'
 import type { CategorizedSkill } from '@/hooks/useSkillsGeneration'
 import { JobSkillsGenerationPanel } from './JobSkillsGenerationPanel'
+import { getSkillColor } from '@/utils/skillColors'
 
 interface JobFormProps {
   isOpen: boolean
@@ -347,7 +348,7 @@ export function JobForm({ isOpen, onClose, onSubmit, job, isLoading }: JobFormPr
                 {selectedSkills.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
                     {selectedSkills.map((skill) => (
-                      <Badge key={skill} variant="secondary" className="flex items-center gap-1">
+                      <Badge key={skill} variant={getSkillColor(skill)} className="flex items-center gap-1">
                         {skill}
                         <X className="h-3 w-3 cursor-pointer" onClick={() => setSelectedSkills(selectedSkills.filter(s => s !== skill))} />
                       </Badge>
