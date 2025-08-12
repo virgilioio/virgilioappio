@@ -176,8 +176,11 @@ export function MembersTable({
             <SelectContent>
               <SelectItem value="all">All Roles</SelectItem>
               <SelectItem value="admin">Admin</SelectItem>
-              <SelectItem value="member">Member</SelectItem>
-              <SelectItem value="viewer">Viewer</SelectItem>
+              <SelectItem value="recruiter">Recruiter</SelectItem>
+              <SelectItem value="client">Client</SelectItem>
+              <SelectItem value="sales">Sales</SelectItem>
+              <SelectItem value="billing">Billing</SelectItem>
+              <SelectItem value="customer_success">Customer Success</SelectItem>
             </SelectContent>
           </Select>
 
