@@ -106,23 +106,23 @@ export function MembersTab() {
         <Card>
           <CardContent className="py-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Next Billing */}
-              <div className="rounded-brand border border-accent/40 bg-accent/10 p-4 shadow-[var(--shadow-xs)]">
-                <div className="text-sm text-accent-foreground/80">Next Billing</div>
-                <div className="text-3xl font-semibold text-accent-foreground mt-1">{nextBillingLabel}</div>
-                <div className="text-xs text-accent-foreground/70 mt-1">Based on subscription start date</div>
+              {/* Next Billing - Purple */}
+              <div className="rounded-brand border border-pastel-purple/50 bg-pastel-purple/40 p-4 shadow-[var(--shadow-xs)]">
+                <div className="text-sm text-pastel-purple-foreground/80">Next Billing</div>
+                <div className="text-3xl font-semibold text-pastel-purple-foreground mt-1">{nextBillingLabel}</div>
+                <div className="text-xs text-pastel-purple-foreground/70 mt-1">Based on subscription start date</div>
               </div>
-              {/* Paid Seats */}
-              <div className="rounded-brand border border-accent/40 bg-accent/10 p-4 shadow-[var(--shadow-xs)]">
-                <div className="text-sm text-accent-foreground/80">Paid Seats</div>
-                <div className="text-3xl font-semibold text-accent-foreground mt-1">{paidMembers.length}</div>
-                <div className="text-xs text-accent-foreground/70 mt-1">Admins, Recruiters, Sales, CS, Billing, Owner</div>
+              {/* Paid Seats - Purple */}
+              <div className="rounded-brand border border-pastel-purple/50 bg-pastel-purple/40 p-4 shadow-[var(--shadow-xs)]">
+                <div className="text-sm text-pastel-purple-foreground/80">Paid Seats</div>
+                <div className="text-3xl font-semibold text-pastel-purple-foreground mt-1">{paidMembers.length}</div>
+                <div className="text-xs text-pastel-purple-foreground/70 mt-1">Admins, Recruiters, Sales, CS, Billing, Owner</div>
               </div>
-              {/* Guests */}
-              <div className="rounded-brand border border-accent/40 bg-accent/10 p-4 shadow-[var(--shadow-xs)]">
-                <div className="text-sm text-accent-foreground/80">Guests</div>
-                <div className="text-3xl font-semibold text-accent-foreground mt-1">{guestMembers.length}</div>
-                <div className="text-xs text-accent-foreground/70 mt-1">Clients (non-billing)</div>
+              {/* Guests - Blue */}
+              <div className="rounded-brand border border-pastel-blue/50 bg-pastel-blue/40 p-4 shadow-[var(--shadow-xs)]">
+                <div className="text-sm text-pastel-blue-foreground/80">Guests</div>
+                <div className="text-3xl font-semibold text-pastel-blue-foreground mt-1">{guestMembers.length}</div>
+                <div className="text-xs text-pastel-blue-foreground/70 mt-1">Clients (non-billing)</div>
               </div>
             </div>
           </CardContent>
