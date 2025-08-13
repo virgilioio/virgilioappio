@@ -56,7 +56,7 @@ interface CandidateTableProps {
   isLoading: boolean
   onEdit: (candidate: CandidateTableCandidate) => void
   onDelete: (candidateId: string) => void
-  onAddNew: () => void
+  onAddNew?: () => void
   markCandidateAsViewed: (candidateId: string) => void
   isCandidateNewForUser: (candidate: CandidateTableCandidate) => boolean
   showJobInfo?: boolean // Whether to show job/organization columns
@@ -320,7 +320,7 @@ export function CandidateTable({
 
           <PermissionGate permission="canManageCandidates">
             <div className="ml-auto flex items-center gap-2">
-              {!selectionMode && (
+              {!selectionMode && onAddNew && (
                 <Button onClick={onAddNew} size="sm" className="gap-sm h-[40px]">
                   <UserPlus className="h-4 w-4" />
                   Add Candidate

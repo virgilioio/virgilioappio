@@ -20,7 +20,7 @@ import { JobForm } from '@/components/jobs/JobForm'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { ArrowLeft, Archive, LayoutGrid, List } from 'lucide-react'
+import { ArrowLeft, Archive, LayoutGrid, List, UserPlus } from 'lucide-react'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { useIsMobile } from '@/hooks/use-mobile'
@@ -611,6 +611,14 @@ export default function JobDetail() {
                           <p className="text-sm text-text-secondary">Drag candidates across stages. Scroll horizontally to view more columns.</p>
                         </div>
                         <div className="flex items-center gap-2">
+                          <Button
+                            size="sm"
+                            className="gap-sm h-[36px]"
+                            onClick={() => setShowAddCandidate(true)}
+                          >
+                            <UserPlus className="h-4 w-4" />
+                            Add Candidate
+                          </Button>
                           {pipelineSectionTab === 'recruiting' && (
                             <>
                               {selectionMode && (
@@ -716,7 +724,6 @@ export default function JobDetail() {
                                 isLoading={statusListsLoading}
                                 onEdit={handleEditCandidate}
                                 onDelete={handleDeleteCandidate}
-                                onAddNew={() => setShowAddCandidate(true)}
                                 markCandidateAsViewed={() => {}}
                                 isCandidateNewForUser={() => false}
                                 onRowClick={openProfileInPlace}
@@ -729,7 +736,6 @@ export default function JobDetail() {
                                 isLoading={statusListsLoading}
                                 onEdit={handleEditCandidate}
                                 onDelete={handleDeleteCandidate}
-                                onAddNew={() => setShowAddCandidate(true)}
                                 markCandidateAsViewed={() => {}}
                                 isCandidateNewForUser={() => false}
                               />
@@ -741,7 +747,6 @@ export default function JobDetail() {
                                 isLoading={statusListsLoading}
                                 onEdit={handleEditCandidate}
                                 onDelete={handleDeleteCandidate}
-                                onAddNew={() => setShowAddCandidate(true)}
                                 markCandidateAsViewed={() => {}}
                                 isCandidateNewForUser={() => false}
                                 onRowClick={openProfileInPlace}
@@ -934,7 +939,6 @@ export default function JobDetail() {
                                 isLoading={candidatesLoading}
                                 onEdit={handleEditCandidate}
                                 onDelete={handleDeleteCandidate}
-                                onAddNew={() => setShowAddCandidate(true)}
                                 markCandidateAsViewed={markCandidateAsViewed}
                                 isCandidateNewForUser={isCandidateNewForUser}
                                 onRowClick={handleApplicationRowClick}
@@ -947,7 +951,6 @@ export default function JobDetail() {
                                 isLoading={statusListsLoading}
                                 onEdit={handleEditCandidate}
                                 onDelete={handleDeleteCandidate}
-                                onAddNew={() => setShowAddCandidate(true)}
                                 markCandidateAsViewed={() => {}}
                                 isCandidateNewForUser={() => false}
                                 onRowClick={openProfileInPlace}
@@ -960,7 +963,6 @@ export default function JobDetail() {
                                 isLoading={statusListsLoading}
                                 onEdit={handleEditCandidate}
                                 onDelete={handleDeleteCandidate}
-                                onAddNew={() => setShowAddCandidate(true)}
                                 markCandidateAsViewed={() => {}}
                                 isCandidateNewForUser={() => false}
                               />
@@ -972,7 +974,6 @@ export default function JobDetail() {
                                 isLoading={statusListsLoading}
                                 onEdit={handleEditCandidate}
                                 onDelete={handleDeleteCandidate}
-                                onAddNew={() => setShowAddCandidate(true)}
                                 markCandidateAsViewed={() => {}}
                                 isCandidateNewForUser={() => false}
                                 onRowClick={openProfileInPlace}
