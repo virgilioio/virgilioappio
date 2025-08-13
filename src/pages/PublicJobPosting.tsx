@@ -354,6 +354,30 @@ export default function PublicJobPosting() {
 
       const candidateName = (full || `${first} ${last}`).trim() || 'Applicant'
 
+      // Convert uploaded files to base64 for transmission
+      const filesToUpload: Record<string, any> = {}
+      for (const [fieldId, file] of Object.entries(uploadedFiles)) {
+        if (file) {
+          try {
+            const base64 = await new Promise<string>((resolve, reject) => {
+              const reader = new FileReader()
+              reader.onload = () => resolve(reader.result as string)
+              reader.onerror = reject
+              reader.readAsDataURL(file)
+            })
+            
+            filesToUpload[fieldId] = {
+              name: file.name,
+              type: file.type,
+              size: file.size,
+              data: base64
+            }
+          } catch (error) {
+            console.error('Error converting file to base64:', error)
+          }
+        }
+      }
+
       const { data, error } = await supabase.functions.invoke('public-submit-application', {
         body: {
           postingId: posting.id,
@@ -367,7 +391,9 @@ export default function PublicJobPosting() {
             linkedin_url: linkedin,
             profile_summary: profileSummary,
             candidate_name: candidateName,
-          }
+          },
+          uploadedFiles: Object.keys(filesToUpload).length > 0 ? filesToUpload : undefined,
+          generatedSkills: generatedSkills.length > 0 ? generatedSkills : undefined
         }
       })
 

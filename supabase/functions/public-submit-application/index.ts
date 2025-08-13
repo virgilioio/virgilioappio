@@ -19,6 +19,19 @@ interface SubmitApplicationPayload {
     linkedin_url?: string;
     profile_summary?: string; // HTML allowed (will be stored as text)
   };
+  uploadedFiles?: Record<string, {
+    name: string;
+    type: string;
+    size: number;
+    data: string; // base64 encoded file data
+  }>;
+  generatedSkills?: Array<{
+    name: string;
+    canonical?: string;
+    category: string;
+    confidence: number;
+    source?: string;
+  }>;
 }
 
 serve(async (req) => {
@@ -97,16 +110,26 @@ serve(async (req) => {
 
     // If not found, create a new global candidate
     if (!globalCandidateId) {
+      const candidateData: any = {
+        candidate_name: candidateName,
+        email: f.email?.slice(0, 320) || null,
+        phone: f.phone?.slice(0, 80) || null,
+        linkedin_url: f.linkedin_url?.slice(0, 512) || null,
+        profile_summary: f.profile_summary || null,
+        source: "public_posting",
+      };
+
+      // Include generated skills if provided
+      if (body.generatedSkills && body.generatedSkills.length > 0) {
+        candidateData.skills = body.generatedSkills.map(skill => skill.name);
+        candidateData.auto_generated_skills = body.generatedSkills;
+        candidateData.skills_metadata = body.generatedSkills;
+        candidateData.last_skills_generation = new Date().toISOString();
+      }
+
       const { data: newGlobalCandidate, error: globalInsertErr } = await supabase
         .from("candidates")
-        .insert({
-          candidate_name: candidateName,
-          email: f.email?.slice(0, 320) || null,
-          phone: f.phone?.slice(0, 80) || null,
-          linkedin_url: f.linkedin_url?.slice(0, 512) || null,
-          profile_summary: f.profile_summary || null,
-          source: "public_posting",
-        })
+        .insert(candidateData)
         .select("id, candidate_name")
         .single();
 
@@ -122,14 +145,24 @@ serve(async (req) => {
     }
 
     // Insert job-specific candidate record (used for per-job views and data)
+    const jobCandidateData: any = {
+      job_id: body.jobId,
+      candidate_name: candidateName,
+      linkedin_url: f.linkedin_url?.slice(0, 512) || null,
+      profile_summary: f.profile_summary || null,
+    };
+
+    // Include generated skills for job candidate too
+    if (body.generatedSkills && body.generatedSkills.length > 0) {
+      jobCandidateData.skills = body.generatedSkills.map(skill => skill.name);
+      jobCandidateData.auto_generated_skills = body.generatedSkills;
+      jobCandidateData.skills_metadata = body.generatedSkills;
+      jobCandidateData.last_skills_generation = new Date().toISOString();
+    }
+
     const { data: jobCandidate, error: insertJobCandidateErr } = await supabase
       .from("job_candidates")
-      .insert({
-        job_id: body.jobId,
-        candidate_name: candidateName,
-        linkedin_url: f.linkedin_url?.slice(0, 512) || null,
-        profile_summary: f.profile_summary || null,
-      })
+      .insert(jobCandidateData)
       .select("id, candidate_name")
       .single();
 
@@ -157,6 +190,69 @@ serve(async (req) => {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    // Handle file uploads if any
+    if (body.uploadedFiles && Object.keys(body.uploadedFiles).length > 0) {
+      console.log("Processing uploaded files...");
+      
+      for (const [fieldId, fileData] of Object.entries(body.uploadedFiles)) {
+        if (!fileData || !fileData.data) continue;
+        
+        try {
+          // Convert base64 to buffer
+          const base64Data = fileData.data.split(',')[1] || fileData.data;
+          const buffer = new Uint8Array(
+            atob(base64Data)
+              .split('')
+              .map(c => c.charCodeAt(0))
+          );
+
+          // Generate unique filename
+          const fileExt = fileData.name.split('.').pop() || 'pdf';
+          const fileName = `${jobCandidate.id}/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+
+          console.log("Uploading file:", fileName, "Size:", buffer.length);
+
+          // Upload to storage
+          const { error: storageError } = await supabase.storage
+            .from('candidate-attachments')
+            .upload(fileName, buffer, {
+              contentType: fileData.type,
+            });
+
+          if (storageError) {
+            console.error("Storage upload error:", storageError);
+            continue; // Skip this file but don't fail the entire submission
+          }
+
+          // Store file metadata in database
+          const { error: dbError } = await supabase
+            .from('candidate_attachments')
+            .insert({
+              candidate_id: jobCandidate.id, // Associate with job candidate
+              file_name: fileData.name,
+              file_url: fileName,
+              file_size_bytes: fileData.size,
+              file_type: fileData.type,
+              is_resume: /resume/i.test(fileData.name) || fileExt === 'pdf',
+              uploaded_by: null, // Public submission
+            });
+
+          if (dbError) {
+            console.error("Database file insert error:", dbError);
+            // Clean up storage if database insert fails
+            await supabase.storage
+              .from('candidate-attachments')
+              .remove([fileName]);
+          } else {
+            console.log("✅ File uploaded successfully:", fileName);
+          }
+        } catch (fileError) {
+          console.error("Error processing file:", fileError);
+          continue; // Skip this file but don't fail the entire submission
+        }
+      }
     }
 
     console.log("✅ Public application processed for", candidateName, {
