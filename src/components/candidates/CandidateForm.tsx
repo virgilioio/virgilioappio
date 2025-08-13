@@ -24,6 +24,7 @@ import { getSkillColor } from '@/utils/skillColors'
 import { SkillsGenerationPanel } from './SkillsGenerationPanel'
 import { useResumeParsing } from '@/hooks/useResumeParsing'
 import { sanitizeHtmlForEditor } from '@/utils/htmlSanitizer'
+import { markdownToHtml } from '@/utils/markdown'
 
 interface CandidateFormProps {
   isOpen: boolean
@@ -244,7 +245,10 @@ export function CandidateForm({
             if (parsed.email) form.setValue('email', parsed.email)
             if (parsed.phone) form.setValue('phone', parsed.phone)
             if (parsed.profileSummary && parsed.profileSummary.trim().length > 0) {
-              setProfileSummary(parsed.profileSummary)
+              const html = markdownToHtml(parsed.profileSummary)
+              const sanitized = sanitizeHtmlForEditor(html)
+              setProfileSummary(sanitized)
+              setProfileIsExternalUpdate(true)
             }
             toast({ title: 'Parsed from resume', description: 'Prefilled basic info. Please review before saving.' })
           }
@@ -318,7 +322,7 @@ export function CandidateForm({
       email: data.email?.trim() ? data.email.trim() : null,
       phone: data.phone?.trim() ? data.phone.trim() : null,
       salary_amount: data.salary_amount ? Number(data.salary_amount) : null,
-      profile_summary: profileSummary,
+      profile_summary: sanitizeHtmlForEditor(profileSummary),
       notes: notes,
       skills: skills.length > 0 ? skills : null,
       job_id: jobId

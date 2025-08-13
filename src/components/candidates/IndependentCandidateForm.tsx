@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
@@ -17,6 +18,7 @@ import { getSkillColor } from '@/utils/skillColors'
 import { SkillsGenerationPanel } from './SkillsGenerationPanel'
 import { useResumeParsing } from '@/hooks/useResumeParsing'
 import { sanitizeHtmlForEditor } from '@/utils/htmlSanitizer'
+import { markdownToHtml } from '@/utils/markdown'
 
 const candidateSchema = z.object({
   candidate_name: z.string().min(1, 'Name is required'),
@@ -58,6 +60,7 @@ export function IndependentCandidateForm({
   const [newSkill, setNewSkill] = useState('')
   const [dragOver, setDragOver] = useState(false)
 
+  const [profileSummary, setProfileSummary] = useState(sanitizeHtmlForEditor(initialData?.profile_summary || ""))
 
   const {
     register,
@@ -105,7 +108,7 @@ export function IndependentCandidateForm({
         salary_amount: data.salary_amount || null,
         salary_currency: data.salary_currency || null,
         salary_period: data.salary_period || null,
-        profile_summary: data.profile_summary || null,
+        profile_summary: profileSummary?.trim() ? sanitizeHtmlForEditor(profileSummary) : null,
         linkedin_url: data.linkedin_url || null,
         resume_url: data.resume_url || null,
         skills: skills.length > 0 ? skills : null,
