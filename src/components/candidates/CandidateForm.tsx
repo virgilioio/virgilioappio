@@ -10,7 +10,7 @@ import { Separator } from '@/components/ui/separator'
 import { FormField } from '@/components/ui/form-field'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Check, ChevronsUpDown, X, Plus, Upload } from 'lucide-react'
+import { Check, ChevronsUpDown, X, Plus, Sparkles, Loader2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { CURRENCIES } from '@/constants/currencies'
 import { cn } from '@/lib/utils'
@@ -391,6 +391,65 @@ export function CandidateForm({
           {/* Candidate Form */}
           <form onSubmit={handleSubmit} className="space-y-6">
 
+            {/* Resume Upload */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium text-text-primary border-b border-border pb-2">
+                Resume
+              </h3>
+              <div
+                className={`relative border-2 border-dashed rounded-lg p-6 text-center transition-colors ${dragOver ? 'border-pastel-purple bg-pastel-purple/15' : 'border-pastel-purple/70 hover:border-pastel-purple bg-pastel-purple/10'}`}
+                onDrop={handleDrop}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+              >
+                {isParsing && (
+                  <div className="absolute left-0 right-0 top-0 h-1 bg-pastel-purple animate-pulse rounded-t-lg" />
+                )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  className="hidden"
+                  onChange={handleFileInputChange}
+                  accept=".pdf,.doc,.docx,.txt,.rtf"
+                />
+                <Sparkles className="h-8 w-8 mx-auto text-pastel-purple-foreground mb-2" />
+                <p className="text-sm text-text-secondary mb-2">Drag and drop here, and watch some magic</p>
+                <p className="text-xs text-text-secondary mb-4">PDF, DOC, DOCX, TXT up to 15MB</p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploadingResume || isParsing}
+                  className="gap-sm"
+                >
+                  {isParsing ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Parsing…
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-4 w-4" />
+                      Choose File
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              {!candidate && pendingFiles.length > 0 && (
+                <div className="mt-2 text-left space-y-2">
+                  {pendingFiles.map((f) => (
+                    <div key={f.name + f.size} className="flex items-center justify-between p-2 border border-border rounded-md">
+                      <span className="text-sm text-text-primary truncate mr-2">{f.name}</span>
+                      <Button type="button" variant="ghost" size="sm" onClick={() => removePendingFile(f.name, f.size)}>
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {/* Basic Information */}
             <div className="space-y-4">
               <h3 className="text-lg font-medium text-text-primary border-b border-border pb-2">
@@ -451,56 +510,6 @@ export function CandidateForm({
               </FormField>
             </div>
 
-            {/* Resume */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium text-text-primary border-b border-border pb-2">
-                Resume
-              </h3>
-              <div
-                className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${dragOver ? 'border-accent bg-accent/15' : 'border-accent/60 hover:border-accent bg-accent/10'}`}
-                onDrop={handleDrop}
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-              >
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  className="hidden"
-                  onChange={handleFileInputChange}
-                  accept=".pdf,.doc,.docx,.txt,.rtf"
-                />
-                <Upload className="h-8 w-8 mx-auto text-accent mb-2" />
-                <p className="text-sm text-text-secondary mb-2">
-                  Drag and drop a resume here, or click to browse
-                </p>
-                <p className="text-xs text-text-secondary mb-4">
-                  PDF, DOC, DOCX, TXT up to 15MB
-                </p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isUploadingResume || isParsing}
-                  className="gap-sm"
-                >
-                  <Upload className="h-4 w-4" />
-                  {isParsing ? 'Parsing...' : (isUploadingResume ? 'Uploading...' : 'Choose File')}
-                </Button>
-              </div>
-
-              {!candidate && pendingFiles.length > 0 && (
-                <div className="mt-2 text-left space-y-2">
-                  {pendingFiles.map((f) => (
-                    <div key={f.name + f.size} className="flex items-center justify-between p-2 border border-border rounded-md">
-                      <span className="text-sm text-text-primary truncate mr-2">{f.name}</span>
-                      <Button type="button" variant="ghost" size="sm" onClick={() => removePendingFile(f.name, f.size)}>
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
 
             {/* Location Information */}
             <div className="space-y-4">

@@ -46,13 +46,56 @@ async function aiExtract(text: string, fileName?: string): Promise<ParseResult> 
   }
 
   const system = `You are an expert ATS resume parser.
-Return ONLY valid JSON with these fields:
+Return ONLY valid JSON with these exact fields:
 {name: string|optional, email: string|optional, phone: string|optional, profileSummary: string|optional}
 - name: the candidate's full name if confidently found; otherwise omit.
 - email: a primary contact email if present.
 - phone: a primary phone in international format if possible.
-- profileSummary: a short, 2–4 sentence professional summary highlighting role, years of experience (if inferable), key skills, and domain.
-Do not include markdown or any explanation.`;
+- profileSummary: MUST be a professionally formatted candidate profile in Spanish, following EXACTLY the instructions below. The value must be a single string containing the full formatted profile (with line breaks).
+
+Instructions for profileSummary (must follow EXACTLY):
+You are an expert CV writer. Based on the resume provided, create a professionally formatted candidate profile in Spanish, following exactly this structure and style:
+
+Full name (Title case, bold)
+
+Professional headline (bold, short, separated by vertical bars)
+
+Location (País, Estado, Ciudad, in bold after “Ubicación:”) 
+
+Phone number 
+
+Email (in markdown link format)
+
+Salary expectation (in MXN, PEN, COP, CLP, or ARS, depending on candidate’s market, with “+ comisiones” if applicable)
+
+LinkedIn link (markdown link format)
+
+Then create these sections in order:
+
+Perfil Profesional – A 2–3 paragraph summary (max 180 words) describing years of experience, regions worked (LATAM, NAM, EMEA if applicable), areas of expertise, tools mastered, sales methodologies applied, and professional strengths. The tone should be results-oriented, highlighting quantifiable achievements when possible.
+
+Experiencia Profesional – Reverse chronological list of roles, each with:
+
+Company name — Position title | Start month/year – End month/year
+
+3 bullet points starting with action verbs, summarizing main achievements and responsibilities, with specific metrics where possible.
+
+Educación – Institution name, degree, and years attended.
+
+Competencias Clave – 5–6 bullet points with core skills relevant to the role, written in concise form.
+
+Important style rules:
+- Use “—” (em dash) between company and role.
+- Use italics for role title.
+- Use bold for dates and institution names.
+- Keep a professional, concise tone.
+- All section titles in bold and uppercase.
+- Separate sections with a line break (“---”).
+- Do not include any extra commentary, notes, or introductions. Only the formatted profile.
+
+Now, using the resume provided, produce the final formatted profile exactly in this style and layout.
+
+Return ONLY JSON. Do not include markdown fences or commentary.`;
 
   const user = `Filename: ${fileName || 'unknown.pdf'}
 Resume text:

@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
-import { X, Plus, Upload } from 'lucide-react'
+import { X, Plus, Sparkles, Loader2 } from 'lucide-react'
 import { CreateIndependentCandidateData } from '@/hooks/useIndependentCandidates'
 import { toast } from '@/hooks/use-toast'
 import { supabase } from '@/integrations/supabase/client'
@@ -55,6 +55,8 @@ export function IndependentCandidateForm({
 }: IndependentCandidateFormProps) {
   const [skills, setSkills] = useState<string[]>(initialData?.skills || [])
   const [newSkill, setNewSkill] = useState('')
+  const [dragOver, setDragOver] = useState(false)
+
 
   const {
     register,
@@ -154,6 +156,34 @@ export function IndependentCandidateForm({
         </DialogHeader>
 
         <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
+
+          {/* Resume Upload */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-foreground">Resume</h3>
+            <div
+              className={`relative border-2 border-dashed rounded-lg p-6 text-center transition-colors ${dragOver ? 'border-pastel-purple bg-pastel-purple/15' : 'border-pastel-purple/70 hover:border-pastel-purple bg-pastel-purple/10'}`}
+              onDrop={(e) => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files?.[0]; if (!f) return; parseResume(f).then((parsed) => { if (!parsed) return; if (parsed.name) setValue('candidate_name', parsed.name); if (parsed.email) setValue('email', parsed.email); if (parsed.phone) setValue('phone', parsed.phone); if (parsed.profileSummary && parsed.profileSummary.trim().length > 0) { setValue('profile_summary', parsed.profileSummary); } toast({ title: 'Parsed from resume', description: 'Prefilled basic info. Please review before saving.' }); }); }}
+              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+              onDragLeave={(e) => { e.preventDefault(); setDragOver(false); }}
+            >
+              {isParsing && (
+                <div className="absolute left-0 right-0 top-0 h-1 bg-pastel-purple animate-pulse rounded-t-lg" />
+              )}
+              <input
+                ref={fileInputRef}
+                type="file"
+                className="hidden"
+                accept=".pdf,.doc,.docx,.txt,.rtf"
+                onChange={async (e) => { const f = e.target.files?.[0]; if (!f) return; const parsed = await parseResume(f); if (parsed) { if (parsed.name) setValue('candidate_name', parsed.name); if (parsed.email) setValue('email', parsed.email); if (parsed.phone) setValue('phone', parsed.phone); if (parsed.profileSummary && parsed.profileSummary.trim().length > 0) { setValue('profile_summary', parsed.profileSummary); } toast({ title: 'Parsed from resume', description: 'Prefilled basic info. Please review before saving.' }); } e.currentTarget.value = ''; }}
+              />
+              <Sparkles className="h-8 w-8 mx-auto text-pastel-purple-foreground mb-2" />
+              <p className="text-sm text-text-secondary mb-2">Drag and drop here, and watch some magic</p>
+              <p className="text-xs text-text-secondary mb-4">PDF, DOC, DOCX, TXT up to 15MB</p>
+              <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isParsing} className="gap-sm">
+                {isParsing ? (<><Loader2 className="h-4 w-4 animate-spin" /> Parsing…</>) : (<><Sparkles className="h-4 w-4" /> Choose File</>)}
+              </Button>
+            </div>
+          </div>
 
           {/* Basic Information */}
           <div className="space-y-4">
@@ -323,38 +353,6 @@ export function IndependentCandidateForm({
             </div>
           </div>
 
-          {/* Resume (Parse to prefill fields) */}
-          <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-foreground">Resume</h3>
-            <div className="border border-border rounded-md p-4">
-              <input
-                ref={fileInputRef}
-                type="file"
-                className="hidden"
-                accept=".pdf,.docx,.txt,.rtf,.doc"
-                onChange={async (e) => {
-                  const f = e.target.files?.[0];
-                  if (!f) return;
-                  const parsed = await parseResume(f);
-                  if (parsed) {
-                    if (parsed.name) setValue('candidate_name', parsed.name);
-                    if (parsed.email) setValue('email', parsed.email);
-                    if (parsed.phone) setValue('phone', parsed.phone);
-                    if (parsed.profileSummary && parsed.profileSummary.trim().length > 0) {
-                      setValue('profile_summary', parsed.profileSummary);
-                    }
-                    toast({ title: 'Parsed from resume', description: 'Prefilled basic info. Please review before saving.' });
-                  }
-                  e.currentTarget.value = '';
-                }}
-              />
-              <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isParsing}>
-                <Upload className="h-4 w-4 mr-2" />
-                {isParsing ? 'Parsing…' : 'Choose Resume to Parse'}
-              </Button>
-              <p className="text-xs text-muted-foreground mt-2">PDF, DOCX, TXT, RTF up to 15MB. Parsing happens locally or via our parser.</p>
-            </div>
-          </div>
 
           {/* Skills */}
           <div className="space-y-4">
