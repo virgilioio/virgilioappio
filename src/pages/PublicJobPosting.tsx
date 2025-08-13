@@ -20,6 +20,7 @@ import { getSkillColor } from '@/utils/skillColors'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { sanitizeHtml, sanitizeHtmlForEditor } from '@/utils/htmlSanitizer'
 import { ParsingAnimation } from '@/components/ui/parsing-animation'
+import { ApplicationConfirmationDialog } from '@/components/candidates/ApplicationConfirmationDialog'
 
 type FieldType = 'text' | 'number' | 'email' | 'textarea' | 'select' | 'checkbox' | 'date' | 'file' | 'url'
 
@@ -64,6 +65,8 @@ export default function PublicJobPosting() {
   const [formValues, setFormValues] = useState<Record<string, string>>({})
   const { generateSkills, isGenerating, generatedSkills } = useSkillsGeneration()
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showConfirmationDialog, setShowConfirmationDialog] = useState(false)
+  const [organizationName, setOrganizationName] = useState<string>('')
   // Canonical host redirect to app.virgilio.io (skip local dev)
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -92,7 +95,16 @@ export default function PublicJobPosting() {
       // Only active postings are selectable publicly due to RLS
       const { data: p } = await supabase
         .from('job_postings')
-        .select('id,job_id,title,description,details')
+        .select(`
+          id,
+          job_id,
+          title,
+          description,
+          details,
+          jobs!inner(
+            organizations!inner(name)
+          )
+        `)
         .eq('slug', slug)
         .maybeSingle()
       if (!p) {
@@ -101,6 +113,9 @@ export default function PublicJobPosting() {
         return
       }
       setPosting(p as Posting)
+      // Extract organization name
+      const orgName = (p as any)?.jobs?.organizations?.name || 'our company'
+      setOrganizationName(orgName)
 
       const { data: f } = await supabase
         .from('job_posting_application_fields')
@@ -320,10 +335,7 @@ export default function PublicJobPosting() {
 
       if (error) throw new Error(error.message || 'Submission failed')
 
-      toast({
-        title: 'Application submitted',
-        description: 'Thank you for applying. We will review your application.',
-      })
+      setShowConfirmationDialog(true)
     } catch (err) {
       console.error('Submit application error:', err)
       toast({
@@ -581,6 +593,13 @@ export default function PublicJobPosting() {
           <VirgilioLogo className="h-5 w-auto" />
         </div>
       </footer>
+      
+      <ApplicationConfirmationDialog
+        open={showConfirmationDialog}
+        onOpenChange={setShowConfirmationDialog}
+        roleName={posting?.title || 'this position'}
+        organizationName={organizationName}
+      />
     </div>
   )
 }
