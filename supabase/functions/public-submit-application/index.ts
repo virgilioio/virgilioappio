@@ -235,7 +235,9 @@ serve(async (req) => {
               file_url: fileName,
               file_size_bytes: fileData.size,
               file_type: fileData.type,
-              is_resume: /resume/i.test(fileData.name) || fileExt === 'pdf',
+              is_resume: /resume|cv|curriculum/i.test(fileData.name) || 
+                         ['pdf', 'doc', 'docx'].includes(fileExt) || 
+                         Object.keys(body.uploadedFiles || {}).length === 1, // Single file likely a resume
               uploaded_by: null, // Public submission
             });
 
