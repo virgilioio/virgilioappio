@@ -57,10 +57,53 @@ export default function JobDetail() {
   const [tableSelectionMode, setTableSelectionMode] = useState(false)
   const [pipelineRefresh, setPipelineRefresh] = useState(0)
 
-  // In-place profile sheet state
+  // In-place profile sheet state with navigation
   const [profileOpen, setProfileOpen] = useState(false)
   const [profileCandidateId, setProfileCandidateId] = useState<string | null>(null)
-  const openProfileInPlace = (candidateId: string) => { setProfileCandidateId(candidateId); setProfileOpen(true) }
+  const [profileContext, setProfileContext] = useState<'application' | 'pipeline' | null>(null)
+  const [profileCandidateList, setProfileCandidateList] = useState<any[]>([])
+  const [profileCurrentIndex, setProfileCurrentIndex] = useState(0)
+  
+  const openProfileInPlace = (candidateId: string, context: 'application' | 'pipeline' = 'application', candidateList: any[] = []) => {
+    const index = candidateList.findIndex((c: any) => c.id === candidateId)
+    setProfileCandidateId(candidateId)
+    setProfileContext(context)
+    setProfileCandidateList(candidateList)
+    setProfileCurrentIndex(index >= 0 ? index : 0)
+    setProfileOpen(true)
+  }
+
+  // Navigation functions for profile sheet
+  const handleNavigatePrev = () => {
+    if (profileCurrentIndex > 0) {
+      const newIndex = profileCurrentIndex - 1
+      const newCandidateId = profileCandidateList[newIndex]?.id
+      if (newCandidateId) {
+        setProfileCurrentIndex(newIndex)
+        setProfileCandidateId(newCandidateId)
+      }
+    }
+  }
+
+  const handleNavigateNext = () => {
+    if (profileCurrentIndex < profileCandidateList.length - 1) {
+      const newIndex = profileCurrentIndex + 1
+      const newCandidateId = profileCandidateList[newIndex]?.id
+      if (newCandidateId) {
+        setProfileCurrentIndex(newIndex)
+        setProfileCandidateId(newCandidateId)
+      }
+    }
+  }
+
+  const hasPrev = profileCurrentIndex > 0
+  const hasNext = profileCurrentIndex < profileCandidateList.length - 1
+
+  // Create wrapper functions for different candidate contexts
+  const openApplicationProfile = (candidateId: string) => openProfileInPlace(candidateId, 'application', applicationReviewCandidates)
+  const openOffersProfile = (candidateId: string) => openProfileInPlace(candidateId, 'pipeline', offersCandidates)
+  const openHiredProfile = (candidateId: string) => openProfileInPlace(candidateId, 'pipeline', hiredCandidates)
+  const openRejectedProfile = (candidateId: string) => openProfileInPlace(candidateId, 'pipeline', rejectedCandidates)
 
   // Inner tabs for Pipeline section
   const [pipelineSectionTab, setPipelineSectionTab] = useState<'application' | 'recruiting' | 'offers' | 'hired' | 'rejected'>('recruiting')
@@ -163,7 +206,7 @@ export default function JobDetail() {
     }
 
     if (assoc?.candidate_id) {
-      openProfileInPlace(assoc.candidate_id)
+      openProfileInPlace(assoc.candidate_id, 'application', applicationReviewCandidates)
       return
     }
 
@@ -193,7 +236,7 @@ export default function JobDetail() {
         candId = data?.id ?? null
       }
       if (candId) {
-        openProfileInPlace(candId)
+        openProfileInPlace(candId, 'application', applicationReviewCandidates)
       } else {
         toast({ title: 'Not found', description: 'Could not locate profile for this candidate yet.', variant: 'destructive' })
       }
@@ -743,7 +786,7 @@ export default function JobDetail() {
                                 onDelete={handleDeleteCandidate}
                                 markCandidateAsViewed={() => {}}
                                 isCandidateNewForUser={() => false}
-                                onRowClick={openProfileInPlace}
+                                onRowClick={openOffersProfile}
                                 selectionMode={tableSelectionMode}
                                 onSelectionModeChange={setTableSelectionMode}
                               />
@@ -757,6 +800,7 @@ export default function JobDetail() {
                                 onDelete={handleDeleteCandidate}
                                 markCandidateAsViewed={() => {}}
                                 isCandidateNewForUser={() => false}
+                                onRowClick={openHiredProfile}
                                 selectionMode={tableSelectionMode}
                                 onSelectionModeChange={setTableSelectionMode}
                               />
@@ -770,7 +814,7 @@ export default function JobDetail() {
                                 onDelete={handleDeleteCandidate}
                                 markCandidateAsViewed={() => {}}
                                 isCandidateNewForUser={() => false}
-                                onRowClick={openProfileInPlace}
+                                onRowClick={openRejectedProfile}
                                 selectionMode={tableSelectionMode}
                                 onSelectionModeChange={setTableSelectionMode}
                               />
@@ -995,7 +1039,7 @@ export default function JobDetail() {
                                 onDelete={handleDeleteCandidate}
                                 markCandidateAsViewed={() => {}}
                                 isCandidateNewForUser={() => false}
-                                onRowClick={openProfileInPlace}
+                                onRowClick={openOffersProfile}
                                 selectionMode={tableSelectionMode}
                                 onSelectionModeChange={setTableSelectionMode}
                               />
@@ -1009,6 +1053,7 @@ export default function JobDetail() {
                                 onDelete={handleDeleteCandidate}
                                 markCandidateAsViewed={() => {}}
                                 isCandidateNewForUser={() => false}
+                                onRowClick={openHiredProfile}
                                 selectionMode={tableSelectionMode}
                                 onSelectionModeChange={setTableSelectionMode}
                               />
@@ -1022,7 +1067,7 @@ export default function JobDetail() {
                                 onDelete={handleDeleteCandidate}
                                 markCandidateAsViewed={() => {}}
                                 isCandidateNewForUser={() => false}
-                                onRowClick={openProfileInPlace}
+                                onRowClick={openRejectedProfile}
                                 selectionMode={tableSelectionMode}
                                 onSelectionModeChange={setTableSelectionMode}
                               />
@@ -1079,6 +1124,10 @@ export default function JobDetail() {
           onOpenChange={setProfileOpen}
           candidateId={profileCandidateId}
           jobId={id!}
+          hasPrev={hasPrev}
+          hasNext={hasNext}
+          onNavigatePrev={handleNavigatePrev}
+          onNavigateNext={handleNavigateNext}
           onStageChanged={() => setPipelineRefresh((v) => v + 1)}
         />
       </div>
