@@ -23,13 +23,13 @@ function extractPlainText(html: string): string {
 }
 
 export function JobSkillsGenerationPanel({ descriptionHtml, title, existingSkills, onAccept, onGenerated }: JobSkillsGenerationPanelProps) {
-  const { generateSkills, isGenerating, generatedSkills, clearGeneratedSkills } = useSkillsGeneration()
+  const { generateSkills, isGenerating, generatedSkills, clearGeneratedSkills, roleLevel } = useSkillsGeneration()
   const [hasGenerated, setHasGenerated] = useState(false)
 
   const handleGenerate = async () => {
     const text = extractPlainText(descriptionHtml)
     if (!text || text.length < 10) return
-    const res = await generateSkills(text, title)
+    const res = await generateSkills(text, title, { context: 'job', desiredCount: 20, minCount: 15 })
     if (res?.skills) {
       setHasGenerated(true)
       onGenerated?.(res.skills)
@@ -61,9 +61,16 @@ export function JobSkillsGenerationPanel({ descriptionHtml, title, existingSkill
           </div>
         </div>
         {hasGenerated && (
-          <div className="text-sm text-text-secondary">
-            Preview generated skills: {(generatedSkills || []).slice(0, 12).map(s => s.name).filter(Boolean).join(', ')}
-          </div>
+          <>
+            <div className="text-sm text-text-secondary">
+              Preview generated skills: {(generatedSkills || []).slice(0, 12).map(s => s.name).filter(Boolean).join(', ')}
+            </div>
+            {roleLevel?.level && (
+              <div className="text-xs text-text-secondary">
+                Detected level: <span className="font-medium text-text-primary">{roleLevel.level}</span>
+              </div>
+            )}
+          </>
         )}
       </CardContent>
     </Card>

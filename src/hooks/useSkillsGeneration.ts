@@ -18,6 +18,12 @@ export interface SkillsByCategory {
   certifications: CategorizedSkill[];
 }
 
+export interface RoleLevel {
+  level: string; // e.g., intern, ic, senior ic, lead, manager, director, vp, cxo, volunteer
+  confidence: number;
+  rationale?: string;
+}
+
 export const useSkillsGeneration = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedSkills, setGeneratedSkills] = useState<CategorizedSkill[]>([]);
@@ -29,22 +35,42 @@ export const useSkillsGeneration = () => {
     soft: [],
     certifications: []
   });
+  const [roleLevel, setRoleLevel] = useState<RoleLevel | null>(null);
 
-  const generateSkills = async (profileSummary: string, candidateName?: string) => {
-    if (!profileSummary || profileSummary.trim().length < 10) {
-      toast.error('Profile summary is too short to generate skills');
+
+  const generateSkills = async (
+    text: string,
+    nameOrTitle?: string,
+    options?: { context?: 'candidate' | 'job'; desiredCount?: number; minCount?: number }
+  ) => {
+    if (!text || text.trim().length < 10) {
+      toast.error('Text is too short to generate skills');
       return;
     }
 
     setIsGenerating(true);
     try {
-      console.log('Generating skills from profile summary...');
-      
+      const context = options?.context ?? 'candidate';
+      const desiredCount = options?.desiredCount ?? 20;
+      const minCount = options?.minCount ?? 15;
+
+      console.log('Generating skills...', { context, desiredCount, minCount });
+
+      const body: any = {
+        profileSummary: text.trim(),
+        context,
+        desiredCount,
+        minCount,
+      };
+
+      if (context === 'job') {
+        body.jobTitle = nameOrTitle || 'Unknown';
+      } else {
+        body.candidateName = nameOrTitle || 'Unknown';
+      }
+
       const { data, error } = await supabase.functions.invoke('generate-comprehensive-skills', {
-        body: {
-          profileSummary: profileSummary.trim(),
-          candidateName: candidateName || 'Unknown'
-        }
+        body
       });
 
       if (error) {
@@ -58,13 +84,15 @@ export const useSkillsGeneration = () => {
 
       const skills = data.skills as CategorizedSkill[];
       const categories = data.skillsByCategory as SkillsByCategory;
+      const role = (data.roleLevel || data.role_level) as RoleLevel | undefined;
 
       setGeneratedSkills(skills);
       setSkillsByCategory(categories);
+      setRoleLevel(role ?? null);
 
-      toast.success(`Generated ${skills.length} skills across ${Object.keys(categories).filter(cat => categories[cat as keyof SkillsByCategory].length > 0).length} categories`);
+      toast.success(`Generated ${skills.length} skills${role?.level ? ` · detected level: ${role.level}` : ''}`);
 
-      return { skills, skillsByCategory: categories };
+      return { skills, skillsByCategory: categories, roleLevel: role ?? null };
 
     } catch (error) {
       console.error('Skills generation error:', error);
@@ -85,6 +113,7 @@ export const useSkillsGeneration = () => {
       soft: [],
       certifications: []
     });
+    setRoleLevel(null);
   };
 
   const acceptSkill = (skill: CategorizedSkill) => {
@@ -135,6 +164,7 @@ export const useSkillsGeneration = () => {
     getCategoryColor,
     isGenerating,
     generatedSkills,
-    skillsByCategory
+    skillsByCategory,
+    roleLevel,
   };
 };

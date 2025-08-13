@@ -12,7 +12,107 @@ interface SkillItem {
   name: string;
   category: 'technical' | 'tools' | 'industries' | 'titles' | 'soft' | 'certifications';
   confidence: number;
-  source: 'ai_generated';
+  source?: 'ai_generated';
+}
+
+interface RoleLevel {
+  level: string;
+  confidence: number;
+  rationale?: string;
+}
+
+type ContextKind = 'candidate' | 'job';
+
+function sanitizeName(name: string): string {
+  return (name || '').trim();
+}
+
+function dedupeSkills(skills: SkillItem[]): SkillItem[] {
+  const seen = new Set<string>();
+  const out: SkillItem[] = [];
+  for (const s of skills) {
+    const key = sanitizeName(s.name).toLowerCase();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push({ ...s, name: sanitizeName(s.name), source: 'ai_generated' });
+  }
+  return out;
+}
+
+function groupByCategory(skills: SkillItem[]): Record<string, SkillItem[]> {
+  return skills.reduce((acc, s) => {
+    (acc[s.category] ||= []).push(s);
+    return acc;
+  }, {} as Record<string, SkillItem[]>);
+}
+
+function fallbackSkillsForLevel(level: string): SkillItem[] {
+  const lvl = (level || '').toLowerCase();
+  if (lvl.includes('manager')) {
+    return [
+      { name: 'People Management', category: 'soft', confidence: 0.7 },
+      { name: 'Team Leadership', category: 'soft', confidence: 0.7 },
+      { name: 'Stakeholder Management', category: 'soft', confidence: 0.65 },
+      { name: 'Project Management', category: 'soft', confidence: 0.65 },
+      { name: 'Hiring & Onboarding', category: 'soft', confidence: 0.6 },
+      { name: 'Coaching & Mentoring', category: 'soft', confidence: 0.6 },
+      { name: 'Performance Management', category: 'soft', confidence: 0.6 },
+      { name: 'Cross-functional Collaboration', category: 'soft', confidence: 0.6 },
+      { name: 'Strategic Planning', category: 'soft', confidence: 0.6 },
+      { name: 'Budgeting', category: 'soft', confidence: 0.6 },
+    ];
+  }
+  if (lvl.includes('director')) {
+    return [
+      { name: 'Strategic Leadership', category: 'soft', confidence: 0.7 },
+      { name: 'Org Design', category: 'soft', confidence: 0.65 },
+      { name: 'Portfolio Management', category: 'soft', confidence: 0.65 },
+      { name: 'Budget Ownership', category: 'soft', confidence: 0.65 },
+      { name: 'Executive Communication', category: 'soft', confidence: 0.65 },
+      { name: 'Change Management', category: 'soft', confidence: 0.6 },
+      { name: 'Roadmap Prioritization', category: 'soft', confidence: 0.6 },
+    ];
+  }
+  if (lvl.includes('vp') || lvl.includes('vice') || lvl.includes('cxo') || lvl.includes('chief') || lvl.includes('c-level')) {
+    return [
+      { name: 'Executive Leadership', category: 'soft', confidence: 0.7 },
+      { name: 'Vision & Strategy', category: 'soft', confidence: 0.7 },
+      { name: 'Board Communication', category: 'soft', confidence: 0.65 },
+      { name: 'P&L Management', category: 'soft', confidence: 0.65 },
+      { name: 'Organizational Scaling', category: 'soft', confidence: 0.6 },
+    ];
+  }
+  if (lvl.includes('lead')) {
+    return [
+      { name: 'Technical Leadership', category: 'soft', confidence: 0.65 },
+      { name: 'Mentoring', category: 'soft', confidence: 0.6 },
+      { name: 'Sprint Planning', category: 'soft', confidence: 0.6 },
+      { name: 'Code Review', category: 'technical', confidence: 0.6 },
+    ];
+  }
+  if (lvl.includes('intern') || lvl.includes('trainee')) {
+    return [
+      { name: 'Fast Learning', category: 'soft', confidence: 0.6 },
+      { name: 'Collaboration', category: 'soft', confidence: 0.6 },
+      { name: 'Time Management', category: 'soft', confidence: 0.6 },
+      { name: 'Documentation', category: 'soft', confidence: 0.6 },
+    ];
+  }
+  if (lvl.includes('volunteer')) {
+    return [
+      { name: 'Community Engagement', category: 'soft', confidence: 0.6 },
+      { name: 'Event Coordination', category: 'soft', confidence: 0.6 },
+      { name: 'Fundraising', category: 'soft', confidence: 0.6 },
+      { name: 'Outreach', category: 'soft', confidence: 0.6 },
+    ];
+  }
+  // Default IC-oriented fallbacks
+  return [
+    { name: 'Problem Solving', category: 'soft', confidence: 0.6 },
+    { name: 'Communication', category: 'soft', confidence: 0.6 },
+    { name: 'Collaboration', category: 'soft', confidence: 0.6 },
+    { name: 'Ownership', category: 'soft', confidence: 0.6 },
+  ];
 }
 
 serve(async (req) => {
@@ -20,49 +120,49 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  if (!openAIApiKey) {
+    return new Response(
+      JSON.stringify({ error: 'Missing OPENAI_API_KEY' }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+
   try {
-    const { profileSummary, candidateName } = await req.json();
+    const {
+      profileSummary,
+      candidateName,
+      jobTitle,
+      context = 'candidate',
+      desiredCount = 20,
+      minCount = 15,
+    }: {
+      profileSummary: string;
+      candidateName?: string;
+      jobTitle?: string;
+      context?: ContextKind;
+      desiredCount?: number;
+      minCount?: number;
+    } = await req.json();
 
     if (!profileSummary || profileSummary.trim().length < 10) {
       return new Response(
-        JSON.stringify({ error: 'Profile summary too short for skill extraction' }),
+        JSON.stringify({ error: 'Input text too short for skill extraction' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('Generating skills for candidate:', candidateName);
+    console.log('Generating skills', { context, desiredCount, minCount, name: candidateName, title: jobTitle });
 
-    const systemPrompt = `You are an expert recruiter and skills analyst. Analyze the candidate profile summary and extract structured skills data.
+    const sharedCategories = `Extract skills in these categories:\n- technical: Programming languages, frameworks, methodologies, technical skills\n- tools: Software, platforms, applications (Figma, Adobe, Salesforce, Greenhouse, Ashby, etc.)\n- industries: Industry experience, domain knowledge, market sectors\n- titles: Job roles, positions, career levels they've held or could fill\n- soft: Leadership, communication, teamwork, problem-solving skills\n- certifications: Professional certifications, degrees, credentials`;
 
-Extract skills in these categories:
-- technical: Programming languages, frameworks, methodologies, technical skills
-- tools: Software, platforms, applications (Figma, Adobe, Salesforce, Greenhouse, Ashby, etc.)
-- industries: Industry experience, domain knowledge, market sectors
-- titles: Job roles, positions, career levels they've held or could fill
-- soft: Leadership, communication, teamwork, problem-solving skills
-- certifications: Professional certifications, degrees, credentials
+    const candidateSystem = `You are an expert recruiter and skills analyst. Analyze the candidate profile summary and extract structured skills data.\n\n${sharedCategories}\n\nReturn ONLY a valid JSON array of objects with this exact structure:\n[\n  {\n    "name": "React",\n    "category": "technical",\n    "confidence": 0.95\n  }\n]\n\nGuidelines:\n- Be specific and precise with skill names\n- Confidence should be 0.5-1.0 (only include skills you're confident about)\n- Focus on marketable, searchable skills\n- Include both explicit and implied skills\n- Aim to return between ${minCount} and ${desiredCount} of the most relevant skills total`;
 
-Return ONLY a valid JSON array of objects with this exact structure:
-[
-  {
-    "name": "React",
-    "category": "technical",
-    "confidence": 0.95
-  },
-  {
-    "name": "Figma",
-    "category": "tools", 
-    "confidence": 0.88
-  }
-]
+    const jobSystem = `You are an expert recruiter and role classifier. Analyze the job title and description to (1) infer the role level, and (2) extract level-appropriate skills.\n\nLevels to choose from (pick the best fit): intern/trainee, individual contributor, senior ic, lead, manager, senior manager, director, senior director, vp, svp, c-level, volunteer.\n\n${sharedCategories}\n\nIMPORTANT: For management and leadership levels, prioritize leadership, management, stakeholder communication, hiring, mentoring, budgeting, and strategy. For IC levels, favor hands-on technical skills.\n\nReturn ONLY a valid JSON object with this exact structure:\n{\n  "role_level": { "level": "manager", "confidence": 0.85, "rationale": "..." },\n  "skills": [\n    { "name": "People Management", "category": "soft", "confidence": 0.9 },\n    { "name": "Strategic Planning", "category": "soft", "confidence": 0.85 }\n  ]\n}\n\nGuidelines:\n- Be specific and precise with skill names\n- Confidence should be 0.5-1.0 (only include skills you're confident about)\n- Focus on marketable, searchable skills\n- Include both explicit and implied skills\n- Return between ${minCount} and ${desiredCount} total skills, emphasizing the detected level`;
 
-Guidelines:
-- Be specific and precise with skill names
-- Confidence should be 0.6-1.0 (only include skills you're confident about)
-- Include common variations (e.g., "JavaScript" and "JS")
-- Focus on marketable, searchable skills
-- Include both explicit and implied skills
-- Limit to 20 most relevant skills total`;
+    const systemPrompt = context === 'job' ? jobSystem : candidateSystem;
+    const userPrompt = context === 'job'
+      ? `Job Title: ${jobTitle || 'Unknown'}\n\nJob Description:\n${profileSummary}`
+      : `Candidate Profile: ${candidateName || 'Unknown'}\n\n${profileSummary}`;
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -74,10 +174,10 @@ Guidelines:
         model: 'gpt-4o-mini',
         messages: [
           { role: 'system', content: systemPrompt },
-          { role: 'user', content: `Candidate Profile:\n\n${profileSummary}` }
+          { role: 'user', content: userPrompt }
         ],
-        temperature: 0.3,
-        max_tokens: 1000,
+        temperature: 0.2,
+        max_tokens: 1400,
       }),
     });
 
@@ -86,74 +186,72 @@ Guidelines:
     }
 
     const data = await response.json();
-    const content = data.choices[0].message.content.trim();
-    
-    console.log('Raw OpenAI response:', content);
+    const content: string = data.choices?.[0]?.message?.content?.trim?.() ?? '';
+    console.log('Raw OpenAI response (truncated):', content.slice(0, 500));
 
-    // Parse the JSON response
-    let extractedSkills: SkillItem[];
+    // Parse JSON; handle both array and object shapes and markdown code fences
+    let parsed: any;
     try {
-      extractedSkills = JSON.parse(content);
-    } catch (parseError) {
-      console.error('Failed to parse OpenAI response as JSON:', parseError);
-      // Try to extract JSON from the response if it's wrapped in markdown
+      parsed = JSON.parse(content);
+    } catch {
       const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
       if (jsonMatch) {
-        extractedSkills = JSON.parse(jsonMatch[1]);
+        parsed = JSON.parse(jsonMatch[1]);
       } else {
         throw new Error('Invalid JSON response from AI');
       }
     }
 
-    // Validate and clean the extracted skills
-    const validatedSkills = extractedSkills
-      .filter(skill => 
-        skill.name && 
-        skill.category && 
-        skill.confidence >= 0.6 && 
-        skill.confidence <= 1.0
-      )
-      .map(skill => ({
-        ...skill,
-        source: 'ai_generated' as const,
-        name: skill.name.trim()
-      }))
-      .slice(0, 20); // Limit to 20 skills
+    let aiSkills: SkillItem[] = [];
+    let roleLevel: RoleLevel | undefined;
 
-    console.log(`Generated ${validatedSkills.length} skills for candidate`);
+    if (Array.isArray(parsed)) {
+      aiSkills = parsed as SkillItem[];
+    } else if (parsed && typeof parsed === 'object') {
+      aiSkills = (parsed.skills || []) as SkillItem[];
+      roleLevel = parsed.role_level || parsed.roleLevel;
+    }
 
-    // Group skills by category for response
-    const skillsByCategory = validatedSkills.reduce((acc, skill) => {
-      if (!acc[skill.category]) {
-        acc[skill.category] = [];
-      }
-      acc[skill.category].push(skill);
-      return acc;
-    }, {} as Record<string, SkillItem[]>);
+    // Validate, clean, and filter
+    const baseThreshold = context === 'job' ? 0.5 : 0.6;
+    let validated = dedupeSkills(
+      (aiSkills || [])
+        .filter((s) => s && s.name && s.category && typeof s.confidence === 'number' && s.confidence >= baseThreshold)
+    );
+
+    // If under minCount, relax threshold and/or augment with fallbacks based on role level
+    if (validated.length < minCount) {
+      const relaxed = dedupeSkills(
+        (aiSkills || []).filter((s) => s && s.name && s.category && typeof s.confidence === 'number' && s.confidence >= 0.3)
+      );
+      validated = dedupeSkills([...validated, ...relaxed]);
+    }
+
+    if (validated.length < minCount && context === 'job') {
+      const fallbacks = fallbackSkillsForLevel(roleLevel?.level || (jobTitle || ''));
+      validated = dedupeSkills([...validated, ...fallbacks]);
+    }
+
+    // Cap to desiredCount
+    const limited = validated.slice(0, Math.max(minCount, desiredCount));
+
+    const skillsByCategory = groupByCategory(limited);
 
     return new Response(
       JSON.stringify({
-        skills: validatedSkills,
+        skills: limited,
         skillsByCategory,
-        totalCount: validatedSkills.length,
-        generatedAt: new Date().toISOString()
+        totalCount: limited.length,
+        generatedAt: new Date().toISOString(),
+        ...(roleLevel ? { role_level: roleLevel } : {}),
       }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
-
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error in generate-comprehensive-skills function:', error);
     return new Response(
-      JSON.stringify({ 
-        error: error.message || 'Failed to generate skills',
-        details: error.toString()
-      }),
-      {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      }
+      JSON.stringify({ error: error?.message || 'Failed to generate skills', details: String(error) }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });
