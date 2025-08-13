@@ -237,7 +237,7 @@ export default function CandidateFormSheet({ isOpen, onClose, jobId }: Candidate
                     accept=".pdf,.doc,.docx,.txt,.rtf,.jpg,.jpeg,.png,.gif,.webp"
                   />
                   <Sparkles className="h-8 w-8 mx-auto text-pastel-purple-foreground mb-2" />
-                  <p className="text-sm text-text-secondary mb-2">Drag and drop here, and watch some magic</p>
+                  <p className="text-sm text-text-secondary mb-2">Upload here, and watch some magic!</p>
                   <p className="text-xs text-text-secondary mb-4">PDF, DOC, DOCX, TXT or images up to 15MB</p>
                   <Button type="button" variant="default" onClick={() => fileInputRef.current?.click()} disabled={isParsing || isUploading} className="gap-sm bg-pastel-purple text-pastel-purple-foreground border border-pastel-purple-foreground/30 hover:bg-pastel-purple/80 shadow-button">
                     {isParsing || isUploading ? (<><Loader2 className="h-4 w-4 animate-spin" /> Working…</>) : (<><Sparkles className="h-4 w-4" /> Choose File</>)}

@@ -336,7 +336,7 @@ export default function PublicJobPosting() {
         accept=".pdf,.doc,.docx,.txt,.rtf,.jpg,.jpeg,.png,.gif,.webp"
       />
       <Sparkles className="h-8 w-8 mx-auto text-pastel-purple-foreground mb-2" />
-      <p className="text-sm text-text-secondary mb-2">Drag and drop your resume</p>
+      <p className="text-sm text-text-secondary mb-2">Upload here, and watch some magic!</p>
       <p className="text-xs text-text-secondary mb-4">PDF, DOC, DOCX, TXT or images up to 15MB</p>
       <Button
         type="button"
