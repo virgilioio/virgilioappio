@@ -24,6 +24,7 @@ type FieldType = 'text' | 'number' | 'email' | 'textarea' | 'select' | 'checkbox
 
 interface Posting {
   id: string
+  job_id: string
   title: string
   description: string | null
   details: any | null
@@ -61,6 +62,7 @@ export default function PublicJobPosting() {
   const { isParsing, parseResume } = useResumeParsing()
   const [formValues, setFormValues] = useState<Record<string, string>>({})
   const { generateSkills, isGenerating, generatedSkills } = useSkillsGeneration()
+  const [isSubmitting, setIsSubmitting] = useState(false)
   // Canonical host redirect to app.virgilio.io (skip local dev)
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -89,7 +91,7 @@ export default function PublicJobPosting() {
       // Only active postings are selectable publicly due to RLS
       const { data: p } = await supabase
         .from('job_postings')
-        .select('id,title,description,details')
+        .select('id,job_id,title,description,details')
         .eq('slug', slug)
         .maybeSingle()
       if (!p) {
@@ -266,19 +268,71 @@ export default function PublicJobPosting() {
     )
       }
   
-      const handleApplyClick = () => {
-        setTab('application')
-        setTimeout(() => {
-          document.getElementById('application-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-        }, 0)
+  const handleApplyClick = () => {
+    setTab('application')
+    setTimeout(() => {
+      document.getElementById('application-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 0)
+  }
+
+  const handleSubmitApplication = async () => {
+    if (!posting) return
+    setIsSubmitting(true)
+    try {
+      const findByName = (name: string) => {
+        const f = fields.find((r) => (r as any).field_name === name)
+        return f ? formValues[f.id] ?? '' : ''
       }
-  
-      const handleSubmitApplication = () => {
-        toast({
-          title: 'Application submitted',
-          description: 'Thank you for applying. We will review your application.',
-        })
+      const findByLabel = (label: RegExp) => {
+        const f = fields.find((r) => label.test(r.field_label))
+        return f ? formValues[f.id] ?? '' : ''
       }
+
+      const first = findByName('first_name') || findByLabel(/first\s*name/i)
+      const last = findByName('last_name') || findByLabel(/last\s*name/i)
+      const full = findByName('full_name') || findByLabel(/full\s*name|name/i)
+      const email = findByName('email') || findByLabel(/email/i)
+      const phone = findByName('phone') || findByLabel(/phone|mobile/i)
+      const linkedin = findByName('linkedin_url') || findByLabel(/linkedin/i)
+      const psField = fields.find((r) => (r as any).field_name === 'profile_summary' || /profile summary/i.test(r.field_label))
+      const rawSummary = psField ? (formValues[psField.id] ?? '') : ''
+      const profileSummary = sanitizeHtmlForEditor(rawSummary)
+
+      const candidateName = (full || `${first} ${last}`).trim() || 'Applicant'
+
+      const { data, error } = await supabase.functions.invoke('public-submit-application', {
+        body: {
+          postingId: posting.id,
+          jobId: posting.job_id,
+          fields: {
+            first_name: first,
+            last_name: last,
+            full_name: full,
+            email,
+            phone,
+            linkedin_url: linkedin,
+            profile_summary: profileSummary,
+            candidate_name: candidateName,
+          }
+        }
+      })
+
+      if (error) throw new Error(error.message || 'Submission failed')
+
+      toast({
+        title: 'Application submitted',
+        description: 'Thank you for applying. We will review your application.',
+      })
+    } catch (err) {
+      console.error('Submit application error:', err)
+      toast({
+        title: 'Submission failed',
+        description: err instanceof Error ? err.message : 'Something went wrong',
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
   
       if (loading) {
     return <div className="max-w-3xl mx-auto p-6">Loading...</div>
@@ -500,11 +554,15 @@ export default function PublicJobPosting() {
                           ))}
                         </div>
                       )}
-                      <div className="pt-4">
-                        <Button type="button" onClick={handleSubmitApplication} className="w-full sm:w-auto" aria-label="Submit application">
-                          Submit Application
-                        </Button>
-                      </div>
+<div className="pt-4">
+  <Button type="button" onClick={handleSubmitApplication} className="w-full sm:w-auto" aria-label="Submit application" disabled={isSubmitting || isParsing || isGenerating}>
+    {isSubmitting ? (
+      <span className="inline-flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" />Submitting…</span>
+    ) : (
+      'Submit Application'
+    )}
+  </Button>
+</div>
                     </CardContent>
                   </Card>
                 </section>
