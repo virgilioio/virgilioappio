@@ -479,6 +479,7 @@ export type Database = {
           skills_metadata: Json | null
           social_profiles: Json | null
           source: string | null
+          standardized_skills: string[] | null
           status: string | null
           updated_at: string
           years_experience: number | null
@@ -514,6 +515,7 @@ export type Database = {
           skills_metadata?: Json | null
           social_profiles?: Json | null
           source?: string | null
+          standardized_skills?: string[] | null
           status?: string | null
           updated_at?: string
           years_experience?: number | null
@@ -549,6 +551,7 @@ export type Database = {
           skills_metadata?: Json | null
           social_profiles?: Json | null
           source?: string | null
+          standardized_skills?: string[] | null
           status?: string | null
           updated_at?: string
           years_experience?: number | null
@@ -1224,6 +1227,7 @@ export type Database = {
           salary_period: string | null
           skills: string[] | null
           skills_metadata: Json | null
+          standardized_skills: string[] | null
           updated_at: string
         }
         Insert: {
@@ -1246,6 +1250,7 @@ export type Database = {
           salary_period?: string | null
           skills?: string[] | null
           skills_metadata?: Json | null
+          standardized_skills?: string[] | null
           updated_at?: string
         }
         Update: {
@@ -1268,6 +1273,7 @@ export type Database = {
           salary_period?: string | null
           skills?: string[] | null
           skills_metadata?: Json | null
+          standardized_skills?: string[] | null
           updated_at?: string
         }
         Relationships: [

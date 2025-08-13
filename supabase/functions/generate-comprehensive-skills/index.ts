@@ -9,7 +9,8 @@ const corsHeaders = {
 };
 
 interface SkillItem {
-  name: string;
+  name: string; // localized label
+  canonical?: string; // English canonical label for matching
   category: 'technical' | 'tools' | 'industries' | 'titles' | 'soft' | 'certifications';
   confidence: number;
   source?: 'ai_generated';
@@ -27,14 +28,19 @@ function sanitizeName(name: string): string {
   return (name || '').trim();
 }
 
+function canonicalKey(skill: SkillItem): string {
+  const key = sanitizeName(skill.canonical || skill.name).toLowerCase();
+  return key;
+}
+
 function dedupeSkills(skills: SkillItem[]): SkillItem[] {
   const seen = new Set<string>();
   const out: SkillItem[] = [];
   for (const s of skills) {
-    const key = sanitizeName(s.name).toLowerCase();
+    const key = canonicalKey(s);
     if (!key || seen.has(key)) continue;
     seen.add(key);
-    out.push({ ...s, name: sanitizeName(s.name), source: 'ai_generated' });
+    out.push({ ...s, name: sanitizeName(s.name), canonical: s.canonical ? sanitizeName(s.canonical) : undefined, source: 'ai_generated' });
   }
   return out;
 }
@@ -50,68 +56,67 @@ function fallbackSkillsForLevel(level: string): SkillItem[] {
   const lvl = (level || '').toLowerCase();
   if (lvl.includes('manager')) {
     return [
-      { name: 'People Management', category: 'soft', confidence: 0.7 },
-      { name: 'Team Leadership', category: 'soft', confidence: 0.7 },
-      { name: 'Stakeholder Management', category: 'soft', confidence: 0.65 },
-      { name: 'Project Management', category: 'soft', confidence: 0.65 },
-      { name: 'Hiring & Onboarding', category: 'soft', confidence: 0.6 },
-      { name: 'Coaching & Mentoring', category: 'soft', confidence: 0.6 },
-      { name: 'Performance Management', category: 'soft', confidence: 0.6 },
-      { name: 'Cross-functional Collaboration', category: 'soft', confidence: 0.6 },
-      { name: 'Strategic Planning', category: 'soft', confidence: 0.6 },
-      { name: 'Budgeting', category: 'soft', confidence: 0.6 },
+      { name: 'People Management', canonical: 'People Management', category: 'soft', confidence: 0.7 },
+      { name: 'Team Leadership', canonical: 'Team Leadership', category: 'soft', confidence: 0.7 },
+      { name: 'Stakeholder Management', canonical: 'Stakeholder Management', category: 'soft', confidence: 0.65 },
+      { name: 'Project Management', canonical: 'Project Management', category: 'soft', confidence: 0.65 },
+      { name: 'Hiring & Onboarding', canonical: 'Hiring & Onboarding', category: 'soft', confidence: 0.6 },
+      { name: 'Coaching & Mentoring', canonical: 'Coaching & Mentoring', category: 'soft', confidence: 0.6 },
+      { name: 'Performance Management', canonical: 'Performance Management', category: 'soft', confidence: 0.6 },
+      { name: 'Cross-functional Collaboration', canonical: 'Cross-functional Collaboration', category: 'soft', confidence: 0.6 },
+      { name: 'Strategic Planning', canonical: 'Strategic Planning', category: 'soft', confidence: 0.6 },
+      { name: 'Budgeting', canonical: 'Budgeting', category: 'soft', confidence: 0.6 },
     ];
   }
   if (lvl.includes('director')) {
     return [
-      { name: 'Strategic Leadership', category: 'soft', confidence: 0.7 },
-      { name: 'Org Design', category: 'soft', confidence: 0.65 },
-      { name: 'Portfolio Management', category: 'soft', confidence: 0.65 },
-      { name: 'Budget Ownership', category: 'soft', confidence: 0.65 },
-      { name: 'Executive Communication', category: 'soft', confidence: 0.65 },
-      { name: 'Change Management', category: 'soft', confidence: 0.6 },
-      { name: 'Roadmap Prioritization', category: 'soft', confidence: 0.6 },
+      { name: 'Strategic Leadership', canonical: 'Strategic Leadership', category: 'soft', confidence: 0.7 },
+      { name: 'Org Design', canonical: 'Organizational Design', category: 'soft', confidence: 0.65 },
+      { name: 'Portfolio Management', canonical: 'Portfolio Management', category: 'soft', confidence: 0.65 },
+      { name: 'Budget Ownership', canonical: 'Budget Ownership', category: 'soft', confidence: 0.65 },
+      { name: 'Executive Communication', canonical: 'Executive Communication', category: 'soft', confidence: 0.65 },
+      { name: 'Change Management', canonical: 'Change Management', category: 'soft', confidence: 0.6 },
+      { name: 'Roadmap Prioritization', canonical: 'Roadmap Prioritization', category: 'soft', confidence: 0.6 },
     ];
   }
   if (lvl.includes('vp') || lvl.includes('vice') || lvl.includes('cxo') || lvl.includes('chief') || lvl.includes('c-level')) {
     return [
-      { name: 'Executive Leadership', category: 'soft', confidence: 0.7 },
-      { name: 'Vision & Strategy', category: 'soft', confidence: 0.7 },
-      { name: 'Board Communication', category: 'soft', confidence: 0.65 },
-      { name: 'P&L Management', category: 'soft', confidence: 0.65 },
-      { name: 'Organizational Scaling', category: 'soft', confidence: 0.6 },
+      { name: 'Executive Leadership', canonical: 'Executive Leadership', category: 'soft', confidence: 0.7 },
+      { name: 'Vision & Strategy', canonical: 'Vision & Strategy', category: 'soft', confidence: 0.7 },
+      { name: 'Board Communication', canonical: 'Board Communication', category: 'soft', confidence: 0.65 },
+      { name: 'P&L Management', canonical: 'P&L Management', category: 'soft', confidence: 0.65 },
+      { name: 'Organizational Scaling', canonical: 'Organizational Scaling', category: 'soft', confidence: 0.6 },
     ];
   }
   if (lvl.includes('lead')) {
     return [
-      { name: 'Technical Leadership', category: 'soft', confidence: 0.65 },
-      { name: 'Mentoring', category: 'soft', confidence: 0.6 },
-      { name: 'Sprint Planning', category: 'soft', confidence: 0.6 },
-      { name: 'Code Review', category: 'technical', confidence: 0.6 },
+      { name: 'Technical Leadership', canonical: 'Technical Leadership', category: 'soft', confidence: 0.65 },
+      { name: 'Mentoring', canonical: 'Mentoring', category: 'soft', confidence: 0.6 },
+      { name: 'Sprint Planning', canonical: 'Sprint Planning', category: 'soft', confidence: 0.6 },
+      { name: 'Code Review', canonical: 'Code Review', category: 'technical', confidence: 0.6 },
     ];
   }
   if (lvl.includes('intern') || lvl.includes('trainee')) {
     return [
-      { name: 'Fast Learning', category: 'soft', confidence: 0.6 },
-      { name: 'Collaboration', category: 'soft', confidence: 0.6 },
-      { name: 'Time Management', category: 'soft', confidence: 0.6 },
-      { name: 'Documentation', category: 'soft', confidence: 0.6 },
+      { name: 'Fast Learning', canonical: 'Fast Learning', category: 'soft', confidence: 0.6 },
+      { name: 'Collaboration', canonical: 'Collaboration', category: 'soft', confidence: 0.6 },
+      { name: 'Time Management', canonical: 'Time Management', category: 'soft', confidence: 0.6 },
+      { name: 'Documentation', canonical: 'Documentation', category: 'soft', confidence: 0.6 },
     ];
   }
   if (lvl.includes('volunteer')) {
     return [
-      { name: 'Community Engagement', category: 'soft', confidence: 0.6 },
-      { name: 'Event Coordination', category: 'soft', confidence: 0.6 },
-      { name: 'Fundraising', category: 'soft', confidence: 0.6 },
-      { name: 'Outreach', category: 'soft', confidence: 0.6 },
+      { name: 'Community Engagement', canonical: 'Community Engagement', category: 'soft', confidence: 0.6 },
+      { name: 'Event Coordination', canonical: 'Event Coordination', category: 'soft', confidence: 0.6 },
+      { name: 'Fundraising', canonical: 'Fundraising', category: 'soft', confidence: 0.6 },
+      { name: 'Outreach', canonical: 'Outreach', category: 'soft', confidence: 0.6 },
     ];
   }
-  // Default IC-oriented fallbacks
   return [
-    { name: 'Problem Solving', category: 'soft', confidence: 0.6 },
-    { name: 'Communication', category: 'soft', confidence: 0.6 },
-    { name: 'Collaboration', category: 'soft', confidence: 0.6 },
-    { name: 'Ownership', category: 'soft', confidence: 0.6 },
+    { name: 'Problem Solving', canonical: 'Problem Solving', category: 'soft', confidence: 0.6 },
+    { name: 'Communication', canonical: 'Communication', category: 'soft', confidence: 0.6 },
+    { name: 'Collaboration', canonical: 'Collaboration', category: 'soft', confidence: 0.6 },
+    { name: 'Ownership', canonical: 'Ownership', category: 'soft', confidence: 0.6 },
   ];
 }
 
@@ -153,11 +158,60 @@ serve(async (req) => {
 
     console.log('Generating skills', { context, desiredCount, minCount, name: candidateName, title: jobTitle });
 
-    const sharedCategories = `Extract skills in these categories:\n- technical: Programming languages, frameworks, methodologies, technical skills\n- tools: Software, platforms, applications (Figma, Adobe, Salesforce, Greenhouse, Ashby, etc.)\n- industries: Industry experience, domain knowledge, market sectors\n- titles: Job roles, positions, career levels they've held or could fill\n- soft: Leadership, communication, teamwork, problem-solving skills\n- certifications: Professional certifications, degrees, credentials`;
+    const sharedCategories = `Extract skills in these categories:
+- technical: Programming languages, frameworks, methodologies, technical skills
+- tools: Software, platforms, applications (Figma, Adobe, Salesforce, Greenhouse, Ashby, etc.)
+- industries: Industry experience, domain knowledge, market sectors (e.g., SaaS, Fintech, Automotive)
+- titles: Job roles, positions, career levels they've held or could fill
+- soft: Leadership, communication, teamwork, problem-solving skills
+- certifications: Professional certifications, degrees, credentials`;
 
-    const candidateSystem = `You are an expert recruiter and skills analyst. Analyze the candidate profile summary and extract structured skills data.\n\n${sharedCategories}\n\nReturn ONLY a valid JSON array of objects with this exact structure:\n[\n  {\n    "name": "React",\n    "category": "technical",\n    "confidence": 0.95\n  }\n]\n\nGuidelines:\n- Be specific and precise with skill names\n- Confidence should be 0.5-1.0 (only include skills you're confident about)\n- Focus on marketable, searchable skills\n- Include both explicit and implied skills\n- Aim to return between ${minCount} and ${desiredCount} of the most relevant skills total`;
+    const candidateSystem = `You are an expert multilingual recruiter and skills analyst.
+Detect the input language automatically and extract structured skills data.
 
-    const jobSystem = `You are an expert recruiter and role classifier. Analyze the job title and description to (1) infer the role level, and (2) extract level-appropriate skills.\n\nLevels to choose from (pick the best fit): intern/trainee, individual contributor, senior ic, lead, manager, senior manager, director, senior director, vp, svp, c-level, volunteer.\n\n${sharedCategories}\n\nIMPORTANT: For management and leadership levels, prioritize leadership, management, stakeholder communication, hiring, mentoring, budgeting, and strategy. For IC levels, favor hands-on technical skills.\n\nReturn ONLY a valid JSON object with this exact structure:\n{\n  "role_level": { "level": "manager", "confidence": 0.85, "rationale": "..." },\n  "skills": [\n    { "name": "People Management", "category": "soft", "confidence": 0.9 },\n    { "name": "Strategic Planning", "category": "soft", "confidence": 0.85 }\n  ]\n}\n\nGuidelines:\n- Be specific and precise with skill names\n- Confidence should be 0.5-1.0 (only include skills you're confident about)\n- Focus on marketable, searchable skills\n- Include both explicit and implied skills\n- Return between ${minCount} and ${desiredCount} total skills, emphasizing the detected level`;
+${sharedCategories}
+
+Return ONLY a valid JSON array of objects with this exact structure:
+[
+  {
+    "name": "Gestión de Proyectos",
+    "canonical": "Project Management",
+    "category": "technical",
+    "confidence": 0.95
+  }
+]
+
+Guidelines:
+- "name" must be in the source language (localized label).
+- "canonical" must be English and standardized for matching.
+- Include "industries" inline (do not separate them from other skills).
+- Confidence should be 0.5-1.0 (only include skills you're confident about).
+- Be specific and marketable; include explicit and implied skills.
+- Aim to return between ${minCount} and ${desiredCount} total skills, blending technical, tools, industries, soft, and titles as appropriate.`;
+
+    const jobSystem = `You are an expert multilingual recruiter and role classifier.
+Detect the input language automatically and (1) infer the role level, and (2) extract level-appropriate skills, including industries inline.
+
+Levels to choose from (pick the best fit): intern/trainee, individual contributor, senior ic, lead, manager, senior manager, director, senior director, vp, svp, c-level, volunteer.
+
+${sharedCategories}
+
+IMPORTANT: For management and leadership levels, prioritize leadership, management, stakeholder communication, hiring, mentoring, budgeting, and strategy. For IC levels, favor hands-on technical skills.
+
+Return ONLY a valid JSON object with this exact structure:
+{
+  "role_level": { "level": "manager", "confidence": 0.85, "rationale": "..." },
+  "skills": [
+    { "name": "Gestión de Personas", "canonical": "People Management", "category": "soft", "confidence": 0.9 },
+    { "name": "Planificación Estratégica", "canonical": "Strategic Planning", "category": "soft", "confidence": 0.85 }
+  ]
+}
+
+Guidelines:
+- "name" must be localized; "canonical" must be English.
+- Include "industries" inline, sized for relevance to the role.
+- Confidence should be 0.5-1.0.
+- Return between ${minCount} and ${desiredCount} skills emphasizing the detected level.`;
 
     const systemPrompt = context === 'job' ? jobSystem : candidateSystem;
     const userPrompt = context === 'job'
@@ -215,14 +269,29 @@ serve(async (req) => {
     // Validate, clean, and filter
     const baseThreshold = context === 'job' ? 0.5 : 0.6;
     let validated = dedupeSkills(
-      (aiSkills || [])
-        .filter((s) => s && s.name && s.category && typeof s.confidence === 'number' && s.confidence >= baseThreshold)
+      (aiSkills || []).filter((s) =>
+        s &&
+        s.name &&
+        s.category &&
+        typeof s.confidence === 'number' &&
+        s.confidence >= baseThreshold
+      ).map((s) => ({
+        ...s,
+        name: sanitizeName(s.name),
+        canonical: s.canonical ? sanitizeName(s.canonical) : undefined,
+      }))
     );
 
     // If under minCount, relax threshold and/or augment with fallbacks based on role level
     if (validated.length < minCount) {
       const relaxed = dedupeSkills(
-        (aiSkills || []).filter((s) => s && s.name && s.category && typeof s.confidence === 'number' && s.confidence >= 0.3)
+        (aiSkills || []).filter((s) =>
+          s && s.name && s.category && typeof s.confidence === 'number' && s.confidence >= 0.3
+        ).map((s) => ({
+          ...s,
+          name: sanitizeName(s.name),
+          canonical: s.canonical ? sanitizeName(s.canonical) : undefined,
+        }))
       );
       validated = dedupeSkills([...validated, ...relaxed]);
     }
