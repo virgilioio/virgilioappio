@@ -293,6 +293,44 @@ export default function PublicJobPosting() {
 
   const handleSubmitApplication = async () => {
     if (!posting) return
+    
+    // Validate required fields
+    const missingRequiredFields: string[] = []
+    const requiredFields = fields.filter(f => f.is_required)
+    
+    requiredFields.forEach(field => {
+      const value = formValues[field.id]
+      let isEmpty = false
+      
+      // Different validation logic based on field type
+      switch (field.field_type) {
+        case 'file':
+          isEmpty = !uploadedFiles[field.id]
+          break
+        case 'checkbox':
+          isEmpty = !value || value !== 'true'
+          break
+        case 'select':
+          isEmpty = !value || value.trim() === ''
+          break
+        default:
+          isEmpty = !value || value.trim() === ''
+      }
+      
+      if (isEmpty) {
+        missingRequiredFields.push(field.field_label)
+      }
+    })
+    
+    if (missingRequiredFields.length > 0) {
+      toast({
+        title: 'Missing required fields',
+        description: `Please fill in the following required fields: ${missingRequiredFields.join(', ')}`,
+        variant: 'destructive'
+      })
+      return
+    }
+    
     setIsSubmitting(true)
     try {
       const findByName = (name: string) => {
@@ -483,12 +521,18 @@ export default function PublicJobPosting() {
 )}
                                 {f.field_type === 'checkbox' && (
                                   <div className="flex items-center gap-2">
-                                    <Checkbox />
+                                    <Checkbox
+                                      checked={formValues[f.id] === 'true'}
+                                      onCheckedChange={(checked) => setFormValues((prev) => ({ ...prev, [f.id]: checked ? 'true' : 'false' }))}
+                                    />
                                     <span className="text-sm text-muted-foreground">I acknowledge</span>
                                   </div>
                                 )}
                                 {f.field_type === 'select' && (
-                                  <Select>
+                                  <Select
+                                    value={formValues[f.id] || ''}
+                                    onValueChange={(value) => setFormValues((prev) => ({ ...prev, [f.id]: value }))}
+                                  >
                                     <SelectTrigger><SelectValue placeholder="Select an option" /></SelectTrigger>
                                     <SelectContent>
                                       {(options[f.id] || []).map((o) => (
@@ -497,7 +541,13 @@ export default function PublicJobPosting() {
                                     </SelectContent>
                                   </Select>
                                 )}
-                                {f.field_type === 'date' && <Input type="date" />}
+                                {f.field_type === 'date' && (
+                                  <Input
+                                    type="date"
+                                    value={formValues[f.id] || ''}
+                                    onChange={(e) => setFormValues((prev) => ({ ...prev, [f.id]: e.target.value }))}
+                                  />
+                                )}
 {f.field_type === 'file' && (/resume/i.test(f.field_label) ? (
   <div className="relative group">
     <div className={`pointer-events-none absolute -inset-[2px] rounded-lg bg-gradient-to-r from-pastel-purple via-pastel-blue to-info blur-md transition-opacity duration-300 ${dragOverField === f.id ? 'opacity-80' : 'opacity-50'} pulse`} />
