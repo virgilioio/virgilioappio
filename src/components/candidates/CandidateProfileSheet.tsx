@@ -27,7 +27,7 @@ import { toast } from '@/hooks/use-toast'
 import CandidateNameCard from '@/components/candidates/CandidateNameCard'
 import { usePipelineActions } from '@/hooks/usePipelineActions'
 import { useCandidateAttachments } from '@/hooks/useCandidateAttachments'
-import { ResumeDropzone } from '@/components/candidates/ResumeDropzone'
+import { EnhancedResumeDropzone } from '@/components/candidates/EnhancedResumeDropzone'
 import { useJobHiringPlan, JobStage } from '@/hooks/useJobHiringPlan'
 import { cn } from '@/lib/utils'
 interface CandidateProfileSheetProps {
@@ -566,7 +566,13 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                                 <CandidateResumeViewer jobCandidateId={jobCandidateId} />
                               </>
                             ) : (
-                              <ResumeDropzone onUpload={(file) => uploadResume(file, true)} isUploading={isResumeUploading} />
+                              <EnhancedResumeDropzone 
+                                onUpload={(file) => uploadResume(file, true)} 
+                                isUploading={isResumeUploading}
+                                candidateId={jobCandidateId || undefined}
+                                showUpload={true}
+                                parseOnly={false}
+                              />
                             )
                           ) : (
                             <div className="text-sm text-text-secondary">No job candidate record linked.</div>

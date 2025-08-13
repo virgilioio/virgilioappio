@@ -22,7 +22,7 @@ import AddToJobPipelineDialog from '@/components/candidates/AddToJobPipelineDial
 import CandidateNameCard from '@/components/candidates/CandidateNameCard'
 import { supabase } from '@/integrations/supabase/client'
 import { CandidateResumeViewer } from '@/components/candidates/CandidateResumeViewer'
-import { ResumeDropzone } from '@/components/candidates/ResumeDropzone'
+import { EnhancedResumeDropzone } from '@/components/candidates/EnhancedResumeDropzone'
 import { toast } from '@/hooks/use-toast'
 
 export default function IndependentCandidateProfile() {
@@ -407,7 +407,13 @@ export default function IndependentCandidateProfile() {
                         <CandidateResumeViewer fallbackResumeUrl={candidate.resume_url} />
                       </>
                     ) : (
-                      <ResumeDropzone onUpload={handleResumeUpload} isUploading={isResumeUploading} />
+                      <EnhancedResumeDropzone 
+                        onUpload={handleResumeUpload} 
+                        isUploading={isResumeUploading}
+                        candidateId={candidate.id}
+                        showUpload={false}
+                        parseOnly={true}
+                      />
                     )}
                   </CardContent>
                 </Card>

@@ -27,6 +27,7 @@ import { sanitizeHtmlForEditor } from '@/utils/htmlSanitizer'
 import { markdownToHtml } from '@/utils/markdown'
 import { ParsingAnimation } from '@/components/ui/parsing-animation'
 import { useSkillsGeneration } from '@/hooks/useSkillsGeneration'
+import { EnhancedResumeDropzone, ParsedResumeData } from './EnhancedResumeDropzone'
 
 interface CandidateFormProps {
   isOpen: boolean
@@ -80,7 +81,6 @@ export function CandidateForm({
 
   const { isParsing, parseResume } = useResumeParsing();
   const { generateSkills, isGenerating } = useSkillsGeneration();
-  const [isProcessingResume, setIsProcessingResume] = useState(false)
 
   const form = useForm<FormData>({
     defaultValues: {
@@ -240,39 +240,10 @@ export function CandidateForm({
       // New candidate: queue files to upload after creation
       setPendingFiles((prev) => [...prev, ...fileArray])
 
-      try {
-        setIsProcessingResume(true)
-        const first = fileArray[0]
-        if (first) {
-          const parsed = await parseResume(first)
-          if (parsed) {
-            if (parsed.name) form.setValue('candidate_name', parsed.name)
-            if (parsed.email) form.setValue('email', parsed.email)
-            if (parsed.phone) form.setValue('phone', parsed.phone)
-            if (parsed.profileSummary && parsed.profileSummary.trim().length > 0) {
-              const html = markdownToHtml(parsed.profileSummary)
-              const sanitized = sanitizeHtmlForEditor(html)
-              setProfileSummary(sanitized)
-              setProfileIsExternalUpdate(true)
-              
-              // Automatically generate skills after profile summary is set
-              try {
-                await generateSkills(parsed.profileSummary, parsed.name || 'Candidate', { 
-                  context: 'candidate', 
-                  desiredCount: 20, 
-                  minCount: 12 
-                })
-              } catch (error) {
-                console.error('Skills generation failed:', error)
-              }
-            }
-            toast({ title: 'Resume parsed', description: 'Information extracted and skills generated from your resume.' })
-          }
-        }
-      } catch (_) {
-        // Errors are handled in the parsing hook
-      } finally {
-        setIsProcessingResume(false)
+      // Use enhanced dropzone for parsing when creating new candidates
+      const first = fileArray[0]
+      if (first) {
+        // Enhanced dropzone will handle parsing and skills generation
       }
 
     }
@@ -422,55 +393,34 @@ export function CandidateForm({
               <h3 className="text-lg font-medium text-text-primary border-b border-border pb-2">
                 Resume
               </h3>
-              <div className="relative group">
-                <div className={`pointer-events-none absolute -inset-[2px] rounded-lg bg-gradient-to-r from-pastel-purple via-pastel-blue to-info blur-md transition-opacity duration-300 ${dragOver ? 'opacity-80' : 'opacity-50'} pulse`} />
-                <div
-                  className={`relative border-2 border-dashed rounded-lg p-6 text-center transition-colors bg-pastel-purple/10 ${dragOver ? 'border-pastel-purple bg-pastel-purple/15' : 'border-pastel-purple/70 hover:border-pastel-purple'}`}
-                  onDrop={handleDrop}
-                  onDragOver={handleDragOver}
-                  onDragLeave={handleDragLeave}
-                  aria-busy={isProcessingResume || isParsing || isGenerating}
-                  aria-live="polite"
-                >
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    className="hidden"
-                    onChange={handleFileInputChange}
-                    accept=".pdf,.doc,.docx,.txt,.rtf,.jpg,.jpeg,.png,.gif,.webp"
-                  />
-                  <Sparkles className="h-8 w-8 mx-auto text-pastel-purple-foreground mb-2" />
-                  <p className="text-sm text-text-secondary mb-2">Upload here, and watch some magic!</p>
-                  <p className="text-xs text-text-secondary mb-4">PDF, DOC, DOCX, TXT or images up to 15MB</p>
-                  <Button
-                    type="button"
-                    variant="default"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isProcessingResume || isParsing || isGenerating}
-                    className="gap-sm bg-pastel-purple text-pastel-purple-foreground border border-pastel-purple-foreground/30 hover:bg-pastel-purple/80 shadow-button"
-                  >
-                    {(isProcessingResume || isParsing || isGenerating) ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        {isParsing ? 'Parsing…' : isGenerating ? 'Generating skills…' : 'Processing…'}
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="h-4 w-4" />
-                        Choose File
-                      </>
-                    )}
-                  </Button>
-                  {(isProcessingResume || isParsing || isGenerating) && (
-                    <div className="absolute inset-0 rounded-lg bg-background/60 backdrop-blur-sm flex flex-col items-center justify-center animate-fade-in">
-                      <Loader2 className="h-6 w-6 text-pastel-purple-foreground animate-spin mb-2" />
-                      <ParsingAnimation 
-                        isActive={isProcessingResume || isParsing || isGenerating}
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
+              <EnhancedResumeDropzone
+                onUpload={candidate ? uploadFileForCandidate.bind(null, candidate.id) : undefined}
+                onParsed={(parsed: ParsedResumeData) => {
+                  // Apply parsed data to form
+                  if (parsed.name) form.setValue('candidate_name', parsed.name)
+                  if (parsed.email) form.setValue('email', parsed.email)
+                  if (parsed.phone) form.setValue('phone', parsed.phone)
+                  if (parsed.profileSummary) {
+                    const html = sanitizeHtmlForEditor(
+                      parsed.profileSummary.includes('<')
+                        ? parsed.profileSummary
+                        : markdownToHtml(parsed.profileSummary)
+                    )
+                    setProfileSummary(html)
+                    setProfileIsExternalUpdate(true)
+                  }
+                }}
+                onSkillsGenerated={(newSkills: string[]) => {
+                  const uniqueSkills = [...new Set([...skills, ...newSkills])]
+                  setSkills(uniqueSkills)
+                }}
+                isUploading={isUploadingResume}
+                candidateId={candidate?.id}
+                candidateName={form.watch('candidate_name')}
+                autoGenerateSkills={true}
+                showUpload={!!candidate} // Only upload for existing candidates
+                parseOnly={!candidate} // For new candidates, just parse
+              />
 
               {!candidate && pendingFiles.length > 0 && (
                 <div className="mt-2 text-left space-y-2">

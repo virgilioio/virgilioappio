@@ -24,7 +24,7 @@ import { CandidateAttachments } from '@/components/candidates/CandidateAttachmen
 import { CandidateUrls } from '@/components/candidates/CandidateUrls'
 import { CandidateResumeViewer } from '@/components/candidates/CandidateResumeViewer'
 import { useCandidateAttachments } from '@/hooks/useCandidateAttachments'
-import { ResumeDropzone } from '@/components/candidates/ResumeDropzone'
+import { EnhancedResumeDropzone } from '@/components/candidates/EnhancedResumeDropzone'
 import { CreateOfferLetterDialog } from '@/components/candidates/CreateOfferLetterDialog'
 import { getSkillColor } from '@/utils/skillColors'
 import { generateCandidatePdf } from '@/utils/candidatePdfGenerator'
@@ -383,7 +383,13 @@ export default function CandidateProfile() {
                           <CandidateResumeViewer jobCandidateId={candidate.id} />
                         </>
                       ) : (
-                        <ResumeDropzone onUpload={(file) => uploadResume(file, true)} isUploading={isResumeUploading} />
+                        <EnhancedResumeDropzone 
+                          onUpload={(file) => uploadResume(file, true)} 
+                          isUploading={isResumeUploading}
+                          candidateId={candidate.id}
+                          showUpload={true}
+                          parseOnly={false}
+                        />
                       )}
                     </CardContent>
                   </Card>

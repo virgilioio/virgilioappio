@@ -19,6 +19,7 @@ import { SkillsGenerationPanel } from './SkillsGenerationPanel'
 import { useResumeParsing } from '@/hooks/useResumeParsing'
 import { sanitizeHtmlForEditor } from '@/utils/htmlSanitizer'
 import { markdownToHtml } from '@/utils/markdown'
+import { EnhancedResumeDropzone, ParsedResumeData } from './EnhancedResumeDropzone'
 
 const candidateSchema = z.object({
   candidate_name: z.string().min(1, 'Name is required'),
@@ -94,7 +95,6 @@ export function IndependentCandidateForm({
   const status = watch('status')
   const source = watch('source')
   const { isParsing, parseResume } = useResumeParsing()
-  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleFormSubmit = async (data: CandidateFormData) => {
     try {
@@ -161,32 +161,31 @@ export function IndependentCandidateForm({
 
         <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
 
-          {/* Resume Upload */}
           <div className="space-y-4">
             <h3 className="text-sm font-semibold text-foreground">Resume</h3>
-            <div
-              className={`relative border-2 border-dashed rounded-lg p-6 text-center transition-colors ${dragOver ? 'border-pastel-purple bg-pastel-purple/15' : 'border-pastel-purple/70 hover:border-pastel-purple bg-pastel-purple/10'}`}
-              onDrop={(e) => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files?.[0]; if (!f) return; parseResume(f).then((parsed) => { if (!parsed) return; if (parsed.name) setValue('candidate_name', parsed.name); if (parsed.email) setValue('email', parsed.email); if (parsed.phone) setValue('phone', parsed.phone); if (parsed.profileSummary && parsed.profileSummary.trim().length > 0) { const html = markdownToHtml(parsed.profileSummary); const sanitized = sanitizeHtmlForEditor(html); setProfileSummary(sanitized); setValue('profile_summary', sanitized); } toast({ title: 'Parsed from resume', description: 'Prefilled basic info. Please review before saving.' }); }); }}
-              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-              onDragLeave={(e) => { e.preventDefault(); setDragOver(false); }}
-            >
-              {isParsing && (
-                <div className="absolute left-0 right-0 top-0 h-1 bg-pastel-purple animate-pulse rounded-t-lg" />
-              )}
-              <input
-                ref={fileInputRef}
-                type="file"
-                className="hidden"
-                accept=".pdf,.doc,.docx,.txt,.rtf"
-                onChange={async (e) => { const f = e.target.files?.[0]; if (!f) return; const parsed = await parseResume(f); if (parsed) { if (parsed.name) setValue('candidate_name', parsed.name); if (parsed.email) setValue('email', parsed.email); if (parsed.phone) setValue('phone', parsed.phone); if (parsed.profileSummary && parsed.profileSummary.trim().length > 0) { const html = markdownToHtml(parsed.profileSummary); const sanitized = sanitizeHtmlForEditor(html); setProfileSummary(sanitized); setValue('profile_summary', sanitized); } toast({ title: 'Parsed from resume', description: 'Prefilled basic info. Please review before saving.' }); } e.currentTarget.value = ''; }}
-              />
-              <Sparkles className="h-8 w-8 mx-auto text-pastel-purple-foreground mb-2" />
-              <p className="text-sm text-text-secondary mb-2">Drag and drop here, and watch some magic</p>
-              <p className="text-xs text-text-secondary mb-4">PDF, DOC, DOCX, TXT up to 15MB</p>
-              <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isParsing} className="gap-sm">
-                {isParsing ? (<><Loader2 className="h-4 w-4 animate-spin" /> Parsing…</>) : (<><Sparkles className="h-4 w-4" /> Choose File</>)}
-              </Button>
-            </div>
+            <EnhancedResumeDropzone
+              onParsed={(parsed: ParsedResumeData) => {
+                // Apply parsed data to form
+                if (parsed.name) setValue('candidate_name', parsed.name)
+                if (parsed.email) setValue('email', parsed.email)
+                if (parsed.phone) setValue('phone', parsed.phone)
+                if (parsed.profileSummary && parsed.profileSummary.trim().length > 0) {
+                  const html = markdownToHtml(parsed.profileSummary)
+                  const sanitized = sanitizeHtmlForEditor(html)
+                  setProfileSummary(sanitized)
+                  setValue('profile_summary', sanitized)
+                }
+              }}
+              onSkillsGenerated={(newSkills: string[]) => {
+                const uniqueSkills = [...new Set([...skills, ...newSkills])]
+                setSkills(uniqueSkills)
+              }}
+              candidateName={watch('candidate_name')}
+              autoGenerateSkills={true}
+              parseOnly={true}
+              accept=".pdf,.doc,.docx,.txt,.rtf"
+              maxSizeMb={15}
+            />
           </div>
 
           {/* Basic Information */}
