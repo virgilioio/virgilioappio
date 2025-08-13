@@ -21,6 +21,49 @@ function uniquePush<T>(arr: T[] | null | undefined, value: T | null | undefined)
 export function useResumeParsing() {
   const [isParsing, setIsParsing] = useState(false);
 
+  const parseResume = async (file: File) => {
+    if (!file) return;
+    setIsParsing(true);
+
+    try {
+      let textContent = '';
+      if (file.type === 'application/pdf') {
+        textContent = await extractTextFromPdf(file);
+      } else {
+        // For non-PDF files we currently skip local extraction.
+        toast.info('Parsing currently supports PDFs. The file was added, but parsing was skipped.');
+        return;
+      }
+
+      if (!textContent || textContent.length < 30) {
+        toast.error('Could not extract enough text from the PDF to parse.');
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke('parse-resume', {
+        body: {
+          textContent,
+          fileName: file.name,
+          mimeType: file.type,
+        },
+      });
+
+      if (error) {
+        console.error('parse-resume error:', error);
+        toast.error('Failed to parse the resume.');
+        return;
+      }
+
+      return (data || {}) as ParsedResume;
+    } catch (err) {
+      console.error('parseResume error:', err);
+      toast.error('Resume parsing failed.');
+    } finally {
+      setIsParsing(false);
+    }
+  };
+
+
   const parseAndUpdateCandidate = async (file: File, candidateId: string) => {
     if (!file || !candidateId) return;
     setIsParsing(true);
@@ -108,5 +151,5 @@ export function useResumeParsing() {
     }
   };
 
-  return { isParsing, parseAndUpdateCandidate };
+  return { isParsing, parseResume, parseAndUpdateCandidate };
 }

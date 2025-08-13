@@ -22,6 +22,7 @@ import type { Candidate } from '@/hooks/useCandidates'
 import { toast } from '@/hooks/use-toast'
 import { getSkillColor } from '@/utils/skillColors'
 import { SkillsGenerationPanel } from './SkillsGenerationPanel'
+import { useResumeParsing } from '@/hooks/useResumeParsing'
 
 interface CandidateFormProps {
   isOpen: boolean
@@ -71,6 +72,8 @@ export function CandidateForm({
   useEffect(() => {
     return () => { isMountedRef.current = false }
   }, [])
+
+  const { isParsing, parseResume } = useResumeParsing();
 
   const form = useForm<FormData>({
     defaultValues: {
@@ -227,6 +230,25 @@ export function CandidateForm({
     } else {
       // New candidate: queue files to upload after creation
       setPendingFiles((prev) => [...prev, ...fileArray])
+
+      try {
+        const first = fileArray[0]
+        if (first) {
+          const parsed = await parseResume(first)
+          if (parsed) {
+            if (parsed.name) form.setValue('candidate_name', parsed.name)
+            if (parsed.email) form.setValue('email', parsed.email)
+            if (parsed.phone) form.setValue('phone', parsed.phone)
+            if (parsed.profileSummary && parsed.profileSummary.trim().length > 0) {
+              setProfileSummary(parsed.profileSummary)
+            }
+            toast({ title: 'Parsed from resume', description: 'Prefilled basic info. Please review before saving.' })
+          }
+        }
+      } catch (_) {
+        // Errors are handled in the parsing hook
+      }
+
     }
   }
 
@@ -458,11 +480,11 @@ export function CandidateForm({
                   type="button"
                   variant="outline"
                   onClick={() => fileInputRef.current?.click()}
-                  disabled={isUploadingResume}
+                  disabled={isUploadingResume || isParsing}
                   className="gap-sm"
                 >
                   <Upload className="h-4 w-4" />
-                  {isUploadingResume ? 'Uploading...' : 'Choose File'}
+                  {isParsing ? 'Parsing...' : (isUploadingResume ? 'Uploading...' : 'Choose File')}
                 </Button>
               </div>
 
