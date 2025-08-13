@@ -75,11 +75,8 @@ serve(async (req) => {
       .insert({
         job_id: body.jobId,
         candidate_name: candidateName,
-        email: f.email?.slice(0, 320) || null,
-        phone: f.phone?.slice(0, 80) || null,
         linkedin_url: f.linkedin_url?.slice(0, 512) || null,
-        profile_summary: f.profile_summary || null,
-        source: "public_posting",
+        profile_summary: f.profile_summary || null
       })
       .select("id, candidate_name")
       .single();
