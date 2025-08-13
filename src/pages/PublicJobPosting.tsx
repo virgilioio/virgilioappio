@@ -10,11 +10,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge'
 import { SafeHtml } from '@/components/ui/safe-html'
 import { VirgilioLogo } from '@/components/VirgilioLogo'
-import { MapPin, Briefcase, DollarSign, Sparkles } from 'lucide-react'
+import { MapPin, Briefcase, DollarSign, Sparkles, Loader2 } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/use-toast'
 import { useResumeParsing } from '@/hooks/useResumeParsing'
+import { useSkillsGeneration } from '@/hooks/useSkillsGeneration'
+import { getSkillColor } from '@/utils/skillColors'
 
 type FieldType = 'text' | 'number' | 'email' | 'textarea' | 'select' | 'checkbox' | 'date' | 'file' | 'url'
 
@@ -56,6 +58,7 @@ export default function PublicJobPosting() {
   const [uploadedFiles, setUploadedFiles] = useState<Record<string, File | null>>({})
   const { isParsing, parseResume } = useResumeParsing()
   const [formValues, setFormValues] = useState<Record<string, string>>({})
+  const { generateSkills, isGenerating, generatedSkills } = useSkillsGeneration()
   // Canonical host redirect to app.virgilio.io (skip local dev)
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -185,6 +188,13 @@ export default function PublicJobPosting() {
     const parsed = await parseResume(file)
     if (parsed) {
       applyParsedToForm(parsed as any)
+      if (parsed.profileSummary) {
+        try {
+          await generateSkills(parsed.profileSummary, parsed.name || 'Candidate', { context: 'candidate', desiredCount: 20, minCount: 12 })
+        } catch {
+          // Ignore generation errors; toast already handled in hook
+        }
+      }
       toast({ title: 'Parsed from resume', description: 'Prefilled basic info. Please review before submitting.' })
     }
   }
@@ -404,6 +414,8 @@ export default function PublicJobPosting() {
       onDrop={(e) => { e.preventDefault(); setDragOverField(null); const file = e.dataTransfer.files?.[0]; if (file) { setUploadedFiles((prev) => ({ ...prev, [f.id]: file })); void handleParsedFile(file); } }}
       onDragOver={(e) => { e.preventDefault(); setDragOverField(f.id); }}
       onDragLeave={(e) => { e.preventDefault(); setDragOverField(null); }}
+      aria-busy={isParsing || isGenerating}
+      aria-live="polite"
     >
       <input
         id={`file-${f.id}`}
@@ -419,14 +431,41 @@ export default function PublicJobPosting() {
         type="button"
         variant="default"
         onClick={() => document.getElementById(`file-${f.id}`)?.click()}
+        disabled={isParsing || isGenerating}
         className="gap-sm bg-pastel-purple text-pastel-purple-foreground border border-pastel-purple-foreground/30 hover:bg-pastel-purple/80 shadow-button"
       >
-        <Sparkles className="h-4 w-4" /> Choose File
+        {(isParsing || isGenerating) ? (
+          <>
+            <Loader2 className="h-4 w-4 animate-spin" />
+            {isParsing ? 'Parsing…' : 'Generating skills…'}
+          </>
+        ) : (
+          <>
+            <Sparkles className="h-4 w-4" /> Choose File
+          </>
+        )}
       </Button>
       {uploadedFiles[f.id] && (
         <p className="mt-3 text-xs text-text-secondary">Selected: {uploadedFiles[f.id]?.name}</p>
       )}
+      {(isParsing || isGenerating) && (
+        <div className="absolute inset-0 rounded-lg bg-background/60 backdrop-blur-sm flex flex-col items-center justify-center animate-fade-in">
+          <Loader2 className="h-6 w-6 text-pastel-purple-foreground animate-spin mb-2" />
+          <span className="text-sm text-text-secondary">
+            {isParsing ? 'Parsing resume…' : 'Generating skills…'}
+          </span>
+        </div>
+      )}
     </div>
+    {generatedSkills.length > 0 && (
+      <div className="mt-4 flex flex-wrap gap-2">
+        {generatedSkills.slice(0, 30).map((s, idx) => (
+          <Badge key={`${s.name}-${idx}`} variant={getSkillColor(s.name)}>
+            {s.name}
+          </Badge>
+        ))}
+      </div>
+    )}
   </div>
 ) : (
   <Input type="file" />
