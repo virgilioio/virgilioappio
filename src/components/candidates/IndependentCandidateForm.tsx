@@ -16,6 +16,7 @@ import { supabase } from '@/integrations/supabase/client'
 import { getSkillColor } from '@/utils/skillColors'
 import { SkillsGenerationPanel } from './SkillsGenerationPanel'
 import { useResumeParsing } from '@/hooks/useResumeParsing'
+import { sanitizeHtmlForEditor } from '@/utils/htmlSanitizer'
 
 const candidateSchema = z.object({
   candidate_name: z.string().min(1, 'Name is required'),
@@ -162,7 +163,7 @@ export function IndependentCandidateForm({
             <h3 className="text-sm font-semibold text-foreground">Resume</h3>
             <div
               className={`relative border-2 border-dashed rounded-lg p-6 text-center transition-colors ${dragOver ? 'border-pastel-purple bg-pastel-purple/15' : 'border-pastel-purple/70 hover:border-pastel-purple bg-pastel-purple/10'}`}
-              onDrop={(e) => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files?.[0]; if (!f) return; parseResume(f).then((parsed) => { if (!parsed) return; if (parsed.name) setValue('candidate_name', parsed.name); if (parsed.email) setValue('email', parsed.email); if (parsed.phone) setValue('phone', parsed.phone); if (parsed.profileSummary && parsed.profileSummary.trim().length > 0) { setValue('profile_summary', parsed.profileSummary); } toast({ title: 'Parsed from resume', description: 'Prefilled basic info. Please review before saving.' }); }); }}
+              onDrop={(e) => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files?.[0]; if (!f) return; parseResume(f).then((parsed) => { if (!parsed) return; if (parsed.name) setValue('candidate_name', parsed.name); if (parsed.email) setValue('email', parsed.email); if (parsed.phone) setValue('phone', parsed.phone); if (parsed.profileSummary && parsed.profileSummary.trim().length > 0) { const sanitized = sanitizeHtmlForEditor(parsed.profileSummary); setValue('profile_summary', sanitized); } toast({ title: 'Parsed from resume', description: 'Prefilled basic info. Please review before saving.' }); }); }}
               onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
               onDragLeave={(e) => { e.preventDefault(); setDragOver(false); }}
             >
@@ -174,7 +175,7 @@ export function IndependentCandidateForm({
                 type="file"
                 className="hidden"
                 accept=".pdf,.doc,.docx,.txt,.rtf"
-                onChange={async (e) => { const f = e.target.files?.[0]; if (!f) return; const parsed = await parseResume(f); if (parsed) { if (parsed.name) setValue('candidate_name', parsed.name); if (parsed.email) setValue('email', parsed.email); if (parsed.phone) setValue('phone', parsed.phone); if (parsed.profileSummary && parsed.profileSummary.trim().length > 0) { setValue('profile_summary', parsed.profileSummary); } toast({ title: 'Parsed from resume', description: 'Prefilled basic info. Please review before saving.' }); } e.currentTarget.value = ''; }}
+                onChange={async (e) => { const f = e.target.files?.[0]; if (!f) return; const parsed = await parseResume(f); if (parsed) { if (parsed.name) setValue('candidate_name', parsed.name); if (parsed.email) setValue('email', parsed.email); if (parsed.phone) setValue('phone', parsed.phone); if (parsed.profileSummary && parsed.profileSummary.trim().length > 0) { const sanitized = sanitizeHtmlForEditor(parsed.profileSummary); setValue('profile_summary', sanitized); } toast({ title: 'Parsed from resume', description: 'Prefilled basic info. Please review before saving.' }); } e.currentTarget.value = ''; }}
               />
               <Sparkles className="h-8 w-8 mx-auto text-pastel-purple-foreground mb-2" />
               <p className="text-sm text-text-secondary mb-2">Drag and drop here, and watch some magic</p>

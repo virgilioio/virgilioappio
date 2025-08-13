@@ -13,9 +13,9 @@ export function sanitizeHtml(html: string): string {
   const config = {
     ALLOWED_TAGS: [
       'p', 'br', 'strong', 'b', 'em', 'i', 'u', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-      'ul', 'ol', 'li', 'a', 'span', 'div', 'blockquote', 'pre', 'code'
+      'ul', 'ol', 'li', 'a', 'span', 'div', 'blockquote', 'pre', 'code', 'hr'
     ],
-    ALLOWED_ATTR: ['href', 'title', 'class'],
+    ALLOWED_ATTR: ['href', 'title', 'class', 'target', 'rel'],
     ALLOW_DATA_ATTR: false,
     FORBID_TAGS: ['script', 'object', 'embed', 'link', 'style', 'img', 'svg'],
     FORBID_ATTR: ['style', 'on*'],
