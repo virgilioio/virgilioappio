@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Sparkles, Loader2 } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
 import { useResumeParsing } from '@/hooks/useResumeParsing'
@@ -7,6 +8,7 @@ import { useSkillsGeneration } from '@/hooks/useSkillsGeneration'
 import { ParsingAnimation } from '@/components/ui/parsing-animation'
 import { sanitizeHtmlForEditor } from '@/utils/htmlSanitizer'
 import { markdownToHtml } from '@/utils/markdown'
+import { getSkillColor } from '@/utils/skillColors'
 
 export interface ParsedResumeData {
   name?: string
@@ -51,7 +53,7 @@ export function EnhancedResumeDropzone({
   const [isProcessing, setIsProcessing] = useState(false)
   
   const { isParsing, parseResume, parseAndUpdateCandidate } = useResumeParsing()
-  const { generateSkills, isGenerating } = useSkillsGeneration()
+  const { generateSkills, isGenerating, generatedSkills } = useSkillsGeneration()
 
   const isActive = isProcessing || isParsing || isGenerating || isUploading
 
@@ -198,6 +200,16 @@ export function EnhancedResumeDropzone({
             <ParsingAnimation 
               isActive={isActive}
             />
+          </div>
+        )}
+        {/* Display generated skills */}
+        {generatedSkills.length > 0 && (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {generatedSkills.slice(0, 30).map((s, idx) => (
+              <Badge key={`${s.name}-${idx}`} variant="outline" className={`bg-${getSkillColor(s.name)}/20 text-${getSkillColor(s.name)}-foreground border-${getSkillColor(s.name)}/40`}>
+                {s.name}
+              </Badge>
+            ))}
           </div>
         )}
       </div>

@@ -19,6 +19,7 @@ import { useSkillsGeneration } from '@/hooks/useSkillsGeneration'
 import { getSkillColor } from '@/utils/skillColors'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { sanitizeHtml, sanitizeHtmlForEditor } from '@/utils/htmlSanitizer'
+import { ParsingAnimation } from '@/components/ui/parsing-animation'
 
 type FieldType = 'text' | 'number' | 'email' | 'textarea' | 'select' | 'checkbox' | 'date' | 'file' | 'url'
 
@@ -530,9 +531,9 @@ export default function PublicJobPosting() {
       {(isParsing || isGenerating) && (
         <div className="absolute inset-0 rounded-lg bg-background/60 backdrop-blur-sm flex flex-col items-center justify-center animate-fade-in">
           <Loader2 className="h-6 w-6 text-pastel-purple-foreground animate-spin mb-2" />
-          <span className="text-sm text-text-secondary">
-            {isParsing ? 'Parsing resume…' : 'Generating skills…'}
-          </span>
+          <ParsingAnimation 
+            isActive={isParsing || isGenerating}
+          />
         </div>
       )}
     </div>
