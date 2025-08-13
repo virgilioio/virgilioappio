@@ -7,7 +7,7 @@ import { Section } from '@/components/layout/Section'
 import { AuthGate } from '@/components/auth/AuthGate'
 import { PermissionGate } from '@/components/auth/PermissionGate'
 import { IndependentCandidateTable } from '@/components/candidates/IndependentCandidateTable'
-import { IndependentCandidateForm } from '@/components/candidates/IndependentCandidateForm'
+import CandidateFormSheet from '@/components/candidates/CandidateFormSheet'
 import { useIndependentCandidates } from '@/hooks/useIndependentCandidates'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useCandidateSync } from '@/hooks/useCandidateSync'
@@ -107,15 +107,9 @@ export default function Candidates() {
             />
           </Section>
 
-          <IndependentCandidateForm
+          <CandidateFormSheet
             isOpen={isFormOpen}
             onClose={handleFormClose}
-            onSubmit={async (data) => {
-              await addCandidate(data)
-            }}
-            isLoading={isLoading}
-            initialData={selectedCandidate}
-            title={selectedCandidate ? "Edit Candidate" : "Add New Candidate"}
           />
         </div>
       </PermissionGate>

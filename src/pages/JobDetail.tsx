@@ -13,6 +13,7 @@ import { PageHeader } from '@/components/layout/PageHeader'
 
 import { CandidateTable } from '@/components/candidates/CandidateTable'
 import { CandidateForm } from '@/components/candidates/CandidateForm'
+import CandidateFormSheet from '@/components/candidates/CandidateFormSheet'
 import { JobAssignmentsPanel } from '@/components/jobs/JobAssignmentsPanel'
 import { JobSetupPanel } from '@/components/jobs/JobSetupPanel'
 import { JobForm } from '@/components/jobs/JobForm'
@@ -1000,21 +1001,12 @@ export default function JobDetail() {
           isLoading={jobUpdateLoading}
         />
 
-        {/* Add Candidate Dialog */}
-        <Dialog open={showAddCandidate} onOpenChange={setShowAddCandidate}>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Add New Candidate</DialogTitle>
-            </DialogHeader>
-            <CandidateForm
-              isOpen={showAddCandidate}
-              onClose={() => setShowAddCandidate(false)}
-              onSubmit={handleAddCandidate}
-              jobId={id!}
-              isLoading={candidatesLoading}
-            />
-          </DialogContent>
-        </Dialog>
+        {/* Add Candidate Sheet */}
+        <CandidateFormSheet
+          isOpen={showAddCandidate}
+          onClose={() => setShowAddCandidate(false)}
+          jobId={id!}
+        />
 
         {/* Edit Candidate Dialog */}
         <Dialog open={!!editingCandidate} onOpenChange={() => setEditingCandidate(null)}>
