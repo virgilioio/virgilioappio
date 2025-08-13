@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -12,10 +12,12 @@ import { toast } from '@/hooks/use-toast'
 import { sanitizeHtmlForEditor } from '@/utils/htmlSanitizer'
 import { markdownToHtml } from '@/utils/markdown'
 import { useResumeParsing } from '@/hooks/useResumeParsing'
+import { useSkillsGeneration } from '@/hooks/useSkillsGeneration'
 import { useCandidates } from '@/hooks/useCandidates'
 import { useIndependentCandidates } from '@/hooks/useIndependentCandidates'
 import { supabase } from '@/integrations/supabase/client'
 import { getSkillColor } from '@/utils/skillColors'
+import { EnhancedResumeDropzone, ParsedResumeData } from './EnhancedResumeDropzone'
 
 interface CandidateFormSheetProps {
   isOpen: boolean
@@ -32,7 +34,7 @@ interface FormValues {
 }
 
 export default function CandidateFormSheet({ isOpen, onClose, jobId }: CandidateFormSheetProps) {
-  const { register, handleSubmit, reset, formState: { errors }, setValue } = useForm<FormValues>({
+  const { register, handleSubmit, reset, formState: { errors }, setValue, watch } = useForm<FormValues>({
     defaultValues: { candidate_name: '', email: '', phone: '', linkedin_url: '', source: 'direct' }
   })
 
@@ -40,10 +42,9 @@ export default function CandidateFormSheet({ isOpen, onClose, jobId }: Candidate
   const [newSkill, setNewSkill] = useState('')
   const [profileSummary, setProfileSummary] = useState('')
   const [pendingFiles, setPendingFiles] = useState<File[]>([])
-  const [dragOver, setDragOver] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
   const { isParsing, parseResume, parseAndUpdateCandidate } = useResumeParsing()
+  const { generateSkills, isGenerating } = useSkillsGeneration()
 
   // Hooks for submission depending on context
   const jobCandidates = useCandidates(jobId || '')
@@ -55,9 +56,6 @@ export default function CandidateFormSheet({ isOpen, onClose, jobId }: Candidate
     setNewSkill('')
     setProfileSummary('')
     setPendingFiles([])
-    if (fileInputRef.current) {
-      try { fileInputRef.current.value = '' } catch {}
-    }
   }
 
   useEffect(() => {
@@ -74,34 +72,6 @@ export default function CandidateFormSheet({ isOpen, onClose, jobId }: Candidate
   }
   const removeSkill = (s: string) => setSkills((v) => v.filter((x) => x !== s))
 
-  const handleFileSelect = async (files: FileList | null) => {
-    if (!files || files.length === 0) return
-    const fileArray = Array.from(files)
-    for (const f of fileArray) {
-      if (f.size > 15 * 1024 * 1024) {
-        toast({ title: 'Error', description: 'File size must be less than 15MB', variant: 'destructive' })
-        return
-      }
-    }
-    setPendingFiles((prev) => [...prev, ...fileArray])
-    try {
-      const first = fileArray[0]
-      if (first) {
-        const parsed = await parseResume(first)
-        if (parsed) {
-          if (parsed.name) setValue('candidate_name', parsed.name)
-          if (parsed.email) setValue('email', parsed.email)
-          if (parsed.phone) setValue('phone', parsed.phone)
-          if (parsed.profileSummary && parsed.profileSummary.trim().length > 0) {
-            const html = markdownToHtml(parsed.profileSummary)
-            const sanitized = sanitizeHtmlForEditor(html)
-            setProfileSummary(sanitized)
-          }
-          toast({ title: 'Parsed from resume', description: 'Prefilled basic info. Please review before saving.' })
-        }
-      }
-    } catch (_) {}
-  }
 
   const removePendingFile = (name: string, size: number) => {
     setPendingFiles((prev) => prev.filter((f) => !(f.name === name && f.size === size)))
@@ -218,32 +188,31 @@ export default function CandidateFormSheet({ isOpen, onClose, jobId }: Candidate
             {/* Resume Upload */}
             <div className="space-y-3">
               <h3 className="text-sm font-medium text-text-primary">Resume</h3>
-              <div className="relative group">
-                <div className={`pointer-events-none absolute -inset-[2px] rounded-lg bg-gradient-to-r from-pastel-purple via-pastel-blue to-info blur-md transition-opacity duration-300 ${dragOver ? 'opacity-80' : 'opacity-50'}`} />
-                <div
-                  className={`relative border-2 border-dashed rounded-lg p-6 text-center transition-colors bg-pastel-purple/10 ${dragOver ? 'border-pastel-purple bg-pastel-purple/15' : 'border-pastel-purple/70 hover:border-pastel-purple'}`}
-                  onDrop={(e) => { e.preventDefault(); setDragOver(false); void handleFileSelect(e.dataTransfer.files) }}
-                  onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
-                  onDragLeave={(e) => { e.preventDefault(); setDragOver(false) }}
-                >
-                  {(isParsing || isUploading) && (
-                    <div className="absolute left-0 right-0 top-0 h-1 bg-pastel-purple-foreground animate-pulse rounded-t-lg" />
-                  )}
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    className="hidden"
-                    onChange={(e) => { void handleFileSelect(e.target.files); e.currentTarget.value = '' }}
-                    accept=".pdf,.doc,.docx,.txt,.rtf,.jpg,.jpeg,.png,.gif,.webp"
-                  />
-                  <Sparkles className="h-8 w-8 mx-auto text-pastel-purple-foreground mb-2" />
-                  <p className="text-sm text-text-secondary mb-2">Upload here, and watch some magic!</p>
-                  <p className="text-xs text-text-secondary mb-4">PDF, DOC, DOCX, TXT or images up to 15MB</p>
-                  <Button type="button" variant="default" onClick={() => fileInputRef.current?.click()} disabled={isParsing || isUploading} className="gap-sm bg-pastel-purple text-pastel-purple-foreground border border-pastel-purple-foreground/30 hover:bg-pastel-purple/80 shadow-button">
-                    {isParsing || isUploading ? (<><Loader2 className="h-4 w-4 animate-spin" /> Working…</>) : (<><Sparkles className="h-4 w-4" /> Choose File</>)}
-                  </Button>
-                </div>
-              </div>
+              <EnhancedResumeDropzone
+                onUpload={async (file) => {
+                  setPendingFiles(prev => [...prev, file])
+                }}
+                onParsed={(parsed: ParsedResumeData) => {
+                  if (parsed.name) setValue('candidate_name', parsed.name)
+                  if (parsed.email) setValue('email', parsed.email)
+                  if (parsed.phone) setValue('phone', parsed.phone)
+                  if (parsed.profileSummary && parsed.profileSummary.trim().length > 0) {
+                    const html = markdownToHtml(parsed.profileSummary)
+                    const sanitized = sanitizeHtmlForEditor(html)
+                    setProfileSummary(sanitized)
+                  }
+                }}
+                onSkillsGenerated={(newSkills: string[]) => {
+                  const uniqueSkills = [...new Set([...skills, ...newSkills])]
+                  setSkills(uniqueSkills)
+                }}
+                candidateName={watch('candidate_name')}
+                autoGenerateSkills={true}
+                showUpload={false}
+                parseOnly={true}
+                accept=".pdf,.doc,.docx,.txt,.rtf,.jpg,.jpeg,.png,.gif,.webp"
+                maxSizeMb={15}
+              />
 
               {pendingFiles.length > 0 && (
                 <div className="mt-2 text-left space-y-2">
