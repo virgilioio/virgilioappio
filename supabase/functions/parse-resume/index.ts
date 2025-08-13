@@ -97,9 +97,7 @@ Now, using the resume provided, produce the final formatted profile exactly in t
 
 Return ONLY JSON. Do not include markdown fences or commentary.`;
 
-  const user = `Filename: ${fileName || 'unknown.pdf'}
-Resume text:
-${text.slice(0, 15000)}`;
+  const user = `Follow the instructions precisely to produce a robust, complete formatted profile in Spanish in the \"profileSummary\" field.\n\nFilename: ${fileName || 'unknown.pdf'}\nResume text:\n${text.slice(0, 20000)}`;
 
   const resp = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
@@ -108,13 +106,13 @@ ${text.slice(0, 15000)}`;
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'gpt-4o-mini',
+      model: 'gpt-4o',
       messages: [
         { role: 'system', content: system },
         { role: 'user', content: user },
       ],
       temperature: 0.2,
-      max_tokens: 600,
+      max_tokens: 1400,
     }),
   });
 
