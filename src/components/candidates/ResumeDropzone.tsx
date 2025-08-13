@@ -1,18 +1,33 @@
+
 import { useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Upload } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
+import { useResumeParsing } from '@/hooks/useResumeParsing'
 
 interface ResumeDropzoneProps {
   onUpload: (file: File) => Promise<void>
   isUploading?: boolean
   accept?: string
   maxSizeMb?: number
+  // New optional props to enable automatic parsing and profile updates
+  candidateId?: string
+  autoParse?: boolean
+  onParsed?: (data: { name?: string; email?: string; phone?: string; profileSummary?: string }) => void
 }
 
-export function ResumeDropzone({ onUpload, isUploading = false, accept = '.pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.webp', maxSizeMb = 15 }: ResumeDropzoneProps) {
+export function ResumeDropzone({ 
+  onUpload, 
+  isUploading = false, 
+  accept = '.pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.webp', 
+  maxSizeMb = 15,
+  candidateId,
+  autoParse = false,
+  onParsed
+}: ResumeDropzoneProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [dragOver, setDragOver] = useState(false)
+  const { isParsing, parseAndUpdateCandidate } = useResumeParsing()
 
   const handleFile = async (file?: File) => {
     if (!file) return
@@ -21,6 +36,12 @@ export function ResumeDropzone({ onUpload, isUploading = false, accept = '.pdf,.
       return
     }
     await onUpload(file)
+
+    // Optionally trigger parsing after a successful upload
+    if (autoParse && candidateId) {
+      const parsed = await parseAndUpdateCandidate(file, candidateId)
+      if (parsed && onParsed) onParsed(parsed)
+    }
   }
 
   const onDrop = (e: React.DragEvent) => {
@@ -36,6 +57,8 @@ export function ResumeDropzone({ onUpload, isUploading = false, accept = '.pdf,.
     e.currentTarget.value = ''
   }
 
+  const disabled = isUploading || isParsing
+
   return (
     <div
       className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${dragOver ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'}`}
@@ -47,9 +70,9 @@ export function ResumeDropzone({ onUpload, isUploading = false, accept = '.pdf,.
       <Upload className="h-8 w-8 mx-auto text-text-secondary mb-2" />
       <p className="text-sm text-text-secondary mb-2">Drop your resume here, or click to browse</p>
       <p className="text-xs text-text-secondary mb-4">PDF, DOC, DOCX, or images up to {maxSizeMb}MB</p>
-      <Button variant="outline" onClick={() => inputRef.current?.click()} disabled={isUploading} className="gap-sm">
+      <Button variant="outline" onClick={() => inputRef.current?.click()} disabled={disabled} className="gap-sm">
         <Upload className="h-4 w-4" />
-        {isUploading ? 'Uploading…' : 'Upload Resume'}
+        {disabled ? (isParsing ? 'Parsing…' : 'Uploading…') : 'Upload Resume'}
       </Button>
     </div>
   )
