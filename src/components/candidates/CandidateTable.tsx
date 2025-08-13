@@ -61,6 +61,8 @@ interface CandidateTableProps {
   isCandidateNewForUser: (candidate: CandidateTableCandidate) => boolean
   showJobInfo?: boolean // Whether to show job/organization columns
   onRowClick?: (candidateId: string) => void
+  selectionMode?: boolean
+  onSelectionModeChange?: (mode: boolean) => void
 }
 
 export function CandidateTable({ 
@@ -72,7 +74,9 @@ export function CandidateTable({
   markCandidateAsViewed,
   isCandidateNewForUser,
   showJobInfo = false,
-  onRowClick
+  onRowClick,
+  selectionMode: controlledSelectionMode,
+  onSelectionModeChange,
 }: CandidateTableProps) {
   const { id: jobId } = useParams<{ id: string }>()
   const permissions = usePermissions()
@@ -84,8 +88,10 @@ export function CandidateTable({
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
 
-  // Selection state
-  const [selectionMode, setSelectionMode] = useState(false)
+  // Selection state (controlled or uncontrolled)
+  const [internalSelectionMode, setInternalSelectionMode] = useState(false)
+  const selectionMode = (typeof controlledSelectionMode === 'boolean') ? controlledSelectionMode : internalSelectionMode
+  const setSelectionMode = onSelectionModeChange ?? setInternalSelectionMode
   const [selectedIds, setSelectedIds] = useState<string[]>([])
 
   const handleDelete = (candidateId: string) => {
@@ -210,7 +216,11 @@ export function CandidateTable({
   // Selection helpers
   const pagedIds = useMemo(() => paginatedCandidates.map(c => c.id), [paginatedCandidates])
   const isAllCurrentPageSelected = useMemo(() => pagedIds.length > 0 && pagedIds.every(id => selectedIds.includes(id)), [pagedIds, selectedIds])
-  const toggleSelectionMode = () => setSelectionMode((prev) => { const next = !prev; if (!next) setSelectedIds([]); return next })
+  const toggleSelectionMode = () => {
+    const next = !selectionMode
+    setSelectionMode(next)
+    if (!next) setSelectedIds([])
+  }
   const toggleSelectAllCurrentPage = () => {
     if (isAllCurrentPageSelected) setSelectedIds(ids => ids.filter(id => !pagedIds.includes(id)))
     else setSelectedIds(ids => Array.from(new Set([...ids, ...pagedIds])))
@@ -326,10 +336,12 @@ export function CandidateTable({
                   Add Candidate
                 </Button>
               )}
-              <Button onClick={toggleSelectionMode} variant={selectionMode ? 'secondary' : 'outline'} size="sm" className="gap-2 h-[40px]">
-                <ListChecks className="h-4 w-4" />
-                {selectionMode ? 'Done' : 'Select'}
-              </Button>
+              {!onSelectionModeChange && (
+                <Button onClick={toggleSelectionMode} variant={selectionMode ? 'secondary' : 'outline'} size="sm" className="gap-2 h-[40px]">
+                  <ListChecks className="h-4 w-4" />
+                  {selectionMode ? 'Done' : 'Select'}
+                </Button>
+              )}
             </div>
           </PermissionGate>
         </div>
