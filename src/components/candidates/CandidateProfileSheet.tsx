@@ -563,7 +563,7 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                                     Delete Resume
                                   </Button>
                                 </div>
-                                <CandidateResumeViewer jobCandidateId={jobCandidateId} />
+                                <CandidateResumeViewer candidateId={candidateId} />
                               </>
                             ) : (
                               <EnhancedResumeDropzone 

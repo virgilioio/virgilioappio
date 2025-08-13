@@ -5,14 +5,17 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 
 interface CandidateResumeViewerProps {
-  jobCandidateId?: string
+  candidateId?: string
+  jobCandidateId?: string // For backward compatibility  
   fallbackResumeUrl?: string | null
   className?: string
   height?: number // in vh, default 70
 }
 
-export function CandidateResumeViewer({ jobCandidateId, fallbackResumeUrl, className, height = 70 }: CandidateResumeViewerProps) {
-  const { attachments } = useCandidateAttachments(jobCandidateId || '')
+export function CandidateResumeViewer({ candidateId, jobCandidateId, fallbackResumeUrl, className, height = 70 }: CandidateResumeViewerProps) {
+  // Use candidateId first, fallback to jobCandidateId for backward compatibility
+  const effectiveCandidateId = candidateId || jobCandidateId || ''
+  const { attachments } = useCandidateAttachments(effectiveCandidateId)
   const [signedUrl, setSignedUrl] = useState<string | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [fileName, setFileName] = useState<string>('resume')
