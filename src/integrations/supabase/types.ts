@@ -3596,6 +3596,10 @@ export type Database = {
         Args: { stage_id_param: string }
         Returns: undefined
       }
+      resequence_posting_fields_for_library_order: {
+        Args: { p_posting_id: string }
+        Returns: undefined
+      }
       safe_delete_user: {
         Args: { target_user_id: string }
         Returns: {
@@ -3606,6 +3610,10 @@ export type Database = {
       }
       soft_delete_job_stage: {
         Args: { stage_id_param: string }
+        Returns: undefined
+      }
+      sync_all_postings_field_order: {
+        Args: Record<PropertyKey, never>
         Returns: undefined
       }
       sync_job_candidates_to_independent: {
