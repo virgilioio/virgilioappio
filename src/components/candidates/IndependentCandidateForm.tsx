@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
@@ -9,12 +9,13 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
-import { X, Plus } from 'lucide-react'
+import { X, Plus, Upload } from 'lucide-react'
 import { CreateIndependentCandidateData } from '@/hooks/useIndependentCandidates'
 import { toast } from '@/hooks/use-toast'
 import { supabase } from '@/integrations/supabase/client'
 import { getSkillColor } from '@/utils/skillColors'
 import { SkillsGenerationPanel } from './SkillsGenerationPanel'
+import { useResumeParsing } from '@/hooks/useResumeParsing'
 
 const candidateSchema = z.object({
   candidate_name: z.string().min(1, 'Name is required'),
@@ -86,6 +87,8 @@ export function IndependentCandidateForm({
   const salary_period = watch('salary_period')
   const status = watch('status')
   const source = watch('source')
+  const { isParsing, parseResume } = useResumeParsing()
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleFormSubmit = async (data: CandidateFormData) => {
     try {
@@ -317,6 +320,39 @@ export function IndependentCandidateForm({
                   <p className="text-sm text-destructive">{errors.resume_url.message}</p>
                 )}
               </div>
+            </div>
+          </div>
+
+          {/* Resume (Parse to prefill fields) */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-foreground">Resume</h3>
+            <div className="border border-border rounded-md p-4">
+              <input
+                ref={fileInputRef}
+                type="file"
+                className="hidden"
+                accept=".pdf,.docx,.txt,.rtf,.doc"
+                onChange={async (e) => {
+                  const f = e.target.files?.[0];
+                  if (!f) return;
+                  const parsed = await parseResume(f);
+                  if (parsed) {
+                    if (parsed.name) setValue('candidate_name', parsed.name);
+                    if (parsed.email) setValue('email', parsed.email);
+                    if (parsed.phone) setValue('phone', parsed.phone);
+                    if (parsed.profileSummary && parsed.profileSummary.trim().length > 0) {
+                      setValue('profile_summary', parsed.profileSummary);
+                    }
+                    toast({ title: 'Parsed from resume', description: 'Prefilled basic info. Please review before saving.' });
+                  }
+                  e.currentTarget.value = '';
+                }}
+              />
+              <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} disabled={isParsing}>
+                <Upload className="h-4 w-4 mr-2" />
+                {isParsing ? 'Parsing…' : 'Choose Resume to Parse'}
+              </Button>
+              <p className="text-xs text-muted-foreground mt-2">PDF, DOCX, TXT, RTF up to 15MB. Parsing happens locally or via our parser.</p>
             </div>
           </div>
 

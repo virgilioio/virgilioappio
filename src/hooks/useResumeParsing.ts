@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { extractTextFromPdf } from '@/utils/pdfText';
+import { extractTextFromFile } from '@/utils/pdfText';
 
 export type ParsedResume = {
   name?: string;
@@ -27,11 +27,9 @@ export function useResumeParsing() {
 
     try {
       let textContent = '';
-      if (file.type === 'application/pdf') {
-        textContent = await extractTextFromPdf(file);
-      } else {
-        // For non-PDF files we currently skip local extraction.
-        toast.info('Parsing currently supports PDFs. The file was added, but parsing was skipped.');
+      textContent = await extractTextFromFile(file);
+      if (!textContent) {
+        toast.info('Could not extract text from this file type. Try PDF or DOCX.');
         return;
       }
 
@@ -70,12 +68,9 @@ export function useResumeParsing() {
 
     try {
       let textContent = '';
-      if (file.type === 'application/pdf') {
-        textContent = await extractTextFromPdf(file);
-      } else {
-        // For non-PDF files we currently skip local extraction.
-        // In a future step we can route these through Adobe PDF Services.
-        toast.info('Parsing currently supports PDFs. The file was uploaded, but parsing was skipped.');
+      textContent = await extractTextFromFile(file);
+      if (!textContent) {
+        toast.info('Could not extract text from this file type. Try PDF or DOCX.');
         return;
       }
 
