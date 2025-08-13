@@ -69,32 +69,84 @@ serve(async (req) => {
       .trim()
       .slice(0, 200) || "Applicant";
 
-    // Insert job-specific candidate record
-    const { data: candidate, error: insertCandidateErr } = await supabase
+    // Find or create global candidate record
+    let globalCandidateId: string | null = null;
+
+    // Try to find by LinkedIn first, then by email
+    if (f.linkedin_url) {
+      const { data: existingByLinkedIn } = await supabase
+        .from("candidates")
+        .select("id, candidate_name")
+        .eq("linkedin_url", f.linkedin_url)
+        .maybeSingle();
+      if (existingByLinkedIn) {
+        globalCandidateId = existingByLinkedIn.id;
+      }
+    }
+
+    if (!globalCandidateId && f.email) {
+      const { data: existingByEmail } = await supabase
+        .from("candidates")
+        .select("id, candidate_name")
+        .eq("email", f.email)
+        .maybeSingle();
+      if (existingByEmail) {
+        globalCandidateId = existingByEmail.id;
+      }
+    }
+
+    // If not found, create a new global candidate
+    if (!globalCandidateId) {
+      const { data: newGlobalCandidate, error: globalInsertErr } = await supabase
+        .from("candidates")
+        .insert({
+          candidate_name: candidateName,
+          email: f.email?.slice(0, 320) || null,
+          phone: f.phone?.slice(0, 80) || null,
+          linkedin_url: f.linkedin_url?.slice(0, 512) || null,
+          profile_summary: f.profile_summary || null,
+          source: "public_posting",
+        })
+        .select("id, candidate_name")
+        .single();
+
+      if (globalInsertErr || !newGlobalCandidate) {
+        console.error("Error inserting global candidate:", globalInsertErr);
+        return new Response(JSON.stringify({ error: "Failed to create global candidate" }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      globalCandidateId = newGlobalCandidate.id;
+    }
+
+    // Insert job-specific candidate record (used for per-job views and data)
+    const { data: jobCandidate, error: insertJobCandidateErr } = await supabase
       .from("job_candidates")
       .insert({
         job_id: body.jobId,
         candidate_name: candidateName,
         linkedin_url: f.linkedin_url?.slice(0, 512) || null,
-        profile_summary: f.profile_summary || null
+        profile_summary: f.profile_summary || null,
       })
       .select("id, candidate_name")
       .single();
 
-    if (insertCandidateErr || !candidate) {
-      console.error("Error inserting job_candidate:", insertCandidateErr);
-      return new Response(JSON.stringify({ error: "Failed to create candidate" }), {
+    if (insertJobCandidateErr || !jobCandidate) {
+      console.error("Error inserting job_candidate:", insertJobCandidateErr);
+      return new Response(JSON.stringify({ error: "Failed to create job candidate" }), {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Create association in Application Review (NULL stage)
+    // Create association in Application Review (NULL stage) using the GLOBAL candidate id
     const { error: assocErr } = await supabase
       .from("job_candidate_associations")
       .insert({
         job_id: body.jobId,
-        candidate_id: candidate.id,
+        candidate_id: globalCandidateId,
         status: "active",
         current_stage_id: null,
       });
@@ -107,10 +159,13 @@ serve(async (req) => {
       });
     }
 
-    console.log("✅ Public application processed for", candidate.candidate_name, candidate.id);
+    console.log("✅ Public application processed for", candidateName, {
+      globalCandidateId,
+      jobCandidateId: jobCandidate.id,
+    });
 
     return new Response(
-      JSON.stringify({ success: true, candidateId: candidate.id }),
+      JSON.stringify({ success: true, jobCandidateId: jobCandidate.id, globalCandidateId }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (e) {
