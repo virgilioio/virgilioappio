@@ -58,7 +58,7 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
   const [associationStatus, setAssociationStatus] = useState<'active' | 'rejected' | 'hired' | 'offer' | null>(null)
   const [currentStageId, setCurrentStageId] = useState<string | null>(null)
   const [movingStageId, setMovingStageId] = useState<string | null>(null)
-  const { attachments, uploadAttachment: uploadResume, isUploading: isResumeUploading, deleteAttachment } = useCandidateAttachments(jobCandidateId || '')
+  const { attachments, uploadAttachment: uploadResume, isUploading: isResumeUploading, deleteAttachment } = useCandidateAttachments(candidateId || '')
 
 // Hiring plan stages for vertical accordion
 const { loadHiringPlanInstances } = useJobHiringPlan()
@@ -679,41 +679,37 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                         <CardTitle className="text-lg">Quick Actions</CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-3">
-                        {associationId || jobCandidateId ? (
-                          <>
-                            <Button className="w-full gap-sm" onClick={() => setEditOpen(true)}>
-                              <Edit className="h-4 w-4" />
-                              Edit Candidate
+                        <>
+                          <Button className="w-full gap-sm" onClick={() => setEditOpen(true)}>
+                            <Edit className="h-4 w-4" />
+                            Edit Candidate
+                          </Button>
+                          {associationId && associationStatus && associationStatus !== 'active' && (
+                            <Button variant="outline" className="w-full gap-sm" onClick={() => handleSetStatus('active')}>
+                              Restore
                             </Button>
-                            {associationId && associationStatus && associationStatus !== 'active' && (
-                              <Button variant="outline" className="w-full gap-sm" onClick={() => handleSetStatus('active')}>
-                                Restore
-                              </Button>
-                            )}
-                            {jobCandidateId && (
-                              <>
-                                <Link to={`/jobs/${jobId}/candidates/${jobCandidateId}`}>
-                                  <Button variant="outline" className="w-full gap-sm">
-                                    <FileText className="h-4 w-4" />
-                                    Create Offer Letter
-                                  </Button>
-                                </Link>
-                                <Link to={`/jobs/${jobId}/candidates/${jobCandidateId}`}>
-                                  <Button variant="outline" className="w-full gap-sm">
-                                    <Clock className="h-4 w-4" />
-                                    Schedule
-                                  </Button>
-                                </Link>
-                                <Button variant="outline" className="w-full gap-sm" onClick={handleMoveToOffer}>
-                                  <MoveRight className="h-4 w-4" />
-                                  Move to Offer
+                          )}
+                          {jobCandidateId && (
+                            <>
+                              <Link to={`/jobs/${jobId}/candidates/${jobCandidateId}`}>
+                                <Button variant="outline" className="w-full gap-sm">
+                                  <FileText className="h-4 w-4" />
+                                  Create Offer Letter
                                 </Button>
-                              </>
-                            )}
-                          </>
-                        ) : (
-                          <div className="text-sm text-text-secondary">No job candidate record linked for actions.</div>
-                        )}
+                              </Link>
+                              <Link to={`/jobs/${jobId}/candidates/${jobCandidateId}`}>
+                                <Button variant="outline" className="w-full gap-sm">
+                                  <Clock className="h-4 w-4" />
+                                  Schedule
+                                </Button>
+                              </Link>
+                            </>
+                          )}
+                          <Button variant="outline" className="w-full gap-sm" onClick={handleMoveToOffer}>
+                            <MoveRight className="h-4 w-4" />
+                            Move to Offer
+                          </Button>
+                        </>
                       </CardContent>
                     </Card>
 
@@ -723,10 +719,10 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                         <CardTitle className="text-lg">Notes</CardTitle>
                       </CardHeader>
                       <CardContent>
-                        {organizationId && jobCandidateId ? (
-                          <CandidateComments candidateId={jobCandidateId} jobId={jobId} organizationId={organizationId} />
+                        {organizationId && candidateId ? (
+                          <CandidateComments candidateId={candidateId} jobId={jobId} organizationId={organizationId} />
                         ) : (
-                          <div className="text-sm text-text-secondary">No job candidate record linked for comments.</div>
+                          <div className="text-sm text-text-secondary">No candidate data available.</div>
                         )}
                       </CardContent>
                     </Card>
@@ -742,29 +738,29 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                     </Card>
 
                     {/* URLs */}
-                    {jobCandidateId ? (
-                      <CandidateUrls candidateId={jobCandidateId} />
+                    {candidateId ? (
+                      <CandidateUrls candidateId={candidateId} />
                     ) : (
                       <Card className="bg-surface-primary border-border">
                         <CardHeader>
                           <CardTitle className="text-lg">URLs</CardTitle>
                         </CardHeader>
                         <CardContent>
-                          <div className="text-sm text-text-secondary">No job candidate record linked.</div>
+                          <div className="text-sm text-text-secondary">No candidate data available.</div>
                         </CardContent>
                       </Card>
                     )}
 
                     {/* Attachments */}
-                    {jobCandidateId ? (
-                      <CandidateAttachments candidateId={jobCandidateId} />
+                    {candidateId ? (
+                      <CandidateAttachments candidateId={candidateId} />
                     ) : (
                       <Card className="bg-surface-primary border-border">
                         <CardHeader>
                           <CardTitle className="text-lg">Attachments</CardTitle>
                         </CardHeader>
                         <CardContent>
-                          <div className="text-sm text-text-secondary">No job candidate record linked.</div>
+                          <div className="text-sm text-text-secondary">No candidate data available.</div>
                         </CardContent>
                       </Card>
                     )}

@@ -230,7 +230,7 @@ serve(async (req) => {
           const { error: dbError } = await supabase
             .from('candidate_attachments')
             .insert({
-              candidate_id: jobCandidate.id, // Associate with job candidate
+              candidate_id: globalCandidateId, // Associate with global candidate
               file_name: fileData.name,
               file_url: fileName,
               file_size_bytes: fileData.size,
