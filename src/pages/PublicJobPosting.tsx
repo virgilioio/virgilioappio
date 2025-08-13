@@ -19,6 +19,7 @@ import { useSkillsGeneration } from '@/hooks/useSkillsGeneration'
 import { getSkillColor } from '@/utils/skillColors'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { sanitizeHtml, sanitizeHtmlForEditor } from '@/utils/htmlSanitizer'
+import { markdownToHtml } from '@/utils/markdown'
 import { ParsingAnimation } from '@/components/ui/parsing-animation'
 import { ApplicationConfirmationDialog } from '@/components/candidates/ApplicationConfirmationDialog'
 
@@ -213,14 +214,7 @@ export default function PublicJobPosting() {
           // Populate Profile Summary rich text field with sanitized HTML
           const psField = fields.find((r) => (r as any).field_name === 'profile_summary')
           if (psField) {
-            const html = sanitizeHtmlForEditor(
-              parsed.profileSummary.includes('<')
-                ? parsed.profileSummary
-                : parsed.profileSummary
-                    .split(/\n+/)
-                    .map((l) => `<p>${l.trim()}</p>`) 
-                    .join('')
-            )
+            const html = sanitizeHtmlForEditor(markdownToHtml(parsed.profileSummary))
             setFormValues((prev) => ({ ...prev, [psField.id]: html }))
           }
 
