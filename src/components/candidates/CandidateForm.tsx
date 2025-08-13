@@ -23,6 +23,7 @@ import { toast } from '@/hooks/use-toast'
 import { getSkillColor } from '@/utils/skillColors'
 import { SkillsGenerationPanel } from './SkillsGenerationPanel'
 import { useResumeParsing } from '@/hooks/useResumeParsing'
+import { sanitizeHtmlForEditor } from '@/utils/htmlSanitizer'
 
 interface CandidateFormProps {
   isOpen: boolean
@@ -59,6 +60,7 @@ export function CandidateForm({
 }: CandidateFormProps) {
   const [currencyOpen, setCurrencyOpen] = useState(false)
   const [profileSummary, setProfileSummary] = useState('')
+  const [profileIsExternalUpdate, setProfileIsExternalUpdate] = useState(false)
   const [notes, setNotes] = useState('')
   const [skills, setSkills] = useState<string[]>([])
   const [newSkill, setNewSkill] = useState('')
@@ -148,7 +150,9 @@ export function CandidateForm({
           skills: skillsValue
         })
         
-        setProfileSummary(profileSummaryValue)
+        const sanitizedProfile = sanitizeHtmlForEditor(profileSummaryValue)
+        setProfileSummary(sanitizedProfile)
+        setProfileIsExternalUpdate(true)
         setNotes(notesValue)
         setSkills(skillsValue)
       }
@@ -723,6 +727,8 @@ export function CandidateForm({
                   placeholder="Brief summary of candidate's background, experience, and key skills..."
                   minHeight="150px"
                   className="mt-1"
+                  isExternalUpdate={profileIsExternalUpdate}
+                  onExternalUpdateComplete={() => setProfileIsExternalUpdate(false)}
                 />
               </FormField>
 
