@@ -25,6 +25,8 @@ import { SkillsGenerationPanel } from './SkillsGenerationPanel'
 import { useResumeParsing } from '@/hooks/useResumeParsing'
 import { sanitizeHtmlForEditor } from '@/utils/htmlSanitizer'
 import { markdownToHtml } from '@/utils/markdown'
+import { ParsingAnimation } from '@/components/ui/parsing-animation'
+import { useSkillsGeneration } from '@/hooks/useSkillsGeneration'
 
 interface CandidateFormProps {
   isOpen: boolean
@@ -77,6 +79,8 @@ export function CandidateForm({
   }, [])
 
   const { isParsing, parseResume } = useResumeParsing();
+  const { generateSkills, isGenerating } = useSkillsGeneration();
+  const [isProcessingResume, setIsProcessingResume] = useState(false)
 
   const form = useForm<FormData>({
     defaultValues: {
@@ -237,6 +241,7 @@ export function CandidateForm({
       setPendingFiles((prev) => [...prev, ...fileArray])
 
       try {
+        setIsProcessingResume(true)
         const first = fileArray[0]
         if (first) {
           const parsed = await parseResume(first)
@@ -249,12 +254,25 @@ export function CandidateForm({
               const sanitized = sanitizeHtmlForEditor(html)
               setProfileSummary(sanitized)
               setProfileIsExternalUpdate(true)
+              
+              // Automatically generate skills after profile summary is set
+              try {
+                await generateSkills(parsed.profileSummary, parsed.name || 'Candidate', { 
+                  context: 'candidate', 
+                  desiredCount: 20, 
+                  minCount: 12 
+                })
+              } catch (error) {
+                console.error('Skills generation failed:', error)
+              }
             }
-            toast({ title: 'Parsed from resume', description: 'Prefilled basic info. Please review before saving.' })
+            toast({ title: 'Resume parsed', description: 'Information extracted and skills generated from your resume.' })
           }
         }
       } catch (_) {
         // Errors are handled in the parsing hook
+      } finally {
+        setIsProcessingResume(false)
       }
 
     }
@@ -404,44 +422,54 @@ export function CandidateForm({
               <h3 className="text-lg font-medium text-text-primary border-b border-border pb-2">
                 Resume
               </h3>
-              <div
-                className={`relative border-2 border-dashed rounded-lg p-6 text-center transition-colors ${dragOver ? 'border-pastel-purple bg-pastel-purple/15' : 'border-pastel-purple/70 hover:border-pastel-purple bg-pastel-purple/10'}`}
-                onDrop={handleDrop}
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-              >
-                {isParsing && (
-                  <div className="absolute left-0 right-0 top-0 h-1 bg-pastel-purple animate-pulse rounded-t-lg" />
-                )}
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  className="hidden"
-                  onChange={handleFileInputChange}
-                  accept=".pdf,.doc,.docx,.txt,.rtf"
-                />
-                <Sparkles className="h-8 w-8 mx-auto text-pastel-purple-foreground mb-2" />
-                <p className="text-sm text-text-secondary mb-2">Drag and drop here, and watch some magic</p>
-                <p className="text-xs text-text-secondary mb-4">PDF, DOC, DOCX, TXT up to 15MB</p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isUploadingResume || isParsing}
-                  className="gap-sm"
+              <div className="relative group">
+                <div className={`pointer-events-none absolute -inset-[2px] rounded-lg bg-gradient-to-r from-pastel-purple via-pastel-blue to-info blur-md transition-opacity duration-300 ${dragOver ? 'opacity-80' : 'opacity-50'} pulse`} />
+                <div
+                  className={`relative border-2 border-dashed rounded-lg p-6 text-center transition-colors bg-pastel-purple/10 ${dragOver ? 'border-pastel-purple bg-pastel-purple/15' : 'border-pastel-purple/70 hover:border-pastel-purple'}`}
+                  onDrop={handleDrop}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  aria-busy={isProcessingResume || isParsing || isGenerating}
+                  aria-live="polite"
                 >
-                  {isParsing ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Parsing…
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="h-4 w-4" />
-                      Choose File
-                    </>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    className="hidden"
+                    onChange={handleFileInputChange}
+                    accept=".pdf,.doc,.docx,.txt,.rtf,.jpg,.jpeg,.png,.gif,.webp"
+                  />
+                  <Sparkles className="h-8 w-8 mx-auto text-pastel-purple-foreground mb-2" />
+                  <p className="text-sm text-text-secondary mb-2">Upload here, and watch some magic!</p>
+                  <p className="text-xs text-text-secondary mb-4">PDF, DOC, DOCX, TXT or images up to 15MB</p>
+                  <Button
+                    type="button"
+                    variant="default"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isProcessingResume || isParsing || isGenerating}
+                    className="gap-sm bg-pastel-purple text-pastel-purple-foreground border border-pastel-purple-foreground/30 hover:bg-pastel-purple/80 shadow-button"
+                  >
+                    {(isProcessingResume || isParsing || isGenerating) ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        {isParsing ? 'Parsing…' : isGenerating ? 'Generating skills…' : 'Processing…'}
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="h-4 w-4" />
+                        Choose File
+                      </>
+                    )}
+                  </Button>
+                  {(isProcessingResume || isParsing || isGenerating) && (
+                    <div className="absolute inset-0 rounded-lg bg-background/60 backdrop-blur-sm flex flex-col items-center justify-center animate-fade-in">
+                      <Loader2 className="h-6 w-6 text-pastel-purple-foreground animate-spin mb-2" />
+                      <ParsingAnimation 
+                        isActive={isProcessingResume || isParsing || isGenerating}
+                      />
+                    </div>
                   )}
-                </Button>
+                </div>
               </div>
 
               {!candidate && pendingFiles.length > 0 && (
