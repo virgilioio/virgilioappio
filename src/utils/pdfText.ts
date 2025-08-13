@@ -2,15 +2,23 @@ import type { PDFDocumentProxy } from 'pdfjs-dist';
 /* eslint-disable @typescript-eslint/no-explicit-any */
 let pdfjsLib: any | null = null;
 let mammothLib: any | null = null;
+let pdfWorker: Worker | null = null;
 
-// Configure pdfjs worker from CDN (works well in Vite)
+// Configure pdfjs worker using Vite-bundled worker to avoid CDN issues
 const ensurePdfJs = async () => {
   if (pdfjsLib) return pdfjsLib;
   pdfjsLib = await import('pdfjs-dist/build/pdf');
-  // Pin to installed version for compatibility
-  const workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
-  if (pdfjsLib && pdfjsLib.GlobalWorkerOptions) {
-    pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
+  try {
+    if (!pdfWorker) {
+      const WorkerCtor = (await import('pdfjs-dist/build/pdf.worker.min.js?worker')).default as new () => Worker;
+      pdfWorker = new WorkerCtor();
+    }
+    if (pdfjsLib && pdfjsLib.GlobalWorkerOptions) {
+      // Prefer workerPort over workerSrc when available
+      pdfjsLib.GlobalWorkerOptions.workerPort = pdfWorker;
+    }
+  } catch {
+    // Fallback: do nothing; pdf.js will try to use a default worker if available
   }
   return pdfjsLib;
 };
