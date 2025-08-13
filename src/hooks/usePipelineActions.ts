@@ -86,7 +86,7 @@ export function usePipelineActions() {
       .from('job_candidate_associations')
       .update({ current_stage_id: toStageId, pipeline_position: null })
       .eq('id', associationId)
-      .select('id') // ensure we know if any row was actually updated
+      .select('id') // attempt to return updated row
 
     if (error) {
       console.error('Error moving candidate:', error)
@@ -98,11 +98,46 @@ export function usePipelineActions() {
       throw error
     }
 
+    // If update succeeded but returned no rows (can happen if SELECT visibility is restricted by RLS),
+    // verify via a follow-up read of the record.
     if (!data || data.length === 0) {
-      console.warn('[usePipelineActions.moveAssociationToStage] no rows updated (RLS or invalid ids)', { associationId, toStageId })
+      console.warn('[usePipelineActions.moveAssociationToStage] update returned no rows; verifying via follow-up select', {
+        associationId,
+        toStageId,
+      })
+      const { data: verify, error: verifyError } = await supabase
+        .from('job_candidate_associations')
+        .select('id, current_stage_id')
+        .eq('id', associationId)
+        .maybeSingle()
+
+      if (verifyError) {
+        console.error('[usePipelineActions.moveAssociationToStage] verification select failed', verifyError)
+        toast({
+          title: 'Not moved',
+          description:
+            "The candidate may not have moved due to permissions or visibility. Please ensure you're assigned to this job and try again.",
+          variant: 'destructive',
+        })
+        throw new Error('Update may have failed: no rows visible after update')
+      }
+
+      if (verify && verify.current_stage_id === toStageId) {
+        console.log('[usePipelineActions.moveAssociationToStage] verification shows candidate moved successfully')
+        toast({
+          title: 'Candidate moved',
+          description: 'Candidate moved to the selected stage.',
+        })
+        return
+      }
+
+      console.warn('[usePipelineActions.moveAssociationToStage] verification indicates candidate not moved', {
+        verify,
+      })
       toast({
         title: 'Not moved',
-        description: "The candidate was not moved. You may not have permission, the stage/association may be invalid, or the hiring plan/stage isn't accessible.",
+        description:
+          "The candidate was not moved. You may not have permission, the stage/association may be invalid, or the hiring plan/stage isn't accessible.",
         variant: 'destructive',
       })
       throw new Error('No rows updated when moving candidate')
