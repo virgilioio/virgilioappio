@@ -175,13 +175,21 @@ export default function JobDetail() {
         candId = data?.id ?? null
       }
       if (!candId) {
-        const { data } = await supabase
+        let q = supabase
           .from('candidates')
           .select('id')
           .eq('candidate_name', jc.candidate_name)
-          .eq('location_country', jc.location_country ?? null)
-          .eq('location_city', jc.location_city ?? null)
-          .maybeSingle()
+        if (jc.location_country === null || jc.location_country === undefined) {
+          q = q.is('location_country', null)
+        } else {
+          q = q.eq('location_country', jc.location_country)
+        }
+        if (jc.location_city === null || jc.location_city === undefined) {
+          q = q.is('location_city', null)
+        } else {
+          q = q.eq('location_city', jc.location_city)
+        }
+        const { data } = await q.maybeSingle()
         candId = data?.id ?? null
       }
       if (candId) {
