@@ -72,6 +72,7 @@ export default function JobDetail() {
   const [offersCandidates, setOffersCandidates] = useState<any[]>([])
   const [hiredCandidates, setHiredCandidates] = useState<any[]>([])
   const [rejectedCandidates, setRejectedCandidates] = useState<any[]>([])
+  const [allAssociatedCandidates, setAllAssociatedCandidates] = useState<any[]>([])
   const [statusListsLoading, setStatusListsLoading] = useState(false)
 
   // Jobs hook for updating
@@ -230,26 +231,23 @@ export default function JobDetail() {
     load()
   }, [id, fetchAssociationsForJob, pipelineRefresh])
 
-  // Load candidate details for offers/hired/rejected
+  // Load candidate details for offers/hired/rejected and all associated
   useEffect(() => {
     const run = async () => {
       if (!associations.length) {
-        setOffersCandidates([]); setHiredCandidates([]); setRejectedCandidates([]); return
+        setOffersCandidates([]); setHiredCandidates([]); setRejectedCandidates([]); setAllAssociatedCandidates([]); return
       }
+      const allIdsAll = Array.from(new Set(associations.map(a => a.candidate_id)))
       const offerIds = associations
         .filter(a => a.status !== 'rejected' && (a.status === 'offer' || (a.current_stage_id && stageMap[a.current_stage_id!]?.type === 'offer')))
         .map(a => a.candidate_id)
       const hiredIds = associations.filter(a => a.status === 'hired').map(a => a.candidate_id)
       const rejectedIds = associations.filter(a => a.status === 'rejected').map(a => a.candidate_id)
-      const allIds = Array.from(new Set([...offerIds, ...hiredIds, ...rejectedIds]))
-      if (allIds.length === 0) {
-        setOffersCandidates([]); setHiredCandidates([]); setRejectedCandidates([]); return
-      }
       setStatusListsLoading(true)
       const { data, error } = await supabase
         .from('candidates')
         .select('*')
-        .in('id', allIds)
+        .in('id', allIdsAll)
       if (error) {
         console.error('Failed to load candidate details for status lists', error)
         setStatusListsLoading(false)
@@ -259,6 +257,7 @@ export default function JobDetail() {
       setOffersCandidates(offerIds.map((id) => byId.get(id)).filter(Boolean))
       setHiredCandidates(hiredIds.map((id) => byId.get(id)).filter(Boolean))
       setRejectedCandidates(rejectedIds.map((id) => byId.get(id)).filter(Boolean))
+      setAllAssociatedCandidates(allIdsAll.map((id) => byId.get(id)).filter(Boolean))
       setStatusListsLoading(false)
     }
     run()
@@ -521,7 +520,7 @@ export default function JobDetail() {
               <TabsContent value="candidates">
                 <div className="space-y-6">
                   <SalaryInsightsCard 
-                    candidates={applicationReviewCandidates}
+                    candidates={allAssociatedCandidates.length ? allAssociatedCandidates : applicationReviewCandidates}
                     jobCurrency={job.currency || 'USD'}
                   />
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -789,7 +788,7 @@ export default function JobDetail() {
                 <TabsContent value="candidates">
                   <div className="space-y-6">
                     <SalaryInsightsCard 
-                      candidates={applicationReviewCandidates}
+                      candidates={allAssociatedCandidates.length ? allAssociatedCandidates : applicationReviewCandidates}
                       jobCurrency={job.currency || 'USD'}
                     />
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
