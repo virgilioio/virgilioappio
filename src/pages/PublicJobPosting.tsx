@@ -17,6 +17,8 @@ import { useToast } from '@/components/ui/use-toast'
 import { useResumeParsing } from '@/hooks/useResumeParsing'
 import { useSkillsGeneration } from '@/hooks/useSkillsGeneration'
 import { getSkillColor } from '@/utils/skillColors'
+import { RichTextEditor } from '@/components/ui/rich-text-editor'
+import { sanitizeHtml, sanitizeHtmlForEditor } from '@/utils/htmlSanitizer'
 
 type FieldType = 'text' | 'number' | 'email' | 'textarea' | 'select' | 'checkbox' | 'date' | 'file' | 'url'
 
@@ -190,6 +192,20 @@ export default function PublicJobPosting() {
       applyParsedToForm(parsed as any)
       if (parsed.profileSummary) {
         try {
+          // Populate Profile Summary rich text field with sanitized HTML
+          const psField = fields.find((r) => (r as any).field_name === 'profile_summary')
+          if (psField) {
+            const html = sanitizeHtmlForEditor(
+              parsed.profileSummary.includes('<')
+                ? parsed.profileSummary
+                : parsed.profileSummary
+                    .split(/\n+/)
+                    .map((l) => `<p>${l.trim()}</p>`) 
+                    .join('')
+            )
+            setFormValues((prev) => ({ ...prev, [psField.id]: html }))
+          }
+
           await generateSkills(parsed.profileSummary, parsed.name || 'Candidate', { context: 'candidate', desiredCount: 20, minCount: 12 })
         } catch {
           // Ignore generation errors; toast already handled in hook
@@ -381,14 +397,23 @@ export default function PublicJobPosting() {
                                     onChange={(e) => setFormValues((prev) => ({ ...prev, [f.id]: e.target.value }))}
                                   />
                                 )}
-                                {f.field_type === 'textarea' && (
-                                  <Textarea
-                                    placeholder={f.placeholder_text || ''}
-                                    rows={4}
-                                    value={formValues[f.id] ?? ''}
-                                    onChange={(e) => setFormValues((prev) => ({ ...prev, [f.id]: e.target.value }))}
-                                  />
-                                )}
+{f.field_type === 'textarea' && (
+  (f.field_name === 'profile_summary' || /profile summary/i.test(f.field_label)) ? (
+    <RichTextEditor
+      value={formValues[f.id] ?? ''}
+      onChange={(val) => setFormValues((prev) => ({ ...prev, [f.id]: sanitizeHtml(val) }))}
+      placeholder={f.placeholder_text || 'Write a concise profile summary...'}
+      minHeight="180px"
+    />
+  ) : (
+    <Textarea
+      placeholder={f.placeholder_text || ''}
+      rows={4}
+      value={formValues[f.id] ?? ''}
+      onChange={(e) => setFormValues((prev) => ({ ...prev, [f.id]: e.target.value }))}
+    />
+  )
+)}
                                 {f.field_type === 'checkbox' && (
                                   <div className="flex items-center gap-2">
                                     <Checkbox />
