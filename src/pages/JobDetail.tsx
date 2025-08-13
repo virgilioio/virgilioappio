@@ -737,6 +737,8 @@ export default function JobDetail() {
                                 markCandidateAsViewed={() => {}}
                                 isCandidateNewForUser={() => false}
                                 onRowClick={openProfileInPlace}
+                                selectionMode={tableSelectionMode}
+                                onSelectionModeChange={setTableSelectionMode}
                               />
                             </div>
                           ) : pipelineSectionTab === 'hired' ? (
@@ -748,6 +750,8 @@ export default function JobDetail() {
                                 onDelete={handleDeleteCandidate}
                                 markCandidateAsViewed={() => {}}
                                 isCandidateNewForUser={() => false}
+                                selectionMode={tableSelectionMode}
+                                onSelectionModeChange={setTableSelectionMode}
                               />
                             </div>
                           ) : (
@@ -760,6 +764,8 @@ export default function JobDetail() {
                                 markCandidateAsViewed={() => {}}
                                 isCandidateNewForUser={() => false}
                                 onRowClick={openProfileInPlace}
+                                selectionMode={tableSelectionMode}
+                                onSelectionModeChange={setTableSelectionMode}
                               />
                             </div>
                           )}
@@ -872,57 +878,74 @@ export default function JobDetail() {
                             <h1 className="text-xl font-semibold text-text-primary">Pipeline Overview</h1>
                             <p className="text-sm text-text-secondary">Drag candidates across stages. Scroll horizontally to view more columns.</p>
                           </div>
-                          <div className="flex items-center gap-2">
-                            {pipelineSectionTab === 'recruiting' && (
-                              <>
-                                {selectionMode && (
+                            <div className="flex items-center gap-2">
+                              <Button
+                                size="sm"
+                                className="gap-sm h-[36px]"
+                                onClick={() => setShowAddCandidate(true)}
+                              >
+                                <UserPlus className="h-4 w-4" />
+                                Add Candidate
+                              </Button>
+                              {pipelineSectionTab === 'recruiting' ? (
+                                <>
+                                  {selectionMode && (
+                                    <Button
+                                      size="sm"
+                                      variant="destructive"
+                                      disabled={selectedCandidateIds.length === 0}
+                                      onClick={handleRejectSelected}
+                                    >
+                                      Reject
+                                    </Button>
+                                  )}
                                   <Button
                                     size="sm"
-                                    variant="destructive"
-                                    disabled={selectedCandidateIds.length === 0}
-                                    onClick={handleRejectSelected}
+                                    variant={selectionMode ? 'secondary' : 'outline'}
+                                    onClick={() => setSelectionMode((v) => !v)}
+                                    aria-pressed={selectionMode}
                                   >
-                                    Reject
+                                    Select
                                   </Button>
-                                )}
+                                  <TooltipProvider delayDuration={200}>
+                                    <ToggleGroup
+                                      type="single"
+                                      value={pipelineView}
+                                      onValueChange={(v) => v && setPipelineView(v as 'board' | 'list')}
+                                      size="sm"
+                                      variant="outline"
+                                      className="rounded-full border border-border/40 bg-surface-secondary/60 p-1"
+                                    >
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <ToggleGroupItem value="board" aria-label="Board view" className="rounded-full">
+                                            <LayoutGrid className="h-4 w-4" />
+                                          </ToggleGroupItem>
+                                        </TooltipTrigger>
+                                        <TooltipContent>Board</TooltipContent>
+                                      </Tooltip>
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <ToggleGroupItem value="list" aria-label="List view" className="rounded-full">
+                                            <List className="h-4 w-4" />
+                                          </ToggleGroupItem>
+                                        </TooltipTrigger>
+                                        <TooltipContent>List</TooltipContent>
+                                      </Tooltip>
+                                    </ToggleGroup>
+                                  </TooltipProvider>
+                                </>
+                              ) : (
                                 <Button
                                   size="sm"
-                                  variant={selectionMode ? 'secondary' : 'outline'}
-                                  onClick={() => setSelectionMode((v) => !v)}
-                                  aria-pressed={selectionMode}
+                                  variant={tableSelectionMode ? 'secondary' : 'outline'}
+                                  onClick={() => setTableSelectionMode((v) => !v)}
+                                  aria-pressed={tableSelectionMode}
                                 >
                                   Select
                                 </Button>
-                                <TooltipProvider delayDuration={200}>
-                                  <ToggleGroup
-                                    type="single"
-                                    value={pipelineView}
-                                    onValueChange={(v) => v && setPipelineView(v as 'board' | 'list')}
-                                    size="sm"
-                                    variant="outline"
-                                    className="rounded-full border border-border/40 bg-surface-secondary/60 p-1"
-                                  >
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <ToggleGroupItem value="board" aria-label="Board view" className="rounded-full">
-                                          <LayoutGrid className="h-4 w-4" />
-                                        </ToggleGroupItem>
-                                      </TooltipTrigger>
-                                      <TooltipContent>Board</TooltipContent>
-                                    </Tooltip>
-                                    <Tooltip>
-                                      <TooltipTrigger asChild>
-                                        <ToggleGroupItem value="list" aria-label="List view" className="rounded-full">
-                                          <List className="h-4 w-4" />
-                                        </ToggleGroupItem>
-                                      </TooltipTrigger>
-                                      <TooltipContent>List</TooltipContent>
-                                    </Tooltip>
-                                  </ToggleGroup>
-                                </TooltipProvider>
-                              </>
-                            )}
-                          </div>
+                              )}
+                            </div>
                         </div>
                       </CardHeader>
                       <CardContent className="p-0 h-0 flex-1">
@@ -952,6 +975,8 @@ export default function JobDetail() {
                                 markCandidateAsViewed={markCandidateAsViewed}
                                 isCandidateNewForUser={isCandidateNewForUser}
                                 onRowClick={handleApplicationRowClick}
+                                selectionMode={tableSelectionMode}
+                                onSelectionModeChange={setTableSelectionMode}
                               />
                             </div>
                           ) : pipelineSectionTab === 'offers' ? (
@@ -964,6 +989,8 @@ export default function JobDetail() {
                                 markCandidateAsViewed={() => {}}
                                 isCandidateNewForUser={() => false}
                                 onRowClick={openProfileInPlace}
+                                selectionMode={tableSelectionMode}
+                                onSelectionModeChange={setTableSelectionMode}
                               />
                             </div>
                           ) : pipelineSectionTab === 'hired' ? (
@@ -975,6 +1002,8 @@ export default function JobDetail() {
                                 onDelete={handleDeleteCandidate}
                                 markCandidateAsViewed={() => {}}
                                 isCandidateNewForUser={() => false}
+                                selectionMode={tableSelectionMode}
+                                onSelectionModeChange={setTableSelectionMode}
                               />
                             </div>
                           ) : (
@@ -987,6 +1016,8 @@ export default function JobDetail() {
                                 markCandidateAsViewed={() => {}}
                                 isCandidateNewForUser={() => false}
                                 onRowClick={openProfileInPlace}
+                                selectionMode={tableSelectionMode}
+                                onSelectionModeChange={setTableSelectionMode}
                               />
                             </div>
                           )}

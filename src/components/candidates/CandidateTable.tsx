@@ -227,6 +227,7 @@ export function CandidateTable({
   }
   const toggleSelect = (id: string) => setSelectedIds(ids => ids.includes(id) ? ids.filter(i => i !== id) : [...ids, id])
   const clearSelection = () => setSelectedIds([])
+  useEffect(() => { if (!selectionMode) setSelectedIds([]) }, [selectionMode])
   const archiveSelected = async () => {
     if (selectedIds.length === 0) return
     await Promise.allSettled(selectedIds.map(id => Promise.resolve(onDelete(id))))
