@@ -60,25 +60,25 @@ Full name (Title case, bold)
 
 Professional headline (bold, short, separated by vertical bars)
 
-Location (País, Estado, Ciudad, in bold after “Ubicación:”) 
+Location (País, Estado, Ciudad, in bold after “Ubicación:”) - If available
 
-Phone number 
 
-Email (in markdown link format)
 
-Salary expectation (in MXN, PEN, COP, CLP, or ARS, depending on candidate’s market, with “+ comisiones” if applicable)
 
-LinkedIn link (markdown link format)
+
+
+
+
 
 Then create these sections in order:
 
-Perfil Profesional – A 2–3 paragraph summary (max 180 words) describing years of experience, regions worked (LATAM, NAM, EMEA if applicable), areas of expertise, tools mastered, sales methodologies applied, and professional strengths. The tone should be results-oriented, highlighting quantifiable achievements when possible.
+Profile Summary – A 2–3 paragraph summary (max 180 words) describing years of experience, regions worked (LATAM, NAM, EMEA if applicable), areas of expertise, tools mastered, sales methodologies applied, and professional strengths. The tone should be results-oriented, highlighting quantifiable achievements when possible.
 
 Experiencia Profesional – Reverse chronological list of roles, each with:
 
 Company name — Position title | Start month/year – End month/year
 
-3 bullet points starting with action verbs, summarizing main achievements and responsibilities, with specific metrics where possible.
+3-4 bullet points starting with action verbs, summarizing main achievements and responsibilities, with specific metrics where possible.
 
 Educación – Institution name, degree, and years attended.
 
@@ -92,6 +92,9 @@ Important style rules:
 - All section titles in bold and uppercase.
 - Separate sections with a line break (“---”).
 - Do not include any extra commentary, notes, or introductions. Only the formatted profile.
+
+Example:
+(Provide the Fernanda López Ávila example here in full)
 
 Now, using the resume provided, produce the final formatted profile exactly in this style and layout.
 
