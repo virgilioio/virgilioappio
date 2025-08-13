@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react'
+import React, { useRef, useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -48,6 +48,23 @@ export default function CandidateFormSheet({ isOpen, onClose, jobId }: Candidate
   // Hooks for submission depending on context
   const jobCandidates = useCandidates(jobId || '')
   const independent = useIndependentCandidates()
+
+  const resetAll = () => {
+    reset({ candidate_name: '', email: '', phone: '', linkedin_url: '', source: 'direct' })
+    setSkills([])
+    setNewSkill('')
+    setProfileSummary('')
+    setPendingFiles([])
+    if (fileInputRef.current) {
+      try { fileInputRef.current.value = '' } catch {}
+    }
+  }
+
+  useEffect(() => {
+    if (!isOpen) {
+      resetAll()
+    }
+  }, [isOpen])
 
   const addSkill = () => {
     const s = newSkill.trim()
@@ -180,10 +197,7 @@ export default function CandidateFormSheet({ isOpen, onClose, jobId }: Candidate
       }
 
       // Cleanup and close
-      reset({ candidate_name: '', email: '', phone: '', linkedin_url: '', source: 'direct' })
-      setSkills([])
-      setProfileSummary('')
-      setPendingFiles([])
+      resetAll()
       onClose()
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to add candidate'
@@ -312,7 +326,7 @@ export default function CandidateFormSheet({ isOpen, onClose, jobId }: Candidate
           </form>
 
           <div className="px-6 py-4 border-t border-border flex items-center justify-end gap-2">
-            <Button variant="ghost" type="button" onClick={onClose}>Cancel</Button>
+            <Button variant="ghost" type="button" onClick={() => { resetAll(); onClose(); }}>Cancel</Button>
             <Button type="submit" onClick={() => { const form = document.querySelector('form'); (form as HTMLFormElement | null)?.requestSubmit?.() }}>Save Candidate</Button>
           </div>
         </div>
