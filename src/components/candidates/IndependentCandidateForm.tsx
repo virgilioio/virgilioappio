@@ -60,7 +60,7 @@ export function IndependentCandidateForm({
   const [newSkill, setNewSkill] = useState('')
   const [dragOver, setDragOver] = useState(false)
 
-  const [profileSummary, setProfileSummary] = useState(sanitizeHtmlForEditor(initialData?.profile_summary || ""))
+  const [profileSummary, setProfileSummary] = useState(() => sanitizeHtmlForEditor(markdownToHtml(initialData?.profile_summary || "")))
 
   const {
     register,
@@ -166,7 +166,7 @@ export function IndependentCandidateForm({
             <h3 className="text-sm font-semibold text-foreground">Resume</h3>
             <div
               className={`relative border-2 border-dashed rounded-lg p-6 text-center transition-colors ${dragOver ? 'border-pastel-purple bg-pastel-purple/15' : 'border-pastel-purple/70 hover:border-pastel-purple bg-pastel-purple/10'}`}
-              onDrop={(e) => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files?.[0]; if (!f) return; parseResume(f).then((parsed) => { if (!parsed) return; if (parsed.name) setValue('candidate_name', parsed.name); if (parsed.email) setValue('email', parsed.email); if (parsed.phone) setValue('phone', parsed.phone); if (parsed.profileSummary && parsed.profileSummary.trim().length > 0) { const sanitized = sanitizeHtmlForEditor(parsed.profileSummary); setValue('profile_summary', sanitized); } toast({ title: 'Parsed from resume', description: 'Prefilled basic info. Please review before saving.' }); }); }}
+              onDrop={(e) => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files?.[0]; if (!f) return; parseResume(f).then((parsed) => { if (!parsed) return; if (parsed.name) setValue('candidate_name', parsed.name); if (parsed.email) setValue('email', parsed.email); if (parsed.phone) setValue('phone', parsed.phone); if (parsed.profileSummary && parsed.profileSummary.trim().length > 0) { const html = markdownToHtml(parsed.profileSummary); const sanitized = sanitizeHtmlForEditor(html); setProfileSummary(sanitized); setValue('profile_summary', sanitized); } toast({ title: 'Parsed from resume', description: 'Prefilled basic info. Please review before saving.' }); }); }}
               onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
               onDragLeave={(e) => { e.preventDefault(); setDragOver(false); }}
             >
@@ -178,7 +178,7 @@ export function IndependentCandidateForm({
                 type="file"
                 className="hidden"
                 accept=".pdf,.doc,.docx,.txt,.rtf"
-                onChange={async (e) => { const f = e.target.files?.[0]; if (!f) return; const parsed = await parseResume(f); if (parsed) { if (parsed.name) setValue('candidate_name', parsed.name); if (parsed.email) setValue('email', parsed.email); if (parsed.phone) setValue('phone', parsed.phone); if (parsed.profileSummary && parsed.profileSummary.trim().length > 0) { const sanitized = sanitizeHtmlForEditor(parsed.profileSummary); setValue('profile_summary', sanitized); } toast({ title: 'Parsed from resume', description: 'Prefilled basic info. Please review before saving.' }); } e.currentTarget.value = ''; }}
+                onChange={async (e) => { const f = e.target.files?.[0]; if (!f) return; const parsed = await parseResume(f); if (parsed) { if (parsed.name) setValue('candidate_name', parsed.name); if (parsed.email) setValue('email', parsed.email); if (parsed.phone) setValue('phone', parsed.phone); if (parsed.profileSummary && parsed.profileSummary.trim().length > 0) { const html = markdownToHtml(parsed.profileSummary); const sanitized = sanitizeHtmlForEditor(html); setProfileSummary(sanitized); setValue('profile_summary', sanitized); } toast({ title: 'Parsed from resume', description: 'Prefilled basic info. Please review before saving.' }); } e.currentTarget.value = ''; }}
               />
               <Sparkles className="h-8 w-8 mx-auto text-pastel-purple-foreground mb-2" />
               <p className="text-sm text-text-secondary mb-2">Drag and drop here, and watch some magic</p>
@@ -397,8 +397,7 @@ export function IndependentCandidateForm({
 
           {/* AI Skills Generation */}
           <SkillsGenerationPanel
-            profileSummary={watch("profile_summary") || ""}
-            candidateName={watch("candidate_name") || ""}
+            profileSummary={profileSummary}
             onSkillsAccepted={(newSkills) => {
               const uniqueSkills = [...new Set([...skills, ...newSkills])];
               setSkills(uniqueSkills);
@@ -409,11 +408,11 @@ export function IndependentCandidateForm({
           {/* Profile Summary */}
           <div className="space-y-2">
             <Label htmlFor="profile_summary">Profile Summary</Label>
-            <Textarea
-              id="profile_summary"
-              {...register('profile_summary')}
+            <RichTextEditor
+              value={profileSummary}
+              onChange={setProfileSummary}
               placeholder="Brief summary of the candidate's background and experience..."
-              rows={3}
+              minHeight="150px"
             />
           </div>
 

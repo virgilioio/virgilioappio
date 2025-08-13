@@ -1,5 +1,7 @@
 
 import { useState } from 'react';
+import { sanitizeHtmlForEditor } from '@/utils/htmlSanitizer';
+import { markdownToHtml } from '@/utils/markdown';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { extractTextFromFile } from '@/utils/pdfText';
@@ -111,9 +113,12 @@ export function useResumeParsing() {
         if ((!existing.candidate_name || existing.candidate_name.trim().length === 0) && parsed.name) {
           update.candidate_name = parsed.name;
         }
-        if ((!existing.profile_summary || existing.profile_summary.trim().length < 50) && parsed.profileSummary) {
-          update.profile_summary = parsed.profileSummary;
-        }
+          if ((!existing.profile_summary || existing.profile_summary.trim().length < 50) && parsed.profileSummary) {
+            // Convert Markdown-ish content to sanitized HTML before saving
+            const html = markdownToHtml(parsed.profileSummary)
+            const sanitized = sanitizeHtmlForEditor(html)
+            update.profile_summary = sanitized
+          }
         if (parsed.email) {
           update.contact_emails = uniquePush<string>(existing.contact_emails, parsed.email);
         }

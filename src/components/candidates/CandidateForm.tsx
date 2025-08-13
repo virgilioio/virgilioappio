@@ -151,7 +151,7 @@ export function CandidateForm({
           skills: skillsValue
         })
         
-        const sanitizedProfile = sanitizeHtmlForEditor(profileSummaryValue)
+        const sanitizedProfile = sanitizeHtmlForEditor(markdownToHtml(profileSummaryValue))
         setProfileSummary(sanitizedProfile)
         setProfileIsExternalUpdate(true)
         setNotes(notesValue)
