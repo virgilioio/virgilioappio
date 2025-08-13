@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge'
 import { SafeHtml } from '@/components/ui/safe-html'
 import { VirgilioLogo } from '@/components/VirgilioLogo'
-import { MapPin, Briefcase, DollarSign } from 'lucide-react'
+import { MapPin, Briefcase, DollarSign, Sparkles } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/use-toast'
@@ -50,7 +50,8 @@ export default function PublicJobPosting() {
   const [scrolled, setScrolled] = useState(false)
   const [tab, setTab] = useState<'overview' | 'application'>('overview')
   const { toast } = useToast()
-
+  const [dragOverField, setDragOverField] = useState<string | null>(null)
+  const [uploadedFiles, setUploadedFiles] = useState<Record<string, File | null>>({})
   // Canonical host redirect to app.virgilio.io (skip local dev)
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -318,7 +319,41 @@ export default function PublicJobPosting() {
                                   </Select>
                                 )}
                                 {f.field_type === 'date' && <Input type="date" />}
-                                {f.field_type === 'file' && <Input type="file" />}
+{f.field_type === 'file' && (/resume/i.test(f.field_label) ? (
+  <div className="relative group">
+    <div className={`pointer-events-none absolute -inset-[2px] rounded-lg bg-gradient-to-r from-pastel-purple via-pastel-blue to-info blur-md transition-opacity duration-300 ${dragOverField === f.id ? 'opacity-80' : 'opacity-50'} pulse`} />
+    <div
+      className={`relative border-2 border-dashed rounded-lg p-6 text-center transition-colors bg-pastel-purple/10 ${dragOverField === f.id ? 'border-pastel-purple bg-pastel-purple/15' : 'border-pastel-purple/70 hover:border-pastel-purple'}`}
+      onDrop={(e) => { e.preventDefault(); setDragOverField(null); const file = e.dataTransfer.files?.[0]; if (file) setUploadedFiles((prev) => ({ ...prev, [f.id]: file })); }}
+      onDragOver={(e) => { e.preventDefault(); setDragOverField(f.id); }}
+      onDragLeave={(e) => { e.preventDefault(); setDragOverField(null); }}
+    >
+      <input
+        id={`file-${f.id}`}
+        type="file"
+        className="hidden"
+        onChange={(e) => { const file = e.target.files?.[0] || null; setUploadedFiles((prev) => ({ ...prev, [f.id]: file })); e.currentTarget.value = '' }}
+        accept=".pdf,.doc,.docx,.txt,.rtf,.jpg,.jpeg,.png,.gif,.webp"
+      />
+      <Sparkles className="h-8 w-8 mx-auto text-pastel-purple-foreground mb-2" />
+      <p className="text-sm text-text-secondary mb-2">Drag and drop your resume</p>
+      <p className="text-xs text-text-secondary mb-4">PDF, DOC, DOCX, TXT or images up to 15MB</p>
+      <Button
+        type="button"
+        variant="default"
+        onClick={() => document.getElementById(`file-${f.id}`)?.click()}
+        className="gap-sm bg-pastel-purple text-pastel-purple-foreground border border-pastel-purple-foreground/30 hover:bg-pastel-purple/80 shadow-button"
+      >
+        <Sparkles className="h-4 w-4" /> Choose File
+      </Button>
+      {uploadedFiles[f.id] && (
+        <p className="mt-3 text-xs text-text-secondary">Selected: {uploadedFiles[f.id]?.name}</p>
+      )}
+    </div>
+  </div>
+) : (
+  <Input type="file" />
+))}
                               </div>
                             </div>
                           ))}
