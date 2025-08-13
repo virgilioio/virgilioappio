@@ -14,6 +14,7 @@ import { MapPin, Briefcase, DollarSign, Sparkles } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/use-toast'
+import { useResumeParsing } from '@/hooks/useResumeParsing'
 
 type FieldType = 'text' | 'number' | 'email' | 'textarea' | 'select' | 'checkbox' | 'date' | 'file' | 'url'
 
@@ -31,6 +32,7 @@ interface PostingField {
   is_required: boolean
   placeholder_text?: string | null
   column_span?: number | null
+  field_name?: string | null
 }
 
 interface SelectOption {
@@ -52,6 +54,8 @@ export default function PublicJobPosting() {
   const { toast } = useToast()
   const [dragOverField, setDragOverField] = useState<string | null>(null)
   const [uploadedFiles, setUploadedFiles] = useState<Record<string, File | null>>({})
+  const { isParsing, parseResume } = useResumeParsing()
+  const [formValues, setFormValues] = useState<Record<string, string>>({})
   // Canonical host redirect to app.virgilio.io (skip local dev)
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -92,12 +96,13 @@ export default function PublicJobPosting() {
 
       const { data: f } = await supabase
         .from('job_posting_application_fields')
-        .select('id, field_label, field_type, is_required, placeholder_text, column_span')
+        .select('id, field_label, field_type, is_required, placeholder_text, column_span, field_name')
         .eq('posting_id', p.id)
         .order('display_order', { ascending: true })
 
       const fieldRows = (f || []) as PostingField[]
       setFields(fieldRows)
+      setFormValues(Object.fromEntries(fieldRows.map((r) => [r.id, ''])))
 
       // Fetch select options for select fields
       const selectFieldIds = fieldRows.filter((r) => r.field_type === 'select').map((r) => r.id)
@@ -144,6 +149,44 @@ export default function PublicJobPosting() {
       .toString()
       .replace(/[_-]+/g, ' ')
       .replace(/\b\w/g, (c) => c.toUpperCase())
+  }
+
+  // Helpers to map parsed resume data into default fields
+  const splitName = (full?: string | null) => {
+    if (!full) return { first: '', last: '' }
+    const parts = full.trim().split(/\s+/)
+    if (parts.length === 1) return { first: parts[0], last: '' }
+    const last = parts.pop() as string
+    return { first: parts.join(' '), last }
+  }
+
+  const applyParsedToForm = (parsed: { name?: string; email?: string; phone?: string }) => {
+    const next = { ...formValues }
+    const idByName = (name: string) => fields.find((r) => (r as any).field_name === name)?.id
+    if (parsed.name) {
+      const { first, last } = splitName(parsed.name)
+      const fid = idByName('first_name')
+      const lid = idByName('last_name')
+      if (fid) next[fid] = first
+      if (lid) next[lid] = last
+    }
+    if (parsed.email) {
+      const eid = idByName('email')
+      if (eid) next[eid] = parsed.email
+    }
+    if (parsed.phone) {
+      const pid = idByName('phone')
+      if (pid) next[pid] = parsed.phone
+    }
+    setFormValues(next)
+  }
+
+  const handleParsedFile = async (file: File) => {
+    const parsed = await parseResume(file)
+    if (parsed) {
+      applyParsedToForm(parsed as any)
+      toast({ title: 'Parsed from resume', description: 'Prefilled basic info. Please review before submitting.' })
+    }
   }
 
   function JobDetailsCard({ details }: { details: { location: string | null; employmentType: string | null; locationType: string | null; salaryCurrency: string | null; salaryAmount: number | null; salaryPeriod: string | null; showSalary: boolean; hasCommissions: boolean; commissionsCurrency: string | null; commissionsAmount: number | null; } }) {
@@ -297,11 +340,45 @@ export default function PublicJobPosting() {
                                 {f.field_label} {f.is_required && <Badge variant="secondary" className="ml-2">Required</Badge>}
                               </label>
                               <div className="mt-1">
-                                {f.field_type === 'text' && <Input placeholder={f.placeholder_text || ''} />}
-                                {f.field_type === 'url' && <Input type="url" placeholder={f.placeholder_text || 'https://'} />}
-                                {f.field_type === 'email' && <Input type="email" placeholder={f.placeholder_text || ''} />}
-                                {f.field_type === 'number' && <Input type="number" placeholder={f.placeholder_text || ''} />}
-                                {f.field_type === 'textarea' && <Textarea placeholder={f.placeholder_text || ''} rows={4} />}
+                                {f.field_type === 'text' && (
+                                  <Input
+                                    placeholder={f.placeholder_text || ''}
+                                    value={formValues[f.id] ?? ''}
+                                    onChange={(e) => setFormValues((prev) => ({ ...prev, [f.id]: e.target.value }))}
+                                  />
+                                )}
+                                {f.field_type === 'url' && (
+                                  <Input
+                                    type="url"
+                                    placeholder={f.placeholder_text || 'https://'}
+                                    value={formValues[f.id] ?? ''}
+                                    onChange={(e) => setFormValues((prev) => ({ ...prev, [f.id]: e.target.value }))}
+                                  />
+                                )}
+                                {f.field_type === 'email' && (
+                                  <Input
+                                    type="email"
+                                    placeholder={f.placeholder_text || ''}
+                                    value={formValues[f.id] ?? ''}
+                                    onChange={(e) => setFormValues((prev) => ({ ...prev, [f.id]: e.target.value }))}
+                                  />
+                                )}
+                                {f.field_type === 'number' && (
+                                  <Input
+                                    type="number"
+                                    placeholder={f.placeholder_text || ''}
+                                    value={formValues[f.id] ?? ''}
+                                    onChange={(e) => setFormValues((prev) => ({ ...prev, [f.id]: e.target.value }))}
+                                  />
+                                )}
+                                {f.field_type === 'textarea' && (
+                                  <Textarea
+                                    placeholder={f.placeholder_text || ''}
+                                    rows={4}
+                                    value={formValues[f.id] ?? ''}
+                                    onChange={(e) => setFormValues((prev) => ({ ...prev, [f.id]: e.target.value }))}
+                                  />
+                                )}
                                 {f.field_type === 'checkbox' && (
                                   <div className="flex items-center gap-2">
                                     <Checkbox />
@@ -324,7 +401,7 @@ export default function PublicJobPosting() {
     <div className={`pointer-events-none absolute -inset-[2px] rounded-lg bg-gradient-to-r from-pastel-purple via-pastel-blue to-info blur-md transition-opacity duration-300 ${dragOverField === f.id ? 'opacity-80' : 'opacity-50'} pulse`} />
     <div
       className={`relative border-2 border-dashed rounded-lg p-6 text-center transition-colors bg-pastel-purple/10 ${dragOverField === f.id ? 'border-pastel-purple bg-pastel-purple/15' : 'border-pastel-purple/70 hover:border-pastel-purple'}`}
-      onDrop={(e) => { e.preventDefault(); setDragOverField(null); const file = e.dataTransfer.files?.[0]; if (file) setUploadedFiles((prev) => ({ ...prev, [f.id]: file })); }}
+      onDrop={(e) => { e.preventDefault(); setDragOverField(null); const file = e.dataTransfer.files?.[0]; if (file) { setUploadedFiles((prev) => ({ ...prev, [f.id]: file })); void handleParsedFile(file); } }}
       onDragOver={(e) => { e.preventDefault(); setDragOverField(f.id); }}
       onDragLeave={(e) => { e.preventDefault(); setDragOverField(null); }}
     >
@@ -332,7 +409,7 @@ export default function PublicJobPosting() {
         id={`file-${f.id}`}
         type="file"
         className="hidden"
-        onChange={(e) => { const file = e.target.files?.[0] || null; setUploadedFiles((prev) => ({ ...prev, [f.id]: file })); e.currentTarget.value = '' }}
+        onChange={(e) => { const file = e.target.files?.[0] || null; setUploadedFiles((prev) => ({ ...prev, [f.id]: file })); if (file) { void handleParsedFile(file as File) }; e.currentTarget.value = '' }}
         accept=".pdf,.doc,.docx,.txt,.rtf,.jpg,.jpeg,.png,.gif,.webp"
       />
       <Sparkles className="h-8 w-8 mx-auto text-pastel-purple-foreground mb-2" />
