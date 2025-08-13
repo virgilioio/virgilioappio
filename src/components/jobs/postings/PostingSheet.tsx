@@ -12,6 +12,7 @@ import { FormField } from '@/components/ui/form-field'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
+import { useCurrencies } from '@/hooks/useCurrencies'
 
 interface PostingSheetProps {
   jobId: string
@@ -34,6 +35,7 @@ export function PostingSheet({
 }: PostingSheetProps) {
   const { toast } = useToast()
   const { getPosting, createPosting, updatePosting } = useJobPostings(jobId)
+  const { currencies } = useCurrencies()
 
   const [localId, setLocalId] = useState<string | undefined>(postingId)
   const [title, setTitle] = useState<string>(defaultTitle || '')
@@ -187,11 +189,11 @@ export function PostingSheet({
                     <Select value={salaryCurrency} onValueChange={setSalaryCurrency} disabled={!!readOnly}>
                       <SelectTrigger><SelectValue placeholder="Currency" /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="USD">USD</SelectItem>
-                        <SelectItem value="EUR">EUR</SelectItem>
-                        <SelectItem value="GBP">GBP</SelectItem>
-                        <SelectItem value="CAD">CAD</SelectItem>
-                        <SelectItem value="AUD">AUD</SelectItem>
+                        {currencies.map((c) => (
+                          <SelectItem key={c.code} value={c.code}>
+                            {c.code} - {c.name}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </FormField>
@@ -234,13 +236,13 @@ export function PostingSheet({
                     <FormField label="Average Commissions Currency">
                       <Select value={commissionsCurrency} onValueChange={setCommissionsCurrency} disabled={!!readOnly}>
                         <SelectTrigger><SelectValue placeholder="Currency" /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="USD">USD</SelectItem>
-                          <SelectItem value="EUR">EUR</SelectItem>
-                          <SelectItem value="GBP">GBP</SelectItem>
-                          <SelectItem value="CAD">CAD</SelectItem>
-                          <SelectItem value="AUD">AUD</SelectItem>
-                        </SelectContent>
+                          <SelectContent>
+                            {currencies.map((c) => (
+                              <SelectItem key={c.code} value={c.code}>
+                                {c.code} - {c.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
                       </Select>
                     </FormField>
                     <FormField label="Average Commissions Amount">
