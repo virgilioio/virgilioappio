@@ -179,13 +179,21 @@ export function useCandidates(jobId: string) {
       let independentCandidateId: string | null = null
       
       if (candidateData.candidate_name) {
-        const { data: existingCandidate } = await supabase
+        let q = supabase
           .from('candidates')
           .select('id')
           .eq('candidate_name', candidateData.candidate_name)
-          .eq('location_country', candidateData.location_country || null)
-          .eq('location_city', candidateData.location_city || null)
-          .maybeSingle()
+        if (candidateData.location_country === null || candidateData.location_country === undefined) {
+          q = q.is('location_country', null)
+        } else {
+          q = q.eq('location_country', candidateData.location_country)
+        }
+        if (candidateData.location_city === null || candidateData.location_city === undefined) {
+          q = q.is('location_city', null)
+        } else {
+          q = q.eq('location_city', candidateData.location_city)
+        }
+        const { data: existingCandidate } = await q.maybeSingle()
         
         independentCandidateId = existingCandidate?.id || null
       }
@@ -256,16 +264,21 @@ export function useCandidates(jobId: string) {
         }
       }
 
-      // Step 4: Create association between job candidate and independent candidate
+      // Step 4: Create association between job candidate and independent candidate (Application Review)
       if (independentCandidateId && newCandidate) {
-        await supabase
+        const { error: assocError } = await supabase
           .from('job_candidate_associations')
           .insert([{
             job_id: jobId,
             candidate_id: independentCandidateId,
+            current_stage_id: null, // Application Review
+            status: 'active',
             notes: candidateData.notes,
             added_by: user.id,
           }])
+        if (assocError) {
+          console.error('Error creating association for new job candidate:', assocError)
+        }
       }
 
       console.log('Added candidate:', newCandidate)
