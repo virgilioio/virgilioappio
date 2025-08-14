@@ -673,6 +673,15 @@ export default function JobDetail() {
                               Add Candidate
                             </Button>
                           )}
+                          {(() => {
+                            console.log('Pipeline header debug:', {
+                              selectionMode,
+                              selectedCount: selectedCandidateIds.length,
+                              selectedIds: selectedCandidateIds,
+                              currentTab: pipelineSectionTab
+                            });
+                            return null;
+                          })()}
                           {selectionMode && selectedCandidateIds.length > 0 && (
                             <div className="flex items-center gap-2">
                               <BulkMoveJobCandidatesToPipelineDialog
