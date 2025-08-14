@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client'
 import { useCandidateAttachments } from '@/hooks/useCandidateAttachments'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { convertDocumentToPdf } from '@/utils/documentToPdf'
 
 interface CandidateResumeViewerProps {
   candidateId?: string
@@ -19,6 +20,8 @@ export function CandidateResumeViewer({ candidateId, jobCandidateId, fallbackRes
   const [signedUrl, setSignedUrl] = useState<string | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [fileName, setFileName] = useState<string>('resume')
+  const [isConverting, setIsConverting] = useState(false)
+  const [conversionError, setConversionError] = useState<string | null>(null)
   const resumeAttachment = useMemo(() => attachments.find(a => a.is_resume), [attachments])
 
   const effectiveUrl = resumeAttachment ? resumeAttachment.file_url : (fallbackResumeUrl || null)
@@ -67,6 +70,12 @@ export function CandidateResumeViewer({ candidateId, jobCandidateId, fallbackRes
     return ['.jpg', '.jpeg', '.png', '.gif', '.webp'].some(ext => lower.endsWith(ext))
   }, [fileType, effectiveUrl])
 
+  const isConvertibleDocument = useMemo(() => {
+    if (fileType?.includes('wordprocessingml')) return true
+    const lower = (effectiveUrl || '').toLowerCase()
+    return ['.docx', '.doc'].some(ext => lower.endsWith(ext))
+  }, [fileType, effectiveUrl])
+
   useEffect(() => {
     let createdUrl: string | null = null
     let active = true
@@ -88,6 +97,34 @@ export function CandidateResumeViewer({ candidateId, jobCandidateId, fallbackRes
           if (active) setPreviewUrl(signedUrl)
         }
       })()
+    } else if (isConvertibleDocument) {
+      ;(async () => {
+        try {
+          setIsConverting(true)
+          setConversionError(null)
+          
+          const res = await fetch(signedUrl)
+          if (!res.ok) throw new Error('Failed to fetch file')
+          const blob = await res.blob()
+          const file = new File([blob], fileName, { type: fileType || 'application/octet-stream' })
+          
+          if (!active) return
+          
+          const pdfBlob = await convertDocumentToPdf(file)
+          if (!active) return
+          
+          const url = URL.createObjectURL(pdfBlob)
+          createdUrl = url
+          setPreviewUrl(url)
+        } catch (e) {
+          if (active) {
+            setConversionError('Failed to convert document for preview')
+            setPreviewUrl(null)
+          }
+        } finally {
+          if (active) setIsConverting(false)
+        }
+      })()
     } else {
       setPreviewUrl(null)
     }
@@ -95,7 +132,7 @@ export function CandidateResumeViewer({ candidateId, jobCandidateId, fallbackRes
       active = false
       if (createdUrl) URL.revokeObjectURL(createdUrl)
     }
-  }, [signedUrl, isPdf])
+  }, [signedUrl, isPdf, isConvertibleDocument, fileName, fileType])
 
   if (!effectiveUrl || !signedUrl) {
     return (
@@ -111,7 +148,15 @@ export function CandidateResumeViewer({ candidateId, jobCandidateId, fallbackRes
     <div className={className}>
       <div className="space-y-3">
         <div className="w-full border border-border rounded-lg overflow-hidden bg-surface-secondary">
-          {isPdf ? (
+          {isConverting ? (
+            <div className="p-6 text-center text-text-secondary text-sm">
+              Converting document for preview...
+            </div>
+          ) : conversionError ? (
+            <div className="p-6 text-center text-text-secondary text-sm">
+              {conversionError}. You can download or open the original file in a new tab.
+            </div>
+          ) : (isPdf || (isConvertibleDocument && previewUrl)) ? (
             <iframe
               src={previewUrl || signedUrl}
               title="Resume preview"
