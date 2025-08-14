@@ -673,6 +673,10 @@ export default function JobDetail() {
                               Add Candidate
                             </Button>
                           )}
+                          {/* Debug: Selection state */}
+                          <div className="text-xs text-red-500 border border-red-200 p-1 rounded">
+                            Mode: {selectionMode ? 'ON' : 'OFF'} | Selected: {selectedCandidateIds.length} | Tab: {pipelineSectionTab}
+                          </div>
                           {selectionMode && selectedCandidateIds.length > 0 && (
                             <div className="flex items-center gap-2">
                               <BulkMoveJobCandidatesToPipelineDialog
