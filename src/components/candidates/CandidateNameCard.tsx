@@ -82,22 +82,20 @@ export function CandidateNameCard({
               <p className="text-text-secondary mt-1 text-sm">{subtitle}</p>
             )}
             {(email || phone) && (
-              <div className="flex flex-col gap-2 mt-2 text-sm">
+              <div className="flex items-center gap-4 mt-2 text-sm">
                 {email && (
-                  <div className="flex items-center justify-between group">
-                    <div className="flex items-center gap-1 text-text-secondary">
-                      <Mail className="h-3 w-3" />
-                      <a 
-                        href={`mailto:${email}`}
-                        className="text-blue-600 hover:text-blue-700 hover:underline font-medium"
-                      >
-                        {email}
-                      </a>
-                    </div>
+                  <div className="flex items-center gap-1 group">
+                    <Mail className="h-3 w-3 text-text-secondary" />
+                    <a 
+                      href={`mailto:${email}`}
+                      className="text-blue-600 hover:text-blue-700 hover:underline"
+                    >
+                      {email}
+                    </a>
                     <Button
                       size="icon"
                       variant="ghost"
-                      className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="h-4 w-4 p-0 opacity-0 group-hover:opacity-100 transition-opacity ml-1"
                       onClick={() => copyToClipboard(email, 'email')}
                       title="Copy email"
                     >
@@ -106,20 +104,18 @@ export function CandidateNameCard({
                   </div>
                 )}
                 {phone && (
-                  <div className="flex items-center justify-between group">
-                    <div className="flex items-center gap-1 text-text-secondary">
-                      <Phone className="h-3 w-3" />
-                      <a 
-                        href={`tel:${phone}`}
-                        className="text-blue-600 hover:text-blue-700 hover:underline font-medium"
-                      >
-                        {phone}
-                      </a>
-                    </div>
+                  <div className="flex items-center gap-1 group">
+                    <Phone className="h-3 w-3 text-text-secondary" />
+                    <a 
+                      href={`tel:${phone}`}
+                      className="text-blue-600 hover:text-blue-700 hover:underline"
+                    >
+                      {phone}
+                    </a>
                     <Button
                       size="icon"
                       variant="ghost"
-                      className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="h-4 w-4 p-0 opacity-0 group-hover:opacity-100 transition-opacity ml-1"
                       onClick={() => copyToClipboard(phone, 'phone')}
                       title="Copy phone number"
                     >
