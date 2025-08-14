@@ -4,7 +4,8 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
-import { Mail, Phone } from 'lucide-react'
+import { Mail, Phone, Copy } from 'lucide-react'
+import { toast } from '@/hooks/use-toast'
 
 export type CandidateNameCardTab = {
   value: string
@@ -39,6 +40,21 @@ export function CandidateNameCard({
   phone,
   className,
 }: CandidateNameCardProps) {
+  const copyToClipboard = async (text: string, type: 'email' | 'phone') => {
+    try {
+      await navigator.clipboard.writeText(text)
+      toast({
+        title: 'Copied to clipboard',
+        description: `${type === 'email' ? 'Email' : 'Phone number'} copied successfully`,
+      })
+    } catch (err) {
+      toast({
+        title: 'Copy failed',
+        description: 'Failed to copy to clipboard',
+        variant: 'destructive',
+      })
+    }
+  }
   return (
     <Card className={cn('bg-surface-primary border-border', className)}>
       <CardContent className="p-layout-md">
@@ -66,27 +82,49 @@ export function CandidateNameCard({
               <p className="text-text-secondary mt-1 text-sm">{subtitle}</p>
             )}
             {(email || phone) && (
-              <div className="flex items-center gap-4 mt-2 text-sm">
+              <div className="flex flex-col gap-2 mt-2 text-sm">
                 {email && (
-                  <div className="flex items-center gap-1 text-text-secondary">
-                    <Mail className="h-3 w-3" />
-                    <a 
-                      href={`mailto:${email}`}
-                      className="text-text-primary hover:text-primary hover:underline"
+                  <div className="flex items-center justify-between group">
+                    <div className="flex items-center gap-1 text-text-secondary">
+                      <Mail className="h-3 w-3" />
+                      <a 
+                        href={`mailto:${email}`}
+                        className="text-blue-600 hover:text-blue-700 hover:underline font-medium"
+                      >
+                        {email}
+                      </a>
+                    </div>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={() => copyToClipboard(email, 'email')}
+                      title="Copy email"
                     >
-                      {email}
-                    </a>
+                      <Copy className="h-3 w-3" />
+                    </Button>
                   </div>
                 )}
                 {phone && (
-                  <div className="flex items-center gap-1 text-text-secondary">
-                    <Phone className="h-3 w-3" />
-                    <a 
-                      href={`tel:${phone}`}
-                      className="text-text-primary hover:text-primary hover:underline"
+                  <div className="flex items-center justify-between group">
+                    <div className="flex items-center gap-1 text-text-secondary">
+                      <Phone className="h-3 w-3" />
+                      <a 
+                        href={`tel:${phone}`}
+                        className="text-blue-600 hover:text-blue-700 hover:underline font-medium"
+                      >
+                        {phone}
+                      </a>
+                    </div>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                      onClick={() => copyToClipboard(phone, 'phone')}
+                      title="Copy phone number"
                     >
-                      {phone}
-                    </a>
+                      <Copy className="h-3 w-3" />
+                    </Button>
                   </div>
                 )}
               </div>
