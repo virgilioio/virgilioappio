@@ -343,6 +343,8 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                       name={candidate.candidate_name}
                       linkedinUrl={candidate.linkedin_url}
                       badgeText={`${(job?.title ?? '')}${associationStatus && associationStatus !== 'active' ? ' • ' + (associationStatus[0].toUpperCase() + associationStatus.slice(1)) : ''}` || candidate.status}
+                      email={candidate.email}
+                      phone={candidate.phone}
                       tabs={[
                         { value: 'job', label: 'Job Application', Icon: FileText },
                         { value: 'resume', label: 'Resume', Icon: FileText },

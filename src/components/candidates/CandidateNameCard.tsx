@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
+import { Mail, Phone } from 'lucide-react'
 
 export type CandidateNameCardTab = {
   value: string
@@ -20,6 +21,8 @@ interface CandidateNameCardProps {
   onTabChange: (value: string) => void
   rightActions?: React.ReactNode
   subtitle?: React.ReactNode
+  email?: string | null
+  phone?: string | null
   className?: string
 }
 
@@ -32,6 +35,8 @@ export function CandidateNameCard({
   onTabChange,
   rightActions,
   subtitle,
+  email,
+  phone,
   className,
 }: CandidateNameCardProps) {
   return (
@@ -59,6 +64,32 @@ export function CandidateNameCard({
             )}
             {subtitle && (
               <p className="text-text-secondary mt-1 text-sm">{subtitle}</p>
+            )}
+            {(email || phone) && (
+              <div className="flex items-center gap-4 mt-2 text-sm">
+                {email && (
+                  <div className="flex items-center gap-1 text-text-secondary">
+                    <Mail className="h-3 w-3" />
+                    <a 
+                      href={`mailto:${email}`}
+                      className="text-text-primary hover:text-primary hover:underline"
+                    >
+                      {email}
+                    </a>
+                  </div>
+                )}
+                {phone && (
+                  <div className="flex items-center gap-1 text-text-secondary">
+                    <Phone className="h-3 w-3" />
+                    <a 
+                      href={`tel:${phone}`}
+                      className="text-text-primary hover:text-primary hover:underline"
+                    >
+                      {phone}
+                    </a>
+                  </div>
+                )}
+              </div>
             )}
           </div>
           {rightActions && (

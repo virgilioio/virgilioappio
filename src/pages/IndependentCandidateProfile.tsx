@@ -265,6 +265,8 @@ export default function IndependentCandidateProfile() {
                 linkedinUrl={candidate.linkedin_url}
                 badgeText={isHired ? 'Hired' : candidate.status}
                 subtitle={`Independent candidate • Added ${new Date(candidate.created_at).toLocaleDateString()}`}
+                email={candidate.email}
+                phone={candidate.phone}
                 tabs={[
                   { value: 'overview', label: 'Overview', Icon: FileText },
                   { value: 'resume', label: 'Resume', Icon: FileText },
