@@ -82,7 +82,7 @@ export function CandidateNameCard({
               <p className="text-text-secondary mt-1 text-sm">{subtitle}</p>
             )}
             {(email || phone) && (
-              <div className="flex items-center gap-4 mt-2 text-sm">
+              <div className="flex items-center gap-6 mt-2 text-sm">
                 {email && (
                   <div className="flex items-center gap-1 group">
                     <Mail className="h-3 w-3 text-text-secondary" />
@@ -95,7 +95,7 @@ export function CandidateNameCard({
                     <Button
                       size="icon"
                       variant="ghost"
-                      className="h-4 w-4 min-w-4 p-0 opacity-0 group-hover:opacity-100 transition-opacity ml-1 hover:bg-black rounded-md"
+                      className="!h-4 !w-4 !min-w-4 !max-w-4 !p-0 opacity-0 group-hover:opacity-100 transition-opacity ml-2 hover:bg-black !rounded-md flex items-center justify-center"
                       onClick={() => copyToClipboard(email, 'email')}
                       title="Copy email"
                     >
@@ -115,7 +115,7 @@ export function CandidateNameCard({
                     <Button
                       size="icon"
                       variant="ghost"
-                      className="h-4 w-4 min-w-4 p-0 opacity-0 group-hover:opacity-100 transition-opacity ml-1 hover:bg-black rounded-md"
+                      className="!h-4 !w-4 !min-w-4 !max-w-4 !p-0 opacity-0 group-hover:opacity-100 transition-opacity ml-2 hover:bg-black !rounded-md flex items-center justify-center"
                       onClick={() => copyToClipboard(phone, 'phone')}
                       title="Copy phone number"
                     >
