@@ -93,9 +93,8 @@ export function CandidateNameCard({
                       {email}
                     </a>
                     <Button
-                      size="icon"
                       variant="ghost"
-                      className="!h-4 !w-4 !min-w-4 !max-w-4 !p-0 opacity-0 group-hover:opacity-100 transition-opacity ml-2 hover:bg-black !rounded-md flex items-center justify-center"
+                      className="!h-4 !w-4 !min-w-4 !max-w-4 !p-0 opacity-0 group-hover:opacity-100 transition-opacity ml-2 hover:!bg-black !rounded-sm flex items-center justify-center"
                       onClick={() => copyToClipboard(email, 'email')}
                       title="Copy email"
                     >
@@ -113,9 +112,8 @@ export function CandidateNameCard({
                       {phone}
                     </a>
                     <Button
-                      size="icon"
                       variant="ghost"
-                      className="!h-4 !w-4 !min-w-4 !max-w-4 !p-0 opacity-0 group-hover:opacity-100 transition-opacity ml-2 hover:bg-black !rounded-md flex items-center justify-center"
+                      className="!h-4 !w-4 !min-w-4 !max-w-4 !p-0 opacity-0 group-hover:opacity-100 transition-opacity ml-2 hover:!bg-black !rounded-sm flex items-center justify-center"
                       onClick={() => copyToClipboard(phone, 'phone')}
                       title="Copy phone number"
                     >
