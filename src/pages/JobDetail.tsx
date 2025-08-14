@@ -673,15 +673,6 @@ export default function JobDetail() {
                               Add Candidate
                             </Button>
                           )}
-                          {(() => {
-                            console.log('Pipeline header debug:', {
-                              selectionMode,
-                              selectedCount: selectedCandidateIds.length,
-                              selectedIds: selectedCandidateIds,
-                              currentTab: pipelineSectionTab
-                            });
-                            return null;
-                          })()}
                           {selectionMode && selectedCandidateIds.length > 0 && (
                             <div className="flex items-center gap-2">
                               <BulkMoveJobCandidatesToPipelineDialog
@@ -827,8 +818,10 @@ export default function JobDetail() {
                                 markCandidateAsViewed={() => {}}
                                 isCandidateNewForUser={() => false}
                                 onRowClick={openOffersProfile}
-                                selectionMode={tableSelectionMode}
-                                onSelectionModeChange={setTableSelectionMode}
+                                selectionMode={selectionMode}
+                                onSelectionModeChange={setSelectionMode}
+                                selectedIds={selectedCandidateIds}
+                                onSelectedIdsChange={setSelectedCandidateIds}
                               />
                             </div>
                           ) : pipelineSectionTab === 'hired' ? (
@@ -841,8 +834,10 @@ export default function JobDetail() {
                                 markCandidateAsViewed={() => {}}
                                 isCandidateNewForUser={() => false}
                                 onRowClick={openHiredProfile}
-                                selectionMode={tableSelectionMode}
-                                onSelectionModeChange={setTableSelectionMode}
+                                selectionMode={selectionMode}
+                                onSelectionModeChange={setSelectionMode}
+                                selectedIds={selectedCandidateIds}
+                                onSelectedIdsChange={setSelectedCandidateIds}
                               />
                             </div>
                           ) : (
@@ -855,8 +850,10 @@ export default function JobDetail() {
                                 markCandidateAsViewed={() => {}}
                                 isCandidateNewForUser={() => false}
                                 onRowClick={openRejectedProfile}
-                                selectionMode={tableSelectionMode}
-                                onSelectionModeChange={setTableSelectionMode}
+                                selectionMode={selectionMode}
+                                onSelectionModeChange={setSelectionMode}
+                                selectedIds={selectedCandidateIds}
+                                onSelectedIdsChange={setSelectedCandidateIds}
                               />
                             </div>
                           )}
@@ -1069,8 +1066,10 @@ export default function JobDetail() {
                                 markCandidateAsViewed={markCandidateAsViewed}
                                 isCandidateNewForUser={isCandidateNewForUser}
                                 onRowClick={handleApplicationRowClick}
-                                selectionMode={tableSelectionMode}
-                                onSelectionModeChange={setTableSelectionMode}
+                                selectionMode={selectionMode}
+                                onSelectionModeChange={setSelectionMode}
+                                selectedIds={selectedCandidateIds}
+                                onSelectedIdsChange={setSelectedCandidateIds}
                               />
                             </div>
                           ) : pipelineSectionTab === 'offers' ? (
@@ -1083,8 +1082,10 @@ export default function JobDetail() {
                                 markCandidateAsViewed={() => {}}
                                 isCandidateNewForUser={() => false}
                                 onRowClick={openOffersProfile}
-                                selectionMode={tableSelectionMode}
-                                onSelectionModeChange={setTableSelectionMode}
+                                selectionMode={selectionMode}
+                                onSelectionModeChange={setSelectionMode}
+                                selectedIds={selectedCandidateIds}
+                                onSelectedIdsChange={setSelectedCandidateIds}
                               />
                             </div>
                           ) : pipelineSectionTab === 'hired' ? (
@@ -1097,8 +1098,10 @@ export default function JobDetail() {
                                 markCandidateAsViewed={() => {}}
                                 isCandidateNewForUser={() => false}
                                 onRowClick={openHiredProfile}
-                                selectionMode={tableSelectionMode}
-                                onSelectionModeChange={setTableSelectionMode}
+                                selectionMode={selectionMode}
+                                onSelectionModeChange={setSelectionMode}
+                                selectedIds={selectedCandidateIds}
+                                onSelectedIdsChange={setSelectedCandidateIds}
                               />
                             </div>
                           ) : (
@@ -1111,8 +1114,10 @@ export default function JobDetail() {
                                 markCandidateAsViewed={() => {}}
                                 isCandidateNewForUser={() => false}
                                 onRowClick={openRejectedProfile}
-                                selectionMode={tableSelectionMode}
-                                onSelectionModeChange={setTableSelectionMode}
+                                selectionMode={selectionMode}
+                                onSelectionModeChange={setSelectionMode}
+                                selectedIds={selectedCandidateIds}
+                                onSelectedIdsChange={setSelectedCandidateIds}
                               />
                             </div>
                           )}

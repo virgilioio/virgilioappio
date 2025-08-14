@@ -63,6 +63,8 @@ interface CandidateTableProps {
   onRowClick?: (candidateId: string) => void
   selectionMode?: boolean
   onSelectionModeChange?: (mode: boolean) => void
+  selectedIds?: string[]
+  onSelectedIdsChange?: (ids: string[]) => void
 }
 
 export function CandidateTable({ 
@@ -77,6 +79,8 @@ export function CandidateTable({
   onRowClick,
   selectionMode: controlledSelectionMode,
   onSelectionModeChange,
+  selectedIds: controlledSelectedIds,
+  onSelectedIdsChange,
 }: CandidateTableProps) {
   const { id: jobId } = useParams<{ id: string }>()
   const permissions = usePermissions()
@@ -92,7 +96,9 @@ export function CandidateTable({
   const [internalSelectionMode, setInternalSelectionMode] = useState(false)
   const selectionMode = (typeof controlledSelectionMode === 'boolean') ? controlledSelectionMode : internalSelectionMode
   const setSelectionMode = onSelectionModeChange ?? setInternalSelectionMode
-  const [selectedIds, setSelectedIds] = useState<string[]>([])
+  const [internalSelectedIds, setInternalSelectedIds] = useState<string[]>([])
+  const selectedIds = controlledSelectedIds ?? internalSelectedIds
+  const setSelectedIds = onSelectedIdsChange ?? setInternalSelectedIds
 
   const handleDelete = (candidateId: string) => {
     if (confirm('Are you sure you want to delete this candidate?')) {
@@ -222,12 +228,20 @@ export function CandidateTable({
     if (!next) setSelectedIds([])
   }
   const toggleSelectAllCurrentPage = () => {
-    if (isAllCurrentPageSelected) setSelectedIds(ids => ids.filter(id => !pagedIds.includes(id)))
-    else setSelectedIds(ids => Array.from(new Set([...ids, ...pagedIds])))
+    if (isAllCurrentPageSelected) {
+      const newIds = selectedIds.filter(id => !pagedIds.includes(id))
+      setSelectedIds(newIds)
+    } else {
+      const newIds = Array.from(new Set([...selectedIds, ...pagedIds]))
+      setSelectedIds(newIds)
+    }
   }
-  const toggleSelect = (id: string) => setSelectedIds(ids => ids.includes(id) ? ids.filter(i => i !== id) : [...ids, id])
+  const toggleSelect = (id: string) => {
+    const newIds = selectedIds.includes(id) ? selectedIds.filter(i => i !== id) : [...selectedIds, id]
+    setSelectedIds(newIds)
+  }
   const clearSelection = () => setSelectedIds([])
-  useEffect(() => { if (!selectionMode) setSelectedIds([]) }, [selectionMode])
+  useEffect(() => { if (!selectionMode) setSelectedIds([]) }, [selectionMode, setSelectedIds])
   const archiveSelected = async () => {
     if (selectedIds.length === 0) return
     await Promise.allSettled(selectedIds.map(id => Promise.resolve(onDelete(id))))
