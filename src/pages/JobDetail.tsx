@@ -673,43 +673,36 @@ export default function JobDetail() {
                               Add Candidate
                             </Button>
                           )}
-                           {pipelineSectionTab === 'recruiting' ? (
-                             <>
-                               {/* Debug info */}
-                               {console.log('DEBUG: Selection state:', { 
-                                 selectionMode, 
-                                 selectedCount: selectedCandidateIds.length, 
-                                 selectedIds: selectedCandidateIds,
-                                 pipelineSection: pipelineSectionTab 
-                               })}
-                               {selectionMode && selectedCandidateIds.length > 0 && (
-                                 <div className="flex items-center gap-2">
-                                   <BulkMoveJobCandidatesToPipelineDialog
-                                     jobId={id!}
-                                     candidates={selectedCandidateIds.map(candidateId => ({ id: candidateId, candidate_name: '', location_country: null, location_state: null, location_city: null, salary_amount: null, salary_currency: null, salary_period: null, profile_summary: null, linkedin_url: null, skills: null }))}
-                                     onCompleted={() => { 
-                                       setSelectedCandidateIds([])
-                                       setSelectionMode(false)
-                                       setPipelineRefresh((v) => v + 1)
-                                     }}
-                                   />
-                                   <Button 
-                                     size="sm" 
-                                     variant="outline" 
-                                     className="gap-2"
-                                     disabled={selectedCandidateIds.length === 0}
-                                     onClick={async () => {
-                                       // Archive selected candidates logic would go here
-                                       // For now, just clear selection
-                                       setSelectedCandidateIds([])
-                                       setSelectionMode(false)
-                                     }}
-                                   >
-                                     <Archive className="h-4 w-4" />
-                                     Archive
-                                   </Button>
-                                 </div>
-                               )}
+                          {selectionMode && selectedCandidateIds.length > 0 && (
+                            <div className="flex items-center gap-2">
+                              <BulkMoveJobCandidatesToPipelineDialog
+                                jobId={id!}
+                                candidates={selectedCandidateIds.map(candidateId => ({ id: candidateId, candidate_name: '', location_country: null, location_state: null, location_city: null, salary_amount: null, salary_currency: null, salary_period: null, profile_summary: null, linkedin_url: null, skills: null }))}
+                                onCompleted={() => { 
+                                  setSelectedCandidateIds([])
+                                  setSelectionMode(false)
+                                  setPipelineRefresh((v) => v + 1)
+                                }}
+                              />
+                              <Button 
+                                size="sm" 
+                                variant="outline" 
+                                className="gap-2"
+                                disabled={selectedCandidateIds.length === 0}
+                                onClick={async () => {
+                                  // Archive selected candidates logic would go here
+                                  // For now, just clear selection
+                                  setSelectedCandidateIds([])
+                                  setSelectionMode(false)
+                                }}
+                              >
+                                <Archive className="h-4 w-4" />
+                                Archive
+                              </Button>
+                            </div>
+                          )}
+                          {pipelineSectionTab === 'recruiting' ? (
+                            <>
                               {selectionMode && (
                                 <Button
                                   size="sm"
