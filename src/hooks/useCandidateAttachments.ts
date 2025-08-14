@@ -15,12 +15,17 @@ export interface CandidateAttachment {
   created_at: string
   updated_at: string
   is_resume: boolean
+  converted_pdf_url?: string | null
+  conversion_status?: string | null
+  conversion_error?: string | null
+  converted_at?: string | null
 }
 
 export function useCandidateAttachments(candidateId: string) {
   const [attachments, setAttachments] = useState<CandidateAttachment[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [isUploading, setIsUploading] = useState(false)
+  const [lastRefetch, setLastRefetch] = useState(0)
   const { user } = useAuth()
 
   const getAttachments = async () => {
@@ -32,7 +37,13 @@ export function useCandidateAttachments(candidateId: string) {
       
       const { data, error } = await supabase
         .from('candidate_attachments')
-        .select('*')
+        .select(`
+          *,
+          converted_pdf_url,
+          conversion_status,
+          conversion_error,
+          converted_at
+        `)
         .eq('candidate_id', candidateId)
         .order('created_at', { ascending: false })
 
@@ -245,11 +256,15 @@ export function useCandidateAttachments(candidateId: string) {
     }
   }
 
+  const refetch = () => {
+    setLastRefetch(Date.now())
+  }
+
   useEffect(() => {
     if (candidateId) {
       getAttachments()
     }
-  }, [candidateId])
+  }, [candidateId, lastRefetch])
 
   return {
     attachments,
@@ -259,6 +274,7 @@ export function useCandidateAttachments(candidateId: string) {
     deleteAttachment,
     downloadAttachment,
     setPrimaryResume,
-    getAttachments
+    getAttachments,
+    refetch
   }
 }

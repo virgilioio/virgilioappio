@@ -1,4 +1,3 @@
-
 project_id = "etrxjxstjfcozdjumfsj"
 
 [functions.create-dev-admin]
@@ -14,4 +13,7 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.public-submit-application]
+verify_jwt = false
+
+[functions.convert-document-to-pdf]
 verify_jwt = false

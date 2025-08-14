@@ -3,7 +3,8 @@ import { supabase } from '@/integrations/supabase/client'
 import { useCandidateAttachments } from '@/hooks/useCandidateAttachments'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { convertDocumentToPdf } from '@/utils/documentToPdf'
+import { Skeleton } from '@/components/ui/skeleton'
+import { RotateCcw, ExternalLink, Download } from 'lucide-react'
 
 interface CandidateResumeViewerProps {
   candidateId?: string
@@ -16,53 +17,31 @@ interface CandidateResumeViewerProps {
 export function CandidateResumeViewer({ candidateId, jobCandidateId, fallbackResumeUrl, className, height = 70 }: CandidateResumeViewerProps) {
   // Use candidateId first, fallback to jobCandidateId for backward compatibility
   const effectiveCandidateId = candidateId || jobCandidateId || ''
-  const { attachments } = useCandidateAttachments(effectiveCandidateId)
+  const { attachments, refetch } = useCandidateAttachments(effectiveCandidateId)
   const [signedUrl, setSignedUrl] = useState<string | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [fileName, setFileName] = useState<string>('resume')
-  const [isConverting, setIsConverting] = useState(false)
-  const [conversionError, setConversionError] = useState<string | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [isRetrying, setIsRetrying] = useState(false)
+
   const resumeAttachment = useMemo(() => attachments.find(a => a.is_resume), [attachments])
 
   const effectiveUrl = resumeAttachment ? resumeAttachment.file_url : (fallbackResumeUrl || null)
   const fileType = resumeAttachment?.file_type || undefined
+  const convertedPdfUrl = resumeAttachment?.converted_pdf_url || null
+  const conversionStatus = resumeAttachment?.conversion_status || 'pending'
+  const conversionError = resumeAttachment?.conversion_error || null
 
-  useEffect(() => {
-    let isMounted = true
-
-    const createUrl = async () => {
-      if (!effectiveUrl) {
-        setSignedUrl(null)
-        return
-      }
-
-      // If it's a storage path (no http/https), create a signed URL
-      const isStoragePath = !/^https?:\/\//i.test(effectiveUrl)
-      if (isStoragePath) {
-        const { data, error } = await supabase.storage
-          .from('candidate-attachments')
-          .createSignedUrl(effectiveUrl, 300)
-        if (!isMounted) return
-        if (error || !data?.signedUrl) {
-          setSignedUrl(null)
-          return
-        }
-        setSignedUrl(data.signedUrl)
-        setFileName(resumeAttachment?.file_name || 'resume')
-      } else {
-        setSignedUrl(effectiveUrl)
-        setFileName('resume')
-      }
-    }
-
-    createUrl()
-    return () => { isMounted = false }
-  }, [effectiveUrl, resumeAttachment?.file_name])
-
+  // File type detection
   const isPdf = useMemo(() => {
+    // If we have a converted PDF, treat it as PDF
+    if (convertedPdfUrl && conversionStatus === 'completed') {
+      return true
+    }
+    // Otherwise check original file type
     if (fileType?.includes('pdf')) return true
     return (effectiveUrl || '').toLowerCase().endsWith('.pdf')
-  }, [fileType, effectiveUrl])
+  }, [fileType, effectiveUrl, convertedPdfUrl, conversionStatus])
 
   const isImage = useMemo(() => {
     if (fileType?.startsWith('image/')) return true
@@ -70,71 +49,106 @@ export function CandidateResumeViewer({ candidateId, jobCandidateId, fallbackRes
     return ['.jpg', '.jpeg', '.png', '.gif', '.webp'].some(ext => lower.endsWith(ext))
   }, [fileType, effectiveUrl])
 
-  const isConvertibleDocument = useMemo(() => {
+  const needsConversion = useMemo(() => {
     if (fileType?.includes('wordprocessingml')) return true
     const lower = (effectiveUrl || '').toLowerCase()
     return ['.docx', '.doc'].some(ext => lower.endsWith(ext))
   }, [fileType, effectiveUrl])
 
   useEffect(() => {
-    let createdUrl: string | null = null
-    let active = true
-    if (!signedUrl) {
-      setPreviewUrl(null)
-      return
-    }
-    if (isPdf) {
-      ;(async () => {
-        try {
-          const res = await fetch(signedUrl)
-          if (!res.ok) throw new Error('Failed to fetch file')
-          const blob = await res.blob()
-          if (!active) return
-          const url = URL.createObjectURL(blob)
-          createdUrl = url
-          setPreviewUrl(url)
-        } catch (e) {
-          if (active) setPreviewUrl(signedUrl)
-        }
-      })()
-    } else if (isConvertibleDocument) {
-      ;(async () => {
-        try {
-          setIsConverting(true)
-          setConversionError(null)
-          
-          const res = await fetch(signedUrl)
-          if (!res.ok) throw new Error('Failed to fetch file')
-          const blob = await res.blob()
-          const file = new File([blob], fileName, { type: fileType || 'application/octet-stream' })
-          
-          if (!active) return
-          
-          const pdfBlob = await convertDocumentToPdf(file)
-          if (!active) return
-          
-          const url = URL.createObjectURL(pdfBlob)
-          createdUrl = url
-          setPreviewUrl(url)
-        } catch (e) {
-          if (active) {
-            setConversionError('Failed to convert document for preview')
-            setPreviewUrl(null)
-          }
-        } finally {
-          if (active) setIsConverting(false)
-        }
-      })()
-    } else {
-      setPreviewUrl(null)
-    }
-    return () => {
-      active = false
-      if (createdUrl) URL.revokeObjectURL(createdUrl)
-    }
-  }, [signedUrl, isPdf, isConvertibleDocument, fileName, fileType])
+    let isMounted = true
+    setIsLoading(true)
 
-  if (!effectiveUrl || !signedUrl) {
+    const createUrl = async () => {
+      if (!effectiveUrl) {
+        setSignedUrl(null)
+        setIsLoading(false)
+        return
+      }
+
+      try {
+        // If we have a converted PDF and it's ready, use that
+        if (convertedPdfUrl && conversionStatus === 'completed') {
+          setSignedUrl(convertedPdfUrl)
+          setPreviewUrl(convertedPdfUrl)
+          setFileName(resumeAttachment?.file_name?.replace(/\.[^/.]+$/, '') + '.pdf' || 'resume.pdf')
+          setIsLoading(false)
+          return
+        }
+
+        // For PDF files or when no conversion is needed
+        const isStoragePath = !/^https?:\/\//i.test(effectiveUrl)
+        if (isStoragePath) {
+          const { data, error } = await supabase.storage
+            .from('candidate-attachments')
+            .createSignedUrl(effectiveUrl, 3600)
+          
+          if (!isMounted) return
+          if (error || !data?.signedUrl) {
+            setSignedUrl(null)
+            setIsLoading(false)
+            return
+          }
+          setSignedUrl(data.signedUrl)
+          setFileName(resumeAttachment?.file_name || 'resume')
+          
+          // For PDFs, set the preview URL too
+          if (isPdf) {
+            setPreviewUrl(data.signedUrl)
+          }
+        } else {
+          if (!isMounted) return
+          setSignedUrl(effectiveUrl)
+          setFileName('resume')
+          
+          // For PDFs, set the preview URL too
+          if (isPdf) {
+            setPreviewUrl(effectiveUrl)
+          }
+        }
+
+        setIsLoading(false)
+      } catch (error) {
+        console.error('Error creating URL:', error)
+        if (isMounted) {
+          setSignedUrl(null)
+          setIsLoading(false)
+        }
+      }
+    }
+
+    createUrl()
+    return () => { isMounted = false }
+  }, [effectiveUrl, resumeAttachment?.file_name, convertedPdfUrl, conversionStatus, isPdf])
+
+  // Retry conversion function
+  const retryConversion = async () => {
+    if (!resumeAttachment?.id) return
+    
+    setIsRetrying(true)
+    try {
+      const { error } = await supabase.functions.invoke('convert-document-to-pdf', {
+        body: {
+          attachment_id: resumeAttachment.id,
+          file_url: resumeAttachment.file_url,
+          file_type: resumeAttachment.file_type
+        }
+      })
+      
+      if (error) {
+        console.error('Error retrying conversion:', error)
+      } else {
+        // Refetch attachments after a short delay
+        setTimeout(() => refetch(), 2000)
+      }
+    } catch (error) {
+      console.error('Error retrying conversion:', error)
+    } finally {
+      setIsRetrying(false)
+    }
+  }
+
+  if (!effectiveUrl) {
     return (
       <Card className={className}>
         <CardContent className="py-8 text-center text-text-secondary">
@@ -144,26 +158,74 @@ export function CandidateResumeViewer({ candidateId, jobCandidateId, fallbackRes
     )
   }
 
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className={className}>
+        <div className="space-y-3">
+          <div className="w-full border border-border rounded-lg overflow-hidden bg-surface-secondary p-4">
+            <div className="space-y-4">
+              <Skeleton className="h-8 w-3/4" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-2/3" />
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className={className}>
       <div className="space-y-3">
         <div className="w-full border border-border rounded-lg overflow-hidden bg-surface-secondary">
-          {isConverting ? (
-            <div className="p-6 text-center text-text-secondary text-sm">
-              Converting document for preview...
+          {/* Show conversion status for documents that need conversion */}
+          {needsConversion && conversionStatus !== 'completed' && (
+            <div className="bg-muted/50 border-b p-3">
+              <div className="flex items-center justify-between text-sm">
+                <div className="flex items-center gap-2">
+                  {conversionStatus === 'processing' && (
+                    <>
+                      <div className="animate-spin h-4 w-4 border-2 border-primary border-t-transparent rounded-full" />
+                      <span>Converting to PDF...</span>
+                    </>
+                  )}
+                  {conversionStatus === 'failed' && (
+                    <>
+                      <span className="text-destructive">Conversion failed</span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={retryConversion}
+                        disabled={isRetrying}
+                        className="h-6 px-2 ml-2"
+                      >
+                        <RotateCcw className={`h-3 w-3 mr-1 ${isRetrying ? 'animate-spin' : ''}`} />
+                        Retry
+                      </Button>
+                    </>
+                  )}
+                  {conversionStatus === 'pending' && (
+                    <span className="text-muted-foreground">Conversion pending...</span>
+                  )}
+                </div>
+              </div>
+              {conversionError && (
+                <div className="text-xs text-destructive mt-1">{conversionError}</div>
+              )}
             </div>
-          ) : conversionError ? (
-            <div className="p-6 text-center text-text-secondary text-sm">
-              {conversionError}. You can download or open the original file in a new tab.
-            </div>
-          ) : (isPdf || (isConvertibleDocument && previewUrl)) ? (
+          )}
+
+          {/* Document content */}
+          {isPdf && previewUrl ? (
             <iframe
-              src={previewUrl || signedUrl}
+              src={previewUrl}
               title="Resume preview"
               className="w-full"
               style={{ height: `${height}vh` }}
             />
-          ) : isImage ? (
+          ) : isImage && signedUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={signedUrl}
@@ -172,19 +234,80 @@ export function CandidateResumeViewer({ candidateId, jobCandidateId, fallbackRes
               style={{ maxHeight: `${height}vh` }}
               loading="lazy"
             />
+          ) : needsConversion && conversionStatus !== 'completed' ? (
+            <div className="p-6 text-center text-text-secondary" style={{ height: `${height}vh` }}>
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  <div className="text-sm mb-2">
+                    {conversionStatus === 'processing' 
+                      ? 'Document is being converted to PDF for preview...'
+                      : conversionStatus === 'failed'
+                      ? 'Preview unavailable - conversion failed'
+                      : 'Document will be converted to PDF for preview'
+                    }
+                  </div>
+                  <div className="text-xs text-text-tertiary">
+                    You can still download the original file below
+                  </div>
+                </div>
+              </div>
+            </div>
           ) : (
-            <div className="p-6 text-center text-text-secondary text-sm">
-              This file type cannot be previewed inline. You can download or open it in a new tab.
+            <div className="p-6 text-center text-text-secondary" style={{ height: `${height}vh` }}>
+              <div className="flex items-center justify-center h-full">
+                <div className="text-sm">
+                  This file type cannot be previewed inline. You can download or open it in a new tab.
+                </div>
+              </div>
             </div>
           )}
         </div>
+
+        {/* Action buttons */}
         <div className="flex gap-2">
-          <a href={signedUrl} target="_blank" rel="noopener noreferrer">
-            <Button variant="outline">Open in new tab</Button>
-          </a>
-          <a href={signedUrl} download={fileName}>
-            <Button variant="secondary">Download</Button>
-          </a>
+          <Button
+            variant="outline"
+            onClick={() => window.open(previewUrl || signedUrl || '', '_blank')}
+            disabled={!previewUrl && !signedUrl}
+            className="flex items-center gap-2"
+          >
+            <ExternalLink className="h-4 w-4" />
+            Open in new tab
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={() => {
+              if (!signedUrl) return
+              const link = document.createElement('a')
+              link.href = signedUrl
+              link.download = fileName
+              document.body.appendChild(link)
+              link.click()
+              document.body.removeChild(link)
+            }}
+            disabled={!signedUrl}
+            className="flex items-center gap-2"
+          >
+            <Download className="h-4 w-4" />
+            Download {needsConversion ? 'Original' : ''}
+          </Button>
+          {convertedPdfUrl && conversionStatus === 'completed' && needsConversion && (
+            <Button
+              variant="secondary"
+              onClick={() => {
+                const link = document.createElement('a')
+                link.href = convertedPdfUrl
+                link.download = fileName.replace(/\.[^/.]+$/, '') + '.pdf'
+                document.body.appendChild(link)
+                link.click()
+                document.body.removeChild(link)
+              }}
+              className="flex items-center gap-2"
+            >
+              <Download className="h-4 w-4" />
+              Download PDF
+            </Button>
+          )}
         </div>
       </div>
     </div>

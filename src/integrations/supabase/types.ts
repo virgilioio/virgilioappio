@@ -140,6 +140,10 @@ export type Database = {
       candidate_attachments: {
         Row: {
           candidate_id: string
+          conversion_error: string | null
+          conversion_status: string | null
+          converted_at: string | null
+          converted_pdf_url: string | null
           created_at: string | null
           file_name: string
           file_size_bytes: number | null
@@ -152,6 +156,10 @@ export type Database = {
         }
         Insert: {
           candidate_id: string
+          conversion_error?: string | null
+          conversion_status?: string | null
+          converted_at?: string | null
+          converted_pdf_url?: string | null
           created_at?: string | null
           file_name: string
           file_size_bytes?: number | null
@@ -164,6 +172,10 @@ export type Database = {
         }
         Update: {
           candidate_id?: string
+          conversion_error?: string | null
+          conversion_status?: string | null
+          converted_at?: string | null
+          converted_pdf_url?: string | null
           created_at?: string | null
           file_name?: string
           file_size_bytes?: number | null
