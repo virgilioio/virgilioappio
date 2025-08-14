@@ -348,23 +348,7 @@ export function CandidateTable({
         </div>
       </CardHeader>
       <CardContent>
-        {/* Bulk actions toolbar */}
-        {selectionMode && selectedIds.length > 0 && (
-          <div className="flex items-center justify-between mb-4">
-            <div className="text-sm text-text-secondary">{selectedIds.length} selected</div>
-            <div className="flex items-center gap-2">
-              <BulkMoveJobCandidatesToPipelineDialog
-                jobId={jobId!}
-                candidates={paginatedCandidates.filter(c => selectedIds.includes(c.id)) as any}
-                onCompleted={() => { clearSelection(); setSelectionMode(false) }}
-              />
-              <Button variant="outline" className="gap-2" onClick={archiveSelected}>
-                <Archive className="h-4 w-4" />
-                Archive
-              </Button>
-            </div>
-          </div>
-        )}
+        {/* Bulk actions are now handled in the Pipeline Overview header */}
         {filteredCandidates.length === 0 ? (
           <div className="text-center py-xl bg-surface-secondary rounded-brand border border-border/50">
             <FileText className="h-12 w-12 mx-auto mb-md text-text-secondary opacity-50" />
