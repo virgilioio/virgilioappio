@@ -95,11 +95,11 @@ export function CandidateNameCard({
                     <Button
                       size="icon"
                       variant="ghost"
-                      className="h-4 w-4 p-0 opacity-0 group-hover:opacity-100 transition-opacity ml-1"
+                      className="h-4 w-4 p-0 opacity-0 group-hover:opacity-100 transition-opacity ml-1 hover:bg-black rounded-md aspect-square"
                       onClick={() => copyToClipboard(email, 'email')}
                       title="Copy email"
                     >
-                      <Copy className="h-3 w-3" />
+                      <Copy className="h-3 w-3 hover:text-white" />
                     </Button>
                   </div>
                 )}
@@ -115,11 +115,11 @@ export function CandidateNameCard({
                     <Button
                       size="icon"
                       variant="ghost"
-                      className="h-4 w-4 p-0 opacity-0 group-hover:opacity-100 transition-opacity ml-1"
+                      className="h-4 w-4 p-0 opacity-0 group-hover:opacity-100 transition-opacity ml-1 hover:bg-black rounded-md aspect-square"
                       onClick={() => copyToClipboard(phone, 'phone')}
                       title="Copy phone number"
                     >
-                      <Copy className="h-3 w-3" />
+                      <Copy className="h-3 w-3 hover:text-white" />
                     </Button>
                   </div>
                 )}
