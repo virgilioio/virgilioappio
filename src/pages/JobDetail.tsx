@@ -20,7 +20,7 @@ import { JobForm } from '@/components/jobs/JobForm'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { ArrowLeft, Archive, LayoutGrid, List, UserPlus, Bot } from 'lucide-react'
+import { ArrowLeft, Archive, LayoutGrid, List, UserPlus, Sparkles } from 'lucide-react'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { useIsMobile } from '@/hooks/use-mobile'
@@ -625,7 +625,7 @@ export default function JobDetail() {
                           <TabsList className="w-full h-14 p-2 gap-1 grid grid-cols-6">
                             <TabsTrigger className="h-10 md:h-12 text-xs md:text-sm bg-gradient-to-r from-blue-500/10 to-purple-500/10 text-text-primary data-[state=active]:from-blue-500 data-[state=active]:to-purple-500 data-[state=active]:text-white border border-blue-500/20 data-[state=active]:border-blue-500 data-[state=active]:shadow-[0_0_20px_rgba(59,130,246,0.5),0_0_40px_rgba(147,51,234,0.3)] data-[state=active]:animate-pulse" value="suggested">
                                <span className="flex items-center gap-1 truncate">
-                                 <Bot className="h-3 w-3 md:h-4 md:w-4 flex-shrink-0" />
+                                 <Sparkles className="h-3 w-3 md:h-4 md:w-4 flex-shrink-0" />
                                  <span className="truncate">Suggested</span>
                                  <Badge variant="secondary" className="text-xs flex-shrink-0">{suggestedCount}</Badge>
                                </span>
@@ -956,7 +956,7 @@ export default function JobDetail() {
                            <TabsList className="w-full h-14 p-2 gap-1 grid grid-cols-6">
                             <TabsTrigger className="h-10 md:h-12 text-xs md:text-sm bg-gradient-to-r from-blue-500/10 to-purple-500/10 text-text-primary data-[state=active]:from-blue-500 data-[state=active]:to-purple-500 data-[state=active]:text-white border border-blue-500/20 data-[state=active]:border-blue-500 data-[state=active]:shadow-[0_0_20px_rgba(59,130,246,0.5),0_0_40px_rgba(147,51,234,0.3)] data-[state=active]:animate-pulse" value="suggested">
                                <span className="flex items-center gap-1 truncate">
-                                 <Bot className="h-3 w-3 md:h-4 md:w-4 flex-shrink-0" />
+                                 <Sparkles className="h-3 w-3 md:h-4 md:w-4 flex-shrink-0" />
                                  <span className="truncate">Suggested</span>
                                  <Badge variant="secondary" className="text-xs flex-shrink-0">{suggestedCount}</Badge>
                                </span>
