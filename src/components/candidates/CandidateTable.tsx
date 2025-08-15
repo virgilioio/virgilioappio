@@ -30,6 +30,8 @@ interface BaseCandidate {
   skills: string[] | null
   created_at: string
   first_viewed_by: Record<string, string> | null
+  match_score?: number
+  match_tier?: 'excellent' | 'good' | 'fair' | 'minimal'
 }
 
 interface LocalCandidate extends BaseCandidate {
@@ -64,7 +66,9 @@ interface CandidateTableProps {
   selectionMode?: boolean
   onSelectionModeChange?: (mode: boolean) => void
   selectedIds?: string[]
-  onSelectedIdsChange?: (ids: string[]) => void
+  onSelectedIdsChange?: (ids: string[])=> void
+  hideActions?: boolean // Hide action buttons for suggested candidates
+  showMatchScore?: boolean // Show match score column for AI suggestions
 }
 
 export function CandidateTable({ 
@@ -81,6 +85,8 @@ export function CandidateTable({
   onSelectionModeChange,
   selectedIds: controlledSelectedIds,
   onSelectedIdsChange,
+  hideActions = false,
+  showMatchScore = false
 }: CandidateTableProps) {
   const { id: jobId } = useParams<{ id: string }>()
   const permissions = usePermissions()
@@ -389,15 +395,16 @@ export function CandidateTable({
                              aria-label="Select all on page"
                            />
                          </TableHead>
-                       )}
-                       <TableHead>Name</TableHead>
-                       {showJobInfo && <TableHead>Job</TableHead>}
-                       {showJobInfo && <TableHead>Organization</TableHead>}
-                       <TableHead>Location</TableHead>
-                       <TableHead>Skills</TableHead>
-                       <TableHead>Salary Expectations</TableHead>
-                       <TableHead>Added</TableHead>
-                       <TableHead className="text-right">Actions</TableHead>
+                        )}
+                        <TableHead>Name</TableHead>
+                        {showMatchScore && <TableHead>Match</TableHead>}
+                        {showJobInfo && <TableHead>Job</TableHead>}
+                        {showJobInfo && <TableHead>Organization</TableHead>}
+                        <TableHead>Location</TableHead>
+                        <TableHead>Skills</TableHead>
+                        <TableHead>Salary Expectations</TableHead>
+                        <TableHead>Added</TableHead>
+                        {!hideActions && <TableHead className="text-right">Actions</TableHead>}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -426,8 +433,34 @@ export function CandidateTable({
                               {candidate.candidate_name}
                               <NewBadge show={isCandidateNewForUser(candidate)} />
                             </div>
-                          </Link>
-                        </TableCell>
+                           </Link>
+                         </TableCell>
+                         {showMatchScore && (
+                           <TableCell>
+                             {candidate.match_score !== undefined && (
+                               <div className="flex items-center gap-2">
+                                 <Badge 
+                                   variant={
+                                     candidate.match_tier === 'excellent' ? 'default' :
+                                     candidate.match_tier === 'good' ? 'secondary' :
+                                     candidate.match_tier === 'fair' ? 'outline' : 'destructive'
+                                   }
+                                   className={
+                                     candidate.match_tier === 'excellent' ? 'bg-green-500 text-white' :
+                                     candidate.match_tier === 'good' ? 'bg-blue-500 text-white' :
+                                     candidate.match_tier === 'fair' ? 'bg-yellow-500 text-white' :
+                                     'bg-orange-500 text-white'
+                                   }
+                                 >
+                                   {Math.round(candidate.match_score)}%
+                                 </Badge>
+                                 <span className="text-xs text-text-tertiary capitalize">
+                                   {candidate.match_tier}
+                                 </span>
+                               </div>
+                             )}
+                           </TableCell>
+                         )}
                         {showJobInfo && 'job' in candidate && (
                           <TableCell>
                             <Link 

@@ -34,6 +34,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { usePipelineActions, PipelineAssociation } from '@/hooks/usePipelineActions'
 import CandidateProfileSheet from '@/components/candidates/CandidateProfileSheet'
 import BulkMoveJobCandidatesToPipelineDialog from '@/components/candidates/BulkMoveJobCandidatesToPipelineDialog'
+import { useJobMatchingCandidates } from '@/hooks/useJobMatchingCandidates'
+import { useRealTimeSkillMatching } from '@/hooks/useRealTimeSkillMatching'
 
 export default function JobDetail() {
   const { id } = useParams<{ id: string }>()
@@ -255,7 +257,23 @@ export default function JobDetail() {
   const activeCount = useMemo(() => associations.filter(a => a.status !== 'rejected').length, [associations])
   const recruitingCount = useMemo(() => Math.max(0, activeCount - offerCount), [activeCount, offerCount])
   const applicationCount = useMemo(() => (applicationReviewCandidates?.length ?? 0), [applicationReviewCandidates])
-  const suggestedCount = useMemo(() => suggestedCandidates.length, [suggestedCandidates])
+  // Real-time skill matching for suggested count (using existing job from query below)  
+  const { matchingData: skillMatchingData } = useRealTimeSkillMatching({
+    skills: [],
+    location: '',
+    salaryMin: 0,
+    salaryMax: 0,
+    currency: 'USD'
+  })
+
+  // AI matching candidates hook - only load when suggested tab is active
+  const { candidates: matchingCandidates, isLoading: isLoadingMatches } = useJobMatchingCandidates({
+    jobId: id || '',
+    enabled: !!id && pipelineSectionTab === 'suggested'
+  })
+
+  const suggestedCount = useMemo(() => matchingCandidates?.length || skillMatchingData?.totalCandidates || 0, [matchingCandidates, skillMatchingData])
+  
   // Load stage map for this job
   useEffect(() => {
     if (!id) return
@@ -792,22 +810,47 @@ export default function JobDetail() {
                                 onStageChanged={() => setPipelineRefresh((v) => v + 1)}
                               />
                             </div>
-                           ) : pipelineSectionTab === 'suggested' ? (
-                             <div className="w-full p-layout-md">
-                               <CandidateTable
-                                 candidates={suggestedCandidates}
-                                 isLoading={statusListsLoading}
-                                 onEdit={handleEditCandidate}
-                                 onDelete={handleDeleteCandidate}
-                                 markCandidateAsViewed={() => {}}
-                                 isCandidateNewForUser={() => false}
-                                 onRowClick={(candidateId) => openProfileInPlace(candidateId, 'pipeline', suggestedCandidates)}
-                                 selectionMode={selectionMode}
-                                 onSelectionModeChange={setSelectionMode}
-                                 selectedIds={selectedCandidateIds}
-                                 onSelectedIdsChange={setSelectedCandidateIds}
-                               />
-                             </div>
+                            ) : pipelineSectionTab === 'suggested' ? (
+                              <div className="w-full p-layout-md">
+                                <div className="space-y-4">
+                                  <div className="flex items-center gap-2">
+                                    <Sparkles className="h-4 w-4 text-primary" />
+                                    <span className="text-sm font-medium text-text-primary">
+                                      AI-Matched Candidates
+                                    </span>
+                                    {matchingCandidates && matchingCandidates.length > 0 && (
+                                      <Badge variant="secondary" className="text-xs">
+                                        {matchingCandidates.length} matches
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  
+                                  {isLoadingMatches ? (
+                                    <div className="text-center py-8">
+                                      <div className="text-text-tertiary text-sm">
+                                        Finding the best matching candidates...
+                                      </div>
+                                    </div>
+                                  ) : matchingCandidates && matchingCandidates.length > 0 ? (
+                                    <CandidateTable
+                                      candidates={matchingCandidates as any}
+                                      isLoading={false}
+                                      onEdit={() => {}}
+                                      onDelete={() => {}}
+                                      markCandidateAsViewed={() => {}}
+                                      isCandidateNewForUser={() => false}
+                                      hideActions={true}
+                                      showMatchScore={true}
+                                    />
+                                  ) : (
+                                    <div className="text-center py-8">
+                                      <div className="text-text-tertiary text-sm">
+                                        No matching candidates found. Try adjusting the job requirements or add more skills.
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
                            ) : pipelineSectionTab === 'application' ? (
                              <div className="w-full p-layout-md">
                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -1092,22 +1135,47 @@ export default function JobDetail() {
                                    onStageChanged={() => setPipelineRefresh((v) => v + 1)}
                                />
                              </div>
-                           ) : pipelineSectionTab === 'suggested' ? (
-                             <div className="w-full p-layout-md">
-                               <CandidateTable
-                                 candidates={suggestedCandidates}
-                                 isLoading={statusListsLoading}
-                                 onEdit={handleEditCandidate}
-                                 onDelete={handleDeleteCandidate}
-                                 markCandidateAsViewed={() => {}}
-                                 isCandidateNewForUser={() => false}
-                                 onRowClick={(candidateId) => openProfileInPlace(candidateId, 'pipeline', suggestedCandidates)}
-                                 selectionMode={selectionMode}
-                                 onSelectionModeChange={setSelectionMode}
-                                 selectedIds={selectedCandidateIds}
-                                 onSelectedIdsChange={setSelectedCandidateIds}
-                               />
-                             </div>
+                            ) : pipelineSectionTab === 'suggested' ? (
+                              <div className="w-full p-layout-md">
+                                <div className="space-y-4">
+                                  <div className="flex items-center gap-2">
+                                    <Sparkles className="h-4 w-4 text-primary" />
+                                    <span className="text-sm font-medium text-text-primary">
+                                      AI-Matched Candidates
+                                    </span>
+                                    {matchingCandidates && matchingCandidates.length > 0 && (
+                                      <Badge variant="secondary" className="text-xs">
+                                        {matchingCandidates.length} matches
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  
+                                  {isLoadingMatches ? (
+                                    <div className="text-center py-8">
+                                      <div className="text-text-tertiary text-sm">
+                                        Finding the best matching candidates...
+                                      </div>
+                                    </div>
+                                  ) : matchingCandidates && matchingCandidates.length > 0 ? (
+                                    <CandidateTable
+                                      candidates={matchingCandidates as any}
+                                      isLoading={false}
+                                      onEdit={() => {}}
+                                      onDelete={() => {}}
+                                      markCandidateAsViewed={() => {}}
+                                      isCandidateNewForUser={() => false}
+                                      hideActions={true}
+                                      showMatchScore={true}
+                                    />
+                                  ) : (
+                                    <div className="text-center py-8">
+                                      <div className="text-text-tertiary text-sm">
+                                        No matching candidates found. Try adjusting the job requirements or add more skills.
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
                            ) : pipelineSectionTab === 'application' ? (
                             <div className="w-full p-layout-md">
                               <CandidateTable
