@@ -19,8 +19,8 @@ export default function Dashboard() {
   const { profile, isLoading } = useUserProfile()
   const permissions = usePermissions()
 
-  // Check what content will be visible - exclude guest users from billing
-  const hasBillingContent = permissions.canViewBilling && !permissions.isGuest
+  // Check what content will be visible - only platform admins can see billing
+  const hasBillingContent = permissions.isPlatformAdmin
   const hasJobContent = permissions.canViewJobs || permissions.canCreateJobs || permissions.canRequestJobs
   const hasQuickAccess = permissions.canCreateJobs || permissions.canRequestJobs || permissions.canManageMembers
   const canManageOrganization = (permissions.canManageOrganization || permissions.isWorkspaceOwner || permissions.isPlatformAdmin) && !permissions.isGuest
@@ -45,10 +45,12 @@ export default function Dashboard() {
               // Two column layout when billing content is available (never for guests)
               <div className="grid gap-6 lg:grid-cols-2">
                 <div className="space-y-6">
-                  <PermissionGate permission="canViewBilling">
-                    <PaymentsTracker />
-                    <PaymentHistory />
-                  </PermissionGate>
+                  {permissions.isPlatformAdmin && (
+                    <>
+                      <PaymentsTracker />
+                      <PaymentHistory />
+                    </>
+                  )}
                 </div>
                 
                 <div className="space-y-6">
