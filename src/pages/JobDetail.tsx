@@ -20,7 +20,7 @@ import { JobForm } from '@/components/jobs/JobForm'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { ArrowLeft, Archive, LayoutGrid, List, UserPlus } from 'lucide-react'
+import { ArrowLeft, Archive, LayoutGrid, List, UserPlus, Bot } from 'lucide-react'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { useIsMobile } from '@/hooks/use-mobile'
@@ -107,7 +107,7 @@ export default function JobDetail() {
   const openRejectedProfile = (candidateId: string) => openProfileInPlace(candidateId, 'pipeline', rejectedCandidates)
 
   // Inner tabs for Pipeline section
-  const [pipelineSectionTab, setPipelineSectionTab] = useState<'application' | 'recruiting' | 'offers' | 'hired' | 'rejected'>('recruiting')
+  const [pipelineSectionTab, setPipelineSectionTab] = useState<'suggested' | 'application' | 'recruiting' | 'offers' | 'hired' | 'rejected'>('recruiting')
 
   // Assocations and status-based lists
   const { fetchAssociationsForJob, updateAssociationStatus } = usePipelineActions()
@@ -116,6 +116,7 @@ export default function JobDetail() {
   const [offersCandidates, setOffersCandidates] = useState<any[]>([])
   const [hiredCandidates, setHiredCandidates] = useState<any[]>([])
   const [rejectedCandidates, setRejectedCandidates] = useState<any[]>([])
+  const [suggestedCandidates, setSuggestedCandidates] = useState<any[]>([])
   const [allAssociatedCandidates, setAllAssociatedCandidates] = useState<any[]>([])
   const [statusListsLoading, setStatusListsLoading] = useState(false)
 
@@ -254,6 +255,7 @@ export default function JobDetail() {
   const activeCount = useMemo(() => associations.filter(a => a.status !== 'rejected').length, [associations])
   const recruitingCount = useMemo(() => Math.max(0, activeCount - offerCount), [activeCount, offerCount])
   const applicationCount = useMemo(() => (applicationReviewCandidates?.length ?? 0), [applicationReviewCandidates])
+  const suggestedCount = useMemo(() => suggestedCandidates.length, [suggestedCandidates])
   // Load stage map for this job
   useEffect(() => {
     if (!id) return
@@ -619,9 +621,16 @@ export default function JobDetail() {
                  <div className="h-[calc(100svh-16rem)] sm:h-[calc(100svh-14rem)] min-h-0">
                    <Card className="mb-4">
                      <CardHeader className="py-3">
-                       <Tabs value={pipelineSectionTab} onValueChange={(v) => setPipelineSectionTab(v as any)}>
-                         <TabsList className="w-full h-14 p-2 gap-2">
-                            <TabsTrigger className="flex-1 h-10 md:h-12 text-base md:text-lg bg-pastel-purple/20 text-text-primary data-[state=active]:bg-pastel-purple" value="application">
+                        <Tabs value={pipelineSectionTab} onValueChange={(v) => setPipelineSectionTab(v as any)}>
+                          <TabsList className="w-full h-14 p-2 gap-2">
+                            <TabsTrigger className="flex-1 h-10 md:h-12 text-base md:text-lg bg-primary/10 text-text-primary data-[state=active]:bg-primary data-[state=active]:text-white border border-primary/20 data-[state=active]:border-primary data-[state=active]:shadow-[0_0_15px_rgba(99,102,241,0.4)]" value="suggested">
+                               <span className="flex items-center gap-2">
+                                 <Bot className="h-4 w-4" />
+                                 <span>Suggested</span>
+                                 <Badge variant="secondary">{suggestedCount}</Badge>
+                               </span>
+                             </TabsTrigger>
+                             <TabsTrigger className="flex-1 h-10 md:h-12 text-base md:text-lg bg-pastel-purple/20 text-text-primary data-[state=active]:bg-pastel-purple" value="application">
                               <span className="flex items-center gap-2">
                                 <span>Application Review</span>
                                 <Badge variant="pastel-purple">{applicationCount}</Badge>
@@ -783,36 +792,52 @@ export default function JobDetail() {
                                 onStageChanged={() => setPipelineRefresh((v) => v + 1)}
                               />
                             </div>
-                          ) : pipelineSectionTab === 'application' ? (
-                            <div className="w-full p-layout-md">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                      <Card>
-                        <CardHeader className="pb-2">
-                          <div className="text-sm text-text-secondary">Active Candidates</div>
-                          <div className="text-3xl font-semibold text-text-primary">{activeCount}</div>
-                        </CardHeader>
-                      </Card>
-                      <Card>
-                        <CardHeader className="pb-2">
-                          <div className="text-sm text-text-secondary">Offers</div>
-                          <div className="text-3xl font-semibold text-text-primary">{offerCount}</div>
-                        </CardHeader>
-                      </Card>
-                      <Card>
-                        <CardHeader className="pb-2">
-                          <div className="text-sm text-text-secondary">Hired</div>
-                          <div className="text-3xl font-semibold text-text-primary">{hiredCount}</div>
-                        </CardHeader>
-                      </Card>
-                      <Card>
-                        <CardHeader className="pb-2">
-                          <div className="text-sm text-text-secondary">Rejected</div>
-                          <div className="text-3xl font-semibold text-text-primary">{rejectedCount}</div>
-                        </CardHeader>
-                      </Card>
-                    </div>
-                            </div>
-                          ) : pipelineSectionTab === 'offers' ? (
+                           ) : pipelineSectionTab === 'suggested' ? (
+                             <div className="w-full p-layout-md">
+                               <CandidateTable
+                                 candidates={suggestedCandidates}
+                                 isLoading={statusListsLoading}
+                                 onEdit={handleEditCandidate}
+                                 onDelete={handleDeleteCandidate}
+                                 markCandidateAsViewed={() => {}}
+                                 isCandidateNewForUser={() => false}
+                                 onRowClick={(candidateId) => openProfileInPlace(candidateId, 'pipeline', suggestedCandidates)}
+                                 selectionMode={selectionMode}
+                                 onSelectionModeChange={setSelectionMode}
+                                 selectedIds={selectedCandidateIds}
+                                 onSelectedIdsChange={setSelectedCandidateIds}
+                               />
+                             </div>
+                           ) : pipelineSectionTab === 'application' ? (
+                             <div className="w-full p-layout-md">
+                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                       <Card>
+                         <CardHeader className="pb-2">
+                           <div className="text-sm text-text-secondary">Active Candidates</div>
+                           <div className="text-3xl font-semibold text-text-primary">{activeCount}</div>
+                         </CardHeader>
+                       </Card>
+                       <Card>
+                         <CardHeader className="pb-2">
+                           <div className="text-sm text-text-secondary">Offers</div>
+                           <div className="text-3xl font-semibold text-text-primary">{offerCount}</div>
+                         </CardHeader>
+                       </Card>
+                       <Card>
+                         <CardHeader className="pb-2">
+                           <div className="text-sm text-text-secondary">Hired</div>
+                           <div className="text-3xl font-semibold text-text-primary">{hiredCount}</div>
+                         </CardHeader>
+                       </Card>
+                       <Card>
+                         <CardHeader className="pb-2">
+                           <div className="text-sm text-text-secondary">Rejected</div>
+                           <div className="text-3xl font-semibold text-text-primary">{rejectedCount}</div>
+                         </CardHeader>
+                       </Card>
+                     </div>
+                             </div>
+                           ) : pipelineSectionTab === 'offers' ? (
                             <div className="w-full p-layout-md">
                               <CandidateTable
                                 candidates={offersCandidates}
@@ -927,9 +952,16 @@ export default function JobDetail() {
                   <div className="h-[calc(100svh-14rem)] min-h-0">
                     <Card className="mb-4">
                       <CardHeader className="py-3">
-                        <Tabs value={pipelineSectionTab} onValueChange={(v) => setPipelineSectionTab(v as any)}>
-                          <TabsList className="w-full h-14 p-2 gap-2">
-                            <TabsTrigger className="flex-1 h-10 md:h-12 text-base md:text-lg bg-pastel-purple/20 text-text-primary data-[state=active]:bg-pastel-purple" value="application">
+                         <Tabs value={pipelineSectionTab} onValueChange={(v) => setPipelineSectionTab(v as any)}>
+                           <TabsList className="w-full h-14 p-2 gap-2">
+                            <TabsTrigger className="flex-1 h-10 md:h-12 text-base md:text-lg bg-primary/10 text-text-primary data-[state=active]:bg-primary data-[state=active]:text-white border border-primary/20 data-[state=active]:border-primary data-[state=active]:shadow-[0_0_15px_rgba(99,102,241,0.4)]" value="suggested">
+                               <span className="flex items-center gap-2">
+                                 <Bot className="h-4 w-4" />
+                                 <span>Suggested</span>
+                                 <Badge variant="secondary">{suggestedCount}</Badge>
+                               </span>
+                             </TabsTrigger>
+                             <TabsTrigger className="flex-1 h-10 md:h-12 text-base md:text-lg bg-pastel-purple/20 text-text-primary data-[state=active]:bg-pastel-purple" value="application">
                               <span className="flex items-center gap-2">
                                 <span>Application Review</span>
                                 <Badge variant="pastel-purple">{applicationCount}</Badge>
@@ -1045,22 +1077,38 @@ export default function JobDetail() {
                       </CardHeader>
                       <CardContent className="p-0 h-0 flex-1">
                         <ScrollArea className="h-full w-full scrollbar-black">
-                          {pipelineSectionTab === 'recruiting' ? (
-                            <div className={pipelineView === 'list' ? 'w-full p-layout-md' : 'w-fit p-layout-md'}>
-                              <PipelineOverview
-                                jobId={id!}
-                                showHeader={false}
-                                externalScroll
-                                viewMode={pipelineView}
-                                onViewModeChange={setPipelineView}
-                                selectionMode={selectionMode}
-                                onSelectionModeChange={setSelectionMode}
-                                onSelectedIdsChange={setSelectedCandidateIds}
-                                  refreshToken={pipelineRefresh}
-                                  onStageChanged={() => setPipelineRefresh((v) => v + 1)}
-                              />
-                            </div>
-                          ) : pipelineSectionTab === 'application' ? (
+                           {pipelineSectionTab === 'recruiting' ? (
+                             <div className={pipelineView === 'list' ? 'w-full p-layout-md' : 'w-fit p-layout-md'}>
+                               <PipelineOverview
+                                 jobId={id!}
+                                 showHeader={false}
+                                 externalScroll
+                                 viewMode={pipelineView}
+                                 onViewModeChange={setPipelineView}
+                                 selectionMode={selectionMode}
+                                 onSelectionModeChange={setSelectionMode}
+                                 onSelectedIdsChange={setSelectedCandidateIds}
+                                   refreshToken={pipelineRefresh}
+                                   onStageChanged={() => setPipelineRefresh((v) => v + 1)}
+                               />
+                             </div>
+                           ) : pipelineSectionTab === 'suggested' ? (
+                             <div className="w-full p-layout-md">
+                               <CandidateTable
+                                 candidates={suggestedCandidates}
+                                 isLoading={statusListsLoading}
+                                 onEdit={handleEditCandidate}
+                                 onDelete={handleDeleteCandidate}
+                                 markCandidateAsViewed={() => {}}
+                                 isCandidateNewForUser={() => false}
+                                 onRowClick={(candidateId) => openProfileInPlace(candidateId, 'pipeline', suggestedCandidates)}
+                                 selectionMode={selectionMode}
+                                 onSelectionModeChange={setSelectionMode}
+                                 selectedIds={selectedCandidateIds}
+                                 onSelectedIdsChange={setSelectedCandidateIds}
+                               />
+                             </div>
+                           ) : pipelineSectionTab === 'application' ? (
                             <div className="w-full p-layout-md">
                               <CandidateTable
                                 candidates={applicationReviewCandidates}
