@@ -144,35 +144,8 @@ serve(async (req) => {
       globalCandidateId = newGlobalCandidate.id;
     }
 
-    // Insert job-specific candidate record (used for per-job views and data)
-    const jobCandidateData: any = {
-      job_id: body.jobId,
-      candidate_name: candidateName,
-      linkedin_url: f.linkedin_url?.slice(0, 512) || null,
-      profile_summary: f.profile_summary || null,
-    };
-
-    // Include generated skills for job candidate too
-    if (body.generatedSkills && body.generatedSkills.length > 0) {
-      jobCandidateData.skills = body.generatedSkills.map(skill => skill.name);
-      jobCandidateData.auto_generated_skills = body.generatedSkills;
-      jobCandidateData.skills_metadata = body.generatedSkills;
-      jobCandidateData.last_skills_generation = new Date().toISOString();
-    }
-
-    const { data: jobCandidate, error: insertJobCandidateErr } = await supabase
-      .from("job_candidates")
-      .insert(jobCandidateData)
-      .select("id, candidate_name")
-      .single();
-
-    if (insertJobCandidateErr || !jobCandidate) {
-      console.error("Error inserting job_candidate:", insertJobCandidateErr);
-      return new Response(JSON.stringify({ error: "Failed to create job candidate" }), {
-        status: 500,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
+    // No longer creating job-specific candidate records
+    // All candidate data is now stored in the global candidates table only
 
     // Create association in Application Review (NULL stage) using the GLOBAL candidate id
     const { error: assocErr } = await supabase
@@ -210,7 +183,7 @@ serve(async (req) => {
 
           // Generate unique filename
           const fileExt = fileData.name.split('.').pop() || 'pdf';
-          const fileName = `${jobCandidate.id}/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+          const fileName = `${globalCandidateId}/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
 
           console.log("Uploading file:", fileName, "Size:", buffer.length);
 
@@ -259,11 +232,10 @@ serve(async (req) => {
 
     console.log("✅ Public application processed for", candidateName, {
       globalCandidateId,
-      jobCandidateId: jobCandidate.id,
     });
 
     return new Response(
-      JSON.stringify({ success: true, jobCandidateId: jobCandidate.id, globalCandidateId }),
+      JSON.stringify({ success: true, candidateId: globalCandidateId, globalCandidateId }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (e) {

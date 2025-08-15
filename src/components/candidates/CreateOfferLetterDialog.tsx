@@ -288,7 +288,7 @@ const [previewLoading, setPreviewLoading] = useState(false)
       // Create the offer letter in database
       await createOfferLetter({
         candidate_id: candidate.id,
-        job_id: candidate.job_id,
+        job_id: candidate.job_id || '',
         template_id: selectedTemplateId,
         organization_id: user?.user_metadata?.organization_id || organization?.id,
         title: offerTitle,

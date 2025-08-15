@@ -5,8 +5,9 @@ import { toast } from '@/hooks/use-toast'
 
 export interface Candidate {
   id: string
-  job_id: string
   candidate_name: string
+  email: string | null
+  phone: string | null
   location_country: string | null
   location_state: string | null
   location_city: string | null
@@ -14,17 +15,27 @@ export interface Candidate {
   salary_currency: string | null
   salary_period: string | null
   profile_summary: string | null
-  notes: string | null
   linkedin_url: string | null
   skills: string[] | null
-  added_by: string | null
   created_at: string
   updated_at: string
+  // Association-specific fields
+  association_id: string | null
+  association_notes: string | null
+  association_status: string | null
+  current_stage_id: string | null
+  added_by: string | null
+  association_created_at: string | null
   first_viewed_by: Record<string, string> | null
+  // Backward compatibility fields (computed from association data)
+  notes: string | null // Maps to association_notes
+  job_id: string // Required for backward compatibility
 }
 
 export interface CreateCandidateData {
   candidate_name: string
+  email?: string | null
+  phone?: string | null
   location_country?: string | null
   location_state?: string | null
   location_city?: string | null
@@ -32,12 +43,10 @@ export interface CreateCandidateData {
   salary_currency?: string | null
   salary_period?: string | null
   profile_summary?: string | null
-  notes?: string | null
   linkedin_url?: string | null
   skills?: string[] | null
-  // Optional contact details captured during internal create flow
-  email?: string | null
-  phone?: string | null
+  // Association-specific data
+  notes?: string | null
 }
 
 export function useCandidates(jobId: string) {
@@ -55,10 +64,34 @@ export function useCandidates(jobId: string) {
     try {
       console.log('Fetching candidates for job:', jobId)
       
-      // With RLS enabled, the query will automatically filter by organization through job relationship
+      // Fetch candidates via job_candidate_associations joined with global candidates table
       const { data, error: fetchError } = await supabase
-        .from('job_candidates')
-        .select('*')
+        .from('job_candidate_associations')
+        .select(`
+          id,
+          notes,
+          status,
+          current_stage_id,
+          added_by,
+          created_at,
+          candidate:candidates!inner (
+            id,
+            candidate_name,
+            email,
+            phone,
+            location_country,
+            location_state,
+            location_city,
+            salary_amount,
+            salary_currency,
+            salary_period,
+            profile_summary,
+            linkedin_url,
+            skills,
+            created_at,
+            updated_at
+          )
+        `)
         .eq('job_id', jobId)
         .order('created_at', { ascending: false })
 
@@ -73,12 +106,37 @@ export function useCandidates(jobId: string) {
         throw fetchError
       }
 
-      console.log('Fetched candidates:', data)
+      console.log('Fetched candidates via associations:', data)
       
-      // Transform the data to ensure proper typing
-      const transformedCandidates: Candidate[] = (data || []).map(candidate => ({
-        ...candidate,
-        first_viewed_by: candidate.first_viewed_by as Record<string, string> | null
+      // Transform the data to flatten the candidate structure
+      const transformedCandidates: Candidate[] = (data || []).map(assoc => ({
+        // Global candidate fields
+        id: (assoc.candidate as any).id,
+        candidate_name: (assoc.candidate as any).candidate_name,
+        email: (assoc.candidate as any).email,
+        phone: (assoc.candidate as any).phone,
+        location_country: (assoc.candidate as any).location_country,
+        location_state: (assoc.candidate as any).location_state,
+        location_city: (assoc.candidate as any).location_city,
+        salary_amount: (assoc.candidate as any).salary_amount,
+        salary_currency: (assoc.candidate as any).salary_currency,
+        salary_period: (assoc.candidate as any).salary_period,
+        profile_summary: (assoc.candidate as any).profile_summary,
+        linkedin_url: (assoc.candidate as any).linkedin_url,
+        skills: (assoc.candidate as any).skills,
+        created_at: (assoc.candidate as any).created_at,
+        updated_at: (assoc.candidate as any).updated_at,
+        // Association-specific fields
+        association_id: assoc.id,
+        association_notes: assoc.notes,
+        association_status: assoc.status,
+        current_stage_id: assoc.current_stage_id,
+        added_by: assoc.added_by,
+        association_created_at: assoc.created_at,
+        first_viewed_by: null, // Legacy field, not used in association model
+        // Backward compatibility fields
+        notes: assoc.notes, // Maps to association_notes
+        job_id: jobId // Set from the jobId parameter
       }))
       
       setCandidates(transformedCandidates)
@@ -100,19 +158,11 @@ export function useCandidates(jobId: string) {
     if (!user) return
 
     try {
-      // First get the current first_viewed_by data
-      const { data: candidate, error: fetchError } = await supabase
-        .from('job_candidates')
-        .select('first_viewed_by')
-        .eq('id', candidateId)
-        .single()
+      // Update the global candidate record with view information
+      const candidate = candidates.find(c => c.id === candidateId)
+      if (!candidate) return
 
-      if (fetchError) {
-        console.error('Error fetching candidate for view update:', fetchError)
-        return
-      }
-
-      const currentViews = (candidate?.first_viewed_by as Record<string, string>) || {}
+      const currentViews = candidate.first_viewed_by || {}
       
       // If user hasn't viewed this candidate yet, add them
       if (!currentViews[user.id]) {
@@ -122,8 +172,8 @@ export function useCandidates(jobId: string) {
         }
 
         const { error: updateError } = await supabase
-          .from('job_candidates')
-          .update({ first_viewed_by: updatedViews })
+          .from('candidates')
+          .update({ first_viewed_by: updatedViews } as any)
           .eq('id', candidateId)
 
         if (updateError) {
@@ -175,8 +225,8 @@ export function useCandidates(jobId: string) {
 
       console.log('Job verification successful:', jobData)
 
-      // Step 1: Check if candidate already exists in independent candidates table
-      let independentCandidateId: string | null = null
+      // Step 1: Check if candidate already exists in global candidates table
+      let globalCandidateId: string | null = null
       
       if (candidateData.candidate_name) {
         let q = supabase
@@ -195,26 +245,16 @@ export function useCandidates(jobId: string) {
         }
         const { data: existingCandidate } = await q.maybeSingle()
         
-        independentCandidateId = existingCandidate?.id || null
+        globalCandidateId = existingCandidate?.id || null
       }
 
-      // Step 2: If not exists, create in independent candidates table
-      if (!independentCandidateId) {
-        const { data: newIndependentCandidate, error: independentError } = await supabase
+      // Step 2: If not exists, create in global candidates table
+      if (!globalCandidateId) {
+        const { notes, ...globalCandidateData } = candidateData
+        const { data: newGlobalCandidate, error: globalError } = await supabase
           .from('candidates')
           .insert([{
-            candidate_name: candidateData.candidate_name,
-            email: candidateData.email ?? null,
-            phone: candidateData.phone ?? null,
-            location_country: candidateData.location_country,
-            location_state: candidateData.location_state,
-            location_city: candidateData.location_city,
-            salary_amount: candidateData.salary_amount,
-            salary_currency: candidateData.salary_currency,
-            salary_period: candidateData.salary_period,
-            profile_summary: candidateData.profile_summary,
-            linkedin_url: candidateData.linkedin_url,
-            skills: candidateData.skills,
+            ...globalCandidateData,
             status: 'available',
             source: 'job_application',
             created_by: user.id,
@@ -222,73 +262,65 @@ export function useCandidates(jobId: string) {
           .select('id')
           .single()
 
-        if (!independentError && newIndependentCandidate) {
-          independentCandidateId = newIndependentCandidate.id
-          console.log('Created independent candidate:', independentCandidateId)
+        if (!globalError && newGlobalCandidate) {
+          globalCandidateId = newGlobalCandidate.id
+          console.log('Created global candidate:', globalCandidateId)
+        } else {
+          console.error('Error creating global candidate:', globalError)
+          throw globalError || new Error('Failed to create global candidate')
         }
       } else {
-        // If exists and we captured contact details, update the independent candidate record
-        if (candidateData.email || candidateData.phone) {
+        // If exists, update the global candidate record with any new data
+        const updateData: any = {}
+        if (candidateData.email) updateData.email = candidateData.email
+        if (candidateData.phone) updateData.phone = candidateData.phone
+        if (candidateData.profile_summary) updateData.profile_summary = candidateData.profile_summary
+        if (candidateData.linkedin_url) updateData.linkedin_url = candidateData.linkedin_url
+        if (candidateData.skills) updateData.skills = candidateData.skills
+
+        if (Object.keys(updateData).length > 0) {
           await supabase
             .from('candidates')
-            .update({
-              ...(candidateData.email ? { email: candidateData.email } : {}),
-              ...(candidateData.phone ? { phone: candidateData.phone } : {}),
-            })
-            .eq('id', independentCandidateId)
+            .update(updateData)
+            .eq('id', globalCandidateId)
         }
       }
 
-      // Step 3: Create job candidate (original functionality)
-      const { email, phone, ...jobCandidateData } = candidateData
-      const { data: newCandidate, error: createError } = await supabase
-        .from('job_candidates')
+      // Step 3: Create association between job and global candidate
+      const { data: newAssociation, error: assocError } = await supabase
+        .from('job_candidate_associations')
         .insert([{
-          ...jobCandidateData,
           job_id: jobId,
+          candidate_id: globalCandidateId,
+          current_stage_id: null, // Application Review
+          status: 'active',
+          notes: candidateData.notes,
           added_by: user.id,
         }])
         .select()
         .single()
 
-      if (createError) {
-        console.error('Error adding candidate:', createError)
+      if (assocError) {
+        console.error('Error creating association:', assocError)
         
         // Provide more specific error messages based on the error type
-        if (createError.message.includes('row-level security')) {
+        if (assocError.message.includes('row-level security')) {
           throw new Error('You do not have permission to add candidates to this job. Please contact your administrator.')
-        } else if (createError.message.includes('foreign key')) {
+        } else if (assocError.message.includes('foreign key')) {
           throw new Error('Invalid job reference. Please refresh the page and try again.')
         } else {
-          throw createError
+          throw assocError
         }
       }
 
-      // Step 4: Create association between job candidate and independent candidate (Application Review)
-      if (independentCandidateId && newCandidate) {
-        const { error: assocError } = await supabase
-          .from('job_candidate_associations')
-          .insert([{
-            job_id: jobId,
-            candidate_id: independentCandidateId,
-            current_stage_id: null, // Application Review
-            status: 'active',
-            notes: candidateData.notes,
-            added_by: user.id,
-          }])
-        if (assocError) {
-          console.error('Error creating association for new job candidate:', assocError)
-        }
-      }
-
-      console.log('Added candidate:', newCandidate)
+      console.log('Added candidate association:', newAssociation)
       toast({
         title: 'Success',
         description: 'Candidate added. You can attach a resume from the candidate panel.',
       })
 
       await getCandidates() // Refresh the list
-      return newCandidate
+      return newAssociation
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to add candidate'
       console.error('Candidate creation error:', err)
@@ -309,18 +341,31 @@ export function useCandidates(jobId: string) {
     setError(null)
 
     try {
-      console.log('Updating candidate:', id, candidateData)
-      const { email, phone, ...jobCandidateData } = candidateData
+      console.log('Updating global candidate:', id, candidateData)
+      
+      // Update the global candidate record
+      const { notes, ...globalCandidateData } = candidateData
       const { data: updatedCandidate, error: updateError } = await supabase
-        .from('job_candidates')
-        .update(jobCandidateData)
+        .from('candidates')
+        .update(globalCandidateData)
         .eq('id', id)
         .select()
         .single()
 
       if (updateError) {
-        console.error('Error updating candidate:', updateError)
+        console.error('Error updating global candidate:', updateError)
         throw updateError
+      }
+
+      // Update association notes if provided
+      if (notes !== undefined) {
+        const candidate = candidates.find(c => c.id === id)
+        if (candidate && candidate.association_id) {
+          await supabase
+            .from('job_candidate_associations')
+            .update({ notes })
+            .eq('id', candidate.association_id)
+        }
       }
 
       console.log('Updated candidate:', updatedCandidate)
@@ -351,21 +396,26 @@ export function useCandidates(jobId: string) {
     setError(null)
 
     try {
-      console.log('Deleting candidate:', id)
-      const { error: deleteError } = await supabase
-        .from('job_candidates')
-        .delete()
-        .eq('id', id)
+      console.log('Removing candidate from job:', id)
+      
+      // Find the association for this candidate and job
+      const candidate = candidates.find(c => c.id === id)
+      if (candidate && candidate.association_id) {
+        const { error: deleteError } = await supabase
+          .from('job_candidate_associations')
+          .delete()
+          .eq('id', candidate.association_id)
 
-      if (deleteError) {
-        console.error('Error deleting candidate:', deleteError)
-        throw deleteError
+        if (deleteError) {
+          console.error('Error removing candidate association:', deleteError)
+          throw deleteError
+        }
       }
 
-      console.log('Deleted candidate:', id)
+      console.log('Removed candidate from job:', id)
       toast({
         title: 'Success',
-        description: 'Candidate deleted successfully'
+        description: 'Candidate removed from job successfully'
       })
 
       await getCandidates() // Refresh the list

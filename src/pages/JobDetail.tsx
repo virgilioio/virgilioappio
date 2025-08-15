@@ -186,14 +186,21 @@ export default function JobDetail() {
   }, [id, user])
 
   const applicationReviewCandidates = useMemo(() => {
-    if (!candidates?.length) return candidates
+    if (!candidates?.length) return []
     return candidates.filter((c: any) => {
       const link = normalizeUrl(c.linkedin_url)
       if (link && inPipelineKeys.has('link:' + link)) return false
       const key = 'name:' + makeNameLocKey(c.candidate_name, c.location_city, c.location_country)
       return !inPipelineKeys.has(key)
-    })
-  }, [candidates, inPipelineKeys])
+    }).map((c: any) => ({
+      ...c,
+      // Ensure all required fields are present for CandidateTable compatibility
+      job_id: c.job_id || id, // Use current job ID if not set
+      notes: c.notes || c.association_notes || null,
+      added_by: c.added_by || null,
+      first_viewed_by: c.first_viewed_by || {}
+    }))
+  }, [candidates, inPipelineKeys, id])
 
   // Open in-place sheet for Application Review rows (job_candidates)
   const handleApplicationRowClick = async (jobCandidateId: string) => {

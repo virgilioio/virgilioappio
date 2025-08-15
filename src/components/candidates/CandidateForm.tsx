@@ -760,7 +760,7 @@ export function CandidateForm({
                 <div className="bg-surface-secondary rounded-lg p-6">
                   <CandidateComments
                     candidateId={candidate.id}
-                    jobId={candidate.job_id}
+                    jobId={jobId || ''}
                     organizationId={organizationId || 'default-org'}
                   />
                 </div>

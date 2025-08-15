@@ -152,33 +152,10 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
         .maybeSingle()
       setJob(jobData || null)
 
-      // Resolve job candidate (record in job_candidates)
-      let jc: any | null = null
-      if (candidate.linkedin_url) {
-        const { data } = await supabase
-          .from('job_candidates')
-          .select('*')
-          .eq('job_id', jobId)
-          .eq('linkedin_url', candidate.linkedin_url)
-          .maybeSingle()
-        jc = data || null
-      }
-      if (!jc) {
-        const { data } = await supabase
-          .from('job_candidates')
-          .select('*')
-          .eq('job_id', jobId)
-          .eq('candidate_name', candidate.candidate_name)
-          .maybeSingle()
-        jc = data || null
-      }
-      if (jc) {
-        setJobCandidate(jc)
-        setJobCandidateId(jc.id)
-      } else {
-        setJobCandidate(null)
-        setJobCandidateId(null)
-      }
+      // Job candidate data is now merged with the global candidate data
+      // No separate job_candidates table lookup needed
+      setJobCandidate(candidate)
+      setJobCandidateId(candidate.id)
 
       // Resolve association for status/actions
       if (candidateId) {
@@ -197,17 +174,28 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
   }, [open, candidate, jobId, candidateId])
 
   const handleUpdateCandidate = async (candidateData: any) => {
-    if (!jobCandidateId) return
+    if (!candidateId) return
     setEditLoading(true)
     try {
-      const { email, phone, ...jobCandidateData } = candidateData
+      // Update the global candidate record
+      const { notes, ...globalCandidateData } = candidateData
       const { data, error } = await supabase
-        .from('job_candidates')
-        .update(jobCandidateData)
-        .eq('id', jobCandidateId)
+        .from('candidates')
+        .update(globalCandidateData)
+        .eq('id', candidateId)
         .select('*')
         .single()
       if (error) throw error
+      
+      // Update association notes if provided
+      if (notes !== undefined && associationId) {
+        await supabase
+          .from('job_candidate_associations')
+          .update({ notes })
+          .eq('id', associationId)
+      }
+      
+      setCandidate(data)
       setJobCandidate(data)
       toast({ title: 'Success', description: 'Candidate updated successfully' })
       setEditOpen(false)

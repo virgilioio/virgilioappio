@@ -184,7 +184,18 @@ export default function CandidateProfile() {
   const handleFormSubmit = async (data: any) => {
     if (!candidate) return
     const updatedCandidate = await updateCandidate(candidate.id, data)
-    setCandidate(updatedCandidate as Candidate)
+    setCandidate({
+      ...updatedCandidate,
+      association_id: null,
+      association_notes: null,
+      association_status: null,
+      current_stage_id: null,
+      added_by: null,
+      association_created_at: null,
+      first_viewed_by: null,
+      notes: null,
+      job_id: undefined
+    } as Candidate)
     setIsFormOpen(false)
   }
 
@@ -546,7 +557,7 @@ export default function CandidateProfile() {
                   <CardContent>
                     <CandidateComments
                       candidateId={candidate.id}
-                      jobId={candidate.job_id}
+                      jobId={jobId || ''}
                       organizationId={organizationId || 'default-org'}
                     />
                   </CardContent>
@@ -600,7 +611,7 @@ export default function CandidateProfile() {
                 onClose={() => setIsFormOpen(false)}
                 onSubmit={handleFormSubmit}
                 candidate={candidate}
-                jobId={candidate.job_id}
+                jobId={jobId || ''}
                 isLoading={candidatesLoading}
               />
             )}
