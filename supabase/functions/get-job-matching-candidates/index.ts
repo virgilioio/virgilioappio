@@ -222,7 +222,7 @@ serve(async (req) => {
     // Get job details
     const { data: job, error: jobError } = await supabase
       .from('jobs')
-      .select('id, title, skills, standardized_skills, location, salary_min, salary_max, currency, salary_period')
+      .select('id, title, skills, standardized_skills, location, salary_min, salary_max, currency')
       .eq('id', job_id)
       .single();
 
