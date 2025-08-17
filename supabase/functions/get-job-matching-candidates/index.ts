@@ -233,7 +233,22 @@ serve(async (req) => {
     const jobSkills = job.standardized_skills || job.skills || [];
     console.log(`📋 Job skills: ${jobSkills.join(', ')}`);
 
-    // Get local candidates (independent candidates table)
+    // Get existing candidate associations for this job to exclude them
+    const { data: existingAssociations, error: associationsError } = await supabase
+      .from('job_candidate_associations')
+      .select('candidate_id')
+      .eq('job_id', job_id);
+
+    if (associationsError) {
+      console.warn('Error fetching existing associations:', associationsError);
+    }
+
+    const existingCandidateIds = new Set(
+      existingAssociations?.map(assoc => assoc.candidate_id) || []
+    );
+    console.log(`🚫 Excluding ${existingCandidateIds.size} already associated candidates`);
+
+    // Get local candidates (independent candidates table) - increased limit for filtering
     const { data: localCandidates, error: localError } = await supabase
       .from('candidates')
       .select(`
@@ -253,7 +268,7 @@ serve(async (req) => {
         company_current,
         role_current
       `)
-      .limit(limit * 2); // Get more to filter and sort
+      .limit(limit * 3); // Increased limit to account for filtering
 
     if (localError) {
       console.warn('Error fetching local candidates:', localError);
@@ -264,8 +279,15 @@ serve(async (req) => {
     // Process local candidates
     if (localCandidates) {
       console.log(`🔍 Processing ${localCandidates.length} local candidates`);
+      let excludedCount = 0;
       
       for (const candidate of localCandidates) {
+        // Skip candidates already associated with this job
+        if (existingCandidateIds.has(candidate.id)) {
+          excludedCount++;
+          continue;
+        }
+
         const candidateSkills = candidate.standardized_skills || candidate.skills || [];
         const matchScore = calculateSkillMatch(jobSkills, candidateSkills, candidate.profile_summary);
         
@@ -293,6 +315,8 @@ serve(async (req) => {
           });
         }
       }
+      
+      console.log(`📊 Filtered out ${excludedCount} already associated candidates`);
     }
 
     // TODO: Add CoreSignal candidates here (similar to count-matching-candidates logic)
