@@ -34,6 +34,21 @@ interface SubmitApplicationPayload {
   }>;
 }
 
+interface FileUploadResult {
+  fieldId: string;
+  fileName: string;
+  success: boolean;
+  error?: string;
+}
+
+interface SubmitApplicationResponse {
+  success: boolean;
+  candidateId?: string;
+  globalCandidateId?: string;
+  fileUploadResults?: FileUploadResult[];
+  error?: string;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -166,52 +181,124 @@ serve(async (req) => {
     }
 
     // Handle file uploads if any
+    const fileUploadResults: FileUploadResult[] = [];
     if (body.uploadedFiles && Object.keys(body.uploadedFiles).length > 0) {
       console.log("Processing uploaded files...");
       
+      // Validate files before processing
       for (const [fieldId, fileData] of Object.entries(body.uploadedFiles)) {
-        if (!fileData || !fileData.data) continue;
+        if (!fileData || !fileData.data) {
+          fileUploadResults.push({
+            fieldId,
+            fileName: fileData?.name || 'unknown',
+            success: false,
+            error: 'No file data provided'
+          });
+          continue;
+        }
+
+        // File size validation (15MB limit)
+        if (fileData.size > 15 * 1024 * 1024) {
+          fileUploadResults.push({
+            fieldId,
+            fileName: fileData.name,
+            success: false,
+            error: 'File size exceeds 15MB limit'
+          });
+          continue;
+        }
+
+        // File type validation
+        const allowedTypes = [
+          'application/pdf',
+          'application/msword',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          'text/plain',
+          'image/jpeg',
+          'image/png',
+          'image/gif'
+        ];
+        
+        if (!allowedTypes.includes(fileData.type)) {
+          fileUploadResults.push({
+            fieldId,
+            fileName: fileData.name,
+            success: false,
+            error: `Unsupported file type: ${fileData.type}`
+          });
+          continue;
+        }
         
         try {
           // Convert base64 to buffer
           const base64Data = fileData.data.split(',')[1] || fileData.data;
+          
+          // Validate base64 data
+          if (!base64Data) {
+            throw new Error('Invalid base64 data');
+          }
+          
           const buffer = new Uint8Array(
             atob(base64Data)
               .split('')
               .map(c => c.charCodeAt(0))
           );
 
+          // Verify buffer size matches expected file size (within reasonable margin)
+          if (Math.abs(buffer.length - fileData.size) > fileData.size * 0.1) {
+            throw new Error('File size mismatch during conversion');
+          }
+
           // Generate unique filename
-          const fileExt = fileData.name.split('.').pop() || 'pdf';
+          const fileExt = fileData.name.split('.').pop()?.toLowerCase() || 'pdf';
           const fileName = `${globalCandidateId}/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
 
           console.log("Uploading file:", fileName, "Size:", buffer.length);
 
-          // Upload to storage
-          const { error: storageError } = await supabase.storage
-            .from('candidate-attachments')
-            .upload(fileName, buffer, {
-              contentType: fileData.type,
-            });
+          // Upload to storage with retry logic
+          let storageError = null;
+          for (let attempt = 1; attempt <= 2; attempt++) {
+            const { error } = await supabase.storage
+              .from('candidate-attachments')
+              .upload(fileName, buffer, {
+                contentType: fileData.type,
+                upsert: false
+              });
+            
+            storageError = error;
+            if (!error) break;
+            
+            console.log(`Upload attempt ${attempt} failed for ${fileName}:`, error);
+            if (attempt < 2) {
+              // Wait 1 second before retry
+              await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+          }
 
           if (storageError) {
-            console.error("Storage upload error:", storageError);
-            continue; // Skip this file but don't fail the entire submission
+            console.error("Storage upload error after retries:", storageError);
+            fileUploadResults.push({
+              fieldId,
+              fileName: fileData.name,
+              success: false,
+              error: `Storage upload failed: ${storageError.message}`
+            });
+            continue;
           }
 
           // Store file metadata in database
           const { error: dbError } = await supabase
             .from('candidate_attachments')
             .insert({
-              candidate_id: globalCandidateId, // Associate with global candidate
+              candidate_id: globalCandidateId,
               file_name: fileData.name,
               file_url: fileName,
               file_size_bytes: fileData.size,
               file_type: fileData.type,
               is_resume: /resume|cv|curriculum/i.test(fileData.name) || 
                          ['pdf', 'doc', 'docx'].includes(fileExt) || 
-                         Object.keys(body.uploadedFiles || {}).length === 1, // Single file likely a resume
-              uploaded_by: null, // Public submission
+                         Object.keys(body.uploadedFiles || {}).length === 1,
+              uploaded_by: null,
             });
 
           if (dbError) {
@@ -220,22 +307,51 @@ serve(async (req) => {
             await supabase.storage
               .from('candidate-attachments')
               .remove([fileName]);
+            
+            fileUploadResults.push({
+              fieldId,
+              fileName: fileData.name,
+              success: false,
+              error: `Database error: ${dbError.message}`
+            });
           } else {
             console.log("✅ File uploaded successfully:", fileName);
+            fileUploadResults.push({
+              fieldId,
+              fileName: fileData.name,
+              success: true
+            });
           }
         } catch (fileError) {
           console.error("Error processing file:", fileError);
-          continue; // Skip this file but don't fail the entire submission
+          fileUploadResults.push({
+            fieldId,
+            fileName: fileData.name,
+            success: false,
+            error: fileError instanceof Error ? fileError.message : 'Unknown file processing error'
+          });
         }
       }
     }
 
     console.log("✅ Public application processed for", candidateName, {
       globalCandidateId,
+      fileUploadResults: fileUploadResults.length > 0 ? fileUploadResults : undefined
     });
 
+    // Check if any required file uploads failed
+    const failedUploads = fileUploadResults.filter(result => !result.success);
+    const hasFailedUploads = failedUploads.length > 0;
+
+    const response: SubmitApplicationResponse = {
+      success: true,
+      candidateId: globalCandidateId,
+      globalCandidateId,
+      fileUploadResults: fileUploadResults.length > 0 ? fileUploadResults : undefined
+    };
+
     return new Response(
-      JSON.stringify({ success: true, candidateId: globalCandidateId, globalCandidateId }),
+      JSON.stringify(response),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (e) {

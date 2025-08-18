@@ -285,6 +285,31 @@ export default function PublicJobPosting() {
     }, 0)
   }
 
+  // File validation helper
+  const validateFile = (file: File): string | null => {
+    // Size validation (15MB limit)
+    if (file.size > 15 * 1024 * 1024) {
+      return 'File size must be less than 15MB'
+    }
+
+    // Type validation
+    const allowedTypes = [
+      'application/pdf',
+      'application/msword', 
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'text/plain',
+      'image/jpeg',
+      'image/png', 
+      'image/gif'
+    ]
+    
+    if (!allowedTypes.includes(file.type)) {
+      return 'Unsupported file type. Please use PDF, DOC, DOCX, TXT, JPG, PNG, or GIF files.'
+    }
+
+    return null
+  }
+
   const handleSubmitApplication = async () => {
     if (!posting) return
     
@@ -316,10 +341,31 @@ export default function PublicJobPosting() {
       }
     })
     
+    // Validate uploaded files
+    const fileValidationErrors: string[] = []
+    for (const [fieldId, file] of Object.entries(uploadedFiles)) {
+      if (file) {
+        const error = validateFile(file)
+        if (error) {
+          const fieldLabel = fields.find(f => f.id === fieldId)?.field_label || 'File'
+          fileValidationErrors.push(`${fieldLabel}: ${error}`)
+        }
+      }
+    }
+    
     if (missingRequiredFields.length > 0) {
       toast({
         title: 'Missing required fields',
         description: `Please fill in the following required fields: ${missingRequiredFields.join(', ')}`,
+        variant: 'destructive'
+      })
+      return
+    }
+
+    if (fileValidationErrors.length > 0) {
+      toast({
+        title: 'File validation errors',
+        description: fileValidationErrors.join('; '),
         variant: 'destructive'
       })
       return
@@ -368,6 +414,12 @@ export default function PublicJobPosting() {
             }
           } catch (error) {
             console.error('Error converting file to base64:', error)
+            toast({
+              title: 'File processing error', 
+              description: `Failed to process file: ${file.name}`,
+              variant: 'destructive'
+            })
+            return
           }
         }
       }
@@ -393,12 +445,39 @@ export default function PublicJobPosting() {
 
       if (error) throw new Error(error.message || 'Submission failed')
 
+      // Check for file upload failures
+      const response = data as any
+      if (response?.fileUploadResults) {
+        const failedUploads = response.fileUploadResults.filter((result: any) => !result.success)
+        if (failedUploads.length > 0) {
+          const failureMessages = failedUploads.map((result: any) => 
+            `${result.fileName}: ${result.error}`
+          ).join('; ')
+          
+          toast({
+            title: 'Some files failed to upload',
+            description: `Application submitted but these files had issues: ${failureMessages}`,
+            variant: 'destructive'
+          })
+        } else {
+          // All files uploaded successfully
+          const successCount = response.fileUploadResults.filter((result: any) => result.success).length
+          if (successCount > 0) {
+            toast({
+              title: 'Application submitted successfully',
+              description: `Your application and ${successCount} file(s) have been uploaded successfully.`
+            })
+          }
+        }
+      }
+
       setShowConfirmationDialog(true)
     } catch (err) {
       console.error('Submit application error:', err)
       toast({
         title: 'Submission failed',
         description: err instanceof Error ? err.message : 'Something went wrong',
+        variant: 'destructive'
       })
     } finally {
       setIsSubmitting(false)
