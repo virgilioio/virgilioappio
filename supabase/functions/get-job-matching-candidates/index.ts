@@ -21,6 +21,28 @@ interface JobMatchingRequest {
   count_only?: boolean;
 }
 
+interface SkillAnalysis {
+  skill: string;
+  frequency: number;
+  contexts: Array<{
+    source: 'job_title' | 'description' | 'skills_list' | 'summary';
+    prominence: number;
+    recency?: number;
+  }>;
+  density_score: number;
+  prominence_score: number;
+  recency_score: number;
+}
+
+interface CandidateScore {
+  skill_appearance: number;
+  skill_density: number;
+  experience_relevance: number;
+  total_score: number;
+  confidence: number;
+  match_reasoning: string[];
+}
+
 interface MatchedCandidate {
   id: string;
   candidate_name: string;
@@ -40,6 +62,8 @@ interface MatchedCandidate {
   enriched_at?: string;
   current_company?: string;
   current_role?: string;
+  score_breakdown?: CandidateScore;
+  competitive_advantage?: string[];
 }
 
 interface JobMatchingResult {
@@ -101,6 +125,76 @@ function findSkillSynonyms(skill: string): string[] {
   return [];
 }
 
+// Enhanced skill extraction with context analysis
+function analyzeSkillsInCandidate(candidate: any, jobSkills: string[]): Map<string, SkillAnalysis> {
+  const skillAnalysis = new Map<string, SkillAnalysis>();
+  
+  // Helper to add skill context
+  const addSkillContext = (skill: string, source: string, prominence: number, recency?: number) => {
+    const normalized = normalizeSkill(skill);
+    if (!skillAnalysis.has(normalized)) {
+      skillAnalysis.set(normalized, {
+        skill: normalized,
+        frequency: 0,
+        contexts: [],
+        density_score: 0,
+        prominence_score: 0,
+        recency_score: 0
+      });
+    }
+    
+    const analysis = skillAnalysis.get(normalized)!;
+    analysis.frequency++;
+    analysis.contexts.push({
+      source: source as any,
+      prominence,
+      recency
+    });
+  };
+
+  // Analyze skills from different sources
+  const candidateSkills = candidate.skills || candidate.standardized_skills || [];
+  candidateSkills.forEach((skill: string) => {
+    addSkillContext(skill, 'skills_list', 90, 100); // Skills list = high prominence
+  });
+
+  // Analyze current role (highest recency)
+  if (candidate.role_current) {
+    const roleWords = candidate.role_current.toLowerCase().split(/\s+/);
+    jobSkills.forEach(jobSkill => {
+      const normalized = normalizeSkill(jobSkill);
+      if (roleWords.some(word => normalized.includes(word) || word.includes(normalized))) {
+        addSkillContext(jobSkill, 'job_title', 100, 100);
+      }
+    });
+  }
+
+  // Analyze profile summary with context weighting
+  if (candidate.profile_summary) {
+    const summary = candidate.profile_summary.toLowerCase();
+    jobSkills.forEach(jobSkill => {
+      const normalized = normalizeSkill(jobSkill);
+      const matches = (summary.match(new RegExp(normalized, 'gi')) || []).length;
+      if (matches > 0) {
+        // Higher matches = higher density
+        for (let i = 0; i < matches; i++) {
+          addSkillContext(jobSkill, 'summary', 60, 80);
+        }
+      }
+    });
+  }
+
+  // Calculate density, prominence, and recency scores
+  skillAnalysis.forEach((analysis, skill) => {
+    const totalContexts = analysis.contexts.length;
+    analysis.density_score = Math.min(100, (analysis.frequency / totalContexts) * 100);
+    analysis.prominence_score = analysis.contexts.reduce((sum, ctx) => sum + ctx.prominence, 0) / totalContexts;
+    analysis.recency_score = analysis.contexts.reduce((sum, ctx) => sum + (ctx.recency || 50), 0) / totalContexts;
+  });
+
+  return skillAnalysis;
+}
+
 function extractSkillsFromSummary(summary: string): string[] {
   if (!summary) return [];
   
@@ -128,86 +222,219 @@ function extractSkillsFromSummary(summary: string): string[] {
   return [...new Set(extractedSkills)];
 }
 
-function calculateSkillMatch(jobSkills: string[], candidateSkills: string[], candidateSummary?: string): number {
-  if (!jobSkills || jobSkills.length === 0) {
-    return 85;
-  }
+// Enhanced multi-dimensional scoring system
+function calculateEnhancedCandidateScore(candidate: any, jobSkills: string[], job: any): CandidateScore {
+  const reasoning: string[] = [];
+  const skillAnalysis = analyzeSkillsInCandidate(candidate, jobSkills);
   
-  let skillsToMatch = candidateSkills || [];
+  // 1. Skill Appearance Score (40% weight)
+  let appearanceScore = 0;
+  let skillsFound = 0;
   
-  if ((!candidateSkills || candidateSkills.length === 0) && candidateSummary) {
-    skillsToMatch = extractSkillsFromSummary(candidateSummary);
-  }
-  
-  if (skillsToMatch.length === 0) {
-    return candidateSummary ? 30 : 15;
-  }
-  
-  const normalizedJobSkills = jobSkills.map(normalizeSkill);
-  const normalizedCandidateSkills = skillsToMatch.map(normalizeSkill);
-  
-  let totalScore = 0;
-  let maxPossibleScore = jobSkills.length * 100;
-  
-  for (const jobSkill of normalizedJobSkills) {
-    let bestMatchScore = 0;
+  for (const jobSkill of jobSkills) {
+    const normalized = normalizeSkill(jobSkill);
+    let bestMatch = 0;
     
-    for (const candidateSkill of normalizedCandidateSkills) {
-      let score = 0;
-      
-      // Exact match
-      if (jobSkill === candidateSkill) {
-        score = 100;
-      }
-      // Substring match
-      else if (candidateSkill.includes(jobSkill) || jobSkill.includes(candidateSkill)) {
-        score = 80;
-      }
-      // Word-level match
-      else {
-        const jobWords = getSkillWords(jobSkill);
-        const candidateWords = getSkillWords(candidateSkill);
-        const wordMatches = jobWords.filter(word => candidateWords.includes(word));
-        
-        if (wordMatches.length > 0) {
-          score = Math.min(70, (wordMatches.length / jobWords.length) * 70);
-        }
-      }
-      
-      // Synonym match
-      if (score === 0) {
-        const jobSynonyms = findSkillSynonyms(jobSkill);
+    // Direct skill match
+    if (skillAnalysis.has(normalized)) {
+      bestMatch = 100;
+      skillsFound++;
+      reasoning.push(`✓ Direct match: ${jobSkill}`);
+    } else {
+      // Semantic/synonym matching
+      for (const [candidateSkill] of skillAnalysis) {
+        const synonyms = findSkillSynonyms(jobSkill);
         const candidateSynonyms = findSkillSynonyms(candidateSkill);
         
-        if (jobSynonyms.includes(candidateSkill) || candidateSynonyms.includes(jobSkill)) {
-          score = 60;
-        } else {
-          for (const synonym of jobSynonyms) {
-            if (candidateSkill.includes(synonym) || synonym.includes(candidateSkill)) {
-              score = Math.max(score, 50);
-              break;
-            }
-          }
+        if (synonyms.includes(candidateSkill) || candidateSynonyms.includes(normalized)) {
+          bestMatch = Math.max(bestMatch, 80);
+          reasoning.push(`≈ Synonym match: ${jobSkill} ↔ ${candidateSkill}`);
+        } else if (candidateSkill.includes(normalized) || normalized.includes(candidateSkill)) {
+          bestMatch = Math.max(bestMatch, 60);
+          reasoning.push(`⊃ Partial match: ${jobSkill} ↔ ${candidateSkill}`);
         }
-      }
-      
-      if (score > bestMatchScore) {
-        bestMatchScore = score;
       }
     }
     
-    totalScore += bestMatchScore;
+    appearanceScore += bestMatch;
   }
   
-  const finalScore = (totalScore / maxPossibleScore) * 100;
-  return Math.min(100, Math.max(0, finalScore));
+  appearanceScore = jobSkills.length > 0 ? (appearanceScore / jobSkills.length) : 0;
+  
+  // 2. Skill Density Score (35% weight)
+  let densityScore = 0;
+  let totalDensity = 0;
+  let densityCount = 0;
+  
+  skillAnalysis.forEach((analysis, skill) => {
+    if (jobSkills.some(js => normalizeSkill(js) === skill)) {
+      totalDensity += analysis.density_score * analysis.prominence_score / 100;
+      densityCount++;
+      
+      if (analysis.frequency > 2) {
+        reasoning.push(`🔥 High frequency: ${skill} appears ${analysis.frequency} times`);
+      }
+    }
+  });
+  
+  densityScore = densityCount > 0 ? (totalDensity / densityCount) : 0;
+  
+  // 3. Experience Relevance Score (25% weight)
+  let experienceScore = 50; // Base score
+  
+  // Current role relevance
+  if (candidate.role_current) {
+    const roleScore = calculateRoleRelevance(candidate.role_current, jobSkills, job.title);
+    experienceScore = Math.max(experienceScore, roleScore);
+    if (roleScore > 70) {
+      reasoning.push(`💼 Current role highly relevant: ${candidate.role_current}`);
+    }
+  }
+  
+  // Industry/company context
+  if (candidate.company_current) {
+    reasoning.push(`🏢 Currently at: ${candidate.company_current}`);
+  }
+  
+  // Experience level alignment
+  if (candidate.years_experience) {
+    const expAlignment = calculateExperienceAlignment(candidate.years_experience);
+    experienceScore = (experienceScore + expAlignment) / 2;
+    reasoning.push(`📅 ${candidate.years_experience} years experience`);
+  }
+  
+  // Calculate weighted total score
+  const weightedScore = (
+    (appearanceScore * 0.40) + 
+    (densityScore * 0.35) + 
+    (experienceScore * 0.25)
+  );
+  
+  // Calculate confidence based on data completeness
+  let confidence = 0;
+  if (candidate.skills?.length > 0) confidence += 30;
+  if (candidate.profile_summary) confidence += 25;
+  if (candidate.role_current) confidence += 25;
+  if (candidate.years_experience) confidence += 20;
+  
+  return {
+    skill_appearance: Math.round(appearanceScore),
+    skill_density: Math.round(densityScore),
+    experience_relevance: Math.round(experienceScore),
+    total_score: Math.round(weightedScore),
+    confidence: Math.round(confidence),
+    match_reasoning: reasoning
+  };
+}
+
+function calculateRoleRelevance(currentRole: string, jobSkills: string[], jobTitle: string): number {
+  const roleWords = currentRole.toLowerCase().split(/\s+/);
+  const titleWords = jobTitle.toLowerCase().split(/\s+/);
+  
+  let relevanceScore = 0;
+  
+  // Direct title similarity
+  const titleOverlap = titleWords.filter(word => roleWords.includes(word)).length;
+  relevanceScore += (titleOverlap / titleWords.length) * 40;
+  
+  // Skills mentioned in role
+  const skillMentions = jobSkills.filter(skill => 
+    currentRole.toLowerCase().includes(normalizeSkill(skill))
+  ).length;
+  relevanceScore += (skillMentions / jobSkills.length) * 60;
+  
+  return Math.min(100, relevanceScore);
+}
+
+function calculateExperienceAlignment(yearsExp: number): number {
+  // Assume ideal range is 2-8 years for most roles
+  if (yearsExp >= 2 && yearsExp <= 8) return 100;
+  if (yearsExp >= 1 && yearsExp <= 10) return 80;
+  if (yearsExp >= 0 && yearsExp <= 15) return 60;
+  return 40;
+}
+
+// Legacy function for backward compatibility
+function calculateSkillMatch(jobSkills: string[], candidateSkills: string[], candidateSummary?: string): number {
+  // Create a simplified candidate object for the enhanced scoring
+  const mockCandidate = {
+    skills: candidateSkills,
+    profile_summary: candidateSummary
+  };
+  
+  const mockJob = { title: 'Generic Position' };
+  const score = calculateEnhancedCandidateScore(mockCandidate, jobSkills, mockJob);
+  return score.total_score;
 }
 
 function getMatchTier(score: number): 'excellent' | 'good' | 'fair' | 'minimal' {
-  if (score >= 90) return 'excellent';
+  if (score >= 85) return 'excellent';
   if (score >= 70) return 'good';
   if (score >= 50) return 'fair';
   return 'minimal';
+}
+
+// Enhanced comparative analysis
+function performComparativeAnalysis(candidates: MatchedCandidate[]): MatchedCandidate[] {
+  if (candidates.length < 2) return candidates;
+  
+  // Group candidates by experience level for fair comparison
+  const experienceGroups = new Map<string, MatchedCandidate[]>();
+  
+  candidates.forEach(candidate => {
+    const expGroup = getExperienceGroup(candidate.years_experience || 0);
+    if (!experienceGroups.has(expGroup)) {
+      experienceGroups.set(expGroup, []);
+    }
+    experienceGroups.get(expGroup)!.push(candidate);
+  });
+  
+  // Identify competitive advantages within each group
+  experienceGroups.forEach((group) => {
+    if (group.length > 1) {
+      group.forEach(candidate => {
+        candidate.competitive_advantage = identifyCompetitiveAdvantages(candidate, group);
+      });
+    }
+  });
+  
+  return candidates;
+}
+
+function getExperienceGroup(years: number): string {
+  if (years <= 2) return 'junior';
+  if (years <= 5) return 'mid';
+  if (years <= 10) return 'senior';
+  return 'executive';
+}
+
+function identifyCompetitiveAdvantages(candidate: MatchedCandidate, peers: MatchedCandidate[]): string[] {
+  const advantages: string[] = [];
+  
+  // Higher match score than peers
+  const avgPeerScore = peers.filter(p => p.id !== candidate.id)
+    .reduce((sum, p) => sum + p.match_score, 0) / (peers.length - 1);
+  
+  if (candidate.match_score > avgPeerScore + 10) {
+    advantages.push('Higher skill match than peers');
+  }
+  
+  // Current role advantage
+  if (candidate.current_role && candidate.current_role.toLowerCase().includes('senior') || 
+      candidate.current_role?.toLowerCase().includes('lead')) {
+    advantages.push('Leadership experience in current role');
+  }
+  
+  // Skills breadth advantage
+  const skillCount = candidate.skills?.length || 0;
+  const avgPeerSkills = peers.filter(p => p.id !== candidate.id)
+    .reduce((sum, p) => sum + (p.skills?.length || 0), 0) / (peers.length - 1);
+    
+  if (skillCount > avgPeerSkills + 3) {
+    advantages.push('Broader skill set than peers');
+  }
+  
+  return advantages;
 }
 
 serve(async (req) => {
@@ -291,17 +518,17 @@ serve(async (req) => {
           continue;
         }
 
-        const candidateSkills = candidate.standardized_skills || candidate.skills || [];
-        const matchScore = calculateSkillMatch(jobSkills, candidateSkills, candidate.profile_summary);
+        // Use enhanced scoring system
+        const candidateScore = calculateEnhancedCandidateScore(candidate, jobSkills, job);
         
-        // Only include candidates with meaningful match scores
-        if (matchScore >= 20) {
+        // Only include candidates with meaningful match scores (raised threshold for quality)
+        if (candidateScore.total_score >= 30 && candidateScore.confidence >= 40) {
           if (count_only) {
             // For count-only requests, just track the match without full candidate data
             matchedCandidates.push({
               id: candidate.id,
-              match_score: matchScore,
-              match_tier: getMatchTier(matchScore),
+              match_score: candidateScore.total_score,
+              match_tier: getMatchTier(candidateScore.total_score),
               source: 'local'
             } as any);
           } else {
@@ -316,14 +543,16 @@ serve(async (req) => {
               salary_amount: candidate.salary_amount,
               salary_currency: candidate.salary_currency,
               salary_period: candidate.salary_period,
-              match_score: matchScore,
-              match_tier: getMatchTier(matchScore),
+              match_score: candidateScore.total_score,
+              match_tier: getMatchTier(candidateScore.total_score),
               profile_summary: candidate.profile_summary,
               source: 'local',
               years_experience: candidate.years_experience,
               enriched_at: candidate.enriched_at,
               current_company: candidate.company_current,
               current_role: candidate.role_current,
+              score_breakdown: candidateScore,
+              competitive_advantage: [] // Will be populated in comparative analysis
             });
           }
         }
@@ -335,11 +564,18 @@ serve(async (req) => {
     // TODO: Add CoreSignal candidates here (similar to count-matching-candidates logic)
     // For now, focusing on local candidates to get the feature working
 
-    // Sort by match score (highest first)
-    matchedCandidates.sort((a, b) => b.match_score - a.match_score);
+    // Perform comparative analysis
+    const analyzedCandidates = performComparativeAnalysis(matchedCandidates);
+    
+    // Sort by enhanced scoring (confidence-weighted score)
+    analyzedCandidates.sort((a, b) => {
+      const scoreA = a.match_score * (a.score_breakdown?.confidence || 50) / 100;
+      const scoreB = b.match_score * (b.score_breakdown?.confidence || 50) / 100;
+      return scoreB - scoreA;
+    });
 
     // Limit results
-    const limitedCandidates = matchedCandidates.slice(0, limit);
+    const limitedCandidates = analyzedCandidates.slice(0, limit);
 
     const result: JobMatchingResult = {
       candidates: limitedCandidates,
@@ -353,7 +589,8 @@ serve(async (req) => {
       }
     };
 
-    console.log(`✅ Returning ${limitedCandidates.length} matched candidates (avg score: ${result.breakdown.averageMatch.toFixed(1)}%)`);
+    console.log(`✅ Enhanced matching complete: ${limitedCandidates.length} candidates (avg: ${result.breakdown.averageMatch.toFixed(1)}%)`);
+    console.log(`📊 Quality metrics: ${limitedCandidates.filter(c => c.match_tier === 'excellent').length} excellent, ${limitedCandidates.filter(c => c.match_tier === 'good').length} good matches`);
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
