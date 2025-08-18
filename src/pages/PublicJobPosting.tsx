@@ -467,10 +467,32 @@ export default function PublicJobPosting() {
         body: submissionPayload
       })
 
-      if (error) throw new Error(error.message || 'Submission failed')
-
-      // Check for file upload failures
+      // Check for application limit violations first
       const response = data as any
+      if (!response?.success && response?.violations?.length > 0) {
+        const violation = response.violations[0] // Show the first violation
+        let errorMessage = violation.message
+        
+        // Add cooldown date information if available
+        if (violation.cooldown_until) {
+          const cooldownDate = new Date(violation.cooldown_until)
+          const now = new Date()
+          const daysUntil = Math.ceil((cooldownDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+          
+          if (violation.type === 'same_job_cooldown') {
+            errorMessage = `You've already applied to this job recently. You can apply again after ${cooldownDate.toLocaleDateString()} (in ${daysUntil} days).`
+          }
+        }
+        
+        toast({
+          title: 'Application Not Submitted',
+          description: errorMessage,
+          variant: 'destructive'
+        })
+        return
+      }
+
+      if (error) throw new Error(error.message || 'Submission failed')
       if (response?.fileUploadResults) {
         const failedUploads = response.fileUploadResults.filter((result: any) => !result.success)
         if (failedUploads.length > 0) {
