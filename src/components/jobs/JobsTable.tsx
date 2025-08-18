@@ -113,7 +113,13 @@ export function JobsTable({
     })
     
     const membersList = Array.from(members).sort()
-    console.log('Final hiring team members list:', membersList)
+    console.log('Final hiring team members list (after filtering):', membersList)
+    
+    // If no valid names found, show a debug message
+    if (membersList.length === 0) {
+      console.log('No valid hiring team members found for filter. This will hide the filter dropdown.')
+    }
+    
     return membersList
   }
 
