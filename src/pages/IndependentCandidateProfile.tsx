@@ -23,6 +23,7 @@ import CandidateNameCard from '@/components/candidates/CandidateNameCard'
 import { supabase } from '@/integrations/supabase/client'
 import { CandidateResumeViewer } from '@/components/candidates/CandidateResumeViewer'
 import { EnhancedResumeDropzone } from '@/components/candidates/EnhancedResumeDropzone'
+import { CandidateComments } from '@/components/candidates/CandidateComments'
 import { toast } from '@/hooks/use-toast'
 
 export default function IndependentCandidateProfile() {
@@ -30,7 +31,7 @@ export default function IndependentCandidateProfile() {
   const navigate = useNavigate()
   const [candidate, setCandidate] = useState<IndependentCandidate | null>(null)
   const [isFormOpen, setIsFormOpen] = useState(false)
-  const [activeTab, setActiveTab] = useState<'overview' | 'resume' | 'details' | 'experience' | 'education'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'resume' | 'details' | 'experience' | 'education' | 'comments'>('overview')
   const [isHired, setIsHired] = useState(false)
   
   const { 
@@ -273,9 +274,10 @@ export default function IndependentCandidateProfile() {
                   { value: 'experience', label: 'Experience', Icon: Zap },
                   { value: 'education', label: 'Education', Icon: User },
                   { value: 'details', label: 'Details', Icon: Calendar },
+                  { value: 'comments', label: 'Comments', Icon: User },
                 ]}
                 activeTab={activeTab}
-                onTabChange={(v) => setActiveTab(v as 'overview' | 'details' | 'experience' | 'education')}
+                onTabChange={(v) => setActiveTab(v as 'overview' | 'resume' | 'details' | 'experience' | 'education' | 'comments')}
                 rightActions={
                   <>
                     <AddToJobPipelineDialog candidateId={candidate.id} />
@@ -422,6 +424,20 @@ export default function IndependentCandidateProfile() {
               )}
 
               {/* Education Tab */}
+              {activeTab === 'education' && (
+                <CandidateEducationComponent education={education} />
+              )}
+
+              {/* Comments Tab */}
+              {activeTab === 'comments' && (
+                <CandidateComments 
+                  candidateId={candidate.id}
+                  jobId={null} // Independent candidates don't belong to specific jobs
+                  organizationId={null} // RLS policies handle organization access for independent candidates
+                />
+              )}
+
+              {/* Details Tab */}
               {activeTab === 'details' && (
                 <Card className="bg-surface-primary">
                   <CardHeader>
