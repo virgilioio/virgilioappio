@@ -243,6 +243,48 @@ serve(async (req) => {
       // Don't fail the application for this, just log the warning
     }
 
+    // Store application field responses
+    console.log('💾 Storing application field responses');
+    const { data: postingFields, error: fieldsErr } = await supabase
+      .from('job_posting_application_fields')
+      .select('field_name, field_label, field_type')
+      .eq('posting_id', body.postingId)
+      .order('display_order');
+
+    if (fieldsErr) {
+      console.error('⚠️ Warning: Failed to fetch posting fields:', fieldsErr);
+    } else if (postingFields && postingFields.length > 0) {
+      const responseRows = [];
+      
+      for (const field of postingFields) {
+        const fieldValue = body.fields?.[field.field_name];
+        if (fieldValue !== undefined) {
+          responseRows.push({
+            candidate_id: globalCandidateId,
+            job_id: body.jobId,
+            posting_id: body.postingId,
+            field_name: field.field_name,
+            field_label: field.field_label,
+            field_value: typeof fieldValue === 'string' ? fieldValue : JSON.stringify(fieldValue),
+            field_type: field.field_type
+          });
+        }
+      }
+
+      if (responseRows.length > 0) {
+        const { error: responsesErr } = await supabase
+          .from('candidate_application_responses')
+          .insert(responseRows);
+
+        if (responsesErr) {
+          console.error('⚠️ Warning: Failed to store application responses:', responsesErr);
+          // Don't fail the application for this, just log the warning
+        } else {
+          console.log(`✅ Stored ${responseRows.length} application field responses`);
+        }
+      }
+    }
+
     // Handle file uploads if any
     const fileUploadResults: FileUploadResult[] = [];
     if (body.uploadedFiles && Object.keys(body.uploadedFiles).length > 0) {

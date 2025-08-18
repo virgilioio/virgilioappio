@@ -176,6 +176,45 @@ export type Database = {
         }
         Relationships: []
       }
+      candidate_application_responses: {
+        Row: {
+          candidate_id: string
+          created_at: string
+          field_label: string
+          field_name: string
+          field_type: string
+          field_value: string | null
+          id: string
+          job_id: string
+          posting_id: string
+          updated_at: string
+        }
+        Insert: {
+          candidate_id: string
+          created_at?: string
+          field_label: string
+          field_name: string
+          field_type: string
+          field_value?: string | null
+          id?: string
+          job_id: string
+          posting_id: string
+          updated_at?: string
+        }
+        Update: {
+          candidate_id?: string
+          created_at?: string
+          field_label?: string
+          field_name?: string
+          field_type?: string
+          field_value?: string | null
+          id?: string
+          job_id?: string
+          posting_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       candidate_attachments: {
         Row: {
           candidate_id: string

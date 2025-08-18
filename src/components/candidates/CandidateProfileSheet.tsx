@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { EnhancedSkillBadge } from '@/components/ui/enhanced-skill-badge'
 import { CandidateAttachments } from '@/components/candidates/CandidateAttachments'
 import { CandidateComments } from '@/components/candidates/CandidateComments'
+import { CandidateApplicationResponses } from '@/components/candidates/CandidateApplicationResponses'
 import { CandidateResumeViewer } from '@/components/candidates/CandidateResumeViewer'
 import { CandidateUrls } from '@/components/candidates/CandidateUrls'
 import { CandidateWorkExperienceComponent } from '@/components/candidates/CandidateWorkExperience'
@@ -682,28 +683,34 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                           </CardContent>
                         </Card>
 
-                        {/* Profile Summary */}
-                        <Card className="bg-surface-primary border-border">
-                          <CardHeader>
-                            <CardTitle className="text-lg">Profile Summary</CardTitle>
-                          </CardHeader>
-                          <CardContent>
-                            {candidate.profile_summary ? (
-                              <div className="prose prose-sm max-w-none text-text-primary">
-                                <SafeHtml
-                                  content={candidate.profile_summary}
-                                  className="leading-relaxed [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:my-2 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0"
-                                />
-                              </div>
-                            ) : (
-                              <div className="text-sm text-text-secondary">No summary available.</div>
-                            )}
-                          </CardContent>
-                        </Card>
-                      </>
-                    ) : (
-                      <></>
-                    )}
+                         {/* Profile Summary */}
+                         <Card className="bg-surface-primary border-border">
+                           <CardHeader>
+                             <CardTitle className="text-lg">Profile Summary</CardTitle>
+                           </CardHeader>
+                           <CardContent>
+                             {candidate.profile_summary ? (
+                               <div className="prose prose-sm max-w-none text-text-primary">
+                                 <SafeHtml
+                                   content={candidate.profile_summary}
+                                   className="leading-relaxed [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:my-2 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0"
+                                 />
+                               </div>
+                             ) : (
+                               <div className="text-sm text-text-secondary">No summary available.</div>
+                             )}
+                           </CardContent>
+                         </Card>
+
+                         {/* Job Application Responses */}
+                         <CandidateApplicationResponses 
+                           candidateId={candidateId!} 
+                           jobId={jobId} 
+                         />
+                       </>
+                     ) : (
+                       <></>
+                     )}
                   </div>
 
                   {/* Right column (1x) */}
