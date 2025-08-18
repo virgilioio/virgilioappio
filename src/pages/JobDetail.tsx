@@ -108,6 +108,7 @@ export default function JobDetail() {
   const openOffersProfile = (candidateId: string) => openProfileInPlace(candidateId, 'pipeline', offersCandidates)
   const openHiredProfile = (candidateId: string) => openProfileInPlace(candidateId, 'pipeline', hiredCandidates)
   const openRejectedProfile = (candidateId: string) => openProfileInPlace(candidateId, 'pipeline', rejectedCandidates)
+  const openSuggestedProfile = (candidateId: string) => openProfileInPlace(candidateId, 'pipeline', matchingCandidates)
 
   // Inner tabs for Pipeline section
   const [pipelineSectionTab, setPipelineSectionTab] = useState<'suggested' | 'application' | 'recruiting' | 'offers' | 'hired' | 'rejected'>('recruiting')
@@ -843,17 +844,18 @@ export default function JobDetail() {
                                         Finding the best matching candidates...
                                       </div>
                                     </div>
-                                  ) : matchingCandidates && matchingCandidates.length > 0 ? (
-                                    <CandidateTable
-                                      candidates={matchingCandidates as any}
-                                      isLoading={false}
-                                      onEdit={() => {}}
-                                      onDelete={() => {}}
-                                      markCandidateAsViewed={() => {}}
-                                      isCandidateNewForUser={() => false}
-                                      hideActions={true}
-                                      showMatchScore={true}
-                                    />
+                                   ) : matchingCandidates && matchingCandidates.length > 0 ? (
+                                     <CandidateTable
+                                       candidates={matchingCandidates as any}
+                                       isLoading={false}
+                                       onEdit={() => {}}
+                                       onDelete={() => {}}
+                                       markCandidateAsViewed={() => {}}
+                                       isCandidateNewForUser={() => false}
+                                       onRowClick={openSuggestedProfile}
+                                       hideActions={true}
+                                       showMatchScore={true}
+                                     />
                                   ) : (
                                     <div className="text-center py-8">
                                       <div className="text-text-tertiary text-sm">
@@ -1168,17 +1170,18 @@ export default function JobDetail() {
                                         Finding the best matching candidates...
                                       </div>
                                     </div>
-                                  ) : matchingCandidates && matchingCandidates.length > 0 ? (
-                                    <CandidateTable
-                                      candidates={matchingCandidates as any}
-                                      isLoading={false}
-                                      onEdit={() => {}}
-                                      onDelete={() => {}}
-                                      markCandidateAsViewed={() => {}}
-                                      isCandidateNewForUser={() => false}
-                                      hideActions={true}
-                                      showMatchScore={true}
-                                    />
+                                   ) : matchingCandidates && matchingCandidates.length > 0 ? (
+                                     <CandidateTable
+                                       candidates={matchingCandidates as any}
+                                       isLoading={false}
+                                       onEdit={() => {}}
+                                       onDelete={() => {}}
+                                       markCandidateAsViewed={() => {}}
+                                       isCandidateNewForUser={() => false}
+                                       onRowClick={openSuggestedProfile}
+                                       hideActions={true}
+                                       showMatchScore={true}
+                                     />
                                   ) : (
                                     <div className="text-center py-8">
                                       <div className="text-text-tertiary text-sm">
