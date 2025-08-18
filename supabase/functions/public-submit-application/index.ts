@@ -61,7 +61,8 @@ serve(async (req) => {
     );
 
     const body = (await req.json()) as SubmitApplicationPayload;
-    console.log("📥 Received public application:", JSON.stringify(body)?.slice(0, 400));
+    console.log("📥 Received public application:", JSON.stringify(body, null, 2)?.slice(0, 1000));
+    console.log("🔍 Fields received:", body.fields);
 
     if (!body?.postingId || !body?.jobId) {
       return new Response(JSON.stringify({ error: "Missing postingId or jobId" }), {
@@ -93,9 +94,18 @@ serve(async (req) => {
     }
 
     const f = body.fields || {};
+    console.log("🏗️ Constructing candidate name from fields:", {
+      candidate_name: f.candidate_name,
+      full_name: f.full_name,
+      first_name: f.first_name,
+      last_name: f.last_name
+    });
+    
     const candidateName = (f.candidate_name || f.full_name || `${f.first_name ?? ""} ${f.last_name ?? ""}`)
       .trim()
       .slice(0, 200) || "Applicant";
+    
+    console.log("📝 Final candidate name:", candidateName);
 
     // Find or create global candidate record
     let globalCandidateId: string | null = null;

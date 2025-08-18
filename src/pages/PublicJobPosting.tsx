@@ -185,23 +185,30 @@ export default function PublicJobPosting() {
   }
 
   const applyParsedToForm = (parsed: { name?: string; email?: string; phone?: string }) => {
+    console.log('🔄 Applying parsed data to form:', parsed)
     const next = { ...formValues }
     const idByName = (name: string) => fields.find((r) => (r as any).field_name === name)?.id
+    
     if (parsed.name) {
       const { first, last } = splitName(parsed.name)
       const fid = idByName('first_name')
       const lid = idByName('last_name')
+      console.log('📝 Setting parsed name:', { first, last, fid, lid })
       if (fid) next[fid] = first
       if (lid) next[lid] = last
     }
     if (parsed.email) {
       const eid = idByName('email')
+      console.log('📧 Setting parsed email:', parsed.email, 'field id:', eid)
       if (eid) next[eid] = parsed.email
     }
     if (parsed.phone) {
       const pid = idByName('phone')
+      console.log('📞 Setting parsed phone:', parsed.phone, 'field id:', pid)
       if (pid) next[pid] = parsed.phone
     }
+    
+    console.log('✅ Updated form values with parsed data:', next)
     setFormValues(next)
   }
 
@@ -373,13 +380,20 @@ export default function PublicJobPosting() {
     
     setIsSubmitting(true)
     try {
+      console.log('🚀 Starting application submission')
+      console.log('📋 Current form values:', formValues)
+      
       const findByName = (name: string) => {
         const f = fields.find((r) => (r as any).field_name === name)
-        return f ? formValues[f.id] ?? '' : ''
+        const value = f ? formValues[f.id] ?? '' : ''
+        console.log(`🔍 findByName('${name}'):`, { field: f?.field_label, fieldId: f?.id, value })
+        return value
       }
       const findByLabel = (label: RegExp) => {
         const f = fields.find((r) => label.test(r.field_label))
-        return f ? formValues[f.id] ?? '' : ''
+        const value = f ? formValues[f.id] ?? '' : ''
+        console.log(`🔍 findByLabel(${label}):`, { field: f?.field_label, fieldId: f?.id, value })
+        return value
       }
 
       const first = findByName('first_name') || findByLabel(/first\s*name/i)
@@ -393,6 +407,10 @@ export default function PublicJobPosting() {
       const profileSummary = sanitizeHtmlForEditor(rawSummary)
 
       const candidateName = (full || `${first} ${last}`).trim() || 'Applicant'
+      
+      console.log('📊 Extracted field values:', {
+        first, last, full, email, phone, linkedin, candidateName
+      })
 
       // Convert uploaded files to base64 for transmission
       const filesToUpload: Record<string, any> = {}
@@ -424,23 +442,27 @@ export default function PublicJobPosting() {
         }
       }
 
+      const submissionPayload = {
+        postingId: posting.id,
+        jobId: posting.job_id,
+        fields: {
+          first_name: first,
+          last_name: last,
+          full_name: full,
+          email,
+          phone,
+          linkedin_url: linkedin,
+          profile_summary: profileSummary,
+          candidate_name: candidateName,
+        },
+        uploadedFiles: Object.keys(filesToUpload).length > 0 ? filesToUpload : undefined,
+        generatedSkills: generatedSkills.length > 0 ? generatedSkills : undefined
+      }
+      
+      console.log('📤 Submitting application payload:', submissionPayload)
+      
       const { data, error } = await supabase.functions.invoke('public-submit-application', {
-        body: {
-          postingId: posting.id,
-          jobId: posting.job_id,
-          fields: {
-            first_name: first,
-            last_name: last,
-            full_name: full,
-            email,
-            phone,
-            linkedin_url: linkedin,
-            profile_summary: profileSummary,
-            candidate_name: candidateName,
-          },
-          uploadedFiles: Object.keys(filesToUpload).length > 0 ? filesToUpload : undefined,
-          generatedSkills: generatedSkills.length > 0 ? generatedSkills : undefined
-        }
+        body: submissionPayload
       })
 
       if (error) throw new Error(error.message || 'Submission failed')
