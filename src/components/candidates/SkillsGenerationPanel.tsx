@@ -1,5 +1,6 @@
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
+import { EnhancedSkillBadge } from '@/components/ui/enhanced-skill-badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -223,22 +224,26 @@ export const SkillsGenerationPanel: React.FC<SkillsGenerationPanelProps> = ({
                   
                   return (
                     <div key={skill.name} className="relative">
-                      <Badge
-                        variant={isSelected ? "default" : "secondary"}
-                        className={`cursor-pointer transition-all pr-8 ${
+                      <div 
+                        className={`cursor-pointer transition-all ${
                           isExisting 
                             ? "opacity-50 cursor-not-allowed" 
                             : "hover:scale-105"
-                        } ${getSkillColor(skill.name)}`}
+                        } ${isSelected ? "ring-2 ring-primary" : ""}`}
                         onClick={() => !isExisting && toggleSkillSelection(skill.name)}
                       >
-                        {skill.name}
-                        {isSelected && <Check className="h-3 w-3 ml-1" />}
-                        {isExisting && <span className="ml-1 text-xs">(exists)</span>}
-                        <span className="absolute right-1 top-1/2 -translate-y-1/2 text-xs opacity-75">
-                          {Math.round(skill.confidence * 100)}%
-                        </span>
-                      </Badge>
+                        <EnhancedSkillBadge
+                          skill={skill.name}
+                          analysis={{
+                            matchRelevance: Math.round(skill.confidence * 100)
+                          }}
+                          variant="compact"
+                          showTooltip={true}
+                          interactive={false}
+                        />
+                        {isSelected && <Check className="h-3 w-3 ml-1 absolute -top-1 -right-1 bg-primary text-primary-foreground rounded-full p-0.5" />}
+                        {isExisting && <span className="ml-1 text-xs opacity-75">(exists)</span>}
+                      </div>
                     </div>
                   );
                 })}
@@ -274,26 +279,30 @@ export const SkillsGenerationPanel: React.FC<SkillsGenerationPanelProps> = ({
                       const isExisting = existingSkills.includes(skill.name);
                       const isSelected = selectedSkills.has(skill.name);
                       
-                      return (
-                        <div key={skill.name} className="relative">
-                          <Badge
-                            variant={isSelected ? "default" : "secondary"}
-                            className={`cursor-pointer transition-all pr-8 ${
-                              isExisting 
-                                ? "opacity-50 cursor-not-allowed" 
-                                : "hover:scale-105"
-                            } ${getCategoryColor(category as keyof SkillsByCategory)}`}
-                            onClick={() => !isExisting && toggleSkillSelection(skill.name)}
-                          >
-                            {skill.name}
-                            {isSelected && <Check className="h-3 w-3 ml-1" />}
-                            {isExisting && <span className="ml-1 text-xs">(exists)</span>}
-                            <span className="absolute right-1 top-1/2 -translate-y-1/2 text-xs opacity-75">
-                              {Math.round(skill.confidence * 100)}%
-                            </span>
-                          </Badge>
-                        </div>
-                      );
+                        return (
+                          <div key={skill.name} className="relative">
+                            <div 
+                              className={`cursor-pointer transition-all ${
+                                isExisting 
+                                  ? "opacity-50 cursor-not-allowed" 
+                                  : "hover:scale-105"
+                              } ${isSelected ? "ring-2 ring-primary" : ""}`}
+                              onClick={() => !isExisting && toggleSkillSelection(skill.name)}
+                            >
+                              <EnhancedSkillBadge
+                                skill={skill.name}
+                                analysis={{
+                                  matchRelevance: Math.round(skill.confidence * 100)
+                                }}
+                                variant="compact"
+                                showTooltip={true}
+                                interactive={false}
+                              />
+                              {isSelected && <Check className="h-3 w-3 ml-1 absolute -top-1 -right-1 bg-primary text-primary-foreground rounded-full p-0.5" />}
+                              {isExisting && <span className="ml-1 text-xs opacity-75">(exists)</span>}
+                            </div>
+                          </div>
+                        );
                     })}
                   </div>
                 </TabsContent>

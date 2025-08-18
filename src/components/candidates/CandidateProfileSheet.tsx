@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { supabase } from '@/integrations/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
 import { Badge } from '@/components/ui/badge'
+import { EnhancedSkillBadge } from '@/components/ui/enhanced-skill-badge'
 import { CandidateAttachments } from '@/components/candidates/CandidateAttachments'
 import { CandidateComments } from '@/components/candidates/CandidateComments'
 import { CandidateResumeViewer } from '@/components/candidates/CandidateResumeViewer'
@@ -636,7 +637,16 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                               return preferred && preferred.length > 0 ? (
                                 <div className="flex flex-wrap gap-2">
                                   {preferred.map((s: string, i: number) => (
-                                    <Badge key={`${s}-${i}`} variant={getSkillColor(s)} className="text-sm">{s}</Badge>
+                                    <EnhancedSkillBadge 
+                                      key={`${s}-${i}`} 
+                                      skill={s}
+                                      analysis={{
+                                        matchRelevance: candidate?.match_score ? Math.round(candidate.match_score) : undefined
+                                      }}
+                                      variant="compact"
+                                      showTooltip={true}
+                                      interactive={false}
+                                    />
                                   ))}
                                 </div>
                               ) : (
