@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 import { useCandidateAttachments } from '@/hooks/useCandidateAttachments'
+import { useCandidateResolver } from '@/hooks/useCandidateResolver'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -16,8 +17,11 @@ interface CandidateResumeViewerProps {
 
 export function CandidateResumeViewer({ candidateId, jobCandidateId, fallbackResumeUrl, className, height = 70 }: CandidateResumeViewerProps) {
   // Use candidateId first, fallback to jobCandidateId for backward compatibility
-  const effectiveCandidateId = candidateId || jobCandidateId || ''
-  const { attachments, refetch } = useCandidateAttachments(effectiveCandidateId)
+  const inputCandidateId = candidateId || jobCandidateId || null
+  
+  // Resolve job candidate ID to independent candidate ID if needed
+  const { independentCandidateId } = useCandidateResolver(inputCandidateId)
+  const { attachments, refetch } = useCandidateAttachments(independentCandidateId || '')
   const [signedUrl, setSignedUrl] = useState<string | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [fileName, setFileName] = useState<string>('resume')

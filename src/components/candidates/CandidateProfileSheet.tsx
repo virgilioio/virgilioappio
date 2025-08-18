@@ -28,6 +28,7 @@ import { toast } from '@/hooks/use-toast'
 import CandidateNameCard from '@/components/candidates/CandidateNameCard'
 import { usePipelineActions } from '@/hooks/usePipelineActions'
 import { useCandidateAttachments } from '@/hooks/useCandidateAttachments'
+import { useCandidateResolver } from '@/hooks/useCandidateResolver'
 import { EnhancedResumeDropzone } from '@/components/candidates/EnhancedResumeDropzone'
 import MoveToPipelineMenu from '@/components/candidates/MoveToPipelineMenu'
 import { useJobHiringPlan, JobStage } from '@/hooks/useJobHiringPlan'
@@ -60,7 +61,10 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
   const [associationStatus, setAssociationStatus] = useState<'active' | 'rejected' | 'hired' | 'offer' | null>(null)
   const [currentStageId, setCurrentStageId] = useState<string | null>(null)
   const [movingStageId, setMovingStageId] = useState<string | null>(null)
-  const { attachments, uploadAttachment: uploadResume, isUploading: isResumeUploading, deleteAttachment } = useCandidateAttachments(candidateId || '')
+  
+  // Use the candidate resolver to get the correct ID for attachments
+  const { independentCandidateId } = useCandidateResolver(candidateId)
+  const { attachments, uploadAttachment: uploadResume, isUploading: isResumeUploading, deleteAttachment } = useCandidateAttachments(independentCandidateId || '')
 
 // Hiring plan stages for vertical accordion
 const { loadHiringPlanInstances } = useJobHiringPlan()
@@ -585,7 +589,7 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                                     Delete Resume
                                   </Button>
                                 </div>
-                                <CandidateResumeViewer candidateId={candidateId} />
+                                <CandidateResumeViewer candidateId={independentCandidateId || candidateId} />
                               </>
                             ) : (
                               <EnhancedResumeDropzone 
@@ -769,8 +773,8 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                     </Card>
 
                     {/* URLs */}
-                    {candidateId ? (
-                      <CandidateUrls candidateId={candidateId} />
+                    {independentCandidateId || candidateId ? (
+                      <CandidateUrls candidateId={independentCandidateId || candidateId!} />
                     ) : (
                       <Card className="bg-surface-primary border-border">
                         <CardHeader>
@@ -783,8 +787,8 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                     )}
 
                     {/* Attachments */}
-                    {candidateId ? (
-                      <CandidateAttachments candidateId={candidateId} />
+                    {independentCandidateId || candidateId ? (
+                      <CandidateAttachments candidateId={independentCandidateId || candidateId!} />
                     ) : (
                       <Card className="bg-surface-primary border-border">
                         <CardHeader>

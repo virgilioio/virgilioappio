@@ -24,6 +24,7 @@ import { CandidateAttachments } from '@/components/candidates/CandidateAttachmen
 import { CandidateUrls } from '@/components/candidates/CandidateUrls'
 import { CandidateResumeViewer } from '@/components/candidates/CandidateResumeViewer'
 import { useCandidateAttachments } from '@/hooks/useCandidateAttachments'
+import { useCandidateResolver } from '@/hooks/useCandidateResolver'
 import { EnhancedResumeDropzone } from '@/components/candidates/EnhancedResumeDropzone'
 import { CreateOfferLetterDialog } from '@/components/candidates/CreateOfferLetterDialog'
 import { getSkillColor } from '@/utils/skillColors'
@@ -48,9 +49,11 @@ export default function CandidateProfile() {
   const { candidates, isLoading: candidatesLoading, updateCandidate } = useCandidates(jobId || '')
   const { getJob, isLoading: jobLoading } = useJobs()
   const { fetchAssociationsForJob } = usePipelineActions()
-  const [independentCandidateId, setIndependentCandidateId] = useState<string | null>(null)
   const [associationsLoading, setAssociationsLoading] = useState(false)
-  const { attachments, uploadAttachment: uploadResume, isUploading: isResumeUploading, deleteAttachment } = useCandidateAttachments(candidate?.id || '')
+  
+  // Use the candidate resolver to get the correct ID for attachments
+  const { independentCandidateId } = useCandidateResolver(candidate?.id || null)
+  const { attachments, uploadAttachment: uploadResume, isUploading: isResumeUploading, deleteAttachment } = useCandidateAttachments(independentCandidateId || '')
 
   // Get the job's organization data from the database
   const jobOrganization = job?.organization_id 
@@ -120,25 +123,6 @@ export default function CandidateProfile() {
     }
   }
 
-  useEffect(() => {
-    const resolveIndependentCandidate = async () => {
-      if (!jobId || !candidate) return
-      setAssociationsLoading(true)
-      try {
-        const associations = await fetchAssociationsForJob(jobId)
-        const match = associations.find(a =>
-          (candidate.linkedin_url && a.linkedin_url && a.linkedin_url === candidate.linkedin_url) ||
-          a.candidate_name === candidate.candidate_name
-        )
-        setIndependentCandidateId(match ? match.candidate_id : null)
-      } catch (e) {
-        setIndependentCandidateId(null)
-      } finally {
-        setAssociationsLoading(false)
-      }
-    }
-    resolveIndependentCandidate()
-  }, [jobId, candidate, fetchAssociationsForJob])
 
   const handleEdit = () => {
     console.log('CandidateProfile - Edit button clicked:', {
@@ -391,7 +375,7 @@ export default function CandidateProfile() {
                               Delete Resume
                             </Button>
                           </div>
-                          <CandidateResumeViewer jobCandidateId={candidate.id} />
+                          <CandidateResumeViewer candidateId={independentCandidateId || candidate.id} />
                         </>
                       ) : (
                         <EnhancedResumeDropzone 
@@ -594,12 +578,12 @@ export default function CandidateProfile() {
 
                 {/* URLs */}
                 {candidate && (
-                  <CandidateUrls candidateId={candidate.id} />
+                  <CandidateUrls candidateId={independentCandidateId || candidate.id} />
                 )}
 
                 {/* Attachments */}
                 {candidate && (
-                  <CandidateAttachments candidateId={candidate.id} />
+                  <CandidateAttachments candidateId={independentCandidateId || candidate.id} />
                 )}
               </div>
             </div>
