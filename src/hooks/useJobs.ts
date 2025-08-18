@@ -74,140 +74,107 @@ export function useJobs() {
   const { normalizeJobSpecs } = useJobSpecNormalization()
 
   const resolveHiringTeamNames = async (jobs: any[]) => {
-    console.log('Starting enhanced hiring team name resolution for', jobs.length, 'jobs')
+    console.log('Starting hiring team name resolution for', jobs.length, 'jobs')
     
-    // Collect all unique user IDs from hiring teams
-    const userIds = new Set<string>()
+    // Collect all unique member IDs from hiring teams
+    const memberIds = new Set<string>()
     jobs.forEach(job => {
       if (job.hiring_team && Array.isArray(job.hiring_team)) {
         console.log(`Job "${job.title}" has hiring team:`, job.hiring_team)
         job.hiring_team.forEach((member: any) => {
           if (typeof member === 'string') {
-            userIds.add(member)
-            console.log(`Found user ID string: ${member}`)
-          } else if (member?.user_id) {
-            userIds.add(member.user_id)
-            console.log(`Found user ID in object: ${member.user_id}`)
+            memberIds.add(member)
+            console.log(`Found member ID string: ${member}`)
           } else if (member?.id) {
-            userIds.add(member.id)
-            console.log(`Found ID in object: ${member.id}`)
+            memberIds.add(member.id)
+            console.log(`Found member ID in object: ${member.id}`)
           }
         })
       }
     })
 
-    console.log('All collected user IDs:', Array.from(userIds))
+    console.log('All collected member IDs:', Array.from(memberIds))
 
-    // Create a comprehensive names map using multiple data sources
-    let namesMap: Record<string, string> = {}
+    // Create a map from member ID to resolved name
+    const memberIdToNameMap: Record<string, string> = {}
     
-    if (userIds.size > 0) {
-      const userIdsArray = Array.from(userIds)
+    if (memberIds.size > 0) {
+      const memberIdsArray = Array.from(memberIds)
       
-      // First: Try to get names from profiles table
-      console.log('Fetching profiles for user IDs:', userIdsArray)
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('user_id, first_name, last_name, email')
-        .in('user_id', userIdsArray)
+      // Fetch member records with their user information
+      console.log('Fetching members and their profiles:', memberIdsArray)
+      const { data: members, error: membersError } = await supabase
+        .from('members')
+        .select(`
+          id,
+          user_id, 
+          invited_email,
+          profiles(first_name, last_name, email)
+        `)
+        .in('id', memberIdsArray)
 
-      if (profilesError) {
-        console.error('Error fetching profiles:', profilesError)
+      if (membersError) {
+        console.error('Error fetching members:', membersError)
       } else {
-        console.log('Fetched profiles:', profiles)
-        profiles?.forEach(profile => {
-          const fullName = [profile.first_name, profile.last_name].filter(Boolean).join(' ')
-          if (fullName.trim()) {
-            namesMap[profile.user_id] = fullName
-          } else if (profile.email) {
-            namesMap[profile.user_id] = profile.email
+        console.log('Fetched members with profiles:', members)
+        members?.forEach(member => {
+          let resolvedName: string | null = null
+          
+          // If member has a user_id and profile data, use that
+          if (member.user_id && member.profiles) {
+            const profile = member.profiles
+            const fullName = [profile.first_name, profile.last_name].filter(Boolean).join(' ')
+            if (fullName.trim()) {
+              resolvedName = fullName
+            } else if (profile.email) {
+              resolvedName = profile.email
+            }
+          }
+          
+          // If no profile name found but member has invited_email, use that
+          if (!resolvedName && member.invited_email) {
+            resolvedName = member.invited_email
+          }
+          
+          // Store the resolved name in our map
+          if (resolvedName) {
+            memberIdToNameMap[member.id] = resolvedName
+            console.log(`Resolved member ${member.id} to name: ${resolvedName}`)
+          } else {
+            console.log(`Could not resolve name for member ${member.id}`)
           }
         })
       }
 
-      // Second: For remaining unresolved IDs, try members table
-      const unresolvedIds = userIdsArray.filter(id => !namesMap[id])
-      if (unresolvedIds.length > 0) {
-        console.log('Fetching member data for unresolved IDs:', unresolvedIds)
-        const { data: members, error: membersError } = await supabase
-          .from('members')
-          .select(`
-            user_id, 
-            invited_email,
-            profiles!inner(first_name, last_name, email)
-          `)
-          .in('user_id', unresolvedIds)
-
-        if (membersError) {
-          console.error('Error fetching members:', membersError)
-        } else {
-          console.log('Fetched members with profiles:', members)
-          members?.forEach(member => {
-            if (member.user_id && member.profiles) {
-              const profile = Array.isArray(member.profiles) ? member.profiles[0] : member.profiles
-              const fullName = [profile.first_name, profile.last_name].filter(Boolean).join(' ')
-              if (fullName.trim()) {
-                namesMap[member.user_id] = fullName
-              } else if (profile.email) {
-                namesMap[member.user_id] = profile.email
-              } else if (member.invited_email) {
-                namesMap[member.user_id] = member.invited_email
-              }
-            }
-          })
-        }
-      }
-
-      // Third: For still unresolved IDs, try to get email from members table
-      const stillUnresolvedIds = userIdsArray.filter(id => !namesMap[id])
-      if (stillUnresolvedIds.length > 0) {
-        console.log('Fetching member emails for still unresolved IDs:', stillUnresolvedIds)
-        const { data: memberEmails, error: memberEmailsError } = await supabase
-          .from('members')
-          .select('user_id, invited_email')
-          .in('user_id', stillUnresolvedIds)
-
-        if (!memberEmailsError && memberEmails) {
-          console.log('Fetched member emails:', memberEmails)
-          memberEmails.forEach(member => {
-            if (member.user_id && member.invited_email) {
-              namesMap[member.user_id] = member.invited_email
-            }
-          })
-        }
-      }
-
-      console.log('Final names map:', namesMap)
+      console.log('Final member ID to name map:', memberIdToNameMap)
     }
 
-    // Update jobs with resolved names and improved fallbacks
+    // Update jobs with resolved names using member IDs
     return jobs.map(job => {
       const hiringTeamNames: string[] = []
       if (job.hiring_team && Array.isArray(job.hiring_team)) {
         job.hiring_team.forEach((member: any) => {
-          let userId: string | null = null
+          let memberId: string | null = null
           let existingName: string | null = null
 
           if (typeof member === 'string') {
-            userId = member
-          } else if (member?.user_id) {
-            userId = member.user_id
-            existingName = member.name
+            memberId = member
           } else if (member?.id) {
-            userId = member.id
+            memberId = member.id
             existingName = member.name
           } else if (member?.name) {
             existingName = member.name
           }
 
+          // Use existing name if available, otherwise look up by member ID
           if (existingName) {
             hiringTeamNames.push(existingName)
-          } else if (userId && namesMap[userId]) {
-            hiringTeamNames.push(namesMap[userId])
-          } else if (userId) {
-            // Skip unresolved user IDs instead of creating fallback names
+          } else if (memberId && memberIdToNameMap[memberId]) {
+            hiringTeamNames.push(memberIdToNameMap[memberId])
+          } else if (memberId) {
+            // Skip unresolved member IDs instead of creating fallback names
             // This prevents "User xyz..." entries from appearing in filters
-            console.log(`No name found for user ID ${userId}, skipping from hiring team display`)
+            console.log(`No name found for member ID ${memberId}, skipping from hiring team display`)
           }
         })
       }
