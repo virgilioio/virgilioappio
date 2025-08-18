@@ -89,22 +89,24 @@ export function JobsTable({
       // First try to use the resolved hiring_team_names
       if (job.hiring_team_names && Array.isArray(job.hiring_team_names)) {
         job.hiring_team_names.forEach(name => {
-          if (name && name.trim()) {
+          if (name && name.trim() && !name.startsWith('User ')) {
+            // Filter out fallback names like "User 5e3ab159"
             members.add(name.trim())
             console.log(`Added hiring team member: ${name}`)
+          } else if (name && name.startsWith('User ')) {
+            console.log(`Filtered out fallback name: ${name}`)
           }
         })
       }
       // Fallback to original hiring_team structure for backward compatibility
       else if (job.hiring_team && Array.isArray(job.hiring_team)) {
         job.hiring_team.forEach((member: any) => {
-          if (member?.name) {
+          if (member?.name && !member.name.startsWith('User ')) {
             members.add(member.name)
             console.log(`Added hiring team member from legacy format: ${member.name}`)
           } else if (typeof member === 'string') {
-            // Handle case where hiring_team contains raw user IDs
-            members.add(`User ${member.substring(0, 8)}...`)
-            console.log(`Added hiring team member from user ID: ${member}`)
+            // Skip raw user IDs - they don't provide meaningful filter options
+            console.log(`Skipped raw user ID for filter: ${member}`)
           }
         })
       }

@@ -205,9 +205,9 @@ export function useJobs() {
           } else if (userId && namesMap[userId]) {
             hiringTeamNames.push(namesMap[userId])
           } else if (userId) {
-            // Better fallback: show abbreviated ID
-            hiringTeamNames.push(`User ${userId.substring(0, 8)}`)
-            console.log(`No name found for user ID ${userId}, using fallback`)
+            // Skip unresolved user IDs instead of creating fallback names
+            // This prevents "User xyz..." entries from appearing in filters
+            console.log(`No name found for user ID ${userId}, skipping from hiring team display`)
           }
         })
       }
