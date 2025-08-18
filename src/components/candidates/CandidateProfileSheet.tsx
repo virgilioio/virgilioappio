@@ -28,6 +28,7 @@ import CandidateNameCard from '@/components/candidates/CandidateNameCard'
 import { usePipelineActions } from '@/hooks/usePipelineActions'
 import { useCandidateAttachments } from '@/hooks/useCandidateAttachments'
 import { EnhancedResumeDropzone } from '@/components/candidates/EnhancedResumeDropzone'
+import MoveToPipelineMenu from '@/components/candidates/MoveToPipelineMenu'
 import { useJobHiringPlan, JobStage } from '@/hooks/useJobHiringPlan'
 import { cn } from '@/lib/utils'
 interface CandidateProfileSheetProps {
@@ -367,6 +368,14 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                               </Button>
                             ) : null
                           })()}
+                          {/* Move to Pipeline button for suggested candidates */}
+                          {!associationId && jobId && candidate.id && (
+                            <MoveToPipelineMenu
+                              jobId={jobId}
+                              candidateId={candidate.id}
+                              buttonText="Move to pipeline"
+                            />
+                          )}
                           <Button
                             variant="default"
                             size="icon"
