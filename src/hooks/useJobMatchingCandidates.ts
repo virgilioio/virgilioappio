@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 
 export interface MatchedCandidate {
@@ -39,16 +39,24 @@ interface UseJobMatchingCandidatesParams {
   jobId: string
   limit?: number
   enabled?: boolean
+  jobSkills?: string[] | null // Add skills to trigger refresh when they change
 }
 
 export function useJobMatchingCandidates({
   jobId,
   limit = 50,
-  enabled = true
+  enabled = true,
+  jobSkills
 }: UseJobMatchingCandidatesParams) {
   const [matchingResult, setMatchingResult] = useState<JobMatchingResult | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Create a stable hash of job skills to detect changes
+  const skillsHash = useMemo(() => {
+    if (!jobSkills || !Array.isArray(jobSkills)) return ''
+    return jobSkills.slice().sort().join('|')
+  }, [jobSkills])
 
   const fetchMatchingCandidates = useCallback(async () => {
     if (!enabled || !jobId) {
@@ -84,6 +92,18 @@ export function useJobMatchingCandidates({
   useEffect(() => {
     fetchMatchingCandidates()
   }, [fetchMatchingCandidates])
+
+  // Separate effect to handle skills changes with debouncing
+  useEffect(() => {
+    if (!enabled || !jobId) return
+
+    const timeoutId = setTimeout(() => {
+      console.log('🔄 Job skills changed, refreshing matching candidates...')
+      fetchMatchingCandidates()
+    }, 300) // 300ms debounce to prevent excessive API calls
+
+    return () => clearTimeout(timeoutId)
+  }, [skillsHash, enabled, jobId, fetchMatchingCandidates])
 
   const refetch = useCallback(() => {
     fetchMatchingCandidates()

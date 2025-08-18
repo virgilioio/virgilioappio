@@ -281,11 +281,7 @@ export default function JobDetail() {
     enabled: !!id
   })
 
-  // AI matching candidates hook - only load when suggested tab is active
-  const { candidates: matchingCandidates, isLoading: isLoadingMatches } = useJobMatchingCandidates({
-    jobId: id || '',
-    enabled: !!id && pipelineSectionTab === 'suggested'
-  })
+  // Note: AI matching candidates hook will be moved after job query
   
   // Load stage map for this job
   useEffect(() => {
@@ -410,6 +406,13 @@ export default function JobDetail() {
     enabled: !!id && !!user,
   })
 
+  // AI matching candidates hook - only load when suggested tab is active
+  const { candidates: matchingCandidates, isLoading: isLoadingMatches, refetch: refetchMatches } = useJobMatchingCandidates({
+    jobId: id || '',
+    enabled: !!id && pipelineSectionTab === 'suggested',
+    jobSkills: job?.skills // Pass job skills to trigger refresh when they change
+  })
+
   const handleBackToJobs = () => {
     navigate('/jobs')
   }
@@ -426,6 +429,11 @@ export default function JobDetail() {
       setShowEditJobModal(false)
       // Refetch job data to show updated information
       refetch()
+      // Refetch matching candidates if skills may have changed
+      if (pipelineSectionTab === 'suggested') {
+        console.log('🔄 Job updated, refreshing matching candidates...')
+        refetchMatches()
+      }
     } catch (error) {
       console.error('Error updating job:', error)
     }
