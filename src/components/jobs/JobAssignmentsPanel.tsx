@@ -62,7 +62,7 @@ export function JobAssignmentsPanel({ jobId, jobTitle }: JobAssignmentsPanelProp
     const firstName = member.user_first_name || ''
     const lastName = member.user_last_name || ''
     const displayName = `${firstName} ${lastName}`.trim() || 'Unnamed User'
-    const email = member.invited_email || 'No email'
+    const email = member.user_email || 'No email'
     
     return {
       assignment,

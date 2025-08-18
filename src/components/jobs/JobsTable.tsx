@@ -11,6 +11,7 @@ import { Plus, Search, Edit, Archive, FileText, Building, MapPin, DollarSign, Ey
 import { PermissionGate } from '@/components/auth/PermissionGate'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useOrganizations } from '@/hooks/useOrganizations'
+import { useMembers } from '@/hooks/useMembers'
 import { Job } from '@/hooks/useJobs'
 
 interface JobsTableProps {
@@ -35,6 +36,7 @@ export function JobsTable({
   const navigate = useNavigate()
   const permissions = usePermissions()
   const { organizations } = useOrganizations()
+  const { members, isLoading: membersLoading } = useMembers()
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('open')
   const [levelFilter, setLevelFilter] = useState<string>('all')
@@ -76,51 +78,20 @@ export function JobsTable({
     return 'Not specified'
   }
 
-  const getAllHiringTeamMembers = () => {
-    console.log('Getting all hiring team members from jobs:', jobs.length)
-    const members = new Set<string>()
+  const getAllOrganizationMembers = () => {
+    // Get all active members and guests from the organization
+    const activeMembers = members.filter(member => 
+      member.user_status === 'active' && 
+      member.user_id &&
+      (member.user_type === 'member' || member.user_type === 'guest' || member.user_type === 'workspace_owner')
+    )
     
-    jobs.forEach(job => {
-      console.log(`Processing job "${job.title}":`, {
-        hiring_team: job.hiring_team,
-        hiring_team_names: job.hiring_team_names
-      })
-      
-      // First try to use the resolved hiring_team_names
-      if (job.hiring_team_names && Array.isArray(job.hiring_team_names)) {
-        job.hiring_team_names.forEach(name => {
-          if (name && name.trim() && !name.startsWith('User ')) {
-            // Filter out fallback names like "User 5e3ab159"
-            members.add(name.trim())
-            console.log(`Added hiring team member: ${name}`)
-          } else if (name && name.startsWith('User ')) {
-            console.log(`Filtered out fallback name: ${name}`)
-          }
-        })
-      }
-      // Fallback to original hiring_team structure for backward compatibility
-      else if (job.hiring_team && Array.isArray(job.hiring_team)) {
-        job.hiring_team.forEach((member: any) => {
-          if (member?.name && !member.name.startsWith('User ')) {
-            members.add(member.name)
-            console.log(`Added hiring team member from legacy format: ${member.name}`)
-          } else if (typeof member === 'string') {
-            // Skip raw user IDs - they don't provide meaningful filter options
-            console.log(`Skipped raw user ID for filter: ${member}`)
-          }
-        })
-      }
-    })
-    
-    const membersList = Array.from(members).sort()
-    console.log('Final hiring team members list (after filtering):', membersList)
-    
-    // If no valid names found, show a debug message
-    if (membersList.length === 0) {
-      console.log('No valid hiring team members found for filter. This will hide the filter dropdown.')
-    }
-    
-    return membersList
+    return activeMembers.map(member => ({
+      id: member.user_id!,
+      memberId: member.id,
+      name: `${member.user_first_name || ''} ${member.user_last_name || ''}`.trim() || member.user_email || 'Unnamed User',
+      email: member.user_email
+    })).sort((a, b) => a.name.localeCompare(b.name))
   }
 
   const filteredJobs = jobs.filter(job => {
@@ -135,11 +106,16 @@ export function JobsTable({
     const canViewOrganizations = permissions.canViewOrganizations || permissions.isPlatformAdmin
     const matchesOrganization = !canViewOrganizations || organizationFilter === 'all' || job.organization_id === organizationFilter
     
-    const matchesHiringTeam = hiringTeamFilter === 'all' || 
-      (job.hiring_team_names && Array.isArray(job.hiring_team_names) && 
-       job.hiring_team_names.includes(hiringTeamFilter)) ||
-      (job.hiring_team && Array.isArray(job.hiring_team) && 
-       job.hiring_team.some((member: any) => member?.name === hiringTeamFilter))
+    const matchesHiringTeam = hiringTeamFilter === 'all' || (() => {
+      // Check if the selected user is in the hiring team by user ID
+      const isInHiringTeam = job.hiring_team && Array.isArray(job.hiring_team) && 
+        job.hiring_team.some((member: any) => 
+          (typeof member === 'string' && member === hiringTeamFilter) ||
+          (typeof member === 'object' && (member?.id === hiringTeamFilter || member?.user_id === hiringTeamFilter))
+        )
+      
+      return isInHiringTeam
+    })()
     
     return matchesSearch && matchesStatus && matchesLevel && matchesOrganization && matchesHiringTeam
   })
@@ -272,18 +248,17 @@ export function JobsTable({
             )}
 
             {(() => {
-              const hiringTeamMembers = getAllHiringTeamMembers()
-              console.log('Hiring team members for filter:', hiringTeamMembers)
-              return hiringTeamMembers.length > 0 ? (
+              const organizationMembers = getAllOrganizationMembers()
+              return !membersLoading && organizationMembers.length > 0 ? (
                 <Select value={hiringTeamFilter} onValueChange={setHiringTeamFilter}>
                   <SelectTrigger className="w-full sm:w-[160px]">
-                    <SelectValue placeholder="Hiring Team" />
+                    <SelectValue placeholder="Team Members" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Team Members</SelectItem>
-                    {hiringTeamMembers.map((member) => (
-                      <SelectItem key={member} value={member}>
-                        {member}
+                    {organizationMembers.map((member) => (
+                      <SelectItem key={member.id} value={member.id}>
+                        {member.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
