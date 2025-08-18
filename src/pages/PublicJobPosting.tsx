@@ -22,6 +22,8 @@ import { sanitizeHtml, sanitizeHtmlForEditor } from '@/utils/htmlSanitizer'
 import { markdownToHtml } from '@/utils/markdown'
 import { ParsingAnimation } from '@/components/ui/parsing-animation'
 import { ApplicationConfirmationDialog } from '@/components/candidates/ApplicationConfirmationDialog'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Clock, Shield } from 'lucide-react'
 
 type FieldType = 'text' | 'number' | 'email' | 'textarea' | 'select' | 'checkbox' | 'date' | 'file' | 'url'
 
@@ -572,7 +574,20 @@ export default function PublicJobPosting() {
 
           <TabsContent value="application">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              <div className="order-2 lg:order-1 lg:col-span-2">
+              <div className="order-2 lg:order-1 lg:col-span-2 space-y-6">
+                {/* Application Limits Banner */}
+                <Alert className="border-info bg-info/5">
+                  <Shield className="h-4 w-4" />
+                  <AlertDescription className="text-sm">
+                    <strong>Application Limits:</strong> To ensure candidates select the most relevant positions, we have set limits:
+                    <ul className="mt-2 space-y-1 list-disc list-inside text-xs">
+                      <li>Maximum 3 applications per 60 days</li>
+                      <li>Cannot re-apply to same role within 90 days</li>
+                      <li>30-day cooldown after rejection before applying to other roles</li>
+                    </ul>
+                  </AlertDescription>
+                </Alert>
+
                 <section aria-labelledby="application-form">
                   <Card>
                     <CardHeader>

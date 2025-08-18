@@ -137,6 +137,45 @@ export type Database = {
         }
         Relationships: []
       }
+      candidate_application_limits: {
+        Row: {
+          applied_at: string
+          candidate_email: string
+          created_at: string
+          id: string
+          job_id: string
+          organization_id: string
+          posting_id: string | null
+          status: string
+          status_updated_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          applied_at?: string
+          candidate_email: string
+          created_at?: string
+          id?: string
+          job_id: string
+          organization_id: string
+          posting_id?: string | null
+          status?: string
+          status_updated_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          applied_at?: string
+          candidate_email?: string
+          created_at?: string
+          id?: string
+          job_id?: string
+          organization_id?: string
+          posting_id?: string | null
+          status?: string
+          status_updated_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       candidate_attachments: {
         Row: {
           candidate_id: string
@@ -3436,6 +3475,14 @@ export type Database = {
       }
       categorize_skills: {
         Args: { generated_skills: Json; manual_skills: string[] }
+        Returns: Json
+      }
+      check_application_limits: {
+        Args: {
+          candidate_email_param: string
+          job_id_param: string
+          organization_id_param: string
+        }
         Returns: Json
       }
       check_recursion_safety: {

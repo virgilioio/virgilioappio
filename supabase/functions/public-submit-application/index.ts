@@ -74,7 +74,7 @@ serve(async (req) => {
     // Validate posting and ensure it belongs to the job and is active
     const { data: posting, error: postingErr } = await supabase
       .from("job_postings")
-      .select("id, job_id, is_active")
+      .select("id, job_id, is_active, job:jobs(organization_id)")
       .eq("id", body.postingId)
       .maybeSingle();
 
@@ -94,6 +94,49 @@ serve(async (req) => {
     }
 
     const f = body.fields || {};
+    
+    // Get candidate email for application limits check
+    const candidateEmail = f.email?.trim()?.slice(0, 320);
+    if (!candidateEmail) {
+      return new Response(JSON.stringify({ error: "Email is required for application" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Check application limits first
+    console.log('🔍 Checking application limits for:', candidateEmail);
+    const { data: limits, error: limitErr } = await supabase.rpc('check_application_limits', {
+      candidate_email_param: candidateEmail,
+      job_id_param: body.jobId,
+      organization_id_param: posting.job.organization_id
+    });
+
+    if (limitErr) {
+      console.error('❌ Error checking application limits:', limitErr);
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Failed to check application limits',
+          details: limitErr.message
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+      );
+    }
+
+    if (!limits.can_apply) {
+      console.log('🚫 Application blocked by limits:', limits.violations);
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Application limit exceeded',
+          violations: limits.violations,
+          message: limits.violations[0]?.message || 'You have exceeded application limits for this organization'
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 429 }
+      );
+    }
+
     console.log("🏗️ Constructing candidate name from fields:", {
       candidate_name: f.candidate_name,
       full_name: f.full_name,
@@ -107,37 +150,30 @@ serve(async (req) => {
     
     console.log("📝 Final candidate name:", candidateName);
 
-    // Find or create global candidate record
+    // Find or create global candidate record - email-only matching
     let globalCandidateId: string | null = null;
 
-    // Try to find by LinkedIn first, then by email
-    if (f.linkedin_url) {
-      const { data: existingByLinkedIn } = await supabase
-        .from("candidates")
-        .select("id, candidate_name")
-        .eq("linkedin_url", f.linkedin_url)
-        .maybeSingle();
-      if (existingByLinkedIn) {
-        globalCandidateId = existingByLinkedIn.id;
-      }
-    }
+    console.log('📧 Looking for existing candidate by email:', candidateEmail);
+    const { data: existingCandidate, error: lookupErr } = await supabase
+      .from("candidates")
+      .select("id, candidate_name, email")
+      .eq("email", candidateEmail)
+      .maybeSingle();
 
-    if (!globalCandidateId && f.email) {
-      const { data: existingByEmail } = await supabase
-        .from("candidates")
-        .select("id, candidate_name")
-        .eq("email", f.email)
-        .maybeSingle();
-      if (existingByEmail) {
-        globalCandidateId = existingByEmail.id;
-      }
+    if (lookupErr) {
+      console.error('❌ Error looking up existing candidate:', lookupErr);
+    } else if (existingCandidate) {
+      globalCandidateId = existingCandidate.id;
+      console.log(`🎯 Found existing candidate: ${existingCandidate.candidate_name} (${existingCandidate.email})`);
+    } else {
+      console.log('👤 No existing candidate found, will create new one');
     }
 
     // If not found, create a new global candidate
     if (!globalCandidateId) {
       const candidateData: any = {
         candidate_name: candidateName,
-        email: f.email?.slice(0, 320) || null,
+        email: candidateEmail,
         phone: f.phone?.slice(0, 80) || null,
         linkedin_url: f.linkedin_url?.slice(0, 512) || null,
         profile_summary: f.profile_summary || null,
@@ -188,6 +224,23 @@ serve(async (req) => {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    // Track application in limits system
+    console.log('📊 Recording application for limits tracking');
+    const { error: limitsTrackErr } = await supabase
+      .from('candidate_application_limits')
+      .insert({
+        candidate_email: candidateEmail,
+        job_id: body.jobId,
+        posting_id: body.postingId,
+        organization_id: posting.job.organization_id,
+        status: 'active'
+      });
+
+    if (limitsTrackErr) {
+      console.error('⚠️ Warning: Failed to track application limits:', limitsTrackErr);
+      // Don't fail the application for this, just log the warning
     }
 
     // Handle file uploads if any
