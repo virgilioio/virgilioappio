@@ -343,11 +343,32 @@ export function useCandidates(jobId: string) {
     try {
       console.log('Updating global candidate:', id, candidateData)
       
-      // Update the global candidate record
+      // Update the global candidate record (exclude notes as it belongs to association, not candidates table)
       const { notes, ...globalCandidateData } = candidateData
+      
+      // Filter out any fields that don't belong in the candidates table
+      const allowedCandidateFields = {
+        candidate_name: globalCandidateData.candidate_name,
+        email: globalCandidateData.email,
+        phone: globalCandidateData.phone,
+        location_country: globalCandidateData.location_country,
+        location_state: globalCandidateData.location_state,
+        location_city: globalCandidateData.location_city,
+        salary_amount: globalCandidateData.salary_amount,
+        salary_currency: globalCandidateData.salary_currency,
+        salary_period: globalCandidateData.salary_period,
+        profile_summary: globalCandidateData.profile_summary,
+        linkedin_url: globalCandidateData.linkedin_url,
+        skills: globalCandidateData.skills
+      }
+      
+      // Remove undefined values
+      const filteredCandidateData = Object.fromEntries(
+        Object.entries(allowedCandidateFields).filter(([_, value]) => value !== undefined)
+      )
       const { data: updatedCandidate, error: updateError } = await supabase
         .from('candidates')
-        .update(globalCandidateData)
+        .update(filteredCandidateData)
         .eq('id', id)
         .select()
         .single()
