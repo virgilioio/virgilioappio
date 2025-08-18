@@ -18,6 +18,7 @@ const CORESIGNAL_BASE_URL = 'https://api.coresignal.com';
 interface JobMatchingRequest {
   job_id: string;
   limit?: number;
+  count_only?: boolean;
 }
 
 interface MatchedCandidate {
@@ -215,9 +216,9 @@ serve(async (req) => {
   }
 
   try {
-    const { job_id, limit = 50 }: JobMatchingRequest = await req.json();
+    const { job_id, limit = 50, count_only = false }: JobMatchingRequest = await req.json();
 
-    console.log(`🎯 Finding matching candidates for job: ${job_id}`);
+    console.log(`🎯 Finding matching candidates for job: ${job_id}${count_only ? ' (count only)' : ''}`);
 
     // Get job details
     const { data: job, error: jobError } = await supabase
@@ -249,25 +250,27 @@ serve(async (req) => {
     console.log(`🚫 Excluding ${existingCandidateIds.size} already associated candidates`);
 
     // Get local candidates (independent candidates table) - increased limit for filtering
+    const candidateFields = count_only ? 'id, standardized_skills, skills, profile_summary' : `
+      id,
+      candidate_name,
+      skills,
+      standardized_skills,
+      location_country,
+      location_city,
+      linkedin_url,
+      salary_amount,
+      salary_currency,
+      salary_period,
+      profile_summary,
+      years_experience,
+      enriched_at,
+      company_current,
+      role_current
+    `;
+
     const { data: localCandidates, error: localError } = await supabase
       .from('candidates')
-      .select(`
-        id,
-        candidate_name,
-        skills,
-        standardized_skills,
-        location_country,
-        location_city,
-        linkedin_url,
-        salary_amount,
-        salary_currency,
-        salary_period,
-        profile_summary,
-        years_experience,
-        enriched_at,
-        company_current,
-        role_current
-      `)
+      .select(candidateFields)
       .limit(limit * 3); // Increased limit to account for filtering
 
     if (localError) {
@@ -293,26 +296,36 @@ serve(async (req) => {
         
         // Only include candidates with meaningful match scores
         if (matchScore >= 20) {
-          matchedCandidates.push({
-            id: candidate.id,
-            candidate_name: candidate.candidate_name,
-            skills: candidate.skills,
-            standardized_skills: candidate.standardized_skills,
-            location_country: candidate.location_country,
-            location_city: candidate.location_city,
-            linkedin_url: candidate.linkedin_url,
-            salary_amount: candidate.salary_amount,
-            salary_currency: candidate.salary_currency,
-            salary_period: candidate.salary_period,
-            match_score: matchScore,
-            match_tier: getMatchTier(matchScore),
-            profile_summary: candidate.profile_summary,
-            source: 'local',
-            years_experience: candidate.years_experience,
-            enriched_at: candidate.enriched_at,
-            current_company: candidate.company_current,
-            current_role: candidate.role_current,
-          });
+          if (count_only) {
+            // For count-only requests, just track the match without full candidate data
+            matchedCandidates.push({
+              id: candidate.id,
+              match_score: matchScore,
+              match_tier: getMatchTier(matchScore),
+              source: 'local'
+            } as any);
+          } else {
+            matchedCandidates.push({
+              id: candidate.id,
+              candidate_name: candidate.candidate_name,
+              skills: candidate.skills,
+              standardized_skills: candidate.standardized_skills,
+              location_country: candidate.location_country,
+              location_city: candidate.location_city,
+              linkedin_url: candidate.linkedin_url,
+              salary_amount: candidate.salary_amount,
+              salary_currency: candidate.salary_currency,
+              salary_period: candidate.salary_period,
+              match_score: matchScore,
+              match_tier: getMatchTier(matchScore),
+              profile_summary: candidate.profile_summary,
+              source: 'local',
+              years_experience: candidate.years_experience,
+              enriched_at: candidate.enriched_at,
+              current_company: candidate.company_current,
+              current_role: candidate.role_current,
+            });
+          }
         }
       }
       

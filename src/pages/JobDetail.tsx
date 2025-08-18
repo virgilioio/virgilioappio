@@ -35,6 +35,7 @@ import { usePipelineActions, PipelineAssociation } from '@/hooks/usePipelineActi
 import CandidateProfileSheet from '@/components/candidates/CandidateProfileSheet'
 import BulkMoveJobCandidatesToPipelineDialog from '@/components/candidates/BulkMoveJobCandidatesToPipelineDialog'
 import { useJobMatchingCandidates } from '@/hooks/useJobMatchingCandidates'
+import { useJobMatchingCandidatesCount } from '@/hooks/useJobMatchingCandidatesCount'
 import { useRealTimeSkillMatching } from '@/hooks/useRealTimeSkillMatching'
 
 export default function JobDetail() {
@@ -273,13 +274,17 @@ export default function JobDetail() {
     currency: 'USD'
   })
 
+  // Background count hook - always enabled for tab badge
+  const { count: suggestedCount } = useJobMatchingCandidatesCount({
+    jobId: id || '',
+    enabled: !!id
+  })
+
   // AI matching candidates hook - only load when suggested tab is active
   const { candidates: matchingCandidates, isLoading: isLoadingMatches } = useJobMatchingCandidates({
     jobId: id || '',
     enabled: !!id && pipelineSectionTab === 'suggested'
   })
-
-  const suggestedCount = useMemo(() => matchingCandidates?.length || skillMatchingData?.totalCandidates || 0, [matchingCandidates, skillMatchingData])
   
   // Load stage map for this job
   useEffect(() => {
