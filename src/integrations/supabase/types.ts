@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.3 (519615d)"
@@ -3391,29 +3391,29 @@ export type Database = {
     }
     Functions: {
       accept_invitation: {
-        Args: { token_input: string; new_user_id: string }
+        Args: { new_user_id: string; token_input: string }
         Returns: {
-          success: boolean
           error_message: string
           member_id: string
-          user_type: string
           member_role: string
           organization_id: string
+          success: boolean
+          user_type: string
         }[]
       }
       activate_platform_asset: {
-        Args: { new_asset_id: string; asset_type_param: string }
+        Args: { asset_type_param: string; new_asset_id: string }
         Returns: undefined
       }
       add_invoice_payment: {
         Args: {
-          invoice_id_param: string
           amount_param: number
           currency_param: string
-          payment_method_param: string
-          payment_reference_param?: string
-          payment_notes_param?: string
+          invoice_id_param: string
           payment_date_param?: string
+          payment_method_param: string
+          payment_notes_param?: string
+          payment_reference_param?: string
           recorded_by_param?: string
         }
         Returns: undefined
@@ -3421,13 +3421,13 @@ export type Database = {
       audit_platform_admin_access: {
         Args: Record<PropertyKey, never>
         Returns: {
-          user_email: string
-          user_id: string
           has_member_record: boolean
-          user_type: string
+          issue_description: string
           member_role: string
           organization_id: string
-          issue_description: string
+          user_email: string
+          user_id: string
+          user_type: string
         }[]
       }
       backfill_default_stages_to_all_jobs: {
@@ -3435,7 +3435,7 @@ export type Database = {
         Returns: number
       }
       categorize_skills: {
-        Args: { manual_skills: string[]; generated_skills: Json }
+        Args: { generated_skills: Json; manual_skills: string[] }
         Returns: Json
       }
       check_recursion_safety: {
@@ -3453,20 +3453,20 @@ export type Database = {
       debug_user_permissions: {
         Args: Record<PropertyKey, never>
         Returns: {
+          can_see_all_orgs: boolean
           current_user_id: string
-          user_type: string
+          member_count: number
           member_role: string
           organization_id: string
-          member_count: number
-          can_see_all_orgs: boolean
+          user_type: string
         }[]
       }
       duplicate_job_posting: {
         Args: {
-          source_posting_id: string
-          new_title?: string
           new_description?: string
           new_details?: Json
+          new_title?: string
+          source_posting_id: string
         }
         Returns: string
       }
@@ -3501,9 +3501,9 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: {
           is_enabled: boolean
-          next_run: string
           last_automatic_update: string
           last_update_status: string
+          next_run: string
         }[]
       }
       get_invite_expiry: {
@@ -3517,9 +3517,9 @@ export type Database = {
       get_member_display_info: {
         Args: { member_user_id: string }
         Returns: {
+          email: string
           first_name: string
           last_name: string
-          email: string
         }[]
       }
       get_member_role: {
@@ -3531,7 +3531,7 @@ export type Database = {
         Returns: string
       }
       get_organization_currency_rate: {
-        Args: { from_currency: string; to_currency: string; org_id?: string }
+        Args: { from_currency: string; org_id?: string; to_currency: string }
         Returns: number
       }
       get_organization_default_currency: {
@@ -3541,11 +3541,11 @@ export type Database = {
       get_stage_deletion_impact: {
         Args: { stage_id_param: string }
         Returns: {
-          total_candidates_affected: number
-          candidates_to_prior_stage_count: number
           candidates_to_application_review_count: number
-          total_jobs_affected: number
+          candidates_to_prior_stage_count: number
           jobs_where_stage_is_first_count: number
+          total_candidates_affected: number
+          total_jobs_affected: number
         }[]
       }
       get_tenant_billable_seat_count: {
@@ -3555,9 +3555,9 @@ export type Database = {
       get_user_member_data: {
         Args: Record<PropertyKey, never>
         Returns: {
-          user_type: string
           member_role: string
           organization_id: string
+          user_type: string
         }[]
       }
       get_user_organization_id: {
@@ -3591,13 +3591,13 @@ export type Database = {
       load_invoice_payments: {
         Args: { invoice_id_param: string }
         Returns: {
-          id: string
           amount: number
           currency: string
+          id: string
           payment_date: string
           payment_method: string
-          payment_reference: string
           payment_notes: string
+          payment_reference: string
         }[]
       }
       manage_exchange_rate_cron: {
@@ -3615,9 +3615,9 @@ export type Database = {
       safe_delete_user: {
         Args: { target_user_id: string }
         Returns: {
-          success: boolean
-          message: string
           affected_tables: Json
+          message: string
+          success: boolean
         }[]
       }
       soft_delete_job_stage: {
@@ -3631,21 +3631,21 @@ export type Database = {
       sync_job_candidates_to_independent: {
         Args: Record<PropertyKey, never>
         Returns: {
-          synced_count: number
-          skipped_count: number
           details: Json
+          skipped_count: number
+          synced_count: number
         }[]
       }
       test_get_user_organization_id: {
         Args: Record<PropertyKey, never>
         Returns: {
-          test_case: string
-          user_email: string
-          user_type: string
-          returned_org_id: string
           expected_org_id: string
           members_table_org_id: string
+          returned_org_id: string
+          test_case: string
           test_result: string
+          user_email: string
+          user_type: string
         }[]
       }
       update_invoice_payment_totals: {
@@ -3655,13 +3655,13 @@ export type Database = {
       validate_invite_token: {
         Args: { token_input: string }
         Returns: {
-          member_id: string
-          organization_id: string
-          member_role: string
-          organization_name: string
+          error_message: string
           invite_email: string
           is_valid: boolean
-          error_message: string
+          member_id: string
+          member_role: string
+          organization_id: string
+          organization_name: string
         }[]
       }
     }

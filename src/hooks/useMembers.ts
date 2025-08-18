@@ -105,8 +105,28 @@ export function useMembers() {
         }
       }
 
-      const membersWithDetails = membersData.map((member) => {
+      const membersWithDetails = await Promise.all(membersData.map(async (member) => {
         const profile = profilesMap[member.user_id || '']
+        
+        // Enhanced email resolution with fallback
+        let user_email = profile?.email || member.invited_email || null
+        
+        // Fallback: If we still have no email but have a user_id, try RPC call
+        if (!user_email && member.user_id) {
+          try {
+            console.log(`Fetching fallback email for member ${member.id} with user_id ${member.user_id}`)
+            const { data: memberInfo } = await supabase.rpc('get_member_display_info', {
+              member_user_id: member.user_id
+            })
+            
+            if (memberInfo && memberInfo.length > 0) {
+              user_email = memberInfo[0].email
+              console.log(`Fallback email resolved: ${user_email}`)
+            }
+          } catch (error) {
+            console.warn('Failed to fetch fallback email for member:', member.id, error)
+          }
+        }
         
         const typedMember: Member = {
           ...member,
@@ -116,11 +136,11 @@ export function useMembers() {
           organization_name: organizationsMap[member.organization_id] || null,
           user_first_name: profile?.first_name || null,
           user_last_name: profile?.last_name || null,
-          user_email: profile?.email || member.invited_email || null
+          user_email: user_email
         }
         
         return typedMember
-      })
+      }))
 
       console.log('Final members with details:', membersWithDetails)
       setMembers(membersWithDetails)
