@@ -73,7 +73,6 @@ export default function PublicJobPosting() {
     email: '',
     phone: '',
     linkedin_url: '',
-    skills: '',
     profile_summary: ''
   })
   const [customFieldResponses, setCustomFieldResponses] = useState<Record<string, any>>({})
@@ -514,77 +513,11 @@ export default function PublicJobPosting() {
                       <div>
                         <h3 className="text-lg font-semibold mb-4">Basic Information</h3>
                         <div className="space-y-4">
-                          {/* Name Field */}
+                          {/* Resume Upload Field - FIRST */}
                           <div>
                             <label className="text-sm font-medium">
-                              Full Name <Badge variant="secondary" className="ml-2">Required</Badge>
+                              Resume/CV <Badge variant="secondary" className="ml-2">Required</Badge>
                             </label>
-                            <Input
-                              placeholder="Your full name"
-                              value={coreFieldValues.candidate_name}
-                              onChange={(e) => setCoreFieldValues(prev => ({ ...prev, candidate_name: e.target.value }))}
-                            />
-                          </div>
-                          
-                          {/* Email Field */}
-                          <div>
-                            <label className="text-sm font-medium">
-                              Email <Badge variant="secondary" className="ml-2">Required</Badge>
-                            </label>
-                            <Input
-                              type="email"
-                              placeholder="your.email@example.com"
-                              value={coreFieldValues.email}
-                              onChange={(e) => setCoreFieldValues(prev => ({ ...prev, email: e.target.value }))}
-                            />
-                          </div>
-                          
-                          {/* Phone Field */}
-                          <div>
-                            <label className="text-sm font-medium">Phone</label>
-                            <Input
-                              type="tel"
-                              placeholder="Your phone number"
-                              value={coreFieldValues.phone}
-                              onChange={(e) => setCoreFieldValues(prev => ({ ...prev, phone: e.target.value }))}
-                            />
-                          </div>
-                          
-                          {/* LinkedIn Field */}
-                          <div>
-                            <label className="text-sm font-medium">LinkedIn Profile</label>
-                            <Input
-                              type="url"
-                              placeholder="https://linkedin.com/in/yourprofile"
-                              value={coreFieldValues.linkedin_url}
-                              onChange={(e) => setCoreFieldValues(prev => ({ ...prev, linkedin_url: e.target.value }))}
-                            />
-                          </div>
-                          
-                          {/* Skills Field */}
-                          <div>
-                            <label className="text-sm font-medium">Skills</label>
-                            <Textarea
-                              placeholder="List your relevant skills"
-                              value={coreFieldValues.skills}
-                              onChange={(e) => setCoreFieldValues(prev => ({ ...prev, skills: e.target.value }))}
-                            />
-                          </div>
-                          
-                          {/* Profile Summary Field */}
-                          <div>
-                            <label className="text-sm font-medium">Profile Summary</label>
-                            <RichTextEditor
-                              value={coreFieldValues.profile_summary}
-                              onChange={(val) => setCoreFieldValues(prev => ({ ...prev, profile_summary: sanitizeHtml(val) }))}
-                              placeholder="Write a concise profile summary..."
-                              minHeight="180px"
-                            />
-                          </div>
-                          
-                          {/* Resume Upload Field */}
-                          <div>
-                            <label className="text-sm font-medium">Resume</label>
                             <div className="relative group mt-1">
                               <div className="pointer-events-none absolute -inset-[2px] rounded-lg bg-gradient-to-r from-pastel-purple via-pastel-blue to-info blur-md transition-opacity duration-300 opacity-50 pulse" />
                               <div
@@ -659,6 +592,64 @@ export default function PublicJobPosting() {
                                 </div>
                               )}
                             </div>
+                          </div>
+
+                          {/* Name Field */}
+                          <div>
+                            <label className="text-sm font-medium">
+                              Full Name <Badge variant="secondary" className="ml-2">Required</Badge>
+                            </label>
+                            <Input
+                              placeholder="Your full name"
+                              value={coreFieldValues.candidate_name}
+                              onChange={(e) => setCoreFieldValues(prev => ({ ...prev, candidate_name: e.target.value }))}
+                            />
+                          </div>
+                          
+                          {/* Email Field */}
+                          <div>
+                            <label className="text-sm font-medium">
+                              Email <Badge variant="secondary" className="ml-2">Required</Badge>
+                            </label>
+                            <Input
+                              type="email"
+                              placeholder="your.email@example.com"
+                              value={coreFieldValues.email}
+                              onChange={(e) => setCoreFieldValues(prev => ({ ...prev, email: e.target.value }))}
+                            />
+                          </div>
+                          
+                          {/* Phone Field */}
+                          <div>
+                            <label className="text-sm font-medium">Phone</label>
+                            <Input
+                              type="tel"
+                              placeholder="Your phone number"
+                              value={coreFieldValues.phone}
+                              onChange={(e) => setCoreFieldValues(prev => ({ ...prev, phone: e.target.value }))}
+                            />
+                          </div>
+                          
+                          {/* LinkedIn Field */}
+                          <div>
+                            <label className="text-sm font-medium">LinkedIn Profile</label>
+                            <Input
+                              type="url"
+                              placeholder="https://linkedin.com/in/yourprofile"
+                              value={coreFieldValues.linkedin_url}
+                              onChange={(e) => setCoreFieldValues(prev => ({ ...prev, linkedin_url: e.target.value }))}
+                            />
+                          </div>
+                          
+                          {/* Profile Summary Field */}
+                          <div>
+                            <label className="text-sm font-medium">Profile Summary</label>
+                            <RichTextEditor
+                              value={coreFieldValues.profile_summary}
+                              onChange={(val) => setCoreFieldValues(prev => ({ ...prev, profile_summary: sanitizeHtml(val) }))}
+                              placeholder="Write a concise profile summary..."
+                              minHeight="180px"
+                            />
                           </div>
                         </div>
                       </div>

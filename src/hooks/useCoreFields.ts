@@ -14,6 +14,16 @@ export interface CoreField {
 
 export const CORE_FIELDS: CoreField[] = [
   {
+    field_name: 'resume',
+    field_label: 'Resume/CV',
+    field_type: 'file',
+    is_required: true,
+    accepted_file_types: '.pdf,.doc,.docx',
+    max_file_size_mb: 10,
+    help_text: 'Upload your resume in PDF or Word format',
+    display_order: 0
+  },
+  {
     field_name: 'candidate_name',
     field_label: 'Full Name',
     field_type: 'text',
@@ -46,32 +56,13 @@ export const CORE_FIELDS: CoreField[] = [
     display_order: 4
   },
   {
-    field_name: 'resume',
-    field_label: 'Resume/CV',
-    field_type: 'file',
-    is_required: true,
-    accepted_file_types: '.pdf,.doc,.docx',
-    max_file_size_mb: 10,
-    help_text: 'Upload your resume in PDF or Word format',
-    display_order: 5
-  },
-  {
-    field_name: 'skills',
-    field_label: 'Skills',
-    field_type: 'textarea',
-    is_required: false,
-    placeholder_text: 'List your relevant skills (comma-separated)',
-    help_text: 'Enter skills relevant to this position',
-    display_order: 6
-  },
-  {
     field_name: 'profile_summary',
     field_label: 'Profile Summary',
     field_type: 'textarea',
     is_required: false,
     placeholder_text: 'Tell us about yourself and your experience...',
     help_text: 'Brief summary of your background and experience',
-    display_order: 7
+    display_order: 5
   }
 ]
 
