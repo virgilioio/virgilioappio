@@ -3694,6 +3694,10 @@ export type Database = {
         Args: { enable_cron: boolean }
         Returns: string
       }
+      organization_has_active_public_posting: {
+        Args: { org_id_param: string }
+        Returns: boolean
+      }
       reassign_candidates_for_stage: {
         Args: { stage_id_param: string }
         Returns: undefined
