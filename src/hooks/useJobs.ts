@@ -332,6 +332,15 @@ export function useJobs() {
       }
 
       // Resolve hiring team member names
+      // Debug logging for skills data before transformation
+      console.log('Jobs data before transformation - checking skills:', filteredJobs.map(job => ({
+        id: job.id,
+        title: job.title,
+        skills: job.skills,
+        auto_generated_skills: job.auto_generated_skills,
+        userType: userType
+      })))
+
       const jobsWithResolvedNames = await resolveHiringTeamNames(filteredJobs)
 
       // Transform the data to match our Job interface
@@ -340,6 +349,15 @@ export function useJobs() {
         hiring_team: Array.isArray(job.hiring_team) ? job.hiring_team : [],
         organization_name: organizationsMap[job.organization_id] || 'Unknown Organization'
       }))
+
+      // Debug logging after transformation
+      console.log('Jobs data after transformation - checking skills:', transformedJobs.map(job => ({
+        id: job.id,
+        title: job.title,
+        skills: job.skills,
+        auto_generated_skills: job.auto_generated_skills,
+        userType: userType
+      })))
       
       setJobs(transformedJobs)
     } catch (err) {
