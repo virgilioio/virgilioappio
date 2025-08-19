@@ -52,6 +52,7 @@ export function useApplicationFields() {
           field_validation_rules(*),
           field_select_options(*)
         `)
+        .eq('is_core_field', false) // Only fetch custom fields
         .order('display_order')
 
       if (error) throw error

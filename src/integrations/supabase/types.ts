@@ -64,6 +64,7 @@ export type Database = {
           field_type: Database["public"]["Enums"]["field_type"]
           help_text: string | null
           id: string
+          is_core_field: boolean
           is_default: boolean
           is_required: boolean
           max_file_size_mb: number | null
@@ -80,6 +81,7 @@ export type Database = {
           field_type?: Database["public"]["Enums"]["field_type"]
           help_text?: string | null
           id?: string
+          is_core_field?: boolean
           is_default?: boolean
           is_required?: boolean
           max_file_size_mb?: number | null
@@ -96,6 +98,7 @@ export type Database = {
           field_type?: Database["public"]["Enums"]["field_type"]
           help_text?: string | null
           id?: string
+          is_core_field?: boolean
           is_default?: boolean
           is_required?: boolean
           max_file_size_mb?: number | null

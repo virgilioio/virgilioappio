@@ -21,11 +21,13 @@ export function ApplicationFieldsManager() {
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <div>
-          <CardTitle>Application Fields</CardTitle>
-          <CardDescription>Manage dynamic fields used to build application forms</CardDescription>
+          <CardTitle>Custom Application Fields Library</CardTitle>
+          <CardDescription>
+            Create and manage additional application fields for job postings. Core fields (name, email, phone, resume, etc.) are included automatically.
+          </CardDescription>
         </div>
         <Button onClick={() => setIsCreateOpen(true)}>
-          <Plus className="w-4 h-4 mr-2" /> Add Field
+          <Plus className="w-4 h-4 mr-2" /> Add Custom Field
         </Button>
       </CardHeader>
       <CardContent>
@@ -33,9 +35,10 @@ export function ApplicationFieldsManager() {
           <p className="text-sm text-muted-foreground">Loading...</p>
         ) : fields.length === 0 ? (
           <div className="text-center py-10">
-            <p className="text-sm text-muted-foreground mb-3">No application fields yet.</p>
+            <p className="text-sm text-muted-foreground mb-3">No custom application fields yet.</p>
+            <p className="text-xs text-muted-foreground mb-4">Core fields (name, email, phone, resume, etc.) are included automatically in all applications.</p>
             <Button onClick={() => setIsCreateOpen(true)}>
-              <Plus className="w-4 h-4 mr-2" /> Add your first field
+              <Plus className="w-4 h-4 mr-2" /> Add your first custom field
             </Button>
           </div>
         ) : (

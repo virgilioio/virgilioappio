@@ -8,6 +8,7 @@ import { useEffect, useState } from 'react'
 import { useToast } from '@/hooks/use-toast'
 import { useJobPostings } from '@/hooks/useJobPostings'
 import { PostingFieldsBuilder } from './PostingFieldsBuilder'
+import { CoreFieldsPreview } from './CoreFieldsPreview'
 import { FormField } from '@/components/ui/form-field'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -280,9 +281,12 @@ export function PostingSheet({
             </div>
           </TabsContent>
 
-          <TabsContent value="application-form" className="mt-4">
+          <TabsContent value="application-form" className="mt-4 space-y-6">
             {localId && (
-              <PostingFieldsBuilder postingId={localId} readOnly={readOnly} />
+              <>
+                <CoreFieldsPreview />
+                <PostingFieldsBuilder postingId={localId} readOnly={readOnly} />
+              </>
             )}
           </TabsContent>
         </Tabs>

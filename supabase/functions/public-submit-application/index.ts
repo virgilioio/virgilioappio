@@ -7,18 +7,18 @@ const corsHeaders = {
 };
 
 interface SubmitApplicationPayload {
-  postingId: string;
-  jobId: string;
-  fields: {
-    candidate_name?: string;
-    first_name?: string;
-    last_name?: string;
-    full_name?: string;
-    email?: string;
-    phone?: string;
-    linkedin_url?: string;
-    profile_summary?: string; // HTML allowed (will be stored as text)
-  };
+  postingId?: string;
+  posting_id?: string;
+  // Core fields - always handled the same way
+  candidate_name: string;
+  email: string;
+  phone?: string;
+  linkedin_url?: string;
+  skills?: string;
+  profile_summary?: string;
+  resume?: File;
+  // Custom fields from application_fields table
+  custom_fields?: Record<string, any>;
   uploadedFiles?: Record<string, {
     name: string;
     type: string;
@@ -64,21 +64,22 @@ serve(async (req) => {
     console.log("📥 Received public application:", JSON.stringify(body, null, 2)?.slice(0, 1000));
     console.log("🔍 Fields received:", body.fields);
 
-    if (!body?.postingId || !body?.jobId) {
-      return new Response(JSON.stringify({ error: "Missing postingId or jobId" }), {
+    const postingId = body.postingId || body.posting_id;
+    if (!postingId) {
+      return new Response(JSON.stringify({ error: "Missing postingId" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Validate posting and ensure it belongs to the job and is active
+    // Get job from posting
     const { data: posting, error: postingErr } = await supabase
       .from("job_postings")
       .select("id, job_id, is_active, job:jobs(organization_id)")
-      .eq("id", body.postingId)
+      .eq("id", postingId)
       .maybeSingle();
 
-    if (postingErr) {
+    if (postingErr || !posting) {
       console.error("Error verifying posting:", postingErr);
       return new Response(JSON.stringify({ error: "Failed to verify posting" }), {
         status: 500,
@@ -86,17 +87,15 @@ serve(async (req) => {
       });
     }
 
-    if (!posting || posting.job_id !== body.jobId || posting.is_active === false) {
-      return new Response(JSON.stringify({ error: "Invalid or inactive posting" }), {
+    if (posting.is_active === false) {
+      return new Response(JSON.stringify({ error: "Posting is no longer active" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const f = body.fields || {};
-    
     // Get candidate email for application limits check
-    const candidateEmail = f.email?.trim()?.slice(0, 320);
+    const candidateEmail = body.email?.trim()?.slice(0, 320);
     if (!candidateEmail) {
       return new Response(JSON.stringify({ error: "Email is required for application" }), {
         status: 400,
@@ -108,7 +107,7 @@ serve(async (req) => {
     console.log('🔍 Checking application limits for:', candidateEmail);
     const { data: limits, error: limitErr } = await supabase.rpc('check_application_limits', {
       candidate_email_param: candidateEmail,
-      job_id_param: body.jobId,
+      job_id_param: posting.job_id,
       organization_id_param: posting.job.organization_id
     });
 
@@ -137,18 +136,8 @@ serve(async (req) => {
       );
     }
 
-    console.log("🏗️ Constructing candidate name from fields:", {
-      candidate_name: f.candidate_name,
-      full_name: f.full_name,
-      first_name: f.first_name,
-      last_name: f.last_name
-    });
-    
-    const candidateName = (f.candidate_name || f.full_name || `${f.first_name ?? ""} ${f.last_name ?? ""}`)
-      .trim()
-      .slice(0, 200) || "Applicant";
-    
-    console.log("📝 Final candidate name:", candidateName);
+    const candidateName = body.candidate_name?.trim()?.slice(0, 200) || "Applicant";
+    console.log("📝 Candidate name:", candidateName);
 
     // Find or create global candidate record - email-only matching
     let globalCandidateId: string | null = null;
@@ -174,9 +163,10 @@ serve(async (req) => {
       const candidateData: any = {
         candidate_name: candidateName,
         email: candidateEmail,
-        phone: f.phone?.slice(0, 80) || null,
-        linkedin_url: f.linkedin_url?.slice(0, 512) || null,
-        profile_summary: f.profile_summary || null,
+        phone: body.phone?.slice(0, 80) || null,
+        linkedin_url: body.linkedin_url?.slice(0, 512) || null,
+        profile_summary: body.profile_summary || null,
+        skills: body.skills ? [body.skills] : null,
         source: "public_posting",
       };
 
@@ -212,7 +202,7 @@ serve(async (req) => {
     const { error: assocErr } = await supabase
       .from("job_candidate_associations")
       .insert({
-        job_id: body.jobId,
+        job_id: posting.job_id,
         candidate_id: globalCandidateId,
         status: "active",
         current_stage_id: null,
@@ -232,8 +222,8 @@ serve(async (req) => {
       .from('candidate_application_limits')
       .insert({
         candidate_email: candidateEmail,
-        job_id: body.jobId,
-        posting_id: body.postingId,
+        job_id: posting.job_id,
+        posting_id: postingId,
         organization_id: posting.job.organization_id,
         status: 'active'
       });
@@ -243,45 +233,70 @@ serve(async (req) => {
       // Don't fail the application for this, just log the warning
     }
 
-    // Store application field responses
-    console.log('💾 Storing application field responses');
-    const { data: postingFields, error: fieldsErr } = await supabase
-      .from('job_posting_application_fields')
-      .select('field_name, field_label, field_type')
-      .eq('posting_id', body.postingId)
-      .order('display_order');
+    // Store core application field responses
+    console.log('💾 Storing core application field responses');
+    const coreResponseRows = [];
+    
+    // Store core fields
+    const coreFields = [
+      { name: 'candidate_name', label: 'Full Name', value: body.candidate_name },
+      { name: 'email', label: 'Email Address', value: body.email },
+      { name: 'phone', label: 'Phone Number', value: body.phone },
+      { name: 'linkedin_url', label: 'LinkedIn Profile', value: body.linkedin_url },
+      { name: 'skills', label: 'Skills', value: body.skills },
+      { name: 'profile_summary', label: 'Profile Summary', value: body.profile_summary }
+    ];
 
-    if (fieldsErr) {
-      console.error('⚠️ Warning: Failed to fetch posting fields:', fieldsErr);
-    } else if (postingFields && postingFields.length > 0) {
-      const responseRows = [];
-      
-      for (const field of postingFields) {
-        const fieldValue = body.fields?.[field.field_name];
-        if (fieldValue !== undefined) {
-          responseRows.push({
-            candidate_id: globalCandidateId,
-            job_id: body.jobId,
-            posting_id: body.postingId,
-            field_name: field.field_name,
-            field_label: field.field_label,
-            field_value: typeof fieldValue === 'string' ? fieldValue : JSON.stringify(fieldValue),
-            field_type: field.field_type
-          });
+    for (const field of coreFields) {
+      if (field.value) {
+        coreResponseRows.push({
+          candidate_id: globalCandidateId,
+          job_id: posting.job_id,
+          posting_id: postingId,
+          field_name: field.name,
+          field_label: field.label,
+          field_value: field.value,
+          field_type: field.name === 'email' ? 'email' : field.name === 'linkedin_url' ? 'url' : field.name === 'profile_summary' || field.name === 'skills' ? 'textarea' : 'text'
+        });
+      }
+    }
+
+    // Store custom field responses
+    if (body.custom_fields && Object.keys(body.custom_fields).length > 0) {
+      const { data: postingFields, error: fieldsErr } = await supabase
+        .from('job_posting_application_fields')
+        .select('field_name, field_label, field_type')
+        .eq('posting_id', postingId)
+        .order('display_order');
+
+      if (!fieldsErr && postingFields) {
+        for (const field of postingFields) {
+          const fieldValue = body.custom_fields[field.field_name];
+          if (fieldValue !== undefined) {
+            coreResponseRows.push({
+              candidate_id: globalCandidateId,
+              job_id: posting.job_id,
+              posting_id: postingId,
+              field_name: field.field_name,
+              field_label: field.field_label,
+              field_value: typeof fieldValue === 'string' ? fieldValue : JSON.stringify(fieldValue),
+              field_type: field.field_type
+            });
+          }
         }
       }
+    }
 
-      if (responseRows.length > 0) {
-        const { error: responsesErr } = await supabase
-          .from('candidate_application_responses')
-          .insert(responseRows);
+    if (coreResponseRows.length > 0) {
+      const { error: responsesErr } = await supabase
+        .from('candidate_application_responses')
+        .insert(coreResponseRows);
 
-        if (responsesErr) {
-          console.error('⚠️ Warning: Failed to store application responses:', responsesErr);
-          // Don't fail the application for this, just log the warning
-        } else {
-          console.log(`✅ Stored ${responseRows.length} application field responses`);
-        }
+      if (responsesErr) {
+        console.error('⚠️ Warning: Failed to store application responses:', responsesErr);
+        // Don't fail the application for this, just log the warning
+      } else {
+        console.log(`✅ Stored ${coreResponseRows.length} application field responses`);
       }
     }
 
