@@ -91,8 +91,6 @@ export function CandidateTable({
   const { id: jobId } = useParams<{ id: string }>()
   const permissions = usePermissions()
   const [searchTerm, setSearchTerm] = useState('')
-  const [locationFilter, setLocationFilter] = useState<string>('all')
-  const [salaryFilter, setSalaryFilter] = useState<string>('all')
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
@@ -126,67 +124,6 @@ export function CandidateTable({
     }
   }
 
-  const formatLocation = (candidate: CandidateTableCandidate) => {
-    const parts = []
-    if (candidate.location_city) parts.push(candidate.location_city)
-    if (candidate.location_state) parts.push(candidate.location_state)
-    if (candidate.location_country) {
-      // Use country code abbreviations for common countries
-      const countryAbbrev = getCountryAbbreviation(candidate.location_country)
-      parts.push(countryAbbrev)
-    }
-    return parts.length > 0 ? parts.join(', ') : 'Not specified'
-  }
-
-  const getCountryAbbreviation = (country: string) => {
-    const abbreviations: Record<string, string> = {
-      'Mexico': 'MX',
-      'United States': 'US',
-      'Canada': 'CA',
-      'United Kingdom': 'UK',
-      'Germany': 'DE',
-      'France': 'FR',
-      'Spain': 'ES',
-      'Brazil': 'BR',
-      'Argentina': 'AR'
-    }
-    return abbreviations[country] || country
-  }
-
-  const formatSalary = (candidate: CandidateTableCandidate) => {
-    if (!candidate.salary_amount) return 'Not specified'
-    
-    const currency = candidate.salary_currency || 'USD'
-    const amount = candidate.salary_amount.toLocaleString()
-    const period = candidate.salary_period || 'annually'
-    
-    // Format as currency symbol + amount + period
-    const currencySymbol = getCurrencySymbol(currency)
-    const periodAbbrev = getPeriodAbbreviation(period)
-    
-    return `${currencySymbol}${amount} ${currency}${periodAbbrev}`
-  }
-
-  const getCurrencySymbol = (currency: string) => {
-    const symbols: Record<string, string> = {
-      'USD': '$',
-      'EUR': '€',
-      'GBP': '£',
-      'MXN': '$',
-      'CAD': '$',
-      'AUD': '$'
-    }
-    return symbols[currency] || '$'
-  }
-
-  const getPeriodAbbreviation = (period: string) => {
-    const abbreviations: Record<string, string> = {
-      'hourly': '/hr',
-      'monthly': '/mo',
-      'annually': '/yr'
-    }
-    return abbreviations[period] || '/yr'
-  }
 
   const getCandidateLink = (candidate: CandidateTableCandidate) => {
     if ('job' in candidate) {
@@ -201,17 +138,7 @@ export function CandidateTable({
   // Filter logic
   const filteredCandidates = candidates.filter(candidate => {
     const matchesSearch = candidate.candidate_name.toLowerCase().includes(searchTerm.toLowerCase())
-    
-    const matchesLocation = locationFilter === 'all' || 
-      (candidate.location_country && candidate.location_country.toLowerCase().includes(locationFilter.toLowerCase())) ||
-      (candidate.location_city && candidate.location_city.toLowerCase().includes(locationFilter.toLowerCase()))
-    
-    const matchesSalary = salaryFilter === 'all' || 
-      (salaryFilter === 'low' && candidate.salary_amount && candidate.salary_amount < 50000) ||
-      (salaryFilter === 'medium' && candidate.salary_amount && candidate.salary_amount >= 50000 && candidate.salary_amount < 100000) ||
-      (salaryFilter === 'high' && candidate.salary_amount && candidate.salary_amount >= 100000)
-    
-    return matchesSearch && matchesLocation && matchesSalary
+    return matchesSearch
   })
 
   // Calculate pagination
@@ -223,7 +150,7 @@ export function CandidateTable({
   // Reset pagination when filters change
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchTerm, locationFilter, salaryFilter])
+  }, [searchTerm])
 
   // Selection helpers
   const pagedIds = useMemo(() => paginatedCandidates.map(c => c.id), [paginatedCandidates])
@@ -324,30 +251,6 @@ export function CandidateTable({
             />
           </div>
           
-          <Select value={locationFilter} onValueChange={setLocationFilter}>
-            <SelectTrigger className="w-full sm:w-[150px]">
-              <SelectValue placeholder="Location" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Locations</SelectItem>
-              <SelectItem value="US">United States</SelectItem>
-              <SelectItem value="MX">Mexico</SelectItem>
-              <SelectItem value="CA">Canada</SelectItem>
-              <SelectItem value="remote">Remote</SelectItem>
-            </SelectContent>
-          </Select>
-          
-          <Select value={salaryFilter} onValueChange={setSalaryFilter}>
-            <SelectTrigger className="w-full sm:w-[150px]">
-              <SelectValue placeholder="Salary Range" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Ranges</SelectItem>
-              <SelectItem value="low">Under $50K</SelectItem>
-              <SelectItem value="medium">$50K - $100K</SelectItem>
-              <SelectItem value="high">$100K+</SelectItem>
-            </SelectContent>
-          </Select>
 
           <PermissionGate permission="canManageCandidates">
             <div className="ml-auto flex items-center gap-2">

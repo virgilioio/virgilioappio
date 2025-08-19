@@ -18,6 +18,7 @@ export interface IndependentCandidate {
   linkedin_url: string | null
   resume_url: string | null
   skills: string[] | null
+  auto_generated_skills: any[] | null
   status: string
   source: string
   created_at: string
@@ -81,7 +82,12 @@ export function useIndependentCandidates() {
       }
 
       console.log('Fetched independent candidates:', data)
-      setCandidates(data || [])
+      // Type cast the data to fix auto_generated_skills type mismatch
+      const typedData = (data || []).map(candidate => ({
+        ...candidate,
+        auto_generated_skills: (candidate.auto_generated_skills as any) || null
+      })) as IndependentCandidate[]
+      setCandidates(typedData)
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch candidates'
       console.error('Independent candidates fetch error:', err)

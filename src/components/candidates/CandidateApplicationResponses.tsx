@@ -74,6 +74,8 @@ const formatFieldValue = (value: string | null, fieldType: string) => {
   }
 };
 
+import { useCoreFields } from '@/hooks/useCoreFields'
+
 // Fields to exclude from display as they're already shown in the candidate header
 const excludedFields = ['name', 'email', 'phone', 'candidate_name', 'full_name', 'contact_email', 'contact_phone'];
 
@@ -83,6 +85,7 @@ export const CandidateApplicationResponses: React.FC<CandidateApplicationRespons
 }) => {
   const [responses, setResponses] = useState<ApplicationResponse[]>([]);
   const [loading, setLoading] = useState(true);
+  const { coreFields } = useCoreFields();
 
   useEffect(() => {
     const fetchResponses = async () => {
@@ -95,9 +98,19 @@ export const CandidateApplicationResponses: React.FC<CandidateApplicationRespons
           .order('created_at', { ascending: true });
 
         if (error) throw error;
-        // Filter out redundant fields that are already displayed in the candidate header
+        
+        // Create exclusion set from core fields + additional excluded fields
+        const coreFieldNames = new Set(coreFields.map(f => f.field_name.toLowerCase()));
+        const allExcludedFields = new Set([
+          ...excludedFields,
+          ...coreFieldNames,
+          'profile_summary', // Specifically exclude profile summary as it's a core field
+          'skills' // Exclude skills as they're handled separately
+        ]);
+        
+        // Filter out core fields - only show custom fields
         const filteredResponses = (data || []).filter(response => 
-          !excludedFields.includes(response.field_name.toLowerCase())
+          !allExcludedFields.has(response.field_name.toLowerCase())
         );
         setResponses(filteredResponses);
       } catch (error) {
@@ -108,7 +121,7 @@ export const CandidateApplicationResponses: React.FC<CandidateApplicationRespons
     };
 
     fetchResponses();
-  }, [candidateId, jobId]);
+  }, [candidateId, jobId, coreFields]);
 
   if (loading) {
     return (

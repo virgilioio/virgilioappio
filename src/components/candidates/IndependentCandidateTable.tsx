@@ -447,16 +447,22 @@ const getPageNumbers = () => {
                         </TableCell>
                         <TableCell>
                           <div className="flex flex-wrap gap-1">
-                            {candidate.skills?.slice(0, 3).map((skill) => (
-                              <Badge key={skill} variant="outline" className="text-xs">
-                                {skill}
-                              </Badge>
-                            ))}
-                            {candidate.skills && candidate.skills.length > 3 && (
-                              <Badge variant="outline" className="text-xs">
-                                +{candidate.skills.length - 3}
-                              </Badge>
-                            )}
+                            {(() => {
+                              const skills = candidate.skills || (candidate.auto_generated_skills || []).map((s: any) => s.name || s);
+                              return skills?.slice(0, 3).map((skill: string) => (
+                                <Badge key={skill} variant="outline" className="text-xs">
+                                  {skill}
+                                </Badge>
+                              ));
+                            })()}
+                            {(() => {
+                              const skills = candidate.skills || (candidate.auto_generated_skills || []).map((s: any) => s.name || s);
+                              return skills && skills.length > 3 && (
+                                <Badge variant="outline" className="text-xs">
+                                  +{skills.length - 3}
+                                </Badge>
+                              );
+                            })()}
                           </div>
                         </TableCell>
                         <TableCell>
@@ -537,20 +543,23 @@ const getPageNumbers = () => {
                             {formatSalary(candidate)}
                           </div>
 
-                          {candidate.skills && candidate.skills.length > 0 && (
-                            <div className="flex flex-wrap gap-1">
-                              {candidate.skills.slice(0, 2).map((skill) => (
-                                <Badge key={skill} variant="outline" className="text-xs">
-                                  {skill}
-                                </Badge>
-                              ))}
-                              {candidate.skills.length > 2 && (
-                                <Badge variant="outline" className="text-xs">
-                                  +{candidate.skills.length - 2}
-                                </Badge>
-                              )}
-                            </div>
-                          )}
+                          {(() => {
+                            const skills = candidate.skills || (candidate.auto_generated_skills || []).map((s: any) => s.name || s);
+                            return skills && skills.length > 0 && (
+                              <div className="flex flex-wrap gap-1">
+                                {skills.slice(0, 2).map((skill: string) => (
+                                  <Badge key={skill} variant="outline" className="text-xs">
+                                    {skill}
+                                  </Badge>
+                                ))}
+                                {skills.length > 2 && (
+                                  <Badge variant="outline" className="text-xs">
+                                    +{skills.length - 2}
+                                  </Badge>
+                                )}
+                              </div>
+                            );
+                          })()}
                         </div>
                       </div>
                     </CardContent>

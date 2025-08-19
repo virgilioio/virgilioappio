@@ -356,12 +356,35 @@ export default function PublicJobPosting() {
       console.log('🚀 Starting application submission')
       console.log('📋 Core field values:', coreFieldValues)
       console.log('📋 Custom field responses:', customFieldResponses)
+      console.log('🧠 Generated skills:', generatedSkills)
+
+      // Convert resume to base64 if present
+      const resumeFile = uploadedFiles[0]
+      let resumeBase64 = null
+      if (resumeFile) {
+        resumeBase64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onload = () => resolve(reader.result as string)
+          reader.onerror = reject
+          reader.readAsDataURL(resumeFile)
+        })
+      }
+
+      // Remap custom field responses from field.id to field.field_name
+      const mappedCustomFields: Record<string, any> = {}
+      Object.entries(customFieldResponses).forEach(([fieldId, value]) => {
+        const field = customFields.find(f => f.id === fieldId)
+        if (field?.field_name) {
+          mappedCustomFields[field.field_name] = value
+        }
+      })
 
       // Prepare application data in the format expected by the edge function
       const applicationData = {
         ...coreFieldValues,
-        resume: uploadedFiles[0] || null,
-        custom_fields: customFieldResponses,
+        generatedSkills: generatedSkills, // Include generated skills
+        custom_fields: mappedCustomFields, // Use field names instead of IDs
+        uploadedFiles: resumeBase64 ? [{ name: resumeFile!.name, data: resumeBase64, type: resumeFile!.type }] : [],
         posting_id: posting.id
       }
 

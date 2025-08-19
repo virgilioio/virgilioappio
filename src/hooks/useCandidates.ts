@@ -17,6 +17,7 @@ export interface Candidate {
   profile_summary: string | null
   linkedin_url: string | null
   skills: string[] | null
+  auto_generated_skills: any[] | null
   created_at: string
   updated_at: string
   // Association-specific fields
@@ -88,6 +89,7 @@ export function useCandidates(jobId: string) {
             profile_summary,
             linkedin_url,
             skills,
+            auto_generated_skills,
             created_at,
             updated_at
           )
@@ -124,6 +126,7 @@ export function useCandidates(jobId: string) {
         profile_summary: (assoc.candidate as any).profile_summary,
         linkedin_url: (assoc.candidate as any).linkedin_url,
         skills: (assoc.candidate as any).skills,
+        auto_generated_skills: (assoc.candidate as any).auto_generated_skills,
         created_at: (assoc.candidate as any).created_at,
         updated_at: (assoc.candidate as any).updated_at,
         // Association-specific fields
