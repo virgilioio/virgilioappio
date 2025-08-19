@@ -503,7 +503,7 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                           See general overview
                         </Button>
                       )}
-                      {isCurrent && associationId && (
+                      {(isCurrent || isPast) && associationId && (
                         <Button
                           size="sm"
                           onClick={() => {
