@@ -53,7 +53,7 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
   const [jobCandidate, setJobCandidate] = useState<any | null>(null)
   const [jobCandidateId, setJobCandidateId] = useState<string | null>(null)
   const [job, setJob] = useState<any | null>(null)
-  const [activeTab, setActiveTab] = useState<'job' | 'resume' | 'overview'>('job')
+  const [activeTab, setActiveTab] = useState<'job' | 'application' | 'resume' | 'overview'>('job')
   const { workExperience, education, fetchCandidateEnrichmentData } = useCandidateEnrichment()
   const [editOpen, setEditOpen] = useState(false)
   const [editLoading, setEditLoading] = useState(false)
@@ -352,7 +352,7 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
             ) : !candidate ? (
               <div className="text-text-secondary text-sm">No data available.</div>
             ) : (
-              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'job' | 'resume' | 'overview')}>
+               <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'job' | 'application' | 'resume' | 'overview')}>
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   {/* Left column (2x) */}
                   <div className="lg:col-span-2 space-y-6">
@@ -364,12 +364,13 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                       phone={candidate.phone}
                       tabs={[
                         { value: 'job', label: 'Job Application', Icon: FileText },
+                        { value: 'application', label: 'Application Details', Icon: FileText },
                         { value: 'resume', label: 'Resume', Icon: FileText },
                         { value: 'overview', label: 'Overview', Icon: FileText },
                         
                       ]}
                       activeTab={activeTab}
-                      onTabChange={(v) => setActiveTab(v as 'job' | 'resume' | 'overview')}
+                      onTabChange={(v) => setActiveTab(v as 'job' | 'application' | 'resume' | 'overview')}
                       rightActions={
                         <>
                           {associationId && associationStatus !== 'rejected' && (
@@ -565,6 +566,21 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                       </Card>
                     )}
 
+                    {/* Application Details Tab */}
+                    {activeTab === 'application' && (
+                      <Card className="bg-surface-primary border-border">
+                        <CardHeader>
+                          <CardTitle className="text-lg">Application Details</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <CandidateApplicationResponses 
+                            candidateId={candidateId!} 
+                            jobId={jobId} 
+                          />
+                        </CardContent>
+                      </Card>
+                    )}
+
                     {/* Resume Tab */}
                     {activeTab === 'resume' && (
                       <Card className="bg-surface-primary border-border">
@@ -702,11 +718,6 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                            </CardContent>
                          </Card>
 
-                         {/* Job Application Responses */}
-                         <CandidateApplicationResponses 
-                           candidateId={candidateId!} 
-                           jobId={jobId} 
-                         />
                        </>
                      ) : (
                        <></>

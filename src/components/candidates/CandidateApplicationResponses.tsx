@@ -74,6 +74,9 @@ const formatFieldValue = (value: string | null, fieldType: string) => {
   }
 };
 
+// Fields to exclude from display as they're already shown in the candidate header
+const excludedFields = ['name', 'email', 'phone', 'candidate_name', 'full_name', 'contact_email', 'contact_phone'];
+
 export const CandidateApplicationResponses: React.FC<CandidateApplicationResponsesProps> = ({
   candidateId,
   jobId,
@@ -92,7 +95,11 @@ export const CandidateApplicationResponses: React.FC<CandidateApplicationRespons
           .order('created_at', { ascending: true });
 
         if (error) throw error;
-        setResponses(data || []);
+        // Filter out redundant fields that are already displayed in the candidate header
+        const filteredResponses = (data || []).filter(response => 
+          !excludedFields.includes(response.field_name.toLowerCase())
+        );
+        setResponses(filteredResponses);
       } catch (error) {
         console.error('Error fetching application responses:', error);
       } finally {
@@ -124,36 +131,28 @@ export const CandidateApplicationResponses: React.FC<CandidateApplicationRespons
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <FileText className="h-5 w-5" />
-          Job Application Responses
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {responses.map((response, index) => (
-          <div key={response.id}>
-            <div className="flex items-start gap-3">
-              <div className="flex-shrink-0 mt-1">
-                {getFieldIcon(response.field_type)}
+    <div className="space-y-4">
+      {responses.map((response, index) => (
+        <div key={response.id}>
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0 mt-1">
+              {getFieldIcon(response.field_type)}
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="mb-1">
+                <span className="font-medium text-sm">{response.field_label}</span>
               </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="font-medium text-sm">{response.field_label}</span>
-                  <Badge variant="secondary" className="text-xs">
-                    {response.field_type}
-                  </Badge>
-                </div>
-                <div className="text-sm text-muted-foreground break-words">
-                  {formatFieldValue(response.field_value, response.field_type)}
-                </div>
+              <div className="text-sm text-muted-foreground break-words">
+                {formatFieldValue(response.field_value, response.field_type)}
               </div>
             </div>
-            {index < responses.length - 1 && <Separator className="mt-4" />}
           </div>
-        ))}
-      </CardContent>
-    </Card>
+          {index < responses.length - 1 && <Separator className="mt-4" />}
+        </div>
+      ))}
+      {responses.length === 0 && (
+        <div className="text-sm text-muted-foreground">No additional application details available.</div>
+      )}
+    </div>
   );
 };
