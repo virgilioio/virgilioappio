@@ -3674,6 +3674,10 @@ export type Database = {
         Args: { job_id_param: string; user_id_param?: string }
         Returns: boolean
       }
+      job_has_active_posting: {
+        Args: { job_id_param: string }
+        Returns: boolean
+      }
       load_invoice_payments: {
         Args: { invoice_id_param: string }
         Returns: {
