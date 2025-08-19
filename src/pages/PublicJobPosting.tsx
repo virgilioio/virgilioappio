@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { SafeHtml } from '@/components/ui/safe-html'
 import { VirgilioLogo } from '@/components/VirgilioLogo'
@@ -24,6 +25,9 @@ import { ParsingAnimation } from '@/components/ui/parsing-animation'
 import { ApplicationConfirmationDialog } from '@/components/candidates/ApplicationConfirmationDialog'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Clock, Shield } from 'lucide-react'
+import { useCoreFields } from '@/hooks/useCoreFields'
+import { CoreFieldsRenderer } from '@/components/forms/CoreFieldsRenderer'
+import { ApplicationFieldsRenderer } from '@/components/forms/ApplicationFieldsRenderer'
 
 type FieldType = 'text' | 'number' | 'email' | 'textarea' | 'select' | 'checkbox' | 'date' | 'file' | 'url'
 
@@ -56,20 +60,29 @@ interface SelectOption {
 export default function PublicJobPosting() {
   const { slug } = useParams<{ slug: string }>()
   const [posting, setPosting] = useState<Posting | null>(null)
-  const [fields, setFields] = useState<PostingField[]>([])
+  const [customFields, setCustomFields] = useState<PostingField[]>([])
   const [options, setOptions] = useState<Record<string, SelectOption[]>>({})
   const [loading, setLoading] = useState(true)
   const [scrolled, setScrolled] = useState(false)
   const [tab, setTab] = useState<'overview' | 'application'>('overview')
   const { toast } = useToast()
-  const [dragOverField, setDragOverField] = useState<string | null>(null)
-  const [uploadedFiles, setUploadedFiles] = useState<Record<string, File | null>>({})
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([])
   const { isParsing, parseResume } = useResumeParsing()
-  const [formValues, setFormValues] = useState<Record<string, string>>({})
+  const [coreFieldValues, setCoreFieldValues] = useState({
+    candidate_name: '',
+    email: '',
+    phone: '',
+    linkedin_url: '',
+    skills: '',
+    profile_summary: ''
+  })
+  const [customFieldResponses, setCustomFieldResponses] = useState<Record<string, any>>({})
   const { generateSkills, isGenerating, generatedSkills } = useSkillsGeneration()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showConfirmationDialog, setShowConfirmationDialog] = useState(false)
   const [organizationName, setOrganizationName] = useState<string>('')
+  
+  const { coreFields } = useCoreFields()
   // Canonical host redirect to app.virgilio.io (skip local dev)
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -127,8 +140,7 @@ export default function PublicJobPosting() {
         .order('display_order', { ascending: true })
 
       const fieldRows = (f || []) as PostingField[]
-      setFields(fieldRows)
-      setFormValues(Object.fromEntries(fieldRows.map((r) => [r.id, ''])))
+      setCustomFields(fieldRows)
 
       // Fetch select options for select fields
       const selectFieldIds = fieldRows.filter((r) => r.field_type === 'select').map((r) => r.id)
@@ -186,47 +198,22 @@ export default function PublicJobPosting() {
     return { first: parts.join(' '), last }
   }
 
-  const applyParsedToForm = (parsed: { name?: string; email?: string; phone?: string }) => {
-    console.log('🔄 Applying parsed data to form:', parsed)
-    const next = { ...formValues }
-    const idByName = (name: string) => fields.find((r) => (r as any).field_name === name)?.id
-    
-    if (parsed.name) {
-      const { first, last } = splitName(parsed.name)
-      const fid = idByName('first_name')
-      const lid = idByName('last_name')
-      console.log('📝 Setting parsed name:', { first, last, fid, lid })
-      if (fid) next[fid] = first
-      if (lid) next[lid] = last
-    }
-    if (parsed.email) {
-      const eid = idByName('email')
-      console.log('📧 Setting parsed email:', parsed.email, 'field id:', eid)
-      if (eid) next[eid] = parsed.email
-    }
-    if (parsed.phone) {
-      const pid = idByName('phone')
-      console.log('📞 Setting parsed phone:', parsed.phone, 'field id:', pid)
-      if (pid) next[pid] = parsed.phone
-    }
-    
-    console.log('✅ Updated form values with parsed data:', next)
-    setFormValues(next)
-  }
-
   const handleParsedFile = async (file: File) => {
     const parsed = await parseResume(file)
     if (parsed) {
-      applyParsedToForm(parsed as any)
+      console.log('🔄 Applying parsed data to core fields:', parsed)
+      
+      // Update core field values with parsed data
+      setCoreFieldValues(prev => ({
+        ...prev,
+        candidate_name: parsed.name || prev.candidate_name,
+        email: parsed.email || prev.email,
+        phone: parsed.phone || prev.phone,
+        profile_summary: parsed.profileSummary || prev.profile_summary
+      }))
+
       if (parsed.profileSummary) {
         try {
-          // Populate Profile Summary rich text field with sanitized HTML
-          const psField = fields.find((r) => (r as any).field_name === 'profile_summary')
-          if (psField) {
-            const html = sanitizeHtmlForEditor(markdownToHtml(parsed.profileSummary))
-            setFormValues((prev) => ({ ...prev, [psField.id]: html }))
-          }
-
           await generateSkills(parsed.profileSummary, parsed.name || 'Candidate', { context: 'candidate', desiredCount: 20, minCount: 12 })
         } catch {
           // Ignore generation errors; toast already handled in hook
@@ -322,50 +309,26 @@ export default function PublicJobPosting() {
   const handleSubmitApplication = async () => {
     if (!posting) return
     
-    // Validate required fields
-    const missingRequiredFields: string[] = []
-    const requiredFields = fields.filter(f => f.is_required)
-    
-    requiredFields.forEach(field => {
-      const value = formValues[field.id]
-      let isEmpty = false
-      
-      // Different validation logic based on field type
-      switch (field.field_type) {
-        case 'file':
-          isEmpty = !uploadedFiles[field.id]
-          break
-        case 'checkbox':
-          isEmpty = !value || value !== 'true'
-          break
-        case 'select':
-          isEmpty = !value || value.trim() === ''
-          break
-        default:
-          isEmpty = !value || value.trim() === ''
-      }
-      
-      if (isEmpty) {
-        missingRequiredFields.push(field.field_label)
-      }
-    })
+    // Validate core fields
+    const missingFields: string[] = []
+    if (!coreFieldValues.candidate_name.trim()) missingFields.push('Full Name')
+    if (!coreFieldValues.email.trim()) missingFields.push('Email')
     
     // Validate uploaded files
     const fileValidationErrors: string[] = []
-    for (const [fieldId, file] of Object.entries(uploadedFiles)) {
+    for (const file of uploadedFiles) {
       if (file) {
         const error = validateFile(file)
         if (error) {
-          const fieldLabel = fields.find(f => f.id === fieldId)?.field_label || 'File'
-          fileValidationErrors.push(`${fieldLabel}: ${error}`)
+          fileValidationErrors.push(`Resume: ${error}`)
         }
       }
     }
     
-    if (missingRequiredFields.length > 0) {
+    if (missingFields.length > 0) {
       toast({
         title: 'Missing required fields',
-        description: `Please fill in the following required fields: ${missingRequiredFields.join(', ')}`,
+        description: `Please fill in the following required fields: ${missingFields.join(', ')}`,
         variant: 'destructive'
       })
       return
@@ -383,88 +346,19 @@ export default function PublicJobPosting() {
     setIsSubmitting(true)
     try {
       console.log('🚀 Starting application submission')
-      console.log('📋 Current form values:', formValues)
-      
-      const findByName = (name: string) => {
-        const f = fields.find((r) => (r as any).field_name === name)
-        const value = f ? formValues[f.id] ?? '' : ''
-        console.log(`🔍 findByName('${name}'):`, { field: f?.field_label, fieldId: f?.id, value })
-        return value
-      }
-      const findByLabel = (label: RegExp) => {
-        const f = fields.find((r) => label.test(r.field_label))
-        const value = f ? formValues[f.id] ?? '' : ''
-        console.log(`🔍 findByLabel(${label}):`, { field: f?.field_label, fieldId: f?.id, value })
-        return value
+      console.log('📋 Core field values:', coreFieldValues)
+      console.log('📋 Custom field responses:', customFieldResponses)
+
+      // Prepare application data in the format expected by the edge function
+      const applicationData = {
+        ...coreFieldValues,
+        resume: uploadedFiles[0] || null,
+        custom_fields: customFieldResponses,
+        posting_id: posting.id
       }
 
-      const first = findByName('first_name') || findByLabel(/first\s*name/i)
-      const last = findByName('last_name') || findByLabel(/last\s*name/i)
-      const full = findByName('full_name') || findByLabel(/full\s*name|name/i)
-      const email = findByName('email') || findByLabel(/email/i)
-      const phone = findByName('phone') || findByLabel(/phone|mobile/i)
-      const linkedin = findByName('linkedin_url') || findByLabel(/linkedin/i)
-      const psField = fields.find((r) => (r as any).field_name === 'profile_summary' || /profile summary/i.test(r.field_label))
-      const rawSummary = psField ? (formValues[psField.id] ?? '') : ''
-      const profileSummary = sanitizeHtmlForEditor(rawSummary)
-
-      const candidateName = (full || `${first} ${last}`).trim() || 'Applicant'
-      
-      console.log('📊 Extracted field values:', {
-        first, last, full, email, phone, linkedin, candidateName
-      })
-
-      // Convert uploaded files to base64 for transmission
-      const filesToUpload: Record<string, any> = {}
-      for (const [fieldId, file] of Object.entries(uploadedFiles)) {
-        if (file) {
-          try {
-            const base64 = await new Promise<string>((resolve, reject) => {
-              const reader = new FileReader()
-              reader.onload = () => resolve(reader.result as string)
-              reader.onerror = reject
-              reader.readAsDataURL(file)
-            })
-            
-            filesToUpload[fieldId] = {
-              name: file.name,
-              type: file.type,
-              size: file.size,
-              data: base64
-            }
-          } catch (error) {
-            console.error('Error converting file to base64:', error)
-            toast({
-              title: 'File processing error', 
-              description: `Failed to process file: ${file.name}`,
-              variant: 'destructive'
-            })
-            return
-          }
-        }
-      }
-
-      const submissionPayload = {
-        postingId: posting.id,
-        jobId: posting.job_id,
-        fields: {
-          first_name: first,
-          last_name: last,
-          full_name: full,
-          email,
-          phone,
-          linkedin_url: linkedin,
-          profile_summary: profileSummary,
-          candidate_name: candidateName,
-        },
-        uploadedFiles: Object.keys(filesToUpload).length > 0 ? filesToUpload : undefined,
-        generatedSkills: generatedSkills.length > 0 ? generatedSkills : undefined
-      }
-      
-      console.log('📤 Submitting application payload:', submissionPayload)
-      
       const { data, error } = await supabase.functions.invoke('public-submit-application', {
-        body: submissionPayload
+        body: applicationData
       })
 
       // Check for application limit violations first
@@ -615,175 +509,273 @@ export default function PublicJobPosting() {
                     <CardHeader>
                       <CardTitle id="application-form">Application Form</CardTitle>
                     </CardHeader>
-                    <CardContent className="space-y-4">
-                      {fields.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">No application form fields configured yet.</p>
-                      ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                          {fields.map((f) => (
-                            <div
-                              key={f.id}
-                              style={{ gridColumn: `span ${f.column_span || 4} / span ${f.column_span || 4}` }}
-                            >
-                              <label className="text-sm font-medium">
-                                {f.field_label} {f.is_required && <Badge variant="secondary" className="ml-2">Required</Badge>}
-                              </label>
-                              <div className="mt-1">
-                                {f.field_type === 'text' && (
-                                  <Input
-                                    placeholder={f.placeholder_text || ''}
-                                    value={formValues[f.id] ?? ''}
-                                    onChange={(e) => setFormValues((prev) => ({ ...prev, [f.id]: e.target.value }))}
-                                  />
+                    <CardContent className="space-y-8">
+                      {/* Core Fields Section */}
+                      <div>
+                        <h3 className="text-lg font-semibold mb-4">Basic Information</h3>
+                        <div className="space-y-4">
+                          {/* Name Field */}
+                          <div>
+                            <label className="text-sm font-medium">
+                              Full Name <Badge variant="secondary" className="ml-2">Required</Badge>
+                            </label>
+                            <Input
+                              placeholder="Your full name"
+                              value={coreFieldValues.candidate_name}
+                              onChange={(e) => setCoreFieldValues(prev => ({ ...prev, candidate_name: e.target.value }))}
+                            />
+                          </div>
+                          
+                          {/* Email Field */}
+                          <div>
+                            <label className="text-sm font-medium">
+                              Email <Badge variant="secondary" className="ml-2">Required</Badge>
+                            </label>
+                            <Input
+                              type="email"
+                              placeholder="your.email@example.com"
+                              value={coreFieldValues.email}
+                              onChange={(e) => setCoreFieldValues(prev => ({ ...prev, email: e.target.value }))}
+                            />
+                          </div>
+                          
+                          {/* Phone Field */}
+                          <div>
+                            <label className="text-sm font-medium">Phone</label>
+                            <Input
+                              type="tel"
+                              placeholder="Your phone number"
+                              value={coreFieldValues.phone}
+                              onChange={(e) => setCoreFieldValues(prev => ({ ...prev, phone: e.target.value }))}
+                            />
+                          </div>
+                          
+                          {/* LinkedIn Field */}
+                          <div>
+                            <label className="text-sm font-medium">LinkedIn Profile</label>
+                            <Input
+                              type="url"
+                              placeholder="https://linkedin.com/in/yourprofile"
+                              value={coreFieldValues.linkedin_url}
+                              onChange={(e) => setCoreFieldValues(prev => ({ ...prev, linkedin_url: e.target.value }))}
+                            />
+                          </div>
+                          
+                          {/* Skills Field */}
+                          <div>
+                            <label className="text-sm font-medium">Skills</label>
+                            <Textarea
+                              placeholder="List your relevant skills"
+                              value={coreFieldValues.skills}
+                              onChange={(e) => setCoreFieldValues(prev => ({ ...prev, skills: e.target.value }))}
+                            />
+                          </div>
+                          
+                          {/* Profile Summary Field */}
+                          <div>
+                            <label className="text-sm font-medium">Profile Summary</label>
+                            <RichTextEditor
+                              value={coreFieldValues.profile_summary}
+                              onChange={(val) => setCoreFieldValues(prev => ({ ...prev, profile_summary: sanitizeHtml(val) }))}
+                              placeholder="Write a concise profile summary..."
+                              minHeight="180px"
+                            />
+                          </div>
+                          
+                          {/* Resume Upload Field */}
+                          <div>
+                            <label className="text-sm font-medium">Resume</label>
+                            <div className="relative group mt-1">
+                              <div className="pointer-events-none absolute -inset-[2px] rounded-lg bg-gradient-to-r from-pastel-purple via-pastel-blue to-info blur-md transition-opacity duration-300 opacity-50 pulse" />
+                              <div
+                                className="relative border-2 border-dashed rounded-lg p-6 text-center transition-colors bg-pastel-purple/10 border-pastel-purple/70 hover:border-pastel-purple"
+                                onDrop={(e) => { 
+                                  e.preventDefault(); 
+                                  const file = e.dataTransfer.files?.[0]; 
+                                  if (file) { 
+                                    setUploadedFiles([file]); 
+                                    void handleParsedFile(file); 
+                                  } 
+                                }}
+                                onDragOver={(e) => e.preventDefault()}
+                                onDragLeave={(e) => e.preventDefault()}
+                                aria-busy={isParsing || isGenerating}
+                                aria-live="polite"
+                              >
+                                <input
+                                  id="resume-upload"
+                                  type="file"
+                                  className="hidden"
+                                  onChange={(e) => { 
+                                    const file = e.target.files?.[0] || null; 
+                                    setUploadedFiles(file ? [file] : []); 
+                                    if (file) { 
+                                      void handleParsedFile(file); 
+                                    } 
+                                    e.currentTarget.value = ''; 
+                                  }}
+                                  accept=".pdf,.doc,.docx,.txt,.rtf,.jpg,.jpeg,.png,.gif,.webp"
+                                />
+                                <Sparkles className="h-8 w-8 mx-auto text-pastel-purple-foreground mb-2" />
+                                <p className="text-sm text-text-secondary mb-2">Upload here, and watch some magic!</p>
+                                <p className="text-xs text-text-secondary mb-4">PDF, DOC, DOCX, TXT or images up to 15MB</p>
+                                <Button
+                                  type="button"
+                                  variant="default"
+                                  onClick={() => document.getElementById('resume-upload')?.click()}
+                                  disabled={isParsing || isGenerating}
+                                  className="gap-sm bg-pastel-purple text-pastel-purple-foreground border border-pastel-purple-foreground/30 hover:bg-pastel-purple/80 shadow-button"
+                                >
+                                  {(isParsing || isGenerating) ? (
+                                    <>
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                      {isParsing ? 'Parsing…' : 'Generating skills…'}
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Sparkles className="h-4 w-4" /> Choose File
+                                    </>
+                                  )}
+                                </Button>
+                                {uploadedFiles[0] && (
+                                  <p className="mt-3 text-xs text-text-secondary">Selected: {uploadedFiles[0].name}</p>
                                 )}
-                                {f.field_type === 'url' && (
-                                  <Input
-                                    type="url"
-                                    placeholder={f.placeholder_text || 'https://'}
-                                    value={formValues[f.id] ?? ''}
-                                    onChange={(e) => setFormValues((prev) => ({ ...prev, [f.id]: e.target.value }))}
-                                  />
-                                )}
-                                {f.field_type === 'email' && (
-                                  <Input
-                                    type="email"
-                                    placeholder={f.placeholder_text || ''}
-                                    value={formValues[f.id] ?? ''}
-                                    onChange={(e) => setFormValues((prev) => ({ ...prev, [f.id]: e.target.value }))}
-                                  />
-                                )}
-                                {f.field_type === 'number' && (
-                                  <Input
-                                    type="number"
-                                    placeholder={f.placeholder_text || ''}
-                                    value={formValues[f.id] ?? ''}
-                                    onChange={(e) => setFormValues((prev) => ({ ...prev, [f.id]: e.target.value }))}
-                                  />
-                                )}
-{f.field_type === 'textarea' && (
-  (f.field_name === 'profile_summary' || /profile summary/i.test(f.field_label)) ? (
-    <RichTextEditor
-      value={formValues[f.id] ?? ''}
-      onChange={(val) => setFormValues((prev) => ({ ...prev, [f.id]: sanitizeHtml(val) }))}
-      placeholder={f.placeholder_text || 'Write a concise profile summary...'}
-      minHeight="180px"
-    />
-  ) : (
-    <Textarea
-      placeholder={f.placeholder_text || ''}
-      rows={4}
-      value={formValues[f.id] ?? ''}
-      onChange={(e) => setFormValues((prev) => ({ ...prev, [f.id]: e.target.value }))}
-    />
-  )
-)}
-                                {f.field_type === 'checkbox' && (
-                                  <div className="flex items-center gap-2">
-                                    <Checkbox
-                                      checked={formValues[f.id] === 'true'}
-                                      onCheckedChange={(checked) => setFormValues((prev) => ({ ...prev, [f.id]: checked ? 'true' : 'false' }))}
+                                {(isParsing || isGenerating) && (
+                                  <div className="absolute inset-0 rounded-lg bg-background/60 backdrop-blur-sm flex flex-col items-center justify-center animate-fade-in">
+                                    <Loader2 className="h-6 w-6 text-pastel-purple-foreground animate-spin mb-2" />
+                                    <ParsingAnimation 
+                                      isActive={isParsing || isGenerating}
                                     />
-                                    <span className="text-sm text-muted-foreground">I acknowledge</span>
                                   </div>
                                 )}
-                                {f.field_type === 'select' && (
-                                  <Select
-                                    value={formValues[f.id] || ''}
-                                    onValueChange={(value) => setFormValues((prev) => ({ ...prev, [f.id]: value }))}
-                                  >
-                                    <SelectTrigger><SelectValue placeholder="Select an option" /></SelectTrigger>
-                                    <SelectContent>
-                                      {(options[f.id] || []).map((o) => (
-                                        <SelectItem key={o.id} value={o.option_value}>{o.option_label}</SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                )}
-                                {f.field_type === 'date' && (
-                                  <Input
-                                    type="date"
-                                    value={formValues[f.id] || ''}
-                                    onChange={(e) => setFormValues((prev) => ({ ...prev, [f.id]: e.target.value }))}
-                                  />
-                                )}
-{f.field_type === 'file' && (/resume/i.test(f.field_label) ? (
-  <div className="relative group">
-    <div className={`pointer-events-none absolute -inset-[2px] rounded-lg bg-gradient-to-r from-pastel-purple via-pastel-blue to-info blur-md transition-opacity duration-300 ${dragOverField === f.id ? 'opacity-80' : 'opacity-50'} pulse`} />
-    <div
-      className={`relative border-2 border-dashed rounded-lg p-6 text-center transition-colors bg-pastel-purple/10 ${dragOverField === f.id ? 'border-pastel-purple bg-pastel-purple/15' : 'border-pastel-purple/70 hover:border-pastel-purple'}`}
-      onDrop={(e) => { e.preventDefault(); setDragOverField(null); const file = e.dataTransfer.files?.[0]; if (file) { setUploadedFiles((prev) => ({ ...prev, [f.id]: file })); void handleParsedFile(file); } }}
-      onDragOver={(e) => { e.preventDefault(); setDragOverField(f.id); }}
-      onDragLeave={(e) => { e.preventDefault(); setDragOverField(null); }}
-      aria-busy={isParsing || isGenerating}
-      aria-live="polite"
-    >
-      <input
-        id={`file-${f.id}`}
-        type="file"
-        className="hidden"
-        onChange={(e) => { const file = e.target.files?.[0] || null; setUploadedFiles((prev) => ({ ...prev, [f.id]: file })); if (file) { void handleParsedFile(file as File) }; e.currentTarget.value = '' }}
-        accept=".pdf,.doc,.docx,.txt,.rtf,.jpg,.jpeg,.png,.gif,.webp"
-      />
-      <Sparkles className="h-8 w-8 mx-auto text-pastel-purple-foreground mb-2" />
-      <p className="text-sm text-text-secondary mb-2">Upload here, and watch some magic!</p>
-      <p className="text-xs text-text-secondary mb-4">PDF, DOC, DOCX, TXT or images up to 15MB</p>
-      <Button
-        type="button"
-        variant="default"
-        onClick={() => document.getElementById(`file-${f.id}`)?.click()}
-        disabled={isParsing || isGenerating}
-        className="gap-sm bg-pastel-purple text-pastel-purple-foreground border border-pastel-purple-foreground/30 hover:bg-pastel-purple/80 shadow-button"
-      >
-        {(isParsing || isGenerating) ? (
-          <>
-            <Loader2 className="h-4 w-4 animate-spin" />
-            {isParsing ? 'Parsing…' : 'Generating skills…'}
-          </>
-        ) : (
-          <>
-            <Sparkles className="h-4 w-4" /> Choose File
-          </>
-        )}
-      </Button>
-      {uploadedFiles[f.id] && (
-        <p className="mt-3 text-xs text-text-secondary">Selected: {uploadedFiles[f.id]?.name}</p>
-      )}
-      {(isParsing || isGenerating) && (
-        <div className="absolute inset-0 rounded-lg bg-background/60 backdrop-blur-sm flex flex-col items-center justify-center animate-fade-in">
-          <Loader2 className="h-6 w-6 text-pastel-purple-foreground animate-spin mb-2" />
-          <ParsingAnimation 
-            isActive={isParsing || isGenerating}
-          />
-        </div>
-      )}
-    </div>
-    {generatedSkills.length > 0 && (
-      <div className="mt-4 flex flex-wrap gap-2">
-        {generatedSkills.slice(0, 30).map((s, idx) => (
-          <Badge key={`${s.name}-${idx}`} variant={getSkillColor(s.name)}>
-            {s.name}
-          </Badge>
-        ))}
-      </div>
-    )}
-  </div>
-) : (
-  <Input type="file" />
-))}
                               </div>
+                              {generatedSkills.length > 0 && (
+                                <div className="mt-4 flex flex-wrap gap-2">
+                                  {generatedSkills.slice(0, 30).map((s, idx) => (
+                                    <Badge key={`${s.name}-${idx}`} variant={getSkillColor(s.name)}>
+                                      {s.name}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              )}
                             </div>
-                          ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Custom Fields Section */}
+                      {customFields.length > 0 && (
+                        <div>
+                          <h3 className="text-lg font-semibold mb-4">Additional Questions</h3>
+                          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            {customFields.map((field) => (
+                              <div
+                                key={field.id}
+                                style={{ gridColumn: `span ${field.column_span || 4} / span ${field.column_span || 4}` }}
+                              >
+                                <Label className="text-sm font-medium">
+                                  {field.field_label}
+                                  {field.is_required && <Badge variant="secondary" className="ml-2">Required</Badge>}
+                                </Label>
+                                <div className="mt-1">
+                                  {field.field_type === 'text' && (
+                                    <Input
+                                      placeholder={field.placeholder_text || ''}
+                                      value={customFieldResponses[field.id] || ''}
+                                      onChange={(e) => setCustomFieldResponses(prev => ({ ...prev, [field.id]: e.target.value }))}
+                                    />
+                                  )}
+                                  {field.field_type === 'email' && (
+                                    <Input
+                                      type="email"
+                                      placeholder={field.placeholder_text || ''}
+                                      value={customFieldResponses[field.id] || ''}
+                                      onChange={(e) => setCustomFieldResponses(prev => ({ ...prev, [field.id]: e.target.value }))}
+                                    />
+                                  )}
+                                  {field.field_type === 'number' && (
+                                    <Input
+                                      type="number"
+                                      placeholder={field.placeholder_text || ''}
+                                      value={customFieldResponses[field.id] || ''}
+                                      onChange={(e) => setCustomFieldResponses(prev => ({ ...prev, [field.id]: e.target.value }))}
+                                    />
+                                  )}
+                                  {field.field_type === 'url' && (
+                                    <Input
+                                      type="url"
+                                      placeholder={field.placeholder_text || 'https://'}
+                                      value={customFieldResponses[field.id] || ''}
+                                      onChange={(e) => setCustomFieldResponses(prev => ({ ...prev, [field.id]: e.target.value }))}
+                                    />
+                                  )}
+                                  {field.field_type === 'textarea' && (
+                                    <Textarea
+                                      placeholder={field.placeholder_text || ''}
+                                      rows={4}
+                                      value={customFieldResponses[field.id] || ''}
+                                      onChange={(e) => setCustomFieldResponses(prev => ({ ...prev, [field.id]: e.target.value }))}
+                                    />
+                                  )}
+                                  {field.field_type === 'select' && (
+                                    <Select
+                                      value={customFieldResponses[field.id] || ''}
+                                      onValueChange={(value) => setCustomFieldResponses(prev => ({ ...prev, [field.id]: value }))}
+                                    >
+                                      <SelectTrigger><SelectValue placeholder="Select an option" /></SelectTrigger>
+                                      <SelectContent>
+                                        {(options[field.id] || []).map((option) => (
+                                          <SelectItem key={option.id} value={option.option_value}>
+                                            {option.option_label}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  )}
+                                  {field.field_type === 'checkbox' && (
+                                    <div className="flex items-center gap-2">
+                                      <Checkbox
+                                        checked={customFieldResponses[field.id] === 'true'}
+                                        onCheckedChange={(checked) => setCustomFieldResponses(prev => ({ ...prev, [field.id]: checked ? 'true' : 'false' }))}
+                                      />
+                                      <span className="text-sm text-muted-foreground">I acknowledge</span>
+                                    </div>
+                                  )}
+                                  {field.field_type === 'date' && (
+                                    <Input
+                                      type="date"
+                                      value={customFieldResponses[field.id] || ''}
+                                      onChange={(e) => setCustomFieldResponses(prev => ({ ...prev, [field.id]: e.target.value }))}
+                                    />
+                                  )}
+                                  {field.field_type === 'file' && (
+                                    <Input type="file" />
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       )}
-<div className="pt-4">
-  <Button type="button" onClick={handleSubmitApplication} className="w-full sm:w-auto" aria-label="Submit application" disabled={isSubmitting || isParsing || isGenerating}>
-    {isSubmitting ? (
-      <span className="inline-flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" />Submitting…</span>
-    ) : (
-      'Submit Application'
-    )}
-  </Button>
-</div>
+
+                      <div className="pt-4">
+                        <Button 
+                          type="button" 
+                          onClick={handleSubmitApplication} 
+                          className="w-full sm:w-auto" 
+                          aria-label="Submit application" 
+                          disabled={isSubmitting || isParsing || isGenerating}
+                        >
+                          {isSubmitting ? (
+                            <span className="inline-flex items-center gap-2">
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                              Submitting…
+                            </span>
+                          ) : (
+                            'Submit Application'
+                          )}
+                        </Button>
+                      </div>
                     </CardContent>
                   </Card>
                 </section>
