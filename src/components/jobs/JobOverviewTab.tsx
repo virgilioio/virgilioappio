@@ -164,6 +164,15 @@ export function JobOverviewTab({ job, onEdit }: JobOverviewTabProps) {
               ? ((job as any).auto_generated_skills as any[]).map((s) => typeof s === 'string' ? s : s?.name).filter(Boolean)
               : []
             const skills = job.skills && job.skills.length > 0 ? job.skills : aiSkills
+            
+            // Debug logging for skills visibility
+            console.log('Job skills data:', {
+              skills: job.skills,
+              auto_generated_skills: (job as any)?.auto_generated_skills,
+              aiSkills,
+              finalSkills: skills
+            })
+            
             return skills && skills.length > 0 ? (
               <div className="mb-8">
                 <h3 className="text-lg font-poppins font-semibold text-text-primary mb-4 flex items-center gap-2">
@@ -176,7 +185,18 @@ export function JobOverviewTab({ job, onEdit }: JobOverviewTabProps) {
                   ))}
                 </div>
               </div>
-            ) : null
+            ) : (
+              // Show placeholder when no skills are found
+              <div className="mb-8">
+                <h3 className="text-lg font-poppins font-semibold text-text-primary mb-4 flex items-center gap-2">
+                  <Briefcase className="h-5 w-5 text-accent" />
+                  Required Skills
+                </h3>
+                <div className="text-sm text-text-secondary">
+                  No skills specified for this position
+                </div>
+              </div>
+            )
           })()}
 
           {/* Job Description */}
