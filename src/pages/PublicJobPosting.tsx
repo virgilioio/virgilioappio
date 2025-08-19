@@ -203,13 +203,22 @@ export default function PublicJobPosting() {
       console.log('🔄 Applying parsed data to core fields:', parsed)
       
       // Update core field values with parsed data
-      setCoreFieldValues(prev => ({
-        ...prev,
-        candidate_name: parsed.name || prev.candidate_name,
-        email: parsed.email || prev.email,
-        phone: parsed.phone || prev.phone,
-        profile_summary: parsed.profileSummary || prev.profile_summary
-      }))
+      setCoreFieldValues(prev => {
+        // Convert markdown profile summary to HTML
+        let profileSummary = prev.profile_summary
+        if (parsed.profileSummary) {
+          const html = markdownToHtml(parsed.profileSummary)
+          profileSummary = sanitizeHtmlForEditor(html)
+        }
+        
+        return {
+          ...prev,
+          candidate_name: parsed.name || prev.candidate_name,
+          email: parsed.email || prev.email,
+          phone: parsed.phone || prev.phone,
+          profile_summary: profileSummary
+        }
+      })
 
       if (parsed.profileSummary) {
         try {
@@ -646,7 +655,7 @@ export default function PublicJobPosting() {
                             <label className="text-sm font-medium">Profile Summary</label>
                             <RichTextEditor
                               value={coreFieldValues.profile_summary}
-                              onChange={(val) => setCoreFieldValues(prev => ({ ...prev, profile_summary: sanitizeHtml(val) }))}
+                              onChange={(val) => setCoreFieldValues(prev => ({ ...prev, profile_summary: val }))}
                               placeholder="Write a concise profile summary..."
                               minHeight="180px"
                             />
