@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
@@ -108,11 +107,19 @@ export function useMembers() {
       const membersWithDetails = await Promise.all(membersData.map(async (member) => {
         const profile = profilesMap[member.user_id || '']
         
-        // Enhanced email resolution with fallback
-        let user_email = profile?.email || member.invited_email || null
+        // Enhanced email resolution with better fallback chain
+        let user_email = null
         
-        // Fallback: If we still have no email but have a user_id, try RPC call
-        if (!user_email && member.user_id) {
+        // 1. Try profile email first (most reliable)
+        if (profile?.email) {
+          user_email = profile.email
+        }
+        // 2. Fall back to invited_email (preserved during activation now)
+        else if (member.invited_email) {
+          user_email = member.invited_email
+        }
+        // 3. If we have user_id but no profile, try the RPC call
+        else if (member.user_id) {
           try {
             console.log(`Fetching fallback email for member ${member.id} with user_id ${member.user_id}`)
             const { data: memberInfo } = await supabase.rpc('get_member_display_info', {
@@ -196,7 +203,9 @@ export function useMembers() {
         throw new Error('No valid invitation token found')
       }
 
-      return `https://app.virgilio.io/accept-invite/${member.invite_token}`
+      // Use dynamic base URL - use window.location.origin for current domain
+      const baseUrl = window.location.origin
+      return `${baseUrl}/accept-invite/${member.invite_token}`
     } catch (error) {
       console.error('Failed to get invite URL:', error)
       throw error

@@ -1,142 +1,150 @@
 
-import { useState, useEffect } from 'react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { useState } from 'react'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader } from '@/components/ui/card'
-import { Search, Edit, UserMinus, Mail, Plus, ChevronLeft, ChevronRight, MoreHorizontal, Users, Link, Copy, Trash2 } from 'lucide-react'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { Member, useMembers } from '@/hooks/useMembers'
-import { usePermissions } from '@/hooks/usePermissions'
-import { useOrganizations } from '@/hooks/useOrganizations'
-import { MemberOrgIndicator } from './MemberOrgIndicator'
-import { copyToClipboard } from '@/utils/clipboard'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { toast } from '@/hooks/use-toast'
+import { Member } from '@/hooks/useMembers'
+import { MoreVertical, Plus, Send, UserCheck, UserX, Trash2, Copy } from 'lucide-react'
 
 interface MembersTableProps {
   members: Member[]
   isLoading: boolean
   onEdit: (member: Member) => void
   onDeactivate: (id: string) => void
-  onResendInvitation: (id: string, email: string) => void
+  onResendInvitation: (memberId: string, email: string) => void
   onDeleteUser: (member: Member) => void
-  onAddNew?: () => void
+  onAddNew: () => void
 }
 
-export function MembersTable({ 
-  members, 
-  isLoading, 
-  onEdit, 
-  onDeactivate, 
+export function MembersTable({
+  members,
+  isLoading,
+  onEdit,
+  onDeactivate,
   onResendInvitation,
   onDeleteUser,
   onAddNew
 }: MembersTableProps) {
-  const [searchTerm, setSearchTerm] = useState('')
-  const [statusFilter, setStatusFilter] = useState<string>('all')
-  const [roleFilter, setRoleFilter] = useState<string>('all')
-  const [organizationFilter, setOrganizationFilter] = useState<string>('all')
-  const permissions = usePermissions()
-  const { organizations } = useOrganizations()
-  const { getInviteUrl } = useMembers()
-  
-  // Pagination state
-  const [currentPage, setCurrentPage] = useState(1)
-  const itemsPerPage = 10
+  const [copyingInvite, setCopyingInvite] = useState<string | null>(null)
 
-  const getStatusBadgeVariant = (status: string) => {
+  const getRoleColor = (role: string) => {
+    switch (role) {
+      case 'admin':
+        return 'bg-destructive/10 text-destructive'
+      case 'recruiter':
+        return 'bg-primary/10 text-primary'
+      case 'customer_success':
+        return 'bg-accent/10 text-accent'
+      case 'billing':
+        return 'bg-secondary/10 text-secondary'
+      case 'sales':
+        return 'bg-success/10 text-success'
+      case 'client':
+        return 'bg-warning/10 text-warning'
+      default:
+        return 'bg-muted/10 text-muted-foreground'
+    }
+  }
+
+  const getStatusColor = (status: string) => {
     switch (status) {
       case 'active':
-        return 'default'
+        return 'bg-success/10 text-success'
       case 'invited':
-        return 'secondary'
+        return 'bg-warning/10 text-warning'
       case 'inactive':
-        return 'destructive'
+        return 'bg-muted/10 text-muted-foreground'
       default:
-        return 'outline'
+        return 'bg-muted/10 text-muted-foreground'
     }
   }
 
-  const filteredMembers = members.filter(member => {
-    const email = member.invited_email || member.user_email || ''
-    const firstName = member.user_first_name || ''
-    const lastName = member.user_last_name || ''
-    const fullName = `${firstName} ${lastName}`.trim()
-    
-    const matchesSearch = email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         fullName.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesStatus = statusFilter === 'all' || member.user_status === statusFilter
-    const matchesRole = roleFilter === 'all' || member.member_role === roleFilter
-    const matchesOrganization = organizationFilter === 'all' || member.organization_id === organizationFilter
-    
-    return matchesSearch && matchesStatus && matchesRole && matchesOrganization
-  })
-
-  // Calculate pagination
-  const totalPages = Math.ceil(filteredMembers.length / itemsPerPage)
-  const startIndex = (currentPage - 1) * itemsPerPage
-  const endIndex = startIndex + itemsPerPage
-  const paginatedMembers = filteredMembers.slice(startIndex, endIndex)
-
-  // Reset pagination when filters change
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [searchTerm, statusFilter, roleFilter, organizationFilter])
-
-  // Generate page numbers for pagination
-  const getPageNumbers = () => {
-    const pages: (number | 'ellipsis')[] = []
-    
-    if (totalPages <= 7) {
-      // Show all pages if 7 or fewer
-      for (let i = 1; i <= totalPages; i++) {
-        pages.push(i)
-      }
-    } else {
-      // Show first page
-      pages.push(1)
-      
-      if (currentPage > 4) {
-        pages.push('ellipsis')
-      }
-      
-      // Show pages around current page
-      const start = Math.max(2, currentPage - 1)
-      const end = Math.min(totalPages - 1, currentPage + 1)
-      
-      for (let i = start; i <= end; i++) {
-        pages.push(i)
-      }
-      
-      if (currentPage < totalPages - 3) {
-        pages.push('ellipsis')
-      }
-      
-      // Show last page
-      if (totalPages > 1) {
-        pages.push(totalPages)
-      }
+  const getDisplayName = (member: Member) => {
+    if (member.user_first_name && member.user_last_name) {
+      return `${member.user_first_name} ${member.user_last_name}`
     }
-    
-    return pages
+    if (member.user_first_name) {
+      return member.user_first_name
+    }
+    return member.user_email || member.invited_email || 'Unknown User'
   }
 
-  const handleCopyInviteLink = async (memberId: string) => {
+  const getDisplayEmail = (member: Member) => {
+    // Show email even for active users now (since we preserve invited_email)
+    return member.user_email || member.invited_email || 'No email available'
+  }
+
+  const copyInviteLink = async (memberId: string) => {
+    if (!window.location) return
+    
+    setCopyingInvite(memberId)
     try {
-      const inviteUrl = await getInviteUrl(memberId)
-      copyToClipboard(inviteUrl, 'Invitation link copied!')
+      // Generate invite URL using current domain
+      const baseUrl = window.location.origin
+      const inviteUrl = `${baseUrl}/accept-invite/${memberId}`
+      
+      await navigator.clipboard.writeText(inviteUrl)
+      toast({
+        title: 'Success',
+        description: 'Invitation link copied to clipboard'
+      })
     } catch (error) {
       console.error('Failed to copy invite link:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to copy invitation link',
+        variant: 'destructive'
+      })
+    } finally {
+      setCopyingInvite(null)
+    }
+  }
+
+  const handleResendInvitation = async (member: Member) => {
+    const email = member.user_email || member.invited_email
+    if (!email) {
+      toast({
+        title: 'Error',
+        description: 'No email address found for this member',
+        variant: 'destructive'
+      })
+      return
+    }
+    
+    try {
+      await onResendInvitation(member.id, email)
+    } catch (error) {
+      console.error('Failed to resend invitation:', error)
     }
   }
 
   if (isLoading) {
     return (
       <Card>
-        <CardContent className="py-12">
-          <div className="flex items-center justify-center">
-            <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin"></div>
+        <CardHeader>
+          <div className="flex justify-between items-center">
+            <CardTitle>Team Members</CardTitle>
+            <Skeleton className="h-10 w-32" />
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {[...Array(5)].map((_, i) => (
+              <div key={i} className="flex items-center space-x-4">
+                <Skeleton className="h-10 w-10 rounded-full" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-4 w-[200px]" />
+                  <Skeleton className="h-3 w-[150px]" />
+                </div>
+                <Skeleton className="h-6 w-16" />
+                <Skeleton className="h-6 w-16" />
+                <Skeleton className="h-8 w-8" />
+              </div>
+            ))}
           </div>
         </CardContent>
       </Card>
@@ -146,307 +154,139 @@ export function MembersTable({
   return (
     <Card>
       <CardHeader>
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search members..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-          
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-full sm:w-[150px]">
-              <SelectValue placeholder="Filter by status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="invited">Invited</SelectItem>
-              <SelectItem value="inactive">Inactive</SelectItem>
-            </SelectContent>
-          </Select>
-          
-          <Select value={roleFilter} onValueChange={setRoleFilter}>
-            <SelectTrigger className="w-full sm:w-[150px]">
-              <SelectValue placeholder="Filter by role" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Roles</SelectItem>
-              <SelectItem value="admin">Admin</SelectItem>
-              <SelectItem value="recruiter">Recruiter</SelectItem>
-              <SelectItem value="client">Client</SelectItem>
-              <SelectItem value="sales">Sales</SelectItem>
-              <SelectItem value="billing">Billing</SelectItem>
-              <SelectItem value="customer_success">Customer Success</SelectItem>
-            </SelectContent>
-          </Select>
-
-          {/* Organization Filter - Only visible to platform admins */}
-          {permissions.isPlatformAdmin && (
-            <Select value={organizationFilter} onValueChange={setOrganizationFilter}>
-              <SelectTrigger className="w-full sm:w-[180px]">
-                <SelectValue placeholder="Filter by organization" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Organizations</SelectItem>
-                {organizations
-                  .sort((a, b) => a.name.localeCompare(b.name))
-                  .map((org) => (
-                    <SelectItem key={org.id} value={org.id}>
-                      {org.name}
-                    </SelectItem>
-                  ))
-                }
-              </SelectContent>
-            </Select>
-          )}
-
-          {permissions.canManageMembers && onAddNew && (
-            <Button onClick={onAddNew} className="gap-2 whitespace-nowrap">
-              <Plus className="h-4 w-4" />
-              Add Member
-            </Button>
-          )}
+        <div className="flex justify-between items-center">
+          <CardTitle>Team Members</CardTitle>
+          <Button onClick={onAddNew} className="gap-2">
+            <Plus className="h-4 w-4" />
+            Add Member
+          </Button>
         </div>
       </CardHeader>
-
       <CardContent>
-        {filteredMembers.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground">
-            {members.length === 0 ? 'No team members found' : 'No members match your filters'}
+        {members.length === 0 ? (
+          <div className="text-center py-8">
+            <p className="text-muted-foreground mb-4">No team members found</p>
+            <Button onClick={onAddNew} variant="outline">
+              Add your first team member
+            </Button>
           </div>
         ) : (
-          <>
-            <div className="border rounded-lg overflow-hidden">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Member</TableHead>
-                    <TableHead>Organization</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Joined</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {paginatedMembers.map((member) => {
-                    const firstName = member.user_first_name || ''
-                    const lastName = member.user_last_name || ''
-                    const fullName = `${firstName} ${lastName}`.trim()
-                    const displayName = fullName || member.invited_email
-                    
-                    return (
-                      <TableRow key={member.id} interactive onClick={() => onEdit(member)}>
-                        <TableCell className="font-medium">
-                          <div>
-                            <div>{displayName}</div>
-                            {fullName && member.invited_email && (
-                              <div className="text-sm text-muted-foreground">{member.invited_email}</div>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {member.organization_name && (
-                            <MemberOrgIndicator 
-                              organizationName={member.organization_name}
-                              currentUserOrgId={member.organization_id}
-                            />
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{member.member_role}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={getStatusBadgeVariant(member.user_status)}>
-                            {member.user_status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{new Date(member.created_at).toLocaleDateString()}</TableCell>
-                        <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                className="h-8 w-8 p-0"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-48">
-                              {permissions.canManageMembers && (
-                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(member); }}>
-                                  <Edit className="h-4 w-4 mr-2" />
-                                  Edit Member
-                                </DropdownMenuItem>
-                              )}
-                              {member.user_status === 'invited' && permissions.canManageMembers && (
-                                <>
-                                  <DropdownMenuItem onClick={(e) => { 
-                                    e.stopPropagation(); 
-                                    handleCopyInviteLink(member.id); 
-                                  }}>
-                                    <Copy className="h-4 w-4 mr-2" />
-                                    Copy Invite Link
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={(e) => { 
-                                    e.stopPropagation(); 
-                                    onResendInvitation(member.id, member.invited_email || ''); 
-                                  }}>
-                                    <Mail className="h-4 w-4 mr-2" />
-                                    Resend Invitation
-                                  </DropdownMenuItem>
-                                </>
-                              )}
-                              {permissions.canManageMembers && member.user_status !== 'inactive' && (
-                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onDeactivate(member.id); }}>
-                                  <UserMinus className="h-4 w-4 mr-2" />
-                                  Deactivate Member
-                                </DropdownMenuItem>
-                              )}
-                              {permissions.canManageMembers && member.user_status === 'inactive' && (
-                                <DropdownMenuItem 
-                                  onClick={(e) => { e.stopPropagation(); onDeleteUser(member); }}
-                                  className="text-destructive focus:text-destructive"
-                                >
-                                  <Trash2 className="h-4 w-4 mr-2" />
-                                  Delete User
-                                </DropdownMenuItem>
-                              )}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    )
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-
-            {/* Beautiful Enhanced Pagination Controls */}
-            {totalPages > 1 && (
-              <div className="mt-8 space-y-6">
-                {/* Results Summary Card */}
-                <div className="flex justify-center">
-                  <div className="inline-flex items-center gap-2 px-4 py-2 bg-surface-secondary/50 border border-border/50 rounded-brand text-sm text-text-secondary backdrop-blur-sm">
-                    <Users className="h-4 w-4 opacity-60" />
-                    <span className="font-medium">
-                      Showing {startIndex + 1}-{Math.min(endIndex, filteredMembers.length)} of {filteredMembers.length} members
-                    </span>
-                  </div>
-                </div>
-                
-                {/* Enhanced Pagination Navigation */}
-                <div className="flex justify-center">
-                  <div className="inline-flex items-center bg-surface-primary border border-border/80 rounded-brand shadow-sm p-1 gap-1">
-                    {/* Previous Button */}
-                    <button
-                      onClick={() => currentPage > 1 && setCurrentPage(currentPage - 1)}
-                      disabled={currentPage === 1}
-                      className={`
-                        inline-flex items-center gap-2 px-3 py-2 rounded-brand text-sm font-medium transition-all duration-200 ease-out
-                        ${currentPage === 1 
-                          ? 'text-text-tertiary cursor-not-allowed opacity-50' 
-                          : 'text-text-secondary hover:text-text-primary hover:bg-surface-secondary hover:-translate-y-0.5 hover:shadow-sm active:scale-95'
-                        }
-                      `}
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                      <span className="hidden sm:inline">Previous</span>
-                    </button>
-
-                    {/* Page Numbers */}
-                    <div className="flex items-center gap-1 px-2">
-                      {getPageNumbers().map((page, index) => (
-                        <div key={index}>
-                          {page === 'ellipsis' ? (
-                            <div className="flex items-center justify-center w-8 h-8 text-text-tertiary">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </div>
-                          ) : (
-                            <button
-                              onClick={() => setCurrentPage(page)}
-                              className={`
-                                w-8 h-8 rounded-brand text-sm font-medium transition-all duration-200 ease-out
-                                ${currentPage === page
-                                  ? 'bg-accent text-accent-foreground shadow-sm scale-105 font-semibold'
-                                  : 'text-text-secondary hover:text-text-primary hover:bg-surface-secondary hover:-translate-y-0.5 hover:shadow-sm active:scale-95'
-                                }
-                              `}
-                            >
-                              {page}
-                            </button>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Next Button */}
-                    <button
-                      onClick={() => currentPage < totalPages && setCurrentPage(currentPage + 1)}
-                      disabled={currentPage === totalPages}
-                      className={`
-                        inline-flex items-center gap-2 px-3 py-2 rounded-brand text-sm font-medium transition-all duration-200 ease-out
-                        ${currentPage === totalPages 
-                          ? 'text-text-tertiary cursor-not-allowed opacity-50' 
-                          : 'text-text-secondary hover:text-text-primary hover:bg-surface-secondary hover:-translate-y-0.5 hover:shadow-sm active:scale-95'
-                        }
-                      `}
-                    >
-                      <span className="hidden sm:inline">Next</span>
-                      <ChevronRight className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Mobile Simplified Pagination */}
-                <div className="sm:hidden flex justify-center">
-                  <div className="inline-flex items-center gap-4 px-4 py-2 bg-surface-secondary/30 border border-border/50 rounded-brand backdrop-blur-sm">
-                    <button
-                      onClick={() => currentPage > 1 && setCurrentPage(currentPage - 1)}
-                      disabled={currentPage === 1}
-                      className={`
-                        p-2 rounded-brand transition-all duration-200
-                        ${currentPage === 1 
-                          ? 'text-text-tertiary cursor-not-allowed opacity-50' 
-                          : 'text-text-secondary hover:text-text-primary hover:bg-surface-secondary hover:scale-105 active:scale-95'
-                        }
-                      `}
-                    >
-                      <ChevronLeft className="h-5 w-5" />
-                    </button>
-                    
-                    <div className="flex items-center gap-2 text-sm">
-                      <span className="text-text-secondary">Page</span>
-                      <span className="font-medium text-text-primary bg-accent/20 px-2 py-1 rounded-brand">
-                        {currentPage}
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Organization</TableHead>
+                  <TableHead className="w-[50px]"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {members.map((member) => (
+                  <TableRow key={member.id}>
+                    <TableCell className="font-medium">
+                      {getDisplayName(member)}
+                    </TableCell>
+                    <TableCell>
+                      <span className={member.user_status === 'invited' ? 'text-muted-foreground italic' : ''}>
+                        {getDisplayEmail(member)}
+                        {member.user_status === 'invited' && (
+                          <span className="ml-2 text-xs text-muted-foreground">(pending)</span>
+                        )}
                       </span>
-                      <span className="text-text-secondary">of {totalPages}</span>
-                    </div>
-                    
-                    <button
-                      onClick={() => currentPage < totalPages && setCurrentPage(currentPage + 1)}
-                      disabled={currentPage === totalPages}
-                      className={`
-                        p-2 rounded-brand transition-all duration-200
-                        ${currentPage === totalPages 
-                          ? 'text-text-tertiary cursor-not-allowed opacity-50' 
-                          : 'text-text-secondary hover:text-text-primary hover:bg-surface-secondary hover:scale-105 active:scale-95'
-                        }
-                      `}
-                    >
-                      <ChevronRight className="h-5 w-5" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </>
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={getRoleColor(member.member_role)}>
+                        {member.member_role.replace('_', ' ')}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={getStatusColor(member.user_status)}>
+                        {member.user_status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm text-muted-foreground">
+                        {member.organization_name || 'Unknown'}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => onEdit(member)}>
+                            Edit Member
+                          </DropdownMenuItem>
+                          
+                          {member.user_status === 'invited' && (
+                            <>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem 
+                                onClick={() => handleResendInvitation(member)}
+                                className="gap-2"
+                              >
+                                <Send className="h-4 w-4" />
+                                Resend Invitation
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => copyInviteLink(member.id)}
+                                disabled={copyingInvite === member.id}
+                                className="gap-2"
+                              >
+                                <Copy className="h-4 w-4" />
+                                {copyingInvite === member.id ? 'Copying...' : 'Copy Invite Link'}
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                          
+                          {member.user_status === 'active' && (
+                            <>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem 
+                                onClick={() => onDeactivate(member.id)}
+                                className="gap-2"
+                              >
+                                <UserX className="h-4 w-4" />
+                                Deactivate Member
+                              </DropdownMenuItem>
+                            </>
+                          )}
+                          
+                          {member.user_status === 'inactive' && (
+                            <>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem 
+                                onClick={() => onEdit(member)}
+                                className="gap-2"
+                              >
+                                <UserCheck className="h-4 w-4" />
+                                Reactivate Member
+                              </DropdownMenuItem>
+                            </>
+                          )}
+
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem 
+                            onClick={() => onDeleteUser(member)}
+                            className="gap-2 text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            Delete User
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         )}
       </CardContent>
     </Card>
