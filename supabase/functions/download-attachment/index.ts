@@ -1,21 +1,40 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0'
-import { createSecureCorsHeaders, handleSecureCorsPreFlight } from '../../utils/createSecureEdgeFunction.ts'
 
 interface DownloadRequest {
   attachmentId: string
 }
 
-const corsHeaders = createSecureCorsHeaders()
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Credentials': 'true'
+}
 
 Deno.serve(async (req) => {
   try {
+    console.log(`Download attachment request: ${req.method} ${req.url}`)
+
     // Handle CORS preflight requests
-    const corsResponse = handleSecureCorsPreFlight(req, corsHeaders)
-    if (corsResponse) return corsResponse
+    if (req.method === 'OPTIONS') {
+      return new Response(null, { 
+        status: 200, 
+        headers: corsHeaders 
+      })
+    }
 
     if (req.method !== 'POST') {
       return new Response('Method not allowed', { 
         status: 405, 
+        headers: corsHeaders 
+      })
+    }
+
+    // Get the JWT token from the request
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) {
+      return new Response('Unauthorized - missing token', { 
+        status: 401, 
         headers: corsHeaders 
       })
     }
@@ -30,18 +49,25 @@ Deno.serve(async (req) => {
       })
     }
 
-    // Create Supabase client
+    // Create Supabase client with the user's token for RLS
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!
     
-    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       auth: {
         autoRefreshToken: false,
         persistSession: false
+      },
+      global: {
+        headers: {
+          Authorization: authHeader
+        }
       }
     })
 
-    // Get attachment details from database
+    console.log(`Looking for attachment: ${attachmentId}`)
+
+    // Get attachment details from database (RLS will handle permissions)
     const { data: attachment, error: attachmentError } = await supabase
       .from('candidate_attachments')
       .select('file_url, file_name, file_type')
@@ -50,37 +76,39 @@ Deno.serve(async (req) => {
 
     if (attachmentError || !attachment) {
       console.error('Failed to fetch attachment:', attachmentError)
-      return new Response('Attachment not found', { 
+      return new Response('Attachment not found or access denied', { 
         status: 404, 
         headers: corsHeaders 
       })
     }
 
-    // Extract bucket and file path from file_url
-    const urlParts = attachment.file_url.split('/')
-    const bucketIndex = urlParts.findIndex(part => part === 'candidate-attachments')
-    
-    if (bucketIndex === -1 || bucketIndex >= urlParts.length - 1) {
-      return new Response('Invalid file URL format', { 
-        status: 400, 
-        headers: corsHeaders 
-      })
-    }
+    console.log(`Found attachment: ${attachment.file_name}, path: ${attachment.file_url}`)
 
-    const filePath = urlParts.slice(bucketIndex + 1).join('/')
+    // Use file_url directly as storage path (it's already the correct storage path)
+    const filePath = attachment.file_url
 
-    // Download file from storage
-    const { data: fileData, error: downloadError } = await supabase.storage
+    // Download file from storage using service role client for storage access
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    const serviceClient = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    })
+
+    const { data: fileData, error: downloadError } = await serviceClient.storage
       .from('candidate-attachments')
       .download(filePath)
 
     if (downloadError || !fileData) {
-      console.error('Failed to download file:', downloadError)
+      console.error('Failed to download file:', downloadError, 'Path:', filePath)
       return new Response('Failed to download file', { 
         status: 500, 
         headers: corsHeaders 
       })
     }
+
+    console.log(`Successfully downloaded file: ${attachment.file_name}`)
 
     // Create response with proper download headers
     const headers = {
@@ -94,9 +122,15 @@ Deno.serve(async (req) => {
 
   } catch (error) {
     console.error('Download attachment error:', error)
-    return new Response('Internal server error', { 
+    return new Response(JSON.stringify({ 
+      error: 'Internal server error',
+      details: error.message 
+    }), { 
       status: 500, 
-      headers: corsHeaders 
+      headers: {
+        ...corsHeaders,
+        'Content-Type': 'application/json'
+      }
     })
   }
 })

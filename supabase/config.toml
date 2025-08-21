@@ -3,6 +3,9 @@ project_id = "etrxjxstjfcozdjumfsj"
 [functions.create-dev-admin]
 verify_jwt = false
 
+[functions.download-attachment]
+verify_jwt = true
+
 [functions.coresignal-person-enrichment]
 verify_jwt = true
 
