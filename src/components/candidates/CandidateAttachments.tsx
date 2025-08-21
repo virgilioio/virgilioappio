@@ -215,7 +215,7 @@ export function CandidateAttachments({ candidateId }: CandidateAttachmentsProps)
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => downloadAttachment(attachment.file_url, attachment.file_name)}
+                        onClick={() => downloadAttachment(attachment.id, attachment.file_name)}
                         className="gap-sm h-8 px-2"
                       >
                         <Download className="h-4 w-4" />

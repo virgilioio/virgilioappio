@@ -184,39 +184,52 @@ export function useCandidateAttachments(candidateId: string) {
     }
   }
 
-  const downloadAttachment = async (fileUrl: string, fileName: string) => {
+  const downloadAttachment = async (attachmentId: string, fileName: string) => {
     try {
-      console.log('Downloading attachment:', fileUrl, fileName)
+      console.log('Starting download for:', fileName)
       
-      // Use signed URL for more reliable downloads
-      const { data, error } = await supabase.storage
-        .from('candidate-attachments')
-        .createSignedUrl(fileUrl, 300) // 5 minute expiry
+      toast({
+        title: 'Download starting',
+        description: 'Preparing your file for download...'
+      })
+      
+      // Use edge function for direct download
+      const response = await supabase.functions.invoke('download-attachment', {
+        body: { attachmentId }
+      })
 
-      if (error) {
-        console.error('Signed URL creation error:', error)
-        throw error
+      if (response.error) {
+        console.error('Download function error:', response.error)
+        throw new Error(response.error.message || 'Failed to download file')
       }
 
-      if (!data?.signedUrl) {
-        throw new Error('Failed to create download URL')
+      if (!response.data) {
+        throw new Error('No file data received')
       }
 
-      console.log('Signed URL created successfully, starting download')
+      // Create blob and download link
+      const blob = new Blob([response.data], { 
+        type: response.data.type || 'application/octet-stream' 
+      })
       
-      // Create download link using signed URL
+      const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
-      a.href = data.signedUrl
+      a.href = url
       a.download = fileName
-      a.target = '_blank' // Open in new tab as fallback
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+      
+      toast({
+        title: 'Download complete',
+        description: `${fileName} has been downloaded successfully`
+      })
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to download attachment'
       console.error('Download error:', err)
       toast({
-        title: 'Error',
+        title: 'Download failed',
         description: errorMessage,
         variant: 'destructive'
       })
