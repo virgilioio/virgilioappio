@@ -41,45 +41,77 @@ Deno.serve(async (req) => {
 
     if (acceptError) {
       console.error('Error accepting invitation:', acceptError)
+      
+      // Handle specific error cases
+      if (acceptError.message?.includes('Invalid or expired invitation')) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: 'This invitation has expired or is no longer valid. Please request a new invitation.'
+          }),
+          {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 400
+          }
+        )
+      }
+      
       throw new Error(acceptError.message || 'Failed to accept invitation')
     }
 
     const result = acceptResult?.[0]
     if (!result?.success) {
-      throw new Error(result?.error_message || 'Failed to accept invitation')
-    }
-
-    console.log('Invitation accepted successfully:', result)
-
-    // Inject metadata using admin client
-    const { data: updateResult, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
-      newUserId,
-      {
-        user_metadata: {
-          user_type: result.user_type,
-          member_role: result.member_role,
-          organization_id: result.organization_id
-        }
-      }
-    )
-
-    if (updateError) {
-      console.error('Error updating user metadata:', updateError)
-      // Don't fail the whole process, but log the issue
+      const errorMessage = result?.error_message || 'Failed to accept invitation'
+      console.error('Invitation acceptance failed:', errorMessage)
+      
       return new Response(
         JSON.stringify({
-          success: true,
-          warning: 'Invitation accepted but metadata injection failed',
-          result
+          success: false,
+          error: errorMessage
         }),
         {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200
+          status: 400
         }
       )
     }
 
-    console.log('User metadata updated successfully:', updateResult)
+    console.log('Invitation accepted successfully:', result)
+
+    // Inject metadata using admin client with better error handling
+    try {
+      const { data: updateResult, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+        newUserId,
+        {
+          user_metadata: {
+            user_type: result.user_type,
+            member_role: result.member_role,
+            organization_id: result.organization_id
+          }
+        }
+      )
+
+      if (updateError) {
+        console.error('Error updating user metadata:', updateError)
+        // Don't fail the whole process, but log the issue
+        return new Response(
+          JSON.stringify({
+            success: true,
+            warning: 'Invitation accepted but metadata injection failed',
+            result
+          }),
+          {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 200
+          }
+        )
+      }
+
+      console.log('User metadata updated successfully:', updateResult)
+    } catch (metadataError) {
+      console.error('Metadata injection failed:', metadataError)
+      // Continue with success since invitation was accepted
+    }
 
     return new Response(
       JSON.stringify({
