@@ -247,7 +247,7 @@ export function useMembers() {
         // Check for existing member with the same email in any organization
         const { data: existingMember, error: checkError } = await supabase
           .from('members')
-          .select('id, invited_email, user_status, organization_name:organizations(name)')
+          .select('id, invited_email, user_status, invite_expires_at, organization_name:organizations(name)')
           .or(`invited_email.eq.${emailToCheck}`)
           .limit(1)
           .single()
@@ -258,9 +258,29 @@ export function useMembers() {
         }
 
         if (existingMember) {
-          const orgName = existingMember.organization_name?.name || 'Unknown Organization'
-          const memberStatus = existingMember.user_status === 'invited' ? 'pending invitation' : existingMember.user_status
-          throw new Error(`A member with email ${emailToCheck} already exists in ${orgName} with status: ${memberStatus}`)
+          // If it's an expired invitation, delete it and allow re-invite
+          if (existingMember.user_status === 'invited' && existingMember.invite_expires_at) {
+            const expiresAt = new Date(existingMember.invite_expires_at)
+            const now = new Date()
+            
+            if (expiresAt < now) {
+              console.log('Removing expired invitation for:', emailToCheck)
+              await supabase
+                .from('members')
+                .delete()
+                .eq('id', existingMember.id)
+              // Continue with creating new invitation
+            } else {
+              // Valid invitation exists
+              const orgName = existingMember.organization_name?.name || 'Unknown Organization'
+              throw new Error(`A pending invitation for ${emailToCheck} already exists in ${orgName}. Please wait for them to accept or delete the existing invitation first.`)
+            }
+          } else {
+            // Active member exists
+            const orgName = existingMember.organization_name?.name || 'Unknown Organization'
+            const memberStatus = existingMember.user_status === 'invited' ? 'pending invitation' : existingMember.user_status
+            throw new Error(`A member with email ${emailToCheck} already exists in ${orgName} with status: ${memberStatus}`)
+          }
         }
       }
       
