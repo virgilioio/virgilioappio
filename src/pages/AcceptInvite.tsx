@@ -115,22 +115,6 @@ export default function AcceptInvite() {
     return Object.keys(newErrors).length === 0
   }
 
-  const checkExistingUser = async (email: string) => {
-    try {
-      // Try to sign in with dummy password to check if user exists
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password: 'dummy_password_check_12345'
-      });
-      
-      // If we get 'Invalid login credentials', user exists but password is wrong
-      // If we get different error, user likely doesn't exist
-      return error?.message === 'Invalid login credentials';
-    } catch {
-      return false;
-    }
-  };
-
   const handleAcceptInvitation = async (e: React.FormEvent) => {
     e.preventDefault()
     
@@ -139,66 +123,7 @@ export default function AcceptInvite() {
     setIsSubmitting(true)
 
     try {
-      // First check if user already exists
-      const userExists = await checkExistingUser(invitationData.invite_email);
-      
-      if (userExists) {
-        console.log('User already exists, attempting sign in for:', invitationData.invite_email);
-        
-        // User exists, try to sign them in first
-        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-          email: invitationData.invite_email,
-          password: password
-        });
-
-        if (signInError) {
-          if (signInError.message.includes('Invalid login credentials')) {
-            setErrors({ password: 'Incorrect password. This email already has an account.' });
-          } else {
-            setErrors({ general: signInError.message });
-          }
-          return;
-        }
-
-        if (!signInData.user) {
-          throw new Error('Sign in failed - no user returned');
-        }
-
-        console.log('Existing user signed in successfully:', signInData.user.id);
-
-        // Accept the invitation for the existing user
-        const { data: edgeFunctionResult, error: edgeFunctionError } = await supabase.functions.invoke(
-          'accept-invitation-with-metadata',
-          {
-            body: {
-              token: token,
-              newUserId: signInData.user.id
-            }
-          }
-        );
-
-        if (edgeFunctionError) {
-          console.error('Edge function error:', edgeFunctionError);
-          throw new Error(edgeFunctionError.message || 'Failed to process invitation');
-        }
-
-        if (!edgeFunctionResult?.success) {
-          throw new Error(edgeFunctionResult?.error || 'Failed to accept invitation');
-        }
-
-        console.log('Invitation accepted for existing user:', edgeFunctionResult);
-        
-        toast({
-          title: 'Welcome back to Virgilio!',
-          description: `You've successfully joined ${invitationData.organization_name} as ${edgeFunctionResult.result.member_role.replace('_', ' ')}.`,
-          variant: 'default'
-        });
-
-        navigate('/dashboard');
-        return;
-      }
-
-      console.log('Creating new user account for:', invitationData.invite_email)
+      console.log('Attempting to create new user account for:', invitationData.invite_email)
       
       // Create the user account with auto-confirmation
       const { data: authData, error: signUpError } = await supabase.auth.signUp({
@@ -218,7 +143,61 @@ export default function AcceptInvite() {
         
         // Handle specific signup errors
         if (signUpError.message.includes('User already registered')) {
-          setErrors({ general: 'An account with this email already exists. Please refresh and try signing in instead.' });
+          console.log('User already exists, trying to sign them in...')
+          
+          // Try to sign in the existing user
+          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+            email: invitationData.invite_email,
+            password: password
+          });
+
+          if (signInError) {
+            if (signInError.message.includes('Invalid login credentials')) {
+              setErrors({ 
+                general: 'An account with this email already exists, but the password is incorrect. Please contact your administrator for assistance.'
+              });
+            } else {
+              setErrors({ general: `Sign-in failed: ${signInError.message}` });
+            }
+            return;
+          }
+
+          if (!signInData.user) {
+            throw new Error('Sign in failed - no user returned');
+          }
+
+          console.log('Existing user signed in successfully:', signInData.user.id);
+
+          // Accept the invitation for the existing user
+          const { data: edgeFunctionResult, error: edgeFunctionError } = await supabase.functions.invoke(
+            'accept-invitation-with-metadata',
+            {
+              body: {
+                token: token,
+                newUserId: signInData.user.id
+              }
+            }
+          );
+
+          if (edgeFunctionError) {
+            console.error('Edge function error:', edgeFunctionError);
+            throw new Error(edgeFunctionError.message || 'Failed to process invitation');
+          }
+
+          if (!edgeFunctionResult?.success) {
+            throw new Error(edgeFunctionResult?.error || 'Failed to accept invitation');
+          }
+
+          console.log('Invitation accepted for existing user:', edgeFunctionResult);
+          
+          toast({
+            title: 'Welcome back to Virgilio!',
+            description: `You've successfully joined ${invitationData.organization_name} as ${edgeFunctionResult.result.member_role.replace('_', ' ')}.`,
+            variant: 'default'
+          });
+
+          navigate('/dashboard');
+          return;
         } else if (signUpError.message.includes('Database error saving new user')) {
           setErrors({ general: 'There was an issue creating your account. Please try again or contact support.' });
         } else {
@@ -471,6 +450,14 @@ export default function AcceptInvite() {
                 <p className="text-sm text-destructive mt-1">{errors.confirmPassword}</p>
               )}
             </div>
+
+            {errors.general && (
+              <Alert className="bg-destructive/10 border-destructive/20">
+                <AlertDescription className="text-destructive">
+                  {errors.general}
+                </AlertDescription>
+              </Alert>
+            )}
 
             <Button 
               type="submit" 
