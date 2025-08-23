@@ -21,7 +21,7 @@ export function AuthGate({ children }: AuthGateProps) {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />
+    return <Navigate to="/auth" replace />
   }
 
   return <>{children}</>

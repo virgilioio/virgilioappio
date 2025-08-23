@@ -38,7 +38,7 @@ export default function AcceptInvite() {
 
   useEffect(() => {
     if (!token) {
-      navigate('/login')
+      navigate('/auth')
       return
     }
     validateInvitation()
@@ -330,7 +330,7 @@ export default function AcceptInvite() {
           </CardHeader>
           <CardContent>
             <Button 
-              onClick={() => navigate('/login')} 
+              onClick={() => navigate('/auth')} 
               className="w-full"
               variant="outline"
             >

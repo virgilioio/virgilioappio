@@ -45,6 +45,7 @@ function AppContent() {
     <div className="min-h-screen bg-background text-foreground">
       <Routes>
         <Route path="/auth" element={<Login />} />
+        <Route path="/login" element={<Navigate to="/auth" replace />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/accept-invite/:token" element={<AcceptInvite />} />

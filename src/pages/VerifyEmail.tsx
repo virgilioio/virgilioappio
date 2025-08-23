@@ -20,7 +20,7 @@ export default function VerifyEmail() {
 
   useEffect(() => {
     if (!email) {
-      navigate('/login')
+      navigate('/auth')
     }
   }, [email, navigate])
 
@@ -119,7 +119,7 @@ export default function VerifyEmail() {
             </Button>
 
             <Button
-              onClick={() => navigate('/login')}
+              onClick={() => navigate('/auth')}
               variant="ghost"
               className="w-full"
             >
