@@ -45,10 +45,18 @@ export function useUserProfile() {
       }
 
       console.log('Fetched profile:', data)
-      // Transform the data to match our interface by adding id field
+      
+      // Enhanced profile data with Google OAuth fallbacks
       const profileData: UserProfile = {
         ...data,
-        id: data.user_id
+        id: data.user_id,
+        // Fallback to Google OAuth data if profile fields are empty
+        first_name: data.first_name || user.user_metadata?.first_name || 
+                   (user.user_metadata?.full_name ? user.user_metadata.full_name.split(' ')[0] : data.first_name),
+        last_name: data.last_name || user.user_metadata?.last_name || 
+                  (user.user_metadata?.full_name ? user.user_metadata.full_name.split(' ').slice(1).join(' ') : data.last_name),
+        avatar_url: data.avatar_url || user.user_metadata?.avatar_url || user.user_metadata?.picture || data.avatar_url,
+        email: data.email || user.email || data.email
       }
       setProfile(profileData)
     } catch (err) {
