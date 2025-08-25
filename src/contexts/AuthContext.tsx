@@ -13,6 +13,7 @@ interface AuthContextType {
   userType: string | null
   memberRole: string | null
   login: (email: string, password: string) => Promise<{ error?: AuthError }>
+  signUp: (email: string, password: string) => Promise<{ error?: AuthError }>
   logout: () => Promise<void>
 }
 
@@ -127,6 +128,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { error }
   }
 
+  const signUp = async (email: string, password: string) => {
+    const redirectUrl = `${window.location.origin}/`
+    
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: redirectUrl
+      }
+    })
+    return { error }
+  }
+
   const logout = async () => {
     await supabase.auth.signOut()
   }
@@ -141,6 +155,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     userType,
     memberRole,
     login,
+    signUp,
     logout,
   }
 

@@ -18,6 +18,7 @@ import JobRequests from './pages/JobRequests'
 import Candidates from './pages/Candidates'
 import Settings from './pages/Settings'
 import Login from './pages/Login'
+import SignUp from './pages/SignUp'
 import ForgotPassword from './pages/ForgotPassword'
 import ResetPassword from './pages/ResetPassword'
 import AcceptInvite from './pages/AcceptInvite'
@@ -46,6 +47,7 @@ function AppContent() {
       <Routes>
         <Route path="/auth" element={<Login />} />
         <Route path="/login" element={<Navigate to="/auth" replace />} />
+        <Route path="/signup" element={<SignUp />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/accept-invite/:token" element={<AcceptInvite />} />

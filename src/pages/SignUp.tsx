@@ -1,4 +1,3 @@
-
 import { useState } from 'react'
 import { Navigate, useNavigate, Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
@@ -11,12 +10,14 @@ import { GoogleLogo } from '@/components/icons/GoogleLogo'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/integrations/supabase/client'
 
-export default function Login() {
-  const { login, isAuthenticated, isLoading, hasOrganizationContext } = useAuth()
+export default function SignUp() {
+  const { signUp, isAuthenticated, isLoading, hasOrganizationContext } = useAuth()
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false)
 
@@ -28,15 +29,25 @@ export default function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    setSuccess('')
     setIsSubmitting(true)
 
+    // Validate password confirmation
+    if (password !== confirmPassword) {
+      setError('Passwords do not match')
+      setIsSubmitting(false)
+      return
+    }
+
     try {
-      const { error } = await login(email, password)
+      const { error } = await signUp(email, password)
       if (error) {
         setError(error.message)
       } else {
-        // Let the auth guard redirect appropriately once org context is resolved
-        navigate('/dashboard')
+        setSuccess('Check your email for a verification link to complete your account setup.')
+        setEmail('')
+        setPassword('')
+        setConfirmPassword('')
       }
     } catch (err) {
       setError('An unexpected error occurred')
@@ -79,19 +90,19 @@ export default function Login() {
         </div>
       </div>
 
-      {/* Right Side - Responsive width white background with login form */}
+      {/* Right Side - Responsive width white background with signup form */}
       <div className="w-full lg:w-1/3 xl:w-2/5 2xl:w-1/3 bg-white flex flex-col justify-center px-6 sm:px-8 lg:px-8 xl:px-12 min-h-[50vh] lg:min-h-screen">
         {/* Welcome Text */}
         <div className="mb-8">
           <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground mb-2">
-            Welcome back
+            Create your account
           </h1>
           <p className="text-base sm:text-lg text-muted-foreground">
-            Sign in to your account to continue
+            Sign up to get started
           </p>
         </div>
 
-        {/* Login Form */}
+        {/* SignUp Form */}
         <Card className="border-0 shadow-none bg-transparent p-0">
           <CardContent className="p-0">
             <form onSubmit={handleSubmit} className="space-y-6">
@@ -120,25 +131,34 @@ export default function Login() {
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter your password"
+                  placeholder="Create a password"
                   required
                   disabled={isSubmitting}
                   className="h-12 text-base"
                 />
-                <div className="flex justify-between">
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword" className="text-base font-medium">
+                  Confirm Password
+                </Label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Confirm your password"
+                  required
+                  disabled={isSubmitting}
+                  className="h-12 text-base"
+                />
+                <div className="flex justify-start">
                   <Link 
-                    to="/forgot-password" 
+                    to="/auth" 
                     className="text-sm transition-colors"
                     style={{ color: 'rgb(31, 116, 179)' }}
                   >
-                    Forgot password?
-                  </Link>
-                  <Link 
-                    to="/signup" 
-                    className="text-sm transition-colors"
-                    style={{ color: 'rgb(31, 116, 179)' }}
-                  >
-                    Don't have an account? Sign up
+                    Already have an account? Sign in
                   </Link>
                 </div>
               </div>
@@ -149,13 +169,19 @@ export default function Login() {
                 </div>
               )}
 
+              {success && (
+                <div className="text-sm text-green-700 bg-green-50 border border-green-200 rounded-md p-3">
+                  {success}
+                </div>
+              )}
+
               <Button
                 type="submit"
                 className="w-full h-12 text-base font-medium"
                 disabled={isSubmitting}
                 size="lg"
               >
-                {isSubmitting ? 'Signing in...' : 'Sign in'}
+                {isSubmitting ? 'Creating account...' : 'Create account'}
               </Button>
 
               <div className="relative text-center">
@@ -180,7 +206,7 @@ export default function Login() {
                         provider: 'google'
                       })
                     } catch (err: any) {
-                      setError(err.message || 'Google sign-in failed')
+                      setError(err.message || 'Google sign-up failed')
                       setIsGoogleSubmitting(false)
                     }
                   }}
