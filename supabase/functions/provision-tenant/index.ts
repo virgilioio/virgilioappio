@@ -35,8 +35,10 @@ serve(async (req) => {
     const body = (await req.json().catch(() => ({}))) as ProvisionBody;
     const companyName = (body.companyName || "").trim();
     const workspaceName = (body.workspaceName || companyName).trim();
+    const countryCode = (body.countryCode || "").trim();
     const trialDays = typeof body.trialDays === "number" && body.trialDays > 0 ? body.trialDays : 30;
     if (!companyName) throw new Error("companyName is required");
+    if (!countryCode) throw new Error("countryCode is required");
 
     // Idempotency: if user already has an active membership, return early
     const { data: existingMember } = await supabase
@@ -61,7 +63,7 @@ serve(async (req) => {
     // Create tenant organization
     const { data: tenantOrg, error: tenantErr } = await supabase
       .from("organizations")
-      .insert({ name: companyName, org_kind: "tenant", status: "active" })
+      .insert({ name: companyName, org_kind: "tenant", status: "active", country: countryCode })
       .select("id")
       .single();
     if (tenantErr) throw new Error(`Failed to create tenant org: ${tenantErr.message}`);
@@ -71,7 +73,7 @@ serve(async (req) => {
     // Create first workspace under tenant
     const { data: wsOrg, error: wsErr } = await supabase
       .from("organizations")
-      .insert({ name: workspaceName, org_kind: "client", parent_organization_id: tenantId, status: "active" })
+      .insert({ name: workspaceName, org_kind: "client", parent_organization_id: tenantId, status: "active", country: countryCode })
       .select("id")
       .single();
     if (wsErr) throw new Error(`Failed to create workspace org: ${wsErr.message}`);

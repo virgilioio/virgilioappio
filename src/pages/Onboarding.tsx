@@ -4,12 +4,15 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { supabase } from '@/integrations/supabase/client'
 import { useToast } from '@/hooks/use-toast'
+import { COUNTRIES } from '@/constants/countries'
 
 export default function Onboarding() {
   const [companyName, setCompanyName] = useState('')
   const [workspaceName, setWorkspaceName] = useState('')
+  const [countryCode, setCountryCode] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const { toast } = useToast()
   const navigate = useNavigate()
@@ -20,10 +23,14 @@ export default function Onboarding() {
       toast({ title: 'Company name is required', variant: 'destructive' })
       return
     }
+    if (!countryCode) {
+      toast({ title: 'Country is required', variant: 'destructive' })
+      return
+    }
     setIsSubmitting(true)
     try {
       const { data, error } = await supabase.functions.invoke('provision-tenant', {
-        body: { companyName, workspaceName: workspaceName || companyName },
+        body: { companyName, workspaceName: workspaceName || companyName, countryCode },
       })
       if (error) throw error
       const tenantId = (data as any)?.tenantId
@@ -63,6 +70,21 @@ export default function Onboarding() {
               <div className="space-y-2">
                 <Label htmlFor="workspaceName">Workspace name (optional)</Label>
                 <Input id="workspaceName" value={workspaceName} onChange={(e) => setWorkspaceName(e.target.value)} placeholder="Acme Workspace" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="country">Country</Label>
+                <Select value={countryCode} onValueChange={setCountryCode} required>
+                  <SelectTrigger id="country">
+                    <SelectValue placeholder="Select your country" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {COUNTRIES.map((country) => (
+                      <SelectItem key={country.value} value={country.value}>
+                        {country.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <Button type="submit" size="lg" className="w-full" disabled={isSubmitting}>
                 {isSubmitting ? 'Creating...' : 'Create workspace'}
