@@ -269,13 +269,16 @@ const [orgFormData, setOrgFormData] = useState<OrganizationFormData>({
     )
   }
 
-  // Enhanced ownership validation for both workspace owners and platform admins
-  if ((userType === 'workspace_owner' || userType === 'platform_admin') && user && userOrganization.owner_id !== user.id) {
-    console.log('OrganizationTab - user viewing non-owned organization:', {
+  // Enhanced access validation - workspace owners and platform admins can edit their organization
+  const canEditOrganization = userType === 'platform_admin' || 
+    (userType === 'workspace_owner' && userOrganization?.id);
+  
+  if (!canEditOrganization) {
+    console.log('OrganizationTab - user cannot edit organization:', {
       userType,
-      userId: user.id,
-      organizationOwnerId: userOrganization.owner_id,
-      organizationName: userOrganization.name
+      userId: user?.id,
+      organizationId: userOrganization?.id,
+      organizationName: userOrganization?.name
     })
     return (
       <div className="space-y-6">
@@ -292,10 +295,7 @@ const [orgFormData, setOrgFormData] = useState<OrganizationFormData>({
           <CardContent>
             <div className="text-center py-6">
               <p className="text-muted-foreground text-sm">
-                You can only view and edit organizations that you own. Please contact support if you need to be assigned as the owner of an organization.
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Current organization: {userOrganization.name} (Owner: {userOrganization.owner_id})
+                You don't have permission to edit organization settings. Please contact your administrator for access.
               </p>
             </div>
           </CardContent>
