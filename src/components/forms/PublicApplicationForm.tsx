@@ -52,11 +52,42 @@ export function PublicApplicationForm({ postingId, jobTitle, companyName }: Publ
 
   const onSubmit = async (data: PublicApplicationFormData) => {
     setIsSubmitting(true)
+    
     try {
+      // Validate resume upload (always required for job applications)
+      if (!resumeFiles || resumeFiles.length === 0) {
+        toast({
+          title: 'Resume Required',
+          description: 'Please upload your resume to submit your application.',
+          variant: 'destructive'
+        })
+        setIsSubmitting(false)
+        return
+      }
+
+      // Validate required custom fields
+      const missingFields = customFields
+        .filter(field => field.is_required)
+        .filter(field => {
+          const response = customFieldResponses[field.field_name]
+          return !response || (typeof response === 'string' && response.trim() === '')
+        })
+        .map(field => field.field_label)
+
+      if (missingFields.length > 0) {
+        toast({
+          title: 'Required Fields Missing',
+          description: `Please fill in the following required fields: ${missingFields.join(', ')}`,
+          variant: 'destructive'
+        })
+        setIsSubmitting(false)
+        return
+      }
+
       // Prepare application data combining core fields and custom fields
       const applicationData = {
         ...data,
-        resume: resumeFiles[0] || null,
+        uploadedFiles: resumeFiles,
         custom_fields: customFieldResponses,
         posting_id: postingId
       }
@@ -117,6 +148,11 @@ export function PublicApplicationForm({ postingId, jobTitle, companyName }: Publ
                   error: null
                 }}
               />
+              {resumeFiles.length === 0 && (
+                <div className="text-sm text-destructive flex items-center gap-2 mt-2">
+                  <span>⚠️ Resume is required for all applications</span>
+                </div>
+              )}
             </div>
 
             {/* Custom Fields */}
@@ -134,13 +170,15 @@ export function PublicApplicationForm({ postingId, jobTitle, companyName }: Publ
             <Button 
               type="submit" 
               className="w-full" 
-              disabled={isSubmitting}
+              disabled={isSubmitting || resumeFiles.length === 0}
             >
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Submitting Application...
                 </>
+              ) : resumeFiles.length === 0 ? (
+                'Upload Resume to Continue'
               ) : (
                 'Submit Application'
               )}
