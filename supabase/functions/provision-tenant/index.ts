@@ -73,7 +73,7 @@ serve(async (req) => {
     // Create first workspace under tenant
     const { data: wsOrg, error: wsErr } = await supabase
       .from("organizations")
-      .insert({ name: workspaceName, org_kind: "client", parent_organization_id: tenantId, status: "active", country: countryCode })
+      .insert({ name: workspaceName, org_kind: "client", parent_organization_id: tenantId, status: "active", country: countryCode, owner_id: user.id })
       .select("id")
       .single();
     if (wsErr) throw new Error(`Failed to create workspace org: ${wsErr.message}`);
