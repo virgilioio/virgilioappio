@@ -13,16 +13,41 @@ import { supabase } from '@/integrations/supabase/client'
 import { toast } from '@/hooks/use-toast'
 import { Loader2 } from 'lucide-react'
 
-const publicApplicationSchema = z.object({
-  candidate_name: z.string().min(1, 'Name is required'),
-  email: z.string().email('Valid email is required'),
-  phone: z.string().optional(),
-  linkedin_url: z.string().url().optional().or(z.literal('')),
-  skills: z.string().optional(),
-  profile_summary: z.string().optional(),
-})
+// Create dynamic schema based on custom fields
+const createPublicApplicationSchema = (customFields: any[]) => {
+  const baseSchema = {
+    candidate_name: z.string().min(1, 'Name is required'),
+    email: z.string().email('Valid email is required'),
+    phone: z.string().optional(),
+    linkedin_url: z.string().url().optional().or(z.literal('')),
+    skills: z.string().optional(),
+    profile_summary: z.string().optional(),
+  }
 
-type PublicApplicationFormData = z.infer<typeof publicApplicationSchema>
+  // Add custom field validations
+  const customFieldSchema = customFields.reduce((acc, field) => {
+    if (field.is_required) {
+      if (field.field_type === 'checkbox') {
+        acc[field.field_name] = z.boolean().refine(val => val === true, {
+          message: `${field.field_label} is required`
+        })
+      } else {
+        acc[field.field_name] = z.string().min(1, `${field.field_label} is required`)
+      }
+    } else {
+      if (field.field_type === 'checkbox') {
+        acc[field.field_name] = z.boolean().optional()
+      } else {
+        acc[field.field_name] = z.string().optional()
+      }
+    }
+    return acc
+  }, {} as Record<string, any>)
+
+  return z.object({ ...baseSchema, ...customFieldSchema })
+}
+
+type PublicApplicationFormData = Record<string, any>
 
 interface PublicApplicationFormProps {
   postingId: string
@@ -33,21 +58,30 @@ interface PublicApplicationFormProps {
 export function PublicApplicationForm({ postingId, jobTitle, companyName }: PublicApplicationFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [resumeFiles, setResumeFiles] = useState<File[]>([])
-  const [customFieldResponses, setCustomFieldResponses] = useState<Record<string, any>>({})
   
   const { coreFields } = useCoreFields()
   const { fields: customFields, isLoading: fieldsLoading } = useJobPostingFields(postingId)
   
+  // Create dynamic schema and default values
+  const publicApplicationSchema = createPublicApplicationSchema(customFields)
+  
+  const defaultValues = {
+    candidate_name: '',
+    email: '',
+    phone: '',
+    linkedin_url: '',
+    skills: '',
+    profile_summary: '',
+    ...customFields.reduce((acc, field) => {
+      acc[field.field_name] = field.field_type === 'checkbox' ? false : ''
+      return acc
+    }, {} as Record<string, any>)
+  }
+  
   const form = useForm<PublicApplicationFormData>({
     resolver: zodResolver(publicApplicationSchema),
-    defaultValues: {
-      candidate_name: '',
-      email: '',
-      phone: '',
-      linkedin_url: '',
-      skills: '',
-      profile_summary: '',
-    }
+    defaultValues,
+    mode: 'onChange' // Enable real-time validation
   })
 
   const onSubmit = async (data: PublicApplicationFormData) => {
@@ -65,30 +99,19 @@ export function PublicApplicationForm({ postingId, jobTitle, companyName }: Publ
         return
       }
 
-      // Validate required custom fields
-      const missingFields = customFields
-        .filter(field => field.is_required)
-        .filter(field => {
-          const response = customFieldResponses[field.field_name]
-          return !response || (typeof response === 'string' && response.trim() === '')
-        })
-        .map(field => field.field_label)
+      // Separate core fields from custom fields
+      const { candidate_name, email, phone, linkedin_url, skills, profile_summary, ...customFieldData } = data
 
-      if (missingFields.length > 0) {
-        toast({
-          title: 'Required Fields Missing',
-          description: `Please fill in the following required fields: ${missingFields.join(', ')}`,
-          variant: 'destructive'
-        })
-        setIsSubmitting(false)
-        return
-      }
-
-      // Prepare application data combining core fields and custom fields
+      // Prepare application data
       const applicationData = {
-        ...data,
+        candidate_name,
+        email,
+        phone,
+        linkedin_url,
+        skills,
+        profile_summary,
         uploadedFiles: resumeFiles,
-        custom_fields: customFieldResponses,
+        custom_fields: customFieldData,
         posting_id: postingId
       }
 
@@ -106,15 +129,24 @@ export function PublicApplicationForm({ postingId, jobTitle, companyName }: Publ
       // Reset form
       form.reset()
       setResumeFiles([])
-      setCustomFieldResponses({})
 
     } catch (error) {
       console.error('Error submitting application:', error)
-      toast({
-        title: 'Submission Failed',
-        description: 'There was an error submitting your application. Please try again.',
-        variant: 'destructive'
-      })
+      
+      // Handle specific edge function errors
+      if (error?.message?.includes('same_job_cooldown')) {
+        toast({
+          title: 'Application Already Submitted',
+          description: 'You have already applied to this job recently. Please wait before applying again.',
+          variant: 'destructive'
+        })
+      } else {
+        toast({
+          title: 'Submission Failed',
+          description: 'There was an error submitting your application. Please try again.',
+          variant: 'destructive'
+        })
+      }
     } finally {
       setIsSubmitting(false)
     }
@@ -161,8 +193,7 @@ export function PublicApplicationForm({ postingId, jobTitle, companyName }: Publ
                 <h3 className="text-lg font-semibold mb-4">Additional Questions</h3>
                 <ApplicationFieldsRenderer
                   fields={customFields}
-                  responses={customFieldResponses}
-                  onResponseChange={setCustomFieldResponses}
+                  control={form.control}
                 />
               </div>
             )}
@@ -170,7 +201,7 @@ export function PublicApplicationForm({ postingId, jobTitle, companyName }: Publ
             <Button 
               type="submit" 
               className="w-full" 
-              disabled={isSubmitting || resumeFiles.length === 0}
+              disabled={isSubmitting || resumeFiles.length === 0 || !form.formState.isValid}
             >
               {isSubmitting ? (
                 <>
@@ -179,6 +210,8 @@ export function PublicApplicationForm({ postingId, jobTitle, companyName }: Publ
                 </>
               ) : resumeFiles.length === 0 ? (
                 'Upload Resume to Continue'
+              ) : !form.formState.isValid ? (
+                'Please Fill Required Fields'
               ) : (
                 'Submit Application'
               )}

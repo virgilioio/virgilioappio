@@ -1,168 +1,200 @@
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
+import { FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescription } from '@/components/ui/form'
 import { ApplicationFieldWithRelations } from '@/hooks/useApplicationFields'
 import { PostingField } from '@/hooks/useJobPostingFields'
+import { Control } from 'react-hook-form'
 
 interface ApplicationFieldsRendererProps {
   fields: (ApplicationFieldWithRelations | PostingField)[]
-  responses: Record<string, any>
-  onResponseChange: (responses: Record<string, any>) => void
+  control: Control<any>
 }
 
 export function ApplicationFieldsRenderer({ 
   fields, 
-  responses, 
-  onResponseChange 
+  control 
 }: ApplicationFieldsRendererProps) {
   
-  const handleFieldChange = (fieldName: string, value: any) => {
-    onResponseChange({
-      ...responses,
-      [fieldName]: value
-    })
-  }
-
   const renderField = (field: ApplicationFieldWithRelations | PostingField) => {
-    const fieldValue = responses[field.field_name] || ''
-
     switch (field.field_type) {
       case 'text':
       case 'email':
       case 'url':
         return (
-          <div key={field.field_name} className="space-y-2">
-            <Label htmlFor={field.field_name}>
-              {field.field_label}
-              {field.is_required && <span className="text-destructive ml-1">*</span>}
-            </Label>
-            <Input
-              id={field.field_name}
-              type={field.field_type}
-              value={fieldValue}
-              onChange={(e) => handleFieldChange(field.field_name, e.target.value)}
-              placeholder={field.placeholder_text || ''}
-              required={field.is_required}
-            />
-            {field.help_text && (
-              <p className="text-sm text-muted-foreground">{field.help_text}</p>
+          <FormField
+            key={field.field_name}
+            control={control}
+            name={field.field_name}
+            render={({ field: formField }) => (
+              <FormItem>
+                <FormLabel>
+                  {field.field_label}
+                  {field.is_required && <span className="text-destructive ml-1">*</span>}
+                </FormLabel>
+                <FormControl>
+                  <Input
+                    type={field.field_type}
+                    placeholder={field.placeholder_text || ''}
+                    {...formField}
+                  />
+                </FormControl>
+                {field.help_text && (
+                  <FormDescription>{field.help_text}</FormDescription>
+                )}
+                <FormMessage />
+              </FormItem>
             )}
-          </div>
+          />
         )
 
       case 'number':
         return (
-          <div key={field.field_name} className="space-y-2">
-            <Label htmlFor={field.field_name}>
-              {field.field_label}
-              {field.is_required && <span className="text-destructive ml-1">*</span>}
-            </Label>
-            <Input
-              id={field.field_name}
-              type="number"
-              value={fieldValue}
-              onChange={(e) => handleFieldChange(field.field_name, e.target.value)}
-              placeholder={field.placeholder_text || ''}
-              required={field.is_required}
-            />
-            {field.help_text && (
-              <p className="text-sm text-muted-foreground">{field.help_text}</p>
+          <FormField
+            key={field.field_name}
+            control={control}
+            name={field.field_name}
+            render={({ field: formField }) => (
+              <FormItem>
+                <FormLabel>
+                  {field.field_label}
+                  {field.is_required && <span className="text-destructive ml-1">*</span>}
+                </FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    placeholder={field.placeholder_text || ''}
+                    {...formField}
+                  />
+                </FormControl>
+                {field.help_text && (
+                  <FormDescription>{field.help_text}</FormDescription>
+                )}
+                <FormMessage />
+              </FormItem>
             )}
-          </div>
+          />
         )
 
       case 'textarea':
         return (
-          <div key={field.field_name} className="space-y-2">
-            <Label htmlFor={field.field_name}>
-              {field.field_label}
-              {field.is_required && <span className="text-destructive ml-1">*</span>}
-            </Label>
-            <Textarea
-              id={field.field_name}
-              value={fieldValue}
-              onChange={(e) => handleFieldChange(field.field_name, e.target.value)}
-              placeholder={field.placeholder_text || ''}
-              required={field.is_required}
-              rows={4}
-            />
-            {field.help_text && (
-              <p className="text-sm text-muted-foreground">{field.help_text}</p>
+          <FormField
+            key={field.field_name}
+            control={control}
+            name={field.field_name}
+            render={({ field: formField }) => (
+              <FormItem>
+                <FormLabel>
+                  {field.field_label}
+                  {field.is_required && <span className="text-destructive ml-1">*</span>}
+                </FormLabel>
+                <FormControl>
+                  <Textarea
+                    placeholder={field.placeholder_text || ''}
+                    rows={4}
+                    {...formField}
+                  />
+                </FormControl>
+                {field.help_text && (
+                  <FormDescription>{field.help_text}</FormDescription>
+                )}
+                <FormMessage />
+              </FormItem>
             )}
-          </div>
+          />
         )
 
       case 'select':
         const selectOptions = 'select_options' in field ? field.select_options : []
         return (
-          <div key={field.field_name} className="space-y-2">
-            <Label htmlFor={field.field_name}>
-              {field.field_label}
-              {field.is_required && <span className="text-destructive ml-1">*</span>}
-            </Label>
-            <Select
-              value={fieldValue}
-              onValueChange={(value) => handleFieldChange(field.field_name, value)}
-              required={field.is_required}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder={field.placeholder_text || 'Select an option'} />
-              </SelectTrigger>
-              <SelectContent>
-                {selectOptions.map((option) => (
-                  <SelectItem key={option.id} value={option.option_value}>
-                    {option.option_label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {field.help_text && (
-              <p className="text-sm text-muted-foreground">{field.help_text}</p>
+          <FormField
+            key={field.field_name}
+            control={control}
+            name={field.field_name}
+            render={({ field: formField }) => (
+              <FormItem>
+                <FormLabel>
+                  {field.field_label}
+                  {field.is_required && <span className="text-destructive ml-1">*</span>}
+                </FormLabel>
+                <Select onValueChange={formField.onChange} value={formField.value}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder={field.placeholder_text || 'Select an option'} />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {selectOptions.map((option) => (
+                      <SelectItem key={option.id} value={option.option_value}>
+                        {option.option_label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {field.help_text && (
+                  <FormDescription>{field.help_text}</FormDescription>
+                )}
+                <FormMessage />
+              </FormItem>
             )}
-          </div>
+          />
         )
 
       case 'checkbox':
         return (
-          <div key={field.field_name} className="space-y-2">
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id={field.field_name}
-                checked={fieldValue === true}
-                onCheckedChange={(checked) => handleFieldChange(field.field_name, checked)}
-                required={field.is_required}
-              />
-              <Label htmlFor={field.field_name}>
-                {field.field_label}
-                {field.is_required && <span className="text-destructive ml-1">*</span>}
-              </Label>
-            </div>
-            {field.help_text && (
-              <p className="text-sm text-muted-foreground">{field.help_text}</p>
+          <FormField
+            key={field.field_name}
+            control={control}
+            name={field.field_name}
+            render={({ field: formField }) => (
+              <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                <FormControl>
+                  <Checkbox
+                    checked={formField.value}
+                    onCheckedChange={formField.onChange}
+                  />
+                </FormControl>
+                <div className="space-y-1 leading-none">
+                  <FormLabel>
+                    {field.field_label}
+                    {field.is_required && <span className="text-destructive ml-1">*</span>}
+                  </FormLabel>
+                  {field.help_text && (
+                    <FormDescription>{field.help_text}</FormDescription>
+                  )}
+                </div>
+                <FormMessage />
+              </FormItem>
             )}
-          </div>
+          />
         )
 
       case 'date':
         return (
-          <div key={field.field_name} className="space-y-2">
-            <Label htmlFor={field.field_name}>
-              {field.field_label}
-              {field.is_required && <span className="text-destructive ml-1">*</span>}
-            </Label>
-            <Input
-              id={field.field_name}
-              type="date"
-              value={fieldValue}
-              onChange={(e) => handleFieldChange(field.field_name, e.target.value)}
-              required={field.is_required}
-            />
-            {field.help_text && (
-              <p className="text-sm text-muted-foreground">{field.help_text}</p>
+          <FormField
+            key={field.field_name}
+            control={control}
+            name={field.field_name}
+            render={({ field: formField }) => (
+              <FormItem>
+                <FormLabel>
+                  {field.field_label}
+                  {field.is_required && <span className="text-destructive ml-1">*</span>}
+                </FormLabel>
+                <FormControl>
+                  <Input
+                    type="date"
+                    {...formField}
+                  />
+                </FormControl>
+                {field.help_text && (
+                  <FormDescription>{field.help_text}</FormDescription>
+                )}
+                <FormMessage />
+              </FormItem>
             )}
-          </div>
+          />
         )
 
       default:
