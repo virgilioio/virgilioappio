@@ -44,9 +44,24 @@ export default function Onboarding() {
       if (setOrgErr) throw setOrgErr
 
       toast({ title: 'Workspace created', description: 'Your trial is active for 30 days.' })
+      // Refresh session to ensure updated organization metadata is available to AuthContext
+      try {
+        const { error: refreshError } = await supabase.auth.refreshSession()
+        if (refreshError) {
+          console.warn('Session refresh error:', refreshError)
+        }
+        const { data: { session: newSession } } = await supabase.auth.getSession()
+        const orgInSession = (newSession?.user?.user_metadata as any)?.organization_id
+        if (!orgInSession) {
+          // Allow a short delay for metadata propagation as a safe guard
+          await new Promise((r) => setTimeout(r, 200))
+        }
+      } catch (e) {
+        console.warn('Post-onboarding session sync warning:', e)
+      }
       navigate('/dashboard', { replace: true })
     } catch (err: any) {
-      toast({ title: 'Onboarding failed', description: err.message || 'Please try again', variant: 'destructive' })
+      toast({ title: 'Onboarding failed', description: err?.message || 'Please try again', variant: 'destructive' })
     } finally {
       setIsSubmitting(false)
     }
