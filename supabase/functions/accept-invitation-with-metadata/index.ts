@@ -33,14 +33,44 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_ANON_KEY') ?? ''
     )
 
-    // Accept the invitation using the RPC function
-    const { data: acceptResult, error: acceptError } = await supabase.rpc('accept_invitation', {
-      token_input: token,
-      new_user_id: newUserId
-    })
+    // Retry logic for accepting invitation (handles race conditions)
+    let acceptResult = null;
+    let acceptError = null;
+    const maxRetries = 3;
+    let retryCount = 0;
+
+    while (retryCount < maxRetries) {
+      const { data, error } = await supabase.rpc('accept_invitation', {
+        token_input: token,
+        new_user_id: newUserId
+      });
+
+      acceptResult = data;
+      acceptError = error;
+
+      if (!error) {
+        break; // Success, exit retry loop
+      }
+
+      // Check if this is a retryable error (foreign key constraint)
+      if (error.message?.includes('foreign key constraint') || 
+          error.message?.includes('User account not ready')) {
+        retryCount++;
+        console.log(`Retrying invitation acceptance (attempt ${retryCount}/${maxRetries}) due to: ${error.message}`);
+        
+        if (retryCount < maxRetries) {
+          // Wait before retrying (exponential backoff)
+          const waitTime = Math.pow(2, retryCount - 1) * 1000; // 1s, 2s, 4s
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+          continue;
+        }
+      }
+      
+      break; // Non-retryable error, exit loop
+    }
 
     if (acceptError) {
-      console.error('Error accepting invitation:', acceptError)
+      console.error('Error accepting invitation after retries:', acceptError)
       
       // Handle specific error cases
       if (acceptError.message?.includes('Invalid or expired invitation')) {
@@ -52,6 +82,19 @@ Deno.serve(async (req) => {
           {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             status: 400
+          }
+        )
+      }
+
+      if (acceptError.message?.includes('User account not ready')) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: 'Your account is still being set up. Please wait a few seconds and try again.'
+          }),
+          {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 503
           }
         )
       }
