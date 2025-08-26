@@ -22,7 +22,12 @@ interface SubmitApplicationPayload {
   uploadedFiles?: Record<string, {
     name: string;
     type: string;
-    size: number;
+    size?: number;
+    data: string; // base64 encoded file data
+  }> | Array<{
+    name: string;
+    type: string;
+    size?: number;
     data: string; // base64 encoded file data
   }>;
   generatedSkills?: Array<{
@@ -101,6 +106,48 @@ serve(async (req) => {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    // Validate candidate name is provided
+    if (!body.candidate_name?.trim()) {
+      return new Response(JSON.stringify({ error: "Full name is required for application" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Validate resume upload is provided
+    if (!body.uploadedFiles || Object.keys(body.uploadedFiles).length === 0) {
+      return new Response(JSON.stringify({ error: "Resume/CV is required for application" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Validate required custom fields
+    const { data: requiredFields, error: fieldsErr } = await supabase
+      .from('job_posting_application_fields')
+      .select('field_name, field_label, is_required')
+      .eq('posting_id', postingId)
+      .eq('is_required', true);
+
+    if (!fieldsErr && requiredFields) {
+      const missingFields: string[] = [];
+      for (const field of requiredFields) {
+        const fieldValue = body.custom_fields?.[field.field_name];
+        if (!fieldValue || (typeof fieldValue === 'string' && !fieldValue.trim())) {
+          missingFields.push(field.field_label);
+        }
+      }
+      
+      if (missingFields.length > 0) {
+        return new Response(JSON.stringify({ 
+          error: `Missing required fields: ${missingFields.join(', ')}` 
+        }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     // Check application limits first
@@ -302,11 +349,17 @@ serve(async (req) => {
 
     // Handle file uploads if any
     const fileUploadResults: FileUploadResult[] = [];
-    if (body.uploadedFiles && Object.keys(body.uploadedFiles).length > 0) {
+    const uploadedFiles = body.uploadedFiles;
+    if (uploadedFiles) {
       console.log("Processing uploaded files...");
       
+      // Normalize uploadedFiles to array format for consistent processing
+      const fileEntries = Array.isArray(uploadedFiles) 
+        ? uploadedFiles.map((file, index) => [index.toString(), file])
+        : Object.entries(uploadedFiles);
+      
       // Validate files before processing
-      for (const [fieldId, fileData] of Object.entries(body.uploadedFiles)) {
+      for (const [fieldId, fileData] of fileEntries) {
         if (!fileData || !fileData.data) {
           fileUploadResults.push({
             fieldId,
@@ -317,8 +370,8 @@ serve(async (req) => {
           continue;
         }
 
-        // File size validation (15MB limit)
-        if (fileData.size > 15 * 1024 * 1024) {
+        // File size validation (15MB limit) - only if size is provided
+        if (fileData.size && fileData.size > 15 * 1024 * 1024) {
           fileUploadResults.push({
             fieldId,
             fileName: fileData.name,
@@ -364,8 +417,8 @@ serve(async (req) => {
               .map(c => c.charCodeAt(0))
           );
 
-          // Verify buffer size matches expected file size (within reasonable margin)
-          if (Math.abs(buffer.length - fileData.size) > fileData.size * 0.1) {
+          // Verify buffer size matches expected file size (within reasonable margin) - only if size is provided
+          if (fileData.size && Math.abs(buffer.length - fileData.size) > fileData.size * 0.1) {
             throw new Error('File size mismatch during conversion');
           }
 
@@ -413,7 +466,7 @@ serve(async (req) => {
               candidate_id: globalCandidateId,
               file_name: fileData.name,
               file_url: fileName,
-              file_size_bytes: fileData.size,
+              file_size_bytes: fileData.size || buffer.length,
               file_type: fileData.type,
               is_resume: /resume|cv|curriculum/i.test(fileData.name) || 
                          ['pdf', 'doc', 'docx'].includes(fileExt) || 

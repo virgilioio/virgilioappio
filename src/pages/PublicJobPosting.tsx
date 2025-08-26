@@ -322,6 +322,26 @@ export default function PublicJobPosting() {
     if (!coreFieldValues.candidate_name.trim()) missingFields.push('Full Name')
     if (!coreFieldValues.email.trim()) missingFields.push('Email')
     
+    // Validate resume upload (required)
+    if (uploadedFiles.length === 0) {
+      missingFields.push('Resume/CV')
+    }
+    
+    // Validate custom required fields
+    const missingCustomFields: string[] = []
+    customFields.forEach(field => {
+      if (field.is_required) {
+        const fieldValue = customFieldResponses[field.id]
+        if (!fieldValue || (typeof fieldValue === 'string' && !fieldValue.trim())) {
+          missingCustomFields.push(field.field_label)
+        }
+      }
+    })
+    
+    if (missingCustomFields.length > 0) {
+      missingFields.push(...missingCustomFields)
+    }
+    
     // Validate uploaded files
     const fileValidationErrors: string[] = []
     for (const file of uploadedFiles) {
@@ -384,7 +404,7 @@ export default function PublicJobPosting() {
         ...coreFieldValues,
         generatedSkills: generatedSkills, // Include generated skills
         custom_fields: mappedCustomFields, // Use field names instead of IDs
-        uploadedFiles: resumeBase64 ? [{ name: resumeFile!.name, data: resumeBase64, type: resumeFile!.type }] : [],
+        uploadedFiles: resumeBase64 ? [{ name: resumeFile!.name, data: resumeBase64, type: resumeFile!.type, size: resumeFile!.size }] : [],
         posting_id: posting.id
       }
 
