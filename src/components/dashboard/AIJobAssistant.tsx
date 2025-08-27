@@ -265,6 +265,52 @@ export function AIJobAssistant() {
     }
   }
 
+  const handleContinue = async () => {
+    switch (currentStep) {
+      case 'prompt':
+        setCurrentStep('specs')
+        break
+      case 'specs':
+        setCurrentStep('matches')
+        // Auto-refresh matches when navigating to matches tab
+        if (candidateMatching === null) {
+          await handleRefreshMatches()
+        }
+        break
+      case 'matches':
+        setCurrentStep('decision')
+        break
+      default:
+        break
+    }
+  }
+
+  const getContinueButtonText = () => {
+    switch (currentStep) {
+      case 'prompt':
+        return 'Continue to Specs'
+      case 'specs':
+        return 'View Matches'
+      case 'matches':
+        return 'Create Job'
+      default:
+        return 'Continue'
+    }
+  }
+
+  const canContinue = () => {
+    switch (currentStep) {
+      case 'prompt':
+        return jobSpec !== null
+      case 'specs':
+        return editableJobSpec !== null
+      case 'matches':
+        return editableJobSpec !== null
+      default:
+        return false
+    }
+  }
+
   return (
     <>
       <div className="relative">
@@ -459,6 +505,18 @@ export function AIJobAssistant() {
                     <h4 className="font-medium mb-2">Original Prompt</h4>
                     <p className="text-sm text-muted-foreground">{prompt}</p>
                   </div>
+                  
+                  {/* Continue Button */}
+                  <div className="flex justify-end pt-4">
+                    <Button
+                      onClick={handleContinue}
+                      disabled={!canContinue()}
+                      className="px-6 py-2 text-white hover:opacity-90 transition-opacity"
+                      style={{ backgroundColor: '#7e3eff' }}
+                    >
+                      {getContinueButtonText()}
+                    </Button>
+                  </div>
                 </TabsContent>
 
                 <TabsContent value="specs" className="space-y-6">
@@ -643,6 +701,18 @@ export function AIJobAssistant() {
                       )}
                     </div>
                   </div>
+                  
+                  {/* Continue Button */}
+                  <div className="flex justify-end pt-4">
+                    <Button
+                      onClick={handleContinue}
+                      disabled={!canContinue()}
+                      className="px-6 py-2 text-white hover:opacity-90 transition-opacity"
+                      style={{ backgroundColor: '#7e3eff' }}
+                    >
+                      {getContinueButtonText()}
+                    </Button>
+                  </div>
                 </TabsContent>
 
                 <TabsContent value="matches" className="space-y-6">
@@ -771,6 +841,25 @@ export function AIJobAssistant() {
                       </div>
                     </div>
                   )}
+                  
+                  {/* Continue Button */}
+                  <div className="flex justify-end pt-4">
+                    <Button
+                      onClick={handleContinue}
+                      disabled={!canContinue() || isRefreshingMatches}
+                      className="px-6 py-2 text-white hover:opacity-90 transition-opacity"
+                      style={{ backgroundColor: '#7e3eff' }}
+                    >
+                      {isRefreshingMatches ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Loading...
+                        </>
+                      ) : (
+                        getContinueButtonText()
+                      )}
+                    </Button>
+                  </div>
                 </TabsContent>
 
                 <TabsContent value="decision" className="space-y-6">
