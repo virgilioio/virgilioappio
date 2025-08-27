@@ -85,7 +85,7 @@ export function AIJobAssistant() {
   const [editableSkills, setEditableSkills] = useState<string[]>([])
   const [isCreatingJob, setIsCreatingJob] = useState(false)
   const [organizationName, setOrganizationName] = useState<string>('')
-  const [currentStep, setCurrentStep] = useState<'prompt' | 'specs' | 'matches' | 'decision'>('prompt')
+  const [currentStep, setCurrentStep] = useState<'prompt' | 'specs' | 'decision'>('prompt')
   const [isEditing, setIsEditing] = useState<{[key: string]: boolean}>({})
   const [editableJobSpec, setEditableJobSpec] = useState<JobSpec | null>(null)
   const [isRefreshingMatches, setIsRefreshingMatches] = useState(false)
@@ -271,13 +271,6 @@ export function AIJobAssistant() {
         setCurrentStep('specs')
         break
       case 'specs':
-        setCurrentStep('matches')
-        // Auto-refresh matches when navigating to matches tab
-        if (candidateMatching === null) {
-          await handleRefreshMatches()
-        }
-        break
-      case 'matches':
         setCurrentStep('decision')
         break
       default:
@@ -290,8 +283,6 @@ export function AIJobAssistant() {
       case 'prompt':
         return 'Continue to Specs'
       case 'specs':
-        return 'View Matches'
-      case 'matches':
         return 'Create Job'
       default:
         return 'Continue'
@@ -303,8 +294,6 @@ export function AIJobAssistant() {
       case 'prompt':
         return jobSpec !== null
       case 'specs':
-        return editableJobSpec !== null
-      case 'matches':
         return editableJobSpec !== null
       default:
         return false
@@ -438,67 +427,50 @@ export function AIJobAssistant() {
           
           {editableJobSpec && (
             <div className="space-y-6">
-              {/* Progress Steps */}
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-4">
-                <div className="flex items-center space-x-2 sm:space-x-4 overflow-x-auto pb-2 sm:pb-0">
-                  {[
-                    { id: 'prompt', label: 'Prompt', icon: Sparkles },
-                    { id: 'specs', label: 'Specs', icon: Edit2 },
-                    { id: 'matches', label: 'Matches', icon: Users },
-                    { id: 'decision', label: 'Create', icon: Target }
-                  ].map((step, index) => {
-                    const StepIcon = step.icon
-                    const isActive = currentStep === step.id
-                    const isCompleted = ['prompt', 'specs'].includes(step.id) && currentStep !== 'prompt'
-                    
-                    return (
-                      <div key={step.id} className="flex items-center flex-shrink-0">
-                        <div className={`flex items-center justify-center w-6 h-6 sm:w-8 sm:h-8 rounded-full border-2 ${
-                          isActive ? 'border-primary bg-primary text-white' :
-                          isCompleted ? 'border-green-500 bg-green-500 text-white' :
-                          'border-gray-300 bg-white text-gray-400'
-                        }`}>
-                          <StepIcon className="h-3 w-3 sm:h-4 sm:w-4" />
-                        </div>
-                        <span className={`ml-1 sm:ml-2 text-xs sm:text-sm font-medium ${
-                          isActive ? 'text-primary' : 
-                          isCompleted ? 'text-green-600' : 
-                          'text-gray-400'
-                        }`}>
-                          {step.label}
-                        </span>
-                        {index < 3 && (
-                          <div className={`mx-2 sm:mx-4 w-4 sm:w-8 h-0.5 ${
-                            isCompleted ? 'bg-green-500' : 'bg-gray-300'
-                          }`} />
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleRefreshMatches}
-                  disabled={isRefreshingMatches}
-                  className="self-start sm:self-auto"
-                >
-                  {isRefreshingMatches ? (
-                    <Loader2 className="h-4 w-4 animate-spin sm:mr-2" />
-                  ) : (
-                    <RefreshCw className="h-4 w-4 sm:mr-2" />
-                  )}
-                  <span className="hidden sm:inline">Refresh Matches</span>
-                </Button>
+                 <div className="flex items-center space-x-2 sm:space-x-4 overflow-x-auto pb-2 sm:pb-0">
+                   {[
+                     { id: 'prompt', label: 'Prompt', icon: Sparkles },
+                     { id: 'specs', label: 'Specs', icon: Edit2 },
+                     { id: 'decision', label: 'Create', icon: Target }
+                   ].map((step, index) => {
+                     const StepIcon = step.icon
+                     const isActive = currentStep === step.id
+                     const isCompleted = ['prompt', 'specs'].includes(step.id) && currentStep !== 'prompt'
+                     
+                     return (
+                       <div key={step.id} className="flex items-center flex-shrink-0">
+                         <div className={`flex items-center justify-center w-6 h-6 sm:w-8 sm:h-8 rounded-full border-2 ${
+                           isActive ? 'border-primary bg-primary text-white' :
+                           isCompleted ? 'border-green-500 bg-green-500 text-white' :
+                           'border-gray-300 bg-white text-gray-400'
+                         }`}>
+                           <StepIcon className="h-3 w-3 sm:h-4 sm:w-4" />
+                         </div>
+                         <span className={`ml-1 sm:ml-2 text-xs sm:text-sm font-medium ${
+                           isActive ? 'text-primary' : 
+                           isCompleted ? 'text-green-600' : 
+                           'text-gray-400'
+                         }`}>
+                           {step.label}
+                         </span>
+                         {index < 2 && (
+                           <div className={`mx-2 sm:mx-4 w-4 sm:w-8 h-0.5 ${
+                             isCompleted ? 'bg-green-500' : 'bg-gray-300'
+                           }`} />
+                         )}
+                       </div>
+                     )
+                   })}
+                 </div>
               </div>
 
-              <Tabs value={currentStep} onValueChange={(value) => setCurrentStep(value as any)} className="space-y-6">
-                <TabsList className="grid w-full grid-cols-4 h-auto p-1">
-                  <TabsTrigger value="prompt" className="text-xs sm:text-sm px-2 py-2">Prompt</TabsTrigger>
-                  <TabsTrigger value="specs" className="text-xs sm:text-sm px-2 py-2">Specs</TabsTrigger>
-                  <TabsTrigger value="matches" className="text-xs sm:text-sm px-2 py-2">Matches</TabsTrigger>
-                  <TabsTrigger value="decision" className="text-xs sm:text-sm px-2 py-2">Create</TabsTrigger>
-                </TabsList>
+               <Tabs value={currentStep} onValueChange={(value) => setCurrentStep(value as any)} className="space-y-6">
+                 <TabsList className="grid w-full grid-cols-3 h-auto p-1">
+                   <TabsTrigger value="prompt" className="text-xs sm:text-sm px-2 py-2">Prompt</TabsTrigger>
+                   <TabsTrigger value="specs" className="text-xs sm:text-sm px-2 py-2">Specs</TabsTrigger>
+                   <TabsTrigger value="decision" className="text-xs sm:text-sm px-2 py-2">Create</TabsTrigger>
+                 </TabsList>
 
                 <TabsContent value="prompt" className="space-y-4">
                   <div className="p-4 bg-muted rounded-lg">
@@ -715,152 +687,6 @@ export function AIJobAssistant() {
                   </div>
                 </TabsContent>
 
-                <TabsContent value="matches" className="space-y-6">
-                  {candidateMatching && (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                      {/* Match Quality Overview */}
-                      <div className="space-y-6">
-                        <div className="p-6 bg-gradient-to-br from-blue-50 to-cyan-50 border-2 border-blue-200 rounded-xl">
-                          <div className="flex items-center justify-between mb-4">
-                            <h4 className="text-lg font-semibold text-blue-800">Total Candidates</h4>
-                            <span className="text-3xl font-bold text-blue-900">{candidateMatching.totalCandidates}</span>
-                          </div>
-                          <div className="text-sm text-blue-700">
-                            From our independent talent pool
-                          </div>
-                        </div>
-
-                        {/* Match Quality Breakdown */}
-                        <div className="space-y-3">
-                          <h4 className="font-semibold text-gray-900">Match Quality Distribution</h4>
-                          
-                          {candidateMatching.excellent > 0 && (
-                            <div className="flex items-center justify-between p-3 bg-green-50 border border-green-200 rounded-lg">
-                              <div className="flex items-center gap-2">
-                                <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                                <span className="text-sm text-green-700 font-medium">Excellent Match (90%+)</span>
-                              </div>
-                              <span className="text-sm font-bold text-green-800">{candidateMatching.excellent}</span>
-                            </div>
-                          )}
-                          
-                          {candidateMatching.good > 0 && (
-                            <div className="flex items-center justify-between p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                              <div className="flex items-center gap-2">
-                                <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
-                                <span className="text-sm text-blue-700 font-medium">Good Match (70-89%)</span>
-                              </div>
-                              <span className="text-sm font-bold text-blue-800">{candidateMatching.good}</span>
-                            </div>
-                          )}
-                          
-                          {candidateMatching.fair > 0 && (
-                            <div className="flex items-center justify-between p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                              <div className="flex items-center gap-2">
-                                <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
-                                <span className="text-sm text-yellow-700 font-medium">Fair Match (50-69%)</span>
-                              </div>
-                              <span className="text-sm font-bold text-yellow-800">{candidateMatching.fair}</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* AI Insights */}
-                      <div className="space-y-6">
-                        <div>
-                          <h4 className="font-semibold text-gray-900 mb-4">Market Insights</h4>
-                          <div className="space-y-3">
-                            {candidateMatching.totalCandidates === 0 ? (
-                              <div className="p-4 bg-orange-50 border border-orange-200 rounded-lg">
-                                <div className="flex items-start gap-2">
-                                  <AlertTriangle className="h-5 w-5 text-orange-600 mt-0.5" />
-                                  <div>
-                                    <p className="text-sm font-medium text-orange-800">Limited Talent Pool</p>
-                                    <p className="text-xs text-orange-700 mt-1">
-                                      Consider broadening location requirements or expanding skill criteria to find more candidates.
-                                    </p>
-                                  </div>
-                                </div>
-                              </div>
-                            ) : candidateMatching.totalCandidates >= 20 ? (
-                              <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                                <div className="flex items-start gap-2">
-                                  <TrendingUp className="h-5 w-5 text-green-600 mt-0.5" />
-                                  <div>
-                                    <p className="text-sm font-medium text-green-800">Excellent Talent Pool</p>
-                                    <p className="text-xs text-green-700 mt-1">
-                                      Great selection of candidates available. You can be selective with your requirements.
-                                    </p>
-                                  </div>
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                                <div className="flex items-start gap-2">
-                                  <Users className="h-5 w-5 text-blue-600 mt-0.5" />
-                                  <div>
-                                    <p className="text-sm font-medium text-blue-800">Good Talent Pool</p>
-                                    <p className="text-xs text-blue-700 mt-1">
-                                      {candidateMatching.totalCandidates} qualified candidates available for this role.
-                                    </p>
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-
-                            <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
-                              <div className="text-sm font-medium text-gray-700 mb-2">Search Details</div>
-                              <div className="grid grid-cols-2 gap-2 text-xs">
-                                <div className="flex justify-between">
-                                  <span className="text-gray-600">Local Database:</span>
-                                  <span className="font-medium">{candidateMatching.breakdown.localCandidates}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                  <span className="text-gray-600">External API:</span>
-                                  <span className="font-medium">{candidateMatching.breakdown.coreSignalCandidates}</span>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Top Skills */}
-                        {candidateMatching.breakdown.skillsAnalysis.topSkills.length > 0 && (
-                          <div>
-                            <h4 className="font-semibold text-gray-900 mb-3">Top Skills in Pool</h4>
-                            <div className="flex flex-wrap gap-2">
-                              {candidateMatching.breakdown.skillsAnalysis.topSkills.slice(0, 8).map((skill, index) => (
-                                <span key={index} className="inline-flex items-center px-3 py-1 rounded-full text-xs bg-purple-100 text-purple-700 border border-purple-200">
-                                  {skill}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Continue Button */}
-                  <div className="flex justify-end pt-4">
-                    <Button
-                      onClick={handleContinue}
-                      disabled={!canContinue() || isRefreshingMatches}
-                      className="px-6 py-2 text-white hover:opacity-90 transition-opacity"
-                      style={{ backgroundColor: '#7e3eff' }}
-                    >
-                      {isRefreshingMatches ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Loading...
-                        </>
-                      ) : (
-                        getContinueButtonText()
-                      )}
-                    </Button>
-                  </div>
-                </TabsContent>
 
                 <TabsContent value="decision" className="space-y-6">
                   <div className="space-y-4">
