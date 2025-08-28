@@ -2,10 +2,8 @@
 import { supabase } from '@/integrations/supabase/client'
 
 export const uploadInvoicePdf = async (orgId: string, invoiceId: string, file: File) => {
-  const filePath = `${orgId}/${invoiceId}.pdf`
-  
-  console.log('=== uploadInvoicePdf ===')
-  console.log('Uploading invoice PDF:', filePath)
+  console.log('=== uploadInvoicePdf via Edge Function ===')
+  console.log('Uploading invoice PDF for org:', orgId, 'invoice:', invoiceId)
   console.log('File size:', file.size, 'bytes')
   console.log('File type:', file.type)
   
@@ -16,23 +14,36 @@ export const uploadInvoicePdf = async (orgId: string, invoiceId: string, file: F
     throw new Error('Authentication required. Please log in again.')
   }
   
-  console.log('Session valid, proceeding with upload...')
+  console.log('Session valid, converting file to base64...')
   
-  const { error } = await supabase.storage
-    .from('invoices')
-    .upload(filePath, file, {
-      upsert: true,
-      contentType: 'application/pdf',
-    })
+  // Convert file to base64
+  const fileBuffer = await file.arrayBuffer()
+  const fileData = btoa(String.fromCharCode(...new Uint8Array(fileBuffer)))
+  
+  console.log('File converted, calling edge function...')
+  
+  // Call the edge function
+  const { data, error } = await supabase.functions.invoke('upload-invoice-document', {
+    body: {
+      orgId,
+      invoiceId,
+      fileName: file.name,
+      fileData
+    }
+  })
   
   if (error) {
-    console.error('Storage upload error:', error)
-    console.error('Error details:', JSON.stringify(error, null, 2))
-    throw error
+    console.error('Edge function error:', error)
+    throw new Error(`Upload failed: ${error.message}`)
   }
   
-  console.log('Upload completed successfully')
-  return { filePath }
+  if (!data.success) {
+    console.error('Edge function returned error:', data)
+    throw new Error(`Upload failed: ${data.error || 'Unknown error'}`)
+  }
+  
+  console.log('Upload completed successfully via edge function')
+  return { filePath: data.filePath }
 }
 
 export const getInvoicePdfUrl = (filePath: string) => {

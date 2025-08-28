@@ -94,24 +94,7 @@ export function InvoiceUploadModal({ open, onOpenChange, invoice, onUploadComple
       }
       
       const { filePath } = await uploadInvoicePdf(invoice.organization_id, invoice.id, file)
-      console.log('Upload successful, file path:', filePath)
-      
-      // Update the invoice record with the file name
-      console.log('Updating invoice record...')
-      const { error: updateError } = await supabase
-        .from('invoices')
-        .update({ 
-          file_name: file.name,
-          invoice_url: filePath 
-        })
-        .eq('id', invoice.id)
-
-      if (updateError) {
-        console.error('Database update error:', updateError)
-        throw new Error(`Database update failed: ${updateError.message}`)
-      }
-
-      console.log('Invoice record updated successfully')
+      console.log('Upload successful via edge function, file path:', filePath)
       toast({
         title: 'Success',
         description: 'Invoice document uploaded successfully.'
