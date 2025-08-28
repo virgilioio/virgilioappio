@@ -4,10 +4,11 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Upload, FileText } from 'lucide-react'
+import { Upload, FileText, AlertTriangle } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
 import { uploadInvoicePdf } from '@/lib/invoiceStorage'
 import { supabase } from '@/integrations/supabase/client'
+import { useAuth } from '@/contexts/AuthContext'
 import type { Invoice } from '@/hooks/useInvoices'
 
 interface InvoiceUploadModalProps {
@@ -20,6 +21,35 @@ interface InvoiceUploadModalProps {
 export function InvoiceUploadModal({ open, onOpenChange, invoice, onUploadComplete }: InvoiceUploadModalProps) {
   const [file, setFile] = useState<File | null>(null)
   const [isUploading, setIsUploading] = useState(false)
+  const { user, session, userType, memberRole, isAuthenticated } = useAuth()
+
+  // Authentication check with detailed logging
+  const checkAuthentication = async () => {
+    console.log('=== Authentication Check ===')
+    console.log('User:', user?.id)
+    console.log('Session:', !!session)
+    console.log('User Type:', userType)
+    console.log('Member Role:', memberRole)
+    console.log('Is Authenticated:', isAuthenticated)
+    
+    if (!user || !session) {
+      console.error('User not authenticated - missing user or session')
+      return false
+    }
+    
+    if (!userType || userType === 'guest') {
+      console.error('User type not properly set:', userType)
+      return false
+    }
+    
+    // Check if user has permission to upload invoices
+    const canUpload = userType === 'platform_admin' || 
+                     (userType === 'workspace_owner' && memberRole === 'admin') ||
+                     (memberRole === 'admin')
+    
+    console.log('Can upload:', canUpload)
+    return canUpload
+  }
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0]
@@ -39,11 +69,35 @@ export function InvoiceUploadModal({ open, onOpenChange, invoice, onUploadComple
   const handleUpload = async () => {
     if (!file) return
 
+    // Pre-upload authentication check
+    const isAuthValid = await checkAuthentication()
+    if (!isAuthValid) {
+      toast({
+        title: 'Authentication Error',
+        description: 'You are not properly authenticated. Please log out and log back in.',
+        variant: 'destructive'
+      })
+      return
+    }
+
     setIsUploading(true)
     try {
+      console.log('=== Starting Upload ===')
+      console.log('File:', file.name, 'Size:', file.size)
+      console.log('Invoice ID:', invoice.id)
+      console.log('Organization ID:', invoice.organization_id)
+      
+      // Validate session before upload
+      const { data: { session: currentSession } } = await supabase.auth.getSession()
+      if (!currentSession) {
+        throw new Error('Session expired. Please log in again.')
+      }
+      
       const { filePath } = await uploadInvoicePdf(invoice.organization_id, invoice.id, file)
+      console.log('Upload successful, file path:', filePath)
       
       // Update the invoice record with the file name
+      console.log('Updating invoice record...')
       const { error: updateError } = await supabase
         .from('invoices')
         .update({ 
@@ -53,9 +107,11 @@ export function InvoiceUploadModal({ open, onOpenChange, invoice, onUploadComple
         .eq('id', invoice.id)
 
       if (updateError) {
-        throw updateError
+        console.error('Database update error:', updateError)
+        throw new Error(`Database update failed: ${updateError.message}`)
       }
 
+      console.log('Invoice record updated successfully')
       toast({
         title: 'Success',
         description: 'Invoice document uploaded successfully.'
@@ -64,13 +120,40 @@ export function InvoiceUploadModal({ open, onOpenChange, invoice, onUploadComple
       onUploadComplete()
       onOpenChange(false)
       setFile(null)
-    } catch (error) {
-      console.error('Upload failed:', error)
-      toast({
-        title: 'Upload failed',
-        description: 'Failed to upload invoice document. Please try again.',
-        variant: 'destructive'
-      })
+    } catch (error: any) {
+      console.error('=== Upload Error ===')
+      console.error('Error type:', typeof error)
+      console.error('Error:', error)
+      console.error('Error message:', error?.message)
+      console.error('Error details:', error?.details)
+      
+      // Check if error is HTML (indicating auth/permission issue)
+      const errorMessage = error?.message || String(error)
+      const isHtmlError = errorMessage.includes('<html>') || errorMessage.includes('<!DOCTYPE')
+      const isAuthError = errorMessage.includes('JWT') || 
+                         errorMessage.includes('unauthorized') || 
+                         errorMessage.includes('authentication') ||
+                         isHtmlError
+      
+      if (isAuthError) {
+        toast({
+          title: 'Authentication Error',
+          description: 'Authentication failed. Please log out and log back in to refresh your session.',
+          variant: 'destructive'
+        })
+      } else if (errorMessage.includes('Session expired')) {
+        toast({
+          title: 'Session Expired',
+          description: 'Your session has expired. Please log in again.',
+          variant: 'destructive'
+        })
+      } else {
+        toast({
+          title: 'Upload failed',
+          description: `Failed to upload invoice document: ${errorMessage}`,
+          variant: 'destructive'
+        })
+      }
     } finally {
       setIsUploading(false)
     }
@@ -87,6 +170,12 @@ export function InvoiceUploadModal({ open, onOpenChange, invoice, onUploadComple
           <DialogDescription>
             Upload a PDF document for invoice: {invoice.title}
           </DialogDescription>
+          {(!isAuthenticated || !userType || userType === 'guest') && (
+            <div className="flex items-center gap-2 p-2 text-sm text-destructive bg-destructive/10 rounded-md">
+              <AlertTriangle className="h-4 w-4" />
+              Authentication issue detected. Please refresh your session.
+            </div>
+          )}
         </DialogHeader>
         
         <div className="space-y-md">
@@ -116,7 +205,10 @@ export function InvoiceUploadModal({ open, onOpenChange, invoice, onUploadComple
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isUploading}>
             Cancel
           </Button>
-          <Button onClick={handleUpload} disabled={!file || isUploading}>
+          <Button 
+            onClick={handleUpload} 
+            disabled={!file || isUploading || !isAuthenticated || !userType || userType === 'guest'}
+          >
             {isUploading ? 'Uploading...' : 'Upload PDF'}
           </Button>
         </DialogFooter>
