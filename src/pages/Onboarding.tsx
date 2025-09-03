@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { supabase } from '@/integrations/supabase/client'
 import { useToast } from '@/hooks/use-toast'
-import { COUNTRIES } from '@/constants/countries'
+import { useWorkerComplianceCountries } from '@/hooks/useWorkerComplianceCountries'
 
 export default function Onboarding() {
   const [companyName, setCompanyName] = useState('')
@@ -16,6 +16,7 @@ export default function Onboarding() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const { toast } = useToast()
   const navigate = useNavigate()
+  const { countries, isLoading: countriesLoading } = useWorkerComplianceCountries()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -88,20 +89,25 @@ export default function Onboarding() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="country">Country</Label>
-                <Select value={countryCode} onValueChange={setCountryCode} required>
+                <Select value={countryCode} onValueChange={setCountryCode} required disabled={countriesLoading}>
                   <SelectTrigger id="country">
-                    <SelectValue placeholder="Select your country" />
+                    <SelectValue placeholder={countriesLoading ? "Loading countries..." : countries.length === 0 ? "No countries available" : "Select your country"} />
                   </SelectTrigger>
                   <SelectContent>
-                    {COUNTRIES.map((country) => (
-                      <SelectItem key={country.value} value={country.value}>
-                        {country.label}
+                    {countries.map((country) => (
+                      <SelectItem key={country.code} value={country.code}>
+                        {country.name}
                       </SelectItem>
                     ))}
+                    {countries.length === 0 && !countriesLoading && (
+                      <SelectItem value="" disabled>
+                        No countries configured yet
+                      </SelectItem>
+                    )}
                   </SelectContent>
                 </Select>
               </div>
-              <Button type="submit" size="lg" className="w-full" disabled={isSubmitting}>
+              <Button type="submit" size="lg" className="w-full" disabled={isSubmitting || countriesLoading || countries.length === 0}>
                 {isSubmitting ? 'Creating...' : 'Create workspace'}
               </Button>
             </form>
