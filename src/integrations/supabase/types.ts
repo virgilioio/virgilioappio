@@ -2254,8 +2254,10 @@ export type Database = {
           owner_assigned_at: string | null
           owner_id: string | null
           parent_organization_id: string | null
+          signup_source: string | null
           status: string
           tenant_id: string | null
+          tenant_type: string | null
           updated_at: string
         }
         Insert: {
@@ -2275,8 +2277,10 @@ export type Database = {
           owner_assigned_at?: string | null
           owner_id?: string | null
           parent_organization_id?: string | null
+          signup_source?: string | null
           status?: string
           tenant_id?: string | null
+          tenant_type?: string | null
           updated_at?: string
         }
         Update: {
@@ -2296,8 +2300,10 @@ export type Database = {
           owner_assigned_at?: string | null
           owner_id?: string | null
           parent_organization_id?: string | null
+          signup_source?: string | null
           status?: string
           tenant_id?: string | null
+          tenant_type?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -2769,6 +2775,39 @@ export type Database = {
         }
         Relationships: []
       }
+      stripe_event_log: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          event_id: string
+          payload: Json
+          processed: boolean
+          received_at: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          event_id: string
+          payload: Json
+          processed?: boolean
+          received_at?: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          event_id?: string
+          payload?: Json
+          processed?: boolean
+          received_at?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       subscribers: {
         Row: {
           created_at: string
@@ -2835,15 +2874,73 @@ export type Database = {
         }
         Relationships: []
       }
+      tenant_metrics_daily: {
+        Row: {
+          ai_requests: number | null
+          candidates_added: number | null
+          created_at: string
+          date: string
+          dau: number | null
+          id: string
+          jobs_created: number | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          ai_requests?: number | null
+          candidates_added?: number | null
+          created_at?: string
+          date: string
+          dau?: number | null
+          id?: string
+          jobs_created?: number | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          ai_requests?: number | null
+          candidates_added?: number | null
+          created_at?: string
+          date?: string
+          dau?: number | null
+          id?: string
+          jobs_created?: number | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_metrics_daily_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organization_exchange_rates"
+            referencedColumns: ["organization_id"]
+          },
+          {
+            foreignKeyName: "tenant_metrics_daily_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenant_subscriptions: {
         Row: {
           billing_interval: string | null
+          cancel_at_period_end: boolean | null
           created_at: string
+          current_period_end: string | null
+          current_period_start: string | null
+          dunning_failed_payment_attempts: number | null
           id: string
+          last_payment_failed_at: string | null
           seat_quantity: number
           stripe_customer_id: string | null
+          stripe_subscription_id: string | null
           subscribed: boolean
           subscription_end: string | null
+          subscription_status: string | null
           subscription_tier: string | null
           tenant_id: string
           trial_end: string | null
@@ -2851,12 +2948,19 @@ export type Database = {
         }
         Insert: {
           billing_interval?: string | null
+          cancel_at_period_end?: boolean | null
           created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          dunning_failed_payment_attempts?: number | null
           id?: string
+          last_payment_failed_at?: string | null
           seat_quantity?: number
           stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
           subscribed?: boolean
           subscription_end?: string | null
+          subscription_status?: string | null
           subscription_tier?: string | null
           tenant_id: string
           trial_end?: string | null
@@ -2864,12 +2968,19 @@ export type Database = {
         }
         Update: {
           billing_interval?: string | null
+          cancel_at_period_end?: boolean | null
           created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          dunning_failed_payment_attempts?: number | null
           id?: string
+          last_payment_failed_at?: string | null
           seat_quantity?: number
           stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
           subscribed?: boolean
           subscription_end?: string | null
+          subscription_status?: string | null
           subscription_tier?: string | null
           tenant_id?: string
           trial_end?: string | null
