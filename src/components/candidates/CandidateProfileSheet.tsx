@@ -23,6 +23,8 @@ import { SafeHtml } from '@/components/ui/safe-html'
 import { getSkillColor } from '@/utils/skillColors'
 import { ScorecardSheet } from '@/components/candidates/ScorecardSheet'
 import { useMyScorecards } from '@/hooks/useScorecards'
+import { useAllStageScorecards } from '@/hooks/useAllStageScorecards'
+import { ExpandableScoreDisplay } from '@/components/candidates/ExpandableScoreDisplay'
 import { generateCandidatePdf } from '@/utils/candidatePdfGenerator'
 import { CandidateForm } from '@/components/candidates/CandidateForm'
 import { toast } from '@/hooks/use-toast'
@@ -34,6 +36,29 @@ import { EnhancedResumeDropzone } from '@/components/candidates/EnhancedResumeDr
 import MoveToPipelineMenu from '@/components/candidates/MoveToPipelineMenu'
 import { useJobHiringPlan, JobStage } from '@/hooks/useJobHiringPlan'
 import { cn } from '@/lib/utils'
+
+interface StageScorecardProps {
+  stageInstanceId: string;
+  currentUserId?: string;
+  onOpenFullSheet: () => void;
+}
+
+function StageScorecards({ stageInstanceId, currentUserId, onOpenFullSheet }: StageScorecardProps) {
+  const { scorecards, loading } = useAllStageScorecards(stageInstanceId);
+
+  if (loading) {
+    return <div className="text-sm text-text-tertiary">Loading scorecards...</div>;
+  }
+
+  return (
+    <ExpandableScoreDisplay
+      scorecards={scorecards}
+      currentUserId={currentUserId}
+      onOpenFullSheet={onOpenFullSheet}
+    />
+  );
+}
+
 interface CandidateProfileSheetProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -460,65 +485,15 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
 
           {supportsScorecard(opt.stage.stage_type) && (
             <div className="mt-3 space-y-2">
-              {(() => {
-                const existing = myScorecardsByStage[opt.jhsId]
-                return (
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm text-text-secondary">
-                      {existing ? (
-                        <>
-                          <span className="text-text-primary font-medium">Score:</span>{" "}
-                          {(() => {
-                            const r = existing.rating as 'definitely_no' | 'no' | 'yes' | 'strong_yes'
-                            const Icon = r === 'definitely_no' ? Octagon : r === 'no' ? ThumbsDown : r === 'strong_yes' ? Star : ThumbsUp
-                            const cls =
-                              r === 'definitely_no' || r === 'no'
-                                ? 'text-destructive'
-                                : r === 'strong_yes'
-                                ? 'text-success'
-                                : 'text-success/90'
-                            return (
-                              <span className={`inline-flex items-center gap-1 ${cls}`}>
-                                <Icon className="h-5 w-5" aria-hidden fill="currentColor" />
-                                {scoreLabel(r)}
-                              </span>
-                            )
-                          })()}
-                        </>
-                      ) : (
-                        <span className="text-text-secondary">No score submitted yet.</span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {existing && (
-                        <Button
-                          variant="link"
-                          size="sm"
-                          onClick={() => {
-                            setScoreStageInstId(opt.jhsId)
-                            setScoreStageName(opt.stage.stage_name)
-                            setScoreOpen(true)
-                          }}
-                        >
-                          See general overview
-                        </Button>
-                      )}
-                      {(isCurrent || isPast) && associationId && (
-                        <Button
-                          size="sm"
-                          onClick={() => {
-                            setScoreStageInstId(opt.jhsId)
-                            setScoreStageName(opt.stage.stage_name)
-                            setScoreOpen(true)
-                          }}
-                        >
-                          {existing ? 'Open Scorecard' : 'Submit Scorecard'}
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                )
-              })()}
+              <StageScorecards 
+                stageInstanceId={opt.jhsId}
+                currentUserId={user?.id}
+                onOpenFullSheet={() => {
+                  setScoreStageInstId(opt.jhsId)
+                  setScoreStageName(opt.stage.stage_name)
+                  setScoreOpen(true)
+                }}
+              />
             </div>
           )}
 
