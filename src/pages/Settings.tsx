@@ -16,6 +16,7 @@ import { OfferTemplatesManager } from '@/components/settings/OfferTemplatesManag
 import { JobSettingsManager } from '@/components/settings/JobSettingsManager'
 import { WorkerComplianceManager } from '@/components/settings/WorkerComplianceManager'
 import { PlatformTab } from '@/components/settings/PlatformTab'
+import { CustomerManagementTab } from '@/pages/settings/customer-management/CustomerManagementTab'
 import { usePermissions } from '@/hooks/usePermissions'
 import { AppContainer } from '@/components/layout/AppContainer'
 import { Section } from '@/components/layout/Section'
@@ -62,6 +63,8 @@ export default function Settings() {
         return <WorkerComplianceManager />
       case 'platform-job-settings':
         return <JobSettingsManager />
+      case 'platform-customers':
+        return <CustomerManagementTab />
       default:
         return <PlatformTab />
     }
@@ -146,6 +149,9 @@ export default function Settings() {
                       {renderPlatformContent()}
                     </TabsContent>
                     <TabsContent value="platform-job-settings">
+                      {renderPlatformContent()}
+                    </TabsContent>
+                    <TabsContent value="platform-customers">
                       {renderPlatformContent()}
                     </TabsContent>
                   </>
