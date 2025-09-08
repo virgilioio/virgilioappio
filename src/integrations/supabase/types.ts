@@ -2417,6 +2417,24 @@ export type Database = {
         }
         Relationships: []
       }
+      platform_feature_flags: {
+        Row: {
+          flag_name: string
+          is_active: boolean
+          updated_at: string | null
+        }
+        Insert: {
+          flag_name: string
+          is_active?: boolean
+          updated_at?: string | null
+        }
+        Update: {
+          flag_name?: string
+          is_active?: boolean
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       platform_settings: {
         Row: {
           created_at: string
@@ -3729,6 +3747,10 @@ export type Database = {
           last_update_status: string
           next_run: string
         }[]
+      }
+      get_feature_flag: {
+        Args: { flag_name_param: string }
+        Returns: boolean
       }
       get_invite_expiry: {
         Args: Record<PropertyKey, never>

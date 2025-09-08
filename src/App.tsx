@@ -35,6 +35,7 @@ import PublicJobPosting from './pages/PublicJobPosting'
 import Onboarding from './pages/Onboarding'
 import Privacy from './pages/Privacy'
 import Terms from './pages/Terms'
+import AuthCallback from './pages/AuthCallback'
 const queryClient = new QueryClient()
 
 function AppContent() {
@@ -52,6 +53,7 @@ function AppContent() {
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/accept-invite/:token" element={<AcceptInvite />} />
         <Route path="/verify-email" element={<VerifyEmail />} />
+        <Route path="/auth/callback" element={<AuthCallback />} />
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/terms" element={<Terms />} />
         {/* Public job posting route */}

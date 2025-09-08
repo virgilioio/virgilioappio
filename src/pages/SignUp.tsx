@@ -202,8 +202,20 @@ export default function SignUp() {
                     setError('')
                     setIsGoogleSubmitting(true)
                     try {
+                      // Generate and store OAuth state for security
+                      const state = Array.from(crypto.getRandomValues(new Uint8Array(32)))
+                        .map(b => b.toString(16).padStart(2, '0'))
+                        .join('')
+                      sessionStorage.setItem('oauth_state', state)
+                      
                       await supabase.auth.signInWithOAuth({
-                        provider: 'google'
+                        provider: 'google',
+                        options: {
+                          redirectTo: `${window.location.origin}/auth/callback`,
+                          queryParams: {
+                            state: state
+                          }
+                        }
                       })
                     } catch (err: any) {
                       setError(err.message || 'Google sign-up failed')

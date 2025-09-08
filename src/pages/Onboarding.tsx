@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -8,15 +8,38 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { supabase } from '@/integrations/supabase/client'
 import { useToast } from '@/hooks/use-toast'
 import { useWorkerComplianceCountries } from '@/hooks/useWorkerComplianceCountries'
+import { VerifyEmailPending } from '@/components/VerifyEmailPending'
+import { useAuth } from '@/contexts/AuthContext'
 
 export default function Onboarding() {
   const [companyName, setCompanyName] = useState('')
   const [workspaceName, setWorkspaceName] = useState('')
   const [countryCode, setCountryCode] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [emailVerified, setEmailVerified] = useState<boolean | null>(null)
+  const [userEmail, setUserEmail] = useState('')
   const { toast } = useToast()
   const navigate = useNavigate()
   const { countries, isLoading: countriesLoading } = useWorkerComplianceCountries()
+  const { user } = useAuth()
+
+  useEffect(() => {
+    const checkEmailVerification = async () => {
+      if (!user) return
+
+      setUserEmail(user.email || '')
+      
+      // Check if email is verified
+      const isGoogleOAuth = user.app_metadata?.provider === 'google'
+      const isVerified = isGoogleOAuth 
+        ? user.user_metadata?.email_verified === true
+        : user.email_confirmed_at !== null
+
+      setEmailVerified(isVerified)
+    }
+
+    checkEmailVerification()
+  }, [user])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -33,7 +56,15 @@ export default function Onboarding() {
       const { data, error } = await supabase.functions.invoke('provision-tenant', {
         body: { companyName, workspaceName: workspaceName || companyName, countryCode },
       })
-      if (error) throw error
+      if (error) {
+        // Handle email verification error specifically
+        if (error.message?.includes('EMAIL_NOT_VERIFIED')) {
+          setEmailVerified(false)
+          setIsSubmitting(false)
+          return
+        }
+        throw error
+      }
       const tenantId = (data as any)?.tenantId
       const workspaceId = (data as any)?.workspaceId
       if (!workspaceId) throw new Error('Provisioning failed: no workspace id')
@@ -62,10 +93,22 @@ export default function Onboarding() {
       }
       navigate('/dashboard', { replace: true })
     } catch (err: any) {
-      toast({ title: 'Onboarding failed', description: err?.message || 'Please try again', variant: 'destructive' })
+      if (err?.message?.includes('EMAIL_NOT_VERIFIED')) {
+        setEmailVerified(false)
+      } else {
+        toast({ title: 'Onboarding failed', description: err?.message || 'Please try again', variant: 'destructive' })
+      }
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  const handleEmailVerified = () => {
+    setEmailVerified(true)
+    toast({ 
+      title: 'Email verified!', 
+      description: 'You can now create your workspace.' 
+    })
   }
 
   return (
@@ -78,7 +121,13 @@ export default function Onboarding() {
 
         <Card>
           <CardContent className="p-6">
-            <form onSubmit={handleSubmit} className="space-y-6">
+            {emailVerified === false ? (
+              <VerifyEmailPending 
+                userEmail={userEmail} 
+                onVerified={handleEmailVerified}
+              />
+            ) : (
+              <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
                 <Label htmlFor="companyName">Company name</Label>
                 <Input id="companyName" value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Acme Inc." required />
@@ -107,10 +156,16 @@ export default function Onboarding() {
                   </SelectContent>
                 </Select>
               </div>
-              <Button type="submit" size="lg" className="w-full" disabled={isSubmitting || countriesLoading || countries.length === 0}>
-                {isSubmitting ? 'Creating...' : 'Create workspace'}
-              </Button>
-            </form>
+                <Button 
+                  type="submit" 
+                  size="lg" 
+                  className="w-full" 
+                  disabled={isSubmitting || countriesLoading || countries.length === 0 || !emailVerified}
+                >
+                  {isSubmitting ? 'Creating...' : 'Create workspace'}
+                </Button>
+              </form>
+            )}
           </CardContent>
         </Card>
       </div>

@@ -28,9 +28,26 @@ serve(async (req) => {
     if (!authHeader) throw new Error("No Authorization header");
     const token = authHeader.replace("Bearer ", "");
 
-    const { data: userData, error: userErr } = await supabase.auth.getUser(token);
-    if (userErr || !userData?.user) throw new Error(`Auth error: ${userErr?.message}`);
-    const user = userData.user;
+  const { data: userData, error: userErr } = await supabase.auth.getUser(token);
+  if (userErr || !userData?.user) throw new Error(`Auth error: ${userErr?.message}`);
+  const user = userData.user;
+
+  // Email verification gate - prevent tenant creation for unverified emails
+  const isGoogleOAuth = user.app_metadata?.provider === 'google';
+  const isEmailVerified = isGoogleOAuth 
+    ? user.user_metadata?.email_verified === true
+    : user.email_confirmed_at !== null;
+
+  if (!isEmailVerified) {
+    log("Email not verified", { userId: user.id, provider: user.app_metadata?.provider });
+    return new Response(
+      JSON.stringify({ 
+        code: 'EMAIL_NOT_VERIFIED', 
+        message: 'Email verification required before creating workspace' 
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 403 }
+    );
+  }
 
     const body = (await req.json().catch(() => ({}))) as ProvisionBody;
     const companyName = (body.companyName || "").trim();
