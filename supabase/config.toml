@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.convert-document-to-pdf]
 verify_jwt = false
+
+[functions.stripe-webhook]
+verify_jwt = false
