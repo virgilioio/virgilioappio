@@ -109,12 +109,12 @@ export function usePermissions(): PermissionsState {
     canDeleteMembers: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin' && !isGuest,
     canManageMembers: isPlatformAdmin || isWorkspaceOwner || (memberRole === 'admin' || memberRole === 'customer_success') && !isGuest,
     
-    // Organization permissions - Guest users cannot manage organizations
-    canViewOrganizations: isPlatformAdmin || memberRole === 'customer_success' && !isGuest,
-    canCreateOrganizations: isPlatformAdmin || memberRole === 'customer_success' && !isGuest,
-    canEditOrganizations: isPlatformAdmin || isWorkspaceOwner || memberRole === 'customer_success' && !isGuest,
-    canDeleteOrganizations: isPlatformAdmin && !isGuest,
-    canManageOrganization: isPlatformAdmin || isWorkspaceOwner || memberRole === 'customer_success' && !isGuest,
+    // Organization permissions - Workspace owners and admins can manage organizations in their workspace
+    canViewOrganizations: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin' || (memberRole === 'customer_success' && !isGuest),
+    canCreateOrganizations: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin' || (memberRole === 'customer_success' && !isGuest),
+    canEditOrganizations: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin' || (memberRole === 'customer_success' && !isGuest),
+    canDeleteOrganizations: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin',
+    canManageOrganization: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin' || (memberRole === 'customer_success' && !isGuest),
     
     // Job request permissions - Guest users can view and create job requests
     canViewJobRequests: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin', 'client', 'customer_success'].includes(memberRole || '') || isGuest,

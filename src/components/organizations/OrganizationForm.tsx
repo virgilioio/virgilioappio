@@ -46,7 +46,7 @@ export function OrganizationForm({
   const { countries, isLoading: countriesLoading } = useCountries()
   const { organizations: allOrganizations } = useOrganizations()
   const isEditing = !!organization
-  const { organizationId } = useAuth()
+  const { organizationId, user } = useAuth()
 
   // Transform countries data for SearchableSelect format
   const countryOptions = countries.map(country => ({
@@ -142,6 +142,14 @@ const form = useForm<FormData>({
         owner_id: data.owner_id === 'none' || data.owner_id?.startsWith('invited_') ? null : data.owner_id,
         parent_organization_id: data.parent_organization_id === 'none' ? null : data.parent_organization_id
       }
+
+      // For workspace owners creating new organizations, automatically set themselves as owner
+      // and their current workspace as the parent organization
+      if (!isEditing && permissions.isWorkspaceOwner && !permissions.isPlatformAdmin) {
+        submitData.owner_id = user?.id || null
+        submitData.parent_organization_id = organizationId
+      }
+
       console.log('Submitting organization data:', submitData)
       await onSubmit(submitData)
       onClose()
@@ -227,40 +235,42 @@ const form = useForm<FormData>({
               )}
             />
 
-            {/* Parent Organization */}
-            <FormField
-              control={form.control}
-              name="parent_organization_id"
-              render={({ field }) => {
-                const parentOptions = [
-                  { value: 'none', label: 'No parent (top-level)' },
-                  ...allOrganizations
-                    .filter(o => !isEditing || o.id !== organization?.id)
-                    .map(o => ({ value: o.id, label: o.name }))
-                ]
-                return (
-                  <FormItem>
-                    <FormLabel>Parent Organization</FormLabel>
-                    <FormControl>
-                      <SearchableSelect
-                        options={parentOptions}
-                        value={field.value}
-                        onValueChange={field.onChange}
-                        placeholder="Select a parent (optional)"
-                        searchPlaceholder="Search organizations..."
-                        emptyMessage="No organizations found."
-                      />
-                    </FormControl>
-                    <FormDescription>
-                      Set a parent to create a hierarchy. Tenants should have no parent.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )
-              }}
-            />
+            {/* Parent Organization - Only show for platform admins */}
+            {permissions.isPlatformAdmin && (
+              <FormField
+                control={form.control}
+                name="parent_organization_id"
+                render={({ field }) => {
+                  const parentOptions = [
+                    { value: 'none', label: 'No parent (top-level)' },
+                    ...allOrganizations
+                      .filter(o => !isEditing || o.id !== organization?.id)
+                      .map(o => ({ value: o.id, label: o.name }))
+                  ]
+                  return (
+                    <FormItem>
+                      <FormLabel>Parent Organization</FormLabel>
+                      <FormControl>
+                        <SearchableSelect
+                          options={parentOptions}
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          placeholder="Select a parent (optional)"
+                          searchPlaceholder="Search organizations..."
+                          emptyMessage="No organizations found."
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Set a parent to create a hierarchy. Tenants should have no parent.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )
+                }}
+              />
+            )}
 
-            {permissions.canManageOrganization && (
+            {permissions.isPlatformAdmin && permissions.canManageOrganization && (
               <FormField
                 control={form.control}
                 name="owner_id"
