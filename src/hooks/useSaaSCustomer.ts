@@ -56,7 +56,7 @@ export function useSaaSCustomer(customerId: string) {
           .from('profiles')
           .select('email')
           .eq('user_id', organization.billing_poc_user_id)
-          .single()
+          .maybeSingle()
         
         billingPocEmail = profile?.email
       }
@@ -71,15 +71,23 @@ export function useSaaSCustomer(customerId: string) {
       // Get user counts for each sub-organization
       const subOrganizations = await Promise.all(
         (subOrgs || []).map(async (subOrg) => {
-          const { count: subUserCount } = await supabase
-            .from('members')
-            .select('*', { count: 'exact', head: true })
-            .eq('organization_id', subOrg.id)
-            .eq('user_status', 'active')
+          try {
+            const { count: subUserCount } = await supabase
+              .from('members')
+              .select('*', { count: 'exact', head: true })
+              .eq('organization_id', subOrg.id)
+              .eq('user_status', 'active')
 
-          return {
-            ...subOrg,
-            user_count: subUserCount || 0
+            return {
+              ...subOrg,
+              user_count: subUserCount || 0
+            }
+          } catch (error) {
+            console.error('Error fetching sub-org data:', subOrg.id, error)
+            return {
+              ...subOrg,
+              user_count: 0
+            }
           }
         })
       )
