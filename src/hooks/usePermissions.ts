@@ -1,6 +1,7 @@
 
 import { useAuth } from '@/contexts/AuthContext'
 import { useUserProfile } from '@/hooks/useUserProfile'
+import { useIsVirgilioAdmin } from '@/hooks/useIsVirgilioAdmin'
 
 export interface PermissionsState {
   // Job permissions
@@ -58,6 +59,9 @@ export interface PermissionsState {
   canManageInvoices: boolean
   canUploadInvoicePDFs: boolean
   canViewBilling: boolean
+
+  // Customer Management permissions
+  canAccessCustomerManagement: boolean
   
   // Admin permissions
   isWorkspaceOwner: boolean
@@ -73,6 +77,7 @@ export interface PermissionsState {
 export function usePermissions(): PermissionsState {
   const { user, organizationId, userType, memberRole, hasOrganizationContext } = useAuth()
   const { profile } = useUserProfile()
+  const isVirgilioAdmin = useIsVirgilioAdmin()
   
   // Platform admin has user_type = 'platform_admin' - memberRole is not required
   const isPlatformAdmin = userType === 'platform_admin'
@@ -150,6 +155,9 @@ export function usePermissions(): PermissionsState {
     canManageInvoices: (isPlatformAdmin || isBillingMember) && !isGuest,
     canUploadInvoicePDFs: (isPlatformAdmin || isBillingMember) && !isGuest,
     canViewBilling: (isPlatformAdmin || isBillingMember || isWorkspaceOwner) && !isGuest,
+
+    // Customer Management permissions - Only Virgilio platform admins
+    canAccessCustomerManagement: isVirgilioAdmin,
     
     // Admin flags
     isWorkspaceOwner,

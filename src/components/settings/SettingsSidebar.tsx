@@ -1,7 +1,6 @@
 
 import { User, Building, Receipt, Users, Shield, Settings as SettingsIcon, Megaphone, FileText, Image, Globe, BarChart3, UserCheck, Briefcase, UsersIcon } from 'lucide-react'
 import { usePermissions } from '@/hooks/usePermissions'
-import { useFeatureFlag } from '@/hooks/useFeatureFlag'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -25,7 +24,6 @@ interface SettingsSidebarProps {
 
 export function SettingsSidebar({ currentTab, onTabChange, className }: SettingsSidebarProps) {
   const permissions = usePermissions()
-  const isCustomerManagementEnabled = useFeatureFlag('self_serve_admin_enabled')
   const [platformOpen, setPlatformOpen] = useState(
     ['platform-dashboard', 'platform-settings', 'platform-legal', 'platform-countries', 'platform-templates', 'platform-worker-compliance', 'platform-job-settings', 'platform-customers'].includes(currentTab)
   )
@@ -68,7 +66,7 @@ export function SettingsSidebar({ currentTab, onTabChange, className }: Settings
         { id: 'platform-templates', label: 'Templates', icon: FileText, show: true },
         { id: 'platform-worker-compliance', label: 'Payroll Compliance', icon: UserCheck, show: true },
         { id: 'platform-job-settings', label: 'Job Settings', icon: Briefcase, show: true },
-        { id: 'platform-customers', label: 'Customer Management (SaaS)', icon: UsersIcon, show: permissions.isPlatformAdmin && isCustomerManagementEnabled },
+        { id: 'platform-customers', label: 'Customer Management (SaaS)', icon: UsersIcon, show: permissions.canAccessCustomerManagement },
       ]
     },
   ].filter(item => item.show)
