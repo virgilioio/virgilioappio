@@ -1,8 +1,11 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Users, Building, DollarSign, Activity } from 'lucide-react'
 import { SaaSTenantsList } from './SaaSTenantsList'
+import { useSaaSMetrics } from '@/hooks/useSaaSMetrics'
 
 export function CustomerManagementTab() {
+  const { data: metrics, isLoading } = useSaaSMetrics()
+
   return (
     <div className="space-y-6">
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -12,8 +15,12 @@ export function CustomerManagementTab() {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">--</div>
-            <p className="text-xs text-muted-foreground">Placeholder</p>
+            <div className="text-2xl font-bold">
+              {isLoading ? '--' : metrics?.totalCustomers || 0}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {isLoading ? 'Loading...' : 'SaaS customers'}
+            </p>
           </CardContent>
         </Card>
         
@@ -23,8 +30,12 @@ export function CustomerManagementTab() {
             <Building className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">--</div>
-            <p className="text-xs text-muted-foreground">Placeholder</p>
+            <div className="text-2xl font-bold">
+              {isLoading ? '--' : metrics?.activeTenants || 0}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {isLoading ? 'Loading...' : 'Active organizations'}
+            </p>
           </CardContent>
         </Card>
         
@@ -34,8 +45,12 @@ export function CustomerManagementTab() {
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">--</div>
-            <p className="text-xs text-muted-foreground">Placeholder</p>
+            <div className="text-2xl font-bold">
+              {isLoading ? '--' : `$${(metrics?.monthlyRevenue || 0).toLocaleString()}`}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {isLoading ? 'Loading...' : 'Estimated revenue'}
+            </p>
           </CardContent>
         </Card>
         
@@ -45,8 +60,12 @@ export function CustomerManagementTab() {
             <Activity className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">--</div>
-            <p className="text-xs text-muted-foreground">Placeholder</p>
+            <div className="text-2xl font-bold">
+              {isLoading ? '--' : metrics?.totalActiveUsers || 0}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {isLoading ? 'Loading...' : 'Across all tenants'}
+            </p>
           </CardContent>
         </Card>
       </div>
