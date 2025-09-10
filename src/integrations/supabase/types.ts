@@ -2254,7 +2254,7 @@ export type Database = {
           owner_assigned_at: string | null
           owner_id: string | null
           parent_organization_id: string | null
-          signup_source: string | null
+          signup_source: string
           status: string
           tenant_id: string | null
           tenant_type: string | null
@@ -2277,7 +2277,7 @@ export type Database = {
           owner_assigned_at?: string | null
           owner_id?: string | null
           parent_organization_id?: string | null
-          signup_source?: string | null
+          signup_source?: string
           status?: string
           tenant_id?: string | null
           tenant_type?: string | null
@@ -2300,7 +2300,7 @@ export type Database = {
           owner_assigned_at?: string | null
           owner_id?: string | null
           parent_organization_id?: string | null
-          signup_source?: string | null
+          signup_source?: string
           status?: string
           tenant_id?: string | null
           tenant_type?: string | null

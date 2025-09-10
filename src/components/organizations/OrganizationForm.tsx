@@ -140,7 +140,12 @@ const form = useForm<FormData>({
         ...data,
         // Only set owner_id if it's not 'none' and doesn't start with 'invited_'
         owner_id: data.owner_id === 'none' || data.owner_id?.startsWith('invited_') ? null : data.owner_id,
-        parent_organization_id: data.parent_organization_id === 'none' ? null : data.parent_organization_id
+        parent_organization_id: data.parent_organization_id === 'none' ? null : data.parent_organization_id,
+        // Mark all manually created organizations as 'manual' signup source
+        signup_source: 'manual',
+        // Set tenant_type and organization_type for manually created orgs
+        tenant_type: 'internal',
+        organization_type: 'client'
       }
 
       // For workspace owners creating new organizations, automatically set themselves as owner
