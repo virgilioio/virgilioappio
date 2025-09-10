@@ -47,6 +47,25 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     const Comp = asChild ? Slot : "button"
     const isDisabled = disabled || loading
     
+    // When using `asChild`, Radix Slot expects exactly one child. Rendering the loader
+    // inside would create multiple children and crash. Render the loader as a sibling instead
+    // and avoid passing native `disabled` to non-button elements.
+    if (asChild) {
+      return (
+        <>
+          {loading && <Loader2 className="animate-spin" />}
+          <Comp
+            className={cn(buttonVariants({ variant, size, className }))}
+            ref={ref as any}
+            aria-disabled={isDisabled || undefined}
+            {...props}
+          >
+            {children}
+          </Comp>
+        </>
+      )
+    }
+
     return (
       <Comp
         className={cn(buttonVariants({ variant, size, className }))}
