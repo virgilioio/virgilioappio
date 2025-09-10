@@ -77,10 +77,19 @@ serve(async (req) => {
       );
     }
 
-    // Create tenant organization
+    // Create tenant organization with signup tracking
+    const authProvider = user.app_metadata?.provider || 'email';
     const { data: tenantOrg, error: tenantErr } = await supabase
       .from("organizations")
-      .insert({ name: companyName, org_kind: "tenant", status: "active", country: countryCode })
+      .insert({ 
+        name: companyName, 
+        org_kind: "tenant", 
+        status: "active", 
+        country: countryCode,
+        signup_source: "self_serve",
+        tenant_type: "saas",
+        organization_type: "client"
+      })
       .select("id")
       .single();
     if (tenantErr) throw new Error(`Failed to create tenant org: ${tenantErr.message}`);
@@ -90,7 +99,17 @@ serve(async (req) => {
     // Create first workspace under tenant
     const { data: wsOrg, error: wsErr } = await supabase
       .from("organizations")
-      .insert({ name: workspaceName, org_kind: "client", parent_organization_id: tenantId, status: "active", country: countryCode, owner_id: user.id })
+      .insert({ 
+        name: workspaceName, 
+        org_kind: "client", 
+        parent_organization_id: tenantId, 
+        status: "active", 
+        country: countryCode, 
+        owner_id: user.id,
+        signup_source: "self_serve",
+        tenant_type: "saas",
+        organization_type: "client"
+      })
       .select("id")
       .single();
     if (wsErr) throw new Error(`Failed to create workspace org: ${wsErr.message}`);
@@ -124,7 +143,7 @@ serve(async (req) => {
     );
     if (upsertErr) throw new Error(`Failed to set trial: ${upsertErr.message}`);
 
-    log("Provisioning complete", { tenantId, workspaceId, trialEnd });
+    log("Provisioning complete", { tenantId, workspaceId, trialEnd, authProvider, signupSource: "self_serve" });
 
     return new Response(
       JSON.stringify({ status: "ok", tenantId, workspaceId, trialEnd }),

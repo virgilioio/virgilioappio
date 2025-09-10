@@ -17,8 +17,8 @@ export function useSaaSTenants() {
   return useQuery({
     queryKey: ['saas-tenants'],
     queryFn: async (): Promise<SaaSTenant[]> => {
-      // Get SaaS organizations (external customers only)
-      // These are independent organizations with no parent and tenant_type = 'saas'
+      // Get SaaS organizations (self-registered customers)
+      // These are organizations created via the self-signup flow
       const { data: organizations, error } = await supabase
         .from('organizations')
         .select(`
@@ -28,11 +28,11 @@ export function useSaaSTenants() {
           created_at,
           updated_at,
           organization_type,
-          tenant_type
+          tenant_type,
+          signup_source
         `)
-        .eq('tenant_type', 'saas')
+        .eq('signup_source', 'self_serve')
         .eq('organization_type', 'client')
-        .is('parent_organization_id', null)
         .order('created_at', { ascending: false })
 
       if (error) {
