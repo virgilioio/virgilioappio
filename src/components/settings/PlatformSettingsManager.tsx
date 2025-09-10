@@ -12,6 +12,7 @@ import { CurrencySettings } from './CurrencySettings'
 import { PlatformAssetUploader } from './PlatformAssetUploader'
 import { AdvertisingManager } from './AdvertisingManager'
 import { SEOSettings } from './SEOSettings'
+import { FeatureFlagsManager } from './FeatureFlagsManager'
 
 export function PlatformSettingsManager() {
   const { settings, isLoading, isUpdating, updateSetting, getSetting } = usePlatformSettings()
@@ -66,10 +67,14 @@ export function PlatformSettingsManager() {
       </CardHeader>
       <CardContent>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="general" className="flex items-center gap-2">
               <Settings className="h-4 w-4" />
               General
+            </TabsTrigger>
+            <TabsTrigger value="flags" className="flex items-center gap-2">
+              <Settings className="h-4 w-4" />
+              Flags
             </TabsTrigger>
             <TabsTrigger value="assets" className="flex items-center gap-2">
               <Image className="h-4 w-4" />
@@ -131,6 +136,10 @@ export function PlatformSettingsManager() {
               {/* Advertising Manager */}
               <AdvertisingManager />
             </div>
+          </TabsContent>
+          
+          <TabsContent value="flags" className="mt-6">
+            <FeatureFlagsManager />
           </TabsContent>
           
           <TabsContent value="assets" className="mt-6">

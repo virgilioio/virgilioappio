@@ -2419,16 +2419,19 @@ export type Database = {
       }
       platform_feature_flags: {
         Row: {
+          description: string | null
           flag_name: string
           is_active: boolean
           updated_at: string | null
         }
         Insert: {
+          description?: string | null
           flag_name: string
           is_active?: boolean
           updated_at?: string | null
         }
         Update: {
+          description?: string | null
           flag_name?: string
           is_active?: boolean
           updated_at?: string | null
@@ -3739,6 +3742,16 @@ export type Database = {
           organization_count: number
         }[]
       }
+      get_all_feature_flags: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          created_at: string
+          description: string
+          flag_name: string
+          is_active: boolean
+          updated_at: string
+        }[]
+      }
       get_exchange_rate_cron_status: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -3901,6 +3914,10 @@ export type Database = {
           user_email: string
           user_type: string
         }[]
+      }
+      update_feature_flag: {
+        Args: { flag_name_param: string; is_active_param: boolean }
+        Returns: boolean
       }
       update_invoice_payment_totals: {
         Args: { invoice_id_param: string }
