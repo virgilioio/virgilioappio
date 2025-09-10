@@ -93,6 +93,17 @@ const fetchUserDisplayInfo = async (userId: string | null): Promise<{ email: str
   }
 }
 
+/**
+ * Hook for managing Virgilio's internal client organizations.
+ * 
+ * Organization Structure:
+ * - Virgilio (platform): The main platform organization
+ * - Internal Clients: Organizations with parent_organization_id = Virgilio's ID and tenant_type = 'internal'
+ * - SaaS Customers: Independent organizations with no parent and tenant_type = 'saas' (handled by useSaaSTenants)
+ * 
+ * This hook ONLY returns Virgilio's internal client organizations for the main Organizations page.
+ * SaaS customers are managed separately in the Customer Management (SaaS) section.
+ */
 export function useOrganizations() {
   const [organizations, setOrganizations] = useState<Organization[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -108,10 +119,25 @@ export function useOrganizations() {
     try {
       console.log('Fetching organizations for user:', user.id, 'userType:', userType)
       
-      // Simple query without complex joins
+      // Fetch Virgilio's organization ID first
+      const { data: virgilioOrg, error: virgilioError } = await supabase
+        .from('organizations')
+        .select('id')
+        .eq('name', 'Virgilio')
+        .eq('organization_type', 'platform')
+        .single()
+
+      if (virgilioError || !virgilioOrg) {
+        throw new Error('Could not find Virgilio platform organization')
+      }
+
+      // Only fetch internal client organizations (children of Virgilio)
       const { data: orgsData, error: fetchError } = await supabase
         .from('organizations')
         .select('*')
+        .eq('parent_organization_id', virgilioOrg.id)
+        .eq('tenant_type', 'internal')
+        .eq('organization_type', 'client')
         .order('created_at', { ascending: false })
 
       if (fetchError) {

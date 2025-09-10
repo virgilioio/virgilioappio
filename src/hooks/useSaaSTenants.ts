@@ -17,7 +17,8 @@ export function useSaaSTenants() {
   return useQuery({
     queryKey: ['saas-tenants'],
     queryFn: async (): Promise<SaaSTenant[]> => {
-      // Get SaaS organizations (external customers)
+      // Get SaaS organizations (external customers only)
+      // These are independent organizations with no parent and tenant_type = 'saas'
       const { data: organizations, error } = await supabase
         .from('organizations')
         .select(`
