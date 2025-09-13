@@ -35,14 +35,13 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
   
   const { toast } = useToast()
 
-  // Local state for field edits
+  // Local state for all changes until save
   const [editedFields, setEditedFields] = useState<Record<string, Partial<PostingField>>>({})
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
-  const [isSaving, setIsSaving] = useState(false)
-
-  // Local orchestration: order and deletions
-  const [orderedIds, setOrderedIds] = useState<string[]>([])
+  const [pendingAdditions, setPendingAdditions] = useState<Array<{ tempId: string; field: Omit<PostingField, 'id' | 'created_at' | 'updated_at'> }>>([])
+  const [pendingLibraryAdditions, setPendingLibraryAdditions] = useState<Array<{ tempId: string; libraryId: string }>>([])
   const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set())
+  const [orderedIds, setOrderedIds] = useState<string[]>([])
+  const [isSaving, setIsSaving] = useState(false)
 
   // Add Custom Field form
   const [label, setLabel] = useState('')
@@ -50,12 +49,10 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
   const [required, setRequired] = useState(false)
   const [selectedLibraryId, setSelectedLibraryId] = useState<string>('')
 
-  // Initialize order from fetched fields unless we have local edits
+  // Initialize order from fetched fields
   useEffect(() => {
-    if (!hasUnsavedChanges) {
-      setOrderedIds(fields.map((f) => f.id))
-    }
-  }, [fields, hasUnsavedChanges])
+    setOrderedIds(fields.map((f) => f.id))
+  }, [fields])
 
   // Helper to get field value (from edited state or original)
   const getFieldValue = (field: PostingField, key: keyof PostingField) => {
@@ -68,29 +65,102 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
       ...prev,
       [fieldId]: { ...prev[fieldId], ...updates }
     }))
-    setHasUnsavedChanges(true)
   }
+
+  // Get combined fields (existing + pending - deleted)
+  const displayFields = useMemo(() => {
+    const existingFields = fields.filter(f => !deletedIds.has(f.id))
+    const customFields = pendingAdditions.map(p => ({
+      ...p.field,
+      id: p.tempId,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    } as PostingField))
+    const libraryBasedFields = pendingLibraryAdditions.map(p => {
+      const libField = libraryFields.find(f => f.id === p.libraryId)
+      return {
+        id: p.tempId,
+        posting_id: postingId,
+        field_label: libField?.field_label || '',
+        field_name: libField?.field_name || '',
+        field_type: libField?.field_type || 'text',
+        is_required: libField?.is_required || false,
+        display_order: 0,
+        column_span: 4,
+        source: 'library' as const,
+        application_field_id: p.libraryId,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      } as PostingField
+    })
+    
+    const allFields = [...existingFields, ...customFields, ...libraryBasedFields]
+    
+    // Apply ordering
+    return orderedIds
+      .map(id => allFields.find(f => f.id === id))
+      .filter(Boolean) as PostingField[]
+  }, [fields, deletedIds, pendingAdditions, pendingLibraryAdditions, orderedIds, libraryFields, postingId])
+
+  // Check if there are any changes
+  const hasChanges = useMemo(() => {
+    return Object.keys(editedFields).length > 0 || 
+           deletedIds.size > 0 || 
+           pendingAdditions.length > 0 || 
+           pendingLibraryAdditions.length > 0 ||
+           JSON.stringify(orderedIds) !== JSON.stringify(fields.map(f => f.id))
+  }, [editedFields, deletedIds, pendingAdditions, pendingLibraryAdditions, orderedIds, fields])
 
   // Save all changes
   const handleSaveChanges = async () => {
-    if (!hasUnsavedChanges) return
+    if (!hasChanges) return
     
     setIsSaving(true)
     try {
-      // Update each edited field
+      // 1. Delete fields
+      for (const id of deletedIds) {
+        await deleteField(id)
+      }
+
+      // 2. Add custom fields
+      for (const addition of pendingAdditions) {
+        await addCustomField(addition.field)
+      }
+
+      // 3. Add library fields
+      for (const addition of pendingLibraryAdditions) {
+        const libField = libraryFields.find(f => f.id === addition.libraryId)
+        if (libField) {
+          await addFieldFromLibrary(libField)
+        }
+      }
+
+      // 4. Update edited fields
       const updates = Object.entries(editedFields).map(([fieldId, changes]) => 
         updateField(fieldId, changes)
       )
-      
       await Promise.all(updates)
+
+      // 5. Update order (only for fields that still exist)
+      await refetch()
+      if (orderedIds.length > 0) {
+        const validIds = orderedIds.filter(id => !deletedIds.has(id) && !id.startsWith('temp-'))
+        if (validIds.length > 0) {
+          await reorderFields(validIds)
+        }
+      }
       
-      // Clear local state
+      // Clear all local state
       setEditedFields({})
-      setHasUnsavedChanges(false)
+      setDeletedIds(new Set())
+      setPendingAdditions([])
+      setPendingLibraryAdditions([])
+      
+      await refetch()
       
       toast({
         title: "Changes saved",
-        description: "Field changes have been saved successfully.",
+        description: "All changes have been saved successfully.",
       })
     } catch (error) {
       toast({
@@ -103,13 +173,28 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
     }
   }
 
-  const handleAddCustom = async () => {
+  const handleAddCustom = () => {
     if (!label.trim()) return
-    await addCustomField({ field_label: label.trim(), field_type: type, is_required: required })
+    
+    const tempId = `temp-${Date.now()}-${Math.random()}`
+    setPendingAdditions(prev => [...prev, {
+      tempId,
+      field: {
+        posting_id: postingId,
+        field_label: label.trim(),
+        field_name: label.trim().toLowerCase().replace(/\s+/g, '_'),
+        field_type: type,
+        is_required: required,
+        display_order: displayFields.length,
+        column_span: 4,
+        source: 'custom'
+      }
+    }])
+    
+    setOrderedIds(prev => [...prev, tempId])
     setLabel('')
     setType('text')
     setRequired(false)
-    await refetch()
   }
 
   const availableLibraryFields = useMemo(() => libraryFields, [libraryFields])
@@ -121,7 +206,7 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
 
   const [isDragging, setIsDragging] = useState(false)
   const [activeId, setActiveId] = useState<string | null>(null)
-  const activeField = useMemo(() => fields.find((f) => f.id === activeId) || null, [fields, activeId])
+  const activeField = useMemo(() => displayFields.find((f) => f.id === activeId) || null, [displayFields, activeId])
   const computeRows = (list: PostingField[]) => {
     const rows: PostingField[][] = []
     let current: PostingField[] = []
@@ -141,7 +226,7 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
     return rows
   }
 
-  const rows = useMemo(() => computeRows(fields), [fields])
+  const rows = useMemo(() => computeRows(displayFields), [displayFields])
 
   function DropBox({ id, orientation }: { id: string; orientation: 'row' | 'col' }) {
     const { setNodeRef, isOver } = useDroppable({ id })
@@ -162,14 +247,14 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
     setActiveId(event.active?.id as string)
   }
 
-  async function handleDragEnd(event: any) {
+  function handleDragEnd(event: any) {
     setIsDragging(false)
     setActiveId(null)
     const { active, over } = event
     if (!over) return
     const overId: string = String(over.id)
 
-    const oldIndex = fields.findIndex((f) => f.id === active.id)
+    const oldIndex = displayFields.findIndex((f) => f.id === active.id)
     if (oldIndex < 0) return
 
     const insertAt = (list: PostingField[], index: number, item: PostingField) => {
@@ -181,19 +266,19 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
 
     // Drop into a row boundary
     if (overId.startsWith('row-')) {
-      const rows = computeRows(fields)
+      const rows = computeRows(displayFields)
       const rowIdx = parseInt(overId.split('-')[1] || '0', 10)
       // insertion index is the number of items in prior rows
       const insertionIndex = rows.slice(0, rowIdx).reduce((acc, r) => acc + r.length, 0)
-      const activeItem = fields[oldIndex]
-      const newOrderFields = insertAt(fields, insertionIndex, activeItem)
+      const activeItem = displayFields[oldIndex]
+      const newOrderFields = insertAt(displayFields, insertionIndex, activeItem)
 
-      // Ensure full-width in its own row
+      // Store span change locally
       if ((activeItem.column_span ?? 4) !== 4) {
-        await updateField(activeItem.id, { column_span: 4 } as any)
+        updateLocalField(activeItem.id, { column_span: 4 })
       }
 
-      await reorderFields(newOrderFields.map((f) => f.id))
+      setOrderedIds(newOrderFields.map((f) => f.id))
       return
     }
 
@@ -202,12 +287,12 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
       const parts = overId.split('|') // beside|{id}|left|right
       const targetId = parts[1]
       const side = parts[2]
-      const targetIndex = fields.findIndex((f) => f.id === targetId)
+      const targetIndex = displayFields.findIndex((f) => f.id === targetId)
       if (targetIndex < 0) return
-      const activeItem = fields[oldIndex]
+      const activeItem = displayFields[oldIndex]
       const after = side === 'right'
       const insertionIndex = targetIndex + (after ? 1 : 0)
-      const newOrderFields = insertAt(fields, insertionIndex, activeItem)
+      const newOrderFields = insertAt(displayFields, insertionIndex, activeItem)
 
       // Recompute rows after insertion but force active to minimal span so it joins the target row
       const tempForRows = newOrderFields.map((it) => it.id === activeItem.id ? { ...it, column_span: 1 } : it)
@@ -219,7 +304,7 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
       }
       if (!rowContaining) rowContaining = rowsAfter[0] || []
 
-      // Assign equalized spans for that row
+      // Assign equalized spans for that row - store locally
       const len = rowContaining.length
       const spanMap = new Map<string, number>()
       if (len <= 1) {
@@ -235,20 +320,22 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
         rowContaining.forEach((it) => spanMap.set(it.id, 1))
       }
 
-      await Promise.all(rowContaining.map((it) => {
+      rowContaining.forEach((it) => {
         const span = spanMap.get(it.id) ?? 4
-        return (it.column_span ?? 4) !== span ? updateField(it.id, { column_span: span } as any) : Promise.resolve()
-      }))
+        if ((it.column_span ?? 4) !== span) {
+          updateLocalField(it.id, { column_span: span })
+        }
+      })
 
-      await reorderFields(newOrderFields.map((f) => f.id))
+      setOrderedIds(newOrderFields.map((f) => f.id))
       return
     }
 
     // Default sortable behavior: reorder without changing spans
-    const overIndex = fields.findIndex((f) => f.id === over.id)
+    const overIndex = displayFields.findIndex((f) => f.id === over.id)
     if (overIndex < 0) return
-    const newOrder = arrayMove(fields, oldIndex, overIndex).map((f) => f.id)
-    await reorderFields(newOrder)
+    const newOrder = arrayMove(displayFields, oldIndex, overIndex).map((f) => f.id)
+    setOrderedIds(newOrder)
   }
 
   function SortableRow({ id, disabled, children }: { id: string; disabled?: boolean; children: (handlers: { attributes: any; listeners: any }) => React.ReactNode }) {
@@ -274,11 +361,11 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
         <CardContent className="space-y-3">
           {isLoading ? (
             <p className="text-sm text-muted-foreground">Loading fields...</p>
-          ) : fields.length === 0 ? (
+          ) : displayFields.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-6">No fields yet. Add from library or create a custom field.</p>
           ) : (
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-              <SortableContext items={fields.map((f) => f.id)} strategy={rectSortingStrategy}>
+              <SortableContext items={displayFields.map((f) => f.id)} strategy={rectSortingStrategy}>
                 <div className="space-y-2">
                   {isDragging && <DropBox id={`row-0`} orientation="row" />}
                   {rows.map((row, rIdx) => (
@@ -338,20 +425,28 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
                                            />
                                            <label htmlFor={`req-${f.id}`} className="ml-2 text-sm text-muted-foreground">Required</label>
                                          </div>
-                                        <div className="flex items-center gap-2 md:justify-end">
-                                          <Button
-                                            variant="ghost"
-                                            size="icon"
-                                            onClick={async () => {
-                                              await deleteField(f.id)
-                                              await refetch()
-                                            }}
-                                            disabled={readOnly || (f.source === 'library' && f.application_field_id && defaultLibraryIds.has(f.application_field_id))}
-                                            title="Delete field"
-                                          >
-                                            <Trash2 className="h-4 w-4" />
-                                          </Button>
-                                        </div>
+                                         <div className="flex items-center gap-2 md:justify-end">
+                                           <Button
+                                             variant="ghost"
+                                             size="icon"
+                                             onClick={() => {
+                                               if (f.id.startsWith('temp-')) {
+                                                 // Remove from pending additions
+                                                 setPendingAdditions(prev => prev.filter(p => p.tempId !== f.id))
+                                                 setPendingLibraryAdditions(prev => prev.filter(p => p.tempId !== f.id))
+                                                 setOrderedIds(prev => prev.filter(id => id !== f.id))
+                                               } else {
+                                                 // Mark for deletion
+                                                 setDeletedIds(prev => new Set([...prev, f.id]))
+                                                 setOrderedIds(prev => prev.filter(id => id !== f.id))
+                                               }
+                                             }}
+                                             disabled={readOnly || (f.source === 'library' && f.application_field_id && defaultLibraryIds.has(f.application_field_id))}
+                                             title="Delete field"
+                                           >
+                                             <Trash2 className="h-4 w-4" />
+                                           </Button>
+                                         </div>
                                       </div>
                                     </div>
                                   </div>
@@ -378,12 +473,8 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
             </DndContext>
           )}
           
-          {hasUnsavedChanges && !readOnly && (
-            <div className="flex items-center justify-between pt-4 border-t border-border/40">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
-                You have unsaved changes ({Object.keys(editedFields).length} field{Object.keys(editedFields).length !== 1 ? 's' : ''} modified)
-              </div>
+          {hasChanges && !readOnly && (
+            <div className="flex justify-end pt-4 border-t border-border/40">
               <Button 
                 onClick={handleSaveChanges}
                 disabled={isSaving}
@@ -442,13 +533,10 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
             ) : (
               <Select
                 value={selectedLibraryId}
-                onValueChange={async (id) => {
-                  setSelectedLibraryId(id)
-                  const f = availableLibraryFields.find((x) => x.id === id)
-                  if (f) {
-                    await addFieldFromLibrary(f)
-                    await refetch()
-                  }
+                onValueChange={(id) => {
+                  const tempId = `temp-${Date.now()}-${Math.random()}`
+                  setPendingLibraryAdditions(prev => [...prev, { tempId, libraryId: id }])
+                  setOrderedIds(prev => [...prev, tempId])
                   setSelectedLibraryId('')
                 }}
                 disabled={readOnly || availableLibraryFields.length === 0}
