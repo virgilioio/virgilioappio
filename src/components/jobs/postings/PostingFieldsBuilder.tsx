@@ -97,11 +97,20 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
     
     const allFields = [...existingFields, ...customFields, ...libraryBasedFields]
     
+    // Apply edited changes to each field before ordering
+    const fieldsWithEdits = allFields.map(field => {
+      const edits = editedFields[field.id]
+      if (edits) {
+        return { ...field, ...edits }
+      }
+      return field
+    })
+    
     // Apply ordering
     return orderedIds
-      .map(id => allFields.find(f => f.id === id))
+      .map(id => fieldsWithEdits.find(f => f.id === id))
       .filter(Boolean) as PostingField[]
-  }, [fields, deletedIds, pendingAdditions, pendingLibraryAdditions, orderedIds, libraryFields, postingId])
+  }, [fields, deletedIds, pendingAdditions, pendingLibraryAdditions, orderedIds, libraryFields, postingId, editedFields])
 
   // Check if there are any changes
   const hasChanges = useMemo(() => {
