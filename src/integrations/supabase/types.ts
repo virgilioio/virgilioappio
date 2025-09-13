@@ -548,7 +548,6 @@ export type Database = {
           company_current: string | null
           contact_emails: string[] | null
           contact_phones: string[] | null
-          coresignal_profile_id: string | null
           created_at: string
           created_by: string | null
           email: string | null
@@ -584,7 +583,6 @@ export type Database = {
           company_current?: string | null
           contact_emails?: string[] | null
           contact_phones?: string[] | null
-          coresignal_profile_id?: string | null
           created_at?: string
           created_by?: string | null
           email?: string | null
@@ -620,7 +618,6 @@ export type Database = {
           company_current?: string | null
           contact_emails?: string[] | null
           contact_phones?: string[] | null
-          coresignal_profile_id?: string | null
           created_at?: string
           created_by?: string | null
           email?: string | null

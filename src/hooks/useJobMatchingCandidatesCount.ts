@@ -5,7 +5,6 @@ interface JobMatchingCount {
   total_count: number
   breakdown: {
     localCandidates: number
-    coreSignalCandidates: number
     averageMatch: number
   }
 }

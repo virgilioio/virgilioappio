@@ -16,7 +16,7 @@ export interface MatchedCandidate {
   match_score: number
   match_tier: 'excellent' | 'good' | 'fair' | 'minimal'
   profile_summary?: string | null
-  source: 'local' | 'coresignal'
+  source: 'local'
   years_experience?: number
   enriched_at?: string | null
   current_company?: string
@@ -30,7 +30,6 @@ export interface JobMatchingResult {
   total_count: number
   breakdown: {
     localCandidates: number
-    coreSignalCandidates: number
     averageMatch: number
   }
 }

@@ -189,50 +189,7 @@ export function PlatformDashboard() {
 
       {/* API & System Status */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* CoreSignal API Status */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Database className="h-5 w-5" />
-              CoreSignal API
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium">Status</span>
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 text-green-500" />
-                  <Badge variant="default" className="bg-green-100 text-green-800">
-                    {metrics?.apis.coreSignal.status || 'Active'}
-                  </Badge>
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <div className="text-sm text-muted-foreground">Search Credits</div>
-                  <div className="text-xl font-bold text-blue-600">
-                    {metrics?.apis.coreSignal.searchCredits || 0}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-sm text-muted-foreground">Collect Credits</div>
-                  <div className="text-xl font-bold text-purple-600">
-                    {metrics?.apis.coreSignal.collectCredits || 0}
-                  </div>
-                </div>
-              </div>
-              
-              <div className="text-xs text-muted-foreground">
-                Last updated: {metrics?.apis.coreSignal.lastUpdated ? 
-                  new Date(metrics.apis.coreSignal.lastUpdated).toLocaleString() : 
-                  'Unknown'
-                }
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        {/* CoreSignal API card removed */}
 
         {/* System Health */}
         <Card>

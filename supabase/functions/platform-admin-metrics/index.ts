@@ -153,12 +153,7 @@ serve(async (req) => {
       ) || [])
     ].length || 0
 
-    // CoreSignal credits info (placeholder - would need actual API integration)
-    const coreSignalCredits = {
-      searchCredits: 897, // This would come from CoreSignal API or stored in DB
-      collectCredits: 447,
-      lastUpdated: new Date().toISOString()
-    }
+    // CoreSignal integration removed
 
     const metrics = {
       users: {
@@ -190,14 +185,7 @@ serve(async (req) => {
       activity: {
         recentActivities: recentActivities
       },
-      apis: {
-        coreSignal: {
-          status: 'active',
-          searchCredits: coreSignalCredits.searchCredits,
-          collectCredits: coreSignalCredits.collectCredits,
-          lastUpdated: coreSignalCredits.lastUpdated
-        }
-      },
+      // CoreSignal API integration removed
       lastUpdated: new Date().toISOString()
     }
 

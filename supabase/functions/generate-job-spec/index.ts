@@ -40,16 +40,9 @@ serve(async (req) => {
       console.log(`🔍 Researching salary for: ${inferredJobTitle} in ${inferredLocation}`);
       
       try {
-        const { data: salaryResponse, error: salaryError } = await supabase.functions.invoke(
-          'coresignal-salary-research',
-          {
-            body: {
-              jobTitle: inferredJobTitle,
-              location: inferredLocation,
-              useCache: true
-            }
-          }
-        );
+        // CoreSignal salary research removed
+        const salaryResponse = null;
+        const salaryError = 'CoreSignal integration removed';
 
         if (!salaryError && salaryResponse?.salaryData) {
           marketSalaryData = salaryResponse.salaryData;
@@ -152,7 +145,7 @@ ENHANCED ANALYSIS REQUIREMENTS:
 - Analyze what the client is trying to achieve and translate that into a strong, structured job description
 
 SALARY INTELLIGENCE WITH MARKET DATA:
-- PRIORITY: Use actual market data from CoreSignal when available (see MARKET SALARY INTELLIGENCE section below)
+- PRIORITY: Use general market knowledge for salary recommendations
 - For LATAM positions: Use appropriate local currencies (MXN, BRL, COP, etc.) and monthly periods
 - For US positions: Use USD and annual periods  
 - For European positions: Use EUR and annual periods

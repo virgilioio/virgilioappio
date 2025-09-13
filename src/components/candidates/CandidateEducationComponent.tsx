@@ -1,7 +1,17 @@
 import { GraduationCap, Calendar } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CandidateEducation } from "@/hooks/useCandidateEnrichment";
+
+export interface CandidateEducation {
+  id: string;
+  institution_name: string;
+  degree_type?: string;
+  field_of_study?: string;
+  start_date?: string;
+  end_date?: string;
+  grade?: string;
+  description?: string;
+}
 
 interface CandidateEducationProps {
   education: CandidateEducation[];

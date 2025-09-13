@@ -24,18 +24,7 @@ export interface IndependentCandidate {
   created_at: string
   updated_at: string
   created_by: string | null
-  // CoreSignal enrichment fields
-  enrichment_status?: string
-  enriched_at?: string
-  coresignal_profile_id?: string
-  contact_emails?: string[]
-  contact_phones?: string[]
-  social_profiles?: any
-  bio?: string
-  company_current?: string
-  role_current?: string
-  years_experience?: number
-  resume_generated_url?: string
+  // CoreSignal enrichment fields removed
 }
 
 export interface CreateIndependentCandidateData {

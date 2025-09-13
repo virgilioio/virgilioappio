@@ -1,7 +1,19 @@
 import { Building2, MapPin, Calendar } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CandidateWorkExperience } from "@/hooks/useCandidateEnrichment";
+
+export interface CandidateWorkExperience {
+  id: string;
+  company_name: string;
+  company_logo_url?: string;
+  job_title: string;
+  start_date?: string;
+  end_date?: string;
+  is_current: boolean;
+  description?: string;
+  skills_used?: string[];
+  location?: string;
+}
 
 interface CandidateWorkExperienceProps {
   experiences: CandidateWorkExperience[];

@@ -11,9 +11,8 @@ import { CandidateComments } from '@/components/candidates/CandidateComments'
 import { CandidateApplicationResponses } from '@/components/candidates/CandidateApplicationResponses'
 import { CandidateResumeViewer } from '@/components/candidates/CandidateResumeViewer'
 import { CandidateUrls } from '@/components/candidates/CandidateUrls'
-import { CandidateWorkExperienceComponent } from '@/components/candidates/CandidateWorkExperience'
-import { CandidateEducationComponent } from '@/components/candidates/CandidateEducationComponent'
-import { useCandidateEnrichment } from '@/hooks/useCandidateEnrichment'
+import { CandidateWorkExperienceComponent, CandidateWorkExperience } from '@/components/candidates/CandidateWorkExperience'
+import { CandidateEducationComponent, CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
 import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight, CheckCircle2, Circle, MoveRight, ThumbsDown, ThumbsUp, Star, Octagon } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
@@ -79,7 +78,8 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
   const [jobCandidateId, setJobCandidateId] = useState<string | null>(null)
   const [job, setJob] = useState<any | null>(null)
   const [activeTab, setActiveTab] = useState<'job' | 'application' | 'resume' | 'overview'>('job')
-  const { workExperience, education, fetchCandidateEnrichmentData } = useCandidateEnrichment()
+  const [workExperience, setWorkExperience] = useState<CandidateWorkExperience[]>([])
+  const [education, setEducation] = useState<CandidateEducation[]>([])
   const [editOpen, setEditOpen] = useState(false)
   const [editLoading, setEditLoading] = useState(false)
   const { updateAssociationStatus, moveAssociationToStage, createAssociationAndMove } = usePipelineActions()
@@ -167,11 +167,7 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
     }
   }, [open, planStages, currentStageId])
 
-  useEffect(() => {
-    if (open && candidateId) {
-      fetchCandidateEnrichmentData(candidateId)
-    }
-  }, [open, candidateId, fetchCandidateEnrichmentData])
+  // Remove CoreSignal enrichment - work experience and education will be empty arrays for now
 
   useEffect(() => {
     const loadRelated = async () => {

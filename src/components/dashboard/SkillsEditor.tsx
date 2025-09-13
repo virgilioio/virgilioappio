@@ -181,34 +181,7 @@ export function SkillsEditor({
                 </div>
               </div>
 
-              {/* Source Breakdown */}
-              {matchingData.breakdown.coreSignalCandidates > 0 && (
-                <div className="p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg border border-blue-200 dark:border-blue-800">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Globe className="h-4 w-4 text-blue-600" />
-                    <span className="text-sm font-medium text-blue-900 dark:text-blue-100">Global Talent Pool</span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4 text-xs">
-                    <div className="flex items-center gap-2">
-                      <Database className="h-3 w-3 text-gray-600" />
-                      <span className="text-muted-foreground">Local:</span>
-                      <span className="font-medium">{matchingData.breakdown.localCandidates}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Globe className="h-3 w-3 text-blue-600" />
-                      <span className="text-muted-foreground">External:</span>
-                      <span className="font-medium text-blue-600">{matchingData.breakdown.coreSignalCandidates}</span>
-                    </div>
-                  </div>
-                  {matchingData.breakdown.creditsUsed > 0 && (
-                    <div className="mt-2 pt-2 border-t border-blue-200 dark:border-blue-800">
-                      <div className="text-xs text-blue-700 dark:text-blue-300">
-                        Search credits used: {matchingData.breakdown.creditsUsed}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
+              {/* CoreSignal source breakdown removed */}
             </div>
           )}
         </div>

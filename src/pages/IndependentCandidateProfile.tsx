@@ -11,10 +11,8 @@ import { PermissionGate } from '@/components/auth/PermissionGate'
 import { AppContainer } from '@/components/layout/AppContainer'
 import { useIndependentCandidates, IndependentCandidate } from '@/hooks/useIndependentCandidates'
 import { IndependentCandidateForm } from '@/components/candidates/IndependentCandidateForm'
-import { useCandidateEnrichment } from '@/hooks/useCandidateEnrichment'
-import { EnrichmentPanel } from '@/components/candidates/EnrichmentPanel'
-import { CandidateWorkExperienceComponent } from '@/components/candidates/CandidateWorkExperience'
-import { CandidateEducationComponent } from '@/components/candidates/CandidateEducationComponent'
+import { CandidateWorkExperienceComponent, CandidateWorkExperience } from '@/components/candidates/CandidateWorkExperience'
+import { CandidateEducationComponent, CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
 import { cn } from '@/lib/utils'
 import { getSkillColor } from '@/utils/skillColors'
 import { SafeHtml } from '@/components/ui/safe-html'
@@ -41,11 +39,8 @@ export default function IndependentCandidateProfile() {
     getCandidates
   } = useIndependentCandidates()
 
-  const { 
-    workExperience, 
-    education, 
-    fetchCandidateEnrichmentData 
-  } = useCandidateEnrichment()
+  const [workExperience, setWorkExperience] = useState<CandidateWorkExperience[]>([])
+  const [education, setEducation] = useState<CandidateEducation[]>([])
 
   // Navigation logic for previous/next candidates
   const currentCandidateIndex = candidates.findIndex(c => c.id === candidateId)
@@ -65,20 +60,11 @@ export default function IndependentCandidateProfile() {
       const foundCandidate = candidates.find(c => c.id === candidateId)
       setCandidate(foundCandidate || null)
       
-      // Load enrichment data if candidate is found
-      if (foundCandidate) {
-        fetchCandidateEnrichmentData(candidateId)
-      }
+      // CoreSignal enrichment removed - work experience and education will be empty
     }
   }, [candidates, candidateId]) // Removed fetchCandidateEnrichmentData from dependencies since it's now memoized
 
-  const handleEnrichmentComplete = async () => {
-    // Refresh candidate data after enrichment
-    await getCandidates()
-    if (candidateId) {
-      await fetchCandidateEnrichmentData(candidateId)
-    }
-  }
+  // CoreSignal enrichment removed
 
   useEffect(() => {
     if (!candidate) return
@@ -495,11 +481,7 @@ export default function IndependentCandidateProfile() {
 
             {/* Right Column - Sidebar */}
             <div className="space-y-md">
-              {/* CoreSignal Enrichment Panel */}
-              <EnrichmentPanel 
-                candidate={candidate} 
-                onEnrichmentComplete={handleEnrichmentComplete}
-              />
+              {/* CoreSignal enrichment panel removed */}
 
               {/* Quick Actions */}
               <PermissionGate permission="canManageCandidates">

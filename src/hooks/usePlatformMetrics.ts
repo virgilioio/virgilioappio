@@ -31,14 +31,7 @@ export interface PlatformMetrics {
   activity: {
     recentActivities: number
   }
-  apis: {
-    coreSignal: {
-      status: string
-      searchCredits: number
-      collectCredits: number
-      lastUpdated: string
-    }
-  }
+  // CoreSignal API integration removed
   lastUpdated: string
 }
 

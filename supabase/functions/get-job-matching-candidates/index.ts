@@ -12,8 +12,7 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 );
 
-const CORESIGNAL_API_KEY = Deno.env.get('CORESIGNAL_API_KEY');
-const CORESIGNAL_BASE_URL = 'https://api.coresignal.com';
+// CoreSignal integration removed
 
 interface JobMatchingRequest {
   job_id: string;
@@ -57,7 +56,7 @@ interface MatchedCandidate {
   match_score: number;
   match_tier: 'excellent' | 'good' | 'fair' | 'minimal';
   profile_summary?: string;
-  source: 'local' | 'coresignal';
+  source: 'local';
   years_experience?: number;
   enriched_at?: string;
   current_company?: string;
@@ -71,7 +70,6 @@ interface JobMatchingResult {
   total_count: number;
   breakdown: {
     localCandidates: number;
-    coreSignalCandidates: number;
     averageMatch: number;
   };
 }
@@ -561,8 +559,7 @@ serve(async (req) => {
       console.log(`📊 Filtered out ${excludedCount} already associated candidates`);
     }
 
-    // TODO: Add CoreSignal candidates here (similar to count-matching-candidates logic)
-    // For now, focusing on local candidates to get the feature working
+    // CoreSignal integration removed - only using local candidates
 
     // Perform comparative analysis
     const analyzedCandidates = performComparativeAnalysis(matchedCandidates);
@@ -581,8 +578,7 @@ serve(async (req) => {
       candidates: limitedCandidates,
       total_count: matchedCandidates.length,
       breakdown: {
-        localCandidates: matchedCandidates.filter(c => c.source === 'local').length,
-        coreSignalCandidates: matchedCandidates.filter(c => c.source === 'coresignal').length,
+        localCandidates: matchedCandidates.length,
         averageMatch: matchedCandidates.length > 0 
           ? matchedCandidates.reduce((sum, c) => sum + c.match_score, 0) / matchedCandidates.length 
           : 0,
