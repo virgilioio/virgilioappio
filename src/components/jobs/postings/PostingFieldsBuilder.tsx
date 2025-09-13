@@ -8,7 +8,8 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { useApplicationFields } from '@/hooks/useApplicationFields'
 import { useJobPostingFields, FieldType, PostingField } from '@/hooks/useJobPostingFields'
 import { FormField } from '@/components/ui/form-field'
-import { GripVertical, Plus, Trash2 } from 'lucide-react'
+import { GripVertical, Plus, Trash2, Save } from 'lucide-react'
+import { useToast } from '@/hooks/use-toast'
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, useDroppable, DragOverlay } from '@dnd-kit/core'
 import { SortableContext, rectSortingStrategy, arrayMove, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -31,12 +32,65 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
     deleteField,
     reorderFields
   } = useJobPostingFields(postingId)
+  
+  const { toast } = useToast()
+
+  // Local state for field edits
+  const [editedFields, setEditedFields] = useState<Record<string, Partial<PostingField>>>({})
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
 
   // Add Custom Field form
   const [label, setLabel] = useState('')
   const [type, setType] = useState<FieldType>('text')
   const [required, setRequired] = useState(false)
   const [selectedLibraryId, setSelectedLibraryId] = useState<string>('')
+
+  // Helper to get field value (from edited state or original)
+  const getFieldValue = (field: PostingField, key: keyof PostingField) => {
+    return editedFields[field.id]?.[key] ?? field[key]
+  }
+
+  // Helper to update local state
+  const updateLocalField = (fieldId: string, updates: Partial<PostingField>) => {
+    setEditedFields(prev => ({
+      ...prev,
+      [fieldId]: { ...prev[fieldId], ...updates }
+    }))
+    setHasUnsavedChanges(true)
+  }
+
+  // Save all changes
+  const handleSaveChanges = async () => {
+    if (!hasUnsavedChanges) return
+    
+    setIsSaving(true)
+    try {
+      // Update each edited field
+      const updates = Object.entries(editedFields).map(([fieldId, changes]) => 
+        updateField(fieldId, changes)
+      )
+      
+      await Promise.all(updates)
+      
+      // Clear local state
+      setEditedFields({})
+      setHasUnsavedChanges(false)
+      
+      toast({
+        title: "Changes saved",
+        description: "Field changes have been saved successfully.",
+      })
+    } catch (error) {
+      toast({
+        title: "Error saving changes", 
+        description: "Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSaving(false)
+    }
+  }
 
   const handleAddCustom = async () => {
     if (!label.trim()) return
@@ -242,20 +296,21 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
                                     </Button>
                                     <div className="flex-1">
                                       <div className="grid md:grid-cols-6 gap-3 items-end">
-                                        <div className="md:col-span-2">
-                                          <Input
-                                            value={f.field_label}
-                                            onChange={(e) => updateField(f.id, { field_label: e.target.value })}
-                                            disabled={readOnly || (f.source === 'library' && f.application_field_id && defaultLibraryIds.has(f.application_field_id))}
-                                            placeholder="Label"
-                                          />
-                                        </div>
-                                        <div>
-                                          <Select
-                                            value={f.field_type}
-                                            onValueChange={(v: FieldType) => updateField(f.id, { field_type: v })}
-                                            disabled={readOnly || (f.source === 'library' && f.application_field_id && defaultLibraryIds.has(f.application_field_id))}
-                                          >
+                                         <div className="md:col-span-2">
+                                           <Input
+                                             value={getFieldValue(f, 'field_label') as string}
+                                             onChange={(e) => updateLocalField(f.id, { field_label: e.target.value })}
+                                             disabled={readOnly || (f.source === 'library' && f.application_field_id && defaultLibraryIds.has(f.application_field_id))}
+                                             placeholder="Label"
+                                             className={editedFields[f.id]?.field_label !== undefined ? "border-orange-500/60 bg-orange-50/50 dark:bg-orange-950/20" : ""}
+                                           />
+                                         </div>
+                                         <div>
+                                           <Select
+                                             value={getFieldValue(f, 'field_type') as string}
+                                             onValueChange={(v: FieldType) => updateField(f.id, { field_type: v })}
+                                             disabled={readOnly || (f.source === 'library' && f.application_field_id && defaultLibraryIds.has(f.application_field_id))}
+                                           >
                                             <SelectTrigger><SelectValue placeholder="Type" /></SelectTrigger>
                                             <SelectContent>
                                               {(['text','number','email','url','textarea','select','checkbox','date','file'] as FieldType[]).map((t) => (
@@ -264,15 +319,15 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
                                             </SelectContent>
                                           </Select>
                                         </div>
-                                        <div className="flex items-center h-10">
-                                          <Checkbox
-                                            checked={f.is_required}
-                                            onCheckedChange={(c) => updateField(f.id, { is_required: !!c })}
-                                            disabled={readOnly || (f.source === 'library' && f.application_field_id && defaultLibraryIds.has(f.application_field_id))}
-                                            id={`req-${f.id}`}
-                                          />
-                                          <label htmlFor={`req-${f.id}`} className="ml-2 text-sm text-muted-foreground">Required</label>
-                                        </div>
+                                         <div className="flex items-center h-10">
+                                           <Checkbox
+                                             checked={getFieldValue(f, 'is_required') as boolean}
+                                             onCheckedChange={(c) => updateField(f.id, { is_required: !!c })}
+                                             disabled={readOnly || (f.source === 'library' && f.application_field_id && defaultLibraryIds.has(f.application_field_id))}
+                                             id={`req-${f.id}`}
+                                           />
+                                           <label htmlFor={`req-${f.id}`} className="ml-2 text-sm text-muted-foreground">Required</label>
+                                         </div>
                                         <div className="flex items-center gap-2 md:justify-end">
                                           <Button
                                             variant="ghost"
@@ -311,6 +366,24 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
                 ) : null}
               </DragOverlay>
             </DndContext>
+          )}
+          
+          {hasUnsavedChanges && !readOnly && (
+            <div className="flex items-center justify-between pt-4 border-t border-border/40">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                You have unsaved changes ({Object.keys(editedFields).length} field{Object.keys(editedFields).length !== 1 ? 's' : ''} modified)
+              </div>
+              <Button 
+                onClick={handleSaveChanges}
+                disabled={isSaving}
+                size="sm"
+                className="gap-2"
+              >
+                <Save className="h-4 w-4" />
+                {isSaving ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </div>
           )}
         </CardContent>
       </Card>
