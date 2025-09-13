@@ -99,19 +99,26 @@ export const CandidateApplicationResponses: React.FC<CandidateApplicationRespons
 
         if (error) throw error;
         
+        console.log('Raw application responses:', data);
+        console.log('Core fields:', coreFields);
+        
         // Create exclusion set from core fields + additional excluded fields
         const coreFieldNames = new Set(coreFields.map(f => f.field_name.toLowerCase()));
         const allExcludedFields = new Set([
-          ...excludedFields,
-          ...coreFieldNames,
-          'profile_summary', // Specifically exclude profile summary as it's a core field
-          'skills' // Exclude skills as they're handled separately
+          ...excludedFields.map(f => f.toLowerCase()),
+          ...coreFieldNames
         ]);
         
+        console.log('Excluded fields:', Array.from(allExcludedFields));
+        
         // Filter out core fields - only show custom fields
-        const filteredResponses = (data || []).filter(response => 
-          !allExcludedFields.has(response.field_name.toLowerCase())
-        );
+        const filteredResponses = (data || []).filter(response => {
+          const shouldExclude = allExcludedFields.has(response.field_name.toLowerCase());
+          console.log(`Field "${response.field_name}": ${shouldExclude ? 'EXCLUDED' : 'INCLUDED'}`);
+          return !shouldExclude;
+        });
+        
+        console.log('Filtered responses to display:', filteredResponses);
         setResponses(filteredResponses);
       } catch (error) {
         console.error('Error fetching application responses:', error);
