@@ -1540,162 +1540,6 @@ export type Database = {
           },
         ]
       }
-      job_request_agreements: {
-        Row: {
-          agreement_content: string | null
-          country_id: string
-          created_at: string
-          created_by: string | null
-          id: string
-          is_active: boolean
-          updated_at: string
-          version: number
-        }
-        Insert: {
-          agreement_content?: string | null
-          country_id: string
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          is_active?: boolean
-          updated_at?: string
-          version?: number
-        }
-        Update: {
-          agreement_content?: string | null
-          country_id?: string
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          is_active?: boolean
-          updated_at?: string
-          version?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "job_request_agreements_country_id_fkey"
-            columns: ["country_id"]
-            isOneToOne: false
-            referencedRelation: "countries"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      job_requests: {
-        Row: {
-          agreement_id: string | null
-          approved_at: string | null
-          approved_by: string | null
-          approver_role: string | null
-          created_at: string
-          currency: string | null
-          department: string | null
-          description: string | null
-          id: string
-          job_id: string | null
-          level: Database["public"]["Enums"]["job_request_level"]
-          location: string | null
-          notes: string | null
-          organization_id: string
-          processed_agreement_content: string | null
-          salary_max: number | null
-          salary_min: number | null
-          status: Database["public"]["Enums"]["job_request_status"]
-          submitted_by: string
-          title: string
-          updated_at: string
-        }
-        Insert: {
-          agreement_id?: string | null
-          approved_at?: string | null
-          approved_by?: string | null
-          approver_role?: string | null
-          created_at?: string
-          currency?: string | null
-          department?: string | null
-          description?: string | null
-          id?: string
-          job_id?: string | null
-          level: Database["public"]["Enums"]["job_request_level"]
-          location?: string | null
-          notes?: string | null
-          organization_id: string
-          processed_agreement_content?: string | null
-          salary_max?: number | null
-          salary_min?: number | null
-          status?: Database["public"]["Enums"]["job_request_status"]
-          submitted_by: string
-          title: string
-          updated_at?: string
-        }
-        Update: {
-          agreement_id?: string | null
-          approved_at?: string | null
-          approved_by?: string | null
-          approver_role?: string | null
-          created_at?: string
-          currency?: string | null
-          department?: string | null
-          description?: string | null
-          id?: string
-          job_id?: string | null
-          level?: Database["public"]["Enums"]["job_request_level"]
-          location?: string | null
-          notes?: string | null
-          organization_id?: string
-          processed_agreement_content?: string | null
-          salary_max?: number | null
-          salary_min?: number | null
-          status?: Database["public"]["Enums"]["job_request_status"]
-          submitted_by?: string
-          title?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "fk_job_requests_approved_by"
-            columns: ["approved_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["user_id"]
-          },
-          {
-            foreignKeyName: "fk_job_requests_submitted_by"
-            columns: ["submitted_by"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["user_id"]
-          },
-          {
-            foreignKeyName: "job_requests_agreement_id_fkey"
-            columns: ["agreement_id"]
-            isOneToOne: false
-            referencedRelation: "job_request_agreements"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "job_requests_job_id_fkey"
-            columns: ["job_id"]
-            isOneToOne: false
-            referencedRelation: "jobs"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "job_requests_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organization_exchange_rates"
-            referencedColumns: ["organization_id"]
-          },
-          {
-            foreignKeyName: "job_requests_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       job_stage_scorecards: {
         Row: {
           association_id: string
@@ -3982,8 +3826,6 @@ export type Database = {
         | "L2 - Managers"
         | "L3 - Directors / VPs / Executive Search"
         | "L4 - C-Level"
-      job_request_level: "L1" | "L2" | "L3"
-      job_request_status: "pending" | "approved" | "rejected"
       job_status: "draft" | "open" | "closed" | "archived"
       member_role:
         | "recruiter"
@@ -4220,8 +4062,6 @@ export const Constants = {
         "L3 - Directors / VPs / Executive Search",
         "L4 - C-Level",
       ],
-      job_request_level: ["L1", "L2", "L3"],
-      job_request_status: ["pending", "approved", "rejected"],
       job_status: ["draft", "open", "closed", "archived"],
       member_role: [
         "recruiter",

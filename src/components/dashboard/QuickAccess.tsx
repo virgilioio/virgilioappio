@@ -21,14 +21,6 @@ export function QuickAccess({ permissions }: QuickAccessProps) {
     })
   }
 
-  if (permissions.canRequestJobs && !permissions.canCreateJobs) {
-    quickActions.push({
-      label: 'Request New Job',
-      href: '/job-requests',
-      icon: Plus,
-      action: 'request'
-    })
-  }
 
   if (permissions.canManageMembers) {
     quickActions.push({

@@ -14,7 +14,7 @@ import Jobs from './pages/Jobs'
 import JobDetail from './pages/JobDetail'
 import Members from './pages/Members'
 import Organizations from './pages/Organizations'
-import JobRequests from './pages/JobRequests'
+
 import Candidates from './pages/Candidates'
 import Settings from './pages/Settings'
 import Login from './pages/Login'
@@ -78,7 +78,7 @@ function AppContent() {
           <Route path="candidates/:candidateId" element={<IndependentCandidateProfile />} />
           <Route path="members" element={<Members />} />
           <Route path="organizations" element={<Organizations />} />
-          <Route path="job-requests" element={<JobRequests />} />
+          
           <Route path="billing" element={<Settings />} />
           <Route path="invoices" element={<AdminInvoices />} />
           <Route path="settings" element={<Settings />} />

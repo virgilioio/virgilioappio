@@ -42,7 +42,6 @@ export function Header() {
   const { 
     canViewJobs, 
     canViewOrganizations, 
-    canViewJobRequests, 
     canViewCandidatesNavigation,
     isPlatformAdmin,
     isWorkspaceOwner
@@ -107,12 +106,6 @@ export function Header() {
       icon: Building2,
       label: 'Organizations',
       show: canViewOrganizations,
-    },
-    {
-      href: '/job-requests',
-      icon: FileText,
-      label: 'Job Requests',
-      show: canViewJobRequests,
     },
     {
       href: '/jobs',

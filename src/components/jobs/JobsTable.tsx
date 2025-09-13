@@ -21,7 +21,6 @@ interface JobsTableProps {
   onEdit: (job: Job) => void
   onArchive: (id: string) => void
   onCreateNew: () => void
-  onRequestJob: () => void
 }
 
 export function JobsTable({ 
@@ -30,8 +29,7 @@ export function JobsTable({
   onView, 
   onEdit, 
   onArchive, 
-  onCreateNew,
-  onRequestJob
+  onCreateNew
 }: JobsTableProps) {
   const navigate = useNavigate()
   const permissions = usePermissions()
@@ -274,12 +272,6 @@ export function JobsTable({
                 </Button>
               </PermissionGate>
               
-              <PermissionGate permission="canRequestJobs">
-                <Button onClick={onRequestJob} variant="outline" size="sm" className="gap-sm whitespace-nowrap">
-                  <UserPlus className="h-4 w-4" />
-                  Request Job
-                </Button>
-              </PermissionGate>
             </div>
           </div>
         </div>

@@ -7,7 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Briefcase, ExternalLink, MapPin, Building } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useJobs } from '@/hooks/useJobs'
-import { useJobRequests } from '@/hooks/useJobRequests'
+
 import { PermissionsState } from '@/hooks/usePermissions'
 
 interface JobsOverviewProps {
@@ -16,13 +16,7 @@ interface JobsOverviewProps {
 
 export function JobsOverview({ permissions }: JobsOverviewProps) {
   const { jobs, isLoading: jobsLoading } = useJobs()
-  const { jobRequests, isLoading: requestsLoading } = useJobRequests()
   const [activeJobsCount, setActiveJobsCount] = useState(0)
-  const [requestsSummary, setRequestsSummary] = useState({
-    pending: 0,
-    approved: 0,
-    rejected: 0
-  })
 
   useEffect(() => {
     if (jobs) {
@@ -32,19 +26,7 @@ export function JobsOverview({ permissions }: JobsOverviewProps) {
     }
   }, [jobs])
 
-  useEffect(() => {
-    if (jobRequests && permissions.canViewJobRequests) {
-      const summary = jobRequests.reduce((acc, request) => {
-        acc[request.status as keyof typeof acc] = (acc[request.status as keyof typeof acc] || 0) + 1
-        return acc
-      }, { pending: 0, approved: 0, rejected: 0 })
-      
-      setRequestsSummary(summary)
-      console.log('Jobs overview - Job requests summary:', summary)
-    }
-  }, [jobRequests, permissions.canViewJobRequests])
-
-  const isLoading = jobsLoading || (permissions.canViewJobRequests && requestsLoading)
+  const isLoading = jobsLoading
 
   if (isLoading) {
     return (
@@ -63,7 +45,7 @@ export function JobsOverview({ permissions }: JobsOverviewProps) {
     )
   }
 
-  const canViewJobs = permissions.canViewJobs || permissions.canCreateJobs || permissions.canRequestJobs
+  const canViewJobs = permissions.canViewJobs || permissions.canCreateJobs
 
   if (!canViewJobs) {
     return null
@@ -96,29 +78,11 @@ export function JobsOverview({ permissions }: JobsOverviewProps) {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-1">
-            <p className="text-sm text-text-secondary">Active Jobs</p>
-            <p className="text-2xl font-semibold text-text-primary">
-              {activeJobsCount}
-            </p>
-          </div>
-          
-          {permissions.canViewJobRequests && (
-            <div className="space-y-1">
-              <p className="text-sm text-text-secondary">Job Requests</p>
-              <div className="flex items-center gap-1">
-                <Badge variant="secondary" className="text-xs">
-                  {requestsSummary.pending} pending
-                </Badge>
-                {requestsSummary.approved > 0 && (
-                  <Badge variant="outline" className="text-xs">
-                    {requestsSummary.approved} approved
-                  </Badge>
-                )}
-              </div>
-            </div>
-          )}
+        <div className="space-y-1">
+          <p className="text-sm text-text-secondary">Active Jobs</p>
+          <p className="text-2xl font-semibold text-text-primary">
+            {activeJobsCount}
+          </p>
         </div>
 
         {/* Recent Jobs List */}
@@ -172,15 +136,6 @@ export function JobsOverview({ permissions }: JobsOverviewProps) {
             <Link to="/jobs">
               <Button variant="ghost" size="sm">
                 View All Jobs
-                <ExternalLink className="h-3 w-3" />
-              </Button>
-            </Link>
-          )}
-          
-          {permissions.canViewJobRequests && (
-            <Link to="/job-requests">
-              <Button variant="ghost" size="sm">
-                View Requests
                 <ExternalLink className="h-3 w-3" />
               </Button>
             </Link>

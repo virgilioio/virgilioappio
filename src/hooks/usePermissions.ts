@@ -25,12 +25,6 @@ export interface PermissionsState {
   canDeleteOrganizations: boolean
   canManageOrganization: boolean
   
-  // Job request permissions
-  canViewJobRequests: boolean
-  canCreateJobRequests: boolean
-  canApproveJobRequests: boolean
-  canManageJobRequests: boolean
-  canRequestJobs: boolean
   
   // Candidate permissions
   canViewCandidates: boolean
@@ -121,12 +115,6 @@ export function usePermissions(): PermissionsState {
     canDeleteOrganizations: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin',
     canManageOrganization: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin' || (memberRole === 'customer_success' && !isGuest),
     
-    // Job request permissions - Guest users can view and create job requests
-    canViewJobRequests: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin', 'client', 'customer_success'].includes(memberRole || '') || isGuest,
-    canCreateJobRequests: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin', 'client', 'customer_success'].includes(memberRole || '') || isGuest,
-    canApproveJobRequests: isPlatformAdmin || memberRole === 'admin' || memberRole === 'customer_success',
-    canManageJobRequests: isPlatformAdmin || memberRole === 'admin' || memberRole === 'customer_success',
-    canRequestJobs: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin', 'client', 'customer_success'].includes(memberRole || '') || isGuest,
     
     // Candidate permissions - Guest users can view candidates for their assigned jobs
     canViewCandidates: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin', 'client', 'customer_success'].includes(memberRole || '') || isGuest,

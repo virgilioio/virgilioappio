@@ -21,8 +21,8 @@ export default function Dashboard() {
 
   // Check what content will be visible - only platform admins can see billing
   const hasBillingContent = permissions.isPlatformAdmin
-  const hasJobContent = permissions.canViewJobs || permissions.canCreateJobs || permissions.canRequestJobs
-  const hasQuickAccess = permissions.canCreateJobs || permissions.canRequestJobs || permissions.canManageMembers
+  const hasJobContent = permissions.canViewJobs || permissions.canCreateJobs
+  const hasQuickAccess = permissions.canCreateJobs || permissions.canManageMembers
   const canManageOrganization = (permissions.canManageOrganization || permissions.isWorkspaceOwner || permissions.isPlatformAdmin) && !permissions.isGuest
   
   return (
