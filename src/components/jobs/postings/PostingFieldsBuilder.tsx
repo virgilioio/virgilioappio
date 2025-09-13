@@ -1,5 +1,5 @@
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -54,18 +54,18 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
     setOrderedIds(fields.map((f) => f.id))
   }, [fields])
 
-  // Helper to get field value (from edited state or original)
-  const getFieldValue = (field: PostingField, key: keyof PostingField) => {
+  // Helper to get field value (from edited state or original) - memoized to prevent re-renders
+  const getFieldValue = useCallback((field: PostingField, key: keyof PostingField) => {
     return editedFields[field.id]?.[key] ?? field[key]
-  }
+  }, [editedFields])
 
-  // Helper to update local state
-  const updateLocalField = (fieldId: string, updates: Partial<PostingField>) => {
+  // Helper to update local state - memoized to prevent re-renders
+  const updateLocalField = useCallback((fieldId: string, updates: Partial<PostingField>) => {
     setEditedFields(prev => ({
       ...prev,
       [fieldId]: { ...prev[fieldId], ...updates }
     }))
-  }
+  }, [])
 
   // Get combined fields (existing + pending - deleted)
   const displayFields = useMemo(() => {
@@ -396,6 +396,7 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
                                       <div className="grid md:grid-cols-6 gap-3 items-end">
                                          <div className="md:col-span-2">
                                            <Input
+                                             key={`${f.id}-label`}
                                              value={getFieldValue(f, 'field_label') as string}
                                              onChange={(e) => updateLocalField(f.id, { field_label: e.target.value })}
                                              disabled={readOnly || (f.source === 'library' && f.application_field_id && defaultLibraryIds.has(f.application_field_id))}
@@ -404,6 +405,7 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
                                          </div>
                                          <div>
                                            <Select
+                                             key={`${f.id}-type`}
                                              value={getFieldValue(f, 'field_type') as string}
                                              onValueChange={(v: FieldType) => updateLocalField(f.id, { field_type: v })}
                                              disabled={readOnly || (f.source === 'library' && f.application_field_id && defaultLibraryIds.has(f.application_field_id))}
@@ -418,6 +420,7 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
                                         </div>
                                          <div className="flex items-center h-10">
                                            <Checkbox
+                                             key={`${f.id}-required`}
                                              checked={getFieldValue(f, 'is_required') as boolean}
                                              onCheckedChange={(c) => updateLocalField(f.id, { is_required: !!c })}
                                              disabled={readOnly || (f.source === 'library' && f.application_field_id && defaultLibraryIds.has(f.application_field_id))}
