@@ -40,11 +40,22 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
 
+  // Local orchestration: order and deletions
+  const [orderedIds, setOrderedIds] = useState<string[]>([])
+  const [deletedIds, setDeletedIds] = useState<Set<string>>(new Set())
+
   // Add Custom Field form
   const [label, setLabel] = useState('')
   const [type, setType] = useState<FieldType>('text')
   const [required, setRequired] = useState(false)
   const [selectedLibraryId, setSelectedLibraryId] = useState<string>('')
+
+  // Initialize order from fetched fields unless we have local edits
+  useEffect(() => {
+    if (!hasUnsavedChanges) {
+      setOrderedIds(fields.map((f) => f.id))
+    }
+  }, [fields, hasUnsavedChanges])
 
   // Helper to get field value (from edited state or original)
   const getFieldValue = (field: PostingField, key: keyof PostingField) => {
