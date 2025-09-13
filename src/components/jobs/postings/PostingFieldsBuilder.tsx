@@ -14,6 +14,7 @@ import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, useDro
 import { SortableContext, rectSortingStrategy, arrayMove, useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { cn } from '@/lib/utils'
+import { FieldEditor } from './FieldEditor'
 
 interface PostingFieldsBuilderProps {
   postingId: string
@@ -374,88 +375,28 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
                         {row.map((f) => (
                           <div key={f.id} className="flex items-stretch w-full min-w-0" style={{ gridColumn: `span ${f.column_span || 4} / span ${f.column_span || 4}` }}>
                             {isDragging && <DropBox id={`beside|${f.id}|left`} orientation="col" />}
-                            <SortableRow id={f.id} disabled={(f.source === 'library' && f.application_field_id && defaultLibraryIds.has(f.application_field_id))}>
-                              {({ attributes, listeners }) => (
-                                <div className={cn(
-                                  "p-3 border border-border/40 rounded-brand flex-1",
-                                  (f.source === 'library' && f.application_field_id && defaultLibraryIds.has(f.application_field_id)) && 'bg-muted/20'
-                                )}>
-                                  <div className="flex items-start gap-3">
-                                    <Button
-                                      variant="outline"
-                                      size="icon"
-                                      {...attributes}
-                                      {...listeners}
-                                      disabled={readOnly || (f.source === 'library' && f.application_field_id && defaultLibraryIds.has(f.application_field_id))}
-                                      title="Drag to reorder"
-                                      className="self-center shrink-0"
-                                    >
-                                      <GripVertical className="h-4 w-4" />
-                                    </Button>
-                                    <div className="flex-1">
-                                      <div className="grid md:grid-cols-6 gap-3 items-end">
-                                         <div className="md:col-span-2">
-                                           <Input
-                                             key={`${f.id}-label`}
-                                             value={getFieldValue(f, 'field_label') as string}
-                                             onChange={(e) => updateLocalField(f.id, { field_label: e.target.value })}
-                                             disabled={readOnly || (f.source === 'library' && f.application_field_id && defaultLibraryIds.has(f.application_field_id))}
-                                             placeholder="Label"
-                                           />
-                                         </div>
-                                         <div>
-                                           <Select
-                                             key={`${f.id}-type`}
-                                             value={getFieldValue(f, 'field_type') as string}
-                                             onValueChange={(v: FieldType) => updateLocalField(f.id, { field_type: v })}
-                                             disabled={readOnly || (f.source === 'library' && f.application_field_id && defaultLibraryIds.has(f.application_field_id))}
-                                           >
-                                            <SelectTrigger><SelectValue placeholder="Type" /></SelectTrigger>
-                                            <SelectContent>
-                                              {(['text','number','email','url','textarea','select','checkbox','date','file'] as FieldType[]).map((t) => (
-                                                <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>
-                                              ))}
-                                            </SelectContent>
-                                          </Select>
-                                        </div>
-                                         <div className="flex items-center h-10">
-                                           <Checkbox
-                                             key={`${f.id}-required`}
-                                             checked={getFieldValue(f, 'is_required') as boolean}
-                                             onCheckedChange={(c) => updateLocalField(f.id, { is_required: !!c })}
-                                             disabled={readOnly || (f.source === 'library' && f.application_field_id && defaultLibraryIds.has(f.application_field_id))}
-                                             id={`req-${f.id}`}
-                                           />
-                                           <label htmlFor={`req-${f.id}`} className="ml-2 text-sm text-muted-foreground">Required</label>
-                                         </div>
-                                         <div className="flex items-center gap-2 md:justify-end">
-                                           <Button
-                                             variant="ghost"
-                                             size="icon"
-                                             onClick={() => {
-                                               if (f.id.startsWith('temp-')) {
-                                                 // Remove from pending additions
-                                                 setPendingAdditions(prev => prev.filter(p => p.tempId !== f.id))
-                                                 setPendingLibraryAdditions(prev => prev.filter(p => p.tempId !== f.id))
-                                                 setOrderedIds(prev => prev.filter(id => id !== f.id))
-                                               } else {
-                                                 // Mark for deletion
-                                                 setDeletedIds(prev => new Set([...prev, f.id]))
-                                                 setOrderedIds(prev => prev.filter(id => id !== f.id))
-                                               }
-                                             }}
-                                             disabled={readOnly || (f.source === 'library' && f.application_field_id && defaultLibraryIds.has(f.application_field_id))}
-                                             title="Delete field"
-                                           >
-                                             <Trash2 className="h-4 w-4" />
-                                           </Button>
-                                         </div>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              )}
-                            </SortableRow>
+                             <SortableRow id={f.id} disabled={(f.source === 'library' && f.application_field_id && defaultLibraryIds.has(f.application_field_id))}>
+                               {({ attributes, listeners }) => (
+                                 <FieldEditor
+                                   field={f}
+                                   onUpdate={updateLocalField}
+                                   onDelete={(fieldId) => {
+                                     if (fieldId.startsWith('temp-')) {
+                                       setPendingAdditions(prev => prev.filter(p => p.tempId !== fieldId))
+                                       setPendingLibraryAdditions(prev => prev.filter(p => p.tempId !== fieldId))
+                                       setOrderedIds(prev => prev.filter(id => id !== fieldId))
+                                     } else {
+                                       setDeletedIds(prev => new Set([...prev, fieldId]))
+                                       setOrderedIds(prev => prev.filter(id => id !== fieldId))
+                                     }
+                                   }}
+                                   disabled={readOnly}
+                                   readOnly={readOnly}
+                                   dragHandlers={{ attributes, listeners }}
+                                   isDefaultLibraryField={f.source === 'library' && f.application_field_id && defaultLibraryIds.has(f.application_field_id)}
+                                 />
+                               )}
+                             </SortableRow>
                             {isDragging && <DropBox id={`beside|${f.id}|right`} orientation="col" />}
                           </div>
                         ))}
