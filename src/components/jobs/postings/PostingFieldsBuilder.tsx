@@ -302,13 +302,12 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
                                              onChange={(e) => updateLocalField(f.id, { field_label: e.target.value })}
                                              disabled={readOnly || (f.source === 'library' && f.application_field_id && defaultLibraryIds.has(f.application_field_id))}
                                              placeholder="Label"
-                                             className={editedFields[f.id]?.field_label !== undefined ? "border-orange-500/60 bg-orange-50/50 dark:bg-orange-950/20" : ""}
                                            />
                                          </div>
                                          <div>
                                            <Select
                                              value={getFieldValue(f, 'field_type') as string}
-                                             onValueChange={(v: FieldType) => updateField(f.id, { field_type: v })}
+                                             onValueChange={(v: FieldType) => updateLocalField(f.id, { field_type: v })}
                                              disabled={readOnly || (f.source === 'library' && f.application_field_id && defaultLibraryIds.has(f.application_field_id))}
                                            >
                                             <SelectTrigger><SelectValue placeholder="Type" /></SelectTrigger>
@@ -322,7 +321,7 @@ export function PostingFieldsBuilder({ postingId, readOnly }: PostingFieldsBuild
                                          <div className="flex items-center h-10">
                                            <Checkbox
                                              checked={getFieldValue(f, 'is_required') as boolean}
-                                             onCheckedChange={(c) => updateField(f.id, { is_required: !!c })}
+                                             onCheckedChange={(c) => updateLocalField(f.id, { is_required: !!c })}
                                              disabled={readOnly || (f.source === 'library' && f.application_field_id && defaultLibraryIds.has(f.application_field_id))}
                                              id={`req-${f.id}`}
                                            />
