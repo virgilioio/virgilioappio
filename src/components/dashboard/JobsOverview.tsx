@@ -51,8 +51,8 @@ export function JobsOverview({ permissions }: JobsOverviewProps) {
     return null
   }
 
-  // Get the 5 most recent jobs
-  const recentJobs = jobs?.slice(0, 5) || []
+  // Get the 5 most recent open jobs
+  const recentJobs = jobs?.filter(job => job.status === 'open').slice(0, 5) || []
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -88,7 +88,7 @@ export function JobsOverview({ permissions }: JobsOverviewProps) {
         {/* Recent Jobs List */}
         {recentJobs.length > 0 && (
           <div className="space-y-3 pt-2 border-t border-border">
-            <p className="text-sm font-medium text-text-primary">Recent Jobs</p>
+            <p className="text-sm font-medium text-text-primary">Recent Open Jobs</p>
             <div className="space-y-2">
               {recentJobs.map((job) => (
                 <Link 
