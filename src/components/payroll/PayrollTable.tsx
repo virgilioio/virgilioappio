@@ -11,13 +11,14 @@ import {
 } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { useWorkers } from '@/hooks/useWorkers'
-import { useOrganizationCurrency } from '@/hooks/useOrganizationCurrency'
+// Organization currency functionality removed
 import { toast } from '@/hooks/use-toast'
 import { DollarSign, PlayCircle } from 'lucide-react'
 
 export function PayrollTable() {
   const { workers } = useWorkers()
-  const { defaultCurrency } = useOrganizationCurrency()
+  // Organization currency functionality removed
+  const defaultCurrency = 'USD'
   const [processingPayment, setProcessingPayment] = useState<string | null>(null)
   const [completingPayroll, setCompletingPayroll] = useState(false)
 

@@ -49,17 +49,8 @@ export function useSaaSCustomer(customerId: string) {
         .eq('organization_id', organization.id)
         .eq('user_status', 'active')
 
-      // Get billing POC email
+      // Billing POC functionality removed
       let billingPocEmail = null
-      if (organization.billing_poc_user_id) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('email')
-          .eq('user_id', organization.billing_poc_user_id)
-          .maybeSingle()
-        
-        billingPocEmail = profile?.email
-      }
 
       // Get sub-organizations (departments)
       const { data: subOrgs } = await supabase

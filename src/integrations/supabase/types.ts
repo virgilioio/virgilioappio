@@ -330,13 +330,6 @@ export type Database = {
             foreignKeyName: "candidate_comments_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
-            referencedRelation: "organization_exchange_rates"
-            referencedColumns: ["organization_id"]
-          },
-          {
-            foreignKeyName: "candidate_comments_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
@@ -737,80 +730,6 @@ export type Database = {
           },
         ]
       }
-      currency_conversions: {
-        Row: {
-          conversion_date: string
-          converted_amount: number
-          converted_currency: string
-          created_at: string
-          exchange_rate: number
-          id: string
-          invoice_id: string
-          original_amount: number
-          original_currency: string
-        }
-        Insert: {
-          conversion_date?: string
-          converted_amount: number
-          converted_currency: string
-          created_at?: string
-          exchange_rate: number
-          id?: string
-          invoice_id: string
-          original_amount: number
-          original_currency: string
-        }
-        Update: {
-          conversion_date?: string
-          converted_amount?: number
-          converted_currency?: string
-          created_at?: string
-          exchange_rate?: number
-          id?: string
-          invoice_id?: string
-          original_amount?: number
-          original_currency?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "currency_conversions_invoice_id_fkey"
-            columns: ["invoice_id"]
-            isOneToOne: false
-            referencedRelation: "invoices"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      currency_exchange_rates: {
-        Row: {
-          base_currency: string
-          created_at: string
-          id: string
-          rate: number
-          rate_date: string
-          target_currency: string
-          updated_at: string
-        }
-        Insert: {
-          base_currency?: string
-          created_at?: string
-          id?: string
-          rate: number
-          rate_date: string
-          target_currency: string
-          updated_at?: string
-        }
-        Update: {
-          base_currency?: string
-          created_at?: string
-          id?: string
-          rate?: number
-          rate_date?: string
-          target_currency?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
       departments: {
         Row: {
           created_at: string
@@ -847,47 +766,10 @@ export type Database = {
             foreignKeyName: "departments_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
-            referencedRelation: "organization_exchange_rates"
-            referencedColumns: ["organization_id"]
-          },
-          {
-            foreignKeyName: "departments_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
-      }
-      exchange_rate_update_logs: {
-        Row: {
-          created_at: string | null
-          id: string
-          message: string | null
-          stats: Json | null
-          status: string
-          update_type: string
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          message?: string | null
-          stats?: Json | null
-          status: string
-          update_type: string
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          message?: string | null
-          stats?: Json | null
-          status?: string
-          update_type?: string
-          updated_at?: string | null
-        }
-        Relationships: []
       }
       field_select_options: {
         Row: {
@@ -995,149 +877,6 @@ export type Database = {
             columns: ["offer_template_field_id"]
             isOneToOne: false
             referencedRelation: "offer_template_fields"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      invoice_payments: {
-        Row: {
-          amount: number
-          created_at: string
-          currency: string
-          id: string
-          invoice_id: string
-          payment_date: string
-          payment_method: string
-          payment_notes: string | null
-          payment_reference: string | null
-          recorded_by: string | null
-          updated_at: string
-        }
-        Insert: {
-          amount: number
-          created_at?: string
-          currency?: string
-          id?: string
-          invoice_id: string
-          payment_date?: string
-          payment_method: string
-          payment_notes?: string | null
-          payment_reference?: string | null
-          recorded_by?: string | null
-          updated_at?: string
-        }
-        Update: {
-          amount?: number
-          created_at?: string
-          currency?: string
-          id?: string
-          invoice_id?: string
-          payment_date?: string
-          payment_method?: string
-          payment_notes?: string | null
-          payment_reference?: string | null
-          recorded_by?: string | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "invoice_payments_invoice_id_fkey"
-            columns: ["invoice_id"]
-            isOneToOne: false
-            referencedRelation: "invoices"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      invoices: {
-        Row: {
-          amount: number
-          base_currency_amount: number | null
-          conversion_date: string | null
-          created_at: string
-          created_by: string | null
-          currency: string
-          description: string | null
-          due_date: string | null
-          exchange_rate_used: number | null
-          file_name: string | null
-          id: string
-          invoice_url: string | null
-          issued_at: string
-          organization_id: string
-          paid_at: string | null
-          payment_method: string | null
-          payment_notes: string | null
-          payment_reference: string | null
-          remaining_amount: number | null
-          status: string
-          title: string
-          total_paid: number | null
-          updated_at: string
-        }
-        Insert: {
-          amount: number
-          base_currency_amount?: number | null
-          conversion_date?: string | null
-          created_at?: string
-          created_by?: string | null
-          currency?: string
-          description?: string | null
-          due_date?: string | null
-          exchange_rate_used?: number | null
-          file_name?: string | null
-          id?: string
-          invoice_url?: string | null
-          issued_at?: string
-          organization_id: string
-          paid_at?: string | null
-          payment_method?: string | null
-          payment_notes?: string | null
-          payment_reference?: string | null
-          remaining_amount?: number | null
-          status?: string
-          title: string
-          total_paid?: number | null
-          updated_at?: string
-        }
-        Update: {
-          amount?: number
-          base_currency_amount?: number | null
-          conversion_date?: string | null
-          created_at?: string
-          created_by?: string | null
-          currency?: string
-          description?: string | null
-          due_date?: string | null
-          exchange_rate_used?: number | null
-          file_name?: string | null
-          id?: string
-          invoice_url?: string | null
-          issued_at?: string
-          organization_id?: string
-          paid_at?: string | null
-          payment_method?: string | null
-          payment_notes?: string | null
-          payment_reference?: string | null
-          remaining_amount?: number | null
-          status?: string
-          title?: string
-          total_paid?: number | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "invoices_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organization_exchange_rates"
-            referencedColumns: ["organization_id"]
-          },
-          {
-            foreignKeyName: "invoices_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -1725,13 +1464,6 @@ export type Database = {
             foreignKeyName: "jobs_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
-            referencedRelation: "organization_exchange_rates"
-            referencedColumns: ["organization_id"]
-          },
-          {
-            foreignKeyName: "jobs_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
@@ -1837,13 +1569,6 @@ export type Database = {
             foreignKeyName: "members_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
-            referencedRelation: "organization_exchange_rates"
-            referencedColumns: ["organization_id"]
-          },
-          {
-            foreignKeyName: "members_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
@@ -1906,13 +1631,6 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "jobs"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "offer_letters_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organization_exchange_rates"
-            referencedColumns: ["organization_id"]
           },
           {
             foreignKeyName: "offer_letters_organization_id_fkey"
@@ -2065,13 +1783,6 @@ export type Database = {
             foreignKeyName: "organization_custom_data_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
-            referencedRelation: "organization_exchange_rates"
-            referencedColumns: ["organization_id"]
-          },
-          {
-            foreignKeyName: "organization_custom_data_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
@@ -2083,11 +1794,9 @@ export type Database = {
           billing_poc_phone: string | null
           billing_poc_updated_at: string | null
           billing_poc_updated_by: string | null
-          billing_poc_user_id: string | null
           country: string
           created_at: string
           created_by: string | null
-          default_currency: string | null
           id: string
           name: string
           org_kind: Database["public"]["Enums"]["org_kind_enum"]
@@ -2106,11 +1815,9 @@ export type Database = {
           billing_poc_phone?: string | null
           billing_poc_updated_at?: string | null
           billing_poc_updated_by?: string | null
-          billing_poc_user_id?: string | null
           country: string
           created_at?: string
           created_by?: string | null
-          default_currency?: string | null
           id?: string
           name: string
           org_kind?: Database["public"]["Enums"]["org_kind_enum"]
@@ -2129,11 +1836,9 @@ export type Database = {
           billing_poc_phone?: string | null
           billing_poc_updated_at?: string | null
           billing_poc_updated_by?: string | null
-          billing_poc_user_id?: string | null
           country?: string
           created_at?: string
           created_by?: string | null
-          default_currency?: string | null
           id?: string
           name?: string
           org_kind?: Database["public"]["Enums"]["org_kind_enum"]
@@ -2166,22 +1871,8 @@ export type Database = {
             foreignKeyName: "organizations_parent_fk"
             columns: ["parent_organization_id"]
             isOneToOne: false
-            referencedRelation: "organization_exchange_rates"
-            referencedColumns: ["organization_id"]
-          },
-          {
-            foreignKeyName: "organizations_parent_fk"
-            columns: ["parent_organization_id"]
-            isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "organizations_tenant_fk"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "organization_exchange_rates"
-            referencedColumns: ["organization_id"]
           },
           {
             foreignKeyName: "organizations_tenant_fk"
@@ -2799,13 +2490,6 @@ export type Database = {
             foreignKeyName: "tenant_metrics_daily_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
-            referencedRelation: "organization_exchange_rates"
-            referencedColumns: ["organization_id"]
-          },
-          {
-            foreignKeyName: "tenant_metrics_daily_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
@@ -3301,13 +2985,6 @@ export type Database = {
             foreignKeyName: "worker_contracts_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
-            referencedRelation: "organization_exchange_rates"
-            referencedColumns: ["organization_id"]
-          },
-          {
-            foreignKeyName: "worker_contracts_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
@@ -3439,13 +3116,6 @@ export type Database = {
             foreignKeyName: "workers_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
-            referencedRelation: "organization_exchange_rates"
-            referencedColumns: ["organization_id"]
-          },
-          {
-            foreignKeyName: "workers_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
@@ -3453,19 +3123,7 @@ export type Database = {
       }
     }
     Views: {
-      organization_exchange_rates: {
-        Row: {
-          base_currency: string | null
-          organization_id: string | null
-          organization_name: string | null
-          rate: number | null
-          rate_date: string | null
-          target_currency: string | null
-          target_currency_name: string | null
-          target_currency_symbol: string | null
-        }
-        Relationships: []
-      }
+      [_ in never]: never
     }
     Functions: {
       accept_invitation: {
@@ -3481,19 +3139,6 @@ export type Database = {
       }
       activate_platform_asset: {
         Args: { asset_type_param: string; new_asset_id: string }
-        Returns: undefined
-      }
-      add_invoice_payment: {
-        Args: {
-          amount_param: number
-          currency_param: string
-          invoice_id_param: string
-          payment_date_param?: string
-          payment_method_param: string
-          payment_notes_param?: string
-          payment_reference_param?: string
-          recorded_by_param?: string
-        }
         Returns: undefined
       }
       audit_platform_admin_access: {
@@ -3556,10 +3201,6 @@ export type Database = {
         }
         Returns: string
       }
-      execute_automatic_exchange_rate_update: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
       execute_candidate_sync: {
         Args: Record<PropertyKey, never>
         Returns: undefined
@@ -3576,13 +3217,6 @@ export type Database = {
         Args: { org_id: string }
         Returns: number
       }
-      get_active_organization_currencies: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          currency_code: string
-          organization_count: number
-        }[]
-      }
       get_all_feature_flags: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -3593,15 +3227,6 @@ export type Database = {
           updated_at: string
         }[]
       }
-      get_exchange_rate_cron_status: {
-        Args: Record<PropertyKey, never>
-        Returns: {
-          is_enabled: boolean
-          last_automatic_update: string
-          last_update_status: string
-          next_run: string
-        }[]
-      }
       get_feature_flag: {
         Args: { flag_name_param: string }
         Returns: boolean
@@ -3609,10 +3234,6 @@ export type Database = {
       get_invite_expiry: {
         Args: Record<PropertyKey, never>
         Returns: string
-      }
-      get_latest_exchange_rate: {
-        Args: { from_currency: string; to_currency: string }
-        Returns: number
       }
       get_member_display_info: {
         Args: { member_user_id: string }
@@ -3628,14 +3249,6 @@ export type Database = {
       }
       get_member_role_safe: {
         Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      get_organization_currency_rate: {
-        Args: { from_currency: string; org_id?: string; to_currency: string }
-        Returns: number
-      }
-      get_organization_default_currency: {
-        Args: { org_id: string }
         Returns: string
       }
       get_stage_deletion_impact: {
@@ -3692,22 +3305,6 @@ export type Database = {
         Args: { job_id_param: string }
         Returns: boolean
       }
-      load_invoice_payments: {
-        Args: { invoice_id_param: string }
-        Returns: {
-          amount: number
-          currency: string
-          id: string
-          payment_date: string
-          payment_method: string
-          payment_notes: string
-          payment_reference: string
-        }[]
-      }
-      manage_exchange_rate_cron: {
-        Args: { enable_cron: boolean }
-        Returns: string
-      }
       organization_has_active_public_posting: {
         Args: { org_id_param: string }
         Returns: boolean
@@ -3759,10 +3356,6 @@ export type Database = {
       update_feature_flag: {
         Args: { flag_name_param: string; is_active_param: boolean }
         Returns: boolean
-      }
-      update_invoice_payment_totals: {
-        Args: { invoice_id_param: string }
-        Returns: undefined
       }
       validate_invite_token: {
         Args: { token_input: string }

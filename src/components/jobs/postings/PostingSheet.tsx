@@ -13,7 +13,7 @@ import { FormField } from '@/components/ui/form-field'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
-import { useCurrencies } from '@/hooks/useCurrencies'
+// Currency functionality removed
 
 interface PostingSheetProps {
   jobId: string
@@ -36,7 +36,8 @@ export function PostingSheet({
 }: PostingSheetProps) {
   const { toast } = useToast()
   const { getPosting, createPosting, updatePosting } = useJobPostings(jobId)
-  const { currencies } = useCurrencies()
+  // Currency functionality removed
+  const currencies: any[] = []
 
   const [localId, setLocalId] = useState<string | undefined>(postingId)
   const [title, setTitle] = useState<string>(defaultTitle || '')

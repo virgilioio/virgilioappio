@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Building, Edit, Lock, AlertTriangle, Save, Loader2, Coins } from 'lucide-react'
 import { OrganizationForm } from './OrganizationForm'
 import { OrganizationDisplay } from './OrganizationDisplay'
-import { CurrencySettings } from './CurrencySettings'
+// Currency settings removed
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/hooks/use-toast'
 import {
@@ -398,7 +398,9 @@ const [orgFormData, setOrgFormData] = useState<OrganizationFormData>({
             </TabsContent>
             
             <TabsContent value="currency" className="mt-6">
-              <CurrencySettings />
+              <div className="text-center py-8 text-muted-foreground">
+                Currency settings have been removed
+              </div>
             </TabsContent>
           </Tabs>
         </CardContent>

@@ -2,17 +2,13 @@
 import { WelcomeHeader } from '@/components/dashboard/WelcomeHeader'
 import { QuickAccess } from '@/components/dashboard/QuickAccess'
 import { JobsOverview } from '@/components/dashboard/JobsOverview'
-import { PaymentsTracker } from '@/components/dashboard/PaymentsTracker'
-import { PaymentHistory } from '@/components/dashboard/PaymentHistory'
 import { OnboardingProgress } from '@/components/dashboard/OnboardingProgress'
 import { AdvertisingBanner } from '@/components/dashboard/AdvertisingBanner'
 import { AIJobAssistant } from '@/components/dashboard/AIJobAssistant'
-import { InvoiceFilterProvider } from '@/utils/invoiceFilters'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { usePermissions } from '@/hooks/usePermissions'
 import { PermissionGate } from '@/components/auth/PermissionGate'
 import { Section } from '@/components/layout/Section'
-import { useTenantSubscription } from '@/hooks/useTenantSubscription'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 
 export default function Dashboard() {
@@ -28,8 +24,7 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-background">
       <Section container className="py-6 sm:py-8 lg:py-12 animate-fade-in">
-        <InvoiceFilterProvider>
-          <div className="space-y-6">
+        <div className="space-y-6">
             <WelcomeHeader profile={profile} isLoading={isLoading} />
 
             {/* Trial banner */}
@@ -45,12 +40,7 @@ export default function Dashboard() {
               // Two column layout when billing content is available (never for guests)
               <div className="grid gap-6 lg:grid-cols-2">
                 <div className="space-y-6">
-                  {permissions.isPlatformAdmin && (
-                    <>
-                      <PaymentsTracker />
-                      <PaymentHistory />
-                    </>
-                  )}
+                  {/* Platform admin content would go here */}
                 </div>
                 
                 <div className="space-y-6">
@@ -93,25 +83,13 @@ export default function Dashboard() {
                 )}
               </div>
             )}
-          </div>
-        </InvoiceFilterProvider>
+        </div>
       </Section>
     </div>
   )
 }
 
 function TrialBanner() {
-  const { data } = useTenantSubscription()
-  const sub = (data as any)?.subscription || null
-  const trialEnd = sub?.trial_end ? new Date(sub.trial_end) : null
-  const isOnTrial = !!trialEnd && trialEnd > new Date() && !sub?.subscribed
-  if (!isOnTrial) return null
-  const endStr = trialEnd.toLocaleDateString()
-  return (
-    <Alert>
-      <AlertDescription>
-        Your 30‑day free trial is active. It ends on {endStr}. No credit card required. When ready, go to Billing to start your subscription.
-      </AlertDescription>
-    </Alert>
-  )
+  // Subscription functionality removed
+  return null
 }

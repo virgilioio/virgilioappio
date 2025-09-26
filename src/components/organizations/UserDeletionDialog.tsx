@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label'
 import { AlertTriangle, Trash2, User, Shield } from 'lucide-react'
 import { supabase } from '@/integrations/supabase/client'
 import { toast } from '@/hooks/use-toast'
-import { useBillingPOCMembers } from '@/hooks/useBillingPOCMembers'
+// Billing POC functionality removed
 
 interface UserDeletionDialogProps {
   isOpen: boolean
@@ -38,9 +38,9 @@ export function UserDeletionDialog({
   const [newBillingPocUserId, setNewBillingPocUserId] = useState<string>('')
   const [confirmationStep, setConfirmationStep] = useState<'initial' | 'confirm-billing-poc' | 'final-confirm'>('initial')
   
-  const { members: billingPocMembers, isLoading: membersLoading } = useBillingPOCMembers(
-    isBillingPoc ? organizationId : undefined
-  )
+  // Billing POC functionality removed
+  const billingPocMembers: any[] = []
+  const membersLoading = false
 
   const handleDelete = async () => {
     if (!userToDelete) return

@@ -2,7 +2,7 @@
 import { useOrganizations } from '@/hooks/useOrganizations'
 import { useCountryFields } from '@/hooks/useCountryFields'
 import { useOrganizationCustomData } from '@/hooks/useOrganizationCustomData'
-import { useBillingPOCMembers } from '@/hooks/useBillingPOCMembers'
+// Billing POC functionality removed
 import { useAuth } from '@/contexts/AuthContext'
 
 export interface OrganizationProgressItem {
@@ -35,28 +35,16 @@ export function useOrganizationProgress() {
   const organization = getUserOrganization()
   const { fields } = useCountryFields(organization?.country || '')
   const { customData } = useOrganizationCustomData(organization?.id)
-  const { members } = useBillingPOCMembers(organization?.id || '')
+  // Billing POC members removed
   
   const calculateProgress = () => {
     if (!organization) return { items: [], progress: 0, isComplete: false }
-    
-    const billingPOCMember = members.find(m => m.user_id === organization.billing_poc_user_id)
     
     const items: OrganizationProgressItem[] = [
       {
         id: 'basic_info',
         label: 'Organization Name & Country',
         completed: !!(organization.name && organization.country),
-        required: true
-      },
-      {
-        id: 'billing_poc',
-        label: 'Billing Point of Contact',
-        completed: !!(
-          organization.billing_poc_user_id && 
-          billingPOCMember && 
-          organization.billing_poc_phone
-        ),
         required: true
       }
     ]

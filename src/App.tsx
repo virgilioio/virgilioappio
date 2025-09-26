@@ -25,7 +25,6 @@ import AcceptInvite from './pages/AcceptInvite'
 import VerifyEmail from './pages/VerifyEmail'
 import { useAuth } from './contexts/AuthContext'
 import NotFound from './pages/NotFound'
-import AdminInvoices from './pages/AdminInvoices'
 import CandidateProfile from '@/pages/CandidateProfile'
 import IndependentCandidateProfile from '@/pages/IndependentCandidateProfile'
 import { useFavicon } from './hooks/useFavicon'
@@ -80,7 +79,6 @@ function AppContent() {
           <Route path="organizations" element={<Organizations />} />
           
           <Route path="billing" element={<Settings />} />
-          <Route path="invoices" element={<AdminInvoices />} />
           <Route path="settings" element={<Settings />} />
           <Route path="*" element={<NotFound />} />
         </Route>

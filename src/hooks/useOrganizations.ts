@@ -144,8 +144,8 @@ export function useOrganizations() {
         // Fetch owner user info
         const ownerInfo = await fetchUserDisplayInfo(org.owner_id)
         
-        // Fetch billing POC user info
-        const billingPocInfo = await fetchUserDisplayInfo(org.billing_poc_user_id)
+        // Billing POC functionality removed
+        const billingPocInfo = null
         
         organizationsWithDetails.push({
           id: org.id,
@@ -162,14 +162,14 @@ export function useOrganizations() {
           owner_name: ownerInfo?.name || null,
           created_by_email: createdByInfo?.email || null,
           created_by_name: createdByInfo?.name || null,
-          billing_poc_user_id: org.billing_poc_user_id,
+          // billing_poc_user_id: removed
           billing_poc_additional_email: org.billing_poc_additional_email,
           billing_poc_phone: org.billing_poc_phone,
           billing_poc_updated_by: org.billing_poc_updated_by,
           billing_poc_updated_at: org.billing_poc_updated_at,
           billing_poc_user_email: billingPocInfo?.email || null,
           billing_poc_user_name: billingPocInfo?.name || null,
-          default_currency: org.default_currency,
+          // default_currency: removed
           parent_organization_id: (org as any).parent_organization_id || null,
           tenant_id: (org as any).tenant_id || null,
           org_kind: (org as any).org_kind || null

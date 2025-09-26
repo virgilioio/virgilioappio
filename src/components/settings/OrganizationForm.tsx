@@ -10,7 +10,7 @@ import { useCountries } from '@/hooks/useCountries'
 import { useCountryFields } from '@/hooks/useCountryFields'
 import { useOrganizationCustomData } from '@/hooks/useOrganizationCustomData'
 import { CustomFieldInput } from '@/components/organizations/CustomFieldInput'
-import { BillingPOCSection } from './BillingPOCSection'
+// Billing POC section removed
 import { useToast } from '@/hooks/use-toast'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { useOrganizations } from '@/hooks/useOrganizations'
@@ -490,20 +490,7 @@ export function OrganizationForm({
         </CardContent>
       </Card>
 
-      {/* Billing POC Section */}
-      {canManageBillingPOC && (
-        <BillingPOCSection
-          organizationId={organization.id}
-          data={{
-            billing_poc_user_id: formData.billing_poc_user_id,
-            billing_poc_additional_email: formData.billing_poc_additional_email,
-            billing_poc_phone: formData.billing_poc_phone
-          }}
-          onChange={handleBillingPOCChange}
-          isReadOnly={isReadOnly}
-          errors={billingPOCErrors}
-        />
-      )}
+      {/* Billing POC functionality removed */}
 
       {/* Country-specific fields */}
       {formData.country && (

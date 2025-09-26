@@ -8,7 +8,7 @@ import { UserDeletionDialog } from '@/components/organizations/UserDeletionDialo
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { useAuth } from '@/contexts/AuthContext'
 import { useOrganizations } from '@/hooks/useOrganizations'
-import { useTenantSubscription } from '@/hooks/useTenantSubscription'
+// Tenant subscription functionality removed
 import { addMonths, addYears, format } from 'date-fns'
 
 export function MembersTab() {
@@ -34,8 +34,9 @@ export function MembersTab() {
   )
   const guestMembers = members.filter((m) => m.member_role === 'client')
 
-  const { data: subscriptionData } = useTenantSubscription()
-  const subscription = subscriptionData?.subscription || null
+  // Tenant subscription functionality removed
+  const subscriptionData = null
+  const subscription = null
   const nextBillingDate = (() => {
     if (!subscription?.created_at) return null
     const start = new Date(subscription.created_at)

@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Settings, Save, Loader2, Coins, Image, Search } from 'lucide-react'
 import { usePlatformSettings } from '@/hooks/usePlatformSettings'
 import { usePlatformAssets } from '@/hooks/usePlatformAssets'
-import { CurrencySettings } from './CurrencySettings'
+// Currency settings removed
 import { PlatformAssetUploader } from './PlatformAssetUploader'
 import { AdvertisingManager } from './AdvertisingManager'
 import { SEOSettings } from './SEOSettings'
@@ -151,7 +151,9 @@ export function PlatformSettingsManager() {
           </TabsContent>
           
           <TabsContent value="currency" className="mt-6">
-            <CurrencySettings />
+            <div className="text-center py-8 text-muted-foreground">
+              Currency settings have been removed
+            </div>
           </TabsContent>
         </Tabs>
       </CardContent>

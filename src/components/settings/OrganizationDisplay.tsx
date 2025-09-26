@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { useCountryFields } from '@/hooks/useCountryFields'
 import { useOrganizationCustomData } from '@/hooks/useOrganizationCustomData'
-import { useBillingPOCMembers } from '@/hooks/useBillingPOCMembers'
+// Billing POC functionality removed
 
 interface Organization {
   id: string
@@ -71,10 +71,9 @@ function InfoRow({ label, value, icon: Icon, isLast = false }: {
 export function OrganizationDisplay({ organization }: OrganizationDisplayProps) {
   const { fields, isLoading: fieldsLoading } = useCountryFields(organization.country)
   const { customData, isLoading: customDataLoading } = useOrganizationCustomData(organization.id)
-  const { members } = useBillingPOCMembers(organization.id)
-
-  // Get billing POC member details from the members hook
-  const billingPOCMember = members.find(m => m.user_id === organization.billing_poc_user_id)
+  // Billing POC functionality removed
+  const members: any[] = []
+  const billingPOCMember = null
 
   const getCustomFieldValue = (fieldId: string) => {
     const data = customData.find(data => data.country_field_id === fieldId)

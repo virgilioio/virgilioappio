@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { WorkerContract } from '@/hooks/useWorkerContracts';
-import { useCurrencies } from '@/hooks/useCurrencies';
+// Currency functionality removed;
 
 interface ContractEditFormProps {
   contract: WorkerContract;
@@ -15,7 +15,8 @@ interface ContractEditFormProps {
 }
 
 export function ContractEditForm({ contract, onSave, onCancel }: ContractEditFormProps) {
-  const { currencies } = useCurrencies();
+  // Currency functionality removed
+  const currencies: any[] = [];
   const [formData, setFormData] = useState({
     job_title: contract.job_title || '',
     contract_type: contract.contract_type || '',

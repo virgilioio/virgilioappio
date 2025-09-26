@@ -1,7 +1,7 @@
 
 import { useMemo, useState } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { MetricCard } from '@/components/invoices/MetricCard';
+import { MetricCard } from '@/components/ui/metric-card';
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from '@/components/ui/collapsible';
 import { Switch } from '@/components/ui/switch';
 import { TrendingUp, ChevronDown, ChevronUp } from 'lucide-react';

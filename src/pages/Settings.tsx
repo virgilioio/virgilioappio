@@ -5,7 +5,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { ProfileTab } from '@/components/settings/ProfileTab'
 import { OrganizationTab } from '@/components/settings/OrganizationTab'
-import { BillingTab } from '@/components/settings/BillingTab'
 import { MembersTab } from '@/components/settings/MembersTab'
 import { PlatformSettingsManager } from '@/components/settings/PlatformSettingsManager'
 import { AdvertisingManager } from '@/components/settings/AdvertisingManager'
@@ -22,7 +21,6 @@ import { AppContainer } from '@/components/layout/AppContainer'
 import { Section } from '@/components/layout/Section'
 import { SettingsSidebar } from '@/components/settings/SettingsSidebar'
 import { SettingsMobileHeader } from '@/components/settings/SettingsMobileHeader'
-import { InvoiceFilterProvider } from '@/utils/invoiceFilters'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 
 export default function Settings() {
@@ -74,9 +72,8 @@ export default function Settings() {
   const canAccessBilling = canViewBilling && !isGuest
 
   return (
-    <InvoiceFilterProvider>
-      <Section>
-        <AppContainer variant="default">
+    <Section>
+      <AppContainer variant="default">
           <Tabs value={currentTab} onValueChange={handleTabChange} className="w-full">
             {/* Mobile header with sheet for sidebar */}
             <div className="lg:hidden mb-6">
@@ -116,11 +113,7 @@ export default function Settings() {
                   <OrganizationTab />
                 </TabsContent>
                 
-                {canAccessBilling && (
-                  <TabsContent value="billing">
-                    <BillingTab />
-                  </TabsContent>
-                )}
+                {/* Billing tab removed */}
                 
                 {canManageMembers && (
                   <TabsContent value="members">
@@ -161,6 +154,5 @@ export default function Settings() {
           </Tabs>
         </AppContainer>
       </Section>
-    </InvoiceFilterProvider>
   )
 }
