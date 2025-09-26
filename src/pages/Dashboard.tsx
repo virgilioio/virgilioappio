@@ -40,14 +40,13 @@ export default function Dashboard() {
               // Two column layout when billing content is available (never for guests)
               <div className="grid gap-6 lg:grid-cols-2">
                 <div className="space-y-6">
-                  {/* Platform admin content would go here */}
+                  {hasQuickAccess && <QuickAccess permissions={permissions} />}
+                  {hasJobContent && <JobsOverview permissions={permissions} />}
                 </div>
                 
                 <div className="space-y-6">
                   <AdvertisingBanner />
                   {canManageOrganization && <OnboardingProgress profile={profile} isLoading={isLoading} />}
-                  {hasQuickAccess && <QuickAccess permissions={permissions} />}
-                  {hasJobContent && <JobsOverview permissions={permissions} />}
                 </div>
               </div>
             ) : (
@@ -58,16 +57,13 @@ export default function Dashboard() {
                 
                 {/* Two column grid for remaining content */}
                 <div className="grid gap-6 md:grid-cols-2">
-                  {hasQuickAccess && (
-                    <div className="space-y-6">
-                      <QuickAccess permissions={permissions} />
-                    </div>
-                  )}
-                  {hasJobContent && (
-                    <div className="space-y-6">
-                      <JobsOverview permissions={permissions} />
-                    </div>
-                  )}
+                  <div className="space-y-6">
+                    {hasQuickAccess && <QuickAccess permissions={permissions} />}
+                    {hasJobContent && <JobsOverview permissions={permissions} />}
+                  </div>
+                  <div className="space-y-6">
+                    {/* Right column available for future content */}
+                  </div>
                 </div>
                 
                 {/* If only one of the two components is visible, center it */}
