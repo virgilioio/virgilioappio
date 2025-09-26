@@ -119,12 +119,6 @@ export function Header() {
       label: 'Candidates',
       show: canViewCandidatesNavigation,
     },
-    {
-      href: '/invoices',
-      icon: Receipt,
-      label: 'Invoices',
-      show: isPlatformAdmin,
-    },
   ]
 
   const userDisplayName = (profile?.first_name && profile?.last_name
