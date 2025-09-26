@@ -3,7 +3,7 @@ import { WelcomeHeader } from '@/components/dashboard/WelcomeHeader'
 import { QuickAccess } from '@/components/dashboard/QuickAccess'
 import { JobsOverview } from '@/components/dashboard/JobsOverview'
 import { OnboardingProgress } from '@/components/dashboard/OnboardingProgress'
-import { AdvertisingBanner } from '@/components/dashboard/AdvertisingBanner'
+
 import { AIJobAssistant } from '@/components/dashboard/AIJobAssistant'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -45,15 +45,13 @@ export default function Dashboard() {
                 </div>
                 
                 <div className="space-y-6">
-                  <AdvertisingBanner />
                   {canManageOrganization && <OnboardingProgress profile={profile} isLoading={isLoading} />}
                 </div>
               </div>
             ) : (
               // Single column layout when no billing content (including for guests)
-              <div className="max-w-4xl mx-auto space-y-6">
-                <AdvertisingBanner />
-                {canManageOrganization && <OnboardingProgress profile={profile} isLoading={isLoading} />}
+            <div className="max-w-4xl mx-auto space-y-6">
+              {canManageOrganization && <OnboardingProgress profile={profile} isLoading={isLoading} />}
                 
                 {/* Two column grid for remaining content */}
                 <div className="grid gap-6 md:grid-cols-2">

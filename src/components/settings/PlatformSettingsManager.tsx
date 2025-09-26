@@ -10,7 +10,7 @@ import { usePlatformSettings } from '@/hooks/usePlatformSettings'
 import { usePlatformAssets } from '@/hooks/usePlatformAssets'
 // Currency settings removed
 import { PlatformAssetUploader } from './PlatformAssetUploader'
-import { AdvertisingManager } from './AdvertisingManager'
+
 import { SEOSettings } from './SEOSettings'
 import { FeatureFlagsManager } from './FeatureFlagsManager'
 
@@ -133,8 +133,6 @@ export function PlatformSettingsManager() {
                 </CardContent>
               </Card>
 
-              {/* Advertising Manager */}
-              <AdvertisingManager />
             </div>
           </TabsContent>
           
