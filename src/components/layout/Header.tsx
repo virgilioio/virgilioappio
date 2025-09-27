@@ -221,12 +221,6 @@ export function Header() {
             </DropdownMenu>
           )}
 
-          {/* User Role Badge */}
-          {(isPlatformAdmin || isWorkspaceOwner) && (
-            <Badge variant="outline" className="hidden sm:inline-flex text-xs">
-              {isPlatformAdmin ? 'Platform Admin' : 'Workspace Owner'}
-            </Badge>
-          )}
 
           {/* User Menu */}
           <DropdownMenu>
