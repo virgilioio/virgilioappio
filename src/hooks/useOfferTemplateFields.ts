@@ -154,19 +154,9 @@ export function useOfferTemplateFields(templateId?: string) {
 
   // Field options management
   const fetchFieldOptions = async (fieldId: string): Promise<FieldSelectOption[]> => {
-    try {
-      const { data, error } = await supabase
-        .from('field_select_options')
-        .select('*')
-        .eq('offer_template_field_id', fieldId)
-        .order('display_order')
-
-      if (error) throw error
-      return data || []
-    } catch (error) {
-      console.error('Error fetching field options:', error)
-      return []
-    }
+    // Note: field_select_options table removed during compliance cleanup
+    console.warn('fetchFieldOptions: field_select_options table no longer exists')
+    return []
   }
 
   const createFieldOption = async (optionData: {
@@ -175,33 +165,14 @@ export function useOfferTemplateFields(templateId?: string) {
     option_value: string
     display_order: number
   }) => {
-    try {
-      const { data, error } = await supabase
-        .from('field_select_options')
-        .insert(optionData)
-        .select()
-        .single()
-
-      if (error) throw error
-      return data
-    } catch (error) {
-      console.error('Error creating field option:', error)
-      throw error
-    }
+    // Note: field_select_options table removed during compliance cleanup
+    console.warn('createFieldOption: field_select_options table no longer exists')
+    return null
   }
 
   const deleteFieldOption = async (id: string) => {
-    try {
-      const { error } = await supabase
-        .from('field_select_options')
-        .delete()
-        .eq('id', id)
-
-      if (error) throw error
-    } catch (error) {
-      console.error('Error deleting field option:', error)
-      throw error
-    }
+    // Note: field_select_options table removed during compliance cleanup
+    console.warn('deleteFieldOption: field_select_options table no longer exists')
   }
 
   useEffect(() => {

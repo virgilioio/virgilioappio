@@ -105,7 +105,6 @@ export function OrganizationsTable({
   }
 
   // Get unique values for filters
-  const uniqueCountries = [...new Set(organizations.map(org => org.country).filter(Boolean))]
   const uniqueTypes = [...new Set(organizations.map(org => org.organization_type).filter(Boolean))]
   const orgNameMap: Record<string, string> = Object.fromEntries(
     organizations.map(o => [o.id, o.name])
@@ -116,7 +115,7 @@ export function OrganizationsTable({
     const matchesSearch = org.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          (org.owner_email && org.owner_email.toLowerCase().includes(searchTerm.toLowerCase()))
     const matchesStatus = statusFilter === 'all' || org.status === statusFilter
-    const matchesCountry = countryFilter === 'all' || org.country === countryFilter
+    const matchesCountry = true // Country filter removed
     const matchesType = typeFilter === 'all' || org.organization_type === typeFilter
     
     return matchesSearch && matchesStatus && matchesCountry && matchesType
@@ -220,19 +219,6 @@ export function OrganizationsTable({
               </SelectContent>
             </Select>
             
-            <Select value={countryFilter} onValueChange={setCountryFilter}>
-              <SelectTrigger className="w-full sm:w-[150px]">
-                <SelectValue placeholder="Filter by country" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Countries</SelectItem>
-                {uniqueCountries.map((country) => (
-                  <SelectItem key={country} value={country}>
-                    {country}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
             
             <Select value={typeFilter} onValueChange={setTypeFilter}>
               <SelectTrigger className="w-full sm:w-[150px]">
@@ -299,7 +285,7 @@ export function OrganizationsTable({
                       <TableRow key={org.id} className="cursor-pointer hover:bg-muted/50" onClick={() => handleViewDetails(org)}>
                         <TableCell className="font-medium">{org.name}</TableCell>
                         <TableCell className="text-sm text-muted-foreground">{org.parent_organization_id ? (orgNameMap[org.parent_organization_id] || '—') : '—'}</TableCell>
-                        <TableCell>{org.country}</TableCell>
+                        <TableCell>—</TableCell>
                         <TableCell>
                           <Badge variant={org.status === 'active' ? 'default' : 'secondary'}>
                             {org.status}

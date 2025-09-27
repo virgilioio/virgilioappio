@@ -74,36 +74,18 @@ export function useApplicationFields() {
   }
 
   const saveSelectOptions = async (fieldId: string, options: { value: string; label: string }[]) => {
-    // Replace existing options with provided list
-    const { error: delErr } = await supabase
-      .from('field_select_options')
-      .delete()
-      .eq('application_field_id', fieldId)
-    if (delErr) throw delErr
-
-    if (options.length > 0) {
-      const rows = options.map((opt, index) => ({
-        application_field_id: fieldId,
-        option_value: opt.value,
-        option_label: opt.label,
-        display_order: index,
-      }))
-      const { error: insErr } = await supabase
-        .from('field_select_options')
-        .insert(rows)
-      if (insErr) throw insErr
-    }
+    // Note: field_select_options table removed during compliance cleanup
+    // This function is kept for backwards compatibility but does nothing
+    console.warn('saveSelectOptions: field_select_options table no longer exists')
   }
 
   const saveValidationRules = async (
     fieldId: string,
     rules: { type: string; value: string; message: string }[]
   ) => {
-    const { error: delErr } = await supabase
-      .from('field_validation_rules')
-      .delete()
-      .eq('application_field_id', fieldId)
-    if (delErr) throw delErr
+    // Note: field_validation_rules table removed during compliance cleanup
+    // This function is kept for backwards compatibility but does nothing
+    console.warn('saveValidationRules: field_validation_rules table no longer exists')
 
     if (rules.length > 0) {
       const rows = rules.map((r) => ({

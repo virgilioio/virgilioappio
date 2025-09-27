@@ -29,7 +29,6 @@ export function PlaceholderHelper({ templateId }: PlaceholderHelperProps) {
 
   const organizationPlaceholders = [
     { key: '{{organization.name}}', description: 'Organization name' },
-    { key: '{{organization.country}}', description: 'Organization country' },
     { key: '{{organization.default_currency}}', description: 'Default currency' }
   ]
 

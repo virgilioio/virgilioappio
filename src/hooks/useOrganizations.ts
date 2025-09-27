@@ -6,7 +6,6 @@ import { toast } from '@/hooks/use-toast'
 export interface Organization {
   id: string
   name: string
-  country: string
   status: 'active' | 'inactive'
   organization_type: 'platform' | 'client'
   owner_id: string | null
@@ -150,7 +149,6 @@ export function useOrganizations() {
         organizationsWithDetails.push({
           id: org.id,
           name: org.name,
-          country: org.country,
           status: org.status as 'active' | 'inactive',
           organization_type: org.organization_type as 'platform' | 'client',
           owner_id: org.owner_id,

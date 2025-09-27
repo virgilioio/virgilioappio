@@ -22,7 +22,6 @@ import {
 
 interface OrganizationFormData {
   name: string
-  country: string
   status: 'active' | 'inactive'
   billing_poc_user_id: string | null
   billing_poc_additional_email: string
@@ -82,7 +81,6 @@ export function OrganizationTab() {
   
 const [orgFormData, setOrgFormData] = useState<OrganizationFormData>({
   name: '',
-  country: '',
   status: 'active',
   billing_poc_user_id: null,
   billing_poc_additional_email: '',
@@ -95,7 +93,6 @@ const [orgFormData, setOrgFormData] = useState<OrganizationFormData>({
       console.log('OrganizationTab - updating form data with organization:', userOrganization.name)
       setOrgFormData({
         name: userOrganization.name || '',
-        country: userOrganization.country || '',
         status: userOrganization.status || 'active',
         billing_poc_user_id: userOrganization.billing_poc_user_id || null,
         billing_poc_additional_email: userOrganization.billing_poc_additional_email || '',
@@ -120,7 +117,6 @@ const [orgFormData, setOrgFormData] = useState<OrganizationFormData>({
         if (userOrganization) {
           setOrgFormData({
             name: userOrganization.name || '',
-            country: userOrganization.country || '',
             status: userOrganization.status || 'active',
             billing_poc_user_id: userOrganization.billing_poc_user_id || null,
             billing_poc_additional_email: userOrganization.billing_poc_additional_email || '',
@@ -141,7 +137,6 @@ const [orgFormData, setOrgFormData] = useState<OrganizationFormData>({
     if (userOrganization) {
       setOrgFormData({
         name: userOrganization.name || '',
-        country: userOrganization.country || '',
         status: userOrganization.status || 'active',
         billing_poc_user_id: userOrganization.billing_poc_user_id || null,
         billing_poc_additional_email: userOrganization.billing_poc_additional_email || '',

@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button'
 interface Organization {
   id: string
   name: string
-  country: string
   status: 'active' | 'inactive'
   created_at: string
   billing_poc_user_id?: string | null
