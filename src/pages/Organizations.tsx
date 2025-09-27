@@ -4,7 +4,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { AuthGate } from '@/components/auth/AuthGate'
 import { PermissionGate } from '@/components/auth/PermissionGate'
 import { OrganizationsTable } from '@/components/organizations/OrganizationsTable'
-import { OrganizationForm } from '@/components/organizations/OrganizationForm'
+import { OrganizationFormSheet } from '@/components/organizations/OrganizationFormSheet'
 import { useOrganizations, Organization } from '@/hooks/useOrganizations'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Section } from '@/components/layout/Section'
@@ -71,7 +71,7 @@ export default function Organizations() {
               onCreateNew={handleCreateNew}
             />
 
-            <OrganizationForm
+            <OrganizationFormSheet
               isOpen={isFormOpen}
               onClose={() => setIsFormOpen(false)}
               onSubmit={handleFormSubmit}

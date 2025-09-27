@@ -10,7 +10,7 @@ import { Plus, Briefcase, Users, Building2 } from 'lucide-react'
 import { usePermissions } from '@/hooks/usePermissions'
 import { JobWizard } from '@/components/jobs/JobWizard'
 import CandidateFormSheet from '@/components/candidates/CandidateFormSheet'
-import { OrganizationForm } from '@/components/organizations/OrganizationForm'
+import { OrganizationFormSheet } from '@/components/organizations/OrganizationFormSheet'
 import { useOrganizations, type CreateOrganizationData } from '@/hooks/useOrganizations'
 
 export function GlobalCreateButton() {
@@ -126,7 +126,7 @@ export function GlobalCreateButton() {
 
       {/* Organization Form */}
       {isPlatformAdmin && (
-        <OrganizationForm
+        <OrganizationFormSheet
           isOpen={organizationFormOpen}
           onClose={() => setOrganizationFormOpen(false)}
           onSubmit={async (data) => {

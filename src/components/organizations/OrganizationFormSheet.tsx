@@ -5,7 +5,7 @@ import * as z from 'zod'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { Organization, CreateOrganizationData, UpdateOrganizationData } from '@/hooks/useOrganizations'
@@ -23,7 +23,7 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>
 
-interface OrganizationFormProps {
+interface OrganizationFormSheetProps {
   isOpen: boolean
   onClose: () => void
   onSubmit: (data: CreateOrganizationData | UpdateOrganizationData) => Promise<void>
@@ -31,13 +31,13 @@ interface OrganizationFormProps {
   isLoading: boolean
 }
 
-export function OrganizationForm({ 
+export function OrganizationFormSheet({ 
   isOpen, 
   onClose, 
   onSubmit, 
   organization, 
   isLoading 
-}: OrganizationFormProps) {
+}: OrganizationFormSheetProps) {
   const permissions = usePermissions()
   const { members } = useMembers()
   const { organizations: allOrganizations } = useOrganizations()
@@ -90,10 +90,7 @@ export function OrganizationForm({
       }))
   ]
 
-  console.log('Workspace owners for select:', workspaceOwners)
-  console.log('Owner options:', ownerOptions)
-
-const form = useForm<FormData>({
+  const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: '',
@@ -142,7 +139,6 @@ const form = useForm<FormData>({
         submitData.parent_organization_id = organizationId
       }
 
-      console.log('Submitting organization data:', submitData)
       await onSubmit(submitData)
       onClose()
     } catch (error) {
@@ -156,125 +152,130 @@ const form = useForm<FormData>({
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
-          <DialogTitle>
-            {isEditing ? 'Edit Organization' : 'Create Organization'}
-          </DialogTitle>
-        </DialogHeader>
+    <Sheet open={isOpen} onOpenChange={handleClose}>
+      <SheetContent side="right" className="w-full sm:max-w-[500px] h-full p-0">
+        <div className="flex flex-col h-full">
+          <SheetHeader className="px-6 py-4 border-b border-border">
+            <SheetTitle className="text-lg">
+              {isEditing ? 'Edit Organization' : 'Create Organization'}
+            </SheetTitle>
+            <SheetDescription>
+              {isEditing ? 'Update organization details' : 'Create a new organization to manage your teams and projects'}
+            </SheetDescription>
+          </SheetHeader>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-token-lg">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Organization Name</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Enter organization name" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="status"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Status</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select status" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="inactive">Inactive</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {/* Parent Organization - Only show for platform admins */}
-            {permissions.isPlatformAdmin && (
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(handleSubmit)} className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
               <FormField
                 control={form.control}
-                name="parent_organization_id"
-                render={({ field }) => {
-                  const parentOptions = [
-                    { value: 'none', label: 'No parent (top-level)' },
-                    ...allOrganizations
-                      .filter(o => !isEditing || o.id !== organization?.id)
-                      .map(o => ({ value: o.id, label: o.name }))
-                  ]
-                  return (
-                    <FormItem>
-                      <FormLabel>Parent Organization</FormLabel>
-                      <FormControl>
-                        <SearchableSelect
-                          options={parentOptions}
-                          value={field.value}
-                          onValueChange={field.onChange}
-                          placeholder="Select a parent (optional)"
-                          searchPlaceholder="Search organizations..."
-                          emptyMessage="No organizations found."
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        Set a parent to create a hierarchy. Tenants should have no parent.
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )
-                }}
-              />
-            )}
-
-            {permissions.isPlatformAdmin && permissions.canManageOrganization && (
-              <FormField
-                control={form.control}
-                name="owner_id"
+                name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Owner (Optional)</FormLabel>
+                    <FormLabel>Organization Name</FormLabel>
                     <FormControl>
-                      <SearchableSelect
-                        options={ownerOptions}
-                        value={field.value}
-                        onValueChange={field.onChange}
-                        placeholder="Select an owner"
-                        searchPlaceholder="Search owners..."
-                        emptyMessage="No owners found."
-                      />
+                      <Input placeholder="Enter organization name" {...field} />
                     </FormControl>
-                    <FormDescription>
-                      Optional. You can assign a workspace owner to manage this organization.
-                      {ownerOptions.length <= 1 && " No workspace owners available - invite users with workspace owner role first."}
-                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-            )}
 
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={handleClose}>
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={isLoading}>
-                  {isLoading ? 'Saving...' : (isEditing ? 'Update' : 'Create')}
-                </Button>
-              </DialogFooter>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
+              <FormField
+                control={form.control}
+                name="status"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Status</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="inactive">Inactive</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Parent Organization - Only show for platform admins */}
+              {permissions.isPlatformAdmin && (
+                <FormField
+                  control={form.control}
+                  name="parent_organization_id"
+                  render={({ field }) => {
+                    const parentOptions = [
+                      { value: 'none', label: 'No parent (top-level)' },
+                      ...allOrganizations
+                        .filter(o => !isEditing || o.id !== organization?.id)
+                        .map(o => ({ value: o.id, label: o.name }))
+                    ]
+                    return (
+                      <FormItem>
+                        <FormLabel>Parent Organization</FormLabel>
+                        <FormControl>
+                          <SearchableSelect
+                            options={parentOptions}
+                            value={field.value}
+                            onValueChange={field.onChange}
+                            placeholder="Select a parent (optional)"
+                            searchPlaceholder="Search organizations..."
+                            emptyMessage="No organizations found."
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          Set a parent to create a hierarchy. Tenants should have no parent.
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )
+                  }}
+                />
+              )}
+
+              {permissions.isPlatformAdmin && permissions.canManageOrganization && (
+                <FormField
+                  control={form.control}
+                  name="owner_id"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Owner (Optional)</FormLabel>
+                      <FormControl>
+                        <SearchableSelect
+                          options={ownerOptions}
+                          value={field.value}
+                          onValueChange={field.onChange}
+                          placeholder="Select an owner"
+                          searchPlaceholder="Search owners..."
+                          emptyMessage="No owners found."
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Optional. You can assign a workspace owner to manage this organization.
+                        {ownerOptions.length <= 1 && " No workspace owners available - invite users with workspace owner role first."}
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+            </form>
+
+            <div className="px-6 py-4 border-t border-border flex items-center justify-end gap-2">
+              <Button type="button" variant="ghost" onClick={handleClose}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isLoading}>
+                {isLoading ? 'Saving...' : (isEditing ? 'Update' : 'Create')}
+              </Button>
+            </div>
+          </Form>
+        </div>
+      </SheetContent>
+    </Sheet>
   )
 }
