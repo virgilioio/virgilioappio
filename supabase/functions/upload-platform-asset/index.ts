@@ -31,9 +31,12 @@ Deno.serve(async (req) => {
     const { data: { user }, error: userError } = await supabase.auth.getUser()
     
     if (userError || !user) {
-      console.log('Authentication failed:', userError)
+      console.log('Authentication failed:', userError?.message || 'No user found')
       return new Response(
-        JSON.stringify({ error: 'Authentication required' }),
+        JSON.stringify({ 
+          error: 'Authentication required', 
+          details: userError?.message || 'No user session found' 
+        }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -48,9 +51,18 @@ Deno.serve(async (req) => {
       .single()
 
     if (memberError || memberData?.user_type !== 'platform_admin') {
-      console.log('Unauthorized access attempt:', memberError || 'Not platform admin')
+      console.log('Unauthorized access attempt:', {
+        userId: user.id,
+        userEmail: user.email,
+        memberError: memberError?.message,
+        userType: memberData?.user_type,
+        hasMemberRecord: !!memberData
+      })
       return new Response(
-        JSON.stringify({ error: 'Unauthorized: Platform admin access required' }),
+        JSON.stringify({ 
+          error: 'Unauthorized: Platform admin access required',
+          details: `User type: ${memberData?.user_type || 'no member record'}`
+        }),
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
