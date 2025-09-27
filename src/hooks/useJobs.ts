@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from '@/hooks/use-toast'
@@ -187,7 +187,7 @@ export function useJobs() {
     })
   }
 
-  const getJobs = async () => {
+  const getJobs = useCallback(async () => {
     if (!user) return
 
     setIsLoading(true)
@@ -372,7 +372,7 @@ export function useJobs() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [user, userType, organizationId, normalizeJobSpecs])
 
   const getJob = async (id: string): Promise<Job> => {
     setIsLoading(true)
