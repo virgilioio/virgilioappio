@@ -83,13 +83,7 @@ export function useJobs() {
     let baseQuery = `
       *,
       organizations!inner(id, name),
-      job_assignments(user_id),
-      hiring_team_members:members!jobs_hiring_team_fkey(
-        id,
-        user_id,
-        invited_email,
-        profiles(first_name, last_name, email)
-      )
+      job_assignments(user_id)
     `
 
     // Get user's current member role once
@@ -156,40 +150,12 @@ export function useJobs() {
       })
     }
 
-    // Transform data to include resolved hiring team names (data already loaded via JOIN)
+    // Transform data to include basic hiring team information
     return filteredJobs.map((job: any) => {
-      const hiringTeamNames: string[] = []
-      
-      if (job.hiring_team_members && Array.isArray(job.hiring_team_members)) {
-        job.hiring_team_members.forEach((member: any) => {
-          let resolvedName: string | null = null
-          
-          // Use profile data if available
-          if (member.profiles) {
-            const profile = member.profiles
-            const fullName = [profile.first_name, profile.last_name].filter(Boolean).join(' ')
-            if (fullName.trim()) {
-              resolvedName = fullName
-            } else if (profile.email) {
-              resolvedName = profile.email
-            }
-          }
-          
-          // Fallback to invited email
-          if (!resolvedName && member.invited_email) {
-            resolvedName = member.invited_email
-          }
-          
-          if (resolvedName) {
-            hiringTeamNames.push(resolvedName)
-          }
-        })
-      }
-
       return {
         ...job,
         hiring_team: Array.isArray(job.hiring_team) ? job.hiring_team : [],
-        hiring_team_names: hiringTeamNames,
+        hiring_team_names: [], // Will be populated when needed
         organization_name: job.organizations?.name || 'Unknown Organization'
       } as Job
     })
