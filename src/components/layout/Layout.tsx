@@ -48,9 +48,9 @@ export function Layout() {
   return (
     <AuthGate>
       <OrgGate>
-        <div className="min-h-screen bg-background">
+        <div className="bg-background">
           <Header />
-          <main className="pt-12 sm:pt-14">
+          <main className="min-h-[calc(100vh-3rem)] sm:min-h-[calc(100vh-3.5rem)]">
             <Outlet />
           </main>
         </div>
