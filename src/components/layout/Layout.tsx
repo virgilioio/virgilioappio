@@ -50,7 +50,7 @@ export function Layout() {
       <OrgGate>
         <div className="bg-background">
           <Header />
-          <main className="min-h-[calc(100vh-3rem)] sm:min-h-[calc(100vh-3.5rem)]">
+          <main className="pt-12 sm:pt-14 min-h-[calc(100vh-6rem)] sm:min-h-[calc(100vh-7rem)]">
             <Outlet />
           </main>
         </div>
