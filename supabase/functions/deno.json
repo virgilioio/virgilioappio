@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "strict": false,
+    "noImplicitAny": false,
+    "allowJs": true,
+    "noImplicitReturns": false,
+    "noImplicitThis": false,
+    "strictNullChecks": false,
+    "strictFunctionTypes": false,
+    "strictBindCallApply": false,
+    "strictPropertyInitialization": false,
+    "noImplicitOverride": false,
+    "skipLibCheck": true,
+    "noUncheckedIndexedAccess": false
+  }
+}

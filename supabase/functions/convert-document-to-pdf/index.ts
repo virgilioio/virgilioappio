@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0';
+import { getErrorMessage } from "../_shared/types.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -31,7 +32,12 @@ serve(async (req) => {
       .eq('id', attachment_id);
 
     // Use EdgeRuntime.waitUntil for background processing
-    EdgeRuntime.waitUntil(processDocumentConversion(supabase, attachment_id, file_url, file_type));
+    // Use Deno.serve waitUntil if available, otherwise just process async
+    if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime.waitUntil) {
+      EdgeRuntime.waitUntil(processDocumentConversion(supabase, attachment_id, file_url, file_type));
+    } else {
+      processDocumentConversion(supabase, attachment_id, file_url, file_type).catch(console.error);
+    }
 
     return new Response(JSON.stringify({ 
       success: true, 
@@ -45,7 +51,7 @@ serve(async (req) => {
     console.error('Error starting conversion:', error);
     return new Response(JSON.stringify({ 
       error: 'Failed to start conversion',
-      details: error.message 
+      details: getErrorMessage(error) 
     }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -116,7 +122,7 @@ async function processDocumentConversion(supabase: any, attachmentId: string, fi
 
   } catch (error) {
     console.error('Conversion failed:', error);
-    await updateConversionStatus(supabase, attachmentId, 'failed', error.message);
+    await updateConversionStatus(supabase, attachmentId, 'failed', getErrorMessage(error));
   }
 }
 
