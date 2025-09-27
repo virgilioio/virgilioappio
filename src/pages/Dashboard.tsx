@@ -35,48 +35,21 @@ export default function Dashboard() {
               <AIJobAssistant />
             )}
             
-            {/* Adaptive layout based on available content */}
-            {hasBillingContent ? (
-              // Two column layout when billing content is available (never for guests)
-              <div className="grid gap-6 lg:grid-cols-2">
-                <div className="space-y-6">
-                  {hasQuickAccess && <QuickAccess permissions={permissions} />}
-                  {hasJobContent && <JobsOverview permissions={permissions} />}
+            {/* Three column layout with Jobs Overview spanning 2 columns */}
+            <div className="grid gap-6 lg:grid-cols-3">
+              {/* Jobs Overview - spans 2 columns */}
+              {hasJobContent && (
+                <div className="lg:col-span-2">
+                  <JobsOverview permissions={permissions} />
                 </div>
-                
-                <div className="space-y-6">
-                  {canManageOrganization && <OnboardingProgress profile={profile} isLoading={isLoading} />}
-                </div>
+              )}
+              
+              {/* Right column for other components */}
+              <div className="space-y-6">
+                {hasQuickAccess && <QuickAccess permissions={permissions} />}
+                {canManageOrganization && <OnboardingProgress profile={profile} isLoading={isLoading} />}
               </div>
-            ) : (
-              // Single column layout when no billing content (including for guests)
-            <div className="max-w-4xl mx-auto space-y-6">
-              {canManageOrganization && <OnboardingProgress profile={profile} isLoading={isLoading} />}
-                
-                {/* Two column grid for remaining content */}
-                <div className="grid gap-6 md:grid-cols-2">
-                  <div className="space-y-6">
-                    {hasQuickAccess && <QuickAccess permissions={permissions} />}
-                    {hasJobContent && <JobsOverview permissions={permissions} />}
-                  </div>
-                  <div className="space-y-6">
-                    {/* Right column available for future content */}
-                  </div>
-                </div>
-                
-                {/* If only one of the two components is visible, center it */}
-                {(hasQuickAccess && !hasJobContent) && (
-                  <div className="max-w-md mx-auto">
-                    {/* QuickAccess already rendered above, this is handled by the grid */}
-                  </div>
-                )}
-                {(!hasQuickAccess && hasJobContent) && (
-                  <div className="max-w-md mx-auto">
-                    {/* JobsOverview already rendered above, this is handled by the grid */}
-                  </div>
-                )}
-              </div>
-            )}
+            </div>
         </div>
       </Section>
     </div>
