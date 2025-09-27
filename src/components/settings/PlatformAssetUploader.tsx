@@ -1,14 +1,15 @@
 
 import React, { useState, useRef, useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import { Upload, Image, Globe, AlertCircle, Settings, Save, Loader2 } from 'lucide-react'
+import { Upload, Image, Globe, AlertCircle, Settings, Save, Loader2, Building2, Briefcase, Users, MessageSquare, Paperclip, FileText, UserCheck } from 'lucide-react'
 import { usePlatformAssets } from '@/hooks/usePlatformAssets'
 import { usePlatformSettings } from '@/hooks/usePlatformSettings'
-import type { EmptyStateAssetType } from '@/components/ui/empty-state'
+import { EmptyState, type EmptyStateAssetType } from '@/components/ui/empty-state'
 
 interface AssetUploaderProps {
   assetType: 'logo' | 'favicon' | EmptyStateAssetType
@@ -17,9 +18,10 @@ interface AssetUploaderProps {
   acceptedTypes: string
   maxSize: string
   currentAsset?: string
+  preview?: React.ReactNode
 }
 
-function AssetUploader({ assetType, title, description, acceptedTypes, maxSize, currentAsset }: AssetUploaderProps) {
+function AssetUploader({ assetType, title, description, acceptedTypes, maxSize, currentAsset, preview }: AssetUploaderProps) {
   const [dragActive, setDragActive] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -81,34 +83,48 @@ function AssetUploader({ assetType, title, description, acceptedTypes, maxSize, 
         <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Current Asset Preview */}
-        {currentAsset && (
-          <div className="space-y-2">
-            <Label className="text-sm font-medium">Current {assetType}:</Label>
-            <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
-              {assetType === 'logo' ? (
-                <img src={currentAsset} alt="Current logo" className="h-8 w-auto" />
-              ) : (
-                <div className="flex items-center gap-2">
-                  <img 
-                    src={currentAsset} 
-                    alt="Current favicon" 
-                    className="h-4 w-4" 
-                    onError={(e) => {
-                      // Fallback to icon if image fails to load
-                      const target = e.target as HTMLImageElement
-                      target.style.display = 'none'
-                      target.nextElementSibling?.classList.remove('hidden')
-                    }}
-                  />
-                  <Globe className="h-4 w-4 hidden" />
-                  <span className="text-sm text-muted-foreground">Active favicon</span>
-                </div>
-              )}
-              <Badge variant="secondary">Active</Badge>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Current Asset Preview */}
+          {currentAsset && (
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Current {assetType}:</Label>
+              <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
+                {assetType === 'logo' ? (
+                  <img src={currentAsset} alt="Current logo" className="h-8 w-auto" />
+                ) : assetType === 'favicon' ? (
+                  <div className="flex items-center gap-2">
+                    <img 
+                      src={currentAsset} 
+                      alt="Current favicon" 
+                      className="h-4 w-4" 
+                      onError={(e) => {
+                        // Fallback to icon if image fails to load
+                        const target = e.target as HTMLImageElement
+                        target.style.display = 'none'
+                        target.nextElementSibling?.classList.remove('hidden')
+                      }}
+                    />
+                    <Globe className="h-4 w-4 hidden" />
+                    <span className="text-sm text-muted-foreground">Active favicon</span>
+                  </div>
+                ) : (
+                  <img src={currentAsset} alt={`Current ${title}`} className="h-12 w-12 object-contain mx-auto" />
+                )}
+                <Badge variant="secondary">Active</Badge>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+          
+          {/* Live Preview for empty states */}
+          {preview && (
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Live Preview:</Label>
+              <div className="p-3 bg-muted/30 rounded-lg">
+                {preview}
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* File Upload Area */}
         <div className="space-y-2">
@@ -336,19 +352,167 @@ export function PlatformAssetUploader() {
         <p className="text-sm text-muted-foreground mb-4">
           Custom illustrations for empty tables and lists. Recommended size: 48x48px PNG with transparent background.
         </p>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {emptyStateConfigs.map((config) => (
-            <AssetUploader
-              key={config.type}
-              assetType={config.type}
-              title={config.label}
-              description={config.description}
-              acceptedTypes=".png"
-              maxSize="500KB"
-              currentAsset={getEmptyStateAsset(config.type)?.file_url}
-            />
-          ))}
-        </div>
+        
+        <Tabs defaultValue="core-tables" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="core-tables">Core Tables</TabsTrigger>
+            <TabsTrigger value="content-areas">Content Areas</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="core-tables" className="space-y-6 mt-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <AssetUploader
+                assetType="empty-state-organizations"
+                title="Organizations"
+                description="Empty organizations table"
+                acceptedTypes=".png"
+                maxSize="500KB"
+                currentAsset={getEmptyStateAsset('empty-state-organizations')?.file_url}
+                preview={
+                  <div className="scale-75 transform-origin-top">
+                    <EmptyState
+                      assetType="empty-state-organizations"
+                      title="No organizations yet"
+                      description="Create your first organization to get started"
+                      fallbackIcon={Building2}
+                    />
+                  </div>
+                }
+              />
+              <AssetUploader
+                assetType="empty-state-jobs"
+                title="Jobs"
+                description="Empty jobs table"
+                acceptedTypes=".png"
+                maxSize="500KB"
+                currentAsset={getEmptyStateAsset('empty-state-jobs')?.file_url}
+                preview={
+                  <div className="scale-75 transform-origin-top">
+                    <EmptyState
+                      assetType="empty-state-jobs"
+                      title="No jobs yet"
+                      description="Create your first job posting to start hiring"
+                      fallbackIcon={Briefcase}
+                    />
+                  </div>
+                }
+              />
+              <AssetUploader
+                assetType="empty-state-candidates"
+                title="Candidates"
+                description="Empty candidates table"
+                acceptedTypes=".png"
+                maxSize="500KB"
+                currentAsset={getEmptyStateAsset('empty-state-candidates')?.file_url}
+                preview={
+                  <div className="scale-75 transform-origin-top">
+                    <EmptyState
+                      assetType="empty-state-candidates"
+                      title="No candidates yet"
+                      description="Start adding candidates to your pipeline"
+                      fallbackIcon={Users}
+                    />
+                  </div>
+                }
+              />
+              <AssetUploader
+                assetType="empty-state-members"
+                title="Members"
+                description="Empty members table"
+                acceptedTypes=".png"
+                maxSize="500KB"
+                currentAsset={getEmptyStateAsset('empty-state-members')?.file_url}
+                preview={
+                  <div className="scale-75 transform-origin-top">
+                    <EmptyState
+                      assetType="empty-state-members"
+                      title="No team members yet"
+                      description="Invite your first team member to collaborate"
+                      fallbackIcon={UserCheck}
+                    />
+                  </div>
+                }
+              />
+              <AssetUploader
+                assetType="empty-state-independent-candidates"
+                title="Independent Candidates"
+                description="Empty independent candidates table"
+                acceptedTypes=".png"
+                maxSize="500KB"
+                currentAsset={getEmptyStateAsset('empty-state-independent-candidates')?.file_url}
+                preview={
+                  <div className="scale-75 transform-origin-top">
+                    <EmptyState
+                      assetType="empty-state-independent-candidates"
+                      title="No independent candidates yet"
+                      description="Add candidates to your talent pool"
+                      fallbackIcon={Users}
+                    />
+                  </div>
+                }
+              />
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="content-areas" className="space-y-6 mt-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <AssetUploader
+                assetType="empty-state-comments"
+                title="Comments"
+                description="Empty comments section"
+                acceptedTypes=".png"
+                maxSize="500KB"
+                currentAsset={getEmptyStateAsset('empty-state-comments')?.file_url}
+                preview={
+                  <div className="scale-75 transform-origin-top">
+                    <EmptyState
+                      assetType="empty-state-comments"
+                      title="No comments yet"
+                      description="Start a conversation about this candidate"
+                      fallbackIcon={MessageSquare}
+                    />
+                  </div>
+                }
+              />
+              <AssetUploader
+                assetType="empty-state-attachments"
+                title="Attachments"
+                description="Empty attachments list"
+                acceptedTypes=".png"
+                maxSize="500KB"
+                currentAsset={getEmptyStateAsset('empty-state-attachments')?.file_url}
+                preview={
+                  <div className="scale-75 transform-origin-top">
+                    <EmptyState
+                      assetType="empty-state-attachments"
+                      title="No attachments yet"
+                      description="Upload files related to this candidate"
+                      fallbackIcon={Paperclip}
+                    />
+                  </div>
+                }
+              />
+              <AssetUploader
+                assetType="empty-state-templates"
+                title="Templates"
+                description="Empty templates table"
+                acceptedTypes=".png"
+                maxSize="500KB"
+                currentAsset={getEmptyStateAsset('empty-state-templates')?.file_url}
+                preview={
+                  <div className="scale-75 transform-origin-top">
+                    <EmptyState
+                      assetType="empty-state-templates"
+                      title="No templates yet"
+                      description="Create your first template to get started"
+                      fallbackIcon={FileText}
+                    />
+                  </div>
+                }
+              />
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
 
       <BrowserTitleEditor />
