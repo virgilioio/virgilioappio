@@ -641,205 +641,6 @@ export type Database = {
         }
         Relationships: []
       }
-      countries: {
-        Row: {
-          code: string
-          created_at: string
-          created_by: string | null
-          id: string
-          is_active: boolean
-          name: string
-          updated_at: string
-        }
-        Insert: {
-          code: string
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          is_active?: boolean
-          name: string
-          updated_at?: string
-        }
-        Update: {
-          code?: string
-          created_at?: string
-          created_by?: string | null
-          id?: string
-          is_active?: boolean
-          name?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      country_fields: {
-        Row: {
-          accepted_file_types: string | null
-          country_id: string
-          created_at: string
-          created_by: string | null
-          display_order: number
-          field_label: string
-          field_name: string
-          field_type: Database["public"]["Enums"]["field_type"]
-          help_text: string | null
-          id: string
-          is_required: boolean
-          max_file_size_mb: number | null
-          placeholder_text: string | null
-          updated_at: string
-        }
-        Insert: {
-          accepted_file_types?: string | null
-          country_id: string
-          created_at?: string
-          created_by?: string | null
-          display_order?: number
-          field_label: string
-          field_name: string
-          field_type?: Database["public"]["Enums"]["field_type"]
-          help_text?: string | null
-          id?: string
-          is_required?: boolean
-          max_file_size_mb?: number | null
-          placeholder_text?: string | null
-          updated_at?: string
-        }
-        Update: {
-          accepted_file_types?: string | null
-          country_id?: string
-          created_at?: string
-          created_by?: string | null
-          display_order?: number
-          field_label?: string
-          field_name?: string
-          field_type?: Database["public"]["Enums"]["field_type"]
-          help_text?: string | null
-          id?: string
-          is_required?: boolean
-          max_file_size_mb?: number | null
-          placeholder_text?: string | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "country_fields_country_id_fkey"
-            columns: ["country_id"]
-            isOneToOne: false
-            referencedRelation: "countries"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      field_select_options: {
-        Row: {
-          application_field_id: string | null
-          country_field_id: string | null
-          created_at: string
-          display_order: number
-          id: string
-          offer_template_field_id: string | null
-          option_label: string
-          option_value: string
-        }
-        Insert: {
-          application_field_id?: string | null
-          country_field_id?: string | null
-          created_at?: string
-          display_order?: number
-          id?: string
-          offer_template_field_id?: string | null
-          option_label: string
-          option_value: string
-        }
-        Update: {
-          application_field_id?: string | null
-          country_field_id?: string | null
-          created_at?: string
-          display_order?: number
-          id?: string
-          offer_template_field_id?: string | null
-          option_label?: string
-          option_value?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "field_select_options_application_field_id_fkey"
-            columns: ["application_field_id"]
-            isOneToOne: false
-            referencedRelation: "application_fields"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "field_select_options_country_field_id_fkey"
-            columns: ["country_field_id"]
-            isOneToOne: false
-            referencedRelation: "country_fields"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "field_select_options_offer_template_field_id_fkey"
-            columns: ["offer_template_field_id"]
-            isOneToOne: false
-            referencedRelation: "offer_template_fields"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      field_validation_rules: {
-        Row: {
-          application_field_id: string | null
-          country_field_id: string | null
-          created_at: string
-          error_message: string
-          id: string
-          offer_template_field_id: string | null
-          rule_type: string
-          rule_value: string
-        }
-        Insert: {
-          application_field_id?: string | null
-          country_field_id?: string | null
-          created_at?: string
-          error_message: string
-          id?: string
-          offer_template_field_id?: string | null
-          rule_type: string
-          rule_value: string
-        }
-        Update: {
-          application_field_id?: string | null
-          country_field_id?: string | null
-          created_at?: string
-          error_message?: string
-          id?: string
-          offer_template_field_id?: string | null
-          rule_type?: string
-          rule_value?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "field_validation_rules_application_field_id_fkey"
-            columns: ["application_field_id"]
-            isOneToOne: false
-            referencedRelation: "application_fields"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "field_validation_rules_country_field_id_fkey"
-            columns: ["country_field_id"]
-            isOneToOne: false
-            referencedRelation: "country_fields"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "field_validation_rules_offer_template_field_id_fkey"
-            columns: ["offer_template_field_id"]
-            isOneToOne: false
-            referencedRelation: "offer_template_fields"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       job_assignments: {
         Row: {
           assigned_by: string | null
@@ -1696,64 +1497,12 @@ export type Database = {
         }
         Relationships: []
       }
-      organization_custom_data: {
-        Row: {
-          country_field_id: string
-          created_at: string
-          field_value: string | null
-          file_name: string | null
-          file_size_bytes: number | null
-          file_url: string | null
-          id: string
-          organization_id: string
-          updated_at: string
-        }
-        Insert: {
-          country_field_id: string
-          created_at?: string
-          field_value?: string | null
-          file_name?: string | null
-          file_size_bytes?: number | null
-          file_url?: string | null
-          id?: string
-          organization_id: string
-          updated_at?: string
-        }
-        Update: {
-          country_field_id?: string
-          created_at?: string
-          field_value?: string | null
-          file_name?: string | null
-          file_size_bytes?: number | null
-          file_url?: string | null
-          id?: string
-          organization_id?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "organization_custom_data_country_field_id_fkey"
-            columns: ["country_field_id"]
-            isOneToOne: false
-            referencedRelation: "country_fields"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "organization_custom_data_organization_id_fkey"
-            columns: ["organization_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       organizations: {
         Row: {
           billing_poc_additional_email: string | null
           billing_poc_phone: string | null
           billing_poc_updated_at: string | null
           billing_poc_updated_by: string | null
-          country: string
           created_at: string
           created_by: string | null
           id: string
@@ -1774,7 +1523,6 @@ export type Database = {
           billing_poc_phone?: string | null
           billing_poc_updated_at?: string | null
           billing_poc_updated_by?: string | null
-          country: string
           created_at?: string
           created_by?: string | null
           id?: string
@@ -1795,7 +1543,6 @@ export type Database = {
           billing_poc_phone?: string | null
           billing_poc_updated_at?: string | null
           billing_poc_updated_by?: string | null
-          country?: string
           created_at?: string
           created_by?: string | null
           id?: string
@@ -2608,15 +2355,7 @@ export type Database = {
           uploaded_by?: string | null
           worker_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "worker_custom_data_country_field_id_fkey"
-            columns: ["country_field_id"]
-            isOneToOne: false
-            referencedRelation: "country_fields"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
     }
     Views: {
