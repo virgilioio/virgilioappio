@@ -72,11 +72,11 @@ export function EmptyState({
           <img 
             src={customImageUrl}
             alt={`${title} illustration`}
-            className="h-[68px] w-[68px] sm:h-[92px] sm:w-[92px] mx-auto"
+            className="h-[76px] w-[76px] sm:h-[100px] sm:w-[100px] mx-auto"
             onError={handleImageError}
           />
         ) : (
-          <FallbackIcon className="h-[68px] w-[68px] sm:h-[92px] sm:w-[92px] text-muted-foreground mx-auto" />
+          <FallbackIcon className="h-[76px] w-[76px] sm:h-[100px] sm:w-[100px] text-muted-foreground mx-auto" />
         )}
       </div>
       
