@@ -6,6 +6,7 @@ import { PermissionGate } from '@/components/auth/PermissionGate'
 import { GuestRestriction } from '@/components/auth/GuestRestriction'
 import { JobsTable } from '@/components/jobs/JobsTable'
 import { JobForm } from '@/components/jobs/JobForm'
+import { JobWizard } from '@/components/jobs/JobWizard'
 import { useJobs, Job } from '@/hooks/useJobs'
 import { usePermissions } from '@/hooks/usePermissions'
 import { PageHeader } from '@/components/layout/PageHeader'
@@ -13,6 +14,7 @@ import { Section } from '@/components/layout/Section'
 
 export default function Jobs() {
   const navigate = useNavigate()
+  const [isWizardOpen, setIsWizardOpen] = useState(false)
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [selectedJob, setSelectedJob] = useState<Job | null>(null)
   const [archiveJobId, setArchiveJobId] = useState<string | null>(null)
@@ -28,7 +30,7 @@ export default function Jobs() {
 
   const handleCreateNew = () => {
     setSelectedJob(null)
-    setIsFormOpen(true)
+    setIsWizardOpen(true)
   }
 
   const handleView = (job: Job) => {
@@ -85,6 +87,11 @@ export default function Jobs() {
               onEdit={handleEdit}
               onArchive={handleArchive}
               onCreateNew={handleCreateNew}
+            />
+
+            <JobWizard
+              isOpen={isWizardOpen}
+              onClose={() => setIsWizardOpen(false)}
             />
 
             <JobForm
