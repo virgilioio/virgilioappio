@@ -29,6 +29,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { usePermissions } from '@/hooks/usePermissions'
 import { VirgilioLogo } from '@/components/VirgilioLogo'
 import { AdminModeIndicator } from '@/components/admin/AdminModeIndicator'
+import { GlobalCreateButton } from '@/components/layout/GlobalCreateButton'
 
 import { cn } from '@/lib/utils'
 import { useMembers } from '@/hooks/useMembers'
@@ -195,6 +196,9 @@ export function Header() {
 
         {/* User Menu and Mobile Navigation */}
         <div className="flex items-center gap-sm">
+          {/* Global Create Button */}
+          <GlobalCreateButton />
+          
           {/* Workspace Switcher */}
           {isPlatformAdmin && uniqueOrgs.length > 1 && (
             <DropdownMenu>
