@@ -278,14 +278,23 @@ export function JobsTable({
       </CardHeader>
       <CardContent>
         {filteredJobs.length === 0 ? (
-          <div className="text-center py-xl bg-surface-secondary rounded-brand">
-            <FileText className="h-12 w-12 mx-auto mb-md text-text-secondary opacity-50" />
-            <p className="text-md font-medium text-text-primary mb-sm">
+          <div className="text-center py-8">
+            <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-2">
               {jobs.length === 0 ? 'No jobs yet' : 'No jobs match your filters'}
+            </h3>
+            <p className="text-muted-foreground mb-4">
+              {jobs.length === 0 
+                ? 'Create your first job posting to get started.'
+                : 'Try adjusting your search or filter criteria.'
+              }
             </p>
-            <p className="text-sm text-text-secondary">
-              {jobs.length === 0 ? 'Create your first job posting' : 'Try adjusting your search or filters'}
-            </p>
+            {jobs.length === 0 && permissions.canCreateJobs && (
+              <Button onClick={onCreateNew} className="gap-2">
+                <Plus className="h-4 w-4" />
+                Create Job
+              </Button>
+            )}
           </div>
         ) : (
           <>
