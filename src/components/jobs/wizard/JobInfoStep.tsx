@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { SearchableSelect, SearchableSelectOption } from '@/components/ui/searchable-select'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Button } from '@/components/ui/button'
@@ -24,6 +25,14 @@ export function JobInfoStep({ jobData, onUpdate }: JobInfoStepProps) {
   const [currencyOpen, setCurrencyOpen] = React.useState(false)
   const { organizations } = useOrganizations()
   const { userType, organizationId } = useAuth()
+
+  // Transform and sort organizations for SearchableSelect
+  const organizationOptions: SearchableSelectOption[] = React.useMemo(() => 
+    organizations
+      .map(org => ({ value: org.id, label: org.name }))
+      .sort((a, b) => a.label.localeCompare(b.label)),
+    [organizations]
+  )
 
   React.useEffect(() => {
     // Set default organization for non-platform-admin users
@@ -73,22 +82,14 @@ export function JobInfoStep({ jobData, onUpdate }: JobInfoStepProps) {
         {/* Organization */}
         <div className="space-y-2">
           <Label htmlFor="organization">Organization *</Label>
-          <Select 
-            value={jobData.organization_id || ''} 
+          <SearchableSelect
+            options={organizationOptions}
+            value={jobData.organization_id || ''}
             onValueChange={(value) => handleInputChange('organization_id', value)}
-            required
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select organization" />
-            </SelectTrigger>
-            <SelectContent>
-              {organizations.map(org => (
-                <SelectItem key={org.id} value={org.id}>
-                  {org.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            placeholder="Select organization..."
+            searchPlaceholder="Search organizations..."
+            emptyMessage="No organizations found."
+          />
         </div>
 
         {/* Department */}
