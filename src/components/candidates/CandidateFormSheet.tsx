@@ -15,6 +15,9 @@ import { useResumeParsing } from '@/hooks/useResumeParsing'
 import { useSkillsGeneration } from '@/hooks/useSkillsGeneration'
 import { useCandidates } from '@/hooks/useCandidates'
 import { useIndependentCandidates } from '@/hooks/useIndependentCandidates'
+import { useJobs } from '@/hooks/useJobs'
+import { useJobHiringPlan } from '@/hooks/useJobHiringPlan'
+import { usePipelineActions } from '@/hooks/usePipelineActions'
 import { supabase } from '@/integrations/supabase/client'
 import { getSkillColor } from '@/utils/skillColors'
 import { EnhancedResumeDropzone, ParsedResumeData } from './EnhancedResumeDropzone'
@@ -31,6 +34,8 @@ interface FormValues {
   phone?: string
   linkedin_url?: string
   source?: string
+  selectedJobId?: string
+  selectedStageId?: string
 }
 
 export default function CandidateFormSheet({ isOpen, onClose, jobId }: CandidateFormSheetProps) {
@@ -43,12 +48,20 @@ export default function CandidateFormSheet({ isOpen, onClose, jobId }: Candidate
   const [profileSummary, setProfileSummary] = useState('')
   const [pendingFiles, setPendingFiles] = useState<File[]>([])
   const [isUploading, setIsUploading] = useState(false)
+  const [stageOptions, setStageOptions] = useState<any[]>([])
+  
   const { isParsing, parseResume, parseAndUpdateCandidate } = useResumeParsing()
   const { generateSkills, isGenerating } = useSkillsGeneration()
 
   // Hooks for submission depending on context
   const jobCandidates = useCandidates(jobId || '')
   const independent = useIndependentCandidates()
+  const { jobs, getJobs } = useJobs()
+  const { loadHiringPlanInstances } = useJobHiringPlan()
+  const { createAssociationAndMove } = usePipelineActions()
+
+  // Watch for job selection changes to load stages
+  const selectedJobId = watch('selectedJobId')
 
   const resetAll = () => {
     reset({ candidate_name: '', email: '', phone: '', linkedin_url: '', source: 'direct' })
@@ -56,13 +69,33 @@ export default function CandidateFormSheet({ isOpen, onClose, jobId }: Candidate
     setNewSkill('')
     setProfileSummary('')
     setPendingFiles([])
+    setStageOptions([])
   }
 
   useEffect(() => {
+    if (isOpen && !jobId) {
+      // Load jobs for independent candidate creation
+      getJobs()
+    }
     if (!isOpen) {
       resetAll()
     }
-  }, [isOpen])
+  }, [isOpen, jobId, getJobs])
+
+  // Load stages when job is selected
+  useEffect(() => {
+    if (selectedJobId && !jobId) {
+      loadHiringPlanInstances(selectedJobId).then(stages => {
+        setStageOptions(stages)
+      }).catch(err => {
+        console.error('Error loading stages:', err)
+        setStageOptions([])
+      })
+    } else {
+      setStageOptions([])
+      setValue('selectedStageId', '')
+    }
+  }, [selectedJobId, jobId, loadHiringPlanInstances, setValue])
 
   const addSkill = () => {
     const s = newSkill.trim()
@@ -163,6 +196,11 @@ export default function CandidateFormSheet({ isOpen, onClose, jobId }: Candidate
           await parseAndUpdateCandidate(first, created.id)
           setIsUploading(false)
           toast({ title: 'Resume uploaded', description: 'Resume saved and profile updated.' })
+        }
+
+        // If job and stage are selected, add to pipeline
+        if (created?.id && data.selectedJobId && data.selectedStageId) {
+          await createAssociationAndMove(data.selectedJobId, created.id, data.selectedStageId)
         }
       }
 
@@ -278,21 +316,57 @@ export default function CandidateFormSheet({ isOpen, onClose, jobId }: Candidate
               <RichTextEditor value={profileSummary} onChange={setProfileSummary} placeholder="Brief summary of the candidate's background and experience..." minHeight="150px" />
             </div>
 
-            {/* Source (independent only) */}
+            {/* Job and Stage Selection (independent only) */}
             {!jobId && (
-              <div className="space-y-2">
-                <Label htmlFor="source">Source</Label>
-                <Select defaultValue="direct" onValueChange={(v) => setValue('source', v)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select source" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="direct">Direct</SelectItem>
-                    <SelectItem value="referral">Referral</SelectItem>
-                    <SelectItem value="agency">Agency</SelectItem>
-                    <SelectItem value="job_import">Job Import</SelectItem>
-                  </SelectContent>
-                </Select>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="selectedJobId">Add to Job Pipeline (Optional)</Label>
+                  <Select onValueChange={(value) => setValue('selectedJobId', value)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a job to add candidate to" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {jobs.map((job) => (
+                        <SelectItem key={job.id} value={job.id}>
+                          {job.title} - {job.organization_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {selectedJobId && (
+                  <div className="space-y-2">
+                    <Label htmlFor="selectedStageId">Stage</Label>
+                    <Select onValueChange={(value) => setValue('selectedStageId', value)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a stage" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {stageOptions.map((stage) => (
+                          <SelectItem key={stage.jhsId} value={stage.jhsId}>
+                            {stage.stage.stage_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <Label htmlFor="source">Source</Label>
+                  <Select defaultValue="direct" onValueChange={(v) => setValue('source', v)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select source" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="direct">Direct</SelectItem>
+                      <SelectItem value="referral">Referral</SelectItem>
+                      <SelectItem value="agency">Agency</SelectItem>
+                      <SelectItem value="job_import">Job Import</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             )}
           </form>
