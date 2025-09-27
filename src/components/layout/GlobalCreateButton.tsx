@@ -65,9 +65,12 @@ export function GlobalCreateButton() {
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="default" size="sm" className="gap-2">
-            <Plus className="h-4 w-4" />
-            <span className="hidden sm:inline">Create</span>
+          <Button 
+            size="icon" 
+            className="rounded-full w-10 h-10 transition-all duration-200 hover:scale-105 focus:scale-105" 
+            style={{ backgroundColor: '#d7c5fb' }}
+          >
+            <Plus className="h-4 w-4 text-gray-800" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
