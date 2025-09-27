@@ -195,7 +195,7 @@ export function Header() {
         </div>
 
         {/* User Menu and Mobile Navigation */}
-        <div className="flex items-center gap-sm">
+        <div className="flex items-center gap-md">
           {/* Global Create Button */}
           <GlobalCreateButton />
           
