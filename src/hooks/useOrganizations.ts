@@ -79,14 +79,10 @@ export function useOrganizations() {
     try {
       console.log('Fetching organizations for user:', user.id, 'userType:', userType)
       
-      // Optimized query with JOINs to eliminate N+1 queries
+      // Optimized query - simplified without foreign key hints
       const { data: orgsData, error: fetchError } = await supabase
         .from('organizations')
-        .select(`
-          *,
-          owner_profile:profiles!organizations_owner_id_fkey(first_name, last_name, email),
-          creator_profile:profiles!organizations_created_by_fkey(first_name, last_name, email)
-        `)
+        .select(`*`)
         .eq('signup_source', 'manual')
         .eq('organization_type', 'client')
         .order('created_at', { ascending: false })
@@ -96,24 +92,10 @@ export function useOrganizations() {
         throw fetchError
       }
 
-      console.log('Successfully fetched organizations with optimized query:', orgsData?.length)
+      console.log('Successfully fetched organizations:', orgsData?.length)
       
-      // Transform data with already-loaded user information
+      // Transform data to match Organization interface
       const organizationsWithDetails: Organization[] = (orgsData || []).map(org => {
-        // Extract user info from JOINed profiles
-        const ownerProfile = org.owner_profile as any
-        const creatorProfile = org.creator_profile as any
-        
-        const ownerInfo = ownerProfile ? {
-          email: ownerProfile.email || '',
-          name: [ownerProfile.first_name, ownerProfile.last_name].filter(Boolean).join(' ') || 'Unnamed User'
-        } : null
-        
-        const createdByInfo = creatorProfile ? {
-          email: creatorProfile.email || '',
-          name: [creatorProfile.first_name, creatorProfile.last_name].filter(Boolean).join(' ') || 'Unnamed User'
-        } : null
-
         return {
           id: org.id,
           name: org.name,
@@ -124,10 +106,10 @@ export function useOrganizations() {
           updated_at: org.updated_at,
           created_by: org.created_by,
           owner_assigned_at: org.owner_assigned_at,
-          owner_email: ownerInfo?.email || null,
-          owner_name: ownerInfo?.name || null,
-          created_by_email: createdByInfo?.email || null,
-          created_by_name: createdByInfo?.name || null,
+          owner_email: null, // Will be populated if needed
+          owner_name: null,   // Will be populated if needed
+          created_by_email: null, // Will be populated if needed
+          created_by_name: null,  // Will be populated if needed
           billing_poc_additional_email: org.billing_poc_additional_email,
           billing_poc_phone: org.billing_poc_phone,
           billing_poc_updated_by: org.billing_poc_updated_by,
