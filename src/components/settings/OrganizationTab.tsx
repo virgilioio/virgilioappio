@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Building, Edit, Lock, AlertTriangle, Save, Loader2, Coins } from 'lucide-react'
-import { OrganizationForm } from './OrganizationForm'
+
 import { OrganizationDisplay } from './OrganizationDisplay'
 // Currency settings removed
 import { useAuth } from '@/contexts/AuthContext'
@@ -382,19 +382,7 @@ const [orgFormData, setOrgFormData] = useState<OrganizationFormData>({
             </TabsList>
             
             <TabsContent value="details" className="mt-6">
-              {isEditMode ? (
-                <OrganizationForm
-                  organization={userOrganization}
-                  formData={orgFormData}
-                  onFormDataChange={handleFormDataChange}
-                  updateOrganization={handleUpdateOrganization}
-                  onSaveSuccess={() => {}} // No longer needed since save is handled here
-                  isLoading={isLoading}
-                  hideActionButtons={true} // New prop to hide the save button in form
-                />
-              ) : (
-                <OrganizationDisplay organization={userOrganization} />
-              )}
+              <OrganizationDisplay organization={userOrganization} />
             </TabsContent>
             
             <TabsContent value="currency" className="mt-6">

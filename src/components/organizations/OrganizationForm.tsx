@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -12,13 +11,11 @@ import { SearchableSelect } from '@/components/ui/searchable-select'
 import { Organization, CreateOrganizationData, UpdateOrganizationData } from '@/hooks/useOrganizations'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useMembers } from '@/hooks/useMembers'
-import { useCountries } from '@/hooks/useCountries'
 import { useOrganizations } from '@/hooks/useOrganizations'
 import { useAuth } from '@/contexts/AuthContext'
 
 const formSchema = z.object({
   name: z.string().min(1, 'Organization name is required'),
-  country: z.string().min(1, 'Country is required'),
   status: z.enum(['active', 'inactive']),
   owner_id: z.string().optional(),
   parent_organization_id: z.string().optional()
@@ -43,16 +40,9 @@ export function OrganizationForm({
 }: OrganizationFormProps) {
   const permissions = usePermissions()
   const { members } = useMembers()
-  const { countries, isLoading: countriesLoading } = useCountries()
   const { organizations: allOrganizations } = useOrganizations()
   const isEditing = !!organization
   const { organizationId, user } = useAuth()
-
-  // Transform countries data for SearchableSelect format
-  const countryOptions = countries.map(country => ({
-    value: country.code,
-    label: country.name
-  }))
 
   // Get workspace owners for the owner dropdown - filter out members without valid user_id
   const workspaceOwners = members.filter(member => 
@@ -107,7 +97,6 @@ const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: '',
-      country: '',
       status: 'active',
       owner_id: 'none', // Use 'none' instead of empty string
       parent_organization_id: organizationId || 'none'
@@ -118,7 +107,6 @@ const form = useForm<FormData>({
     if (organization) {
       form.reset({
         name: organization.name,
-        country: organization.country,
         status: organization.status,
         owner_id: organization.owner_id || 'none', // Convert null to 'none'
         parent_organization_id: organization.parent_organization_id || 'none'
@@ -126,7 +114,6 @@ const form = useForm<FormData>({
     } else {
       form.reset({
         name: '',
-        country: '',
         status: 'active',
         owner_id: 'none', // Use 'none' instead of empty string
         parent_organization_id: organizationId || 'none'
@@ -188,31 +175,6 @@ const form = useForm<FormData>({
                   <FormControl>
                     <Input placeholder="Enter organization name" {...field} />
                   </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="country"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Country</FormLabel>
-                  <FormControl>
-                    <SearchableSelect
-                      options={countryOptions}
-                      value={field.value}
-                      onValueChange={field.onChange}
-                      placeholder={countriesLoading ? "Loading countries..." : "Select a country"}
-                      searchPlaceholder="Search countries..."
-                      emptyMessage={countriesLoading ? "Loading..." : "No countries found."}
-                      disabled={countriesLoading}
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    Only countries with compliance support are available for selection.
-                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -306,7 +268,7 @@ const form = useForm<FormData>({
                 <Button type="button" variant="outline" onClick={handleClose}>
                   Cancel
                 </Button>
-                <Button type="submit" disabled={isLoading || countriesLoading}>
+                <Button type="submit" disabled={isLoading}>
                   {isLoading ? 'Saving...' : (isEditing ? 'Update' : 'Create')}
                 </Button>
               </DialogFooter>

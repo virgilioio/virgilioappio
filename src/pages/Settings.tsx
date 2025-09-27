@@ -10,7 +10,7 @@ import { PlatformSettingsManager } from '@/components/settings/PlatformSettingsM
 
 import { LegalManager } from '@/components/settings/LegalManager'
 import { PlatformAssetUploader } from '@/components/settings/PlatformAssetUploader'
-import { CountryManagement } from '@/components/settings/CountryManagement'
+
 import { OfferTemplatesManager } from '@/components/settings/OfferTemplatesManager'
 import { JobSettingsManager } from '@/components/settings/JobSettingsManager'
 
@@ -53,8 +53,6 @@ export default function Settings() {
         return <PlatformSettingsManager />
       case 'platform-legal':
         return <LegalManager />
-      case 'platform-countries':
-        return <CountryManagement />
       case 'platform-templates':
         return <OfferTemplatesManager />
       case 'platform-job-settings':
@@ -128,9 +126,6 @@ export default function Settings() {
                       {renderPlatformContent()}
                     </TabsContent>
                     <TabsContent value="platform-legal">
-                      {renderPlatformContent()}
-                    </TabsContent>
-                    <TabsContent value="platform-countries">
                       {renderPlatformContent()}
                     </TabsContent>
                     <TabsContent value="platform-templates">

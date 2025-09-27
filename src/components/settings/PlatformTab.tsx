@@ -1,7 +1,7 @@
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { PlatformAssetUploader } from './PlatformAssetUploader'
-import { CountryManagement } from './CountryManagement'
+
 import { PlatformSettingsManager } from './PlatformSettingsManager'
 
 import { LegalManager } from './LegalManager'
@@ -13,12 +13,11 @@ export function PlatformTab() {
   return (
     <div className="space-y-6">
       <Tabs defaultValue="dashboard" className="w-full">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
           <TabsTrigger value="legal">Legal</TabsTrigger>
           <TabsTrigger value="assets">Assets</TabsTrigger>
-          <TabsTrigger value="countries">Countries</TabsTrigger>
           <TabsTrigger value="job-settings">Job Settings</TabsTrigger>
         </TabsList>
         
@@ -38,9 +37,6 @@ export function PlatformTab() {
           <PlatformAssetUploader />
         </TabsContent>
         
-        <TabsContent value="countries" className="space-y-6">
-          <CountryManagement />
-        </TabsContent>
         
         
         <TabsContent value="job-settings" className="space-y-6">

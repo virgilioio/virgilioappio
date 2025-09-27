@@ -25,7 +25,7 @@ import {
   Link
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useAgreementPlaceholders } from '@/hooks/useAgreementPlaceholders'
+
 import { saveTextCursorPosition, restoreTextCursorPosition, type TextCursorPosition } from '@/lib/cursorUtils'
 
 interface JobRequestData {
@@ -67,7 +67,7 @@ export function AgreementRichTextEditor({
   const cursorPositionRef = useRef<TextCursorPosition | null>(null)
   const lastContentRef = useRef<string>(value)
   const isUpdatingRef = useRef(false)
-  const { placeholders, getPlaceholdersByCategory } = useAgreementPlaceholders(selectedCountryId, jobRequestData)
+  // Placeholders functionality removed
 
   const execCommand = useCallback((command: string, value?: string) => {
     document.execCommand(command, false, value)
@@ -439,55 +439,7 @@ export function AgreementRichTextEditor({
           </Popover>
         </div>
 
-        {/* Placeholder Inserter */}
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="outline" size="sm" className="h-8">
-              <Plus className="h-3.5 w-3.5 mr-1" />
-              Insert Placeholder
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-80" align="end">
-            <ScrollArea className="h-96">
-              <div className="space-y-4 p-2">
-                <div className="flex items-center gap-2 text-sm font-semibold">
-                  <Plus className="h-4 w-4" />
-                  Available Placeholders
-                </div>
-                
-                {renderPlaceholderSection(
-                  "System Fields", 
-                  <Settings className="h-3.5 w-3.5" />, 
-                  getPlaceholdersByCategory('system')
-                )}
-                
-                {renderPlaceholderSection(
-                  "Organization Fields", 
-                  <Building className="h-3.5 w-3.5" />, 
-                  getPlaceholdersByCategory('organization')
-                )}
-
-                {renderPlaceholderSection(
-                  "Job Request Details", 
-                  <Briefcase className="h-3.5 w-3.5" />, 
-                  getPlaceholdersByCategory('job_request')
-                )}
-                
-                {selectedCountryId && renderPlaceholderSection(
-                  "Country-Specific Fields", 
-                  <Globe className="h-3.5 w-3.5" />, 
-                  getPlaceholdersByCategory('country_field')
-                )}
-                
-                {!selectedCountryId && (
-                  <div className="text-center py-4 text-sm text-muted-foreground">
-                    Select a country to see country-specific placeholders
-                  </div>
-                )}
-              </div>
-            </ScrollArea>
-          </PopoverContent>
-        </Popover>
+        {/* Placeholder functionality removed */}
       </div>
 
       {/* Editor Content with ScrollArea */}

@@ -2,7 +2,7 @@
 import { WelcomeHeader } from '@/components/dashboard/WelcomeHeader'
 import { QuickAccess } from '@/components/dashboard/QuickAccess'
 import { JobsOverview } from '@/components/dashboard/JobsOverview'
-import { OnboardingProgress } from '@/components/dashboard/OnboardingProgress'
+
 
 import { AIJobAssistant } from '@/components/dashboard/AIJobAssistant'
 import { useUserProfile } from '@/hooks/useUserProfile'
@@ -47,7 +47,7 @@ export default function Dashboard() {
               {/* Right column for other components */}
               <div className="space-y-6">
                 {hasQuickAccess && <QuickAccess permissions={permissions} />}
-                {canManageOrganization && <OnboardingProgress profile={profile} isLoading={isLoading} />}
+                
               </div>
             </div>
         </div>

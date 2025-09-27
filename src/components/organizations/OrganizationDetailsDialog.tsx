@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { OrganizationDisplay } from '@/components/settings/OrganizationDisplay'
-import { OrganizationComplianceEditor } from './OrganizationComplianceEditor'
+
 import { Organization } from '@/hooks/useOrganizations'
 import { useMembers } from '@/hooks/useMembers'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -124,41 +124,13 @@ export function OrganizationDetailsDialog({
               <DialogTitle className="text-xl">
                 Organization Details: {organization.name}
               </DialogTitle>
-              {permissions.isPlatformAdmin && (
-                <Button
-                  variant={isEditingCompliance ? "outline" : "default"}
-                  size="sm"
-                  onClick={() => setIsEditingCompliance(!isEditingCompliance)}
-                  className="flex items-center gap-2"
-                >
-                  {isEditingCompliance ? (
-                    <>
-                      <Eye className="h-4 w-4" />
-                      View Mode
-                    </>
-                  ) : (
-                    <>
-                      <Edit className="h-4 w-4" />
-                      Edit Compliance
-                    </>
-                  )}
-                </Button>
-              )}
             </div>
           </DialogHeader>
           
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-4">
             {/* Organization Information - Takes 2 columns */}
             <div className="lg:col-span-2">
-              {isEditingCompliance ? (
-                <OrganizationComplianceEditor
-                  organization={organization}
-                  onSave={handleComplianceSave}
-                  onCancel={handleComplianceCancel}
-                />
-              ) : (
-                <OrganizationDisplay organization={organization} />
-              )}
+              <OrganizationDisplay organization={organization} />
             </div>
             
             {/* Members Section - Takes 1 column */}

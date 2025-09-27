@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { supabase } from '@/integrations/supabase/client'
 import { useToast } from '@/hooks/use-toast'
-import { useCountries } from '@/hooks/useCountries'
+
 import { VerifyEmailPending } from '@/components/VerifyEmailPending'
 import { useAuth } from '@/contexts/AuthContext'
 
@@ -20,7 +20,7 @@ export default function Onboarding() {
   const [userEmail, setUserEmail] = useState('')
   const { toast } = useToast()
   const navigate = useNavigate()
-  const { countries, isLoading: countriesLoading } = useCountries()
+  
   const { user } = useAuth()
 
   useEffect(() => {
@@ -47,14 +47,10 @@ export default function Onboarding() {
       toast({ title: 'Company name is required', variant: 'destructive' })
       return
     }
-    if (!countryCode) {
-      toast({ title: 'Country is required', variant: 'destructive' })
-      return
-    }
     setIsSubmitting(true)
     try {
       const { data, error } = await supabase.functions.invoke('provision-tenant', {
-        body: { companyName, workspaceName: workspaceName || companyName, countryCode },
+        body: { companyName, workspaceName: workspaceName || companyName },
       })
       if (error) {
         // Handle email verification error specifically
@@ -136,31 +132,11 @@ export default function Onboarding() {
                 <Label htmlFor="workspaceName">Workspace name (optional)</Label>
                 <Input id="workspaceName" value={workspaceName} onChange={(e) => setWorkspaceName(e.target.value)} placeholder="Acme Workspace" />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="country">Country</Label>
-                <Select value={countryCode} onValueChange={setCountryCode} required disabled={countriesLoading}>
-                  <SelectTrigger id="country">
-                    <SelectValue placeholder={countriesLoading ? "Loading countries..." : countries.length === 0 ? "No countries available" : "Select your country"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {countries.map((country) => (
-                      <SelectItem key={country.code} value={country.code}>
-                        {country.name}
-                      </SelectItem>
-                    ))}
-                    {countries.length === 0 && !countriesLoading && (
-                      <SelectItem value="" disabled>
-                        No countries configured yet
-                      </SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
-              </div>
                 <Button 
                   type="submit" 
                   size="lg" 
                   className="w-full" 
-                  disabled={isSubmitting || countriesLoading || countries.length === 0 || !emailVerified}
+                  disabled={isSubmitting || !emailVerified}
                 >
                   {isSubmitting ? 'Creating...' : 'Create workspace'}
                 </Button>
