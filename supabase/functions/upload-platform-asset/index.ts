@@ -77,13 +77,15 @@ Deno.serve(async (req) => {
 
       // Validate file type
       const allowedTypes = {
-        logo: ['image/png', 'image/svg+xml'],
-        favicon: ['image/png', 'image/x-icon', 'image/vnd.microsoft.icon']
+        logo: ['image/png', 'image/svg+xml', 'image/jpeg'],
+        favicon: ['image/png', 'image/x-icon', 'image/vnd.microsoft.icon', 'image/jpeg']
       }
 
       if (!allowedTypes[assetType as keyof typeof allowedTypes].includes(file.type)) {
         return new Response(
-          JSON.stringify({ error: `Invalid file type for ${assetType}` }),
+          JSON.stringify({ 
+            error: `Invalid file type for ${assetType}. Allowed types: ${allowedTypes[assetType as keyof typeof allowedTypes].join(', ')}. Received: ${file.type}` 
+          }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
       }
@@ -154,8 +156,16 @@ Deno.serve(async (req) => {
 
       if (activateError) {
         console.error('Activation error:', activateError)
+        // Clean up uploaded file and asset record on activation failure
+        await supabase.storage.from('assets').remove([filePath])
+        await supabase.from('platform_assets').delete().eq('id', assetData.id)
+        
+        const errorMessage = activateError.code === '23505' 
+          ? 'Asset activation failed due to constraint violation. Please try again.'
+          : 'Failed to activate asset'
+        
         return new Response(
-          JSON.stringify({ error: 'Failed to activate asset' }),
+          JSON.stringify({ error: errorMessage, details: activateError.message }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
       }
