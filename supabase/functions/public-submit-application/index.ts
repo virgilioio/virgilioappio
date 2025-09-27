@@ -19,6 +19,7 @@ interface SubmitApplicationPayload {
   resume?: File;
   // Custom fields from application_fields table
   custom_fields?: Record<string, any>;
+  fields?: Record<string, any>; // Add fields property
   uploadedFiles?: Record<string, {
     name: string;
     type: string;
@@ -155,7 +156,7 @@ serve(async (req) => {
     const { data: limits, error: limitErr } = await supabase.rpc('check_application_limits', {
       candidate_email_param: candidateEmail,
       job_id_param: posting.job_id,
-      organization_id_param: posting.job.organization_id
+      organization_id_param: (posting as any).job.organization_id
     });
 
     if (limitErr) {
@@ -271,7 +272,7 @@ serve(async (req) => {
         candidate_email: candidateEmail,
         job_id: posting.job_id,
         posting_id: postingId,
-        organization_id: posting.job.organization_id,
+        organization_id: (posting as any).job.organization_id,
         status: 'active'
       });
 
@@ -360,10 +361,25 @@ serve(async (req) => {
       
       // Validate files before processing
       for (const [fieldId, fileData] of fileEntries) {
-        if (!fileData || !fileData.data) {
+        // Type guard for file data
+        const isFileObject = (data: any): data is { name: string; type: string; size?: number; data: string } => {
+          return data && typeof data === 'object' && 'data' in data && 'name' in data && 'type' in data;
+        };
+        
+        if (!isFileObject(fileData)) {
           fileUploadResults.push({
-            fieldId,
-            fileName: fileData?.name || 'unknown',
+            fieldId: fieldId as string,
+            fileName: 'unknown',
+            success: false,
+            error: 'Invalid file data provided'
+          });
+          continue;
+        }
+
+        if (!fileData.data) {
+          fileUploadResults.push({
+            fieldId: fieldId as string,
+            fileName: fileData.name || 'unknown',
             success: false,
             error: 'No file data provided'
           });
@@ -373,7 +389,7 @@ serve(async (req) => {
         // File size validation (15MB limit) - only if size is provided
         if (fileData.size && fileData.size > 15 * 1024 * 1024) {
           fileUploadResults.push({
-            fieldId,
+            fieldId: fieldId as string,
             fileName: fileData.name,
             success: false,
             error: 'File size exceeds 15MB limit'
@@ -394,7 +410,7 @@ serve(async (req) => {
         
         if (!allowedTypes.includes(fileData.type)) {
           fileUploadResults.push({
-            fieldId,
+            fieldId: fieldId as string,
             fileName: fileData.name,
             success: false,
             error: `Unsupported file type: ${fileData.type}`
@@ -451,7 +467,7 @@ serve(async (req) => {
           if (storageError) {
             console.error("Storage upload error after retries:", storageError);
             fileUploadResults.push({
-              fieldId,
+              fieldId: fieldId as string,
               fileName: fileData.name,
               success: false,
               error: `Storage upload failed: ${storageError.message}`
@@ -482,7 +498,7 @@ serve(async (req) => {
               .remove([fileName]);
             
             fileUploadResults.push({
-              fieldId,
+              fieldId: fieldId as string,
               fileName: fileData.name,
               success: false,
               error: `Database error: ${dbError.message}`
@@ -490,7 +506,7 @@ serve(async (req) => {
           } else {
             console.log("✅ File uploaded successfully:", fileName);
             fileUploadResults.push({
-              fieldId,
+              fieldId: fieldId as string,
               fileName: fileData.name,
               success: true
             });
@@ -498,7 +514,7 @@ serve(async (req) => {
         } catch (fileError) {
           console.error("Error processing file:", fileError);
           fileUploadResults.push({
-            fieldId,
+            fieldId: fieldId as string,
             fileName: fileData.name,
             success: false,
             error: fileError instanceof Error ? fileError.message : 'Unknown file processing error'
@@ -518,8 +534,8 @@ serve(async (req) => {
 
     const response: SubmitApplicationResponse = {
       success: true,
-      candidateId: globalCandidateId,
-      globalCandidateId,
+      candidateId: globalCandidateId || undefined,
+      globalCandidateId: globalCandidateId || undefined,
       fileUploadResults: fileUploadResults.length > 0 ? fileUploadResults : undefined
     };
 

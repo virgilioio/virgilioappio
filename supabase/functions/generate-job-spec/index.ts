@@ -41,7 +41,7 @@ serve(async (req) => {
       
       try {
         // CoreSignal salary research removed
-        const salaryResponse = null;
+        const salaryResponse: any = null;
         const salaryError = 'CoreSignal integration removed';
 
         if (!salaryError && salaryResponse?.salaryData) {
@@ -276,7 +276,7 @@ Return ONLY valid JSON in this format:
   } catch (error) {
     console.error('Error in generate-job-spec function:', error);
     return new Response(JSON.stringify({ 
-      error: error.message,
+      error: error instanceof Error ? error.message : 'Unknown error',
       details: 'Failed to generate job specification'
     }), {
       status: 500,

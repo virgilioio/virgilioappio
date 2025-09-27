@@ -39,9 +39,10 @@ const handler = async (req: Request): Promise<Response> => {
     );
 
     // Check if user exists
-    const { data: userData, error: userError } = await supabase.auth.admin.getUserByEmail(email);
+    const { data: users, error: userError } = await supabase.auth.admin.listUsers();
+    const userData = users?.users?.find(u => u.email === email);
     
-    if (userError || !userData.user) {
+    if (userError || !userData) {
       // Don't reveal if user exists for security
       console.log(`Password reset requested for non-existent email: ${email}`);
       return new Response(
@@ -61,7 +62,7 @@ const handler = async (req: Request): Promise<Response> => {
     const { error: tokenError } = await supabase
       .from("password_reset_tokens")
       .insert({
-        user_id: userData.user.id,
+        user_id: userData.id,
         token,
         expires_at: expiresAt.toISOString(),
       });

@@ -124,7 +124,7 @@ Deno.serve(async (req) => {
     console.error('Download attachment error:', error)
     return new Response(JSON.stringify({ 
       error: 'Internal server error',
-      details: error.message 
+      details: error instanceof Error ? error.message : 'Unknown error' 
     }), { 
       status: 500, 
       headers: {

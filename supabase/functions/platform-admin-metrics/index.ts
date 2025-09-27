@@ -201,7 +201,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error fetching platform metrics:', error)
     return new Response(
-      JSON.stringify({ error: 'Failed to fetch platform metrics', details: error.message }),
+      JSON.stringify({ error: 'Failed to fetch platform metrics', details: error instanceof Error ? error.message : 'Unknown error' }),
       { 
         status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 

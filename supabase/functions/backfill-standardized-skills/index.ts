@@ -51,7 +51,7 @@ async function requirePlatformAdmin(req: Request) {
   return { ok: true, userId: data.user.id };
 }
 
-async function mapCanonicalWithStandardSkills(supabaseSr: ReturnType<typeof createClient>, names: string[]) {
+async function mapCanonicalWithStandardSkills(supabaseSr: any, names: string[]) {
   if (names.length === 0) return [];
 
   const lower = unique(names.map(n => n.toLowerCase()));
@@ -61,7 +61,7 @@ async function mapCanonicalWithStandardSkills(supabaseSr: ReturnType<typeof crea
     .select("canonical_name")
     .in("canonical_name", unique(names));
 
-  const canonicalSet = new Set<string>((byCanonical || []).map(r => r.canonical_name));
+  const canonicalSet = new Set<string>((byCanonical || []).map((r: any) => r.canonical_name as string));
 
   // Try by synonyms overlap
   const { data: bySyn } = await supabaseSr
@@ -118,7 +118,7 @@ Input: ${JSON.stringify(list)}`;
   }
 }
 
-async function backfillTable(supabaseSr: ReturnType<typeof createClient>, table: TargetTable, batchSize: number, dryRun: boolean, aiEnrich: boolean) {
+async function backfillTable(supabaseSr: any, table: TargetTable, batchSize: number, dryRun: boolean, aiEnrich: boolean) {
   // Select rows with missing or empty standardized_skills
   const { data: rows, error } = await supabaseSr
     .from(table)

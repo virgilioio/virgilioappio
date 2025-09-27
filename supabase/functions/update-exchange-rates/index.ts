@@ -69,7 +69,7 @@ serve(async (req) => {
     
     // Add organization default currencies as base currencies
     if (orgCurrencies && orgCurrencies.length > 0) {
-      orgCurrencies.forEach(org => {
+      orgCurrencies.forEach((org: any) => {
         if (org.currency_code && supportedCodes.includes(org.currency_code)) {
           baseCurrencies.add(org.currency_code)
         }
@@ -221,9 +221,9 @@ serve(async (req) => {
     
     return new Response(
       JSON.stringify({ 
-        error: error.message,
+        error: error instanceof Error ? error.message : 'Unknown error',
         success: false,
-        error_type: error.name || 'UnknownError'
+        error_type: error instanceof Error ? error.name || 'UnknownError' : 'UnknownError'
       }),
       { 
         status: 500,

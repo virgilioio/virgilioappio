@@ -161,7 +161,7 @@ function analyzeSkillsInCandidate(candidate: any, jobSkills: string[]): Map<stri
     const roleWords = candidate.role_current.toLowerCase().split(/\s+/);
     jobSkills.forEach(jobSkill => {
       const normalized = normalizeSkill(jobSkill);
-      if (roleWords.some(word => normalized.includes(word) || word.includes(normalized))) {
+      if (roleWords.some((word: string) => normalized.includes(word) || word.includes(normalized))) {
         addSkillContext(jobSkill, 'job_title', 100, 100);
       }
     });
@@ -511,7 +511,7 @@ serve(async (req) => {
       
       for (const candidate of localCandidates) {
         // Skip candidates already associated with this job
-        if (existingCandidateIds.has(candidate.id)) {
+        if (existingCandidateIds.has((candidate as any).id)) {
           excludedCount++;
           continue;
         }
@@ -524,31 +524,31 @@ serve(async (req) => {
           if (count_only) {
             // For count-only requests, just track the match without full candidate data
             matchedCandidates.push({
-              id: candidate.id,
+              id: (candidate as any).id,
               match_score: candidateScore.total_score,
               match_tier: getMatchTier(candidateScore.total_score),
               source: 'local'
             } as any);
           } else {
             matchedCandidates.push({
-              id: candidate.id,
-              candidate_name: candidate.candidate_name,
-              skills: candidate.skills,
-              standardized_skills: candidate.standardized_skills,
-              location_country: candidate.location_country,
-              location_city: candidate.location_city,
-              linkedin_url: candidate.linkedin_url,
-              salary_amount: candidate.salary_amount,
-              salary_currency: candidate.salary_currency,
-              salary_period: candidate.salary_period,
+              id: (candidate as any).id,
+              candidate_name: (candidate as any).candidate_name,
+              skills: (candidate as any).skills,
+              standardized_skills: (candidate as any).standardized_skills,
+              location_country: (candidate as any).location_country,
+              location_city: (candidate as any).location_city,
+              linkedin_url: (candidate as any).linkedin_url,
+              salary_amount: (candidate as any).salary_amount,
+              salary_currency: (candidate as any).salary_currency,
+              salary_period: (candidate as any).salary_period,
               match_score: candidateScore.total_score,
               match_tier: getMatchTier(candidateScore.total_score),
-              profile_summary: candidate.profile_summary,
+              profile_summary: (candidate as any).profile_summary,
               source: 'local',
-              years_experience: candidate.years_experience,
-              enriched_at: candidate.enriched_at,
-              current_company: candidate.company_current,
-              current_role: candidate.role_current,
+              years_experience: (candidate as any).years_experience,
+              enriched_at: (candidate as any).enriched_at,
+              current_company: (candidate as any).company_current,
+              current_role: (candidate as any).role_current,
               score_breakdown: candidateScore,
               competitive_advantage: [] // Will be populated in comparative analysis
             });
@@ -595,7 +595,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('❌ Error in get-job-matching-candidates function:', error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
       {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

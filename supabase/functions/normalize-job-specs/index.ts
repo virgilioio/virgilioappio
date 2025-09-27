@@ -102,7 +102,7 @@ serve(async (req) => {
           ...variations
         };
       } catch (error) {
-        console.warn('⚠️ AI variations failed, continuing without:', error.message);
+        console.warn('⚠️ AI variations failed, continuing without:', error instanceof Error ? error.message : 'Unknown error');
       }
     }
 
@@ -115,7 +115,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('❌ Normalization error:', error);
     return new Response(
-      JSON.stringify({ error: 'Normalization failed', details: error.message }),
+      JSON.stringify({ error: 'Normalization failed', details: error instanceof Error ? error.message : 'Unknown error' }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
     );
   }
