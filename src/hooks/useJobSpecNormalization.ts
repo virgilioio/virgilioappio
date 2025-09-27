@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface JobSpecs {
@@ -25,7 +25,7 @@ export function useJobSpecNormalization() {
   const [isNormalizing, setIsNormalizing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const normalizeJobSpecs = async (specs: JobSpecs): Promise<NormalizedSpecs | null> => {
+  const normalizeJobSpecs = useCallback(async (specs: JobSpecs): Promise<NormalizedSpecs | null> => {
     setIsNormalizing(true);
     setError(null);
 
@@ -62,9 +62,9 @@ export function useJobSpecNormalization() {
     } finally {
       setIsNormalizing(false);
     }
-  };
+  }, [setIsNormalizing, setError]);
 
-  const generateQueryVariations = async (specs: JobSpecs): Promise<any> => {
+  const generateQueryVariations = useCallback(async (specs: JobSpecs): Promise<any> => {
     try {
       console.log('🤖 Generating query variations:', specs);
 
@@ -88,7 +88,7 @@ export function useJobSpecNormalization() {
       console.warn('⚠️ Query variations error:', err);
       return {};
     }
-  };
+  }, []);
 
   return {
     normalizeJobSpecs,
