@@ -29,7 +29,6 @@ import { useAuth } from '@/contexts/AuthContext'
 import { usePermissions } from '@/hooks/usePermissions'
 import { VirgilioLogo } from '@/components/VirgilioLogo'
 import { AdminModeIndicator } from '@/components/admin/AdminModeIndicator'
-import { PlanetIcon } from '@/components/icons/PlanetIcon'
 
 import { cn } from '@/lib/utils'
 import { useMembers } from '@/hooks/useMembers'
@@ -94,12 +93,6 @@ export function Header() {
       icon: Home,
       label: 'Home',
       show: true,
-    },
-    {
-      href: '/people-hub',
-      icon: PlanetIcon,
-      label: 'People Hub',
-      show: isPlatformAdmin,
     },
     {
       href: '/organizations',

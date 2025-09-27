@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { supabase } from '@/integrations/supabase/client'
 import { useToast } from '@/hooks/use-toast'
-import { useWorkerComplianceCountries } from '@/hooks/useWorkerComplianceCountries'
+import { useCountries } from '@/hooks/useCountries'
 import { VerifyEmailPending } from '@/components/VerifyEmailPending'
 import { useAuth } from '@/contexts/AuthContext'
 
@@ -20,7 +20,7 @@ export default function Onboarding() {
   const [userEmail, setUserEmail] = useState('')
   const { toast } = useToast()
   const navigate = useNavigate()
-  const { countries, isLoading: countriesLoading } = useWorkerComplianceCountries()
+  const { countries, isLoading: countriesLoading } = useCountries()
   const { user } = useAuth()
 
   useEffect(() => {
