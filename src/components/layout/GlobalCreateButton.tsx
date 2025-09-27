@@ -6,15 +6,19 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { Plus, Briefcase, Users } from 'lucide-react'
+import { Plus, Briefcase, Users, Building2 } from 'lucide-react'
 import { usePermissions } from '@/hooks/usePermissions'
 import { JobWizard } from '@/components/jobs/JobWizard'
 import CandidateFormSheet from '@/components/candidates/CandidateFormSheet'
+import { OrganizationForm } from '@/components/organizations/OrganizationForm'
+import { useOrganizations, type CreateOrganizationData } from '@/hooks/useOrganizations'
 
 export function GlobalCreateButton() {
-  const { canCreateJobs, canCreateCandidates } = usePermissions()
+  const { canCreateJobs, canCreateCandidates, isPlatformAdmin } = usePermissions()
   const [jobWizardOpen, setJobWizardOpen] = useState(false)
   const [candidateSheetOpen, setCandidateSheetOpen] = useState(false)
+  const [organizationFormOpen, setOrganizationFormOpen] = useState(false)
+  const { createOrganization, isLoading } = useOrganizations()
 
   // Handle keyboard shortcuts
   React.useEffect(() => {
@@ -26,16 +30,19 @@ export function GlobalCreateButton() {
         } else if (e.key === 'k' && canCreateCandidates) {
           e.preventDefault()
           setCandidateSheetOpen(true)
+        } else if (e.key === 'o' && isPlatformAdmin) {
+          e.preventDefault()
+          setOrganizationFormOpen(true)
         }
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [canCreateJobs, canCreateCandidates])
+  }, [canCreateJobs, canCreateCandidates, isPlatformAdmin])
 
   // Don't render if user has no create permissions
-  if (!canCreateJobs && !canCreateCandidates) {
+  if (!canCreateJobs && !canCreateCandidates && !isPlatformAdmin) {
     return null
   }
 
@@ -58,6 +65,16 @@ export function GlobalCreateButton() {
       icon: Users,
       onClick: () => setCandidateSheetOpen(true),
       shortcut: '⌘K'
+    })
+  }
+
+  if (isPlatformAdmin) {
+    createOptions.push({
+      label: 'New Organization',
+      description: 'Create a new organization',
+      icon: Building2,
+      onClick: () => setOrganizationFormOpen(true),
+      shortcut: '⌘O'
     })
   }
 
@@ -106,6 +123,19 @@ export function GlobalCreateButton() {
         isOpen={candidateSheetOpen}
         onClose={() => setCandidateSheetOpen(false)}
       />
+
+      {/* Organization Form */}
+      {isPlatformAdmin && (
+        <OrganizationForm
+          isOpen={organizationFormOpen}
+          onClose={() => setOrganizationFormOpen(false)}
+          onSubmit={async (data) => {
+            await createOrganization(data as CreateOrganizationData)
+            setOrganizationFormOpen(false)
+          }}
+          isLoading={isLoading}
+        />
+      )}
     </>
   )
 }
