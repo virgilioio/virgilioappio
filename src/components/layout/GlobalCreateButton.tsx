@@ -16,6 +16,24 @@ export function GlobalCreateButton() {
   const [jobWizardOpen, setJobWizardOpen] = useState(false)
   const [candidateSheetOpen, setCandidateSheetOpen] = useState(false)
 
+  // Handle keyboard shortcuts
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey) {
+        if (e.key === 'j' && canCreateJobs) {
+          e.preventDefault()
+          setJobWizardOpen(true)
+        } else if (e.key === 'k' && canCreateCandidates) {
+          e.preventDefault()
+          setCandidateSheetOpen(true)
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [canCreateJobs, canCreateCandidates])
+
   // Don't render if user has no create permissions
   if (!canCreateJobs && !canCreateCandidates) {
     return null
@@ -42,24 +60,6 @@ export function GlobalCreateButton() {
       shortcut: '⌘K'
     })
   }
-
-  // Handle keyboard shortcuts
-  React.useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.metaKey || e.ctrlKey) {
-        if (e.key === 'j' && canCreateJobs) {
-          e.preventDefault()
-          setJobWizardOpen(true)
-        } else if (e.key === 'k' && canCreateCandidates) {
-          e.preventDefault()
-          setCandidateSheetOpen(true)
-        }
-      }
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [canCreateJobs, canCreateCandidates])
 
   return (
     <>
