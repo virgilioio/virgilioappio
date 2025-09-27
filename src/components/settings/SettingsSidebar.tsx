@@ -25,7 +25,7 @@ interface SettingsSidebarProps {
 export function SettingsSidebar({ currentTab, onTabChange, className }: SettingsSidebarProps) {
   const permissions = usePermissions()
   const [platformOpen, setPlatformOpen] = useState(
-    ['platform-dashboard', 'platform-settings', 'platform-legal', 'platform-countries', 'platform-templates', 'platform-worker-compliance', 'platform-job-settings', 'platform-customers'].includes(currentTab)
+    ['platform-dashboard', 'platform-settings', 'platform-legal', 'platform-countries', 'platform-templates', 'platform-job-settings', 'platform-customers'].includes(currentTab)
   )
 
   const navItems: SettingsNavItem[] = [
@@ -64,7 +64,7 @@ export function SettingsSidebar({ currentTab, onTabChange, className }: Settings
         { id: 'platform-legal', label: 'Legal', icon: FileText, show: true },
         { id: 'platform-countries', label: 'Organization Compliance', icon: Globe, show: true },
         { id: 'platform-templates', label: 'Templates', icon: FileText, show: true },
-        { id: 'platform-worker-compliance', label: 'Payroll Compliance', icon: UserCheck, show: true },
+        
         { id: 'platform-job-settings', label: 'Job Settings', icon: Briefcase, show: true },
         { id: 'platform-customers', label: 'Customer Management (SaaS)', icon: UsersIcon, show: permissions.canAccessCustomerManagement },
       ]
