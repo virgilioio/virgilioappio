@@ -100,23 +100,26 @@ export function useIndependentCandidates() {
     try {
       console.log('Adding independent candidate:', candidateData)
       
-      // Check for duplicates by email and name
+      // Optimized duplicate check with better query structure
       if (candidateData.email || candidateData.candidate_name) {
-        const { data: existingCandidates, error: checkError } = await supabase
-          .from('candidates')
-          .select('id, candidate_name, email')
-          .or(`email.eq.${candidateData.email || 'null'},and(candidate_name.eq.${candidateData.candidate_name},email.is.null)`)
+        // Use COUNT(*) for faster duplicate checking
+        const duplicateQuery = candidateData.email 
+          ? supabase.from('candidates').select('id', { count: 'exact', head: true }).eq('email', candidateData.email)
+          : supabase.from('candidates').select('id', { count: 'exact', head: true })
+              .eq('candidate_name', candidateData.candidate_name)
+              .is('email', null)
+        
+        const { count, error: checkError } = await duplicateQuery
 
         if (checkError) {
           console.error('Error checking for duplicates:', checkError)
-        } else if (existingCandidates && existingCandidates.length > 0) {
-          const existing = existingCandidates[0]
+        } else if (count && count > 0) {
           toast({
             title: 'Duplicate Candidate',
             description: `A candidate with this ${candidateData.email ? 'email' : 'name'} already exists.`,
             variant: 'destructive'
           })
-          return existing
+          return null
         }
       }
 

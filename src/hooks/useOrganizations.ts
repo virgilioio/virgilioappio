@@ -51,46 +51,7 @@ export interface UpdateOrganizationData {
   parent_organization_id?: string | null
 }
 
-// Helper function to fetch user display info
-const fetchUserDisplayInfo = async (userId: string | null): Promise<{ email: string; name: string } | null> => {
-  if (!userId) return null
-  
-  try {
-    // Try to get user info from profiles table first
-    const { data: profileData, error: profileError } = await supabase
-      .from('profiles')
-      .select('first_name, last_name, email')
-      .eq('user_id', userId)
-      .single()
-    
-    if (profileData && !profileError) {
-      const name = [profileData.first_name, profileData.last_name].filter(Boolean).join(' ')
-      return {
-        email: profileData.email || '',
-        name: name || 'Unnamed User'
-      }
-    }
-    
-    // Fallback: try to use the get_member_display_info function
-    const { data: memberData, error: memberError } = await supabase
-      .rpc('get_member_display_info', { member_user_id: userId })
-    
-    if (memberData && memberData.length > 0 && !memberError) {
-      const member = memberData[0]
-      const name = [member.first_name, member.last_name].filter(Boolean).join(' ')
-      return {
-        email: member.email || '',
-        name: name || 'Unnamed User'
-      }
-    }
-    
-    console.warn(`Could not fetch user info for user ID: ${userId}`)
-    return null
-  } catch (error) {
-    console.error('Error fetching user display info:', error)
-    return null
-  }
-}
+// Optimized organizations hook - no longer needs helper function due to JOIN queries
 
 /**
  * Hook for managing Virgilio's internal client organizations.
@@ -118,10 +79,14 @@ export function useOrganizations() {
     try {
       console.log('Fetching organizations for user:', user.id, 'userType:', userType)
       
-      // Only fetch internal client organizations (manually created by Virgilio staff)
+      // Optimized query with JOINs to eliminate N+1 queries
       const { data: orgsData, error: fetchError } = await supabase
         .from('organizations')
-        .select('*')
+        .select(`
+          *,
+          owner_profile:profiles!organizations_owner_id_fkey(first_name, last_name, email),
+          creator_profile:profiles!organizations_created_by_fkey(first_name, last_name, email)
+        `)
         .eq('signup_source', 'manual')
         .eq('organization_type', 'client')
         .order('created_at', { ascending: false })
@@ -131,22 +96,25 @@ export function useOrganizations() {
         throw fetchError
       }
 
-      console.log('Successfully fetched organizations:', orgsData)
+      console.log('Successfully fetched organizations with optimized query:', orgsData?.length)
       
-      // Fetch user information for created_by and owner_id fields
-      const organizationsWithDetails: Organization[] = []
-      
-      for (const org of orgsData || []) {
-        // Fetch created_by user info
-        const createdByInfo = await fetchUserDisplayInfo(org.created_by)
+      // Transform data with already-loaded user information
+      const organizationsWithDetails: Organization[] = (orgsData || []).map(org => {
+        // Extract user info from JOINed profiles
+        const ownerProfile = org.owner_profile as any
+        const creatorProfile = org.creator_profile as any
         
-        // Fetch owner user info
-        const ownerInfo = await fetchUserDisplayInfo(org.owner_id)
+        const ownerInfo = ownerProfile ? {
+          email: ownerProfile.email || '',
+          name: [ownerProfile.first_name, ownerProfile.last_name].filter(Boolean).join(' ') || 'Unnamed User'
+        } : null
         
-        // Billing POC functionality removed
-        const billingPocInfo = null
-        
-        organizationsWithDetails.push({
+        const createdByInfo = creatorProfile ? {
+          email: creatorProfile.email || '',
+          name: [creatorProfile.first_name, creatorProfile.last_name].filter(Boolean).join(' ') || 'Unnamed User'
+        } : null
+
+        return {
           id: org.id,
           name: org.name,
           status: org.status as 'active' | 'inactive',
@@ -160,19 +128,17 @@ export function useOrganizations() {
           owner_name: ownerInfo?.name || null,
           created_by_email: createdByInfo?.email || null,
           created_by_name: createdByInfo?.name || null,
-          // billing_poc_user_id: removed
           billing_poc_additional_email: org.billing_poc_additional_email,
           billing_poc_phone: org.billing_poc_phone,
           billing_poc_updated_by: org.billing_poc_updated_by,
           billing_poc_updated_at: org.billing_poc_updated_at,
-          billing_poc_user_email: billingPocInfo?.email || null,
-          billing_poc_user_name: billingPocInfo?.name || null,
-          // default_currency: removed
-          parent_organization_id: (org as any).parent_organization_id || null,
-          tenant_id: (org as any).tenant_id || null,
-          org_kind: (org as any).org_kind || null
-        })
-      }
+          billing_poc_user_email: null,
+          billing_poc_user_name: null,
+          parent_organization_id: org.parent_organization_id || null,
+          tenant_id: org.tenant_id || null,
+          org_kind: org.org_kind || null
+        }
+      })
 
       setOrganizations(organizationsWithDetails)
     } catch (err) {

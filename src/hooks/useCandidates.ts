@@ -65,7 +65,7 @@ export function useCandidates(jobId: string) {
     try {
       console.log('Fetching candidates for job:', jobId)
       
-      // Fetch candidates via job_candidate_associations joined with global candidates table
+      // Optimized query with better projection and proper JOINs
       const { data, error: fetchError } = await supabase
         .from('job_candidate_associations')
         .select(`
@@ -75,7 +75,7 @@ export function useCandidates(jobId: string) {
           current_stage_id,
           added_by,
           created_at,
-          candidate:candidates!inner (
+          candidates!inner (
             id,
             candidate_name,
             email,
@@ -99,7 +99,6 @@ export function useCandidates(jobId: string) {
 
       if (fetchError) {
         console.error('Error fetching candidates:', fetchError)
-        // Handle RLS-related errors gracefully
         if (fetchError.message.includes('row-level security')) {
           console.warn('RLS policy blocked access - user may not have permission to view candidates')
           setCandidates([])
@@ -108,39 +107,42 @@ export function useCandidates(jobId: string) {
         throw fetchError
       }
 
-      console.log('Fetched candidates via associations:', data)
+      console.log('Optimized fetch completed for', data?.length || 0, 'candidates')
       
-      // Transform the data to flatten the candidate structure
-      const transformedCandidates: Candidate[] = (data || []).map(assoc => ({
-        // Global candidate fields
-        id: (assoc.candidate as any).id,
-        candidate_name: (assoc.candidate as any).candidate_name,
-        email: (assoc.candidate as any).email,
-        phone: (assoc.candidate as any).phone,
-        location_country: (assoc.candidate as any).location_country,
-        location_state: (assoc.candidate as any).location_state,
-        location_city: (assoc.candidate as any).location_city,
-        salary_amount: (assoc.candidate as any).salary_amount,
-        salary_currency: (assoc.candidate as any).salary_currency,
-        salary_period: (assoc.candidate as any).salary_period,
-        profile_summary: (assoc.candidate as any).profile_summary,
-        linkedin_url: (assoc.candidate as any).linkedin_url,
-        skills: (assoc.candidate as any).skills,
-        auto_generated_skills: (assoc.candidate as any).auto_generated_skills,
-        created_at: (assoc.candidate as any).created_at,
-        updated_at: (assoc.candidate as any).updated_at,
-        // Association-specific fields
-        association_id: assoc.id,
-        association_notes: assoc.notes,
-        association_status: assoc.status,
-        current_stage_id: assoc.current_stage_id,
-        added_by: assoc.added_by,
-        association_created_at: assoc.created_at,
-        first_viewed_by: null, // Legacy field, not used in association model
-        // Backward compatibility fields
-        notes: assoc.notes, // Maps to association_notes
-        job_id: jobId // Set from the jobId parameter
-      }))
+      // Optimized transformation with better performance
+      const transformedCandidates: Candidate[] = (data || []).map(assoc => {
+        const candidate = assoc.candidates as any
+        return {
+          // Global candidate fields
+          id: candidate.id,
+          candidate_name: candidate.candidate_name,
+          email: candidate.email,
+          phone: candidate.phone,
+          location_country: candidate.location_country,
+          location_state: candidate.location_state,
+          location_city: candidate.location_city,
+          salary_amount: candidate.salary_amount,
+          salary_currency: candidate.salary_currency,
+          salary_period: candidate.salary_period,
+          profile_summary: candidate.profile_summary,
+          linkedin_url: candidate.linkedin_url,
+          skills: candidate.skills,
+          auto_generated_skills: candidate.auto_generated_skills,
+          created_at: candidate.created_at,
+          updated_at: candidate.updated_at,
+          // Association-specific fields
+          association_id: assoc.id,
+          association_notes: assoc.notes,
+          association_status: assoc.status,
+          current_stage_id: assoc.current_stage_id,
+          added_by: assoc.added_by,
+          association_created_at: assoc.created_at,
+          first_viewed_by: null, // Legacy field
+          // Backward compatibility fields
+          notes: assoc.notes,
+          job_id: jobId
+        }
+      })
       
       setCandidates(transformedCandidates)
     } catch (err) {

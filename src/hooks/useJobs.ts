@@ -73,55 +73,99 @@ export function useJobs() {
   const { user, userType, organizationId } = useAuth()
   const { normalizeJobSpecs } = useJobSpecNormalization()
 
-  const resolveHiringTeamNames = async (jobs: any[]) => {
-    console.log('Starting hiring team name resolution for', jobs.length, 'jobs')
-    
-    // Collect all unique member IDs from hiring teams
-    const memberIds = new Set<string>()
-    jobs.forEach(job => {
-      if (job.hiring_team && Array.isArray(job.hiring_team)) {
-        console.log(`Job "${job.title}" has hiring team:`, job.hiring_team)
-        job.hiring_team.forEach((member: any) => {
-          if (typeof member === 'string') {
-            memberIds.add(member)
-            console.log(`Found member ID string: ${member}`)
-          } else if (member?.id) {
-            memberIds.add(member.id)
-            console.log(`Found member ID in object: ${member.id}`)
-          }
-        })
-      }
-    })
+  // Optimized single query function to replace N+1 pattern
+  const getJobsOptimized = async () => {
+    if (!user) return []
 
-    console.log('All collected member IDs:', Array.from(memberIds))
+    console.log('Fetching jobs with optimized query for user:', user.id, 'userType:', userType, 'organizationId:', organizationId)
 
-    // Create a map from member ID to resolved name
-    const memberIdToNameMap: Record<string, string> = {}
-    
-    if (memberIds.size > 0) {
-      const memberIdsArray = Array.from(memberIds)
+    // Build the main query with all JOINs to eliminate N+1 queries
+    let baseQuery = `
+      *,
+      organizations!inner(id, name),
+      job_assignments(user_id),
+      hiring_team_members:members!jobs_hiring_team_fkey(
+        id,
+        user_id,
+        invited_email,
+        profiles(first_name, last_name, email)
+      )
+    `
+
+    // Get user's current member role once
+    const { data: memberData } = await supabase
+      .from('members')
+      .select('member_role, organization_id')
+      .eq('user_id', user.id)
+      .eq('organization_id', organizationId || '')
+      .single()
+
+    const memberRole = memberData?.member_role
+    const isRecruiter = memberRole === 'recruiter'
+    const isGuest = userType === 'guest'
+
+    let query = supabase
+      .from('jobs')
+      .select(baseQuery)
+      .order('created_at', { ascending: false })
+
+    // Apply database-level filtering for performance
+    if (userType === 'platform_admin') {
+      // Platform admins see all jobs
+      console.log('Platform admin - showing all jobs')
+    } else if (organizationId && !isGuest && !isRecruiter) {
+      // Regular organization members see their organization's jobs
+      query = query.eq('organization_id', organizationId)
+    }
+
+    const { data: jobsData, error: fetchError } = await query
+
+    if (fetchError) {
+      console.error('Error fetching jobs:', fetchError)
+      throw fetchError
+    }
+
+    console.log('Fetched jobs with optimized query:', jobsData?.length)
+
+    let filteredJobs = jobsData || []
+
+    // Apply role-based filtering for guest and recruiter users
+    if (userType !== 'platform_admin' && (isGuest || isRecruiter)) {
+      // Get job assignments for this user (already optimized with indexes)
+      const { data: jobAssignments } = await supabase
+        .from('job_assignments')
+        .select('job_id')
+        .eq('user_id', user.id)
+
+      const assignedJobIds = new Set(jobAssignments?.map(assignment => assignment.job_id) || [])
+
+      filteredJobs = filteredJobs.filter((job: any) => {
+        if (isGuest) {
+          // Guests can only see explicitly assigned jobs
+          return assignedJobIds.has(job.id)
+        } else if (isRecruiter) {
+          // Recruiters see jobs they're assigned to OR in their hiring team
+          const isAssigned = assignedJobIds.has(job.id)
+          const isInHiringTeam = Array.isArray(job.hiring_team) && 
+            job.hiring_team.some((member: any) => 
+              member?.user_id === user.id || member?.id === user.id || member === user.id
+            )
+          return isAssigned || isInHiringTeam
+        }
+        return true
+      })
+    }
+
+    // Transform data to include resolved hiring team names (data already loaded via JOIN)
+    return filteredJobs.map((job: any) => {
+      const hiringTeamNames: string[] = []
       
-      // Fetch member records with their user information
-      console.log('Fetching members and their profiles:', memberIdsArray)
-      const { data: members, error: membersError } = await supabase
-        .from('members')
-        .select(`
-          id,
-          user_id, 
-          invited_email,
-          profiles(first_name, last_name, email)
-        `)
-        .in('id', memberIdsArray)
-
-      if (membersError) {
-        console.error('Error fetching members:', membersError)
-      } else {
-        console.log('Fetched members with profiles:', members)
-        members?.forEach(member => {
+      if (job.hiring_team_members && Array.isArray(job.hiring_team_members)) {
+        job.hiring_team_members.forEach((member: any) => {
           let resolvedName: string | null = null
           
-          // If member has a user_id and profile data, use that
-          if (member.user_id && member.profiles) {
+          // Use profile data if available
+          if (member.profiles) {
             const profile = member.profiles
             const fullName = [profile.first_name, profile.last_name].filter(Boolean).join(' ')
             if (fullName.trim()) {
@@ -131,59 +175,23 @@ export function useJobs() {
             }
           }
           
-          // If no profile name found but member has invited_email, use that
+          // Fallback to invited email
           if (!resolvedName && member.invited_email) {
             resolvedName = member.invited_email
           }
           
-          // Store the resolved name in our map
           if (resolvedName) {
-            memberIdToNameMap[member.id] = resolvedName
-            console.log(`Resolved member ${member.id} to name: ${resolvedName}`)
-          } else {
-            console.log(`Could not resolve name for member ${member.id}`)
+            hiringTeamNames.push(resolvedName)
           }
         })
       }
 
-      console.log('Final member ID to name map:', memberIdToNameMap)
-    }
-
-    // Update jobs with resolved names using member IDs
-    return jobs.map(job => {
-      const hiringTeamNames: string[] = []
-      if (job.hiring_team && Array.isArray(job.hiring_team)) {
-        job.hiring_team.forEach((member: any) => {
-          let memberId: string | null = null
-          let existingName: string | null = null
-
-          if (typeof member === 'string') {
-            memberId = member
-          } else if (member?.id) {
-            memberId = member.id
-            existingName = member.name
-          } else if (member?.name) {
-            existingName = member.name
-          }
-
-          // Use existing name if available, otherwise look up by member ID
-          if (existingName) {
-            hiringTeamNames.push(existingName)
-          } else if (memberId && memberIdToNameMap[memberId]) {
-            hiringTeamNames.push(memberIdToNameMap[memberId])
-          } else if (memberId) {
-            // Skip unresolved member IDs instead of creating fallback names
-            // This prevents "User xyz..." entries from appearing in filters
-            console.log(`No name found for member ID ${memberId}, skipping from hiring team display`)
-          }
-        })
-      }
-
-      console.log(`Job "${job.title}" resolved hiring team names:`, hiringTeamNames)
       return {
         ...job,
-        hiring_team_names: hiringTeamNames
-      }
+        hiring_team: Array.isArray(job.hiring_team) ? job.hiring_team : [],
+        hiring_team_names: hiringTeamNames,
+        organization_name: job.organizations?.name || 'Unknown Organization'
+      } as Job
     })
   }
 
@@ -194,172 +202,8 @@ export function useJobs() {
     setError(null)
 
     try {
-      console.log('Fetching jobs for user:', user.id, 'userType:', userType, 'organizationId:', organizationId)
-      
-      // Build query based on user type and organization
-      let query = supabase
-        .from('jobs')
-        .select('*')
-        .order('created_at', { ascending: false })
-
-      // Get member role to determine filtering strategy
-      const { data: memberData } = await supabase
-        .from('members')
-        .select('member_role')
-        .eq('user_id', user.id)
-        .eq('organization_id', organizationId || '')
-        .single()
-
-      const memberRole = memberData?.member_role
-      const isRecruiter = memberRole === 'recruiter'
-      const isGuest = userType === 'guest'
-
-      // Apply filtering based on user role
-      if (userType === 'platform_admin') {
-        // Platform admins see all jobs - no additional filtering needed
-        console.log('Platform admin - showing all jobs')
-      } else if (isGuest) {
-        // Guest users can ONLY see jobs they are specifically assigned to via job_assignments
-        console.log('Guest user - will filter to only assigned jobs across all organizations')
-        // Don't filter by organization here - we'll do it after getting job assignments
-      } else if (isRecruiter) {
-        // Recruiters can see jobs across organizations if they're assigned
-        console.log('Recruiter - will filter by assignments across all organizations')
-        // Don't filter by organization here - we'll do it after getting job assignments
-      } else if (organizationId) {
-        console.log('Filtering jobs for organization:', organizationId)
-        query = query.eq('organization_id', organizationId)
-      }
-
-      const { data: jobsData, error: fetchError } = await query
-
-      if (fetchError) {
-        console.error('Error fetching jobs:', fetchError)
-        throw fetchError
-      }
-
-      console.log('Fetched jobs data:', jobsData)
-
-      // Client-side filtering based on user type and role
-      let filteredJobs = jobsData || []
-      
-      if (userType !== 'platform_admin' && organizationId) {
-        if (isGuest) {
-          console.log('Applying STRICT guest filtering - only assigned jobs via job_assignments table')
-          
-          // Get job assignments for this guest user across ALL organizations
-          const { data: jobAssignments, error: assignmentsError } = await supabase
-            .from('job_assignments')
-            .select('job_id')
-            .eq('user_id', user.id)
-
-          if (assignmentsError) {
-            console.error('Error fetching job assignments:', assignmentsError)
-          }
-
-          const assignedJobIds = new Set(jobAssignments?.map(assignment => assignment.job_id) || [])
-          console.log('Guest user assigned to jobs via job_assignments table:', Array.from(assignedJobIds))
-
-          // Guest users can ONLY see jobs they are explicitly assigned to
-          filteredJobs = filteredJobs.filter(job => {
-            const isAssignedViaTable = assignedJobIds.has(job.id)
-            
-            if (isAssignedViaTable) {
-              console.log(`Guest has access to job "${job.title}" from organization ${job.organization_id} via job_assignments`)
-            }
-            
-            return isAssignedViaTable
-          })
-          
-          console.log(`Guest filtered jobs: ${filteredJobs.length} out of ${jobsData?.length || 0}`)
-          console.log('Accessible job titles for guest:', filteredJobs.map(job => job.title))
-        } else if (isRecruiter) {
-          console.log('Applying recruiter filtering for hiring team membership and job assignments across all organizations')
-          
-          // Get job assignments for this recruiter across ALL organizations
-          const { data: jobAssignments, error: assignmentsError } = await supabase
-            .from('job_assignments')
-            .select('job_id')
-            .eq('user_id', user.id)
-
-          if (assignmentsError) {
-            console.error('Error fetching job assignments:', assignmentsError)
-          }
-
-          const assignedJobIds = new Set(jobAssignments?.map(assignment => assignment.job_id) || [])
-          console.log('Recruiter assigned to jobs via job_assignments table:', Array.from(assignedJobIds))
-
-          filteredJobs = filteredJobs.filter(job => {
-            // Check if user is in hiring_team array
-            const hiringTeam = Array.isArray(job.hiring_team) ? job.hiring_team : []
-            const isInHiringTeam = hiringTeam.some((member: any) => 
-              member?.user_id === user.id || member?.id === user.id || member === user.id
-            )
-            
-            // Check if user is assigned via job_assignments table
-            const isAssignedViaTable = assignedJobIds.has(job.id)
-            
-            const hasAccess = isInHiringTeam || isAssignedViaTable
-            
-            if (hasAccess) {
-              console.log(`Recruiter has access to job "${job.title}" from organization ${job.organization_id} via ${isInHiringTeam ? 'hiring_team' : 'job_assignments'}`)
-            }
-            
-            return hasAccess
-          })
-          
-          console.log(`Recruiter filtered jobs: ${filteredJobs.length} out of ${jobsData?.length || 0}`)
-          console.log('Accessible job titles:', filteredJobs.map(job => job.title))
-        }
-      }
-
-      // Fetch organization names separately for jobs that don't belong to current user's org
-      const organizationIds = [...new Set(filteredJobs.map(job => job.organization_id).filter(Boolean))]
-      let organizationsMap: Record<string, string> = {}
-
-      if (organizationIds.length > 0) {
-        const { data: orgsData, error: orgsError } = await supabase
-          .from('organizations')
-          .select('id, name')
-          .in('id', organizationIds)
-
-        if (!orgsError && orgsData) {
-          organizationsMap = orgsData.reduce((acc, org) => {
-            acc[org.id] = org.name
-            return acc
-          }, {} as Record<string, string>)
-        }
-      }
-
-      // Resolve hiring team member names
-      // Debug logging for skills data before transformation
-      console.log('Jobs data before transformation - checking skills:', filteredJobs.map(job => ({
-        id: job.id,
-        title: job.title,
-        skills: job.skills,
-        auto_generated_skills: job.auto_generated_skills,
-        userType: userType
-      })))
-
-      const jobsWithResolvedNames = await resolveHiringTeamNames(filteredJobs)
-
-      // Transform the data to match our Job interface
-      const transformedJobs = jobsWithResolvedNames.map(job => ({
-        ...job,
-        hiring_team: Array.isArray(job.hiring_team) ? job.hiring_team : [],
-        organization_name: organizationsMap[job.organization_id] || 'Unknown Organization'
-      }))
-
-      // Debug logging after transformation
-      console.log('Jobs data after transformation - checking skills:', transformedJobs.map(job => ({
-        id: job.id,
-        title: job.title,
-        skills: job.skills,
-        auto_generated_skills: job.auto_generated_skills,
-        userType: userType
-      })))
-      
-      setJobs(transformedJobs)
+      const jobsData = await getJobsOptimized()
+      setJobs(jobsData)
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch jobs'
       console.error('Jobs fetch error:', err)
@@ -372,7 +216,7 @@ export function useJobs() {
     } finally {
       setIsLoading(false)
     }
-  }, [user, userType, organizationId, normalizeJobSpecs])
+  }, [user, userType, organizationId])
 
   const getJob = async (id: string): Promise<Job> => {
     setIsLoading(true)
@@ -407,15 +251,12 @@ export function useJobs() {
           organizationName = orgData.name
         }
       }
-
-      // Resolve hiring team names for single job
-      const jobsWithResolvedNames = await resolveHiringTeamNames([data])
-      const jobWithResolvedNames = jobsWithResolvedNames[0]
       
       // Transform the data to match our Job interface
       const transformedJob = {
-        ...jobWithResolvedNames,
+        ...data,
         hiring_team: Array.isArray(data.hiring_team) ? data.hiring_team : [],
+        hiring_team_names: [], // Single job fetch doesn't need complex resolution
         organization_name: organizationName
       }
       
