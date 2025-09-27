@@ -153,7 +153,7 @@ export function OrganizationFormSheet({
 
   return (
     <Sheet open={isOpen} onOpenChange={handleClose}>
-      <SheetContent side="right" className="w-full sm:max-w-[500px] h-full p-0">
+      <SheetContent side="right" className="w-full sm:max-w-[640px] h-full p-0">
         <div className="flex flex-col h-full">
           <SheetHeader className="px-6 py-4 border-b border-border">
             <SheetTitle className="text-lg">
