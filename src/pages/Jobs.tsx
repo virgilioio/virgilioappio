@@ -74,7 +74,7 @@ export default function Jobs() {
           />
         }
       >
-        <div className="min-h-screen bg-background">
+        <div>
           <Section variant="default" banded container className="animate-fade-in">
             <PageHeader title="Jobs" subtitle="Manage job postings and track hiring progress" />
           </Section>

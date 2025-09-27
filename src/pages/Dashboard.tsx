@@ -22,7 +22,7 @@ export default function Dashboard() {
   const canManageOrganization = (permissions.canManageOrganization || permissions.isWorkspaceOwner || permissions.isPlatformAdmin) && !permissions.isGuest
   
   return (
-    <div className="min-h-screen bg-background">
+    <div>
       <Section container className="py-6 sm:py-8 lg:py-12 animate-fade-in">
         <div className="space-y-6">
             <WelcomeHeader profile={profile} isLoading={isLoading} />
