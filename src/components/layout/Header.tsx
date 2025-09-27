@@ -222,10 +222,10 @@ export function Header() {
           {/* User Menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="relative h-7 w-7 rounded-full">
-                <Avatar className="h-7 w-7">
+              <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+                <Avatar className="h-10 w-10">
                   <AvatarImage src={profile?.avatar_url || user?.user_metadata?.avatar_url} alt={userDisplayName} />
-                  <AvatarFallback className="text-xs">{userInitials}</AvatarFallback>
+                  <AvatarFallback className="text-sm">{userInitials}</AvatarFallback>
                 </Avatar>
               </Button>
             </DropdownMenuTrigger>
