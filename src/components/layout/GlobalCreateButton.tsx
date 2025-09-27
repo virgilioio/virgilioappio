@@ -66,8 +66,7 @@ export function GlobalCreateButton() {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button 
-            size="icon" 
-            className="rounded-full w-10 h-10 transition-all duration-200 hover:scale-105 focus:scale-105" 
+            className="rounded-full w-10 h-10 p-0 flex items-center justify-center transition-all duration-200 hover:scale-105 focus:scale-105" 
             style={{ backgroundColor: '#d7c5fb' }}
           >
             <Plus className="h-4 w-4 text-gray-800" />
