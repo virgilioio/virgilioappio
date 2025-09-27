@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Plus, Edit, Trash2, Building2, User, Calendar, Eye, Search, ChevronLeft, ChevronRight, MoreHorizontal, FileText } from 'lucide-react'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Organization } from '@/hooks/useOrganizations'
 import { usePermissions } from '@/hooks/usePermissions'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -245,24 +246,19 @@ export function OrganizationsTable({
         
         <CardContent>
           {filteredOrganizations.length === 0 ? (
-            <div className="text-center py-8">
-              <Building2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-semibold mb-2">
-                {organizations.length === 0 ? 'No organizations yet' : 'No organizations match your filters'}
-              </h3>
-              <p className="text-muted-foreground mb-4">
-                {organizations.length === 0 
-                  ? 'Create your first organization to get started.'
-                  : 'Try adjusting your search or filter criteria.'
-                }
-              </p>
-              {organizations.length === 0 && permissions.canCreateOrganizations && onCreateNew && (
-                <Button onClick={onCreateNew} className="gap-2">
-                  <Plus className="h-4 w-4" />
-                  Create Organization
-                </Button>
-              )}
-            </div>
+            <EmptyState
+              assetType="empty-state-organizations"
+              title={organizations.length === 0 ? 'No organizations yet' : 'No organizations match your filters'}
+              description={organizations.length === 0 
+                ? 'Create your first organization to get started.'
+                : 'Try adjusting your search or filter criteria.'
+              }
+              fallbackIcon={Building2}
+              action={organizations.length === 0 && permissions.canCreateOrganizations && onCreateNew ? {
+                label: 'Create Organization',
+                onClick: onCreateNew
+              } : undefined}
+            />
           ) : (
             <>
               <div className="overflow-x-auto">

@@ -5,7 +5,7 @@ import { useToast } from '@/hooks/use-toast'
 
 interface PlatformAsset {
   id: string
-  asset_type: 'logo' | 'favicon'
+  asset_type: 'logo' | 'favicon' | 'empty-state-organizations' | 'empty-state-jobs' | 'empty-state-candidates' | 'empty-state-members' | 'empty-state-comments' | 'empty-state-attachments' | 'empty-state-templates' | 'empty-state-independent-candidates'
   file_name: string
   file_url: string
   uploaded_by: string
@@ -41,7 +41,7 @@ export function usePlatformAssets() {
     }
   }
 
-  const uploadAsset = async (file: File, assetType: 'logo' | 'favicon') => {
+  const uploadAsset = async (file: File, assetType: PlatformAsset['asset_type']) => {
     try {
       setIsUploading(true)
       

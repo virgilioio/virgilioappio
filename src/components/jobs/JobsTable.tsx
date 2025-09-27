@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Plus, Search, Edit, Archive, FileText, Building, MapPin, DollarSign, Eye, UserPlus, ChevronLeft, ChevronRight, MoreHorizontal } from 'lucide-react'
+import { EmptyState } from '@/components/ui/empty-state'
 import { PermissionGate } from '@/components/auth/PermissionGate'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useOrganizations } from '@/hooks/useOrganizations'
@@ -278,24 +279,19 @@ export function JobsTable({
       </CardHeader>
       <CardContent>
         {filteredJobs.length === 0 ? (
-          <div className="text-center py-8">
-            <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">
-              {jobs.length === 0 ? 'No jobs yet' : 'No jobs match your filters'}
-            </h3>
-            <p className="text-muted-foreground mb-4">
-              {jobs.length === 0 
-                ? 'Create your first job posting to get started.'
-                : 'Try adjusting your search or filter criteria.'
-              }
-            </p>
-            {jobs.length === 0 && permissions.canCreateJobs && (
-              <Button onClick={onCreateNew} className="gap-2">
-                <Plus className="h-4 w-4" />
-                Create Job
-              </Button>
-            )}
-          </div>
+          <EmptyState
+            assetType="empty-state-jobs"
+            title={jobs.length === 0 ? 'No jobs yet' : 'No jobs match your filters'}
+            description={jobs.length === 0 
+              ? 'Create your first job posting to get started.'
+              : 'Try adjusting your search or filter criteria.'
+            }
+            fallbackIcon={FileText}
+            action={jobs.length === 0 && permissions.canCreateJobs ? {
+              label: 'Create Job',
+              onClick: onCreateNew
+            } : undefined}
+          />
         ) : (
           <>
             <div className="space-y-sm">

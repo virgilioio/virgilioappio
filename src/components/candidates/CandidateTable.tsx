@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Trash2, UserPlus, MapPin, DollarSign, FileText, Search, ChevronLeft, ChevronRight, MoreHorizontal, ListChecks, Archive, Clock } from 'lucide-react'
@@ -273,15 +274,12 @@ export function CandidateTable({
       <CardContent>
         {/* Bulk actions are now handled in the Pipeline Overview header */}
         {filteredCandidates.length === 0 ? (
-          <div className="text-center py-xl bg-surface-secondary rounded-brand border border-border/50">
-            <FileText className="h-12 w-12 mx-auto mb-md text-text-secondary opacity-50" />
-            <p className="text-md font-medium text-text-primary mb-sm">
-              {candidates.length === 0 ? 'No candidates yet' : 'No candidates match your filters'}
-            </p>
-            <p className="text-sm text-text-secondary">
-              {candidates.length === 0 ? 'Add your first candidate to this job' : 'Try adjusting your search or filters'}
-            </p>
-          </div>
+          <EmptyState
+            assetType="empty-state-candidates"
+            title={candidates.length === 0 ? 'No candidates yet' : 'No candidates match your filters'}
+            description={candidates.length === 0 ? 'Add your first candidate to this job' : 'Try adjusting your search or filters'}
+            fallbackIcon={FileText}
+          />
         ) : (
           <>
             <div className="space-y-sm">

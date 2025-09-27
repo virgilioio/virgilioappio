@@ -68,31 +68,65 @@ Deno.serve(async (req) => {
       }
 
       // Validate asset type
-      if (!['logo', 'favicon'].includes(assetType)) {
+      const validAssetTypes = [
+        'logo', 
+        'favicon',
+        'empty-state-organizations',
+        'empty-state-jobs',
+        'empty-state-candidates',
+        'empty-state-members',
+        'empty-state-comments',
+        'empty-state-attachments',
+        'empty-state-templates',
+        'empty-state-independent-candidates'
+      ]
+      
+      if (!validAssetTypes.includes(assetType)) {
         return new Response(
-          JSON.stringify({ error: 'Invalid asset type' }),
+          JSON.stringify({ error: `Invalid asset type. Must be one of: ${validAssetTypes.join(', ')}.` }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
       }
 
       // Validate file type
-      const allowedTypes = {
+      const allowedTypes: Record<string, string[]> = {
         logo: ['image/png', 'image/svg+xml', 'image/jpeg'],
-        favicon: ['image/png', 'image/x-icon', 'image/vnd.microsoft.icon', 'image/jpeg']
+        favicon: ['image/png', 'image/x-icon', 'image/vnd.microsoft.icon', 'image/jpeg'],
+        // All empty state images must be PNG
+        'empty-state-organizations': ['image/png'],
+        'empty-state-jobs': ['image/png'],
+        'empty-state-candidates': ['image/png'],
+        'empty-state-members': ['image/png'],
+        'empty-state-comments': ['image/png'],
+        'empty-state-attachments': ['image/png'],
+        'empty-state-templates': ['image/png'],
+        'empty-state-independent-candidates': ['image/png']
       }
 
-      if (!allowedTypes[assetType as keyof typeof allowedTypes].includes(file.type)) {
+      if (!allowedTypes[assetType]?.includes(file.type)) {
         return new Response(
           JSON.stringify({ 
-            error: `Invalid file type for ${assetType}. Allowed types: ${allowedTypes[assetType as keyof typeof allowedTypes].join(', ')}. Received: ${file.type}` 
+            error: `Invalid file type for ${assetType}. Allowed types: ${allowedTypes[assetType]?.join(', ') || 'none'}. Received: ${file.type}` 
           }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
       }
 
-      // Validate file size (1MB for logo, 500KB for favicon)
-      const maxSizes = { logo: 1024 * 1024, favicon: 512 * 1024 }
-      if (file.size > maxSizes[assetType as keyof typeof maxSizes]) {
+      // Validate file size (1MB for logo, 500KB for others)
+      const maxSizes: Record<string, number> = { 
+        logo: 1024 * 1024, 
+        favicon: 512 * 1024,
+        // 500KB for all empty state images
+        'empty-state-organizations': 512 * 1024,
+        'empty-state-jobs': 512 * 1024,
+        'empty-state-candidates': 512 * 1024,
+        'empty-state-members': 512 * 1024,
+        'empty-state-comments': 512 * 1024,
+        'empty-state-attachments': 512 * 1024,
+        'empty-state-templates': 512 * 1024,
+        'empty-state-independent-candidates': 512 * 1024
+      }
+      if (file.size > (maxSizes[assetType] || 512 * 1024)) {
         return new Response(
           JSON.stringify({ error: `File too large for ${assetType}` }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

@@ -8,9 +8,10 @@ import { Badge } from '@/components/ui/badge'
 import { Upload, Image, Globe, AlertCircle, Settings, Save, Loader2 } from 'lucide-react'
 import { usePlatformAssets } from '@/hooks/usePlatformAssets'
 import { usePlatformSettings } from '@/hooks/usePlatformSettings'
+import type { EmptyStateAssetType } from '@/components/ui/empty-state'
 
 interface AssetUploaderProps {
-  assetType: 'logo' | 'favicon'
+  assetType: 'logo' | 'favicon' | EmptyStateAssetType
   title: string
   description: string
   acceptedTypes: string
@@ -281,25 +282,74 @@ export function PlatformAssetUploader() {
   const logoAsset = assets.find(asset => asset.asset_type === 'logo' && asset.is_active)
   const faviconAsset = assets.find(asset => asset.asset_type === 'favicon' && asset.is_active)
 
+  // Helper to get current empty state asset
+  const getEmptyStateAsset = (type: EmptyStateAssetType) => 
+    assets.find(asset => asset.asset_type === type && asset.is_active)
+
+  const emptyStateConfigs = [
+    { type: 'empty-state-organizations' as const, label: 'Organizations', description: 'Empty organizations table' },
+    { type: 'empty-state-jobs' as const, label: 'Jobs', description: 'Empty jobs table' },
+    { type: 'empty-state-candidates' as const, label: 'Candidates', description: 'Empty candidates table' },
+    { type: 'empty-state-members' as const, label: 'Members', description: 'Empty members table' },
+    { type: 'empty-state-comments' as const, label: 'Comments', description: 'Empty comments section' },
+    { type: 'empty-state-attachments' as const, label: 'Attachments', description: 'Empty attachments list' },
+    { type: 'empty-state-templates' as const, label: 'Templates', description: 'Empty templates table' },
+    { type: 'empty-state-independent-candidates' as const, label: 'Independent Candidates', description: 'Empty independent candidates table' },
+  ]
+
   return (
-    <div className="space-y-6">
-      <AssetUploader
-        assetType="logo"
-        title="Platform Logo"
-        description="Upload the main platform logo that appears in headers and branding"
-        acceptedTypes=".png,.svg,.jpg,.jpeg"
-        maxSize="1MB"
-        currentAsset={logoAsset?.file_url}
-      />
-      
-      <AssetUploader
-        assetType="favicon"
-        title="Platform Favicon"
-        description="Upload the favicon that appears in browser tabs"
-        acceptedTypes=".png,.ico,.jpg,.jpeg"
-        maxSize="500KB"
-        currentAsset={faviconAsset?.file_url}
-      />
+    <div className="space-y-8">
+      <div>
+        <h3 className="text-lg font-medium mb-4">Platform Assets</h3>
+        <p className="text-sm text-muted-foreground mb-6">
+          Upload custom assets to personalize your platform appearance.
+        </p>
+      </div>
+
+      {/* Core Platform Assets */}
+      <div>
+        <h4 className="text-md font-medium mb-4">Core Assets</h4>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <AssetUploader
+            assetType="logo"
+            title="Platform Logo"
+            description="Upload the main platform logo that appears in headers and branding"
+            acceptedTypes=".png,.svg,.jpg,.jpeg"
+            maxSize="1MB"
+            currentAsset={logoAsset?.file_url}
+          />
+          
+          <AssetUploader
+            assetType="favicon"
+            title="Platform Favicon"
+            description="Upload the favicon that appears in browser tabs"
+            acceptedTypes=".png,.ico,.jpg,.jpeg"
+            maxSize="500KB"
+            currentAsset={faviconAsset?.file_url}
+          />
+        </div>
+      </div>
+
+      {/* Empty State Images */}
+      <div>
+        <h4 className="text-md font-medium mb-4">Empty State Images</h4>
+        <p className="text-sm text-muted-foreground mb-4">
+          Custom illustrations for empty tables and lists. Recommended size: 48x48px PNG with transparent background.
+        </p>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {emptyStateConfigs.map((config) => (
+            <AssetUploader
+              key={config.type}
+              assetType={config.type}
+              title={config.label}
+              description={config.description}
+              acceptedTypes=".png"
+              maxSize="500KB"
+              currentAsset={getEmptyStateAsset(config.type)?.file_url}
+            />
+          ))}
+        </div>
+      </div>
 
       <BrowserTitleEditor />
     </div>
