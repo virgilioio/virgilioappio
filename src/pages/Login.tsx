@@ -176,21 +176,21 @@ export default function Login() {
                     setError('')
                     setIsGoogleSubmitting(true)
                     try {
-                      // Generate and store OAuth state for security
-                      const state = Array.from(crypto.getRandomValues(new Uint8Array(32)))
-                        .map(b => b.toString(16).padStart(2, '0'))
-                        .join('')
+                      // Generate simple UUID-based state for OAuth security
+                      const state = crypto.randomUUID()
                       sessionStorage.setItem('oauth_state', state)
                       
-                      await supabase.auth.signInWithOAuth({
+                      const { error } = await supabase.auth.signInWithOAuth({
                         provider: 'google',
                         options: {
-                          redirectTo: `${window.location.origin}/auth/callback`,
-                          queryParams: {
-                            state: state
-                          }
+                          redirectTo: `${window.location.origin}/auth/callback`
                         }
                       })
+                      
+                      if (error) {
+                        setError(error.message)
+                        setIsGoogleSubmitting(false)
+                      }
                     } catch (err: any) {
                       setError(err.message || 'Google sign-in failed')
                       setIsGoogleSubmitting(false)

@@ -16,45 +16,40 @@ export default function AuthCallback() {
   useEffect(() => {
     const validateAndProcessAuth = async () => {
       try {
-        // Validate state parameter for OAuth security
-        const urlState = searchParams.get('state')
-        const storedState = sessionStorage.getItem('oauth_state')
+        console.log('Starting auth callback validation...')
         
-        if (!urlState || !storedState || urlState !== storedState) {
-          setStatus('error')
-          setErrorMessage('Invalid authentication state. This could be a security issue.')
-          return
-        }
-
-        // Clear stored state
-        sessionStorage.removeItem('oauth_state')
-
-        // Validate return path (allowlist)
-        const returnPath = searchParams.get('return_to') || '/dashboard'
-        const allowedPaths = ['/dashboard', '/onboarding']
-        const isValidPath = allowedPaths.some(path => returnPath.startsWith(path))
+        // Check for auth session first
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
         
-        if (!isValidPath) {
-          console.warn('Invalid return path blocked:', returnPath)
-        }
-
-        // Get the current session
-        const { data: { session }, error } = await supabase.auth.getSession()
-        
-        if (error || !session) {
+        if (sessionError) {
+          console.error('Session error:', sessionError)
           setStatus('error')
           setErrorMessage('Failed to establish authentication session.')
           return
         }
 
+        if (!session) {
+          console.log('No session found, redirecting to auth')
+          setStatus('error')
+          setErrorMessage('No authentication session found.')
+          return
+        }
+
+        console.log('Session found, user:', session.user.email)
         setStatus('success')
+        
+        // Clear any stored state
+        sessionStorage.removeItem('oauth_state')
         
         // Navigate to appropriate page after short delay
         setTimeout(() => {
           // Check if user has organization context
           const hasOrgContext = session.user?.user_metadata?.organization_id
-          const finalPath = isValidPath ? returnPath : (hasOrgContext ? '/dashboard' : '/onboarding')
-          navigate(finalPath, { replace: true })
+          console.log('Has org context:', hasOrgContext)
+          
+          const targetPath = hasOrgContext ? '/dashboard' : '/onboarding'
+          console.log('Navigating to:', targetPath)
+          navigate(targetPath, { replace: true })
         }, 1500)
 
       } catch (error) {
