@@ -27,7 +27,7 @@ export function SettingsSidebar({ currentTab, onTabChange, className }: Settings
   const permissions = usePermissions()
   const { organizationId, userType } = useAuth()
   const [platformOpen, setPlatformOpen] = useState(
-    ['platform-dashboard', 'platform-settings', 'platform-templates', 'platform-job-settings', 'platform-customers', 'platform-saas-customers'].includes(currentTab)
+    ['platform-dashboard', 'platform-settings', 'platform-job-settings', 'platform-customers', 'platform-saas-customers'].includes(currentTab)
   )
 
   const isWorkspaceOwnerOfSaaSOrg = () => {
@@ -73,7 +73,6 @@ export function SettingsSidebar({ currentTab, onTabChange, className }: Settings
       submenu: [
         { id: 'platform-dashboard', label: 'Dashboard', icon: BarChart3, show: true },
         { id: 'platform-settings', label: 'App Personalization', icon: SettingsIcon, show: true },
-        { id: 'platform-templates', label: 'Templates', icon: FileText, show: true },
         { id: 'platform-job-settings', label: 'Job Settings', icon: Briefcase, show: true },
         { id: 'platform-saas-customers', label: 'SaaS Customers', icon: UsersIcon, show: true },
         { id: 'platform-customers', label: 'Legacy Customer Management', icon: Building2, show: permissions.canAccessCustomerManagement },

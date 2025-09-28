@@ -52,8 +52,6 @@ export default function Settings() {
         return <PlatformTab />
       case 'platform-settings':
         return <PlatformSettingsManager />
-      case 'platform-templates':
-        return <OfferTemplatesManager />
       case 'platform-job-settings':
         return <JobSettingsManager />
       case 'platform-saas-customers':
@@ -133,15 +131,12 @@ export default function Settings() {
                     <TabsContent value="platform-dashboard">
                       {renderPlatformContent()}
                     </TabsContent>
-                    <TabsContent value="platform-settings">
-                      {renderPlatformContent()}
-                    </TabsContent>
-                    <TabsContent value="platform-templates">
-                      {renderPlatformContent()}
-                    </TabsContent>
-                    <TabsContent value="platform-job-settings">
-                      {renderPlatformContent()}
-                    </TabsContent>
+                     <TabsContent value="platform-settings">
+                       {renderPlatformContent()}
+                     </TabsContent>
+                     <TabsContent value="platform-job-settings">
+                       {renderPlatformContent()}
+                     </TabsContent>
                     <TabsContent value="platform-saas-customers">
                       {renderPlatformContent()}
                     </TabsContent>
