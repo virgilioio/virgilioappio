@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
 import { VirgilioLogo } from '@/components/VirgilioLogo'
-import { TypingAnimation } from '@/components/TypingAnimation'
+
 import { GoogleLogo } from '@/components/icons/GoogleLogo'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/integrations/supabase/client'
@@ -85,9 +85,6 @@ export default function SignUp() {
 
       {/* Left Side - Responsive width with #fffead background */}
       <div className="w-full lg:w-2/3 xl:w-3/5 2xl:w-2/3 relative overflow-hidden flex items-center justify-center min-h-[50vh] lg:min-h-screen" style={{ backgroundColor: '#fffead' }}>
-        <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <TypingAnimation />
-        </div>
       </div>
 
       {/* Right Side - Responsive width white background with signup form */}
@@ -202,21 +199,21 @@ export default function SignUp() {
                     setError('')
                     setIsGoogleSubmitting(true)
                     try {
-                      // Generate and store OAuth state for security
-                      const state = Array.from(crypto.getRandomValues(new Uint8Array(32)))
-                        .map(b => b.toString(16).padStart(2, '0'))
-                        .join('')
+                      // Generate simple UUID-based state for OAuth security
+                      const state = crypto.randomUUID()
                       sessionStorage.setItem('oauth_state', state)
                       
-                      await supabase.auth.signInWithOAuth({
+                      const { error } = await supabase.auth.signInWithOAuth({
                         provider: 'google',
                         options: {
-                          redirectTo: `${window.location.origin}/auth/callback`,
-                          queryParams: {
-                            state: state
-                          }
+                          redirectTo: `${window.location.origin}/auth/callback`
                         }
                       })
+                      
+                      if (error) {
+                        setError(error.message)
+                        setIsGoogleSubmitting(false)
+                      }
                     } catch (err: any) {
                       setError(err.message || 'Google sign-up failed')
                       setIsGoogleSubmitting(false)

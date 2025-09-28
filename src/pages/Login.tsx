@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
 import { VirgilioLogo } from '@/components/VirgilioLogo'
-import { TypingAnimation } from '@/components/TypingAnimation'
+
 import { GoogleLogo } from '@/components/icons/GoogleLogo'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/integrations/supabase/client'
@@ -74,9 +74,6 @@ export default function Login() {
 
       {/* Left Side - Responsive width with #fffead background */}
       <div className="w-full lg:w-2/3 xl:w-3/5 2xl:w-2/3 relative overflow-hidden flex items-center justify-center min-h-[50vh] lg:min-h-screen" style={{ backgroundColor: '#fffead' }}>
-        <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <TypingAnimation />
-        </div>
       </div>
 
       {/* Right Side - Responsive width white background with login form */}
