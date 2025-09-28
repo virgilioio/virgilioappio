@@ -110,6 +110,9 @@ export default function Candidates() {
           <CandidateFormSheet
             isOpen={isFormOpen}
             onClose={handleFormClose}
+            onSubmit={async () => {}} // TODO: Implement proper submission for independent candidates
+            jobId="" // Independent candidates don't have a job ID
+            isLoading={false}
           />
         </div>
       </PermissionGate>

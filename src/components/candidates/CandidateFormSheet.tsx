@@ -616,7 +616,7 @@ export function CandidateFormSheet({
                 profileSummary={profileSummary}
                 candidateName={form.watch('candidate_name')}
                 existingSkills={skills}
-                onSkillsGenerated={(newSkills) => {
+                onSkillsAccepted={(newSkills) => {
                   const uniqueSkills = [...new Set([...skills, ...newSkills])]
                   setSkills(uniqueSkills)
                 }}
@@ -635,7 +635,7 @@ export function CandidateFormSheet({
                 placeholder="Add a brief overview of the candidate's background, experience, and key qualifications..."
                 minHeight="200px"
                 isExternalUpdate={profileIsExternalUpdate}
-                onExternalUpdateProcessed={() => setProfileIsExternalUpdate(false)}
+                onExternalUpdateComplete={() => setProfileIsExternalUpdate(false)}
               />
             </div>
 
@@ -659,13 +659,16 @@ export function CandidateFormSheet({
               </FormField>
             </div>
 
-            {/* Comments for existing candidates */}
             {candidate && (
               <div className="space-y-4">
                 <h3 className="text-lg font-medium text-text-primary border-b border-border pb-2">
                   Comments
                 </h3>
-                <CandidateComments candidateId={candidate.id} />
+                <CandidateComments 
+                  candidateId={candidate.id} 
+                  jobId={jobId}
+                  organizationId=""
+                />
               </div>
             )}
 

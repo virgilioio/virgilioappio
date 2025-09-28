@@ -20,6 +20,7 @@ import {
 import { useForm } from "react-hook-form"
 import { useAuth } from "@/contexts/AuthContext"
 import { usePermissions } from "@/hooks/usePermissions"
+import { Member } from "@/hooks/useMembers"
 import { Check, Copy, ExternalLink } from "lucide-react"
 import { copyToClipboard } from "@/utils/clipboard"
 import { useToast } from "@/hooks/use-toast"

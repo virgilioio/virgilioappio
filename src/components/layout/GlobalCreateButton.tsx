@@ -122,6 +122,9 @@ export function GlobalCreateButton() {
       <CandidateFormSheet
         isOpen={candidateSheetOpen}
         onClose={() => setCandidateSheetOpen(false)}
+        onSubmit={async () => {}} // Placeholder - would need proper implementation
+        jobId="" // Placeholder - would need proper job selection
+        isLoading={false}
       />
 
       {/* Organization Form */}

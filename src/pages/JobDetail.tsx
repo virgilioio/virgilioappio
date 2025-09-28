@@ -1290,6 +1290,8 @@ export default function JobDetail() {
           isOpen={showAddCandidate}
           onClose={() => setShowAddCandidate(false)}
           jobId={id!}
+          onSubmit={handleAddCandidate}
+          isLoading={false}
         />
 
         {/* Edit Candidate Dialog */}
