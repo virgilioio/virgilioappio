@@ -3,7 +3,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Button } from "@/components/ui/button";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { AgreementRichTextEditor } from "@/components/ui/agreement-rich-text-editor";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { toast } from "@/hooks/use-toast";
 import type { ScoreRating, ScorecardRow } from "@/hooks/useScorecards";
 import { ThumbsDown, ThumbsUp, Star, Octagon } from "lucide-react";
@@ -124,7 +124,7 @@ export function ScorecardSheet({
             <div className="space-y-2">
               <div className="text-sm font-medium">General Overview</div>
               <div className={isReadOnly ? "pointer-events-none opacity-80" : ""}>
-                <AgreementRichTextEditor
+                <RichTextEditor
                   value={overview}
                   onChange={setOverview}
                   placeholder="Write your overall assessment…"

@@ -8,7 +8,7 @@ import { OrganizationTab } from '@/components/settings/OrganizationTab'
 import { MembersTab } from '@/components/settings/MembersTab'
 import { PlatformSettingsManager } from '@/components/settings/PlatformSettingsManager'
 
-import { LegalManager } from '@/components/settings/LegalManager'
+
 import { PlatformAssetUploader } from '@/components/settings/PlatformAssetUploader'
 
 import { OfferTemplatesManager } from '@/components/settings/OfferTemplatesManager'
@@ -51,8 +51,6 @@ export default function Settings() {
         return <PlatformTab />
       case 'platform-settings':
         return <PlatformSettingsManager />
-      case 'platform-legal':
-        return <LegalManager />
       case 'platform-templates':
         return <OfferTemplatesManager />
       case 'platform-job-settings':
@@ -123,9 +121,6 @@ export default function Settings() {
                       {renderPlatformContent()}
                     </TabsContent>
                     <TabsContent value="platform-settings">
-                      {renderPlatformContent()}
-                    </TabsContent>
-                    <TabsContent value="platform-legal">
                       {renderPlatformContent()}
                     </TabsContent>
                     <TabsContent value="platform-templates">

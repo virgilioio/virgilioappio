@@ -4,7 +4,7 @@ import { PlatformAssetUploader } from './PlatformAssetUploader'
 
 import { PlatformSettingsManager } from './PlatformSettingsManager'
 
-import { LegalManager } from './LegalManager'
+
 import { PlatformDashboard } from '@/components/dashboard/PlatformDashboard'
 
 import { JobSettingsManager } from './JobSettingsManager'
@@ -13,10 +13,9 @@ export function PlatformTab() {
   return (
     <div className="space-y-6">
       <Tabs defaultValue="dashboard" className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
-          <TabsTrigger value="legal">Legal</TabsTrigger>
           <TabsTrigger value="assets">Assets</TabsTrigger>
           <TabsTrigger value="job-settings">Job Settings</TabsTrigger>
         </TabsList>
@@ -29,9 +28,6 @@ export function PlatformTab() {
           <PlatformSettingsManager />
         </TabsContent>
         
-        <TabsContent value="legal" className="space-y-6">
-          <LegalManager />
-        </TabsContent>
         
         <TabsContent value="assets" className="space-y-6">
           <PlatformAssetUploader />
