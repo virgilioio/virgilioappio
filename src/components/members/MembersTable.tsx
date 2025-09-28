@@ -17,7 +17,7 @@ interface MembersTableProps {
   onDeactivate: (id: string) => void
   onResendInvitation: (memberId: string, email: string) => void
   onDeleteUser: (member: Member) => void
-  onAddNew: () => void
+  onAddNew?: () => void
 }
 
 export function MembersTable({
@@ -156,19 +156,23 @@ export function MembersTable({
       <CardHeader>
         <div className="flex justify-between items-center">
           <CardTitle>Team Members</CardTitle>
-          <Button onClick={onAddNew} className="gap-2">
-            <Plus className="h-4 w-4" />
-            Add Member
-          </Button>
+          {onAddNew && (
+            <Button onClick={onAddNew} className="gap-2">
+              <Plus className="h-4 w-4" />
+              Add Member
+            </Button>
+          )}
         </div>
       </CardHeader>
       <CardContent>
         {members.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-muted-foreground mb-4">No team members found</p>
-            <Button onClick={onAddNew} variant="outline">
-              Add your first team member
-            </Button>
+            {onAddNew && (
+              <Button onClick={onAddNew} variant="outline">
+                Add your first team member
+              </Button>
+            )}
           </div>
         ) : (
           <div className="overflow-x-auto">

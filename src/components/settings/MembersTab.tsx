@@ -4,6 +4,8 @@ import { MembersTable } from '@/components/members/MembersTable'
 import { useMembers } from '@/hooks/useMembers'
 import { useState } from 'react'
 import { MemberForm } from '@/components/members/MemberForm'
+import { MemberInviteSheet } from '@/components/members/MemberInviteSheet'
+import { usePermissions } from '@/hooks/usePermissions'
 import { UserDeletionDialog } from '@/components/organizations/UserDeletionDialog'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { useAuth } from '@/contexts/AuthContext'
@@ -13,13 +15,14 @@ import { addMonths, addYears, format } from 'date-fns'
 
 export function MembersTab() {
   const { members, isLoading, updateMember, deactivateMember, createMember, resendInvitation, getMembers } = useMembers()
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const [isInviteSheetOpen, setIsInviteSheetOpen] = useState(false)
   const [editingMember, setEditingMember] = useState(null)
   const [userToDelete, setUserToDelete] = useState(null)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
 
   const { organizationId } = useAuth()
   const { organizations } = useOrganizations()
+  const permissions = usePermissions()
 
   const currentOrg = organizations.find((o) => o.id === organizationId)
   const parentOrgId = currentOrg?.parent_organization_id || organizationId
@@ -59,12 +62,18 @@ export function MembersTab() {
   }
 
   const handleCreateNew = () => {
-    setIsCreateModalOpen(true)
+    // Use new invite sheet for inviting members
+    setIsInviteSheetOpen(true)
   }
 
-  const handleCreateSubmit = async (data) => {
-    await createMember(data)
-    setIsCreateModalOpen(false)
+
+  const handleInviteSubmit = async (data) => {
+    const result = await createMember(data)
+    // Check if the result has inviteUrl property (successful invitation)
+    if (!(result as any)?.inviteUrl) {
+      setIsInviteSheetOpen(false)
+    }
+    return result
   }
 
   const handleEditSubmit = async (data) => {
@@ -137,7 +146,7 @@ export function MembersTab() {
             onDeactivate={handleDeactivate}
             onResendInvitation={handleResendInvitation}
             onDeleteUser={handleDeleteUser}
-            onAddNew={handleCreateNew}
+            onAddNew={permissions.canCreateMembers ? handleCreateNew : undefined}
           />
         </TabsContent>
         <TabsContent value="guests">
@@ -148,16 +157,16 @@ export function MembersTab() {
             onDeactivate={handleDeactivate}
             onResendInvitation={handleResendInvitation}
             onDeleteUser={handleDeleteUser}
-            onAddNew={handleCreateNew}
+            onAddNew={permissions.canCreateMembers ? handleCreateNew : undefined}
           />
         </TabsContent>
       </Tabs>
 
 
-      <MemberForm
-        isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        onSubmit={handleCreateSubmit}
+      <MemberInviteSheet
+        isOpen={isInviteSheetOpen}
+        onClose={() => setIsInviteSheetOpen(false)}
+        onSubmit={handleInviteSubmit}
         isLoading={isLoading}
       />
 

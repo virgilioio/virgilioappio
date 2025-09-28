@@ -89,7 +89,7 @@ export function usePermissions(): PermissionsState {
     canDeleteJobs: isPlatformAdmin || isWorkspaceOwner || isAdmin,
     canArchiveJobs: isPlatformAdmin || isWorkspaceOwner || isAdmin,
     
-    // Member permissions - Only workspace owners and admins can manage members
+    // Member permissions - Only platform admins, workspace owners and admin members can manage members
     canViewMembers: isPlatformAdmin || isWorkspaceOwner || isAdmin,
     canCreateMembers: isPlatformAdmin || isWorkspaceOwner || isAdmin,
     canEditMembers: isPlatformAdmin || isWorkspaceOwner || isAdmin,
