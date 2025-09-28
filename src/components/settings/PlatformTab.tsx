@@ -4,22 +4,7 @@ import { PlatformAssetUploader } from './PlatformAssetUploader'
 import { PlatformSettingsManager } from './PlatformSettingsManager'
 import { PlatformDashboard } from '@/components/dashboard/PlatformDashboard'
 import { JobSettingsManager } from './JobSettingsManager'
-import { SaaSCustomersList } from '@/pages/settings/saas-customers/SaaSCustomersList'
-import { useSearchParams } from 'react-router-dom'
-
 export function PlatformTab() {
-  const [searchParams] = useSearchParams()
-  const currentTab = searchParams.get('tab')
-  
-  // If we're on the saas-customers tab, show that content
-  if (currentTab === 'platform-saas-customers') {
-    return (
-      <div className="space-y-6">
-        <SaaSCustomersList />
-      </div>
-    )
-  }
-
   return (
     <div className="space-y-6">
       <Tabs defaultValue="dashboard" className="w-full">

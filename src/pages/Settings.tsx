@@ -14,6 +14,7 @@ import { JobSettingsManager } from '@/components/settings/JobSettingsManager'
 import { PlatformTab } from '@/components/settings/PlatformTab'
 import { CustomerManagementTab } from '@/pages/settings/customer-management/CustomerManagementTab'
 import { SaaSSubscription } from '@/pages/settings/saas-customers/SaaSSubscription'
+import { SaaSCustomersList } from '@/pages/settings/saas-customers/SaaSCustomersList'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useAuth } from '@/contexts/AuthContext'
 import { AppContainer } from '@/components/layout/AppContainer'
@@ -56,7 +57,7 @@ export default function Settings() {
       case 'platform-job-settings':
         return <JobSettingsManager />
       case 'platform-saas-customers':
-        return <PlatformTab />
+        return <SaaSCustomersList />
       case 'platform-customers':
         return <CustomerManagementTab />
       default:
