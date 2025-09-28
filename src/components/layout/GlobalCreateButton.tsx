@@ -9,14 +9,13 @@ import {
 import { Plus, Briefcase, Users, Building2 } from 'lucide-react'
 import { usePermissions } from '@/hooks/usePermissions'
 import { JobWizard } from '@/components/jobs/JobWizard'
-import CandidateFormSheet from '@/components/candidates/CandidateFormSheet'
+
 import { OrganizationFormSheet } from '@/components/organizations/OrganizationFormSheet'
 import { useOrganizations, type CreateOrganizationData } from '@/hooks/useOrganizations'
 
 export function GlobalCreateButton() {
-  const { canCreateJobs, canCreateCandidates, isPlatformAdmin } = usePermissions()
+  const { canCreateJobs, isPlatformAdmin } = usePermissions()
   const [jobWizardOpen, setJobWizardOpen] = useState(false)
-  const [candidateSheetOpen, setCandidateSheetOpen] = useState(false)
   const [organizationFormOpen, setOrganizationFormOpen] = useState(false)
   const { createOrganization, isLoading } = useOrganizations()
 
@@ -27,9 +26,6 @@ export function GlobalCreateButton() {
         if (e.key === 'j' && canCreateJobs) {
           e.preventDefault()
           setJobWizardOpen(true)
-        } else if (e.key === 'k' && canCreateCandidates) {
-          e.preventDefault()
-          setCandidateSheetOpen(true)
         } else if (e.key === 'o' && isPlatformAdmin) {
           e.preventDefault()
           setOrganizationFormOpen(true)
@@ -39,10 +35,10 @@ export function GlobalCreateButton() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [canCreateJobs, canCreateCandidates, isPlatformAdmin])
+  }, [canCreateJobs, isPlatformAdmin])
 
   // Don't render if user has no create permissions
-  if (!canCreateJobs && !canCreateCandidates && !isPlatformAdmin) {
+  if (!canCreateJobs && !isPlatformAdmin) {
     return null
   }
 
@@ -58,15 +54,6 @@ export function GlobalCreateButton() {
     })
   }
 
-  if (canCreateCandidates) {
-    createOptions.push({
-      label: 'New Candidate',
-      description: 'Add a new candidate',
-      icon: Users,
-      onClick: () => setCandidateSheetOpen(true),
-      shortcut: '⌘K'
-    })
-  }
 
   if (isPlatformAdmin) {
     createOptions.push({
@@ -118,14 +105,6 @@ export function GlobalCreateButton() {
         onClose={() => setJobWizardOpen(false)}
       />
 
-      {/* Candidate Form Sheet */}
-      <CandidateFormSheet
-        isOpen={candidateSheetOpen}
-        onClose={() => setCandidateSheetOpen(false)}
-        onSubmit={async () => {}} // Placeholder - would need proper implementation
-        jobId="" // Placeholder - would need proper job selection
-        isLoading={false}
-      />
 
       {/* Organization Form */}
       {isPlatformAdmin && (

@@ -667,7 +667,7 @@ export function CandidateFormSheet({
                 <CandidateComments 
                   candidateId={candidate.id} 
                   jobId={jobId}
-                  organizationId=""
+                  organizationId={organizationId || ''}
                 />
               </div>
             )}

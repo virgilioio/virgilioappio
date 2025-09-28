@@ -7,8 +7,8 @@ import { Section } from '@/components/layout/Section'
 import { AuthGate } from '@/components/auth/AuthGate'
 import { PermissionGate } from '@/components/auth/PermissionGate'
 import { IndependentCandidateTable } from '@/components/candidates/IndependentCandidateTable'
-import CandidateFormSheet from '@/components/candidates/CandidateFormSheet'
-import { useIndependentCandidates } from '@/hooks/useIndependentCandidates'
+import { CandidateFormSheet } from '@/components/candidates/CandidateFormSheet'
+import { useIndependentCandidates, CreateIndependentCandidateData } from '@/hooks/useIndependentCandidates'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useCandidateSync } from '@/hooks/useCandidateSync'
 
@@ -50,6 +50,20 @@ export default function Candidates() {
   const handleFormClose = () => {
     setIsFormOpen(false)
     setSelectedCandidate(null)
+  }
+
+  const handleSubmit = async (candidateData: CreateIndependentCandidateData) => {
+    try {
+      if (selectedCandidate) {
+        await updateCandidate(selectedCandidate.id, candidateData)
+      } else {
+        await addCandidate(candidateData)
+      }
+      handleFormClose()
+    } catch (error) {
+      // Error is handled in the hook
+      console.error('Error submitting candidate:', error)
+    }
   }
 
   const handleSync = async () => {
@@ -110,9 +124,10 @@ export default function Candidates() {
           <CandidateFormSheet
             isOpen={isFormOpen}
             onClose={handleFormClose}
-            onSubmit={async () => {}} // TODO: Implement proper submission for independent candidates
+            onSubmit={handleSubmit}
+            candidate={selectedCandidate}
             jobId="" // Independent candidates don't have a job ID
-            isLoading={false}
+            isLoading={isLoading}
           />
         </div>
       </PermissionGate>
