@@ -1,0 +1,92 @@
+import { useState } from 'react'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
+import { OrganizationsTable } from '@/components/organizations/OrganizationsTable'
+import { OrganizationFormSheet } from '@/components/organizations/OrganizationFormSheet'
+import { useOrganizations, Organization } from '@/hooks/useOrganizations'
+
+export function OrganizationsTab() {
+  const [isFormOpen, setIsFormOpen] = useState(false)
+  const [selectedOrganization, setSelectedOrganization] = useState<Organization | null>(null)
+  const [deleteOrgId, setDeleteOrgId] = useState<string | null>(null)
+  
+  const {
+    organizations,
+    isLoading,
+    createOrganization,
+    updateOrganization,
+    deleteOrganization
+  } = useOrganizations()
+
+  const handleCreateNew = () => {
+    setSelectedOrganization(null)
+    setIsFormOpen(true)
+  }
+
+  const handleEdit = (organization: Organization) => {
+    setSelectedOrganization(organization)
+    setIsFormOpen(true)
+  }
+
+  const handleDelete = (id: string) => {
+    setDeleteOrgId(id)
+  }
+
+  const handleConfirmDelete = async () => {
+    if (deleteOrgId) {
+      await deleteOrganization(deleteOrgId)
+      setDeleteOrgId(null)
+    }
+  }
+
+  const handleFormSubmit = async (data: any) => {
+    if (selectedOrganization) {
+      await updateOrganization(selectedOrganization.id, data)
+    } else {
+      await createOrganization(data)
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-medium">Organizations</h3>
+        <p className="text-sm text-muted-foreground">
+          Manage organizations and their settings
+        </p>
+      </div>
+
+      <OrganizationsTable
+        organizations={organizations}
+        isLoading={isLoading}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+        onCreateNew={handleCreateNew}
+      />
+
+      <OrganizationFormSheet
+        isOpen={isFormOpen}
+        onClose={() => setIsFormOpen(false)}
+        onSubmit={handleFormSubmit}
+        organization={selectedOrganization}
+        isLoading={isLoading}
+      />
+
+      <AlertDialog open={!!deleteOrgId} onOpenChange={() => setDeleteOrgId(null)}>
+        <AlertDialogContent className="mx-4 max-w-md sm:max-w-lg">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Deactivate Organization</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to deactivate this organization? This will set its status to inactive but won't permanently delete it.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-3">
+            <AlertDialogCancel className="w-full sm:w-auto">Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDelete} className="w-full sm:w-auto">
+              Deactivate
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  )
+}

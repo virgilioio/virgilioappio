@@ -76,7 +76,7 @@ function AppContent() {
           <Route path="candidates" element={<Candidates />} />
           <Route path="candidates/:candidateId" element={<IndependentCandidateProfile />} />
           <Route path="members" element={<Members />} />
-          <Route path="organizations" element={<Organizations />} />
+          <Route path="organizations" element={<Navigate to="/settings?tab=organizations" replace />} />
           
           <Route path="billing" element={<Settings />} />
           <Route path="settings" element={<Settings />} />

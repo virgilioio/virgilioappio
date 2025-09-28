@@ -1,5 +1,5 @@
 
-import { User, Building, Receipt, Users, Shield, Settings as SettingsIcon, Megaphone, FileText, Image, Globe, BarChart3, UserCheck, Briefcase, UsersIcon } from 'lucide-react'
+import { User, Building, Building2, Receipt, Users, Shield, Settings as SettingsIcon, Megaphone, FileText, Image, Globe, BarChart3, UserCheck, Briefcase, UsersIcon } from 'lucide-react'
 import { usePermissions } from '@/hooks/usePermissions'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -40,6 +40,12 @@ export function SettingsSidebar({ currentTab, onTabChange, className }: Settings
       label: 'Organization', 
       icon: Building, 
       show: permissions.canManageOrganization 
+    },
+    { 
+      id: 'organizations', 
+      label: 'Organizations', 
+      icon: Building2, 
+      show: permissions.canViewOrganizations 
     },
     { 
       id: 'billing', 

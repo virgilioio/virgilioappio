@@ -96,12 +96,6 @@ export function Header() {
       show: true,
     },
     {
-      href: '/organizations',
-      icon: Building2,
-      label: 'Organizations',
-      show: canViewOrganizations,
-    },
-    {
       href: '/jobs',
       icon: Briefcase,
       label: 'Jobs',

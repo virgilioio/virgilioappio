@@ -5,6 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { ProfileTab } from '@/components/settings/ProfileTab'
 import { OrganizationTab } from '@/components/settings/OrganizationTab'
+import { OrganizationsTab } from '@/components/settings/OrganizationsTab'
 import { MembersTab } from '@/components/settings/MembersTab'
 import { PlatformSettingsManager } from '@/components/settings/PlatformSettingsManager'
 
@@ -26,7 +27,7 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 export default function Settings() {
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
-  const { canViewBilling, canManageMembers, isPlatformAdmin, isGuest } = usePermissions()
+  const { canViewBilling, canManageMembers, canViewOrganizations, isPlatformAdmin, isGuest } = usePermissions()
   const defaultTab = searchParams.get('tab') || 'profile'
   const [currentTab, setCurrentTab] = useState(defaultTab)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -106,6 +107,12 @@ export default function Settings() {
                 <TabsContent value="organization">
                   <OrganizationTab />
                 </TabsContent>
+                
+                {canViewOrganizations && (
+                  <TabsContent value="organizations">
+                    <OrganizationsTab />
+                  </TabsContent>
+                )}
                 
                 {/* Billing tab removed */}
                 
