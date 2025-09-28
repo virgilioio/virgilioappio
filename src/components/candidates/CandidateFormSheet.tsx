@@ -434,7 +434,7 @@ export function CandidateFormSheet({
 
   return (
     <Sheet open={isOpen} onOpenChange={handleClose}>
-      <SheetContent className="w-[600px] sm:w-[800px] overflow-y-auto">
+      <SheetContent className="sm:max-w-[540px] overflow-y-auto">
         <SheetHeader className="pb-6">
           <SheetTitle className="text-xl font-semibold text-text-primary">
             {candidate ? 'Edit Candidate' : 'Add New Candidate'}
