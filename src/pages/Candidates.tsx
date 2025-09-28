@@ -52,12 +52,16 @@ export default function Candidates() {
     setSelectedCandidate(null)
   }
 
-  const handleSubmit = async (candidateData: CreateIndependentCandidateData) => {
+  const handleSubmit = async (candidateData: CreateIndependentCandidateData & { assignedJobId?: string; assignedStageId?: string }) => {
     try {
       if (selectedCandidate) {
-        await updateCandidate(selectedCandidate.id, candidateData)
+        // For editing, ignore job assignment fields
+        const { assignedJobId, assignedStageId, ...updateData } = candidateData
+        await updateCandidate(selectedCandidate.id, updateData)
       } else {
-        await addCandidate(candidateData)
+        // For new candidates, just create without job assignment (no job context on candidates page)
+        const { assignedJobId, assignedStageId, ...createData } = candidateData
+        await addCandidate(createData)
       }
       handleFormClose()
     } catch (error) {

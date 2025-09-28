@@ -27,13 +27,18 @@ import { markdownToHtml } from '@/utils/markdown'
 import { ParsingAnimation } from '@/components/ui/parsing-animation'
 import { useSkillsGeneration } from '@/hooks/useSkillsGeneration'
 import { EnhancedResumeDropzone, ParsedResumeData } from './EnhancedResumeDropzone'
+import { useJobsForCandidateAssignment } from '@/hooks/useJobsForCandidateAssignment'
+import { useJobHiringPlan } from '@/hooks/useJobHiringPlan'
+import { SearchableSelect } from '@/components/ui/searchable-select'
 
 interface CandidateFormSheetProps {
   isOpen: boolean
   onClose: () => void
   onSubmit: (data: any) => void
   candidate?: Candidate | null
-  jobId: string
+  jobId?: string // Made optional for global candidate creation
+  stageId?: string // Optional pre-selected stage
+  preSelectedJob?: { id: string; title: string; locked: boolean } // For job detail context
   isLoading: boolean
 }
 
@@ -57,7 +62,9 @@ export function CandidateFormSheet({
   onClose, 
   onSubmit, 
   candidate, 
-  jobId, 
+  jobId,
+  stageId,
+  preSelectedJob,
   isLoading 
 }: CandidateFormSheetProps) {
   const [currencyOpen, setCurrencyOpen] = useState(false)
@@ -73,6 +80,16 @@ export function CandidateFormSheet({
   const [dragOver, setDragOver] = useState(false)
   const [isUploadingResume, setIsUploadingResume] = useState(false)
   const isMountedRef = useRef(true)
+  
+  // Job assignment state (only for create mode)
+  const [selectedJobId, setSelectedJobId] = useState<string>('')
+  const [selectedStageId, setSelectedStageId] = useState<string>('')
+  
+  // Hooks for job assignment
+  const { jobs: availableJobs, isLoading: isLoadingJobs } = useJobsForCandidateAssignment()
+  const { loadHiringPlanInstances } = useJobHiringPlan()
+  const [jobStages, setJobStages] = useState<Array<{ jhsId: string; stage: any; position: number }>>([])
+  const [isLoadingStages, setIsLoadingStages] = useState(false)
   
   useEffect(() => {
     return () => { isMountedRef.current = false }
@@ -168,6 +185,58 @@ export function CandidateFormSheet({
     }
   }, [candidate, isOpen, form])
 
+  // Effect for handling pre-selected job and initial state
+  useEffect(() => {
+    if (isOpen && !candidate) {
+      // Reset job assignment state when opening for new candidate
+      if (preSelectedJob) {
+        setSelectedJobId(preSelectedJob.id)
+        // Load stages for pre-selected job
+        loadStagesForJob(preSelectedJob.id)
+        // Pre-select stage if provided
+        if (stageId) {
+          setSelectedStageId(stageId)
+        }
+      } else {
+        setSelectedJobId(jobId || '')
+        setSelectedStageId(stageId || '')
+        if (jobId) {
+          loadStagesForJob(jobId)
+        }
+      }
+    }
+  }, [isOpen, candidate, preSelectedJob, jobId, stageId])
+
+  // Function to load stages for selected job
+  const loadStagesForJob = async (jobIdToLoad: string) => {
+    if (!jobIdToLoad) {
+      setJobStages([])
+      return
+    }
+
+    setIsLoadingStages(true)
+    try {
+      const stages = await loadHiringPlanInstances(jobIdToLoad)
+      setJobStages(stages)
+    } catch (error) {
+      console.error('Error loading stages:', error)
+      setJobStages([])
+    } finally {
+      setIsLoadingStages(false)
+    }
+  }
+
+  // Handle job selection change
+  const handleJobChange = (jobId: string) => {
+    setSelectedJobId(jobId)
+    setSelectedStageId('') // Reset stage when job changes
+    if (jobId) {
+      loadStagesForJob(jobId)
+    } else {
+      setJobStages([])
+    }
+  }
+
   // Effect for handling form reset (when closing dialog for new candidates)
   useEffect(() => {
     if (!isOpen) {
@@ -200,6 +269,11 @@ export function CandidateFormSheet({
         setNotes('')
         setSkills([])
         setNewSkill('')
+        
+        // Reset job assignment state
+        setSelectedJobId('')
+        setSelectedStageId('')
+        setJobStages([])
       }
     }
   }, [isOpen, candidate, form])
@@ -293,7 +367,12 @@ export function CandidateFormSheet({
       profile_summary: sanitizeHtmlForEditor(profileSummary),
       notes: notes,
       skills: skills.length > 0 ? skills : null,
-      job_id: jobId
+      job_id: jobId,
+      // Job assignment data for new candidates
+      ...(!candidate && {
+        assignedJobId: selectedJobId || null,
+        assignedStageId: selectedStageId || null
+      })
     }
 
     const result = await onSubmit(submitData as any)
@@ -471,6 +550,62 @@ export function CandidateFormSheet({
                 />
               </FormField>
             </div>
+
+            {/* Job Assignment - Only show for new candidates */}
+            {!candidate && (
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium text-text-primary border-b border-border pb-2">
+                  Assign to Job (Optional)
+                </h3>
+                
+                <FormField 
+                  label="Job" 
+                  htmlFor="job_assignment"
+                  helpText="Select a job to associate this candidate with"
+                >
+                  <SearchableSelect
+                    options={availableJobs.map(job => ({ value: job.id, label: job.display_label }))}
+                    value={selectedJobId}
+                    onValueChange={handleJobChange}
+                    placeholder={isLoadingJobs ? "Loading jobs..." : "Select a job..."}
+                    searchPlaceholder="Search jobs..."
+                    disabled={isLoadingJobs || (preSelectedJob?.locked ?? false)}
+                  />
+                </FormField>
+
+                {selectedJobId && (
+                  <FormField 
+                    label="Stage" 
+                    htmlFor="stage_assignment"
+                    helpText="Select the hiring stage for this candidate"
+                    required={!!selectedJobId}
+                  >
+                    <Select 
+                      value={selectedStageId} 
+                      onValueChange={setSelectedStageId}
+                      disabled={isLoadingStages}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder={isLoadingStages ? "Loading stages..." : "Select a stage..."} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {jobStages.map((stageOption) => (
+                          <SelectItem key={stageOption.jhsId} value={stageOption.jhsId}>
+                            {stageOption.stage.stage_name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </FormField>
+                )}
+
+                {availableJobs.length === 0 && !isLoadingJobs && (
+                  <div className="text-sm text-text-secondary p-3 bg-background-secondary rounded-md">
+                    No jobs available for assignment. Candidates will be added to the global candidate list.
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Location */}
             <div className="space-y-4">
