@@ -22,19 +22,10 @@ export interface ApplicationField {
   updated_at: string
 }
 
+// Simplified interface since validation_rules and select_options tables don't exist
 export interface ApplicationFieldWithRelations extends ApplicationField {
-  validation_rules: Array<{
-    id: string
-    rule_type: string
-    rule_value: string
-    error_message: string
-  }>
-  select_options: Array<{
-    id: string
-    option_value: string
-    option_label: string
-    display_order: number
-  }>
+  validation_rules: Array<any>
+  select_options: Array<any>
 }
 
 export function useApplicationFields() {
@@ -47,11 +38,7 @@ export function useApplicationFields() {
       setIsLoading(true)
       const { data, error } = await supabase
         .from('application_fields')
-        .select(`
-          *,
-          field_validation_rules(*),
-          field_select_options(*)
-        `)
+        .select('*')
         .eq('is_core_field', false) // Only fetch custom fields
         .order('display_order')
 
@@ -59,8 +46,8 @@ export function useApplicationFields() {
 
       const mapped: ApplicationFieldWithRelations[] = (data || []).map((f: any) => ({
         ...f,
-        validation_rules: f.field_validation_rules || [],
-        select_options: (f.field_select_options || []).sort((a: any, b: any) => a.display_order - b.display_order)
+        validation_rules: [], // Empty since table doesn't exist
+        select_options: [] // Empty since table doesn't exist
       }))
 
       setFields(mapped)
@@ -86,19 +73,6 @@ export function useApplicationFields() {
     // Note: field_validation_rules table removed during compliance cleanup
     // This function is kept for backwards compatibility but does nothing
     console.warn('saveValidationRules: field_validation_rules table no longer exists')
-
-    if (rules.length > 0) {
-      const rows = rules.map((r) => ({
-        application_field_id: fieldId,
-        rule_type: r.type,
-        rule_value: r.value,
-        error_message: r.message,
-      }))
-      const { error: insErr } = await (supabase as any)
-        .from('field_validation_rules')
-        .insert(rows as any)
-      if (insErr) throw insErr
-    }
   }
 
   const createField = async (
