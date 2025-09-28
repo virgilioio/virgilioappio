@@ -3,7 +3,6 @@ import { Card, CardContent } from '@/components/ui/card'
 import { MembersTable } from '@/components/members/MembersTable'
 import { useMembers } from '@/hooks/useMembers'
 import { useState } from 'react'
-import { MemberForm } from '@/components/members/MemberForm'
 import { MemberInviteSheet } from '@/components/members/MemberInviteSheet'
 import { usePermissions } from '@/hooks/usePermissions'
 import { UserDeletionDialog } from '@/components/organizations/UserDeletionDialog'
@@ -171,7 +170,7 @@ export function MembersTab() {
       />
 
       {editingMember && (
-        <MemberForm
+        <MemberInviteSheet
           isOpen={!!editingMember}
           onClose={() => setEditingMember(null)}
           onSubmit={handleEditSubmit}

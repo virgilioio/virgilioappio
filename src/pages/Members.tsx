@@ -4,7 +4,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { AuthGate } from '@/components/auth/AuthGate'
 import { PermissionGate } from '@/components/auth/PermissionGate'
 import { MembersTable } from '@/components/members/MembersTable'
-import { MemberForm } from '@/components/members/MemberForm'
+import { MemberInviteSheet } from '@/components/members/MemberInviteSheet'
 import { UserDeletionDialog } from '@/components/organizations/UserDeletionDialog'
 import { useMembers, Member } from '@/hooks/useMembers'
 import { PageHeader } from '@/components/layout/PageHeader'
@@ -100,7 +100,7 @@ export default function Members() {
               onAddNew={handleCreateNew}
             />
 
-            <MemberForm
+            <MemberInviteSheet
               isOpen={isFormOpen}
               onClose={() => setIsFormOpen(false)}
               onSubmit={handleFormSubmit}

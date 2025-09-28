@@ -18,7 +18,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { useOrganizations } from '@/hooks/useOrganizations'
 import { CandidateComments } from '@/components/candidates/CandidateComments'
-import { CandidateForm } from '@/components/candidates/CandidateForm'
+import CandidateFormSheet from '@/components/candidates/CandidateFormSheet'
 import { cn } from '@/lib/utils'
 import { CandidateAttachments } from '@/components/candidates/CandidateAttachments'
 import { CandidateUrls } from '@/components/candidates/CandidateUrls'
@@ -590,7 +590,7 @@ export default function CandidateProfile() {
 
             {/* Edit Form Modal */}
             {candidate && (
-              <CandidateForm
+              <CandidateFormSheet
                 isOpen={isFormOpen}
                 onClose={() => setIsFormOpen(false)}
                 onSubmit={handleFormSubmit}

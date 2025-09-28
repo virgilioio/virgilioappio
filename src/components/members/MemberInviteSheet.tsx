@@ -28,6 +28,7 @@ interface MemberInviteSheetProps {
   isOpen: boolean
   onClose: () => void
   onSubmit: (data: any) => Promise<any>
+  member?: Member | null
   isLoading: boolean
 }
 
@@ -40,6 +41,7 @@ export function MemberInviteSheet({
   isOpen, 
   onClose, 
   onSubmit, 
+  member,
   isLoading 
 }: MemberInviteSheetProps) {
   const [inviteUrl, setInviteUrl] = useState<string>("")

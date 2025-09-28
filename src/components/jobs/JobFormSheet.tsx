@@ -1,12 +1,10 @@
-
 import { useState, useEffect } from 'react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
-import { SearchableSelect } from '@/components/ui/searchable-select'
 import { Badge } from '@/components/ui/badge'
 import { X } from 'lucide-react'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
@@ -22,7 +20,7 @@ import type { CategorizedSkill } from '@/hooks/useSkillsGeneration'
 import { JobSkillsGenerationPanel } from './JobSkillsGenerationPanel'
 import { getSkillColor } from '@/utils/skillColors'
 
-interface JobFormProps {
+interface JobFormSheetProps {
   isOpen: boolean
   onClose: () => void
   onSubmit: (data: CreateJobData | UpdateJobData) => Promise<void>
@@ -33,8 +31,7 @@ interface JobFormProps {
 type JobLevel = 'L1 - Specialists' | 'L2 - Managers' | 'L3 - Directors / VPs / Executive Search' | 'L4 - C-Level'
 type JobStatus = 'draft' | 'open' | 'closed' | 'archived'
 
-
-export function JobForm({ isOpen, onClose, onSubmit, job, isLoading }: JobFormProps) {
+export function JobFormSheet({ isOpen, onClose, onSubmit, job, isLoading }: JobFormSheetProps) {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -171,15 +168,15 @@ export function JobForm({ isOpen, onClose, onSubmit, job, isLoading }: JobFormPr
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{job ? 'Edit Job' : 'Create New Job'}</DialogTitle>
-        </DialogHeader>
+    <Sheet open={isOpen} onOpenChange={onClose}>
+      <SheetContent className="w-[600px] sm:w-[800px] overflow-y-auto">
+        <SheetHeader>
+          <SheetTitle>{job ? 'Edit Job' : 'Create New Job'}</SheetTitle>
+        </SheetHeader>
         
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="col-span-2">
+        <form onSubmit={handleSubmit} className="space-y-6 mt-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="md:col-span-2">
               <Label htmlFor="title">Job Title *</Label>
               <Input
                 id="title"
@@ -329,7 +326,7 @@ export function JobForm({ isOpen, onClose, onSubmit, job, isLoading }: JobFormPr
               </Select>
             </div>
 
-            <div className="col-span-2">
+            <div className="md:col-span-2">
               <Label htmlFor="description">Job Description</Label>
               <RichTextEditor
                 key={job?.id || 'new-job'}
@@ -342,7 +339,7 @@ export function JobForm({ isOpen, onClose, onSubmit, job, isLoading }: JobFormPr
               />
             </div>
 
-            <div className="col-span-2">
+            <div className="md:col-span-2">
               <Label>Required Skills</Label>
               <div className="mt-2 mb-3">
                 {selectedSkills.length > 0 ? (
@@ -367,7 +364,7 @@ export function JobForm({ isOpen, onClose, onSubmit, job, isLoading }: JobFormPr
               />
             </div>
 
-            <div className="col-span-2">
+            <div className="md:col-span-2">
               <Label>Hiring Team</Label>
               <div className="space-y-3">
                 {/* Selected Members */}
@@ -428,7 +425,7 @@ export function JobForm({ isOpen, onClose, onSubmit, job, isLoading }: JobFormPr
             </div>
           </div>
 
-          <div className="flex justify-end gap-3">
+          <div className="flex justify-end gap-3 pt-6 border-t">
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>
@@ -437,7 +434,7 @@ export function JobForm({ isOpen, onClose, onSubmit, job, isLoading }: JobFormPr
             </Button>
           </div>
         </form>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   )
 }

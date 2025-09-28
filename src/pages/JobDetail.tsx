@@ -12,11 +12,10 @@ import { JobDetailMobileHeader } from '@/components/jobs/JobDetailMobileHeader'
 import { PageHeader } from '@/components/layout/PageHeader'
 
 import { CandidateTable } from '@/components/candidates/CandidateTable'
-import { CandidateForm } from '@/components/candidates/CandidateForm'
 import CandidateFormSheet from '@/components/candidates/CandidateFormSheet'
 import { JobAssignmentsPanel } from '@/components/jobs/JobAssignmentsPanel'
 import { JobSetupPanel } from '@/components/jobs/JobSetupPanel'
-import { JobForm } from '@/components/jobs/JobForm'
+import { JobFormSheet } from '@/components/jobs/JobFormSheet'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -1275,7 +1274,7 @@ export default function JobDetail() {
         </Tabs>
 
         {/* Edit Job Modal */}
-        <JobForm
+        <JobFormSheet
           isOpen={showEditJobModal}
           onClose={() => setShowEditJobModal(false)}
           onSubmit={handleJobFormSubmit}
@@ -1299,7 +1298,7 @@ export default function JobDetail() {
             <DialogHeader>
               <DialogTitle>Edit Candidate</DialogTitle>
             </DialogHeader>
-            <CandidateForm
+            <CandidateFormSheet
               isOpen={!!editingCandidate}
               onClose={() => setEditingCandidate(null)}
               onSubmit={handleUpdateCandidate}

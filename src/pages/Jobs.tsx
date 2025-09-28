@@ -5,7 +5,7 @@ import { AuthGate } from '@/components/auth/AuthGate'
 import { PermissionGate } from '@/components/auth/PermissionGate'
 import { GuestRestriction } from '@/components/auth/GuestRestriction'
 import { JobsTable } from '@/components/jobs/JobsTable'
-import { JobForm } from '@/components/jobs/JobForm'
+import { JobFormSheet } from '@/components/jobs/JobFormSheet'
 import { JobWizard } from '@/components/jobs/JobWizard'
 import { useJobs, Job } from '@/hooks/useJobs'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -94,7 +94,7 @@ export default function Jobs() {
               onClose={() => setIsWizardOpen(false)}
             />
 
-            <JobForm
+            <JobFormSheet
               isOpen={isFormOpen}
               onClose={() => {
                 setIsFormOpen(false)

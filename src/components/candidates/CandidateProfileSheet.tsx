@@ -25,7 +25,7 @@ import { useMyScorecards } from '@/hooks/useScorecards'
 import { useAllStageScorecards } from '@/hooks/useAllStageScorecards'
 import { ExpandableScoreDisplay } from '@/components/candidates/ExpandableScoreDisplay'
 import { generateCandidatePdf } from '@/utils/candidatePdfGenerator'
-import { CandidateForm } from '@/components/candidates/CandidateForm'
+import CandidateFormSheet from '@/components/candidates/CandidateFormSheet'
 import { toast } from '@/hooks/use-toast'
 import CandidateNameCard from '@/components/candidates/CandidateNameCard'
 import { usePipelineActions } from '@/hooks/usePipelineActions'
@@ -762,7 +762,7 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                 </div>
               </Tabs>
             )}
-          <CandidateForm
+          <CandidateFormSheet
             isOpen={editOpen}
             onClose={() => setEditOpen(false)}
             onSubmit={handleUpdateCandidate}

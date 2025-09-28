@@ -1,258 +1,406 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useForm } from 'react-hook-form'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet'
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import { Separator } from '@/components/ui/separator'
+import { FormField } from '@/components/ui/form-field'
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Check, ChevronsUpDown, X, Plus, Sparkles, Loader2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import { X, Plus, Sparkles, Loader2 } from 'lucide-react'
+import { CURRENCIES } from '@/constants/currencies'
+import { cn } from '@/lib/utils'
+import { useAuth } from '@/contexts/AuthContext'
+import { supabase } from '@/integrations/supabase/client'
+import { useFormPersistence } from '@/hooks/useFormPersistence'
+import { CandidateComments } from './CandidateComments'
+import type { Candidate } from '@/hooks/useCandidates'
 import { toast } from '@/hooks/use-toast'
+import { getSkillColor } from '@/utils/skillColors'
+import { SkillsGenerationPanel } from './SkillsGenerationPanel'
+import { useResumeParsing } from '@/hooks/useResumeParsing'
 import { sanitizeHtmlForEditor } from '@/utils/htmlSanitizer'
 import { markdownToHtml } from '@/utils/markdown'
-import { useResumeParsing } from '@/hooks/useResumeParsing'
+import { ParsingAnimation } from '@/components/ui/parsing-animation'
 import { useSkillsGeneration } from '@/hooks/useSkillsGeneration'
-import { useCandidates } from '@/hooks/useCandidates'
-import { useIndependentCandidates } from '@/hooks/useIndependentCandidates'
-import { useJobs } from '@/hooks/useJobs'
-import { useJobHiringPlan } from '@/hooks/useJobHiringPlan'
-import { usePipelineActions } from '@/hooks/usePipelineActions'
-import { supabase } from '@/integrations/supabase/client'
-import { getSkillColor } from '@/utils/skillColors'
 import { EnhancedResumeDropzone, ParsedResumeData } from './EnhancedResumeDropzone'
 
 interface CandidateFormSheetProps {
   isOpen: boolean
   onClose: () => void
-  jobId?: string
+  onSubmit: (data: any) => void
+  candidate?: Candidate | null
+  jobId: string
+  isLoading: boolean
 }
 
-interface FormValues {
+interface FormData {
   candidate_name: string
-  email?: string
-  phone?: string
-  linkedin_url?: string
-  source?: string
-  selectedJobId?: string
-  selectedStageId?: string
+  location_country: string
+  location_state: string
+  location_city: string
+  salary_amount: string
+  salary_currency: string
+  salary_period: string
+  profile_summary: string
+  notes: string
+  linkedin_url: string
+  email: string
+  phone: string
 }
 
-export default function CandidateFormSheet({ isOpen, onClose, jobId }: CandidateFormSheetProps) {
-  const { register, handleSubmit, reset, formState: { errors }, setValue, watch } = useForm<FormValues>({
-    defaultValues: { candidate_name: '', email: '', phone: '', linkedin_url: '', source: 'direct' }
-  })
-
+export function CandidateFormSheet({ 
+  isOpen, 
+  onClose, 
+  onSubmit, 
+  candidate, 
+  jobId, 
+  isLoading 
+}: CandidateFormSheetProps) {
+  const [currencyOpen, setCurrencyOpen] = useState(false)
+  const [profileSummary, setProfileSummary] = useState('')
+  const [profileIsExternalUpdate, setProfileIsExternalUpdate] = useState(false)
+  const [notes, setNotes] = useState('')
   const [skills, setSkills] = useState<string[]>([])
   const [newSkill, setNewSkill] = useState('')
-  const [profileSummary, setProfileSummary] = useState('')
+  const [currentCandidateId, setCurrentCandidateId] = useState<string | null>(null)
+  const { user, organizationId } = useAuth()
   const [pendingFiles, setPendingFiles] = useState<File[]>([])
-  const [isUploading, setIsUploading] = useState(false)
-  const [stageOptions, setStageOptions] = useState<any[]>([])
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [dragOver, setDragOver] = useState(false)
+  const [isUploadingResume, setIsUploadingResume] = useState(false)
+  const isMountedRef = useRef(true)
   
-  const { isParsing, parseResume, parseAndUpdateCandidate } = useResumeParsing()
-  const { generateSkills, isGenerating } = useSkillsGeneration()
-
-  // Hooks for submission depending on context
-  const jobCandidates = useCandidates(jobId || '')
-  const independent = useIndependentCandidates()
-  const { jobs, getJobs } = useJobs()
-  const { loadHiringPlanInstances } = useJobHiringPlan()
-  const { createAssociationAndMove } = usePipelineActions()
-
-  // Watch for job selection changes to load stages
-  const selectedJobId = watch('selectedJobId')
-
-  const resetAll = () => {
-    reset({ candidate_name: '', email: '', phone: '', linkedin_url: '', source: 'direct' })
-    setSkills([])
-    setNewSkill('')
-    setProfileSummary('')
-    setPendingFiles([])
-    setStageOptions([])
-  }
-
   useEffect(() => {
-    if (isOpen && !jobId) {
-      // Load jobs for independent candidate creation
-      getJobs()
-    }
-    if (!isOpen) {
-      resetAll()
-    }
-  }, [isOpen, jobId, getJobs])
+    return () => { isMountedRef.current = false }
+  }, [])
 
-  // Load stages when job is selected
+  const { isParsing, parseResume } = useResumeParsing();
+  const { generateSkills, isGenerating } = useSkillsGeneration();
+
+  const form = useForm<FormData>({
+    defaultValues: {
+      candidate_name: '',
+      location_country: '',
+      location_state: '',
+      location_city: '',
+      salary_amount: '',
+      salary_currency: 'USD',
+      salary_period: 'annually',
+      profile_summary: '',
+      notes: '',
+      linkedin_url: '',
+      email: '',
+      phone: ''
+    }
+  })
+
+  // Setup form persistence - only enable for new candidates (not editing existing ones)
+  const { clearPersistedData } = useFormPersistence({
+    storageKey: `candidate-form-${jobId}`,
+    form,
+    enabled: isOpen && !candidate, // Only persist for new candidates
+    debounceMs: 300
+  })
+
+  // Effect for handling candidate data loading (when editing)
   useEffect(() => {
-    if (selectedJobId && !jobId) {
-      loadHiringPlanInstances(selectedJobId).then(stages => {
-        setStageOptions(stages)
-      }).catch(err => {
-        console.error('Error loading stages:', err)
-        setStageOptions([])
+    if (candidate && isOpen) {
+      // Check if this is a different candidate than the one currently loaded
+      const candidateChanged = currentCandidateId !== candidate.id
+      
+      console.log('CandidateFormSheet - Candidate data loading:', {
+        candidateName: candidate.candidate_name,
+        candidateId: candidate.id,
+        currentCandidateId: currentCandidateId,
+        candidateChanged: candidateChanged,
+        isOpen: isOpen
       })
-    } else {
-      setStageOptions([])
-      setValue('selectedStageId', '')
+      
+      // Always update the form if the candidate changed or if it's the first load
+      if (candidateChanged || currentCandidateId === null) {
+        console.log('CandidateFormSheet - Updating form with candidate data')
+        
+        // Update the current candidate ID tracker
+        setCurrentCandidateId(candidate.id)
+        
+        // Reset form with candidate data when editing
+        const candidateData = {
+          candidate_name: candidate.candidate_name || '',
+          location_country: candidate.location_country || '',
+          location_state: candidate.location_state || '',
+          location_city: candidate.location_city || '',
+          salary_amount: candidate.salary_amount?.toString() || '',
+          salary_currency: candidate.salary_currency || 'USD',
+          salary_period: candidate.salary_period || 'annually',
+          profile_summary: candidate.profile_summary || '',
+          notes: candidate.notes || '',
+          linkedin_url: candidate.linkedin_url || '',
+          email: candidate.email || '',
+          phone: candidate.phone || ''
+        }
+        
+        form.reset(candidateData)
+        
+        // Set the rich text editor values separately with logging
+        const profileSummaryValue = candidate.profile_summary || ''
+        const notesValue = candidate.notes || ''
+        const skillsValue = candidate.skills || []
+        
+        console.log('CandidateFormSheet - Setting rich text values:', {
+          profileSummary: profileSummaryValue,
+          notes: notesValue,
+          skills: skillsValue
+        })
+        
+        const sanitizedProfile = sanitizeHtmlForEditor(markdownToHtml(profileSummaryValue))
+        setProfileSummary(sanitizedProfile)
+        setProfileIsExternalUpdate(true)
+        setNotes(notesValue)
+        setSkills(skillsValue)
+      }
+    } else if (!candidate && isOpen) {
+      // Clear the current candidate ID when creating a new candidate
+      setCurrentCandidateId(null)
     }
-  }, [selectedJobId, jobId, loadHiringPlanInstances, setValue])
+  }, [candidate, isOpen, form])
 
-  const addSkill = () => {
-    const s = newSkill.trim()
-    if (!s) return
-    if (!skills.includes(s)) setSkills((v) => [...v, s])
-    setNewSkill('')
+  // Effect for handling form reset (when closing dialog for new candidates)
+  useEffect(() => {
+    if (!isOpen) {
+      console.log('CandidateFormSheet - Sheet closed, resetting state')
+      
+      // Reset the current candidate ID tracking when dialog closes
+      setCurrentCandidateId(null)
+      
+      // Only reset form when dialog closes for new candidates (not when editing)
+      if (!candidate) {
+        console.log('CandidateFormSheet - Resetting form for new candidate creation')
+        
+        form.reset({
+          candidate_name: '',
+          location_country: '',
+          location_state: '',
+          location_city: '',
+          salary_amount: '',
+          salary_currency: 'USD',
+          salary_period: 'annually',
+          profile_summary: '',
+          notes: '',
+          linkedin_url: '',
+          email: '',
+          phone: ''
+        })
+        
+        // Reset rich text editor values only for new candidates
+        setProfileSummary('')
+        setNotes('')
+        setSkills([])
+        setNewSkill('')
+      }
+    }
+  }, [isOpen, candidate, form])
+
+  const validateLinkedInUrl = (url: string) => {
+    if (!url) return true // Allow empty URLs
+    
+    const linkedinRegex = /^https?:\/\/.*linkedin\.com/
+    return linkedinRegex.test(url) || 'Please enter a valid LinkedIn URL'
   }
-  const removeSkill = (s: string) => setSkills((v) => v.filter((x) => x !== s))
 
+  // Resume upload helpers
+  const handleFileSelect = async (files: FileList | null) => {
+    if (!files || files.length === 0) return
+    const fileArray = Array.from(files)
+
+    // Validate file sizes (15MB max per file)
+    for (const f of fileArray) {
+      if (f.size > 15 * 1024 * 1024) {
+        toast({ title: 'Error', description: 'File size must be less than 15MB', variant: 'destructive' })
+        return
+      }
+    }
+
+    if (candidate?.id) {
+      // Editing existing candidate: upload immediately
+      try {
+        setIsUploadingResume(true)
+        for (const f of fileArray) {
+          await uploadFileForCandidate(candidate.id, f)
+        }
+        toast({ title: 'Resume uploaded', description: 'Attachment added to candidate.' })
+      } catch (e) {
+        // errors already toasted below
+      } finally {
+        setIsUploadingResume(false)
+      }
+    } else {
+      // New candidate: queue files to upload after creation
+      setPendingFiles((prev) => [...prev, ...fileArray])
+
+      // Use enhanced dropzone for parsing when creating new candidates
+      const first = fileArray[0]
+      if (first) {
+        // Enhanced dropzone will handle parsing and skills generation
+      }
+    }
+  }
 
   const removePendingFile = (name: string, size: number) => {
     setPendingFiles((prev) => prev.filter((f) => !(f.name === name && f.size === size)))
   }
 
-  // Upload resume for job candidate (attachments table)
-  const uploadForJobCandidate = async (jobCandidateId: string, file: File) => {
-    const ext = file.name.split('.').pop()
-    const storagePath = `${jobCandidateId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
-    const { error: storageError } = await supabase.storage
-      .from('candidate-attachments')
-      .upload(storagePath, file)
-    if (storageError) throw storageError
+  const uploadFileForCandidate = async (jobCandidateId: string, file: File) => {
+    if (!user) throw new Error('Not authenticated')
+    try {
+      const ext = file.name.split('.').pop()
+      const storagePath = `${jobCandidateId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+      const { error: storageError } = await supabase.storage
+        .from('candidate-attachments')
+        .upload(storagePath, file)
+      if (storageError) throw storageError
 
-    const { error: dbError } = await supabase
-      .from('candidate_attachments')
-      .insert({
-        candidate_id: jobCandidateId,
-        file_name: file.name,
-        file_url: storagePath,
-        file_size_bytes: file.size,
-        file_type: file.type,
-      })
-    if (dbError) {
-      await supabase.storage.from('candidate-attachments').remove([storagePath])
-      throw dbError
+      const { error: dbError } = await supabase
+        .from('candidate_attachments')
+        .insert({
+          candidate_id: jobCandidateId,
+          file_name: file.name,
+          file_url: storagePath,
+          file_size_bytes: file.size,
+          file_type: file.type,
+          uploaded_by: user.id,
+        })
+      if (dbError) {
+        await supabase.storage.from('candidate-attachments').remove([storagePath])
+        throw dbError
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to upload resume'
+      toast({ title: 'Error', description: msg, variant: 'destructive' })
+      throw err
     }
   }
 
-  // Upload resume for independent candidate (store path in candidates.resume_url)
-  const uploadForIndependentCandidate = async (independentId: string, file: File) => {
-    const ext = file.name.split('.').pop()
-    const path = `independent/${independentId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
-    const { error: storageError } = await supabase.storage
-      .from('candidate-attachments')
-      .upload(path, file)
-    if (storageError) throw storageError
+  const handleSubmit = form.handleSubmit(async (data) => {
+    const submitData = {
+      ...data,
+      email: data.email?.trim() ? data.email.trim() : null,
+      phone: data.phone?.trim() ? data.phone.trim() : null,
+      salary_amount: data.salary_amount ? Number(data.salary_amount) : null,
+      profile_summary: sanitizeHtmlForEditor(profileSummary),
+      notes: notes,
+      skills: skills.length > 0 ? skills : null,
+      job_id: jobId
+    }
 
-    const { error: dbError } = await supabase
-      .from('candidates')
-      .update({ resume_url: path })
-      .eq('id', independentId)
-    if (dbError) throw dbError
-    return path
-  }
+    const result = await onSubmit(submitData as any)
 
-  const onSubmit = handleSubmit(async (data) => {
-    try {
-      const sanitizedSummary = profileSummary?.trim() ? sanitizeHtmlForEditor(profileSummary) : null
-      const basePayload = {
-        candidate_name: data.candidate_name,
-        linkedin_url: data.linkedin_url?.trim() || null,
-        profile_summary: sanitizedSummary,
-        skills: skills.length ? skills : null,
-      }
-
-      if (jobId) {
-        // Create as job candidate (this also ensures global candidate record exists)
-        const result = await jobCandidates.addCandidate({
-          ...basePayload,
-          email: data.email?.trim() || null,
-          phone: data.phone?.trim() || null,
-        })
-
-        // Upload any queued files to job candidate attachments
-        if (pendingFiles.length > 0 && (result as any)?.id) {
-          setIsUploading(true)
+    // After create, upload any queued files
+    if (!candidate) {
+      if (pendingFiles.length > 0 && (result as any)?.id) {
+        try {
+          setIsUploadingResume(true)
           for (const f of pendingFiles) {
-            await uploadForJobCandidate((result as any).id, f)
+            await uploadFileForCandidate((result as any).id, f)
           }
-          setIsUploading(false)
           toast({ title: 'Resume uploaded', description: 'Attachment added to candidate.' })
-        }
-      } else {
-        // Create independent candidate
-        const created = await independent.addCandidate({
-          ...basePayload,
-          email: data.email?.trim() || null,
-          phone: data.phone?.trim() || null,
-          source: data.source || 'direct',
-        })
-
-        // Upload queued files and parse to enrich profile
-        if (created?.id && pendingFiles.length > 0) {
-          setIsUploading(true)
-          const first = pendingFiles[0]
-          await uploadForIndependentCandidate(created.id, first)
-          // Parse to update name/email/phone/summary if useful
-          await parseAndUpdateCandidate(first, created.id)
-          setIsUploading(false)
-          toast({ title: 'Resume uploaded', description: 'Resume saved and profile updated.' })
-        }
-
-        // If job and stage are selected, add to pipeline
-        if (created?.id && data.selectedJobId && data.selectedStageId) {
-          await createAssociationAndMove(data.selectedJobId, created.id, data.selectedStageId)
+          setPendingFiles([])
+        } finally {
+          setIsUploadingResume(false)
         }
       }
-
-      // Cleanup and close
-      resetAll()
-      onClose()
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to add candidate'
-      toast({ title: 'Error', description: msg, variant: 'destructive' })
+      // Clear persisted data after successful submission
+      clearPersistedData()
     }
   })
 
-  return (
-    <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent side="right" className="w-full sm:max-w-[640px] h-full p-0">
-        <div className="flex flex-col h-full">
-          <SheetHeader className="px-6 py-4 border-b border-border">
-            <SheetTitle className="text-lg">Add New Candidate</SheetTitle>
-            <SheetDescription>Quickly add a candidate. Resume upload is optional and will be parsed.</SheetDescription>
-          </SheetHeader>
+  const addSkill = () => {
+    if (newSkill.trim() && !skills.includes(newSkill.trim())) {
+      setSkills([...skills, newSkill.trim()])
+      setNewSkill('')
+    }
+  }
 
-          <form onSubmit={onSubmit} className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
+  const removeSkill = (skillToRemove: string) => {
+    setSkills(skills.filter(skill => skill !== skillToRemove))
+  }
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      addSkill()
+    }
+  }
+
+  const handleClose = () => {
+    console.log('CandidateFormSheet - Closing form:', {
+      candidate: candidate?.candidate_name,
+      currentCandidateId: currentCandidateId,
+      isEditing: !!candidate
+    })
+    
+    // Reset the current candidate ID when closing
+    if (candidate) {
+      setCurrentCandidateId(null)
+    }
+    
+    // Don't clear persisted data when closing - let it persist for later use
+    onClose()
+  }
+
+  if (!user) return null
+
+  return (
+    <Sheet open={isOpen} onOpenChange={handleClose}>
+      <SheetContent className="w-[600px] sm:w-[800px] overflow-y-auto">
+        <SheetHeader className="pb-6">
+          <SheetTitle className="text-xl font-semibold text-text-primary">
+            {candidate ? 'Edit Candidate' : 'Add New Candidate'}
+          </SheetTitle>
+        </SheetHeader>
+
+        <div className="space-y-6">
+          {/* Candidate Form */}
+          <form onSubmit={handleSubmit} className="space-y-6">
+
             {/* Resume Upload */}
-            <div className="space-y-3">
-              <h3 className="text-sm font-medium text-text-primary">Resume</h3>
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium text-text-primary border-b border-border pb-2">
+                Resume
+              </h3>
               <EnhancedResumeDropzone
-                onUpload={async (file) => {
-                  setPendingFiles(prev => [...prev, file])
-                }}
+                onUpload={candidate ? uploadFileForCandidate.bind(null, candidate.id) : undefined}
                 onParsed={(parsed: ParsedResumeData) => {
-                  if (parsed.name) setValue('candidate_name', parsed.name)
-                  if (parsed.email) setValue('email', parsed.email)
-                  if (parsed.phone) setValue('phone', parsed.phone)
-                  if (parsed.profileSummary && parsed.profileSummary.trim().length > 0) {
-                    const html = markdownToHtml(parsed.profileSummary)
-                    const sanitized = sanitizeHtmlForEditor(html)
-                    setProfileSummary(sanitized)
+                  // Apply parsed data to form
+                  if (parsed.name) form.setValue('candidate_name', parsed.name)
+                  if (parsed.email) form.setValue('email', parsed.email)
+                  if (parsed.phone) form.setValue('phone', parsed.phone)
+                  if (parsed.profileSummary) {
+                    const html = sanitizeHtmlForEditor(
+                      parsed.profileSummary.includes('<')
+                        ? parsed.profileSummary
+                        : markdownToHtml(parsed.profileSummary)
+                    )
+                    setProfileSummary(html)
+                    setProfileIsExternalUpdate(true)
                   }
                 }}
                 onSkillsGenerated={(newSkills: string[]) => {
                   const uniqueSkills = [...new Set([...skills, ...newSkills])]
                   setSkills(uniqueSkills)
                 }}
-                candidateName={watch('candidate_name')}
+                isUploading={isUploadingResume}
+                candidateId={candidate?.id}
+                candidateName={form.watch('candidate_name')}
                 autoGenerateSkills={true}
-                showUpload={false}
-                parseOnly={true}
-                accept=".pdf,.doc,.docx,.txt,.rtf,.jpg,.jpeg,.png,.gif,.webp"
-                maxSizeMb={15}
+                showUpload={!!candidate} // Only upload for existing candidates
+                parseOnly={!candidate} // For new candidates, just parse
               />
 
-              {pendingFiles.length > 0 && (
+              {!candidate && pendingFiles.length > 0 && (
                 <div className="mt-2 text-left space-y-2">
                   {pendingFiles.map((f) => (
                     <div key={f.name + f.size} className="flex items-center justify-between p-2 border border-border rounded-md">
@@ -266,117 +414,274 @@ export default function CandidateFormSheet({ isOpen, onClose, jobId }: Candidate
               )}
             </div>
 
-            {/* Basic Info */}
+            {/* Basic Information */}
             <div className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="candidate_name">Full Name *</Label>
-                  <Input id="candidate_name" placeholder="John Doe" {...register('candidate_name', { required: 'Name is required' })} />
-                  {errors.candidate_name && <p className="text-sm text-destructive">{errors.candidate_name.message}</p>}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
-                  <Input id="email" type="email" placeholder="john@example.com" {...register('email')} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Phone</Label>
-                  <Input id="phone" placeholder="+1 (555) 123-4567" {...register('phone')} />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="linkedin_url">LinkedIn URL</Label>
-                  <Input id="linkedin_url" placeholder="https://linkedin.com/in/johndoe" {...register('linkedin_url')} />
-                </div>
+              <h3 className="text-lg font-medium text-text-primary border-b border-border pb-2">
+                Basic Information
+              </h3>
+              
+              <FormField 
+                label="Name or Alias" 
+                required 
+                error={form.formState.errors.candidate_name?.message}
+                htmlFor="candidate_name"
+              >
+                <Input
+                  id="candidate_name"
+                  {...form.register('candidate_name', { required: 'Name is required' })}
+                  placeholder="Enter candidate name or alias"
+                />
+              </FormField>
+
+              <FormField 
+                label="Email" 
+                htmlFor="email"
+                helpText="Optional"
+              >
+                <Input
+                  id="email"
+                  type="email"
+                  {...form.register('email')}
+                  placeholder="john@example.com"
+                />
+              </FormField>
+
+              <FormField 
+                label="Phone" 
+                htmlFor="phone"
+                helpText="Optional"
+              >
+                <Input
+                  id="phone"
+                  {...form.register('phone')}
+                  placeholder="+1 (555) 123-4567"
+                />
+              </FormField>
+
+              <FormField 
+                label="LinkedIn Profile URL" 
+                error={form.formState.errors.linkedin_url?.message}
+                htmlFor="linkedin_url"
+                helpText="Optional - Enter the candidate's LinkedIn profile URL"
+              >
+                <Input
+                  id="linkedin_url"
+                  {...form.register('linkedin_url', { validate: validateLinkedInUrl })}
+                  placeholder="https://linkedin.com/in/username"
+                />
+              </FormField>
+            </div>
+
+            {/* Location */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium text-text-primary border-b border-border pb-2">
+                Location
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <FormField label="Country" htmlFor="location_country" helpText="Optional">
+                  <Input
+                    id="location_country"
+                    {...form.register('location_country')}
+                    placeholder="United States"
+                  />
+                </FormField>
+
+                <FormField label="State/Province" htmlFor="location_state" helpText="Optional">
+                  <Input
+                    id="location_state"
+                    {...form.register('location_state')}
+                    placeholder="California"
+                  />
+                </FormField>
+
+                <FormField label="City" htmlFor="location_city" helpText="Optional">
+                  <Input
+                    id="location_city"
+                    {...form.register('location_city')}
+                    placeholder="San Francisco"
+                  />
+                </FormField>
+              </div>
+            </div>
+
+            {/* Salary Expectations */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium text-text-primary border-b border-border pb-2">
+                Salary Expectations
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <FormField label="Amount" htmlFor="salary_amount" helpText="Optional">
+                  <Input
+                    id="salary_amount"
+                    type="number"
+                    {...form.register('salary_amount')}
+                    placeholder="120000"
+                  />
+                </FormField>
+
+                <FormField label="Currency" htmlFor="salary_currency">
+                  <Popover open={currencyOpen} onOpenChange={setCurrencyOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={currencyOpen}
+                        className="w-full justify-between"
+                      >
+                        {form.watch('salary_currency')
+                          ? CURRENCIES.find((currency) => currency.value === form.watch('salary_currency'))?.label
+                          : "Select currency..."}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-full p-0" align="start">
+                      <Command>
+                        <CommandInput placeholder="Search currency..." />
+                        <CommandList>
+                          <CommandEmpty>No currency found.</CommandEmpty>
+                          <CommandGroup>
+                            {CURRENCIES.map((currency) => (
+                              <CommandItem
+                                key={currency.value}
+                                value={currency.value}
+                                onSelect={(currentValue) => {
+                                  form.setValue('salary_currency', currentValue.toUpperCase())
+                                  setCurrencyOpen(false)
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    form.watch('salary_currency') === currency.value ? "opacity-100" : "opacity-0"
+                                  )}
+                                />
+                                {currency.label}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                </FormField>
+
+                <FormField label="Period" htmlFor="salary_period">
+                  <Select value={form.watch('salary_period')} onValueChange={(value) => form.setValue('salary_period', value)}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="hourly">Hourly</SelectItem>
+                      <SelectItem value="daily">Daily</SelectItem>
+                      <SelectItem value="monthly">Monthly</SelectItem>
+                      <SelectItem value="annually">Annually</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </FormField>
               </div>
             </div>
 
             {/* Skills */}
-            <div className="space-y-3">
-              <h3 className="text-sm font-medium text-text-primary">Skills</h3>
-              <div className="flex gap-2">
-                <Input value={newSkill} onChange={(e) => setNewSkill(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addSkill() } }} placeholder="Add a skill (e.g., React)" className="flex-1" />
-                <Button type="button" onClick={addSkill} variant="outline" size="sm"><Plus className="h-4 w-4" /></Button>
-              </div>
-              {skills.length > 0 && (
-                <div className="flex flex-wrap gap-2">
-                  {skills.map((s) => (
-                    <Badge key={s} variant={getSkillColor(s)} className="flex items-center gap-1">
-                      {s}
-                      <button type="button" onClick={() => removeSkill(s)} className="ml-1 rounded-full hover:bg-destructive hover:text-destructive-foreground">
-                        <X className="h-3 w-3" />
-                      </button>
-                    </Badge>
-                  ))}
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium text-text-primary border-b border-border pb-2">
+                Skills
+              </h3>
+              
+              <div className="space-y-3">
+                <div className="flex gap-2">
+                  <Input
+                    value={newSkill}
+                    onChange={(e) => setNewSkill(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    placeholder="Add a skill..."
+                  />
+                  <Button type="button" onClick={addSkill} size="sm">
+                    <Plus className="h-4 w-4" />
+                  </Button>
                 </div>
-              )}
+                
+                {skills.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {skills.map((skill) => (
+                      <Badge key={skill} variant={getSkillColor(skill)} className="flex items-center gap-1">
+                        {skill}
+                        <X className="h-3 w-3 cursor-pointer" onClick={() => removeSkill(skill)} />
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <SkillsGenerationPanel
+                profileSummary={profileSummary}
+                candidateName={form.watch('candidate_name')}
+                existingSkills={skills}
+                onSkillsGenerated={(newSkills) => {
+                  const uniqueSkills = [...new Set([...skills, ...newSkills])]
+                  setSkills(uniqueSkills)
+                }}
+              />
             </div>
 
             {/* Profile Summary */}
-            <div className="space-y-2">
-              <Label htmlFor="profile_summary">Profile Summary</Label>
-              <RichTextEditor value={profileSummary} onChange={setProfileSummary} placeholder="Brief summary of the candidate's background and experience..." minHeight="150px" />
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium text-text-primary border-b border-border pb-2">
+                Profile Summary
+              </h3>
+              <RichTextEditor
+                key={`profile-${candidate?.id || 'new'}`}
+                value={profileSummary}
+                onChange={setProfileSummary}
+                placeholder="Add a brief overview of the candidate's background, experience, and key qualifications..."
+                minHeight="200px"
+                isExternalUpdate={profileIsExternalUpdate}
+                onExternalUpdateProcessed={() => setProfileIsExternalUpdate(false)}
+              />
             </div>
 
-            {/* Job and Stage Selection (independent only) */}
-            {!jobId && (
+            {/* Internal Notes */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium text-text-primary border-b border-border pb-2">
+                Internal Notes
+              </h3>
+              <FormField 
+                label="Private notes about this candidate"
+                htmlFor="notes"
+                helpText="These notes are internal and will not be visible to the candidate"
+              >
+                <textarea
+                  id="notes"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Add internal notes about this candidate..."
+                  className="w-full min-h-[100px] p-3 border border-border rounded-md resize-y"
+                />
+              </FormField>
+            </div>
+
+            {/* Comments for existing candidates */}
+            {candidate && (
               <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="selectedJobId">Add to Job Pipeline (Optional)</Label>
-                  <Select onValueChange={(value) => setValue('selectedJobId', value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a job to add candidate to" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {jobs.map((job) => (
-                        <SelectItem key={job.id} value={job.id}>
-                          {job.title} - {job.organization_name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {selectedJobId && (
-                  <div className="space-y-2">
-                    <Label htmlFor="selectedStageId">Stage</Label>
-                    <Select onValueChange={(value) => setValue('selectedStageId', value)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a stage" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {stageOptions.map((stage) => (
-                          <SelectItem key={stage.jhsId} value={stage.jhsId}>
-                            {stage.stage.stage_name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
-                <div className="space-y-2">
-                  <Label htmlFor="source">Source</Label>
-                  <Select defaultValue="direct" onValueChange={(v) => setValue('source', v)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select source" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="direct">Direct</SelectItem>
-                      <SelectItem value="referral">Referral</SelectItem>
-                      <SelectItem value="agency">Agency</SelectItem>
-                      <SelectItem value="job_import">Job Import</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                <h3 className="text-lg font-medium text-text-primary border-b border-border pb-2">
+                  Comments
+                </h3>
+                <CandidateComments candidateId={candidate.id} />
               </div>
             )}
-          </form>
 
-          <div className="px-6 py-4 border-t border-border flex items-center justify-end gap-2">
-            <Button variant="ghost" type="button" onClick={() => { resetAll(); onClose(); }}>Cancel</Button>
-            <Button type="submit" onClick={() => { const form = document.querySelector('form'); (form as HTMLFormElement | null)?.requestSubmit?.() }}>Save Candidate</Button>
-          </div>
+            <div className="flex justify-end gap-3 pt-6 border-t">
+              <Button type="button" variant="outline" onClick={handleClose}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isLoading}>
+                {isLoading ? 'Saving...' : (candidate ? 'Update Candidate' : 'Add Candidate')}
+              </Button>
+            </div>
+          </form>
         </div>
       </SheetContent>
     </Sheet>
   )
 }
+
+export default CandidateFormSheet
