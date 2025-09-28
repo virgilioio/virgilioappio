@@ -2563,6 +2563,8 @@ export type Database = {
         | "admin"
         | "platform_admin"
         | "client"
+        | "hiring_manager"
+        | "interviewer"
       org_kind_enum: "tenant" | "client" | "department"
       payment_frequency_enum: "bi_monthly" | "monthly" | "custom"
       payment_period_enum:
@@ -2788,6 +2790,8 @@ export const Constants = {
         "admin",
         "platform_admin",
         "client",
+        "hiring_manager",
+        "interviewer",
       ],
       org_kind_enum: ["tenant", "client", "department"],
       payment_frequency_enum: ["bi_monthly", "monthly", "custom"],
