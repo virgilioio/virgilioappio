@@ -1499,6 +1499,7 @@ export type Database = {
       }
       organizations: {
         Row: {
+          billing_id: string | null
           billing_poc_additional_email: string | null
           billing_poc_phone: string | null
           billing_poc_updated_at: string | null
@@ -1512,6 +1513,8 @@ export type Database = {
           owner_assigned_at: string | null
           owner_id: string | null
           parent_organization_id: string | null
+          plan_type: string | null
+          renewal_date: string | null
           signup_source: string
           status: string
           tenant_id: string | null
@@ -1519,6 +1522,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          billing_id?: string | null
           billing_poc_additional_email?: string | null
           billing_poc_phone?: string | null
           billing_poc_updated_at?: string | null
@@ -1532,6 +1536,8 @@ export type Database = {
           owner_assigned_at?: string | null
           owner_id?: string | null
           parent_organization_id?: string | null
+          plan_type?: string | null
+          renewal_date?: string | null
           signup_source?: string
           status?: string
           tenant_id?: string | null
@@ -1539,6 +1545,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          billing_id?: string | null
           billing_poc_additional_email?: string | null
           billing_poc_phone?: string | null
           billing_poc_updated_at?: string | null
@@ -1552,6 +1559,8 @@ export type Database = {
           owner_assigned_at?: string | null
           owner_id?: string | null
           parent_organization_id?: string | null
+          plan_type?: string | null
+          renewal_date?: string | null
           signup_source?: string
           status?: string
           tenant_id?: string | null

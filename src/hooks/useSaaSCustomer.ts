@@ -1,40 +1,44 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/integrations/supabase/client'
 
-export interface SaaSCustomer {
+export interface SaaSCustomerDetail {
   id: string
   name: string
+  plan_type: string | null
   status: string
-  created_at: string
-  updated_at: string
+  renewal_date: string | null
+  billing_id: string | null
+  owner_id: string | null
   organization_type: string
   tenant_type: string
-  user_count: number
-  billing_poc_email?: string
-  sub_organizations: SubOrganization[]
-}
-
-export interface SubOrganization {
-  id: string
-  name: string
-  status: string
+  signup_source: string
   created_at: string
-  user_count: number
+  updated_at: string
+  jobs_created_30d: number
+  candidates_added_30d: number
+  members_active_count: number
+  last_active_at: string | null
+  owner_details?: {
+    first_name: string | null
+    last_name: string | null
+    email: string | null
+  }
 }
 
 export function useSaaSCustomer(customerId: string) {
   return useQuery({
     queryKey: ['saas-customer', customerId],
-    queryFn: async (): Promise<SaaSCustomer | null> => {
+    queryFn: async (): Promise<SaaSCustomerDetail | null> => {
       if (!customerId) return null
 
-      // Get the main SaaS organization
+      // Get the SaaS organization
       const { data: organization, error } = await supabase
         .from('organizations')
         .select('*')
         .eq('id', customerId)
         .eq('tenant_type', 'saas')
         .eq('organization_type', 'client')
+        .eq('signup_source', 'self_serve')
         .single()
 
       if (error || !organization) {
@@ -42,52 +46,59 @@ export function useSaaSCustomer(customerId: string) {
         return null
       }
 
-      // Get user count for main organization
-      const { count: userCount } = await supabase
-        .from('members')
-        .select('*', { count: 'exact', head: true })
-        .eq('organization_id', organization.id)
-        .eq('user_status', 'active')
+      // Get usage data
+      const [
+        { count: jobsCount },
+        { count: candidatesCount },
+        { count: membersCount },
+        lastActivityQuery
+      ] = await Promise.all([
+        supabase
+          .from('jobs')
+          .select('*', { count: 'exact', head: true })
+          .eq('organization_id', organization.id)
+          .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()),
+        
+        supabase
+          .from('job_candidates')
+          .select('*', { count: 'exact', head: true })
+          .eq('job_id', organization.id)
+          .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()),
+        
+        supabase
+          .from('members')
+          .select('*', { count: 'exact', head: true })
+          .eq('organization_id', organization.id)
+          .eq('user_status', 'active'),
+        
+        supabase
+          .from('members')
+          .select('updated_at')
+          .eq('organization_id', organization.id)
+          .order('updated_at', { ascending: false })
+          .limit(1)
+          .maybeSingle()
+      ])
 
-      // Billing POC functionality removed
-      let billingPocEmail = null
-
-      // Get sub-organizations (departments)
-      const { data: subOrgs } = await supabase
-        .from('organizations')
-        .select('id, name, status, created_at')
-        .eq('parent_organization_id', organization.id)
-        .order('created_at', { ascending: false })
-
-      // Get user counts for each sub-organization
-      const subOrganizations = await Promise.all(
-        (subOrgs || []).map(async (subOrg) => {
-          try {
-            const { count: subUserCount } = await supabase
-              .from('members')
-              .select('*', { count: 'exact', head: true })
-              .eq('organization_id', subOrg.id)
-              .eq('user_status', 'active')
-
-            return {
-              ...subOrg,
-              user_count: subUserCount || 0
-            }
-          } catch (error) {
-            console.error('Error fetching sub-org data:', subOrg.id, error)
-            return {
-              ...subOrg,
-              user_count: 0
-            }
-          }
-        })
-      )
+      // Get owner details if owner_id exists
+      let ownerDetails = null
+      if (organization.owner_id) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('first_name, last_name, email')
+          .eq('user_id', organization.owner_id)
+          .maybeSingle()
+        
+        ownerDetails = profile
+      }
 
       return {
         ...organization,
-        user_count: userCount || 0,
-        billing_poc_email: billingPocEmail,
-        sub_organizations: subOrganizations
+        jobs_created_30d: jobsCount || 0,
+        candidates_added_30d: candidatesCount || 0,
+        members_active_count: membersCount || 0,
+        last_active_at: lastActivityQuery.data?.updated_at || null,
+        owner_details: ownerDetails
       }
     },
     enabled: !!customerId,

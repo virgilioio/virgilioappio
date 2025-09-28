@@ -1,10 +1,14 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Users, Building, DollarSign, Activity } from 'lucide-react'
-import { SaaSTenantsList } from './SaaSTenantsList'
-import { useSaaSMetrics } from '@/hooks/useSaaSMetrics'
 
 export function CustomerManagementTab() {
-  const { data: metrics, isLoading } = useSaaSMetrics()
+  const isLoading = false
+  const metrics = {
+    totalCustomers: 0,
+    activeTenants: 0,
+    monthlyRevenue: 0,
+    totalActiveUsers: 0
+  }
 
   return (
     <div className="space-y-6">
@@ -70,7 +74,19 @@ export function CustomerManagementTab() {
         </Card>
       </div>
       
-      <SaaSTenantsList />
+      <Card>
+        <CardHeader>
+          <CardTitle>Legacy Customer Management</CardTitle>
+          <CardDescription>
+            This is the legacy customer management interface. Please use the new SaaS Customers tab in Platform settings.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">
+            Legacy customer management features have been moved to the new SaaS customer management system.
+          </p>
+        </CardContent>
+      </Card>
     </div>
   )
 }

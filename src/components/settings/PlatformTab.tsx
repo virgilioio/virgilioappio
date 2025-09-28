@@ -1,23 +1,21 @@
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { PlatformAssetUploader } from './PlatformAssetUploader'
-
 import { PlatformSettingsManager } from './PlatformSettingsManager'
-
-
 import { PlatformDashboard } from '@/components/dashboard/PlatformDashboard'
-
 import { JobSettingsManager } from './JobSettingsManager'
+import { SaaSCustomersList } from '@/pages/settings/saas-customers/SaaSCustomersList'
 
 export function PlatformTab() {
   return (
     <div className="space-y-6">
       <Tabs defaultValue="dashboard" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
           <TabsTrigger value="assets">Assets</TabsTrigger>
           <TabsTrigger value="job-settings">Job Settings</TabsTrigger>
+          <TabsTrigger value="saas-customers">SaaS Customers</TabsTrigger>
         </TabsList>
         
         <TabsContent value="dashboard" className="space-y-6">
@@ -37,6 +35,10 @@ export function PlatformTab() {
         
         <TabsContent value="job-settings" className="space-y-6">
           <JobSettingsManager />
+        </TabsContent>
+        
+        <TabsContent value="saas-customers" className="space-y-6">
+          <SaaSCustomersList />
         </TabsContent>
       </Tabs>
     </div>

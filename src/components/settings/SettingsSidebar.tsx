@@ -1,6 +1,7 @@
 
-import { User, Building, Building2, Receipt, Users, Shield, Settings as SettingsIcon, Megaphone, FileText, Image, Globe, BarChart3, UserCheck, Briefcase, UsersIcon } from 'lucide-react'
+import { User, Building, Building2, Receipt, Users, Shield, Settings as SettingsIcon, Megaphone, FileText, Image, Globe, BarChart3, UserCheck, Briefcase, UsersIcon, CreditCard } from 'lucide-react'
 import { usePermissions } from '@/hooks/usePermissions'
+import { useAuth } from '@/contexts/AuthContext'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -24,9 +25,14 @@ interface SettingsSidebarProps {
 
 export function SettingsSidebar({ currentTab, onTabChange, className }: SettingsSidebarProps) {
   const permissions = usePermissions()
+  const { organizationId, userType } = useAuth()
   const [platformOpen, setPlatformOpen] = useState(
     ['platform-dashboard', 'platform-settings', 'platform-templates', 'platform-job-settings', 'platform-customers'].includes(currentTab)
   )
+
+  const isWorkspaceOwnerOfSaaSOrg = () => {
+    return userType === 'workspace_owner' && organizationId
+  }
 
   const navItems: SettingsNavItem[] = [
     { 
@@ -72,7 +78,20 @@ export function SettingsSidebar({ currentTab, onTabChange, className }: Settings
         { id: 'platform-customers', label: 'Customer Management (SaaS)', icon: UsersIcon, show: permissions.canAccessCustomerManagement },
       ]
     },
-  ].filter(item => item.show)
+  ]
+
+  // Add subscription item conditionally
+  if (isWorkspaceOwnerOfSaaSOrg()) {
+    navItems.push({ 
+      id: 'subscription', 
+      label: 'Subscription', 
+      icon: CreditCard, 
+      show: true
+    })
+  }
+
+  const filteredNavItems = navItems.filter(item => item.show)
+  
 
   const handlePlatformToggle = () => {
     setPlatformOpen(!platformOpen)
@@ -93,7 +112,7 @@ export function SettingsSidebar({ currentTab, onTabChange, className }: Settings
     <Card className={cn("w-64 h-fit", className)}>
       <CardContent className="p-4">
         <div className="space-y-1">
-          {navItems.map((item) => {
+          {filteredNavItems.map((item) => {
             const Icon = item.icon
             
             if (item.submenu) {

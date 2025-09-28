@@ -8,16 +8,14 @@ import { OrganizationTab } from '@/components/settings/OrganizationTab'
 import { OrganizationsTab } from '@/components/settings/OrganizationsTab'
 import { MembersTab } from '@/components/settings/MembersTab'
 import { PlatformSettingsManager } from '@/components/settings/PlatformSettingsManager'
-
-
 import { PlatformAssetUploader } from '@/components/settings/PlatformAssetUploader'
-
 import { OfferTemplatesManager } from '@/components/settings/OfferTemplatesManager'
 import { JobSettingsManager } from '@/components/settings/JobSettingsManager'
-
 import { PlatformTab } from '@/components/settings/PlatformTab'
 import { CustomerManagementTab } from '@/pages/settings/customer-management/CustomerManagementTab'
+import { SaaSSubscription } from '@/pages/settings/saas-customers/SaaSSubscription'
 import { usePermissions } from '@/hooks/usePermissions'
+import { useAuth } from '@/contexts/AuthContext'
 import { AppContainer } from '@/components/layout/AppContainer'
 import { Section } from '@/components/layout/Section'
 import { SettingsSidebar } from '@/components/settings/SettingsSidebar'
@@ -28,6 +26,7 @@ export default function Settings() {
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
   const { canViewBilling, canManageMembers, canViewOrganizations, isPlatformAdmin, isGuest } = usePermissions()
+  const { organizationId, userType } = useAuth()
   const defaultTab = searchParams.get('tab') || 'profile'
   const [currentTab, setCurrentTab] = useState(defaultTab)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -61,6 +60,10 @@ export default function Settings() {
       default:
         return <PlatformTab />
     }
+  }
+
+  const isWorkspaceOwnerOfSaaSOrg = () => {
+    return userType === 'workspace_owner' && organizationId
   }
 
   // Guest users should not have access to billing tab
@@ -140,6 +143,12 @@ export default function Settings() {
                       {renderPlatformContent()}
                     </TabsContent>
                   </>
+                )}
+
+                {isWorkspaceOwnerOfSaaSOrg() && (
+                  <TabsContent value="subscription">
+                    <SaaSSubscription />
+                  </TabsContent>
                 )}
               </div>
             </div>

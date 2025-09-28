@@ -1,23 +1,24 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { PlatformAdminAndFlagGuard } from '@/components/auth/PlatformAdminAndFlagGuard'
 import { FeatureDisabled } from '@/components/settings/FeatureDisabled'
-import { CustomerManagementTab } from './CustomerManagementTab'
+import { SaaSCustomersList } from './SaaSCustomersList'
+import { SaaSCustomerDetail } from './SaaSCustomerDetail'
 
-export function CustomerManagementRouter() {
+export function SaaSCustomersRouter() {
   return (
     <PlatformAdminAndFlagGuard
-      flagName="self_serve_admin_enabled"
+      flagName="saas_customers_enabled"
       fallback={
         <FeatureDisabled 
-          title="Customer Management Unavailable"
+          title="SaaS Customer Management Unavailable"
           description="This feature requires platform admin access and must be enabled by system administrators."
         />
       }
     >
       <Routes>
-        <Route path="/" element={<CustomerManagementTab />} />
-        <Route path="/customers" element={<CustomerManagementTab />} />
-        <Route path="*" element={<Navigate to="/settings?tab=platform-customers" replace />} />
+        <Route path="/" element={<SaaSCustomersList />} />
+        <Route path="/:id" element={<SaaSCustomerDetail />} />
+        <Route path="*" element={<Navigate to="/settings?tab=platform" replace />} />
       </Routes>
     </PlatformAdminAndFlagGuard>
   )

@@ -9,12 +9,10 @@ import { AuthProvider } from './contexts/AuthContext'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Layout } from './components/layout/Layout'
 import Dashboard from './pages/Dashboard'
-
 import Jobs from './pages/Jobs'
 import JobDetail from './pages/JobDetail'
 import Members from './pages/Members'
 import Organizations from './pages/Organizations'
-
 import Candidates from './pages/Candidates'
 import Settings from './pages/Settings'
 import Login from './pages/Login'
@@ -35,6 +33,7 @@ import Onboarding from './pages/Onboarding'
 import Privacy from './pages/Privacy'
 import Terms from './pages/Terms'
 import AuthCallback from './pages/AuthCallback'
+import { SaaSCustomerDetail } from './pages/settings/saas-customers/SaaSCustomerDetail'
 const queryClient = new QueryClient()
 
 function AppContent() {
@@ -80,6 +79,7 @@ function AppContent() {
           
           <Route path="billing" element={<Settings />} />
           <Route path="settings" element={<Settings />} />
+          <Route path="settings/platform/saas-customers/:id" element={<SaaSCustomerDetail />} />
           <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>
