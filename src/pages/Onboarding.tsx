@@ -12,9 +12,7 @@ import { VerifyEmailPending } from '@/components/VerifyEmailPending'
 import { useAuth } from '@/contexts/AuthContext'
 
 export default function Onboarding() {
-  const [companyName, setCompanyName] = useState('')
   const [workspaceName, setWorkspaceName] = useState('')
-  const [countryCode, setCountryCode] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [emailVerified, setEmailVerified] = useState<boolean | null>(null)
   const [userEmail, setUserEmail] = useState('')
@@ -43,14 +41,14 @@ export default function Onboarding() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!companyName.trim()) {
-      toast({ title: 'Company name is required', variant: 'destructive' })
+    if (!workspaceName.trim()) {
+      toast({ title: 'Workspace name is required', variant: 'destructive' })
       return
     }
     setIsSubmitting(true)
     try {
       const { data, error } = await supabase.functions.invoke('provision-tenant', {
-        body: { companyName, workspaceName: workspaceName || companyName },
+        body: { workspaceName },
       })
       if (error) {
         // Handle email verification error specifically
@@ -124,14 +122,17 @@ export default function Onboarding() {
               />
             ) : (
               <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="companyName">Company name</Label>
-                <Input id="companyName" value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Acme Inc." required />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="workspaceName">Workspace name (optional)</Label>
-                <Input id="workspaceName" value={workspaceName} onChange={(e) => setWorkspaceName(e.target.value)} placeholder="Acme Workspace" />
-              </div>
+                <div className="space-y-2">
+                  <Label htmlFor="workspaceName">Workspace name</Label>
+                  <Input 
+                    id="workspaceName" 
+                    value={workspaceName} 
+                    onChange={(e) => setWorkspaceName(e.target.value)} 
+                    placeholder="Acme Inc." 
+                    required 
+                  />
+                  <p className="text-sm text-muted-foreground">Enter your company or organization name</p>
+                </div>
                 <Button 
                   type="submit" 
                   size="lg" 

@@ -9,9 +9,7 @@ const corsHeaders = {
 const log = (msg: string, details?: unknown) => console.log(`[provision-tenant] ${msg}`, details ?? "");
 
 interface ProvisionBody {
-  companyName: string;
-  countryCode?: string;
-  workspaceName?: string;
+  workspaceName: string;
   trialDays?: number;
 }
 
@@ -50,12 +48,9 @@ serve(async (req) => {
   }
 
     const body = (await req.json().catch(() => ({}))) as ProvisionBody;
-    const companyName = (body.companyName || "").trim();
-    const workspaceName = (body.workspaceName || companyName).trim();
-    const countryCode = (body.countryCode || "").trim();
+    const workspaceName = (body.workspaceName || "").trim();
     const trialDays = typeof body.trialDays === "number" && body.trialDays > 0 ? body.trialDays : 30;
-    if (!companyName) throw new Error("companyName is required");
-    if (!countryCode) throw new Error("countryCode is required");
+    if (!workspaceName) throw new Error("workspaceName is required");
 
     // Idempotency: if user already has an active membership, return early
     const { data: existingMember } = await supabase
@@ -82,10 +77,9 @@ serve(async (req) => {
     const { data: tenantOrg, error: tenantErr } = await supabase
       .from("organizations")
       .insert({ 
-        name: companyName, 
+        name: workspaceName, 
         org_kind: "tenant", 
         status: "active", 
-        country: countryCode,
         signup_source: "self_serve",
         tenant_type: "saas",
         organization_type: "client"
@@ -104,7 +98,6 @@ serve(async (req) => {
         org_kind: "client", 
         parent_organization_id: tenantId, 
         status: "active", 
-        country: countryCode, 
         owner_id: user.id,
         signup_source: "self_serve",
         tenant_type: "saas",
