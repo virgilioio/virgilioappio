@@ -2264,99 +2264,6 @@ export type Database = {
         }
         Relationships: []
       }
-      worker_compliance_field_options: {
-        Row: {
-          created_at: string
-          display_order: number
-          id: string
-          option_label: string
-          option_value: string
-          worker_compliance_field_id: string
-        }
-        Insert: {
-          created_at?: string
-          display_order?: number
-          id?: string
-          option_label: string
-          option_value: string
-          worker_compliance_field_id: string
-        }
-        Update: {
-          created_at?: string
-          display_order?: number
-          id?: string
-          option_label?: string
-          option_value?: string
-          worker_compliance_field_id?: string
-        }
-        Relationships: []
-      }
-      worker_compliance_field_validation_rules: {
-        Row: {
-          created_at: string
-          error_message: string
-          id: string
-          rule_type: string
-          rule_value: string
-          worker_compliance_field_id: string
-        }
-        Insert: {
-          created_at?: string
-          error_message: string
-          id?: string
-          rule_type: string
-          rule_value: string
-          worker_compliance_field_id: string
-        }
-        Update: {
-          created_at?: string
-          error_message?: string
-          id?: string
-          rule_type?: string
-          rule_value?: string
-          worker_compliance_field_id?: string
-        }
-        Relationships: []
-      }
-      worker_custom_data: {
-        Row: {
-          country_field_id: string
-          created_at: string
-          field_value: string | null
-          file_name: string | null
-          file_size_bytes: number | null
-          file_url: string | null
-          id: string
-          updated_at: string
-          uploaded_by: string | null
-          worker_id: string
-        }
-        Insert: {
-          country_field_id: string
-          created_at?: string
-          field_value?: string | null
-          file_name?: string | null
-          file_size_bytes?: number | null
-          file_url?: string | null
-          id?: string
-          updated_at?: string
-          uploaded_by?: string | null
-          worker_id: string
-        }
-        Update: {
-          country_field_id?: string
-          created_at?: string
-          field_value?: string | null
-          file_name?: string | null
-          file_size_bytes?: number | null
-          file_url?: string | null
-          id?: string
-          updated_at?: string
-          uploaded_by?: string | null
-          worker_id?: string
-        }
-        Relationships: []
-      }
     }
     Views: {
       [_ in never]: never
@@ -2687,17 +2594,6 @@ export type Database = {
         | "onboarding"
         | "custom"
       user_type_enum: "platform_admin" | "workspace_owner" | "member" | "guest"
-      worker_entity_type_enum:
-        | "business_entity"
-        | "individual"
-        | "not_specified"
-      worker_status_enum:
-        | "active"
-        | "inactive"
-        | "on_leave"
-        | "terminated"
-        | "pending"
-      worker_type_enum: "employee" | "contractor"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2927,19 +2823,6 @@ export const Constants = {
         "custom",
       ],
       user_type_enum: ["platform_admin", "workspace_owner", "member", "guest"],
-      worker_entity_type_enum: [
-        "business_entity",
-        "individual",
-        "not_specified",
-      ],
-      worker_status_enum: [
-        "active",
-        "inactive",
-        "on_leave",
-        "terminated",
-        "pending",
-      ],
-      worker_type_enum: ["employee", "contractor"],
     },
   },
 } as const
