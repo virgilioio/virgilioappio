@@ -2555,16 +2555,7 @@ export type Database = {
         | "L3 - Directors / VPs / Executive Search"
         | "L4 - C-Level"
       job_status: "draft" | "open" | "closed" | "archived"
-      member_role:
-        | "recruiter"
-        | "customer_success"
-        | "billing"
-        | "sales"
-        | "admin"
-        | "platform_admin"
-        | "client"
-        | "hiring_manager"
-        | "interviewer"
+      member_role: "admin" | "recruiter" | "hiring_manager" | "interviewer"
       org_kind_enum: "tenant" | "client" | "department"
       payment_frequency_enum: "bi_monthly" | "monthly" | "custom"
       payment_period_enum:
@@ -2782,17 +2773,7 @@ export const Constants = {
         "L4 - C-Level",
       ],
       job_status: ["draft", "open", "closed", "archived"],
-      member_role: [
-        "recruiter",
-        "customer_success",
-        "billing",
-        "sales",
-        "admin",
-        "platform_admin",
-        "client",
-        "hiring_manager",
-        "interviewer",
-      ],
+      member_role: ["admin", "recruiter", "hiring_manager", "interviewer"],
       org_kind_enum: ["tenant", "client", "department"],
       payment_frequency_enum: ["bi_monthly", "monthly", "custom"],
       payment_period_enum: [

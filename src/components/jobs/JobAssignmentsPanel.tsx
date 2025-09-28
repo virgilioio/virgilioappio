@@ -22,8 +22,8 @@ export function JobAssignmentsPanel({ jobId, jobTitle }: JobAssignmentsPanelProp
   const { organizations } = useOrganizations()
   const permissions = usePermissions()
 
-  // Security check - only platform admins and customer success can access
-  if (!permissions.isPlatformAdmin && !['admin', 'customer_success'].includes(permissions.isClient ? '' : 'admin')) {
+  // Security check - only users who can manage job assignments can access
+  if (!permissions.canManageJobAssignments) {
     return (
       <div className="p-6 text-center">
         <p className="text-text-secondary">You don't have permission to manage job assignments.</p>

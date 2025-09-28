@@ -109,7 +109,7 @@ export function DebugPanel() {
                     <div>Admin: <Badge variant={permissions.isPlatformAdmin ? "default" : "secondary"} className="text-xs h-4">{permissions.isPlatformAdmin ? 'Yes' : 'No'}</Badge></div>
                     <div>Owner: <Badge variant={permissions.isWorkspaceOwner ? "default" : "secondary"} className="text-xs h-4">{permissions.isWorkspaceOwner ? 'Yes' : 'No'}</Badge></div>
                     <div>Member: <Badge variant={permissions.isMember ? "default" : "secondary"} className="text-xs h-4">{permissions.isMember ? 'Yes' : 'No'}</Badge></div>
-                    <div>Client: <Badge variant={permissions.isClient ? "default" : "secondary"} className="text-xs h-4">{permissions.isClient ? 'Yes' : 'No'}</Badge></div>
+                    <div>Admin: <Badge variant={permissions.isAdmin ? "default" : "secondary"} className="text-xs h-4">{permissions.isAdmin ? 'Yes' : 'No'}</Badge></div>
                   </div>
                 </div>
                 <div>

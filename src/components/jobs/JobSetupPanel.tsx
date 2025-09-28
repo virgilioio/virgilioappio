@@ -15,7 +15,7 @@ interface JobSetupPanelProps {
 }
 
 export function JobSetupPanel({ jobId, jobTitle, job, onEdit }: JobSetupPanelProps) {
-  const { isClient } = usePermissions()
+  const { isHiringManager, isInterviewer } = usePermissions()
   return (
     <Card>
       <CardHeader>
@@ -45,11 +45,11 @@ export function JobSetupPanel({ jobId, jobTitle, job, onEdit }: JobSetupPanelPro
           </TabsContent>
           
           <TabsContent value="hiring-plan" className="mt-6">
-            <HiringPlanTab jobId={jobId} readOnly={isClient} />
+            <HiringPlanTab jobId={jobId} readOnly={isHiringManager || isInterviewer} />
           </TabsContent>
 
           <TabsContent value="job-postings" className="mt-6">
-            <JobPostingsTab jobId={jobId} jobTitle={jobTitle} readOnly={isClient} />
+            <JobPostingsTab jobId={jobId} jobTitle={jobTitle} readOnly={isHiringManager || isInterviewer} />
           </TabsContent>
         </Tabs>
       </CardContent>

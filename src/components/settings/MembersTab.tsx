@@ -24,15 +24,15 @@ export function MembersTab() {
   const currentOrg = organizations.find((o) => o.id === organizationId)
   const parentOrgId = currentOrg?.parent_organization_id || organizationId
 
-  const isPayingRole = (r: 'recruiter' | 'customer_success' | 'billing' | 'sales' | 'admin' | 'client') =>
-    r === 'admin' || r === 'recruiter' || r === 'sales' || r === 'customer_success' || r === 'billing'
+  const isPayingRole = (r: 'admin' | 'recruiter' | 'hiring_manager' | 'interviewer') =>
+    r === 'admin' || r === 'recruiter'
 
   const [tab, setTab] = useState<'members' | 'guests'>('members')
 
   const paidMembers = members.filter(
     (m) => (isPayingRole(m.member_role) || m.user_type === 'workspace_owner') && (!parentOrgId || m.organization_id === parentOrgId)
   )
-  const guestMembers = members.filter((m) => m.member_role === 'client')
+  const guestMembers = members.filter((m) => m.member_role === 'hiring_manager' || m.member_role === 'interviewer')
 
   // Tenant subscription functionality removed
   const subscriptionData = null

@@ -7,7 +7,7 @@ export interface Member {
   id: string
   user_id: string | null
   organization_id: string
-  member_role: 'recruiter' | 'customer_success' | 'billing' | 'sales' | 'admin' | 'client'
+  member_role: 'admin' | 'recruiter' | 'hiring_manager' | 'interviewer'
   user_status: 'active' | 'inactive' | 'invited'
   user_type?: 'guest' | 'member' | 'workspace_owner' | 'platform_admin'
   created_at: string
@@ -24,14 +24,14 @@ export interface Member {
 export interface CreateMemberData {
   user_id?: string | null
   organization_id: string
-  member_role: 'recruiter' | 'customer_success' | 'billing' | 'sales' | 'admin' | 'client'
+  member_role: 'admin' | 'recruiter' | 'hiring_manager' | 'interviewer'
   user_status?: 'active' | 'inactive' | 'invited'
   user_type?: 'guest' | 'member' | 'workspace_owner' | 'platform_admin'
   email?: string
 }
 
 export interface UpdateMemberData {
-  member_role?: 'recruiter' | 'customer_success' | 'billing' | 'sales' | 'admin' | 'client'
+  member_role?: 'admin' | 'recruiter' | 'hiring_manager' | 'interviewer'
   user_status?: 'active' | 'inactive' | 'invited'
   organization_id?: string
 }
@@ -137,7 +137,7 @@ export function useMembers() {
         
         const typedMember: Member = {
           ...member,
-          member_role: member.member_role as 'recruiter' | 'customer_success' | 'billing' | 'sales' | 'admin' | 'client',
+          member_role: member.member_role as 'admin' | 'recruiter' | 'hiring_manager' | 'interviewer',
           user_status: member.user_status as 'active' | 'inactive' | 'invited',
           user_type: member.user_type as 'guest' | 'member' | 'workspace_owner' | 'platform_admin',
           organization_name: organizationsMap[member.organization_id] || null,

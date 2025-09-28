@@ -25,14 +25,12 @@ export interface PermissionsState {
   canDeleteOrganizations: boolean
   canManageOrganization: boolean
   
-  
   // Candidate permissions
   canViewCandidates: boolean
   canCreateCandidates: boolean
   canEditCandidates: boolean
   canDeleteCandidates: boolean
   canManageCandidates: boolean
-
   
   // Navigation permissions
   canViewCandidatesNavigation: boolean
@@ -51,14 +49,15 @@ export interface PermissionsState {
   // Customer Management permissions
   canAccessCustomerManagement: boolean
   
-  // Admin permissions
+  // Admin permissions and roles
   isWorkspaceOwner: boolean
   isPlatformAdmin: boolean
-  isBillingMember: boolean
   isMember: boolean
-  isClient: boolean
+  isAdmin: boolean
+  isRecruiter: boolean
+  isHiringManager: boolean
+  isInterviewer: boolean
   isGuest: boolean
-  isGuestClient: boolean
   hasOrganizationContext: boolean
 }
 
@@ -67,82 +66,76 @@ export function usePermissions(): PermissionsState {
   const { profile } = useUserProfile()
   const isVirgilioAdmin = useIsVirgilioAdmin()
   
-  // Platform admin has user_type = 'platform_admin' - memberRole is not required
+  // Simplified user type classification
   const isPlatformAdmin = userType === 'platform_admin'
   const isWorkspaceOwner = userType === 'workspace_owner'
-  const isBillingMember = memberRole === 'billing'
-  
-  // Client members have 'client' role and organization context
-  const isClient = memberRole === 'client' && hasOrganizationContext
-  
-  // Members are users with specific member roles and org context
-  const isMember = ['recruiter', 'admin', 'billing', 'client', 'customer_success'].includes(memberRole || '') && hasOrganizationContext
-  
-  // Guests are users with userType === 'guest' - this is the key fix
+  const isMember = userType === 'member' && hasOrganizationContext
   const isGuest = userType === 'guest'
   
-  // Guest clients specifically - users with guest userType and client memberRole
-  const isGuestClient = userType === 'guest' && memberRole === 'client'
+  // Member role classification (only for members)
+  const isAdmin = isMember && memberRole === 'admin'
+  const isRecruiter = isMember && memberRole === 'recruiter'
+  const isHiringManager = isMember && memberRole === 'hiring_manager'
+  const isInterviewer = isMember && memberRole === 'interviewer'
 
   // Check if user is a Virgilio (platform organization) recruiter
-  const isVirgilioRecruiter = memberRole === 'recruiter' && hasOrganizationContext
+  const isVirgilioRecruiter = isRecruiter && hasOrganizationContext
 
   return {
-    // Job permissions - Guest users can only view jobs (restricted to assigned jobs in useJobs hook)
-    canViewJobs: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin', 'client', 'customer_success'].includes(memberRole || '') || isGuest,
-    canCreateJobs: isPlatformAdmin || memberRole === 'admin' || memberRole === 'customer_success',
-    canEditJobs: isPlatformAdmin || memberRole === 'admin' || memberRole === 'customer_success',
-    canDeleteJobs: isPlatformAdmin || memberRole === 'admin',
-    canArchiveJobs: isPlatformAdmin || memberRole === 'admin',
+    // Job permissions
+    canViewJobs: isPlatformAdmin || isWorkspaceOwner || isAdmin || isRecruiter || isHiringManager || isInterviewer,
+    canCreateJobs: isPlatformAdmin || isWorkspaceOwner || isAdmin || isRecruiter,
+    canEditJobs: isPlatformAdmin || isWorkspaceOwner || isAdmin || isRecruiter,
+    canDeleteJobs: isPlatformAdmin || isWorkspaceOwner || isAdmin,
+    canArchiveJobs: isPlatformAdmin || isWorkspaceOwner || isAdmin,
     
-    // Member permissions - Guest users cannot manage members
-    canViewMembers: isPlatformAdmin || isWorkspaceOwner || (memberRole === 'admin' || memberRole === 'customer_success') && !isGuest,
-    canCreateMembers: isPlatformAdmin || isWorkspaceOwner || (memberRole === 'admin' || memberRole === 'customer_success') && !isGuest,
-    canEditMembers: isPlatformAdmin || isWorkspaceOwner || (memberRole === 'admin' || memberRole === 'customer_success') && !isGuest,
-    canDeleteMembers: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin' && !isGuest,
-    canManageMembers: isPlatformAdmin || isWorkspaceOwner || (memberRole === 'admin' || memberRole === 'customer_success') && !isGuest,
+    // Member permissions - Only workspace owners and admins can manage members
+    canViewMembers: isPlatformAdmin || isWorkspaceOwner || isAdmin,
+    canCreateMembers: isPlatformAdmin || isWorkspaceOwner || isAdmin,
+    canEditMembers: isPlatformAdmin || isWorkspaceOwner || isAdmin,
+    canDeleteMembers: isPlatformAdmin || isWorkspaceOwner || isAdmin,
+    canManageMembers: isPlatformAdmin || isWorkspaceOwner || isAdmin,
     
-    // Organization permissions - Workspace owners and admins can manage organizations in their workspace
-    canViewOrganizations: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin' || (memberRole === 'customer_success' && !isGuest),
-    canCreateOrganizations: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin' || (memberRole === 'customer_success' && !isGuest),
-    canEditOrganizations: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin' || (memberRole === 'customer_success' && !isGuest),
-    canDeleteOrganizations: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin',
-    canManageOrganization: isPlatformAdmin || isWorkspaceOwner || memberRole === 'admin' || (memberRole === 'customer_success' && !isGuest),
+    // Organization permissions - Platform admins, workspace owners, and admin members
+    canViewOrganizations: isPlatformAdmin || isWorkspaceOwner || isAdmin,
+    canCreateOrganizations: isPlatformAdmin || isWorkspaceOwner || isAdmin,
+    canEditOrganizations: isPlatformAdmin || isWorkspaceOwner || isAdmin,
+    canDeleteOrganizations: isPlatformAdmin || isWorkspaceOwner || isAdmin,
+    canManageOrganization: isPlatformAdmin || isWorkspaceOwner || isAdmin,
     
-    
-    // Candidate permissions - Guest users can view candidates for their assigned jobs
-    canViewCandidates: isPlatformAdmin || isWorkspaceOwner || ['recruiter', 'admin', 'client', 'customer_success'].includes(memberRole || '') || isGuest,
-    canCreateCandidates: isPlatformAdmin || ['recruiter', 'admin', 'customer_success'].includes(memberRole || ''),
-    canEditCandidates: isPlatformAdmin || ['recruiter', 'admin', 'customer_success'].includes(memberRole || ''),
-    canDeleteCandidates: isPlatformAdmin || memberRole === 'admin',
-    canManageCandidates: isPlatformAdmin || ['recruiter', 'admin', 'customer_success'].includes(memberRole || ''),
-
+    // Candidate permissions - Different access levels based on role
+    canViewCandidates: isPlatformAdmin || isWorkspaceOwner || isAdmin || isRecruiter || isHiringManager || isInterviewer,
+    canCreateCandidates: isPlatformAdmin || isWorkspaceOwner || isAdmin || isRecruiter,
+    canEditCandidates: isPlatformAdmin || isWorkspaceOwner || isAdmin || isRecruiter,
+    canDeleteCandidates: isPlatformAdmin || isWorkspaceOwner || isAdmin,
+    canManageCandidates: isPlatformAdmin || isWorkspaceOwner || isAdmin || isRecruiter,
     
     // Navigation permissions - Show candidates in header for Platform Admins and Virgilio recruiters
     canViewCandidatesNavigation: isPlatformAdmin || isVirgilioRecruiter,
     
-    // Job assignment permissions - Guest users cannot manage job assignments
-    canViewJobAssignments: isPlatformAdmin || ['recruiter', 'admin', 'customer_success'].includes(memberRole || '') && !isGuest,
-    canManageJobAssignments: isPlatformAdmin || ['recruiter', 'admin', 'customer_success'].includes(memberRole || '') && !isGuest,
+    // Job assignment permissions - Only admins and recruiters can manage assignments
+    canViewJobAssignments: isPlatformAdmin || isWorkspaceOwner || isAdmin || isRecruiter,
+    canManageJobAssignments: isPlatformAdmin || isWorkspaceOwner || isAdmin || isRecruiter,
     
-    // Billing & Invoice permissions - Guest users are COMPLETELY EXCLUDED from all billing access
-    canViewInvoices: (isPlatformAdmin || isBillingMember || isWorkspaceOwner) && !isGuest,
-    canCreateInvoices: (isPlatformAdmin || isBillingMember) && !isGuest,
-    canManageInvoices: (isPlatformAdmin || isBillingMember) && !isGuest,
-    canUploadInvoicePDFs: (isPlatformAdmin || isBillingMember) && !isGuest,
-    canViewBilling: (isPlatformAdmin || isBillingMember || isWorkspaceOwner) && !isGuest,
+    // Billing & Invoice permissions - Only platform admins and workspace owners
+    canViewInvoices: isPlatformAdmin || isWorkspaceOwner,
+    canCreateInvoices: isPlatformAdmin || isWorkspaceOwner,
+    canManageInvoices: isPlatformAdmin || isWorkspaceOwner,
+    canUploadInvoicePDFs: isPlatformAdmin || isWorkspaceOwner,
+    canViewBilling: isPlatformAdmin || isWorkspaceOwner,
 
     // Customer Management permissions - Only Virgilio platform admins
     canAccessCustomerManagement: isVirgilioAdmin,
     
-    // Admin flags
+    // Role flags
     isWorkspaceOwner,
     isPlatformAdmin,
-    isBillingMember,
     isMember,
-    isClient,
+    isAdmin,
+    isRecruiter,
+    isHiringManager,
+    isInterviewer,
     isGuest,
-    isGuestClient,
     hasOrganizationContext,
   }
 }

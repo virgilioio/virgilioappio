@@ -24,9 +24,9 @@ export function JobAssignmentGuard({ children }: JobAssignmentGuardProps) {
       return
     }
 
-    // For clients, check if they're assigned to this job
-    if (permissions.isClient && !isLoading && !isAssigned && jobId) {
-      console.warn('Client user attempted to access unassigned job:', jobId)
+    // For hiring managers and interviewers, check if they're assigned to this job
+    if ((permissions.isHiringManager || permissions.isInterviewer) && !isLoading && !isAssigned && jobId) {
+      console.warn('User attempted to access unassigned job:', jobId)
       navigate('/jobs', { replace: true })
     }
 
@@ -37,7 +37,7 @@ export function JobAssignmentGuard({ children }: JobAssignmentGuardProps) {
   }, [permissions, isAssigned, isLoading, jobId, navigate, user])
 
   // Show loading state while checking assignment
-  if (isLoading && permissions.isClient) {
+  if (isLoading && (permissions.isHiringManager || permissions.isInterviewer)) {
     return (
       <div className="min-h-screen bg-background">
         <div className="container mx-auto py-lg px-md">
