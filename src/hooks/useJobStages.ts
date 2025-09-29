@@ -25,7 +25,9 @@ export interface CreateJobStageInput {
   stage_priority?: number
 }
 
-export function useJobStages() {
+export type JobStagesContext = 'platform-defaults' | 'organization'
+
+export function useJobStages(context: JobStagesContext = 'organization') {
   const [stages, setStages] = useState<JobStage[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isCreating, setIsCreating] = useState(false)
@@ -35,10 +37,34 @@ export function useJobStages() {
 
   const fetchStages = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('job_stages')
         .select('*')
         .eq('is_active', true)
+
+      // Filter based on context
+      if (context === 'platform-defaults') {
+        query = query.is('organization_id', null)
+      } else {
+        // For organization context, get user's organization stages
+        const { data: { user } } = await supabase.auth.getUser()
+        const { data: memberData } = await supabase
+          .from('members')
+          .select('organization_id, user_type')
+          .eq('user_id', user?.id)
+          .eq('user_status', 'active')
+          .single()
+
+        if (memberData?.organization_id) {
+          query = query.eq('organization_id', memberData.organization_id)
+        } else {
+          // If no organization, show nothing for organization context
+          setStages([])
+          return
+        }
+      }
+
+      const { data, error } = await query
         .order('stage_priority', { ascending: true, nullsFirst: false })
         .order('created_at', { ascending: true })
 
@@ -69,11 +95,17 @@ export function useJobStages() {
         .eq('user_status', 'active')
         .single()
 
+      let organizationId = null
+      if (context === 'organization' && memberData?.user_type === 'workspace_owner') {
+        organizationId = memberData.organization_id
+      }
+      // For platform-defaults context, organizationId stays null
+
       const { data, error } = await supabase
         .from('job_stages')
         .insert({
           ...input,
-          organization_id: memberData?.user_type === 'workspace_owner' ? memberData.organization_id : null,
+          organization_id: organizationId,
           created_by: user?.id
         })
         .select()

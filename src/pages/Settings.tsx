@@ -11,6 +11,7 @@ import { PlatformSettingsManager } from '@/components/settings/PlatformSettingsM
 import { PlatformAssetUploader } from '@/components/settings/PlatformAssetUploader'
 import { OfferTemplatesManager } from '@/components/settings/OfferTemplatesManager'
 import { JobSettingsManager } from '@/components/settings/JobSettingsManager'
+import { PlatformJobSettingsManager } from '@/components/settings/PlatformJobSettingsManager'
 import { PlatformTab } from '@/components/settings/PlatformTab'
 import { CustomerManagementTab } from '@/pages/settings/customer-management/CustomerManagementTab'
 import { SaaSSubscription } from '@/pages/settings/saas-customers/SaaSSubscription'
@@ -53,7 +54,7 @@ export default function Settings() {
       case 'platform-settings':
         return <PlatformSettingsManager />
       case 'platform-job-settings':
-        return <JobSettingsManager />
+        return <PlatformJobSettingsManager />
       case 'platform-saas-customers':
         return <SaaSCustomersList />
       case 'platform-customers':

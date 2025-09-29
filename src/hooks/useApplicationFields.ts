@@ -28,7 +28,9 @@ export interface ApplicationFieldWithRelations extends ApplicationField {
   select_options: Array<any>
 }
 
-export function useApplicationFields() {
+export type ApplicationFieldsContext = 'platform-defaults' | 'organization'
+
+export function useApplicationFields(context: ApplicationFieldsContext = 'organization') {
   const [fields, setFields] = useState<ApplicationFieldWithRelations[]>([])
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const { toast } = useToast()
@@ -36,11 +38,34 @@ export function useApplicationFields() {
   const fetchFields = async () => {
     try {
       setIsLoading(true)
-      const { data, error } = await supabase
+      let query = supabase
         .from('application_fields')
         .select('*')
         .eq('is_core_field', false) // Only fetch custom fields
-        .order('display_order')
+
+      // Filter based on context
+      if (context === 'platform-defaults') {
+        query = query.is('organization_id', null)
+      } else {
+        // For organization context, get user's organization fields
+        const { data: { user } } = await supabase.auth.getUser()
+        const { data: memberData } = await supabase
+          .from('members')
+          .select('organization_id, user_type')
+          .eq('user_id', user?.id)
+          .eq('user_status', 'active')
+          .single()
+
+        if (memberData?.organization_id) {
+          query = query.eq('organization_id', memberData.organization_id)
+        } else {
+          // If no organization, show nothing for organization context
+          setFields([])
+          return
+        }
+      }
+
+      const { data, error } = await query.order('display_order')
 
       if (error) throw error
 
@@ -90,9 +115,15 @@ export function useApplicationFields() {
       .eq('user_status', 'active')
       .single()
 
+    let organizationId = null
+    if (context === 'organization' && memberData?.user_type === 'workspace_owner') {
+      organizationId = memberData.organization_id
+    }
+    // For platform-defaults context, organizationId stays null
+
     const enrichedFieldData = {
       ...fieldData,
-      organization_id: memberData?.user_type === 'workspace_owner' ? memberData.organization_id : null,
+      organization_id: organizationId,
       created_by: user?.id
     }
 

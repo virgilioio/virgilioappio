@@ -7,10 +7,14 @@ import { JobStagesTable } from './JobStagesTable'
 import { useJobStages, JobStage } from '@/hooks/useJobStages'
 import { Plus } from 'lucide-react'
 
-export function JobStagesManager() {
+interface JobStagesManagerProps {
+  context?: 'platform-defaults' | 'organization'
+}
+
+export function JobStagesManager({ context = 'organization' }: JobStagesManagerProps) {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [editingStage, setEditingStage] = useState<JobStage | null>(null)
-  const { stages, isLoading } = useJobStages()
+  const { stages, isLoading } = useJobStages(context)
 
   const handleEdit = (stage: JobStage) => {
     setEditingStage(stage)

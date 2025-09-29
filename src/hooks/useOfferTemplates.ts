@@ -29,7 +29,9 @@ export interface OfferTemplateField {
   updated_at: string
 }
 
-export function useOfferTemplates() {
+export type OfferTemplatesContext = 'platform-defaults' | 'organization'
+
+export function useOfferTemplates(context: OfferTemplatesContext = 'organization') {
   const [templates, setTemplates] = useState<OfferTemplate[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const { toast } = useToast()
@@ -37,10 +39,33 @@ export function useOfferTemplates() {
   const fetchTemplates = async () => {
     try {
       setIsLoading(true)
-      const { data, error } = await supabase
+      let query = supabase
         .from('offer_templates')
         .select('*')
-        .order('name')
+
+      // Filter based on context
+      if (context === 'platform-defaults') {
+        query = query.is('organization_id', null)
+      } else {
+        // For organization context, get user's organization templates
+        const { data: { user } } = await supabase.auth.getUser()
+        const { data: memberData } = await supabase
+          .from('members')
+          .select('organization_id, user_type')
+          .eq('user_id', user?.id)
+          .eq('user_status', 'active')
+          .single()
+
+        if (memberData?.organization_id) {
+          query = query.eq('organization_id', memberData.organization_id)
+        } else {
+          // If no organization, show nothing for organization context
+          setTemplates([])
+          return
+        }
+      }
+
+      const { data, error } = await query.order('name')
 
       if (error) throw error
       setTemplates(data || [])
@@ -68,9 +93,15 @@ export function useOfferTemplates() {
         .eq('user_status', 'active')
         .single()
 
+      let organizationId = null
+      if (context === 'organization' && memberData?.user_type === 'workspace_owner') {
+        organizationId = memberData.organization_id
+      }
+      // For platform-defaults context, organizationId stays null
+
       const enrichedTemplateData = {
         ...templateData,
-        organization_id: memberData?.user_type === 'workspace_owner' ? memberData.organization_id : null,
+        organization_id: organizationId,
         created_by: user?.id
       }
 

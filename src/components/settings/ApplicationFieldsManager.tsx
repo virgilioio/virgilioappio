@@ -9,8 +9,12 @@ import { useApplicationFields, ApplicationField } from '@/hooks/useApplicationFi
 import { ApplicationFieldForm } from './ApplicationFieldForm'
 import { Plus, Pencil, Trash2 } from 'lucide-react'
 
-export function ApplicationFieldsManager() {
-  const { fields, isLoading, deleteField, refetch } = useApplicationFields()
+interface ApplicationFieldsManagerProps {
+  context?: 'platform-defaults' | 'organization'
+}
+
+export function ApplicationFieldsManager({ context = 'organization' }: ApplicationFieldsManagerProps) {
+  const { fields, isLoading, deleteField, refetch } = useApplicationFields(context)
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [editingField, setEditingField] = useState<ApplicationField | null>(null)
 

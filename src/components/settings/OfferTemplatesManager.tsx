@@ -16,8 +16,12 @@ import { OfferTemplateFieldsManager } from './OfferTemplateFieldsManager'
 import { PlaceholderHelper } from './PlaceholderHelper'
 import { sanitizeHtmlForEditor } from '@/utils/htmlSanitizer'
 
-export function OfferTemplatesManager() {
-  const { templates, isLoading, createTemplate, updateTemplate, deleteTemplate } = useOfferTemplates()
+interface OfferTemplatesManagerProps {
+  context?: 'platform-defaults' | 'organization'
+}
+
+export function OfferTemplatesManager({ context = 'organization' }: OfferTemplatesManagerProps) {
+  const { templates, isLoading, createTemplate, updateTemplate, deleteTemplate } = useOfferTemplates(context)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [editingTemplate, setEditingTemplate] = useState<OfferTemplate | null>(null)
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null)
@@ -121,7 +125,7 @@ export function OfferTemplatesManager() {
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
-              Offer Letter Templates
+              {context === 'platform-defaults' ? 'Platform Default Offer Templates' : 'Offer Letter Templates'}
             </CardTitle>
             <Button onClick={openCreateDialog}>
               <Plus className="h-4 w-4 mr-2" />
