@@ -82,8 +82,8 @@ export default function SignUp() {
 
       {/* Right Side - Responsive width white background with signup form */}
       <div className="w-full lg:w-1/2 bg-white flex flex-col justify-center px-6 sm:px-8 lg:px-8 xl:px-12 min-h-[50vh] lg:min-h-screen">
-        {/* Welcome Text - Full width and left aligned */}
-        <div className="mb-8 text-left">
+        {/* Welcome Text - Full width and centered */}
+        <div className="mb-8 text-center">
           <div className="mb-4">
             <VirgilioLogo size="lg" />
           </div>
