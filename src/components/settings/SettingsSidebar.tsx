@@ -1,5 +1,5 @@
 
-import { User, Building, Building2, Receipt, Users, Shield, Settings as SettingsIcon, Megaphone, FileText, Image, Globe, BarChart3, UserCheck, Briefcase, UsersIcon, CreditCard } from 'lucide-react'
+import { User, Building, Building2, Receipt, Users, Shield, Settings as SettingsIcon, Megaphone, FileText, Image, Globe, BarChart3, UserCheck, Briefcase, UsersIcon, CreditCard, Layers } from 'lucide-react'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useAuth } from '@/contexts/AuthContext'
 import { cn } from '@/lib/utils'
@@ -28,6 +28,9 @@ export function SettingsSidebar({ currentTab, onTabChange, className }: Settings
   const { organizationId, userType } = useAuth()
   const [platformOpen, setPlatformOpen] = useState(
     ['platform-dashboard', 'platform-settings', 'platform-job-settings', 'platform-customers', 'platform-saas-customers'].includes(currentTab)
+  )
+  const [workspaceOpen, setWorkspaceOpen] = useState(
+    ['workspace-settings', 'workspace-team'].includes(currentTab)
   )
 
   const isWorkspaceOwnerOfSaaSOrg = () => {
@@ -66,6 +69,16 @@ export function SettingsSidebar({ currentTab, onTabChange, className }: Settings
       show: permissions.canViewMembers 
     },
     { 
+      id: 'workspace', 
+      label: 'Workspace', 
+      icon: Layers, 
+      show: permissions.isPlatformAdmin || (userType === 'workspace_owner' && !!organizationId),
+      submenu: [
+        { id: 'workspace-settings', label: 'Settings', icon: SettingsIcon, show: true },
+        { id: 'workspace-team', label: 'Team', icon: Users, show: true },
+      ]
+    },
+    { 
       id: 'platform', 
       label: 'Platform', 
       icon: Shield, 
@@ -93,12 +106,21 @@ export function SettingsSidebar({ currentTab, onTabChange, className }: Settings
   const filteredNavItems = navItems.filter(item => item.show)
   
 
+  const handleWorkspaceToggle = () => {
+    setWorkspaceOpen(!workspaceOpen)
+  }
+
   const handlePlatformToggle = () => {
     setPlatformOpen(!platformOpen)
   }
 
   const handleItemClick = (itemId: string) => {
-    if (itemId === 'platform') {
+    if (itemId === 'workspace') {
+      handleWorkspaceToggle()
+      if (!workspaceOpen) {
+        onTabChange('workspace-settings') // Default to settings when opening workspace
+      }
+    } else if (itemId === 'platform') {
       handlePlatformToggle()
       if (!platformOpen) {
         onTabChange('platform-dashboard') // Default to dashboard when opening platform
@@ -116,15 +138,18 @@ export function SettingsSidebar({ currentTab, onTabChange, className }: Settings
             const Icon = item.icon
             
             if (item.submenu) {
+              const isOpen = item.id === 'workspace' ? workspaceOpen : platformOpen
+              const setOpen = item.id === 'workspace' ? setWorkspaceOpen : setPlatformOpen
+              
               return (
-                <Collapsible key={item.id} open={platformOpen} onOpenChange={setPlatformOpen}>
+                <Collapsible key={item.id} open={isOpen} onOpenChange={setOpen}>
                   <CollapsibleTrigger asChild>
                     <Button
                       variant="ghost"
                       className={cn(
                         "w-full justify-between h-10 px-3 py-2",
                         "text-sm font-medium transition-colors",
-                        platformOpen
+                        isOpen
                           ? "bg-muted text-foreground" 
                           : "text-muted-foreground hover:text-foreground hover:bg-muted"
                       )}
@@ -136,7 +161,7 @@ export function SettingsSidebar({ currentTab, onTabChange, className }: Settings
                       </div>
                       <ChevronDown className={cn(
                         "h-4 w-4 transition-transform",
-                        platformOpen && "rotate-180"
+                        isOpen && "rotate-180"
                       )} />
                     </Button>
                   </CollapsibleTrigger>
