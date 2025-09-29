@@ -185,21 +185,24 @@ export function OrganizationsTable({
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
+            <TableRow>
+              <TableHead className="w-1/2">Name</TableHead>
+              <TableHead className="w-1/4">Status</TableHead>
+              <TableHead className="w-1/4 text-right">Actions</TableHead>
+            </TableRow>
                   </TableHeader>
                   <TableBody>
                     {paginatedOrganizations.map((org) => (
                       <TableRow key={org.id} className="cursor-pointer hover:bg-muted/50" onClick={() => handleViewDetails(org)}>
                         <TableCell className="font-medium">{org.name}</TableCell>
-                        <TableCell>
-                          <Badge variant={org.status === 'active' ? 'default' : 'secondary'}>
-                            {org.status}
-                          </Badge>
-                        </TableCell>
+                         <TableCell>
+                           <Badge 
+                             variant={org.status === 'active' ? 'default' : 'secondary'}
+                             className={org.status === 'active' ? 'bg-[#d2ffc2] text-green-800 hover:bg-[#c2f0b2]' : ''}
+                           >
+                             {org.status === 'active' ? 'Active' : 'Inactive'}
+                           </Badge>
+                         </TableCell>
                         <TableCell className="text-right">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
