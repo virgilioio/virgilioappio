@@ -86,8 +86,8 @@ export default function Login() {
       <div className="w-full lg:w-1/2 bg-white flex flex-col justify-center px-6 sm:px-8 lg:px-8 xl:px-12 min-h-[50vh] lg:min-h-screen">
         {/* Welcome Text */}
         <div className="mb-8">
-           <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-foreground mb-2 flex items-center gap-2" style={{ fontFamily: 'Poppins', letterSpacing: '-0.06em' }}>
-             Find your people with <VirgilioLogo size="md" />
+           <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-foreground mb-2" style={{ fontFamily: 'Poppins', letterSpacing: '-0.06em' }}>
+             Find your people<span style={{ color: '#d7c5fb' }}>.</span>
            </h1>
           <p className="text-base sm:text-lg text-muted-foreground">
             Sign in to your account to continue
