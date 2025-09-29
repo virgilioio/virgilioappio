@@ -6,7 +6,8 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Plus, Edit, Trash2, Building2, User, Calendar, Eye, Search, ChevronLeft, ChevronRight, MoreHorizontal, FileText } from 'lucide-react'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { Plus, Edit, Trash2, Building2, Search, ChevronLeft, ChevronRight, MoreHorizontal, Eye } from 'lucide-react'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Organization } from '@/hooks/useOrganizations'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -33,8 +34,6 @@ export function OrganizationsTable({
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('active')
-  const [countryFilter, setCountryFilter] = useState<string>('all')
-  const [typeFilter, setTypeFilter] = useState<string>('all')
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
@@ -50,76 +49,13 @@ export function OrganizationsTable({
     setSelectedOrganization(null)
   }
 
-  // Helper function to display owner information with improved fallback
-  const displayOwnerInfo = (org: Organization) => {
-    // Prioritize showing name over email
-    if (org.owner_name) {
-      return (
-        <div className="flex items-center gap-1 text-sm">
-          <User className="h-3 w-3" />
-          {org.owner_name}
-        </div>
-      )
-    }
-    
-    if (org.owner_email) {
-      return (
-        <div className="flex items-center gap-1 text-sm">
-          <User className="h-3 w-3" />
-          {org.owner_email}
-        </div>
-      )
-    }
-    
-    if (org.owner_id) {
-      return (
-        <div className="flex items-center gap-1 text-sm text-muted-foreground">
-          <User className="h-3 w-3" />
-          User ID: {org.owner_id.slice(0, 8)}...
-        </div>
-      )
-    }
-    
-    return <span className="text-muted-foreground text-sm">No owner</span>
-  }
-
-  // Helper function to display creator information with improved fallback
-  const displayCreatorInfo = (org: Organization) => {
-    // Prioritize showing name over email
-    if (org.created_by_name) {
-      return <span className="text-sm">{org.created_by_name}</span>
-    }
-    
-    if (org.created_by_email) {
-      return <span className="text-sm">{org.created_by_email}</span>
-    }
-    
-    if (org.created_by) {
-      return (
-        <span className="text-sm text-muted-foreground">
-          User ID: {org.created_by.slice(0, 8)}...
-        </span>
-      )
-    }
-    
-    return <span className="text-muted-foreground text-sm">Unknown</span>
-  }
-
-  // Get unique values for filters
-  const uniqueTypes = [...new Set(organizations.map(org => org.organization_type).filter(Boolean))]
-  const orgNameMap: Record<string, string> = Object.fromEntries(
-    organizations.map(o => [o.id, o.name])
-  )
 
   // Filter organizations
   const filteredOrganizations = organizations.filter(org => {
-    const matchesSearch = org.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (org.owner_email && org.owner_email.toLowerCase().includes(searchTerm.toLowerCase()))
+    const matchesSearch = org.name.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesStatus = statusFilter === 'all' || org.status === statusFilter
-    const matchesCountry = true // Country filter removed
-    const matchesType = typeFilter === 'all' || org.organization_type === typeFilter
     
-    return matchesSearch && matchesStatus && matchesCountry && matchesType
+    return matchesSearch && matchesStatus
   })
 
   // Calculate pagination
@@ -131,7 +67,7 @@ export function OrganizationsTable({
   // Reset pagination when filters change
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchTerm, statusFilter, countryFilter, typeFilter])
+  }, [searchTerm, statusFilter])
 
   // Generate page numbers for pagination
   const getPageNumbers = () => {
@@ -213,25 +149,10 @@ export function OrganizationsTable({
               <SelectTrigger className="w-full sm:w-[150px]">
                 <SelectValue placeholder="Filter by status" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="bg-background border z-50">
                 <SelectItem value="all">All Statuses</SelectItem>
                 <SelectItem value="active">Active</SelectItem>
                 <SelectItem value="inactive">Inactive</SelectItem>
-              </SelectContent>
-            </Select>
-            
-            
-            <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger className="w-full sm:w-[150px]">
-                <SelectValue placeholder="Filter by type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                {uniqueTypes.map((type) => (
-                  <SelectItem key={type} value={type}>
-                    {type}
-                  </SelectItem>
-                ))}
               </SelectContent>
             </Select>
 
@@ -266,13 +187,7 @@ export function OrganizationsTable({
                   <TableHeader>
                     <TableRow>
                       <TableHead>Name</TableHead>
-                      <TableHead>Parent</TableHead>
-                      <TableHead>Country</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Owner</TableHead>
-                      <TableHead>Created By</TableHead>
-                      <TableHead>Created</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -280,58 +195,45 @@ export function OrganizationsTable({
                     {paginatedOrganizations.map((org) => (
                       <TableRow key={org.id} className="cursor-pointer hover:bg-muted/50" onClick={() => handleViewDetails(org)}>
                         <TableCell className="font-medium">{org.name}</TableCell>
-                        <TableCell className="text-sm text-muted-foreground">{org.parent_organization_id ? (orgNameMap[org.parent_organization_id] || '—') : '—'}</TableCell>
-                        <TableCell>—</TableCell>
                         <TableCell>
                           <Badge variant={org.status === 'active' ? 'default' : 'secondary'}>
                             {org.status}
                           </Badge>
                         </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">
-                            {org.organization_type}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {displayOwnerInfo(org)}
-                        </TableCell>
-                        <TableCell>
-                          {displayCreatorInfo(org)}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                            <Calendar className="h-3 w-3" />
-                            {new Date(org.created_at).toLocaleDateString()}
-                          </div>
-                        </TableCell>
                         <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => { e.stopPropagation(); handleViewDetails(org); }}
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            {permissions.canEditOrganizations && (
-                              <Button
-                                variant="ghost"
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button 
+                                variant="ghost" 
                                 size="sm"
-                                onClick={(e) => { e.stopPropagation(); onEdit(org); }}
+                                onClick={(e) => e.stopPropagation()}
+                                className="h-8 w-8 p-0"
                               >
-                                <Edit className="h-4 w-4" />
+                                <MoreHorizontal className="h-4 w-4" />
                               </Button>
-                            )}
-                            {permissions.canDeleteOrganizations && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={(e) => { e.stopPropagation(); onDelete(org.id); }}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            )}
-                          </div>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="bg-background border z-50">
+                              <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleViewDetails(org); }}>
+                                <Eye className="h-4 w-4 mr-2" />
+                                View Details
+                              </DropdownMenuItem>
+                              {permissions.canEditOrganizations && (
+                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onEdit(org); }}>
+                                  <Edit className="h-4 w-4 mr-2" />
+                                  Edit
+                                </DropdownMenuItem>
+                              )}
+                              {permissions.canDeleteOrganizations && (
+                                <DropdownMenuItem 
+                                  onClick={(e) => { e.stopPropagation(); onDelete(org.id); }}
+                                  className="text-destructive"
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Delete
+                                </DropdownMenuItem>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </TableCell>
                       </TableRow>
                     ))}
