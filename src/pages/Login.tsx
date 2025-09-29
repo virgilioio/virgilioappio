@@ -65,7 +65,7 @@ export default function Login() {
             {/* Logo */}
             <div className="flex items-center">
               <div className="hover:scale-105 transition-transform duration-default">
-                <VirgilioLogo size="sm" />
+                <VirgilioLogo size="md" />
               </div>
             </div>
           </div>
