@@ -1,6 +1,7 @@
 
 import { Skeleton } from '@/components/ui/skeleton'
 import { UserProfile } from '@/hooks/useUserProfile'
+import { Hand } from 'lucide-react'
 
 interface WelcomeHeaderProps {
   profile: UserProfile | null
@@ -21,8 +22,9 @@ export function WelcomeHeader({ profile, isLoading }: WelcomeHeaderProps) {
 
   return (
     <div className="p-layout-md">
-      <h1 className="text-4xl font-semibold text-text-primary mb-sm">
-        Hello, {firstName} 👋
+      <h1 className="text-4xl font-semibold text-text-primary mb-sm flex items-center gap-sm">
+        Welcome back, {firstName}!
+        <Hand className="w-8 h-8 text-text-primary" />
       </h1>
       <p className="text-sm text-text-secondary">
         Here's a quick overview of what's going on.
