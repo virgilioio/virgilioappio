@@ -9,7 +9,7 @@ export interface Job {
   id: string
   title: string
   description: string | null
-  level: 'L1 - Specialists' | 'L2 - Managers' | 'L3 - Directors / VPs / Executive Search' | 'L4 - C-Level'
+  level?: 'L1 - Specialists' | 'L2 - Managers' | 'L3 - Directors / VPs / Executive Search' | 'L4 - C-Level' | null
   location: string | null
   department: string | null
   salary_min: number | null
@@ -36,7 +36,7 @@ export interface Job {
 export interface CreateJobData {
   title: string
   description?: string
-  level: 'L1 - Specialists' | 'L2 - Managers' | 'L3 - Directors / VPs / Executive Search' | 'L4 - C-Level'
+  level?: 'L1 - Specialists' | 'L2 - Managers' | 'L3 - Directors / VPs / Executive Search' | 'L4 - C-Level' | null
   location?: string
   department?: string
   salary_min?: number

@@ -1190,7 +1190,7 @@ export type Database = {
           hiring_team: Json | null
           id: string
           last_skills_generation: string | null
-          level: Database["public"]["Enums"]["job_level"]
+          level: Database["public"]["Enums"]["job_level"] | null
           location: string | null
           normalization_metadata: Json | null
           organization_id: string
@@ -1214,7 +1214,7 @@ export type Database = {
           hiring_team?: Json | null
           id?: string
           last_skills_generation?: string | null
-          level: Database["public"]["Enums"]["job_level"]
+          level?: Database["public"]["Enums"]["job_level"] | null
           location?: string | null
           normalization_metadata?: Json | null
           organization_id: string
@@ -1238,7 +1238,7 @@ export type Database = {
           hiring_team?: Json | null
           id?: string
           last_skills_generation?: string | null
-          level?: Database["public"]["Enums"]["job_level"]
+          level?: Database["public"]["Enums"]["job_level"] | null
           location?: string | null
           normalization_metadata?: Json | null
           organization_id?: string
