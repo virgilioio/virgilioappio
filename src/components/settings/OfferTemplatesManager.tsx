@@ -146,14 +146,15 @@ export function OfferTemplatesManager({ context = 'organization' }: OfferTemplat
             </div>
           ) : (
             <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
+               <TableHeader>
+                 <TableRow>
+                   <TableHead>Name</TableHead>
+                   <TableHead>Description</TableHead>
+                   <TableHead>Created</TableHead>
+                   {context === 'organization' && <TableHead>Source</TableHead>}
+                   <TableHead className="text-right">Actions</TableHead>
+                 </TableRow>
+               </TableHeader>
               <TableBody>
                 {templates.map((template) => (
                   <TableRow key={template.id}>
@@ -161,31 +162,44 @@ export function OfferTemplatesManager({ context = 'organization' }: OfferTemplat
                     <TableCell>
                       {template.description || <span className="text-muted-foreground italic">No description</span>}
                     </TableCell>
-                    <TableCell>
-                      {new Date(template.created_at).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => openFieldsDialog(template.id)}
-                        >
-                          <SettingsIcon className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => openEditDialog(template)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="sm">
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </AlertDialogTrigger>
+                     <TableCell>
+                       {new Date(template.created_at).toLocaleDateString()}
+                     </TableCell>
+                     {context === 'organization' && (
+                       <TableCell>
+                         <Badge variant={template.source === 'platform' ? 'secondary' : 'default'}>
+                           {template.source === 'platform' ? 'Inherited' : 'Custom'}
+                         </Badge>
+                       </TableCell>
+                     )}
+                     <TableCell className="text-right">
+                       <div className="flex items-center justify-end gap-2">
+                         <Button
+                           variant="ghost"
+                           size="sm"
+                           onClick={() => openFieldsDialog(template.id)}
+                           disabled={context === 'organization' && template.source === 'platform'}
+                         >
+                           <SettingsIcon className="h-4 w-4" />
+                         </Button>
+                         <Button
+                           variant="ghost"
+                           size="sm"
+                           onClick={() => openEditDialog(template)}
+                           disabled={context === 'organization' && template.source === 'platform'}
+                         >
+                           <Edit className="h-4 w-4" />
+                         </Button>
+                         <AlertDialog>
+                           <AlertDialogTrigger asChild>
+                             <Button 
+                               variant="ghost" 
+                               size="sm"
+                               disabled={context === 'organization' && template.source === 'platform'}
+                             >
+                               <Trash2 className="h-4 w-4" />
+                             </Button>
+                           </AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
                               <AlertDialogTitle>Delete Template</AlertDialogTitle>

@@ -9,6 +9,7 @@ interface JobStagesTableProps {
   stages: JobStage[]
   isLoading: boolean
   onEdit: (stage: JobStage) => void
+  context?: 'platform-defaults' | 'organization'
 }
 
 const stageTypeLabels: Record<string, string> = {
@@ -42,7 +43,7 @@ const stageTypeVariants: Record<string, import("@/components/ui/badge").BadgePro
   custom: 'secondary'
 }
 
-export function JobStagesTable({ stages, isLoading, onEdit }: JobStagesTableProps) {
+export function JobStagesTable({ stages, isLoading, onEdit, context = 'organization' }: JobStagesTableProps) {
   const { deleteStage, isDeleting } = useJobStages()
 
   const handleDelete = async (id: string) => {
@@ -78,6 +79,7 @@ export function JobStagesTable({ stages, isLoading, onEdit }: JobStagesTableProp
             <TableHead>Description</TableHead>
             <TableHead>Default</TableHead>
             <TableHead>Priority</TableHead>
+            {context === 'organization' && <TableHead>Source</TableHead>}
             <TableHead className="w-[100px]">Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -107,12 +109,20 @@ export function JobStagesTable({ stages, isLoading, onEdit }: JobStagesTableProp
                   <span className="text-text-tertiary">-</span>
                 )}
               </TableCell>
+              {context === 'organization' && (
+                <TableCell>
+                  <Badge variant={stage.source === 'platform' ? 'secondary' : 'default'}>
+                    {stage.source === 'platform' ? 'Inherited' : 'Custom'}
+                  </Badge>
+                </TableCell>
+              )}
               <TableCell>
                 <div className="flex items-center space-x-2">
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => onEdit(stage)}
+                    disabled={context === 'organization' && stage.source === 'platform'}
                   >
                     <Edit className="w-4 h-4" />
                   </Button>
@@ -121,7 +131,7 @@ export function JobStagesTable({ stages, isLoading, onEdit }: JobStagesTableProp
                       <Button
                         variant="ghost"
                         size="sm"
-                        disabled={isDeleting}
+                        disabled={isDeleting || (context === 'organization' && stage.source === 'platform')}
                       >
                         <Trash2 className="w-4 h-4" />
                       </Button>

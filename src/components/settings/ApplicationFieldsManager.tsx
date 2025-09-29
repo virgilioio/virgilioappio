@@ -48,16 +48,17 @@ export function ApplicationFieldsManager({ context = 'organization' }: Applicati
         ) : (
           <div className="overflow-x-auto">
             <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Label</TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Default</TableHead>
-                  <TableHead>Order</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
+               <TableHeader>
+                 <TableRow>
+                   <TableHead>Label</TableHead>
+                   <TableHead>Name</TableHead>
+                   <TableHead>Type</TableHead>
+                   <TableHead>Default</TableHead>
+                   <TableHead>Order</TableHead>
+                   {context === 'organization' && <TableHead>Source</TableHead>}
+                   <TableHead className="text-right">Actions</TableHead>
+                 </TableRow>
+               </TableHeader>
               <TableBody>
                 {fields.map((f) => (
                   <TableRow key={f.id}>
@@ -67,24 +68,37 @@ export function ApplicationFieldsManager({ context = 'organization' }: Applicati
                       <Badge variant="secondary" className="capitalize text-xs">{f.field_type}</Badge>
                     </TableCell>
                     <TableCell>{f.is_default ? 'Yes' : 'No'}</TableCell>
-                    <TableCell>{f.display_order}</TableCell>
-                    <TableCell className="text-right space-x-2">
-                      <Button variant="outline" size="sm" onClick={() => handleEdit(f)}>
-                        <Pencil className="h-4 w-4 mr-1" /> Edit
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={async () => {
-                          if (confirm('Delete this field?')) {
-                            await deleteField(f.id)
-                            await refetch()
-                          }
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4 mr-1" /> Delete
-                      </Button>
-                    </TableCell>
+                     <TableCell>{f.display_order}</TableCell>
+                     {context === 'organization' && (
+                       <TableCell>
+                         <Badge variant={f.source === 'platform' ? 'secondary' : 'default'}>
+                           {f.source === 'platform' ? 'Inherited' : 'Custom'}
+                         </Badge>
+                       </TableCell>
+                     )}
+                     <TableCell className="text-right space-x-2">
+                       <Button 
+                         variant="outline" 
+                         size="sm" 
+                         onClick={() => handleEdit(f)}
+                         disabled={context === 'organization' && f.source === 'platform'}
+                       >
+                         <Pencil className="h-4 w-4 mr-1" /> Edit
+                       </Button>
+                       <Button
+                         variant="ghost"
+                         size="sm"
+                         onClick={async () => {
+                           if (confirm('Delete this field?')) {
+                             await deleteField(f.id)
+                             await refetch()
+                           }
+                         }}
+                         disabled={context === 'organization' && f.source === 'platform'}
+                       >
+                         <Trash2 className="h-4 w-4 mr-1" /> Delete
+                       </Button>
+                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

@@ -15,6 +15,8 @@ export interface JobStage {
   created_by?: string
   created_at: string
   updated_at: string
+  source?: 'platform' | 'organization'
+  organization_id?: string | null
 }
 
 export interface CreateJobStageInput {
@@ -46,7 +48,7 @@ export function useJobStages(context: JobStagesContext = 'organization') {
       if (context === 'platform-defaults') {
         query = query.is('organization_id', null)
       } else {
-        // For organization context, get user's organization stages
+        // For organization context, get both platform defaults and organization stages
         const { data: { user } } = await supabase.auth.getUser()
         const { data: memberData } = await supabase
           .from('members')
@@ -56,20 +58,28 @@ export function useJobStages(context: JobStagesContext = 'organization') {
           .single()
 
         if (memberData?.organization_id) {
-          query = query.eq('organization_id', memberData.organization_id)
+          // Fetch both platform defaults (organization_id IS NULL) and organization-specific stages
+          query = query.or(`organization_id.is.null,organization_id.eq.${memberData.organization_id}`)
         } else {
-          // If no organization, show nothing for organization context
-          setStages([])
-          return
+          // If no organization, show only platform defaults
+          query = query.is('organization_id', null)
         }
       }
 
       const { data, error } = await query
+        .order('organization_id', { ascending: true, nullsFirst: true }) // Platform defaults first
         .order('stage_priority', { ascending: true, nullsFirst: false })
         .order('created_at', { ascending: true })
 
       if (error) throw error
-      setStages(data || [])
+      
+      // Add source identification
+      const stagesWithSource = (data || []).map((stage: any) => ({
+        ...stage,
+        source: stage.organization_id ? 'organization' as const : 'platform' as const
+      }))
+      
+      setStages(stagesWithSource)
     } catch (error) {
       console.error('Error fetching job stages:', error)
       toast({

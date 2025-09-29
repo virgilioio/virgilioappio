@@ -64,10 +64,11 @@ export function JobStagesManager({ context = 'organization' }: JobStagesManagerP
           </Dialog>
         </CardHeader>
         <CardContent>
-          <JobStagesTable
-            stages={stages}
-            isLoading={isLoading}
+          <JobStagesTable 
+            stages={stages} 
+            isLoading={isLoading} 
             onEdit={handleEdit}
+            context={context}
           />
         </CardContent>
       </Card>
