@@ -10,7 +10,7 @@ import { useToast } from '@/hooks/use-toast'
 import { VirgilioLogo } from '@/components/VirgilioLogo'
 import { VerifyEmailPending } from '@/components/VerifyEmailPending'
 import { useAuth } from '@/contexts/AuthContext'
-import onboardingHero from '@/assets/onboarding-hero.png'
+import onboardingHero from '@/assets/onboarding-hero-new.png'
 
 export default function Onboarding() {
   const [workspaceName, setWorkspaceName] = useState('')
