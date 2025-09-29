@@ -7,9 +7,10 @@ import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { supabase } from '@/integrations/supabase/client'
 import { useToast } from '@/hooks/use-toast'
-
+import { VirgilioLogo } from '@/components/VirgilioLogo'
 import { VerifyEmailPending } from '@/components/VerifyEmailPending'
 import { useAuth } from '@/contexts/AuthContext'
+import onboardingHero from '@/assets/onboarding-hero.png'
 
 export default function Onboarding() {
   const [workspaceName, setWorkspaceName] = useState('')
@@ -106,45 +107,66 @@ export default function Onboarding() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center px-4 py-12">
-      <div className="w-full max-w-lg">
-        <div className="mb-6 text-center">
-          <h1 className="text-2xl font-semibold tracking-tight">Set up your workspace</h1>
-          <p className="text-muted-foreground mt-2">Create your tenant and first workspace. 30‑day free trial, no card needed.</p>
+    <div className="min-h-screen flex flex-col lg:flex-row">
+
+      {/* Left Side - Responsive width with #fffead background */}
+      <div className="w-full lg:w-1/2 relative overflow-hidden flex items-center justify-center min-h-[50vh] lg:min-h-screen" style={{ backgroundColor: '#fffead' }}>
+        <img 
+          src={onboardingHero} 
+          alt="Onboarding Hero" 
+          className="h-full w-auto object-contain p-8"
+        />
+      </div>
+
+      {/* Right Side - Responsive width white background with onboarding form */}
+      <div className="w-full lg:w-1/2 bg-white flex flex-col justify-center px-6 sm:px-8 lg:px-8 xl:px-12 min-h-[50vh] lg:min-h-screen">
+        {/* Welcome Text - Full width and centered */}
+        <div className="mb-8 text-center">
+          <div className="mb-4 flex justify-center">
+            <VirgilioLogo size="xl" />
+          </div>
+           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-foreground mb-2" style={{ fontFamily: 'Poppins', letterSpacing: '-0.06em' }}>
+             Set up your workspace<span style={{ color: '#d7c5fb' }}>.</span>
+           </h1>
+           <p className="text-muted-foreground mt-2">Create your tenant and first workspace. 30‑day free trial, no card needed.</p>
         </div>
 
-        <Card>
-          <CardContent className="p-6">
-            {emailVerified === false ? (
-              <VerifyEmailPending 
-                userEmail={userEmail} 
-                onVerified={handleEmailVerified}
-              />
-            ) : (
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="space-y-2">
-                  <Label htmlFor="workspaceName">Workspace name</Label>
-                  <Input 
-                    id="workspaceName" 
-                    value={workspaceName} 
-                    onChange={(e) => setWorkspaceName(e.target.value)} 
-                    placeholder="Acme Inc." 
-                    required 
-                  />
-                  <p className="text-sm text-muted-foreground">Enter your company or organization name</p>
-                </div>
-                <Button 
-                  type="submit" 
-                  size="lg" 
-                  className="w-full" 
-                  disabled={isSubmitting || !emailVerified}
-                >
-                  {isSubmitting ? 'Creating...' : 'Create workspace'}
-                </Button>
-              </form>
-            )}
-          </CardContent>
-        </Card>
+        {/* Content Container with max width */}
+        <div className="w-full max-w-md mx-auto">
+          <Card className="border-0 shadow-none bg-transparent p-0">
+            <CardContent className="p-0">
+              {emailVerified === false ? (
+                <VerifyEmailPending 
+                  userEmail={userEmail} 
+                  onVerified={handleEmailVerified}
+                />
+              ) : (
+                <form onSubmit={handleSubmit} className="space-y-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="workspaceName" className="text-base font-medium">Workspace name</Label>
+                    <Input 
+                      id="workspaceName" 
+                      value={workspaceName} 
+                      onChange={(e) => setWorkspaceName(e.target.value)} 
+                      placeholder="Acme Inc." 
+                      required 
+                      className="h-12 text-base"
+                    />
+                    <p className="text-sm text-muted-foreground">Enter your company or organization name</p>
+                  </div>
+                  <Button 
+                    type="submit" 
+                    size="lg" 
+                    className="w-full h-12" 
+                    disabled={isSubmitting || !emailVerified}
+                  >
+                    {isSubmitting ? 'Creating...' : 'Create workspace'}
+                  </Button>
+                </form>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   )
