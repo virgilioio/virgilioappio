@@ -79,13 +79,36 @@ export function useOrganizations() {
     try {
       console.log('Fetching organizations for user:', user.id, 'userType:', userType)
       
-      // Optimized query - simplified without foreign key hints
-      const { data: orgsData, error: fetchError } = await supabase
+      let query = supabase
         .from('organizations')
         .select(`*`)
-        .eq('signup_source', 'manual')
-        .eq('organization_type', 'client')
-        .order('created_at', { ascending: false })
+
+      if (userType === 'platform_admin') {
+        // Platform admins see all manual client organizations
+        query = query
+          .eq('signup_source', 'manual')
+          .eq('organization_type', 'client')
+      } else {
+        // SaaS customers see only organizations in their tenant scope
+        const { data: memberData } = await supabase
+          .from('members')
+          .select('organization_id, organizations!inner(tenant_id)')
+          .eq('user_id', user.id)
+          .eq('user_status', 'active')
+          .single()
+
+        if (memberData?.organizations?.tenant_id) {
+          // Filter by tenant_id to show only organizations in their workspace
+          query = query.eq('tenant_id', memberData.organizations.tenant_id)
+        } else {
+          // No tenant context, return empty
+          setOrganizations([])
+          setIsLoading(false)
+          return
+        }
+      }
+
+      const { data: orgsData, error: fetchError } = await query.order('created_at', { ascending: false })
 
       if (fetchError) {
         console.error('Error fetching organizations:', fetchError)

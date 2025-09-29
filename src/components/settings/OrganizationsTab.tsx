@@ -51,7 +51,7 @@ export function OrganizationsTab() {
       <div>
         <h3 className="text-lg font-medium">Organizations</h3>
         <p className="text-sm text-muted-foreground">
-          Manage organizations and their settings
+          Manage your organizations and departments
         </p>
       </div>
 

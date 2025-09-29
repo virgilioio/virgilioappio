@@ -96,8 +96,8 @@ export function usePermissions(): PermissionsState {
     canDeleteMembers: isPlatformAdmin || isWorkspaceOwner || isAdmin,
     canManageMembers: isPlatformAdmin || isWorkspaceOwner || isAdmin,
     
-    // Organization permissions - Platform admins, workspace owners, and admin members
-    canViewOrganizations: isPlatformAdmin || isWorkspaceOwner || isAdmin,
+    // Organization permissions - Platform admins and workspace owners only
+    canViewOrganizations: isPlatformAdmin || isWorkspaceOwner,
     canCreateOrganizations: isPlatformAdmin || isWorkspaceOwner || isAdmin,
     canEditOrganizations: isPlatformAdmin || isWorkspaceOwner || isAdmin,
     canDeleteOrganizations: isPlatformAdmin || isWorkspaceOwner || isAdmin,
