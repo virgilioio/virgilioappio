@@ -552,6 +552,7 @@ export type Database = {
           location_city: string | null
           location_country: string | null
           location_state: string | null
+          organization_id: string | null
           phone: string | null
           profile_summary: string | null
           resume_generated_url: string | null
@@ -587,6 +588,7 @@ export type Database = {
           location_city?: string | null
           location_country?: string | null
           location_state?: string | null
+          organization_id?: string | null
           phone?: string | null
           profile_summary?: string | null
           resume_generated_url?: string | null
@@ -622,6 +624,7 @@ export type Database = {
           location_city?: string | null
           location_country?: string | null
           location_state?: string | null
+          organization_id?: string | null
           phone?: string | null
           profile_summary?: string | null
           resume_generated_url?: string | null
@@ -639,7 +642,15 @@ export type Database = {
           updated_at?: string
           years_experience?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "candidates_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       job_assignments: {
         Row: {

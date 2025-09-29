@@ -24,7 +24,7 @@ export interface IndependentCandidate {
   created_at: string
   updated_at: string
   created_by: string | null
-  // CoreSignal enrichment fields removed
+  organization_id: string | null
 }
 
 export interface CreateIndependentCandidateData {
@@ -43,26 +43,28 @@ export interface CreateIndependentCandidateData {
   skills?: string[] | null
   status?: string
   source?: string
+  organization_id?: string | null
 }
 
 export function useIndependentCandidates() {
   const [candidates, setCandidates] = useState<IndependentCandidate[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const { user } = useAuth()
+  const { user, organizationId } = useAuth()
 
   const getCandidates = async () => {
-    if (!user) return
+    if (!user || !organizationId) return
 
     setIsLoading(true)
     setError(null)
 
     try {
-      console.log('Fetching independent candidates')
+      console.log('Fetching independent candidates for organization:', organizationId)
       
       const { data, error: fetchError } = await supabase
         .from('candidates')
         .select('*')
+        .eq('organization_id', organizationId)
         .order('created_at', { ascending: false })
 
       if (fetchError) {
@@ -92,7 +94,7 @@ export function useIndependentCandidates() {
   }
 
   const addCandidate = async (candidateData: CreateIndependentCandidateData) => {
-    if (!user) throw new Error('User not authenticated')
+    if (!user || !organizationId) throw new Error('User not authenticated or no organization context')
 
     setIsLoading(true)
     setError(null)
@@ -100,13 +102,15 @@ export function useIndependentCandidates() {
     try {
       console.log('Adding independent candidate:', candidateData)
       
-      // Optimized duplicate check with better query structure
+      // Check for duplicates within the same organization
       if (candidateData.email || candidateData.candidate_name) {
-        // Use COUNT(*) for faster duplicate checking
         const duplicateQuery = candidateData.email 
-          ? supabase.from('candidates').select('id', { count: 'exact', head: true }).eq('email', candidateData.email)
+          ? supabase.from('candidates').select('id', { count: 'exact', head: true })
+              .eq('email', candidateData.email)
+              .eq('organization_id', organizationId)
           : supabase.from('candidates').select('id', { count: 'exact', head: true })
               .eq('candidate_name', candidateData.candidate_name)
+              .eq('organization_id', organizationId)
               .is('email', null)
         
         const { count, error: checkError } = await duplicateQuery
@@ -128,6 +132,7 @@ export function useIndependentCandidates() {
         .insert([{
           ...candidateData,
           created_by: user.id,
+          organization_id: organizationId,
         }])
         .select()
         .single()
@@ -240,10 +245,10 @@ export function useIndependentCandidates() {
   }
 
   useEffect(() => {
-    if (user) {
+    if (user && organizationId) {
       getCandidates()
     }
-  }, [user])
+  }, [user, organizationId])
 
   return {
     candidates,

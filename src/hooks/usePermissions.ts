@@ -110,8 +110,8 @@ export function usePermissions(): PermissionsState {
     canDeleteCandidates: isPlatformAdmin || isWorkspaceOwner || isAdmin,
     canManageCandidates: isPlatformAdmin || isWorkspaceOwner || isAdmin || isRecruiter,
     
-    // Navigation permissions - Show candidates in header for Platform Admins and Virgilio recruiters
-    canViewCandidatesNavigation: isPlatformAdmin || isVirgilioRecruiter,
+    // Navigation permissions - Show candidates for Platform Admins, Virgilio recruiters, Workspace owners, and member recruiters
+    canViewCandidatesNavigation: isPlatformAdmin || isVirgilioRecruiter || isWorkspaceOwner || (isRecruiter && hasOrganizationContext),
     
     // Job assignment permissions - Only admins and recruiters can manage assignments
     canViewJobAssignments: isPlatformAdmin || isWorkspaceOwner || isAdmin || isRecruiter,

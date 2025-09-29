@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '@/integrations/supabase/client'
+import { useAuth } from '@/contexts/AuthContext'
 import { toast } from '@/hooks/use-toast'
 
 interface SyncResult {
@@ -11,13 +12,23 @@ interface SyncResult {
 export function useCandidateSync() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const { organizationId } = useAuth()
 
   const syncCandidates = async (): Promise<SyncResult | null> => {
+    if (!organizationId) {
+      toast({
+        title: 'Error',
+        description: 'No organization context available for sync',
+        variant: 'destructive'
+      })
+      return null
+    }
+
     setIsLoading(true)
     setError(null)
 
     try {
-      console.log('Starting candidate sync...')
+      console.log('Starting candidate sync for organization:', organizationId)
       
       const { data, error: syncError } = await supabase
         .rpc('sync_job_candidates_to_independent')
