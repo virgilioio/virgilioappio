@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Building, Edit, Lock, AlertTriangle, Save, Loader2 } from 'lucide-react'
 
 import { OrganizationDisplay } from './OrganizationDisplay'
+import { OrganizationSwitcher } from './OrganizationSwitcher'
 // Currency settings removed
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/hooks/use-toast'
@@ -303,6 +304,9 @@ const [orgFormData, setOrgFormData] = useState<OrganizationFormData>({
   console.log('OrganizationTab - rendering content with organization:', userOrganization.name, 'editMode:', isEditMode)
   return (
     <div className="space-y-6">
+      {/* Organization Switcher for Platform Admins */}
+      <OrganizationSwitcher />
+      
       {/* Header with Edit Toggle */}
       <Card>
         <CardHeader className="pb-3">

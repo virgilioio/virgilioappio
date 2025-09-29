@@ -12,6 +12,8 @@ interface AuthContextType {
   hasOrganizationContext: boolean
   userType: string | null
   memberRole: string | null
+  availableOrganizations: Array<{ id: string; name: string }> | null
+  switchOrganization: (organizationId: string) => Promise<void>
   login: (email: string, password: string) => Promise<{ error?: AuthError }>
   signUp: (email: string, password: string) => Promise<{ error?: AuthError }>
   logout: () => Promise<void>
@@ -32,8 +34,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     member_role: null,
     organization_id: null
   })
+  const [availableOrganizations, setAvailableOrganizations] = useState<Array<{ id: string; name: string }> | null>(null)
+  const [selectedOrganizationId, setSelectedOrganizationId] = useState<string | null>(null)
 
-  const organizationId = (session?.user?.user_metadata as any)?.organization_id || memberData.organization_id
+  // Use selected organization if available, otherwise fall back to member data
+  const organizationId = selectedOrganizationId || memberData.organization_id
   const hasOrganizationContext = !!organizationId
   const userType = memberData.user_type
   const memberRole = memberData.member_role
@@ -62,6 +67,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           member_role: memberInfo.member_role,
           organization_id: memberInfo.organization_id
         })
+        
+        // For platform admins, fetch available organizations
+        if (memberInfo.user_type === 'platform_admin') {
+          await fetchAvailableOrganizations()
+        }
       } else {
         setMemberData({
           user_type: 'guest',
@@ -76,6 +86,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         member_role: null,
         organization_id: null
       })
+    }
+  }
+
+  const fetchAvailableOrganizations = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('organizations')
+        .select('id, name')
+        .eq('status', 'active')
+        .order('name')
+
+      if (error) {
+        console.error('Error fetching organizations:', error)
+        return
+      }
+
+      setAvailableOrganizations(data || [])
+    } catch (err) {
+      console.error('Exception fetching organizations:', err)
+    }
+  }
+
+  const switchOrganization = async (organizationId: string) => {
+    setSelectedOrganizationId(organizationId)
+    
+    // Update user metadata to persist the selection
+    try {
+      // For now, just store in local state - edge function can be added later if needed
+      console.log('Organization switched to:', organizationId)
+    } catch (error) {
+      console.error('Error setting current organization:', error)
     }
   }
 
@@ -154,6 +195,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     hasOrganizationContext,
     userType,
     memberRole,
+    availableOrganizations,
+    switchOrganization,
     login,
     signUp,
     logout,
