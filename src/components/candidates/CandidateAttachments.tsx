@@ -169,7 +169,9 @@ export function CandidateAttachments({ candidateId }: CandidateAttachmentsProps)
           {attachments.length === 0 ? (
             <div className="text-center py-8 text-text-secondary">
               <File className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p className="text-sm">No attachments yet</p>
+              <p className="text-[1.38rem] font-semibold mb-2 tracking-[-0.06em]">
+                <span>No attachments yet</span><span className="text-[#d7c5fb]">.</span>
+              </p>
               {!canManageCandidates && (
                 <p className="text-xs mt-1">You don't have permission to upload attachments</p>
               )}

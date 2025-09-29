@@ -106,7 +106,9 @@ export function CandidateComments({ candidateId, jobId, organizationId }: Candid
           ) : comments.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>No comments yet</p>
+              <p className="text-[1.38rem] font-semibold mb-2 tracking-[-0.06em]">
+                <span>No comments yet</span><span className="text-[#d7c5fb]">.</span>
+              </p>
               <p className="text-sm">Be the first to add a comment</p>
             </div>
           ) : (

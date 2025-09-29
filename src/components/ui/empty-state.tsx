@@ -80,8 +80,8 @@ export function EmptyState({
         )}
       </div>
       
-      <h3 className="text-lg font-semibold mb-2">
-        {title}
+      <h3 className="text-[1.38rem] font-semibold mb-2 tracking-[-0.06em]">
+        <span>{title}</span><span className="text-[#d7c5fb]">.</span>
       </h3>
       
       <p className="text-muted-foreground mb-4">
