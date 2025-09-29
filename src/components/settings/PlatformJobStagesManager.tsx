@@ -45,6 +45,8 @@ export function PlatformJobStagesManager() {
           stages={stages} 
           isLoading={isLoading} 
           onEdit={handleEdit}
+          onDelete={deleteStage}
+          context="platform-defaults"
         />
       </CardContent>
 

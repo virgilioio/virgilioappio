@@ -9,6 +9,7 @@ interface JobStagesTableProps {
   stages: JobStage[]
   isLoading: boolean
   onEdit: (stage: JobStage) => void
+  onDelete?: (id: string) => Promise<void>
   context?: 'platform-defaults' | 'organization'
 }
 
@@ -43,11 +44,15 @@ const stageTypeVariants: Record<string, import("@/components/ui/badge").BadgePro
   custom: 'secondary'
 }
 
-export function JobStagesTable({ stages, isLoading, onEdit, context = 'organization' }: JobStagesTableProps) {
+export function JobStagesTable({ stages, isLoading, onEdit, onDelete, context = 'organization' }: JobStagesTableProps) {
   const { deleteStage, isDeleting } = useJobStages()
 
   const handleDelete = async (id: string) => {
-    await deleteStage(id)
+    if (onDelete) {
+      await onDelete(id)
+    } else {
+      await deleteStage(id)
+    }
   }
 
   if (isLoading) {
