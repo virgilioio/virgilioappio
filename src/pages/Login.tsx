@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
 import { VirgilioLogo } from '@/components/VirgilioLogo'
+import dashboardPreview from '@/assets/dashboard-preview.png'
 
 import { GoogleLogo } from '@/components/icons/GoogleLogo'
 import { useAuth } from '@/contexts/AuthContext'
@@ -74,6 +75,11 @@ export default function Login() {
 
       {/* Left Side - Responsive width with #fffead background */}
       <div className="w-full lg:w-1/2 relative overflow-hidden flex items-center justify-center min-h-[50vh] lg:min-h-screen" style={{ backgroundColor: '#fffead' }}>
+        <img 
+          src={dashboardPreview} 
+          alt="Dashboard Preview" 
+          className="w-3/4 max-w-md h-auto object-contain"
+        />
       </div>
 
       {/* Right Side - Responsive width white background with login form */}
