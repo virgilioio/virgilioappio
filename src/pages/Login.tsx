@@ -84,15 +84,15 @@ export default function Login() {
 
       {/* Right Side - Responsive width white background with login form */}
       <div className="w-full lg:w-1/2 bg-white flex flex-col justify-center px-6 sm:px-8 lg:px-8 xl:px-12 min-h-[50vh] lg:min-h-screen">
+        {/* Welcome Text - Full width and centered */}
+        <div className="mb-8 text-center">
+           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-foreground mb-2" style={{ fontFamily: 'Poppins', letterSpacing: '-0.06em' }}>
+             Find your people<span style={{ color: '#d7c5fb' }}>.</span>
+           </h1>
+        </div>
+
         {/* Content Container with max width */}
         <div className="w-full max-w-md mx-auto">
-          {/* Welcome Text */}
-          <div className="mb-8">
-             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-foreground mb-2" style={{ fontFamily: 'Poppins', letterSpacing: '-0.06em' }}>
-               Find your people<span style={{ color: '#d7c5fb' }}>.</span>
-             </h1>
-          </div>
-
           {/* Login Form */}
           <Card className="border-0 shadow-none bg-transparent p-0">
             <CardContent className="p-0">
