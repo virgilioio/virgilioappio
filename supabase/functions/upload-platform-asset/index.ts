@@ -195,23 +195,42 @@ Deno.serve(async (req) => {
       }
 
       // Activate the new asset (deactivates old ones)
+      console.log('Activating asset:', assetData.id, 'of type:', assetType)
+      
       const { error: activateError } = await supabase.rpc('activate_platform_asset', {
         new_asset_id: assetData.id,
         asset_type_param: assetType
       })
 
       if (activateError) {
-        console.error('Activation error:', activateError)
+        console.error('Activation error:', {
+          code: activateError.code,
+          message: activateError.message,
+          details: activateError.details,
+          hint: activateError.hint
+        })
+        
         // Clean up uploaded file and asset record on activation failure
         await supabase.storage.from('assets').remove([filePath])
         await supabase.from('platform_assets').delete().eq('id', assetData.id)
         
-        const errorMessage = activateError.code === '23505' 
-          ? 'Asset activation failed due to constraint violation. Please try again.'
-          : 'Failed to activate asset'
+        let errorMessage = 'Failed to activate asset'
+        
+        // Handle specific error types with user-friendly messages
+        if (activateError.code === '23505' || activateError.message?.includes('constraint violation')) {
+          errorMessage = 'An asset of this type already exists and could not be replaced. Please try again in a moment.'
+        } else if (activateError.message?.includes('Asset with id') && activateError.message?.includes('not found')) {
+          errorMessage = 'Asset record was not created properly. Please try uploading again.'
+        } else if (activateError.message) {
+          errorMessage = activateError.message
+        }
         
         return new Response(
-          JSON.stringify({ error: errorMessage, details: activateError.message }),
+          JSON.stringify({ 
+            error: errorMessage, 
+            details: activateError.message,
+            code: activateError.code 
+          }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
       }

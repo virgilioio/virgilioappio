@@ -45,6 +45,8 @@ export function usePlatformAssets() {
     try {
       setIsUploading(true)
       
+      console.log('Starting upload for asset type:', assetType, 'File:', file.name, 'Size:', file.size)
+      
       const formData = new FormData()
       formData.append('file', file)
       formData.append('assetType', assetType)
@@ -54,8 +56,13 @@ export function usePlatformAssets() {
         body: formData
       })
 
-      if (error) throw error
+      if (error) {
+        console.error('Supabase function error:', error)
+        throw error
+      }
 
+      console.log('Upload successful:', data)
+      
       toast({
         title: 'Success',
         description: `${assetType.charAt(0).toUpperCase() + assetType.slice(1)} uploaded successfully`
@@ -72,9 +79,23 @@ export function usePlatformAssets() {
       return data.asset
     } catch (error: any) {
       console.error('Error uploading asset:', error)
+      
+      let errorMessage = `Failed to upload ${assetType}`
+      
+      // Handle specific error types
+      if (error.message?.includes('constraint violation')) {
+        errorMessage = 'An asset of this type already exists. Please try again in a moment.'
+      } else if (error.message?.includes('file too large')) {
+        errorMessage = 'File size too large. Please choose a smaller file.'
+      } else if (error.message?.includes('invalid file type')) {
+        errorMessage = 'Invalid file type. Please upload a PNG, JPG, or ICO file.'
+      } else if (error.message) {
+        errorMessage = error.message
+      }
+      
       toast({
         title: 'Upload Failed',
-        description: error.message || `Failed to upload ${assetType}`,
+        description: errorMessage,
         variant: 'destructive'
       })
       throw error
