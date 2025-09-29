@@ -73,11 +73,11 @@ export default function Login() {
       </header>
 
       {/* Left Side - Responsive width with #fffead background */}
-      <div className="w-full lg:w-2/3 xl:w-3/5 2xl:w-2/3 relative overflow-hidden flex items-center justify-center min-h-[50vh] lg:min-h-screen" style={{ backgroundColor: '#fffead' }}>
+      <div className="w-full lg:w-1/2 relative overflow-hidden flex items-center justify-center min-h-[50vh] lg:min-h-screen" style={{ backgroundColor: '#fffead' }}>
       </div>
 
       {/* Right Side - Responsive width white background with login form */}
-      <div className="w-full lg:w-1/3 xl:w-2/5 2xl:w-1/3 bg-white flex flex-col justify-center px-6 sm:px-8 lg:px-8 xl:px-12 min-h-[50vh] lg:min-h-screen">
+      <div className="w-full lg:w-1/2 bg-white flex flex-col justify-center px-6 sm:px-8 lg:px-8 xl:px-12 min-h-[50vh] lg:min-h-screen">
         {/* Welcome Text */}
         <div className="mb-8">
           <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground mb-2">
