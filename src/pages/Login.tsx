@@ -73,8 +73,8 @@ export default function Login() {
       <div className="w-full lg:w-1/2 bg-white flex flex-col justify-center px-6 sm:px-8 lg:px-8 xl:px-12 min-h-[50vh] lg:min-h-screen">
         {/* Welcome Text - Full width and centered */}
         <div className="mb-8 text-center">
-          <div className="mb-4">
-            <VirgilioLogo size="lg" />
+          <div className="mb-4 flex justify-center">
+            <VirgilioLogo size="xl" />
           </div>
            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-foreground mb-2" style={{ fontFamily: 'Poppins', letterSpacing: '-0.06em' }}>
              Find your people<span style={{ color: '#d7c5fb' }}>.</span>
