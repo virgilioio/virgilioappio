@@ -78,7 +78,7 @@ export default function Login() {
         <img 
           src={dashboardPreview} 
           alt="Dashboard Preview" 
-          className="w-3/4 max-w-md h-auto object-contain"
+          className="w-full h-auto object-contain p-8"
         />
       </div>
 
