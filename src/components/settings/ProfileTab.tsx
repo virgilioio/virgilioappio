@@ -19,7 +19,7 @@ interface ProfileFormData {
 }
 
 export function ProfileTab() {
-  const { user } = useAuth()
+  const { user, userType, memberRole } = useAuth()
   const { profile, updateProfile, uploadAvatar, isLoading: profileLoading } = useUserProfile()
   
   const [profileFormData, setProfileFormData] = useState<ProfileFormData>({
@@ -150,15 +150,15 @@ export function ProfileTab() {
               <Shield className="h-3 w-3" />
               <span>User Type: </span>
               <Badge variant="secondary" className="text-xs">
-                {user?.user_metadata?.user_type || 'guest'}
+                {userType || 'guest'}
               </Badge>
             </div>
-            {user?.user_metadata?.member_role && (
+            {memberRole && (
               <div className="flex items-center gap-2">
                 <Shield className="h-3 w-3" />
                 <span>Member Role: </span>
                 <Badge variant="outline" className="text-xs">
-                  {user.user_metadata.member_role}
+                  {memberRole}
                 </Badge>
               </div>
             )}
