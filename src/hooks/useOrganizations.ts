@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/integrations/supabase/client'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from '@/hooks/use-toast'
+import { useIsVirgilioAdmin } from '@/hooks/useIsVirgilioAdmin'
 
 export interface Organization {
   id: string
@@ -33,8 +34,6 @@ export interface Organization {
 export interface CreateOrganizationData {
   name: string
   status: 'active' | 'inactive'
-  owner_id?: string | null
-  parent_organization_id?: string | null
 }
 
 export interface UpdateOrganizationData {
@@ -66,7 +65,34 @@ export function useOrganizations() {
   const [organizations, setOrganizations] = useState<Organization[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const { user, userType } = useAuth()
+  const { user, userType, organizationId } = useAuth()
+  const isVirgilioAdmin = useIsVirgilioAdmin()
+
+  // Helper function to get user's tenant organization
+  const getUserTenantOrganization = async () => {
+    if (userType === 'platform_admin' && isVirgilioAdmin) {
+      // Platform admins use Virgilio as parent
+      const { data: virgilioOrg } = await supabase
+        .from('organizations')
+        .select('id')
+        .eq('name', 'Virgilio')
+        .eq('organization_type', 'platform')
+        .eq('tenant_type', 'saas')
+        .single()
+      
+      return virgilioOrg?.id || null
+    } else {
+      // Workspace owners use their current organization's tenant
+      const { data: memberData } = await supabase
+        .from('members')
+        .select('organizations!inner(tenant_id)')
+        .eq('user_id', user?.id)
+        .eq('user_status', 'active')
+        .single()
+      
+      return memberData?.organizations?.tenant_id || null
+    }
+  }
 
   const getOrganizations = async () => {
     if (!user) return
@@ -165,9 +191,30 @@ export function useOrganizations() {
     try {
       console.log('Creating organization:', data)
       
+      // Get user's tenant organization for parent assignment
+      const tenantOrgId = await getUserTenantOrganization()
+      
+      if (!tenantOrgId) {
+        throw new Error('Unable to determine parent organization. Please ensure you have proper permissions.')
+      }
+      
+      // Build the complete organization data with implicit values
+      const organizationData = {
+        ...data,
+        org_kind: 'client' as const, // Always client for manually created orgs
+        owner_id: user?.id || null, // Current user as owner
+        parent_organization_id: tenantOrgId, // Auto-determined parent
+        tenant_id: tenantOrgId, // Same as parent for client orgs
+        signup_source: 'manual', // Mark as manually created
+        tenant_type: 'internal', // Internal tenant type
+        organization_type: 'client' // Client organization type
+      }
+      
+      console.log('Creating organization with data:', organizationData)
+      
       const { data: newOrg, error: createError } = await supabase
         .from('organizations')
-        .insert([data])
+        .insert([organizationData])
         .select()
         .single()
 

@@ -7,18 +7,13 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form'
-import { SearchableSelect } from '@/components/ui/searchable-select'
 import { Organization, CreateOrganizationData, UpdateOrganizationData } from '@/hooks/useOrganizations'
 import { usePermissions } from '@/hooks/usePermissions'
-import { useMembers } from '@/hooks/useMembers'
-import { useOrganizations } from '@/hooks/useOrganizations'
 import { useAuth } from '@/contexts/AuthContext'
 
 const formSchema = z.object({
   name: z.string().min(1, 'Organization name is required'),
-  status: z.enum(['active', 'inactive']),
-  owner_id: z.string().optional(),
-  parent_organization_id: z.string().optional()
+  status: z.enum(['active', 'inactive'])
 })
 
 type FormData = z.infer<typeof formSchema>
@@ -39,64 +34,14 @@ export function OrganizationFormSheet({
   isLoading 
 }: OrganizationFormSheetProps) {
   const permissions = usePermissions()
-  const { members } = useMembers()
-  const { organizations: allOrganizations } = useOrganizations()
   const isEditing = !!organization
-  const { organizationId, user } = useAuth()
-
-  // Get workspace owners for the owner dropdown - filter out members without valid user_id
-  const workspaceOwners = members.filter(member => 
-    member.user_type === 'workspace_owner' && 
-    member.user_status === 'active' &&
-    member.user_id && // Only show members with actual user accounts
-    member.user_id.trim() !== '' // Ensure it's not an empty string
-  )
-
-  // Create formatted options for the owner dropdown
-  const ownerOptions = [
-    { value: 'none', label: 'No owner assigned' },
-    ...workspaceOwners.map(member => {
-      const firstName = member.user_first_name || ''
-      const lastName = member.user_last_name || ''
-      const fullName = `${firstName} ${lastName}`.trim()
-      const email = member.user_email || member.invited_email || ''
-      
-      let displayLabel = ''
-      if (fullName && email) {
-        displayLabel = `${fullName} (${email})`
-      } else if (email) {
-        displayLabel = email
-      } else if (fullName) {
-        displayLabel = `${fullName} (No email)`
-      } else {
-        displayLabel = `Unknown User (ID: ${member.user_id})`
-      }
-      
-      return {
-        value: member.user_id!,
-        label: displayLabel
-      }
-    }),
-    // Also include invited workspace owners
-    ...members
-      .filter(member => 
-        member.user_type === 'workspace_owner' && 
-        member.user_status === 'invited' &&
-        member.invited_email
-      )
-      .map(member => ({
-        value: `invited_${member.id}`, // Use a different prefix for invited users
-        label: `Pending Invitation (${member.invited_email})`
-      }))
-  ]
+  const { user } = useAuth()
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: '',
-      status: 'active',
-      owner_id: 'none', // Use 'none' instead of empty string
-      parent_organization_id: organizationId || 'none'
+      status: 'active'
     }
   })
 
@@ -104,42 +49,19 @@ export function OrganizationFormSheet({
     if (organization) {
       form.reset({
         name: organization.name,
-        status: organization.status,
-        owner_id: organization.owner_id || 'none', // Convert null to 'none'
-        parent_organization_id: organization.parent_organization_id || 'none'
+        status: organization.status
       })
     } else {
       form.reset({
         name: '',
-        status: 'active',
-        owner_id: 'none', // Use 'none' instead of empty string
-        parent_organization_id: organizationId || 'none'
+        status: 'active'
       })
     }
   }, [organization, form])
 
   const handleSubmit = async (data: FormData) => {
     try {
-      const submitData: any = {
-        ...data,
-        // Only set owner_id if it's not 'none' and doesn't start with 'invited_'
-        owner_id: data.owner_id === 'none' || data.owner_id?.startsWith('invited_') ? null : data.owner_id,
-        parent_organization_id: data.parent_organization_id === 'none' ? null : data.parent_organization_id,
-        // Mark all manually created organizations as 'manual' signup source
-        signup_source: 'manual',
-        // Set tenant_type and organization_type for manually created orgs
-        tenant_type: 'internal',
-        organization_type: 'client'
-      }
-
-      // For workspace owners creating new organizations, automatically set themselves as owner
-      // and their current workspace as the parent organization
-      if (!isEditing && permissions.isWorkspaceOwner && !permissions.isPlatformAdmin) {
-        submitData.owner_id = user?.id || null
-        submitData.parent_organization_id = organizationId
-      }
-
-      await onSubmit(submitData)
+      await onSubmit(data)
       onClose()
     } catch (error) {
       console.error('Form submission error:', error)
@@ -160,7 +82,7 @@ export function OrganizationFormSheet({
               {isEditing ? 'Edit Organization' : 'Create Organization'}
             </SheetTitle>
             <SheetDescription>
-              {isEditing ? 'Update organization details' : 'Create a new organization to manage your teams and projects'}
+              {isEditing ? 'Update organization details' : 'Create a new organization. Parent and ownership will be set automatically based on your role.'}
             </SheetDescription>
           </SheetHeader>
 
@@ -202,67 +124,6 @@ export function OrganizationFormSheet({
                 )}
               />
 
-              {/* Parent Organization - Only show for platform admins */}
-              {permissions.isPlatformAdmin && (
-                <FormField
-                  control={form.control}
-                  name="parent_organization_id"
-                  render={({ field }) => {
-                    const parentOptions = [
-                      { value: 'none', label: 'No parent (top-level)' },
-                      ...allOrganizations
-                        .filter(o => !isEditing || o.id !== organization?.id)
-                        .map(o => ({ value: o.id, label: o.name }))
-                    ]
-                    return (
-                      <FormItem>
-                        <FormLabel>Parent Organization</FormLabel>
-                        <FormControl>
-                          <SearchableSelect
-                            options={parentOptions}
-                            value={field.value}
-                            onValueChange={field.onChange}
-                            placeholder="Select a parent (optional)"
-                            searchPlaceholder="Search organizations..."
-                            emptyMessage="No organizations found."
-                          />
-                        </FormControl>
-                        <FormDescription>
-                          Set a parent to create a hierarchy. Tenants should have no parent.
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )
-                  }}
-                />
-              )}
-
-              {permissions.isPlatformAdmin && permissions.canManageOrganization && (
-                <FormField
-                  control={form.control}
-                  name="owner_id"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Owner (Optional)</FormLabel>
-                      <FormControl>
-                        <SearchableSelect
-                          options={ownerOptions}
-                          value={field.value}
-                          onValueChange={field.onChange}
-                          placeholder="Select an owner"
-                          searchPlaceholder="Search owners..."
-                          emptyMessage="No owners found."
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        Optional. You can assign a workspace owner to manage this organization.
-                        {ownerOptions.length <= 1 && " No workspace owners available - invite users with workspace owner role first."}
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
             </form>
 
             <div className="px-6 py-4 border-t border-border flex items-center justify-end gap-2">
