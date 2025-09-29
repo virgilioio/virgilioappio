@@ -186,9 +186,9 @@ export function OrganizationsTable({
                 <Table>
                   <TableHeader>
             <TableRow>
-              <TableHead className="w-1/2">Name</TableHead>
-              <TableHead className="w-1/4">Status</TableHead>
-              <TableHead className="w-1/4 text-right">Actions</TableHead>
+              <TableHead>Name</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="w-[100px] text-right">Actions</TableHead>
             </TableRow>
                   </TableHeader>
                   <TableBody>
