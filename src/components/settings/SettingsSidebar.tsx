@@ -30,7 +30,7 @@ export function SettingsSidebar({ currentTab, onTabChange, className }: Settings
     ['platform-dashboard', 'platform-settings', 'platform-job-settings', 'platform-customers', 'platform-saas-customers'].includes(currentTab)
   )
   const [workspaceOpen, setWorkspaceOpen] = useState(
-    ['workspace-settings', 'workspace-team'].includes(currentTab)
+    ['workspace-settings', 'workspace-team', 'organization', 'members'].includes(currentTab)
   )
 
   const isWorkspaceOwnerOfSaaSOrg = () => {
@@ -45,12 +45,6 @@ export function SettingsSidebar({ currentTab, onTabChange, className }: Settings
       show: true 
     },
     { 
-      id: 'organization', 
-      label: 'Organization', 
-      icon: Building, 
-      show: permissions.canManageOrganization 
-    },
-    { 
       id: 'organizations', 
       label: 'Organizations', 
       icon: Building2, 
@@ -63,17 +57,13 @@ export function SettingsSidebar({ currentTab, onTabChange, className }: Settings
       show: permissions.canViewBilling 
     },
     { 
-      id: 'members', 
-      label: 'Members', 
-      icon: Users, 
-      show: permissions.canViewMembers 
-    },
-    { 
       id: 'workspace', 
       label: 'Workspace', 
       icon: Layers, 
       show: permissions.isPlatformAdmin || (userType === 'workspace_owner' && !!organizationId),
       submenu: [
+        { id: 'organization', label: 'Company Profile', icon: Building, show: permissions.canManageOrganization },
+        { id: 'members', label: 'Members', icon: Users, show: permissions.canViewMembers },
         { id: 'workspace-settings', label: 'Settings', icon: SettingsIcon, show: true },
         { id: 'workspace-team', label: 'Team', icon: Users, show: true },
       ]
@@ -118,7 +108,12 @@ export function SettingsSidebar({ currentTab, onTabChange, className }: Settings
     if (itemId === 'workspace') {
       handleWorkspaceToggle()
       if (!workspaceOpen) {
-        onTabChange('workspace-settings') // Default to settings when opening workspace
+        // Default to first available workspace submenu item
+        const workspaceSubmenu = navItems.find(item => item.id === 'workspace')?.submenu
+        const firstAvailableItem = workspaceSubmenu?.find(subItem => subItem.show)
+        if (firstAvailableItem) {
+          onTabChange(firstAvailableItem.id)
+        }
       }
     } else if (itemId === 'platform') {
       handlePlatformToggle()
