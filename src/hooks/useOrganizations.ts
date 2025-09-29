@@ -32,7 +32,6 @@ export interface Organization {
 
 export interface CreateOrganizationData {
   name: string
-  country: string
   status: 'active' | 'inactive'
   owner_id?: string | null
   parent_organization_id?: string | null
@@ -40,7 +39,6 @@ export interface CreateOrganizationData {
 
 export interface UpdateOrganizationData {
   name?: string
-  country?: string
   status?: 'active' | 'inactive'
   owner_id?: string | null
   billing_poc_user_id?: string | null

@@ -39,10 +39,18 @@ export function OrganizationsTab() {
   }
 
   const handleFormSubmit = async (data: any) => {
-    if (selectedOrganization) {
-      await updateOrganization(selectedOrganization.id, data)
-    } else {
-      await createOrganization(data)
+    try {
+      if (selectedOrganization) {
+        await updateOrganization(selectedOrganization.id, data)
+      } else {
+        await createOrganization(data)
+      }
+      // Close form after successful submission
+      setIsFormOpen(false)
+      setSelectedOrganization(null)
+    } catch (error) {
+      // Error handling is already done in the hook with toast notifications
+      console.error('Form submission error:', error)
     }
   }
 
