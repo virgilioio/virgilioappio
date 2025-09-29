@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { toast } from '@/hooks/use-toast'
@@ -166,14 +167,16 @@ export function MembersTable({
       </CardHeader>
       <CardContent>
         {members.length === 0 ? (
-          <div className="text-center py-8">
-            <p className="text-muted-foreground mb-4">No team members found</p>
-            {onAddNew && (
-              <Button onClick={onAddNew} variant="outline">
-                Add your first team member
-              </Button>
-            )}
-          </div>
+          <EmptyState
+            assetType="empty-state-members"
+            title="No team members yet"
+            description="Invite your first team member to start collaborating"
+            fallbackIcon={UserCheck}
+            action={onAddNew ? {
+              label: "Add Member",
+              onClick: onAddNew
+            } : undefined}
+          />
         ) : (
           <div className="overflow-x-auto">
             <Table>
