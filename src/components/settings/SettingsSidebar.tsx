@@ -69,7 +69,7 @@ export function SettingsSidebar({ currentTab, onTabChange, className }: Settings
       id: 'platform', 
       label: 'Platform', 
       icon: Shield, 
-      show: permissions.isPlatformAdmin || permissions.canCreateOrganizations,
+      show: permissions.isPlatformAdmin,
       submenu: [
         { id: 'platform-dashboard', label: 'Dashboard', icon: BarChart3, show: true },
         { id: 'platform-settings', label: 'App Personalization', icon: SettingsIcon, show: true },
