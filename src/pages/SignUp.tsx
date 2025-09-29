@@ -89,7 +89,7 @@ export default function SignUp() {
         <img 
           src={dashboardPreview} 
           alt="Dashboard Preview" 
-          className="w-full h-auto object-contain p-8"
+          className="h-full w-auto object-contain p-8"
         />
       </div>
 
