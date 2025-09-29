@@ -59,11 +59,22 @@ export function useJobStages() {
   const createStage = async (input: CreateJobStageInput) => {
     setIsCreating(true)
     try {
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      // Get user's organization for workspace owners
+      const { data: memberData } = await supabase
+        .from('members')
+        .select('organization_id, user_type')
+        .eq('user_id', user?.id)
+        .eq('user_status', 'active')
+        .single()
+
       const { data, error } = await supabase
         .from('job_stages')
         .insert({
           ...input,
-          created_by: (await supabase.auth.getUser()).data.user?.id
+          organization_id: memberData?.user_type === 'workspace_owner' ? memberData.organization_id : null,
+          created_by: user?.id
         })
         .select()
         .single()

@@ -80,9 +80,25 @@ export function useApplicationFields() {
     selectOptions?: { value: string; label: string }[],
     validationRules?: { type: string; value: string; message: string }[]
   ) => {
+    const { data: { user } } = await supabase.auth.getUser()
+    
+    // Get user's organization for workspace owners
+    const { data: memberData } = await supabase
+      .from('members')
+      .select('organization_id, user_type')
+      .eq('user_id', user?.id)
+      .eq('user_status', 'active')
+      .single()
+
+    const enrichedFieldData = {
+      ...fieldData,
+      organization_id: memberData?.user_type === 'workspace_owner' ? memberData.organization_id : null,
+      created_by: user?.id
+    }
+
     const { data, error } = await supabase
       .from('application_fields')
-      .insert(fieldData)
+      .insert(enrichedFieldData)
       .select()
       .maybeSingle()
     if (error) throw error

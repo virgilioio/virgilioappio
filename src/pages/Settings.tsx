@@ -146,6 +146,13 @@ export default function Settings() {
                   </>
                 )}
 
+                {/* Workspace Job Settings for both Platform Admins and Workspace Owners */}
+                {(isPlatformAdmin || isWorkspaceOwnerOfSaaSOrg()) && (
+                  <TabsContent value="workspace-job-settings">
+                    <JobSettingsManager />
+                  </TabsContent>
+                )}
+
                 {isWorkspaceOwnerOfSaaSOrg() && (
                   <TabsContent value="subscription">
                     <SaaSSubscription />

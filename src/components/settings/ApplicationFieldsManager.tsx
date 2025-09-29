@@ -23,7 +23,7 @@ export function ApplicationFieldsManager() {
         <div>
           <CardTitle>Custom Application Fields Library</CardTitle>
           <CardDescription>
-            Create and manage additional application fields for job postings. Core fields (name, email, phone, resume, etc.) are included automatically.
+            Create and manage additional application fields for your job postings. Core fields (name, email, phone, resume, etc.) are included automatically.
           </CardDescription>
         </div>
         <Button onClick={() => setIsCreateOpen(true)}>

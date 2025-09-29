@@ -68,6 +68,7 @@ export type Database = {
           is_default: boolean
           is_required: boolean
           max_file_size_mb: number | null
+          organization_id: string | null
           placeholder_text: string | null
           updated_at: string
         }
@@ -85,6 +86,7 @@ export type Database = {
           is_default?: boolean
           is_required?: boolean
           max_file_size_mb?: number | null
+          organization_id?: string | null
           placeholder_text?: string | null
           updated_at?: string
         }
@@ -102,10 +104,19 @@ export type Database = {
           is_default?: boolean
           is_required?: boolean
           max_file_size_mb?: number | null
+          organization_id?: string | null
           placeholder_text?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "application_fields_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       audit_logs: {
         Row: {
@@ -1125,6 +1136,7 @@ export type Database = {
           id: string
           is_active: boolean
           is_default: boolean
+          organization_id: string | null
           stage_description: string | null
           stage_name: string
           stage_priority: number | null
@@ -1137,6 +1149,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           is_default?: boolean
+          organization_id?: string | null
           stage_description?: string | null
           stage_name: string
           stage_priority?: number | null
@@ -1149,13 +1162,22 @@ export type Database = {
           id?: string
           is_active?: boolean
           is_default?: boolean
+          organization_id?: string | null
           stage_description?: string | null
           stage_name?: string
           stage_priority?: number | null
           stage_type?: Database["public"]["Enums"]["stage_type_enum"]
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "job_stages_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       jobs: {
         Row: {
@@ -1432,6 +1454,7 @@ export type Database = {
           id: string
           is_required: boolean
           max_file_size_mb: number | null
+          organization_id: string | null
           placeholder_text: string | null
           template_id: string
           updated_at: string
@@ -1448,6 +1471,7 @@ export type Database = {
           id?: string
           is_required?: boolean
           max_file_size_mb?: number | null
+          organization_id?: string | null
           placeholder_text?: string | null
           template_id: string
           updated_at?: string
@@ -1464,11 +1488,19 @@ export type Database = {
           id?: string
           is_required?: boolean
           max_file_size_mb?: number | null
+          organization_id?: string | null
           placeholder_text?: string | null
           template_id?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "offer_template_fields_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "offer_template_fields_template_id_fkey"
             columns: ["template_id"]
@@ -1486,6 +1518,7 @@ export type Database = {
           description: string | null
           id: string
           name: string
+          organization_id: string | null
           updated_at: string
         }
         Insert: {
@@ -1495,6 +1528,7 @@ export type Database = {
           description?: string | null
           id?: string
           name: string
+          organization_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -1504,9 +1538,18 @@ export type Database = {
           description?: string | null
           id?: string
           name?: string
+          organization_id?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "offer_templates_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       organizations: {
         Row: {

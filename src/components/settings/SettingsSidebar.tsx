@@ -30,7 +30,7 @@ export function SettingsSidebar({ currentTab, onTabChange, className }: Settings
     ['platform-dashboard', 'platform-settings', 'platform-job-settings', 'platform-customers', 'platform-saas-customers'].includes(currentTab)
   )
   const [workspaceOpen, setWorkspaceOpen] = useState(
-    ['workspace-settings', 'workspace-team', 'organization', 'members'].includes(currentTab)
+    ['workspace-settings', 'workspace-team', 'workspace-job-settings', 'organization', 'members'].includes(currentTab)
   )
 
   const isWorkspaceOwnerOfSaaSOrg = () => {
@@ -64,6 +64,7 @@ export function SettingsSidebar({ currentTab, onTabChange, className }: Settings
       submenu: [
         { id: 'organization', label: 'Company Profile', icon: Building, show: permissions.canManageOrganization },
         { id: 'members', label: 'Members', icon: Users, show: permissions.canViewMembers },
+        { id: 'workspace-job-settings', label: 'Job Settings', icon: SettingsIcon, show: permissions.isPlatformAdmin || (userType === 'workspace_owner' && !!organizationId) },
         { id: 'workspace-settings', label: 'Settings', icon: SettingsIcon, show: true },
         { id: 'workspace-team', label: 'Team', icon: Users, show: true },
       ]

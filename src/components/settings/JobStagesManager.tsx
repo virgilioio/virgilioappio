@@ -35,7 +35,7 @@ export function JobStagesManager() {
           <div>
             <CardTitle>Stages Library</CardTitle>
             <CardDescription>
-              Manage job stages that can be used across all jobs in the platform
+              Manage job stages that can be used across jobs in your organization
             </CardDescription>
           </div>
           <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
