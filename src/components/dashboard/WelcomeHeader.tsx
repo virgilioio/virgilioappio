@@ -1,6 +1,7 @@
 
 import { Skeleton } from '@/components/ui/skeleton'
 import { UserProfile } from '@/hooks/useUserProfile'
+import { StyledPageTitle } from '@/components/ui/styled-page-title'
 
 interface WelcomeHeaderProps {
   profile: UserProfile | null
@@ -21,9 +22,9 @@ export function WelcomeHeader({ profile, isLoading }: WelcomeHeaderProps) {
 
   return (
     <div className="p-layout-md">
-      <h1 className="text-4xl font-semibold text-text-primary mb-sm flex items-center gap-sm">
+      <StyledPageTitle className="text-4xl mb-sm flex items-center gap-sm">
         Welcome back, {firstName}! 👋
-      </h1>
+      </StyledPageTitle>
       <p className="text-sm text-text-secondary">
         Here's a quick overview of what's going on.
       </p>

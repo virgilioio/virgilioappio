@@ -1,5 +1,6 @@
 
 import { cn } from "@/lib/utils";
+import { StyledPageTitle } from "@/components/ui/styled-page-title";
 
 interface PageHeaderProps {
   title: string;
@@ -23,9 +24,9 @@ export function PageHeader({
     )}>
        <div className="flex items-start justify-between">
         <div className="min-w-0 flex-1">
-          <h1 className="font-bold text-text-primary text-2xl md:text-3xl">
+          <StyledPageTitle>
             {title}
-          </h1>
+          </StyledPageTitle>
           {subtitle && (
             <p className="text-sm text-text-secondary mt-xs">
               {subtitle}

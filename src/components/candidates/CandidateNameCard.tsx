@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils'
 import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
 import { Mail, Phone, Copy } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
+import { StyledPageTitle } from '@/components/ui/styled-page-title'
 
 export type CandidateNameCardTab = {
   value: string
@@ -61,7 +62,7 @@ export function CandidateNameCard({
         <div className="flex items-start justify-between mb-6">
           <div className="min-w-0">
             <div className="flex items-center gap-2 mb-2">
-              <h1 className="text-2xl font-semibold text-text-primary truncate">{name}</h1>
+              <StyledPageTitle className="text-2xl truncate">{name}</StyledPageTitle>
               <Button
                 size="icon"
                 className="aspect-square rounded-md bg-foreground text-background hover:bg-foreground"

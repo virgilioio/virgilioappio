@@ -101,7 +101,8 @@ export default {
 					'yellow-foreground': 'hsl(var(--pastel-yellow-foreground))',
 					orange: 'hsl(var(--pastel-orange))',
 					'orange-foreground': 'hsl(var(--pastel-orange-foreground))'
-				}
+				},
+				'purple-period': 'hsl(var(--purple-period))'
 			},
 			borderRadius: {
 				xs: '4px',
@@ -115,6 +116,7 @@ export default {
 			},
 			fontFamily: {
 				poppins: ['Poppins', 'sans-serif'],
+				'poppins-black': ['Poppins', 'sans-serif'],
 				inter: ['Inter', 'Roboto', 'Work Sans', 'sans-serif'],
 				mono: ['Monaco', 'Menlo', 'monospace']
 			},
@@ -176,6 +178,7 @@ export default {
 			letterSpacing: {
 				tighter: '-0.05em',
 				tight: '-0.025em',
+				'page-title': '-0.06em',
 				normal: '0em',
 				wide: '0.025em',
 				wider: '0.05em'
