@@ -3,7 +3,7 @@ import { useOrganizations } from '@/hooks/useOrganizations'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Building, Edit, Lock, AlertTriangle, Save, Loader2, Coins } from 'lucide-react'
+import { Building, Edit, Lock, AlertTriangle, Save, Loader2 } from 'lucide-react'
 
 import { OrganizationDisplay } from './OrganizationDisplay'
 // Currency settings removed
@@ -37,7 +37,7 @@ export function OrganizationTab() {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
-  const [activeTab, setActiveTab] = useState('details')
+  
   
   console.log('OrganizationTab render - organizations:', organizations, 'isLoading:', isLoading, 'error:', error, 'userType:', userType)
   
@@ -321,71 +321,48 @@ const [orgFormData, setOrgFormData] = useState<OrganizationFormData>({
               </CardDescription>
             </div>
             
-            {activeTab === 'details' && (
-              <div className="flex items-center gap-2">
-                {!isEditMode ? (
+            <div className="flex items-center gap-2">
+              {!isEditMode ? (
+                <Button 
+                  onClick={handleEditModeToggle}
+                  variant="outline"
+                  size="sm"
+                  className="flex items-center gap-1"
+                >
+                  <Edit className="h-3 w-3" />
+                  Edit Organization
+                </Button>
+              ) : (
+                <div className="flex items-center gap-2">
                   <Button 
-                    onClick={handleEditModeToggle}
-                    variant="outline"
+                    variant="outline" 
                     size="sm"
+                    onClick={handleCancelEdit}
+                    disabled={isSaving}
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    size="sm"
+                    onClick={handleSave}
+                    disabled={isLoading || isSaving}
                     className="flex items-center gap-1"
                   >
-                    <Edit className="h-3 w-3" />
-                    Edit Organization
+                    {isSaving ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Save className="h-3 w-3" />
+                    )}
+                    {isSaving ? 'Saving...' : 'Save Changes'}
                   </Button>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={handleCancelEdit}
-                      disabled={isSaving}
-                    >
-                      Cancel
-                    </Button>
-                    <Button 
-                      size="sm"
-                      onClick={handleSave}
-                      disabled={isLoading || isSaving}
-                      className="flex items-center gap-1"
-                    >
-                      {isSaving ? (
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                      ) : (
-                        <Save className="h-3 w-3" />
-                      )}
-                      {isSaving ? 'Saving...' : 'Save Changes'}
-                    </Button>
-                  </div>
-                )}
-              </div>
-            )}
+                </div>
+              )}
+            </div>
           </div>
         </CardHeader>
         
-        <CardContent>
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="details" className="flex items-center gap-2">
-                <Building className="h-4 w-4" />
-                Details
-              </TabsTrigger>
-              <TabsTrigger value="currency" className="flex items-center gap-2">
-                <Coins className="h-4 w-4" />
-                Currency
-              </TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="details" className="mt-6">
-              <OrganizationDisplay organization={userOrganization} />
-            </TabsContent>
-            
-            <TabsContent value="currency" className="mt-6">
-              <div className="text-center py-8 text-muted-foreground">
-                Currency settings have been removed
-              </div>
-            </TabsContent>
-          </Tabs>
+        <CardContent className="pt-6">
+          <OrganizationDisplay organization={userOrganization} />
         </CardContent>
       </Card>
 
