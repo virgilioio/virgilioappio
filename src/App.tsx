@@ -103,7 +103,7 @@ function App() {
 }
 
 function RequireAuth({ children }: { children: JSX.Element }) {
-  const { isAuthenticated, isLoading, hasOrganizationContext } = useAuth()
+  const { isAuthenticated, isLoading, hasOrganizationContext, userType } = useAuth()
   const location = window.location
 
   if (isLoading) {
@@ -115,8 +115,9 @@ function RequireAuth({ children }: { children: JSX.Element }) {
     return <Navigate to="/auth" replace />
   }
 
+  // Platform admins can access without org context (bypass org requirement)
   // Redirect authenticated users without org context to onboarding, except when already there or on public routes
-  if (!hasOrganizationContext && location.pathname !== '/onboarding') {
+  if (!hasOrganizationContext && userType !== 'platform_admin' && location.pathname !== '/onboarding') {
     return <Navigate to="/onboarding" replace />
   }
 
