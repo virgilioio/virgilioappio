@@ -29,7 +29,7 @@ import IndependentCandidateProfile from '@/pages/IndependentCandidateProfile'
 import { useFavicon } from './hooks/useFavicon'
 import { useBrowserTitle } from './hooks/useBrowserTitle'
 import { Toaster } from '@/components/ui/toaster'
-import { SessionDebugPanel } from '@/components/debug/SessionDebugPanel'
+
 import PublicJobPosting from './pages/PublicJobPosting'
 import Onboarding from './pages/Onboarding'
 import Privacy from './pages/Privacy'
@@ -86,7 +86,6 @@ function AppContent() {
         </Route>
       </Routes>
       <Toaster />
-      <SessionDebugPanel />
     </div>
   )
 }
