@@ -38,7 +38,7 @@ import { supabase } from '@/integrations/supabase/client'
 import { useUserProfile } from '@/hooks/useUserProfile'
 
 export function Header() {
-  const { user, logout, organizationId } = useAuth()
+  const { user, logout, organizationId, isLoggingOut } = useAuth()
   const { 
     canViewJobs, 
     canViewOrganizations, 
@@ -56,7 +56,7 @@ export function Header() {
 
   const handleLogout = async () => {
     await logout()
-    navigate('/auth')
+    // Navigation will be handled by auth state change in App.tsx
   }
 
   // Header scroll shadow
@@ -244,9 +244,9 @@ export function Header() {
                 </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleLogout} className="text-red-600 focus:text-red-600">
+              <DropdownMenuItem onClick={handleLogout} disabled={isLoggingOut} className="text-red-600 focus:text-red-600">
                 <LogOut className="h-3.5 w-3.5 mr-2" />
-                Log out
+                {isLoggingOut ? 'Logging out...' : 'Log out'}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

@@ -18,6 +18,7 @@ interface AuthContextType {
   session: Session | null
   isAuthenticated: boolean
   isLoading: boolean
+  isLoggingOut: boolean
   organizationId: string | null
   hasOrganizationContext: boolean
   userType: string | null
@@ -36,6 +37,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [session, setSession] = useState<Session | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
   
   // Enable session monitoring and debugging
   useSessionMonitor()
@@ -364,7 +366,52 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const logout = async () => {
-    await supabase.auth.signOut()
+    if (isLoggingOut) {
+      debugLog('logout_already_in_progress', {})
+      return
+    }
+
+    try {
+      setIsLoggingOut(true)
+      debugLog('logout_start', { userId: user?.id })
+      
+      // Clear local state immediately
+      setMemberData({
+        user_type: null,
+        member_role: null,
+        organization_id: null
+      })
+      setSelectedOrganizationId(null)
+      setAvailableOrganizations(null)
+      
+      // Attempt sign out
+      const { error } = await supabase.auth.signOut()
+      
+      if (error) {
+        debugLog('logout_error', { error: error.message })
+        
+        // If session already invalid, that's actually okay - clear local state anyway
+        if (error.message?.includes('session_not_found') || error.message?.includes('Session not found')) {
+          debugLog('logout_session_already_invalid', {})
+          setUser(null)
+          setSession(null)
+        } else {
+          throw error
+        }
+      } else {
+        debugLog('logout_success', {})
+      }
+    } catch (err) {
+      debugLog('logout_exception', { error: (err as Error).message })
+      console.error('Logout error:', err)
+      
+      // Even on error, clear local state
+      setUser(null)
+      setSession(null)
+    } finally {
+      setIsLoggingOut(false)
+      // Note: Navigation will be handled by auth state change listener
+    }
   }
 
   const value = {
@@ -372,6 +419,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     session,
     isAuthenticated: !!user,
     isLoading,
+    isLoggingOut,
     organizationId,
     hasOrganizationContext,
     userType,
