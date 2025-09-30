@@ -32,7 +32,14 @@ export function OrgContextProvider({ children }: { children: React.ReactNode }) 
     }
 
     // Platform admin bypass: check JWT metadata for immediate access
-    const isPlatformAdmin = user?.user_metadata?.user_type === PLATFORM_ADMIN_TYPE
+    const isPlatformAdmin = user?.app_metadata?.user_type === PLATFORM_ADMIN_TYPE || 
+                           user?.user_metadata?.user_type === PLATFORM_ADMIN_TYPE
+    
+    console.log('[OrgContext] Platform admin check:', {
+      app_metadata_type: user?.app_metadata?.user_type,
+      user_metadata_type: user?.user_metadata?.user_type,
+      isPlatformAdmin
+    })
 
     if (isPlatformAdmin) {
       // For platform admins, still try to get their org context but don't block on it
