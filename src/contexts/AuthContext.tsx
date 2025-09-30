@@ -4,6 +4,7 @@ import { User, AuthError, Session } from '@supabase/supabase-js'
 import { supabase } from '@/integrations/supabase/client'
 import { toast } from 'sonner'
 import { useSessionMonitor } from '@/hooks/useSessionMonitor'
+import { useSessionDebugger } from '@/hooks/useSessionDebugger'
 
 interface OrganizationInfo {
   id: string
@@ -36,8 +37,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   
-  // Enable session monitoring
+  // Enable session monitoring and debugging
   useSessionMonitor()
+  const { log: debugLog } = useSessionDebugger()
   const [memberData, setMemberData] = useState<{
     user_type: string | null
     member_role: string | null
@@ -79,7 +81,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data: { session }, error } = await supabase.auth.getSession()
     
     if (error) {
-      console.error('Session validation error:', error)
+      debugLog('session_validation_error', { error: error.message })
       setSessionHealth(prev => ({ ...prev, isValid: false }))
       return false
     }
@@ -94,7 +96,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isValid
       })
 
-      console.log('Session validated:', {
+      debugLog('session_validated', {
         userId: session.user.id,
         expiresAt: expiresAt.toISOString(),
         isValid,
@@ -104,23 +106,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return isValid
     }
 
+    debugLog('session_validation_no_session', {})
     setSessionHealth(prev => ({ ...prev, isValid: false }))
     return false
-  }, [])
+  }, [debugLog])
 
   const fetchMemberData = async (userId: string, retryCount = 0) => {
     const maxRetries = 3
     
     try {
-      console.log(`[Session Debug] Fetching member data for user: ${userId} (attempt ${retryCount + 1})`)
+      debugLog('fetch_member_data_start', { userId, attempt: retryCount + 1 })
       
       // Validate session before making the request
       const isSessionValid = await validateSession()
       if (!isSessionValid && retryCount === 0) {
-        console.warn('[Session Debug] Session invalid, attempting refresh...')
+        debugLog('fetch_member_data_invalid_session', { attempting_refresh: true })
         const { error: refreshError } = await supabase.auth.refreshSession()
         if (refreshError) {
-          console.error('[Session Debug] Session refresh failed:', refreshError)
+          debugLog('session_refresh_failed', { error: refreshError.message })
           toast.error('Session expired. Please log in again.')
           return
         }
@@ -129,11 +132,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const { data, error } = await supabase.rpc('get_user_member_data')
       
       if (error) {
-        console.error('[Session Debug] Error fetching member data:', error)
+        debugLog('fetch_member_data_error', { error: error.message, code: error.code })
         
         // If auth error and we haven't retried, try session refresh
         if (error.message?.includes('JWT') && retryCount < maxRetries) {
-          console.log('[Session Debug] JWT error detected, refreshing session and retrying...')
+          debugLog('fetch_member_data_jwt_retry', { retryCount })
           const { error: refreshError } = await supabase.auth.refreshSession()
           if (!refreshError) {
             return fetchMemberData(userId, retryCount + 1)
@@ -148,7 +151,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return
       }
 
-      console.log('[Session Debug] Member data result:', data)
+      debugLog('fetch_member_data_success', { data })
       
       if (data && data.length > 0) {
         const memberInfo = data[0]
@@ -158,7 +161,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           organization_id: memberInfo.organization_id
         })
         
-        console.log('[Session Debug] Member data set successfully:', {
+        debugLog('member_data_set', {
           userType: memberInfo.user_type,
           organizationId: memberInfo.organization_id
         })
@@ -168,7 +171,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           await fetchAvailableOrganizations()
         }
       } else {
-        console.warn('[Session Debug] No member data found, setting guest status')
+        debugLog('fetch_member_data_no_data', { userId })
         setMemberData({
           user_type: 'guest',
           member_role: null,
@@ -176,11 +179,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         })
       }
     } catch (err) {
-      console.error('[Session Debug] Exception fetching member data:', err)
+      debugLog('fetch_member_data_exception', { error: (err as Error).message, retryCount })
       
       // Retry logic for network errors
       if (retryCount < maxRetries && (err as Error).message?.includes('network')) {
-        console.log(`[Session Debug] Network error, retrying in ${(retryCount + 1) * 1000}ms...`)
+        debugLog('fetch_member_data_network_retry', { retryCount, delay: (retryCount + 1) * 1000 })
         setTimeout(() => fetchMemberData(userId, retryCount + 1), (retryCount + 1) * 1000)
         return
       }
@@ -260,14 +263,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log(`[Auth State] Event: ${event}, User ID: ${session?.user?.id || 'none'}`)
+      debugLog('auth_state_change', { 
+        event, 
+        userId: session?.user?.id || 'none',
+        hasSession: !!session
+      })
       
       // Enhanced session state logging
       if (session) {
         const expiresAt = new Date(session.expires_at! * 1000)
-        console.log(`[Auth State] Session details:`, {
-          accessToken: session.access_token ? '***present***' : 'missing',
-          refreshToken: session.refresh_token ? '***present***' : 'missing',
+        debugLog('session_details', {
+          accessToken: session.access_token ? 'present' : 'missing',
+          refreshToken: session.refresh_token ? 'present' : 'missing',
           expiresAt: expiresAt.toISOString(),
           timeUntilExpiry: Math.round((expiresAt.getTime() - Date.now()) / 1000 / 60) + ' minutes'
         })
@@ -282,7 +289,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           fetchMemberData(session.user.id)
         }, 0)
       } else {
-        console.log('[Auth State] No session, clearing member data')
+        debugLog('session_lost', { event })
         setMemberData({
           user_type: null,
           member_role: null,
@@ -300,16 +307,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Initial session check with retry logic
     const initializeSession = async () => {
       try {
-        console.log('[Auth Init] Getting initial session...')
+        debugLog('auth_init_start', {})
         const { data: { session }, error } = await supabase.auth.getSession()
         
         if (error) {
-          console.error('[Auth Init] Error getting session:', error)
+          debugLog('auth_init_error', { error: error.message })
           setIsLoading(false)
           return
         }
 
-        console.log(`[Auth Init] Initial session: ${session?.user?.id || 'none'}`)
+        debugLog('auth_init_session', { userId: session?.user?.id || 'none', hasSession: !!session })
         setSession(session)
         setUser(session?.user ?? null)
         
@@ -324,7 +331,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           })
         }
       } catch (err) {
-        console.error('[Auth Init] Exception during initialization:', err)
+        debugLog('auth_init_exception', { error: (err as Error).message })
       } finally {
         setIsLoading(false)
       }
