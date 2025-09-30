@@ -3,6 +3,13 @@ import { createContext, useContext, useEffect, useState } from 'react'
 import { User, AuthError, Session } from '@supabase/supabase-js'
 import { supabase } from '@/integrations/supabase/client'
 
+interface OrganizationInfo {
+  id: string
+  name: string
+  organization_type?: string
+  tenant_type?: string
+}
+
 interface AuthContextType {
   user: User | null
   session: Session | null
@@ -12,7 +19,8 @@ interface AuthContextType {
   hasOrganizationContext: boolean
   userType: string | null
   memberRole: string | null
-  availableOrganizations: Array<{ id: string; name: string }> | null
+  availableOrganizations: OrganizationInfo[] | null
+  isImpersonating: boolean
   switchOrganization: (organizationId: string) => Promise<void>
   login: (email: string, password: string) => Promise<{ error?: AuthError }>
   signUp: (email: string, password: string) => Promise<{ error?: AuthError }>
@@ -34,7 +42,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     member_role: null,
     organization_id: null
   })
-  const [availableOrganizations, setAvailableOrganizations] = useState<Array<{ id: string; name: string }> | null>(null)
+  const [availableOrganizations, setAvailableOrganizations] = useState<OrganizationInfo[] | null>(null)
   const [selectedOrganizationId, setSelectedOrganizationId] = useState<string | null>(null)
 
   // Use selected organization if available, otherwise fall back to member data
@@ -42,6 +50,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const hasOrganizationContext = !!organizationId
   const userType = memberData.user_type
   const memberRole = memberData.member_role
+  
+  // Check if we're impersonating a customer (selected org is different from member org and is a SaaS customer)
+  const isImpersonating = !!(selectedOrganizationId && 
+    selectedOrganizationId !== memberData.organization_id &&
+    availableOrganizations?.find(org => 
+      org.id === selectedOrganizationId && 
+      org.organization_type === 'client' && 
+      org.tenant_type === 'saas'
+    ))
 
   const fetchMemberData = async (userId: string) => {
     try {
@@ -91,11 +108,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchAvailableOrganizations = async () => {
     try {
+      // For platform admins, fetch platform organization and SaaS customers only
       const { data, error } = await supabase
         .from('organizations')
-        .select('id, name')
+        .select('id, name, organization_type, tenant_type')
         .eq('status', 'active')
-        .order('name')
+        .or('organization_type.eq.platform,and(organization_type.eq.client,tenant_type.eq.saas)')
+        .order('organization_type desc, name') // Platform first, then clients alphabetically
 
       if (error) {
         console.error('Error fetching organizations:', error)
@@ -196,6 +215,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     userType,
     memberRole,
     availableOrganizations,
+    isImpersonating,
     switchOrganization,
     login,
     signUp,
