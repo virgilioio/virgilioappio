@@ -22,8 +22,12 @@ export function OrgGate({ children, fallback }: OrgGateProps) {
     )
   }
 
+  // Enhanced platform admin detection: check both DB-derived userType AND JWT metadata
+  // This catches platform admins even if database query fails due to session invalidation
+  const isPlatformAdmin = userType === 'platform_admin' || user?.user_metadata?.user_type === 'platform_admin'
+  
   // Platform admins can bypass org context requirement
-  if (!hasOrganizationContext && userType !== 'platform_admin') {
+  if (!hasOrganizationContext && !isPlatformAdmin) {
     if (fallback) {
       return <>{fallback}</>
     }

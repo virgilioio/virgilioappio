@@ -103,7 +103,7 @@ function App() {
 }
 
 function RequireAuth({ children }: { children: JSX.Element }) {
-  const { isAuthenticated, isLoading, hasOrganizationContext, userType } = useAuth()
+  const { isAuthenticated, isLoading, hasOrganizationContext, userType, user } = useAuth()
   const location = window.location
 
   if (isLoading) {
@@ -115,9 +115,13 @@ function RequireAuth({ children }: { children: JSX.Element }) {
     return <Navigate to="/auth" replace />
   }
 
+  // Enhanced platform admin detection: check both DB-derived userType AND JWT metadata
+  // This catches platform admins even if database query fails due to session invalidation
+  const isPlatformAdmin = userType === 'platform_admin' || user?.user_metadata?.user_type === 'platform_admin'
+  
   // Platform admins can access without org context (bypass org requirement)
   // Redirect authenticated users without org context to onboarding, except when already there or on public routes
-  if (!hasOrganizationContext && userType !== 'platform_admin' && location.pathname !== '/onboarding') {
+  if (!hasOrganizationContext && !isPlatformAdmin && location.pathname !== '/onboarding') {
     return <Navigate to="/onboarding" replace />
   }
 
