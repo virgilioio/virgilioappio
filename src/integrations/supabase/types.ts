@@ -2515,6 +2515,14 @@ export type Database = {
         Args: { p_posting_id: string }
         Returns: undefined
       }
+      resolve_org_context: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          organization_id: string
+          role: string
+          user_type: string
+        }[]
+      }
       safe_delete_user: {
         Args: { target_user_id: string }
         Returns: {

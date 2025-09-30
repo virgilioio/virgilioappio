@@ -1,5 +1,5 @@
-
 import { useAuth } from '@/contexts/AuthContext'
+import { useOrgContext } from '@/contexts/OrgContext'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { AlertTriangle, Mail } from 'lucide-react'
 
@@ -9,9 +9,10 @@ interface OrgGateProps {
 }
 
 export function OrgGate({ children, fallback }: OrgGateProps) {
-  const { hasOrganizationContext, isLoading, user, userType } = useAuth()
+  const { user, isLoading: authLoading } = useAuth()
+  const { hasOrganizationContext, isLoading: orgLoading, userType } = useOrgContext()
 
-  if (isLoading) {
+  if (authLoading || orgLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center space-y-4">
@@ -22,11 +23,9 @@ export function OrgGate({ children, fallback }: OrgGateProps) {
     )
   }
 
-  // Enhanced platform admin detection: check both DB-derived userType AND JWT metadata
-  // This catches platform admins even if database query fails due to session invalidation
-  const isPlatformAdmin = userType === 'platform_admin' || user?.user_metadata?.user_type === 'platform_admin'
-  
   // Platform admins can bypass org context requirement
+  const isPlatformAdmin = userType === 'platform_admin'
+  
   if (!hasOrganizationContext && !isPlatformAdmin) {
     if (fallback) {
       return <>{fallback}</>

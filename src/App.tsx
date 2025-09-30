@@ -1,4 +1,3 @@
-
 import {
   BrowserRouter as Router,
   Routes,
@@ -6,6 +5,7 @@ import {
   Navigate,
 } from 'react-router-dom'
 import { AuthProvider } from './contexts/AuthContext'
+import { OrgContextProvider } from './contexts/OrgContext'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Layout } from './components/layout/Layout'
 import Dashboard from './pages/Dashboard'
@@ -22,6 +22,7 @@ import ResetPassword from './pages/ResetPassword'
 import AcceptInvite from './pages/AcceptInvite'
 import VerifyEmail from './pages/VerifyEmail'
 import { useAuth } from './contexts/AuthContext'
+import { useOrgContext } from './contexts/OrgContext'
 import NotFound from './pages/NotFound'
 import CandidateProfile from '@/pages/CandidateProfile'
 import IndependentCandidateProfile from '@/pages/IndependentCandidateProfile'
@@ -94,33 +95,41 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <Router>
-          <AppContent />
-        </Router>
+        <OrgContextProvider>
+          <Router>
+            <AppContent />
+          </Router>
+        </OrgContextProvider>
       </AuthProvider>
     </QueryClientProvider>
   )
 }
 
 function RequireAuth({ children }: { children: JSX.Element }) {
-  const { isAuthenticated, isLoading, hasOrganizationContext, userType, user } = useAuth()
+  const { isAuthenticated, isLoading: authLoading } = useAuth()
+  const { isLoading: orgLoading, hasOrganizationContext, userType } = useOrgContext()
   const location = window.location
 
-  if (isLoading) {
-    return <div>Loading...</div> // Show a loading indicator while checking authentication
+  // Show loading while auth or org context is being resolved
+  if (authLoading || orgLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin mx-auto"></div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    )
   }
 
   if (!isAuthenticated) {
-    // Redirect to the auth page if not authenticated
     return <Navigate to="/auth" replace />
   }
 
-  // Enhanced platform admin detection: check both DB-derived userType AND JWT metadata
-  // This catches platform admins even if database query fails due to session invalidation
-  const isPlatformAdmin = userType === 'platform_admin' || user?.user_metadata?.user_type === 'platform_admin'
+  // Platform admins can access without org context
+  const isPlatformAdmin = userType === 'platform_admin'
   
-  // Platform admins can access without org context (bypass org requirement)
-  // Redirect authenticated users without org context to onboarding, except when already there or on public routes
+  // Redirect to onboarding if no org context and not platform admin
   if (!hasOrganizationContext && !isPlatformAdmin && location.pathname !== '/onboarding') {
     return <Navigate to="/onboarding" replace />
   }

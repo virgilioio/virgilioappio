@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast'
 import { VirgilioLogo } from '@/components/VirgilioLogo'
 import { VerifyEmailPending } from '@/components/VerifyEmailPending'
 import { useAuth } from '@/contexts/AuthContext'
+import { useOrgContext } from '@/contexts/OrgContext'
 import onboardingHero from '@/assets/onboarding-hero-new.png'
 
 export default function Onboarding() {
@@ -21,6 +22,7 @@ export default function Onboarding() {
   const navigate = useNavigate()
   
   const { user } = useAuth()
+  const { refreshOrgContext } = useOrgContext()
 
   useEffect(() => {
     const checkEmailVerification = async () => {
@@ -71,21 +73,10 @@ export default function Onboarding() {
       if (setOrgErr) throw setOrgErr
 
       toast({ title: 'Workspace created', description: 'Your trial is active for 30 days.' })
-      // Refresh session to ensure updated organization metadata is available to AuthContext
-      try {
-        const { error: refreshError } = await supabase.auth.refreshSession()
-        if (refreshError) {
-          console.warn('Session refresh error:', refreshError)
-        }
-        const { data: { session: newSession } } = await supabase.auth.getSession()
-        const orgInSession = (newSession?.user?.user_metadata as any)?.organization_id
-        if (!orgInSession) {
-          // Allow a short delay for metadata propagation as a safe guard
-          await new Promise((r) => setTimeout(r, 200))
-        }
-      } catch (e) {
-        console.warn('Post-onboarding session sync warning:', e)
-      }
+      
+      // Refresh org context from database (DB-driven, not JWT-driven)
+      await refreshOrgContext()
+      
       navigate('/dashboard', { replace: true })
     } catch (err: any) {
       if (err?.message?.includes('EMAIL_NOT_VERIFIED')) {
