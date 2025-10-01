@@ -95,7 +95,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .select('id, name, organization_type, tenant_type')
         .eq('status', 'active')
         .or('organization_type.eq.platform,and(organization_type.eq.client,tenant_type.eq.saas)')
-        .order('organization_type desc, name')
+        .order('organization_type', { ascending: false })
+        .order('name', { ascending: true })
 
       if (error) {
         console.error('Error fetching organizations:', error)
