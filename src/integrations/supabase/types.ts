@@ -2575,6 +2575,10 @@ export type Database = {
           organization_name: string
         }[]
       }
+      whoami: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
     }
     Enums: {
       activity_type:

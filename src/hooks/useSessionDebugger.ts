@@ -1,6 +1,7 @@
 import { useEffect, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from 'sonner'
+import { parseSupabaseError } from '@/lib/authUtils'
 
 interface SessionDebugData {
   timestamp: string
@@ -18,10 +19,15 @@ export function useSessionDebugger() {
   const storageListener = useRef<((e: StorageEvent) => void) | null>(null)
 
   const log = useCallback((event: string, details: any = {}) => {
+    // Parse error details if present
+    const parsedDetails = details?.error 
+      ? { ...details, errorMessage: parseSupabaseError(details.error) }
+      : details
+
     const logEntry: SessionDebugData = {
       timestamp: new Date().toISOString(),
       event,
-      details,
+      details: parsedDetails,
     }
 
     // Add current session state
@@ -39,11 +45,17 @@ export function useSessionDebugger() {
         debugLog.current = debugLog.current.slice(-100)
       }
 
-      // Log critical events to console
-      if (['session_lost', 'storage_cleared', 'auth_error', 'network_error'].includes(event)) {
-        console.error('🚨 Session Debug Alert:', logEntry)
+      // Log critical events to console with enhanced error details
+      if (['session_lost', 'storage_cleared', 'auth_error', 'network_error', 'postrest_error'].includes(event)) {
+        console.error('🚨 Session Debug Alert:', {
+          event,
+          details: parsedDetails,
+          sessionState: logEntry.sessionState
+        })
+        
+        const errorMessage = parsedDetails?.errorMessage || JSON.stringify(parsedDetails, null, 2)
         toast.error(`Session Debug: ${event}`, {
-          description: JSON.stringify(details, null, 2),
+          description: errorMessage,
           duration: 5000,
         })
       } else {

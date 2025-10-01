@@ -1,14 +1,45 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
-import { ChevronDown, ChevronRight, Download, Trash2 } from 'lucide-react'
+import { ChevronDown, ChevronRight, Download, Trash2, CheckCircle, XCircle } from 'lucide-react'
 import { useSessionDebugger } from '@/hooks/useSessionDebugger'
+import { supabase } from '@/lib/supabaseClient'
 
 export function SessionDebugPanel() {
   const [isOpen, setIsOpen] = useState(false)
+  const [identityCheck, setIdentityCheck] = useState<{
+    clientUserId: string | null
+    serverUserId: string | null
+    inSync: boolean
+  } | null>(null)
   const { getDebugReport, clearDebugLog } = useSessionDebugger()
+
+  // Check server identity on mount and when panel opens
+  useEffect(() => {
+    if (!isOpen) return
+
+    const checkIdentity = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        const clientUserId = session?.user?.id || null
+
+        const { data: serverUserId, error } = await supabase.rpc('whoami')
+        
+        setIdentityCheck({
+          clientUserId,
+          serverUserId: error ? null : serverUserId,
+          inSync: !error && clientUserId === serverUserId
+        })
+      } catch (error) {
+        console.error('Identity check failed:', error)
+        setIdentityCheck(null)
+      }
+    }
+
+    checkIdentity()
+  }, [isOpen])
 
   const handleDownloadReport = () => {
     const report = getDebugReport()
@@ -53,6 +84,40 @@ export function SessionDebugPanel() {
         <CollapsibleContent>
           <CardContent className="p-3 pt-0">
             <div className="space-y-3">
+              {/* Server Identity Check */}
+              {identityCheck && (
+                <div className={`p-3 rounded-lg border ${
+                  identityCheck.inSync 
+                    ? 'bg-green-500/10 border-green-500/20' 
+                    : 'bg-destructive/10 border-destructive/20'
+                }`}>
+                  <div className="flex items-center gap-2 mb-2">
+                    {identityCheck.inSync ? (
+                      <CheckCircle className="h-4 w-4 text-green-500" />
+                    ) : (
+                      <XCircle className="h-4 w-4 text-destructive" />
+                    )}
+                    <span className="text-sm font-medium">
+                      Server Identity {identityCheck.inSync ? 'Synced' : 'Mismatch'}
+                    </span>
+                  </div>
+                  <div className="text-xs space-y-1">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Client:</span>
+                      <code className="bg-background/50 px-1 rounded">
+                        {identityCheck.clientUserId?.slice(0, 12) || 'none'}...
+                      </code>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Server:</span>
+                      <code className="bg-background/50 px-1 rounded">
+                        {identityCheck.serverUserId?.slice(0, 12) || 'none'}...
+                      </code>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="flex gap-2">
                 <Button 
                   size="sm" 

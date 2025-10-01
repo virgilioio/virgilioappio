@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabaseClient';
+import { useMultiTabSync } from './useMultiTabSync';
 
 interface OrgContext {
   organizationId: string | null;
@@ -20,6 +21,30 @@ export function useAuthBootstrap() {
     session: null,
     orgContext: null,
   });
+
+  // Handle session updates from other tabs
+  const handleSessionUpdate = (session: Session | null) => {
+    if (!session) {
+      setState({ ready: true, session: null, orgContext: null });
+      return;
+    }
+
+    // Defer org context resolution to avoid blocking
+    setTimeout(() => {
+      supabase.rpc('resolve_org_context').then(({ data: orgData }) => {
+        const orgContext: OrgContext = orgData && orgData.length > 0 ? {
+          organizationId: orgData[0].organization_id,
+          role: orgData[0].role,
+          userType: orgData[0].user_type,
+        } : null;
+
+        setState({ ready: true, session, orgContext });
+      });
+    }, 0);
+  };
+
+  // Enable multi-tab synchronization
+  useMultiTabSync(handleSessionUpdate);
 
   useEffect(() => {
     let mounted = true;
