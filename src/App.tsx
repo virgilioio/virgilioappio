@@ -91,20 +91,20 @@ function AppContent() {
 }
 
 function AppBootstrap({ children }: { children: React.ReactNode }) {
-  const { ready } = useAuthBootstrap()
+  const { ready, session, orgContext } = useAuthBootstrap();
 
   if (!ready) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center space-y-4">
           <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin mx-auto"></div>
-          <p className="text-muted-foreground">Initializing...</p>
+          <p className="text-muted-foreground">Initializing authentication...</p>
         </div>
       </div>
-    )
+    );
   }
 
-  return <>{children}</>
+  return <>{children}</>;
 }
 
 function App() {
