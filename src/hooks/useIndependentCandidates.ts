@@ -131,11 +131,26 @@ export function useIndependentCandidates() {
         }
       }
 
+      // Explicitly map only valid database fields to prevent schema errors
       const { data: newCandidate, error: createError } = await withAuthRetryMutation(async () =>
         await supabase
           .from('candidates')
           .insert([{
-            ...candidateData,
+            candidate_name: candidateData.candidate_name,
+            email: candidateData.email,
+            phone: candidateData.phone,
+            location_country: candidateData.location_country,
+            location_state: candidateData.location_state,
+            location_city: candidateData.location_city,
+            salary_amount: candidateData.salary_amount,
+            salary_currency: candidateData.salary_currency,
+            salary_period: candidateData.salary_period,
+            profile_summary: candidateData.profile_summary,
+            linkedin_url: candidateData.linkedin_url,
+            resume_url: candidateData.resume_url,
+            skills: candidateData.skills,
+            status: candidateData.status || 'available',
+            source: candidateData.source || 'direct',
             created_by: user.id,
             organization_id: organizationId,
           }])
@@ -177,10 +192,29 @@ export function useIndependentCandidates() {
 
     try {
       console.log('Updating independent candidate:', id, candidateData)
+      
+      // Explicitly map only valid database fields to prevent schema errors
+      const updateData: Record<string, any> = {}
+      if (candidateData.candidate_name !== undefined) updateData.candidate_name = candidateData.candidate_name
+      if (candidateData.email !== undefined) updateData.email = candidateData.email
+      if (candidateData.phone !== undefined) updateData.phone = candidateData.phone
+      if (candidateData.location_country !== undefined) updateData.location_country = candidateData.location_country
+      if (candidateData.location_state !== undefined) updateData.location_state = candidateData.location_state
+      if (candidateData.location_city !== undefined) updateData.location_city = candidateData.location_city
+      if (candidateData.salary_amount !== undefined) updateData.salary_amount = candidateData.salary_amount
+      if (candidateData.salary_currency !== undefined) updateData.salary_currency = candidateData.salary_currency
+      if (candidateData.salary_period !== undefined) updateData.salary_period = candidateData.salary_period
+      if (candidateData.profile_summary !== undefined) updateData.profile_summary = candidateData.profile_summary
+      if (candidateData.linkedin_url !== undefined) updateData.linkedin_url = candidateData.linkedin_url
+      if (candidateData.resume_url !== undefined) updateData.resume_url = candidateData.resume_url
+      if (candidateData.skills !== undefined) updateData.skills = candidateData.skills
+      if (candidateData.status !== undefined) updateData.status = candidateData.status
+      if (candidateData.source !== undefined) updateData.source = candidateData.source
+
       const { data: updatedCandidate, error: updateError } = await withAuthRetryMutation(async () =>
         await supabase
           .from('candidates')
-          .update(candidateData)
+          .update(updateData)
           .eq('id', id)
           .select()
           .single()
