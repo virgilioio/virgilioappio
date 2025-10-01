@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from '@/hooks/use-toast'
+import { withAuthRetryMutation, withAuthRetrySelect, withAuthRetryEdgeFunction } from '@/lib/authUtils'
 
 export interface Member {
   id: string
@@ -169,13 +170,15 @@ export function useMembers() {
     try {
       console.log('Sending invitation email for member:', memberId)
       
-      const { data, error } = await supabase.functions.invoke('send-invitation', {
-        body: {
-          memberId,
-          email,
-          inviterName: user?.user_metadata?.first_name || user?.email
-        }
-      })
+      const { data, error } = await withAuthRetryEdgeFunction(async () =>
+        await supabase.functions.invoke('send-invitation', {
+          body: {
+            memberId,
+            email,
+            inviterName: user?.user_metadata?.first_name || user?.email
+          }
+        })
+      )
 
       if (error) {
         console.error('Error sending invitation email:', error)
@@ -245,12 +248,14 @@ export function useMembers() {
         console.log('Checking for existing member with email:', emailToCheck)
         
         // Check for existing member with the same email in any organization
-        const { data: existingMember, error: checkError } = await supabase
-          .from('members')
-          .select('id, invited_email, user_status, invite_expires_at, organization_name:organizations(name)')
-          .or(`invited_email.eq.${emailToCheck}`)
-          .limit(1)
-          .single()
+        const { data: existingMember, error: checkError } = await withAuthRetrySelect(async () =>
+          await supabase
+            .from('members')
+            .select('id, invited_email, user_status, invite_expires_at, organization_name:organizations(name)')
+            .or(`invited_email.eq.${emailToCheck}`)
+            .limit(1)
+            .single()
+        )
 
         if (checkError && checkError.code !== 'PGRST116') { // PGRST116 = no rows returned
           console.error('Error checking for existing member:', checkError)
@@ -295,11 +300,13 @@ export function useMembers() {
 
       console.log('Inserting member data:', memberData)
 
-      const { data: newMember, error: createError } = await supabase
-        .from('members')
-        .insert([memberData])
-        .select()
-        .single()
+      const { data: newMember, error: createError } = await withAuthRetryMutation(async () =>
+        await supabase
+          .from('members')
+          .insert([memberData])
+          .select()
+          .single()
+      )
 
       if (createError) {
         console.error('Error creating member:', createError)
@@ -358,12 +365,14 @@ export function useMembers() {
 
     try {
       console.log('Updating member:', id, data)
-      const { data: updatedMember, error: updateError } = await supabase
-        .from('members')
-        .update(data)
-        .eq('id', id)
-        .select()
-        .single()
+      const { data: updatedMember, error: updateError } = await withAuthRetryMutation(async () =>
+        await supabase
+          .from('members')
+          .update(data)
+          .eq('id', id)
+          .select()
+          .single()
+      )
 
       if (updateError) {
         console.error('Error updating member:', updateError)

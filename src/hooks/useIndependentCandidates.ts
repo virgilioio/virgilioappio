@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from '@/hooks/use-toast'
+import { withAuthRetryMutation, withAuthRetrySelect } from '@/lib/authUtils'
 
 export interface IndependentCandidate {
   id: string
@@ -61,11 +62,13 @@ export function useIndependentCandidates() {
     try {
       console.log('Fetching independent candidates for organization:', organizationId)
       
-      const { data, error: fetchError } = await supabase
-        .from('candidates')
-        .select('*')
-        .eq('organization_id', organizationId)
-        .order('created_at', { ascending: false })
+      const { data, error: fetchError } = await withAuthRetrySelect(async () =>
+        await supabase
+          .from('candidates')
+          .select('*')
+          .eq('organization_id', organizationId)
+          .order('created_at', { ascending: false })
+      )
 
       if (fetchError) {
         console.error('Error fetching independent candidates:', fetchError)
@@ -105,18 +108,19 @@ export function useIndependentCandidates() {
       // Check for duplicates within the same organization
       if (candidateData.email || candidateData.candidate_name) {
         const duplicateQuery = candidateData.email 
-          ? supabase.from('candidates').select('id', { count: 'exact', head: true })
-              .eq('email', candidateData.email)
+          ? async () => await supabase.from('candidates').select('id', { count: 'exact', head: true })
+              .eq('email', candidateData.email!)
               .eq('organization_id', organizationId)
-          : supabase.from('candidates').select('id', { count: 'exact', head: true })
+          : async () => await supabase.from('candidates').select('id', { count: 'exact', head: true })
               .eq('candidate_name', candidateData.candidate_name)
               .eq('organization_id', organizationId)
               .is('email', null)
         
-        const { count, error: checkError } = await duplicateQuery
+        const result = await withAuthRetrySelect(duplicateQuery)
+        const count = (result as any).count
 
-        if (checkError) {
-          console.error('Error checking for duplicates:', checkError)
+        if (result.error) {
+          console.error('Error checking for duplicates:', result.error)
         } else if (count && count > 0) {
           toast({
             title: 'Duplicate Candidate',
@@ -127,15 +131,17 @@ export function useIndependentCandidates() {
         }
       }
 
-      const { data: newCandidate, error: createError } = await supabase
-        .from('candidates')
-        .insert([{
-          ...candidateData,
-          created_by: user.id,
-          organization_id: organizationId,
-        }])
-        .select()
-        .single()
+      const { data: newCandidate, error: createError } = await withAuthRetryMutation(async () =>
+        await supabase
+          .from('candidates')
+          .insert([{
+            ...candidateData,
+            created_by: user.id,
+            organization_id: organizationId,
+          }])
+          .select()
+          .single()
+      )
 
       if (createError) {
         console.error('Error adding independent candidate:', createError)
@@ -171,12 +177,14 @@ export function useIndependentCandidates() {
 
     try {
       console.log('Updating independent candidate:', id, candidateData)
-      const { data: updatedCandidate, error: updateError } = await supabase
-        .from('candidates')
-        .update(candidateData)
-        .eq('id', id)
-        .select()
-        .single()
+      const { data: updatedCandidate, error: updateError } = await withAuthRetryMutation(async () =>
+        await supabase
+          .from('candidates')
+          .update(candidateData)
+          .eq('id', id)
+          .select()
+          .single()
+      )
 
       if (updateError) {
         console.error('Error updating independent candidate:', updateError)
@@ -212,10 +220,12 @@ export function useIndependentCandidates() {
 
     try {
       console.log('Deleting independent candidate:', id)
-      const { error: deleteError } = await supabase
-        .from('candidates')
-        .delete()
-        .eq('id', id)
+      const { error: deleteError } = await withAuthRetryMutation(async () =>
+        await supabase
+          .from('candidates')
+          .delete()
+          .eq('id', id)
+      )
 
       if (deleteError) {
         console.error('Error deleting independent candidate:', deleteError)

@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from '@/hooks/use-toast'
 import { useJobSpecNormalization } from './useJobSpecNormalization'
+import { withAuthRetryMutation, withAuthRetrySelect } from '@/lib/authUtils'
 
 export interface Job {
   id: string
@@ -293,16 +294,18 @@ export function useJobs() {
         console.log('Regular user creating job for their organization:', targetOrganizationId)
       }
 
-      const { data: newJob, error: createError } = await supabase
-        .from('jobs')
-        .insert([{
-          ...jobData,
-          ...normalizedData,
-          organization_id: targetOrganizationId,
-          created_by: user.id,
-        }])
-        .select()
-        .single()
+      const { data: newJob, error: createError } = await withAuthRetryMutation(async () =>
+        await supabase
+          .from('jobs')
+          .insert([{
+            ...jobData,
+            ...normalizedData,
+            organization_id: targetOrganizationId,
+            created_by: user.id,
+          }])
+          .select()
+          .single()
+      )
 
       if (createError) {
         console.error('Error creating job:', createError)
@@ -338,12 +341,14 @@ export function useJobs() {
 
     try {
       console.log('Updating job:', id, jobData)
-      const { data: updatedJob, error: updateError } = await supabase
-        .from('jobs')
-        .update(jobData)
-        .eq('id', id)
-        .select()
-        .single()
+      const { data: updatedJob, error: updateError } = await withAuthRetryMutation(async () =>
+        await supabase
+          .from('jobs')
+          .update(jobData)
+          .eq('id', id)
+          .select()
+          .single()
+      )
 
       if (updateError) {
         console.error('Error updating job:', updateError)
@@ -420,10 +425,12 @@ export function useJobs() {
 
     try {
       console.log('Deleting job:', id)
-      const { error: deleteError } = await supabase
-        .from('jobs')
-        .delete()
-        .eq('id', id)
+      const { error: deleteError } = await withAuthRetryMutation(async () =>
+        await supabase
+          .from('jobs')
+          .delete()
+          .eq('id', id)
+      )
 
       if (deleteError) {
         console.error('Error deleting job:', deleteError)
