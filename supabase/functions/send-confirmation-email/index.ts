@@ -2,20 +2,15 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { Webhook } from 'https://esm.sh/standardwebhooks@1.0.0';
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { createSecureCorsHeaders, handleSecureCorsPreFlight } from "../utils/createSecureEdgeFunction.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 const hookSecret = Deno.env.get("SEND_EMAIL_HOOK_SECRET") as string;
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
+const corsHeaders = createSecureCorsHeaders();
 
 const handler = async (req: Request): Promise<Response> => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const preflightResponse = handleSecureCorsPreFlight(req, corsHeaders);
+  if (preflightResponse) return preflightResponse;
 
   if (req.method !== 'POST') {
     return new Response('Method not allowed', { status: 405 });

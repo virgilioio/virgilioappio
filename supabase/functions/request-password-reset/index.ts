@@ -2,11 +2,9 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { createSecureCorsHeaders, handleSecureCorsPreFlight } from "../utils/createSecureEdgeFunction.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+const corsHeaders = createSecureCorsHeaders();
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -15,9 +13,8 @@ interface RequestPasswordResetRequest {
 }
 
 const handler = async (req: Request): Promise<Response> => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const preflightResponse = handleSecureCorsPreFlight(req, corsHeaders);
+  if (preflightResponse) return preflightResponse;
 
   try {
     const { email }: RequestPasswordResetRequest = await req.json();

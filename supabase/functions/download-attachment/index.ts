@@ -1,27 +1,18 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0'
+import { createSecureCorsHeaders, handleSecureCorsPreFlight } from "../utils/createSecureEdgeFunction.ts";
 
 interface DownloadRequest {
   attachmentId: string
 }
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-  'Access-Control-Allow-Credentials': 'true'
-}
+const corsHeaders = createSecureCorsHeaders();
 
 Deno.serve(async (req) => {
   try {
     console.log(`Download attachment request: ${req.method} ${req.url}`)
 
-    // Handle CORS preflight requests
-    if (req.method === 'OPTIONS') {
-      return new Response(null, { 
-        status: 200, 
-        headers: corsHeaders 
-      })
-    }
+    const preflightResponse = handleSecureCorsPreFlight(req, corsHeaders);
+    if (preflightResponse) return preflightResponse;
 
     if (req.method !== 'POST') {
       return new Response('Method not allowed', { 

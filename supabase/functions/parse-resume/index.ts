@@ -1,13 +1,10 @@
 
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createSecureCorsHeaders, handleSecureCorsPreFlight } from "../utils/createSecureEdgeFunction.ts";
 
 const OPENAI_API_KEY = Deno.env.get('OPENAI_API_KEY');
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+const corsHeaders = createSecureCorsHeaders();
 
 type ParseRequest = {
   textContent?: string;
@@ -157,9 +154,8 @@ Return ONLY JSON. Do not include markdown fences or commentary.`;
 }
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const preflightResponse = handleSecureCorsPreFlight(req, corsHeaders);
+  if (preflightResponse) return preflightResponse;
 
   try {
     const body = (await req.json()) as ParseRequest;

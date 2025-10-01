@@ -15,18 +15,29 @@ interface SecureCorsOptions {
 
 export function createSecureCorsHeaders(options: SecureCorsOptions = {}) {
   const {
-    allowedOrigins = ['https://lovable.app', 'https://*.lovable.app', 'http://localhost:5173'],
+    allowedOrigins = [
+      'https://app.virgilio.io',
+      'https://auth.virgilio.io',
+      'https://lovable.app',
+      'https://*.lovable.app',
+      'http://localhost:5173'
+    ],
     allowCredentials = true,
     maxAge = 86400, // 24 hours
-    environment = 'development'
+    environment = Deno.env.get('ENVIRONMENT') || 'development'
   } = options
 
+  // Detect environment based on request origin or env variable
+  const isProduction = environment === 'production' || 
+                       Deno.env.get('SUPABASE_URL')?.includes('supabase.co')
+  
   // For production, restrict to known domains
-  // For development, allow localhost
-  const isProduction = environment === 'production'
+  // For development, allow localhost and preview URLs
   const origin = isProduction 
-    ? allowedOrigins.join(', ')
+    ? allowedOrigins.filter(o => !o.includes('localhost')).join(', ')
     : '*' // Allow all origins in development for easier testing
+
+  console.log(`[CORS] Environment: ${environment}, Production: ${isProduction}, Origin: ${origin}`)
 
   return {
     'Access-Control-Allow-Origin': origin,
