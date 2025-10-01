@@ -13,7 +13,7 @@ import { CandidateFormSheet } from '@/components/candidates/CandidateFormSheet'
 import { OrganizationFormSheet } from '@/components/organizations/OrganizationFormSheet'
 import { useOrganizations, type CreateOrganizationData } from '@/hooks/useOrganizations'
 import { useIndependentCandidates, CreateIndependentCandidateData } from '@/hooks/useIndependentCandidates'
-import { supabase } from '@/integrations/supabase/client'
+import { supabase } from '@/lib/supabaseClient'
 import { toast } from '@/hooks/use-toast'
 
 export function GlobalCreateButton() {

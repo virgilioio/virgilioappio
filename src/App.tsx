@@ -29,7 +29,7 @@ import IndependentCandidateProfile from '@/pages/IndependentCandidateProfile'
 import { useFavicon } from './hooks/useFavicon'
 import { useBrowserTitle } from './hooks/useBrowserTitle'
 import { Toaster } from '@/components/ui/toaster'
-
+import { useAuthBootstrap } from './hooks/useAuthBootstrap'
 import PublicJobPosting from './pages/PublicJobPosting'
 import Onboarding from './pages/Onboarding'
 import Privacy from './pages/Privacy'
@@ -90,16 +90,35 @@ function AppContent() {
   )
 }
 
+function AppBootstrap({ children }: { children: React.ReactNode }) {
+  const { ready } = useAuthBootstrap()
+
+  if (!ready) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin mx-auto"></div>
+          <p className="text-muted-foreground">Initializing...</p>
+        </div>
+      </div>
+    )
+  }
+
+  return <>{children}</>
+}
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <OrgContextProvider>
-          <Router>
-            <AppContent />
-          </Router>
-        </OrgContextProvider>
-      </AuthProvider>
+      <AppBootstrap>
+        <AuthProvider>
+          <OrgContextProvider>
+            <Router>
+              <AppContent />
+            </Router>
+          </OrgContextProvider>
+        </AuthProvider>
+      </AppBootstrap>
     </QueryClientProvider>
   )
 }

@@ -14,7 +14,7 @@ import { PermissionGate } from '@/components/auth/PermissionGate'
 
 import { IndependentCandidate } from '@/hooks/useIndependentCandidates'
 import BulkAddToJobPipelineDialog from '@/components/candidates/BulkAddToJobPipelineDialog'
-import { supabase } from '@/integrations/supabase/client'
+import { supabase } from '@/lib/supabaseClient'
 import { toast } from '@/hooks/use-toast'
 
 interface IndependentCandidateTableProps {

@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import { supabase } from '@/integrations/supabase/client'
+import { supabase } from '@/lib/supabaseClient'
 import { toast } from '@/hooks/use-toast'
 
 export interface PipelineAssociation {

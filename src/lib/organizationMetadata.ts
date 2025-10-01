@@ -1,5 +1,5 @@
 
-import { supabase } from '@/integrations/supabase/client'
+import { supabase } from '@/lib/supabaseClient'
 
 export interface OrganizationMetadata {
   organization_id: string

@@ -7,7 +7,7 @@ import { Edit, Building, Briefcase, MapPin, DollarSign, Users, Calendar, UserChe
 import { PermissionGate } from '@/components/auth/PermissionGate'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useQuery } from '@tanstack/react-query'
-import { supabase } from '@/integrations/supabase/client'
+import { supabase } from '@/lib/supabaseClient'
 import type { Job } from '@/hooks/useJobs'
 import { getSkillColor } from '@/utils/skillColors'
 

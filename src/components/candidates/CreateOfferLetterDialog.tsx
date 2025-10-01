@@ -18,7 +18,7 @@ import { processOfferLetterTemplate, generateOfferLetterTitle, validateOfferLett
 import { sanitizeHtmlForEditor } from '@/utils/htmlSanitizer'
 import { useAuth } from '@/contexts/AuthContext'
 import { useCandidateAttachments } from '@/hooks/useCandidateAttachments'
-import { supabase } from '@/integrations/supabase/client'
+import { supabase } from '@/lib/supabaseClient'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 import { toast } from '@/hooks/use-toast'

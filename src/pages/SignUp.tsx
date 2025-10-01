@@ -9,7 +9,7 @@ import dashboardPreview from '@/assets/dashboard-preview.png'
 
 import { GoogleLogo } from '@/components/icons/GoogleLogo'
 import { useAuth } from '@/contexts/AuthContext'
-import { supabase } from '@/integrations/supabase/client'
+import { supabase } from '@/lib/supabaseClient'
 
 export default function SignUp() {
   const { signUp, isAuthenticated, isLoading, hasOrganizationContext } = useAuth()

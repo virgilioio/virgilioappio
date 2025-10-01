@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Mail, RefreshCw, CheckCircle2 } from 'lucide-react'
-import { supabase } from '@/integrations/supabase/client'
+import { supabase } from '@/lib/supabaseClient'
 import { toast } from '@/hooks/use-toast'
 import { VirgilioLogo } from '@/components/VirgilioLogo'
 

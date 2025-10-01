@@ -34,7 +34,7 @@ import { GlobalCreateButton } from '@/components/layout/GlobalCreateButton'
 import { cn } from '@/lib/utils'
 import { useMembers } from '@/hooks/useMembers'
 import { useToast } from '@/components/ui/use-toast'
-import { supabase } from '@/integrations/supabase/client'
+import { supabase } from '@/lib/supabaseClient'
 import { useUserProfile } from '@/hooks/useUserProfile'
 
 export function Header() {

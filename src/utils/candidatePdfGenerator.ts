@@ -1,7 +1,7 @@
 import { jsPDF } from 'jspdf'
 import { Candidate } from '@/hooks/useCandidates'
 import { getSkillColor, PastelColor } from '@/utils/skillColors'
-import { supabase } from '@/integrations/supabase/client'
+import { supabase } from '@/lib/supabaseClient'
 
 // Skill color mapping for PDF (HSL values converted to RGB)
 const skillColorMap: Record<PastelColor, { bg: [number, number, number], text: [number, number, number] }> = {

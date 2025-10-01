@@ -9,7 +9,7 @@ import { CoreFieldsRenderer } from './CoreFieldsRenderer'
 import { useCoreFields } from '@/hooks/useCoreFields'
 import { useJobPostingFields } from '@/hooks/useJobPostingFields'
 import { ApplicationFieldsRenderer } from './ApplicationFieldsRenderer'
-import { supabase } from '@/integrations/supabase/client'
+import { supabase } from '@/lib/supabaseClient'
 import { toast } from '@/hooks/use-toast'
 import { Loader2 } from 'lucide-react'
 

@@ -1,5 +1,5 @@
 import { useAuth } from '@/contexts/AuthContext'
-import { supabase } from '@/integrations/supabase/client'
+import { supabase } from '@/lib/supabaseClient'
 import { useQuery } from '@tanstack/react-query'
 
 export function useIsVirgilioAdmin() {

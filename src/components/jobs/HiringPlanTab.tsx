@@ -10,7 +10,7 @@ import { Plus } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
 import { DraggableStageItem } from './DraggableStageItem'
 import { useJobHiringPlan } from '@/hooks/useJobHiringPlan'
-import { supabase } from '@/integrations/supabase/client'
+import { supabase } from '@/lib/supabaseClient'
 import {
   AlertDialog,
   AlertDialogAction,
