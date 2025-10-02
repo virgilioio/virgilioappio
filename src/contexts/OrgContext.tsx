@@ -33,7 +33,6 @@ export function OrgContextProvider({ children }: { children: React.ReactNode }) 
   }
 
   const hasOrganizationContext = organizationId !== null
-  const isPlatformAdmin = userType === 'platform_admin'
 
   return (
     <OrgContext.Provider
@@ -42,7 +41,7 @@ export function OrgContextProvider({ children }: { children: React.ReactNode }) 
         role,
         userType,
         isLoading: !ready,
-        hasOrganizationContext: hasOrganizationContext || isPlatformAdmin,
+        hasOrganizationContext,
         refreshOrgContext,
       }}
     >

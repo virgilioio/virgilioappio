@@ -12,7 +12,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabaseClient'
 
 export default function SignUp() {
-  const { signUp, isAuthenticated, isLoading, hasOrganizationContext } = useAuth()
+  const { signUp, isAuthenticated, isLoading, hasOrganizationContext, userType } = useAuth()
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -22,8 +22,13 @@ export default function SignUp() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false)
 
-  // Redirect if already authenticated
-  if (isAuthenticated) {
+  // Redirect if already authenticated - wait for org context to load
+  if (isAuthenticated && !isLoading) {
+    // Platform admins always go to dashboard
+    if (userType === 'platform_admin') {
+      return <Navigate to="/dashboard" replace />
+    }
+    // Regular users need org context to access dashboard
     return <Navigate to={hasOrganizationContext ? '/dashboard' : '/onboarding'} replace />
   }
 
