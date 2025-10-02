@@ -21,7 +21,7 @@ export default function Onboarding() {
   const { toast } = useToast()
   const navigate = useNavigate()
   
-  const { user } = useAuth()
+  const { user, logout } = useAuth()
   const { refreshOrgContext } = useOrgContext()
 
   useEffect(() => {
@@ -97,6 +97,20 @@ export default function Onboarding() {
     })
   }
 
+  const handleCancel = async () => {
+    try {
+      await logout()
+      navigate('/login', { replace: true })
+    } catch (error) {
+      console.error('Error signing out:', error)
+      toast({ 
+        title: 'Sign out failed', 
+        description: 'Please try again',
+        variant: 'destructive' 
+      })
+    }
+  }
+
   return (
     <div className="min-h-screen flex flex-col lg:flex-row">
 
@@ -153,6 +167,21 @@ export default function Onboarding() {
                   >
                     {isSubmitting ? 'Creating...' : 'Create workspace'}
                   </Button>
+                  <div className="mt-6 text-center space-y-2">
+                    <p className="text-xs text-muted-foreground">
+                      You can create your workspace anytime after signing in
+                    </p>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleCancel}
+                      disabled={isSubmitting}
+                      className="text-xs text-muted-foreground hover:text-foreground"
+                    >
+                      Not ready yet? Sign out
+                    </Button>
+                  </div>
                 </form>
               )}
             </CardContent>
