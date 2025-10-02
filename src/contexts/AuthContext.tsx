@@ -3,6 +3,7 @@ import { User, Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabaseClient'
 import { useToast } from '@/hooks/use-toast'
 import { useAuthBootstrap } from '@/hooks/useAuthBootstrap'
+import { withTimeout, withRetry } from '@/utils/timeout'
 
 interface OrganizationInfo {
   id: string
@@ -90,13 +91,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchAvailableOrganizations = async () => {
     try {
-      const { data, error } = await supabase
-        .from('organizations')
-        .select('id, name, organization_type, tenant_type')
-        .eq('status', 'active')
-        .or('organization_type.eq.platform,and(organization_type.eq.client,tenant_type.eq.saas)')
-        .order('organization_type', { ascending: false })
-        .order('name', { ascending: true })
+      const { data, error } = await withTimeout(
+        withRetry(async () => {
+          return await supabase
+            .from('organizations')
+            .select('id, name, organization_type, tenant_type')
+            .eq('status', 'active')
+            .or('organization_type.eq.platform,and(organization_type.eq.client,tenant_type.eq.saas)')
+            .order('organization_type', { ascending: false })
+            .order('name', { ascending: true })
+        }, 2, 500),
+        5000,
+        'Failed to fetch organizations'
+      );
 
       if (error) {
         console.error('Error fetching organizations:', error)
@@ -105,7 +112,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       setAvailableOrganizations(data || [])
     } catch (err) {
-      console.error('Exception fetching organizations:', err)
+      console.error('Exception fetching organizations:', err);
+      setAvailableOrganizations([]);
     }
   }
 

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Session } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabaseClient';
 import { useMultiTabSync } from './useMultiTabSync';
+import { withTimeout, withRetry } from '@/utils/timeout';
 
 interface OrgContext {
   organizationId: string | null;
@@ -30,16 +31,25 @@ export function useAuthBootstrap() {
     }
 
     // Defer org context resolution to avoid blocking
-    setTimeout(() => {
-      supabase.rpc('resolve_org_context').then(({ data: orgData }) => {
-        const orgContext: OrgContext = orgData && orgData.length > 0 ? {
-          organizationId: orgData[0].organization_id,
-          role: orgData[0].role,
-          userType: orgData[0].user_type,
+    setTimeout(async () => {
+      try {
+        const result = await withTimeout(
+          withRetry(async () => await supabase.rpc('resolve_org_context'), 2, 500),
+          5000,
+          'Organization context resolution timed out'
+        );
+
+        const orgContext: OrgContext = result.data && result.data.length > 0 ? {
+          organizationId: result.data[0].organization_id,
+          role: result.data[0].role,
+          userType: result.data[0].user_type,
         } : null;
 
         setState({ ready: true, session, orgContext });
-      });
+      } catch (error) {
+        console.error('Failed to resolve org context:', error);
+        setState({ ready: true, session, orgContext: null });
+      }
     }, 0);
   };
 
@@ -60,18 +70,28 @@ export function useAuthBootstrap() {
         return;
       }
 
-      // Resolve org context from database
-      const { data: orgData } = await supabase.rpc('resolve_org_context');
-      
-      if (!mounted) return;
+      // Resolve org context from database with timeout and retry
+      try {
+        const result = await withTimeout(
+          withRetry(async () => await supabase.rpc('resolve_org_context'), 2, 500),
+          5000,
+          'Organization context resolution timed out'
+        );
+        
+        if (!mounted) return;
 
-      const orgContext: OrgContext = orgData && orgData.length > 0 ? {
-        organizationId: orgData[0].organization_id,
-        role: orgData[0].role,
-        userType: orgData[0].user_type,
-      } : null;
+        const orgContext: OrgContext = result.data && result.data.length > 0 ? {
+          organizationId: result.data[0].organization_id,
+          role: result.data[0].role,
+          userType: result.data[0].user_type,
+        } : null;
 
-      setState({ ready: true, session, orgContext });
+        setState({ ready: true, session, orgContext });
+      } catch (error) {
+        console.error('Failed to resolve org context during bootstrap:', error);
+        if (!mounted) return;
+        setState({ ready: true, session, orgContext: null });
+      }
     }
 
     bootstrap();
@@ -85,18 +105,28 @@ export function useAuthBootstrap() {
         return;
       }
 
-      // Resolve org context from database
-      const { data: orgData } = await supabase.rpc('resolve_org_context');
-      
-      if (!mounted) return;
+      // Resolve org context from database with timeout and retry
+      try {
+        const result = await withTimeout(
+          withRetry(async () => await supabase.rpc('resolve_org_context'), 2, 500),
+          5000,
+          'Organization context resolution timed out'
+        );
+        
+        if (!mounted) return;
 
-      const orgContext: OrgContext = orgData && orgData.length > 0 ? {
-        organizationId: orgData[0].organization_id,
-        role: orgData[0].role,
-        userType: orgData[0].user_type,
-      } : null;
+        const orgContext: OrgContext = result.data && result.data.length > 0 ? {
+          organizationId: result.data[0].organization_id,
+          role: result.data[0].role,
+          userType: result.data[0].user_type,
+        } : null;
 
-      setState({ ready: true, session, orgContext });
+        setState({ ready: true, session, orgContext });
+      } catch (error) {
+        console.error('Failed to resolve org context on auth change:', error);
+        if (!mounted) return;
+        setState({ ready: true, session, orgContext: null });
+      }
     });
 
     return () => {
