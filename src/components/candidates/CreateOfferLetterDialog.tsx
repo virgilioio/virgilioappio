@@ -630,16 +630,25 @@ const [previewLoading, setPreviewLoading] = useState(false)
     </div>
   )
 
-  const renderReview = () => (
-    <div className="space-y-4">
-      <div className="text-center">
-        <h3 className="text-lg font-medium">Final Review</h3>
-        <p className="text-sm text-muted-foreground mt-1">
-          Confirm all details before creating the offer letter
-        </p>
-      </div>
-
+  const renderReview = () => {
+    const effectiveOrgId = organizationId || organization?.id
+    
+    return (
       <div className="space-y-4">
+        <div className="text-center">
+          <h3 className="text-lg font-medium">Final Review</h3>
+          <p className="text-sm text-muted-foreground mt-1">
+            Confirm all details before creating the offer letter
+          </p>
+        </div>
+        
+        {!effectiveOrgId && (
+          <div className="p-3 border border-destructive bg-destructive/10 rounded-md text-sm text-destructive">
+            ⚠️ Select an organization to continue (platform admins must choose an org)
+          </div>
+        )}
+
+        <div className="space-y-4">
         <Card>
           <CardHeader>
             <CardTitle className="text-sm">Offer Letter Details</CardTitle>
@@ -681,9 +690,9 @@ const [previewLoading, setPreviewLoading] = useState(false)
               })}
             </CardContent>
           </Card>
-        )}
+          )}
+        </div>
       </div>
-    </div>
     )
   }
 
