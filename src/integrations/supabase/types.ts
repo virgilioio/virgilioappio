@@ -324,13 +324,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "candidate_comments_candidate_id_fkey"
-            columns: ["candidate_id"]
-            isOneToOne: false
-            referencedRelation: "job_candidates"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "candidate_comments_job_id_fkey"
             columns: ["job_id"]
             isOneToOne: false
@@ -342,13 +335,6 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fk_candidate_comments_candidate_id"
-            columns: ["candidate_id"]
-            isOneToOne: false
-            referencedRelation: "job_candidates"
             referencedColumns: ["id"]
           },
         ]
@@ -478,15 +464,7 @@ export type Database = {
           updated_at?: string | null
           url?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "candidate_urls_candidate_id_fkey"
-            columns: ["candidate_id"]
-            isOneToOne: false
-            referencedRelation: "job_candidates"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       candidate_work_experience: {
         Row: {
@@ -813,86 +791,6 @@ export type Database = {
             columns: ["to_stage_id"]
             isOneToOne: false
             referencedRelation: "job_hiring_stages"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      job_candidates: {
-        Row: {
-          added_by: string | null
-          auto_generated_skills: Json | null
-          candidate_name: string
-          created_at: string
-          first_viewed_by: Json | null
-          id: string
-          job_id: string
-          last_skills_generation: string | null
-          linkedin_url: string | null
-          location_city: string | null
-          location_country: string | null
-          location_state: string | null
-          notes: string | null
-          profile_summary: string | null
-          salary_amount: number | null
-          salary_currency: string | null
-          salary_period: string | null
-          skills: string[] | null
-          skills_metadata: Json | null
-          standardized_skills: string[] | null
-          updated_at: string
-        }
-        Insert: {
-          added_by?: string | null
-          auto_generated_skills?: Json | null
-          candidate_name: string
-          created_at?: string
-          first_viewed_by?: Json | null
-          id?: string
-          job_id: string
-          last_skills_generation?: string | null
-          linkedin_url?: string | null
-          location_city?: string | null
-          location_country?: string | null
-          location_state?: string | null
-          notes?: string | null
-          profile_summary?: string | null
-          salary_amount?: number | null
-          salary_currency?: string | null
-          salary_period?: string | null
-          skills?: string[] | null
-          skills_metadata?: Json | null
-          standardized_skills?: string[] | null
-          updated_at?: string
-        }
-        Update: {
-          added_by?: string | null
-          auto_generated_skills?: Json | null
-          candidate_name?: string
-          created_at?: string
-          first_viewed_by?: Json | null
-          id?: string
-          job_id?: string
-          last_skills_generation?: string | null
-          linkedin_url?: string | null
-          location_city?: string | null
-          location_country?: string | null
-          location_state?: string | null
-          notes?: string | null
-          profile_summary?: string | null
-          salary_amount?: number | null
-          salary_currency?: string | null
-          salary_period?: string | null
-          skills?: string[] | null
-          skills_metadata?: Json | null
-          standardized_skills?: string[] | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "job_candidates_job_id_fkey"
-            columns: ["job_id"]
-            isOneToOne: false
-            referencedRelation: "jobs"
             referencedColumns: ["id"]
           },
         ]
