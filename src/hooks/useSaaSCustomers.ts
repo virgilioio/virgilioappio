@@ -54,42 +54,65 @@ export function useSaaSCustomers() {
       const customersWithUsage = await Promise.all(
         (organizations || []).map(async (org) => {
           try {
-            // Get jobs created in last 30 days
-            const { count: jobsCount } = await supabase
+            // Get job IDs for this organization
+            const { data: orgJobs } = await supabase
               .from('jobs')
-              .select('*', { count: 'exact', head: true })
+              .select('id')
               .eq('organization_id', org.id)
-              .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
+            
+            const jobIds = orgJobs?.map(j => j.id) || []
 
-            // Get candidates added in last 30 days
-            const { count: candidatesCount } = await supabase
-              .from('job_candidates')
-              .select('*', { count: 'exact', head: true })
-              .eq('job_id', org.id)
-              .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
-
-            // Get active members count
-            const { count: membersCount } = await supabase
-              .from('members')
-              .select('*', { count: 'exact', head: true })
-              .eq('organization_id', org.id)
-              .eq('user_status', 'active')
-
-            // Get last activity
-            const { data: lastActivity } = await supabase
-              .from('members')
-              .select('updated_at')
-              .eq('organization_id', org.id)
-              .order('updated_at', { ascending: false })
-              .limit(1)
-              .maybeSingle()
+            // Get usage metrics in parallel
+            const [
+              { count: jobsCount },
+              recentAssociationsQuery,
+              { count: membersCount },
+              lastActivity
+            ] = await Promise.all([
+              // Jobs created in last 30 days
+              supabase
+                .from('jobs')
+                .select('*', { count: 'exact', head: true })
+                .eq('organization_id', org.id)
+                .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()),
+              
+              // Candidates added via associations in last 30 days
+              jobIds.length > 0
+                ? supabase
+                    .from('job_candidate_associations')
+                    .select('candidate_id')
+                    .in('job_id', jobIds)
+                    .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
+                : Promise.resolve({ data: [] }),
+              
+              // Active members count
+              supabase
+                .from('members')
+                .select('*', { count: 'exact', head: true })
+                .eq('organization_id', org.id)
+                .eq('user_status', 'active'),
+              
+              // Last activity timestamp
+              supabase
+                .from('members')
+                .select('updated_at')
+                .eq('organization_id', org.id)
+                .order('updated_at', { ascending: false })
+                .limit(1)
+                .maybeSingle()
+            ])
+            
+            // Count distinct candidate_ids to avoid duplicates
+            const candidatesCount = new Set(
+              (recentAssociationsQuery.data || []).map((a: any) => a.candidate_id)
+            ).size
 
             return {
               ...org,
               jobs_created_30d: jobsCount || 0,
-              candidates_added_30d: candidatesCount || 0,
+              candidates_added_30d: candidatesCount,
               members_active_count: membersCount || 0,
-              last_active_at: lastActivity?.updated_at || null
+              last_active_at: lastActivity?.data?.updated_at || null
             }
           } catch (error) {
             console.error('Error fetching usage data for organization:', org.id, error)

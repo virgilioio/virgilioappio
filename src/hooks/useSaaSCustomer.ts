@@ -46,10 +46,18 @@ export function useSaaSCustomer(customerId: string) {
         return null
       }
 
+      // Get job IDs for this organization first
+      const { data: orgJobs } = await supabase
+        .from('jobs')
+        .select('id')
+        .eq('organization_id', organization.id)
+      
+      const jobIds = orgJobs?.map(j => j.id) || []
+
       // Get usage data
       const [
         { count: jobsCount },
-        { count: candidatesCount },
+        recentAssociationsQuery,
         { count: membersCount },
         lastActivityQuery
       ] = await Promise.all([
@@ -59,11 +67,14 @@ export function useSaaSCustomer(customerId: string) {
           .eq('organization_id', organization.id)
           .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()),
         
-        supabase
-          .from('job_candidates')
-          .select('*', { count: 'exact', head: true })
-          .eq('job_id', organization.id)
-          .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()),
+        // Get recent candidate associations for this org's jobs
+        jobIds.length > 0 
+          ? supabase
+              .from('job_candidate_associations')
+              .select('candidate_id')
+              .in('job_id', jobIds)
+              .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
+          : Promise.resolve({ data: [] }),
         
         supabase
           .from('members')
@@ -79,6 +90,11 @@ export function useSaaSCustomer(customerId: string) {
           .limit(1)
           .maybeSingle()
       ])
+      
+      // Count distinct candidate_ids
+      const candidatesCount = new Set(
+        (recentAssociationsQuery.data || []).map((a: any) => a.candidate_id)
+      ).size
 
       // Get owner details if owner_id exists
       let ownerDetails = null

@@ -36,57 +36,14 @@ export function useCandidateResolver(jobCandidateId: string | null): CandidateRe
           .maybeSingle()
 
         if (independentCandidate) {
-          // This is already an independent candidate ID
+          // This is already an independent candidate ID - use it directly
           setIndependentCandidateId(jobCandidateId)
           return
         }
 
-        // If not, try to find the job candidate and resolve it
-        const { data: jobCandidate, error: jobError } = await supabase
-          .from('job_candidates')
-          .select('candidate_name, linkedin_url, location_country, location_city')
-          .eq('id', jobCandidateId)
-          .single()
-
-        if (jobError) {
-          throw jobError
-        }
-
-        if (!jobCandidate) {
-          setIndependentCandidateId(null)
-          return
-        }
-
-        // Try to find a matching independent candidate
-        let query = supabase.from('candidates').select('id')
-
-        // Try to match by LinkedIn URL first (most reliable)
-        if (jobCandidate.linkedin_url) {
-          const { data: linkedInMatch } = await query
-            .eq('linkedin_url', jobCandidate.linkedin_url)
-            .maybeSingle()
-          
-          if (linkedInMatch) {
-            setIndependentCandidateId(linkedInMatch.id)
-            return
-          }
-        }
-
-        // Fall back to matching by name and location
-        const { data: nameLocationMatch } = await supabase
-          .from('candidates')
-          .select('id')
-          .eq('candidate_name', jobCandidate.candidate_name)
-          .eq('location_country', jobCandidate.location_country || '')
-          .eq('location_city', jobCandidate.location_city || '')
-          .maybeSingle()
-
-        if (nameLocationMatch) {
-          setIndependentCandidateId(nameLocationMatch.id)
-          return
-        }
-
-        // No match found
+        // If not found in candidates table, this ID is invalid
+        // (legacy job_candidates table is deprecated and should not be used)
+        console.warn(`Candidate ID ${jobCandidateId} not found in candidates table`)
         setIndependentCandidateId(null)
 
       } catch (err) {
