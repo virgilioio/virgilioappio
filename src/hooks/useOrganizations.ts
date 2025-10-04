@@ -3,7 +3,8 @@ import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from '@/hooks/use-toast'
 import { useIsVirgilioAdmin } from '@/hooks/useIsVirgilioAdmin'
-import { withAuthRetrySelect, withAuthRetryMutation } from '@/lib/authUtils'
+import { withAuthRetry, extractErrorMessage } from '@/lib/authUtils'
+import { log } from '@/lib/logger'
 
 export interface Organization {
   id: string
@@ -133,7 +134,7 @@ export function useOrganizations() {
         }
       }
 
-      const { data: orgsData, error: fetchError } = await withAuthRetrySelect(async () =>
+      const { data: orgsData, error: fetchError } = await withAuthRetry(async () =>
         await query.order('created_at', { ascending: false })
       )
 

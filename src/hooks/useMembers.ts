@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from '@/hooks/use-toast'
-import { withAuthRetryMutation, withAuthRetrySelect, withAuthRetryEdgeFunction } from '@/lib/authUtils'
+import { withAuthRetry, extractErrorMessage } from '@/lib/authUtils'
+import { log } from '@/lib/logger'
 
 export interface Member {
   id: string
@@ -168,9 +169,9 @@ export function useMembers() {
 
   const sendInvitationEmail = async (memberId: string, email: string) => {
     try {
-      console.log('Sending invitation email for member:', memberId)
+      log.debug('Sending invitation email for member:', memberId)
       
-      const { data, error } = await withAuthRetryEdgeFunction(async () =>
+      const { data, error } = await withAuthRetry(async () =>
         await supabase.functions.invoke('send-invitation', {
           body: {
             memberId,
@@ -248,7 +249,7 @@ export function useMembers() {
         console.log('Checking for existing member with email:', emailToCheck)
         
         // Check for existing member with the same email in any organization
-        const { data: existingMember, error: checkError } = await withAuthRetrySelect(async () =>
+        const { data: existingMember, error: checkError } = await withAuthRetry(async () =>
           await supabase
             .from('members')
             .select('id, invited_email, user_status, invite_expires_at, organization_name:organizations(name)')
@@ -298,9 +299,9 @@ export function useMembers() {
         invited_email: !data.user_id && data.email ? data.email : null
       }
 
-      console.log('Inserting member data:', memberData)
+      log.debug('Inserting member data:', memberData)
 
-      const { data: newMember, error: createError } = await withAuthRetryMutation(async () =>
+      const { data: newMember, error: createError } = await withAuthRetry(async () =>
         await supabase
           .from('members')
           .insert([memberData])
@@ -364,8 +365,8 @@ export function useMembers() {
     setError(null)
 
     try {
-      console.log('Updating member:', id, data)
-      const { data: updatedMember, error: updateError } = await withAuthRetryMutation(async () =>
+      log.debug('Updating member:', id, data)
+      const { data: updatedMember, error: updateError } = await withAuthRetry(async () =>
         await supabase
           .from('members')
           .update(data)

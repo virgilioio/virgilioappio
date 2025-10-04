@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
-import { withAuthRetrySelect, withAuthRetryMutation } from '@/lib/authUtils'
+import { withAuthRetry, extractErrorMessage } from '@/lib/authUtils'
 import { toast } from '@/hooks/use-toast'
+import { log } from '@/lib/logger'
 
 export interface Candidate {
   id: string
@@ -64,10 +65,10 @@ export function useCandidates(jobId: string) {
     setError(null)
 
     try {
-      console.log('Fetching candidates for job:', jobId)
+      log.debug('Fetching candidates for job:', jobId)
       
       // Optimized query with 401 retry wrapper
-      const { data, error: fetchError } = await withAuthRetrySelect(async () =>
+      const { data, error: fetchError } = await withAuthRetry(async () =>
         await supabase
           .from('job_candidate_associations')
           .select(`
@@ -101,16 +102,16 @@ export function useCandidates(jobId: string) {
       )
 
       if (fetchError) {
-        console.error('Error fetching candidates:', fetchError)
+        log.error('Error fetching candidates:', fetchError)
         if (fetchError.message.includes('row-level security')) {
-          console.warn('RLS policy blocked access - user may not have permission to view candidates')
+          log.warn('RLS policy blocked access - user may not have permission to view candidates')
           setCandidates([])
           return
         }
         throw fetchError
       }
 
-      console.log('Optimized fetch completed for', data?.length || 0, 'candidates')
+      log.debug('Optimized fetch completed for', data?.length || 0, 'candidates')
       
       // Optimized transformation with better performance
       const transformedCandidates: Candidate[] = (data || []).map(assoc => {
@@ -149,8 +150,8 @@ export function useCandidates(jobId: string) {
       
       setCandidates(transformedCandidates)
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch candidates'
-      console.error('Candidates fetch error:', err)
+      const errorMessage = extractErrorMessage(err)
+      log.error('Candidates fetch error:', err)
       setError(errorMessage)
       toast({
         title: 'Error',

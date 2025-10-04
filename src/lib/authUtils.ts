@@ -1,124 +1,98 @@
 import { supabase } from '@/lib/supabaseClient'
+import { log } from '@/lib/logger'
 
 /**
- * Extract meaningful error details from Supabase errors
- * Prevents errors from collapsing to generic "Object" messages
+ * Extract human-readable error message from various error formats
+ * Handles PostgREST, RPC, and Edge Function errors
  */
-export function parseSupabaseError(error: any): string {
-  if (!error) return 'Unknown error occurred'
+export function extractErrorMessage(err: any): string {
+  if (!err) return 'Unexpected error'
+  if (typeof err === 'string') return err
   
-  // Handle string errors
-  if (typeof error === 'string') return error
+  // Check various error message locations
+  if (err.message) return err.message
+  if (err.error?.message) return err.error.message
+  if (err.data?.message) return err.data.message
+  if (err.details) return err.details // PostgREST detail
   
-  // Extract PostgREST error details
-  if (error.code) {
-    const errorMap: Record<string, string> = {
-      'PGRST301': 'JWT token expired',
-      'PGRST302': 'JWT token invalid',
-      'PGRST116': 'Row level security policy violation',
-      '23505': 'Duplicate key violation',
-      '23503': 'Foreign key constraint violation',
-      '42501': 'Insufficient privileges'
-    }
-    
-    const knownError = errorMap[error.code]
-    if (knownError) {
-      return `${knownError}${error.message ? `: ${error.message}` : ''}`
-    }
+  // Check for specific PostgREST error codes
+  if (err.code === '23505') {
+    return 'This record already exists. Please use unique values.'
+  }
+  if (err.code === '23503') {
+    return 'Cannot complete this action due to related records. Please remove dependencies first.'
+  }
+  if (err.code === '42501') {
+    return 'You do not have permission to perform this action.'
+  }
+  if (err.code === 'PGRST301') {
+    return 'Record not found or you do not have permission to access it.'
   }
   
-  // Extract message from various error formats
-  if (error.message) return error.message
-  if (error.error_description) return error.error_description
-  if (error.msg) return error.msg
-  
-  // Fallback: stringify but limit length
   try {
-    const str = JSON.stringify(error)
-    return str.length > 200 ? `${str.slice(0, 200)}...` : str
+    return JSON.stringify(err)
   } catch {
-    return 'Error details unavailable'
+    return 'Unknown error'
   }
 }
 
 /**
- * Wraps a Supabase operation with automatic auth retry on 401 errors
- * Handles expired access tokens by refreshing the session and retrying once
+ * Single unified auth retry helper.
+ * Wraps any async operation with automatic 401 refresh+retry logic.
+ * 
+ * If the operation fails with a 401 error (expired token), it will:
+ * 1. Refresh the session automatically
+ * 2. Retry the original operation once
+ * 
+ * @param fn - The async function to execute with retry logic
+ * @returns The result of the function execution
  */
 export async function withAuthRetry<T>(fn: () => Promise<T>): Promise<T> {
   try {
     return await fn()
-  } catch (e: any) {
-    // Check for auth errors: 401 status or PostgREST auth error codes
-    const isAuthError = 
-      e?.status === 401 || 
-      e?.code === 'PGRST301' || // JWT expired
-      e?.code === 'PGRST302' || // JWT invalid
-      e?.message?.includes('JWT')
+  } catch (error: any) {
+    // Check if it's a 401 authentication error
+    const is401 = 
+      error?.status === 401 ||
+      error?.code === '401' ||
+      error?.code === 'PGRST301' ||
+      error?.code === 'PGRST302' ||
+      error?.message?.includes('JWT') ||
+      error?.message?.includes('expired') ||
+      error?.message?.includes('invalid token')
     
-    if (isAuthError) {
-      const errorDetails = parseSupabaseError(e)
-      console.log('🔄 Auth error detected:', errorDetails)
-      console.log('🔄 Refreshing session and retrying...')
+    if (is401) {
+      log.info('Auth token expired, refreshing session...')
       
-      // Refresh the session
+      // Attempt to refresh the session
       const { error: refreshError } = await supabase.auth.refreshSession()
       
       if (refreshError) {
-        const refreshErrorDetails = parseSupabaseError(refreshError)
-        console.error('❌ Session refresh failed:', refreshErrorDetails)
-        throw new Error(`Session expired: ${refreshErrorDetails}`)
+        log.error('Session refresh failed:', refreshError)
+        throw error // Throw original error if refresh fails
       }
       
-      console.log('✅ Session refreshed, retrying operation...')
-      
-      // Retry the original operation with fresh token
+      log.info('Session refreshed, retrying operation...')
+      // Retry the original operation after successful refresh
       return await fn()
     }
     
-    // Not an auth error, enhance error message and rethrow
-    const errorDetails = parseSupabaseError(e)
-    console.error('❌ Operation failed:', errorDetails)
-    
-    // Create enhanced error with better message
-    const enhancedError = new Error(errorDetails)
-    Object.assign(enhancedError, e) // Preserve original error properties
-    throw enhancedError
+    // If not a 401 error, throw it immediately
+    throw error
   }
 }
 
-/**
- * Type-safe wrapper for SELECT queries
- */
-export async function withAuthRetrySelect<T>(
-  query: () => Promise<{ data: T | null; error: any }>
-): Promise<{ data: T | null; error: any }> {
-  return withAuthRetry(query)
-}
+// DEPRECATED: Legacy wrappers removed. Use withAuthRetry() directly.
+// These are kept temporarily for backwards compatibility but will be removed.
 
-/**
- * Type-safe wrapper for INSERT/UPDATE/DELETE mutations
- */
-export async function withAuthRetryMutation<T>(
-  mutation: () => Promise<{ data: T | null; error: any }>
-): Promise<{ data: T | null; error: any }> {
-  return withAuthRetry(mutation)
-}
+/** @deprecated Use withAuthRetry() directly */
+export const withAuthRetrySelect = withAuthRetry
 
-/**
- * Type-safe wrapper for RPC calls
- */
-export async function withAuthRetryRpc<T>(
-  rpcCall: () => Promise<{ data: T | null; error: any }>
-): Promise<{ data: T | null; error: any }> {
-  return withAuthRetry(rpcCall)
-}
+/** @deprecated Use withAuthRetry() directly */
+export const withAuthRetryMutation = withAuthRetry
 
-/**
- * Type-safe wrapper for Edge Function invocations
- */
-export async function withAuthRetryEdgeFunction<T>(
-  edgeFn: () => Promise<{ data: T | null; error: any }>
-): Promise<{ data: T | null; error: any }> {
-  return withAuthRetry(edgeFn)
-}
+/** @deprecated Use withAuthRetry() directly */
+export const withAuthRetryRpc = withAuthRetry
+
+/** @deprecated Use withAuthRetry() directly */
+export const withAuthRetryEdgeFunction = withAuthRetry

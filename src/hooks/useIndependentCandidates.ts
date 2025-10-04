@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from '@/hooks/use-toast'
-import { withAuthRetryMutation, withAuthRetrySelect } from '@/lib/authUtils'
+import { withAuthRetry, extractErrorMessage } from '@/lib/authUtils'
+import { log } from '@/lib/logger'
 
 export interface IndependentCandidate {
   id: string
@@ -60,9 +61,9 @@ export function useIndependentCandidates() {
     setError(null)
 
     try {
-      console.log('Fetching independent candidates for organization:', organizationId)
+      log.debug('Fetching independent candidates for organization:', organizationId)
       
-      const { data, error: fetchError } = await withAuthRetrySelect(async () =>
+      const { data, error: fetchError } = await withAuthRetry(async () =>
         await supabase
           .from('candidates')
           .select('*')
@@ -83,8 +84,8 @@ export function useIndependentCandidates() {
       })) as IndependentCandidate[]
       setCandidates(typedData)
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch candidates'
-      console.error('Independent candidates fetch error:', err)
+      const errorMessage = extractErrorMessage(err)
+      log.error('Independent candidates fetch error:', err)
       setError(errorMessage)
       toast({
         title: 'Error',
@@ -116,7 +117,7 @@ export function useIndependentCandidates() {
               .eq('organization_id', organizationId)
               .is('email', null)
         
-        const result = await withAuthRetrySelect(duplicateQuery)
+        const result = await withAuthRetry(duplicateQuery)
         const count = (result as any).count
 
         if (result.error) {
@@ -132,7 +133,7 @@ export function useIndependentCandidates() {
       }
 
       // Explicitly map only valid database fields to prevent schema errors
-      const { data: newCandidate, error: createError } = await withAuthRetryMutation(async () =>
+      const { data: newCandidate, error: createError } = await withAuthRetry(async () =>
         await supabase
           .from('candidates')
           .insert([{
@@ -211,7 +212,7 @@ export function useIndependentCandidates() {
       if (candidateData.status !== undefined) updateData.status = candidateData.status
       if (candidateData.source !== undefined) updateData.source = candidateData.source
 
-      const { data: updatedCandidate, error: updateError } = await withAuthRetryMutation(async () =>
+      const { data: updatedCandidate, error: updateError } = await withAuthRetry(async () =>
         await supabase
           .from('candidates')
           .update(updateData)
@@ -253,8 +254,8 @@ export function useIndependentCandidates() {
     setError(null)
 
     try {
-      console.log('Deleting independent candidate:', id)
-      const { error: deleteError } = await withAuthRetryMutation(async () =>
+      log.debug('Deleting independent candidate:', id)
+      const { error: deleteError } = await withAuthRetry(async () =>
         await supabase
           .from('candidates')
           .delete()

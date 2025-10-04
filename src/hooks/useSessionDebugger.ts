@@ -1,7 +1,7 @@
 import { useEffect, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from 'sonner'
-import { parseSupabaseError } from '@/lib/authUtils'
+import { extractErrorMessage } from '@/lib/authUtils'
 
 interface SessionDebugData {
   timestamp: string
@@ -21,7 +21,7 @@ export function useSessionDebugger() {
   const log = useCallback((event: string, details: any = {}) => {
     // Parse error details if present
     const parsedDetails = details?.error 
-      ? { ...details, errorMessage: parseSupabaseError(details.error) }
+      ? { ...details, errorMessage: extractErrorMessage(details.error) }
       : details
 
     const logEntry: SessionDebugData = {

@@ -4,7 +4,8 @@ import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from '@/hooks/use-toast'
 import { useJobSpecNormalization } from './useJobSpecNormalization'
-import { withAuthRetryMutation, withAuthRetrySelect } from '@/lib/authUtils'
+import { withAuthRetry, extractErrorMessage } from '@/lib/authUtils'
+import { log } from '@/lib/logger'
 
 export interface Job {
   id: string
@@ -293,7 +294,7 @@ export function useJobs() {
         console.log('Regular user creating job for their organization:', targetOrganizationId)
       }
 
-      const { data: newJob, error: createError } = await withAuthRetryMutation(async () =>
+      const { data: newJob, error: createError } = await withAuthRetry(async () =>
         await supabase
           .from('jobs')
           .insert([{
@@ -339,8 +340,8 @@ export function useJobs() {
     setError(null)
 
     try {
-      console.log('Updating job:', id, jobData)
-      const { data: updatedJob, error: updateError } = await withAuthRetryMutation(async () =>
+      log.debug('Updating job:', id, jobData)
+      const { data: updatedJob, error: updateError } = await withAuthRetry(async () =>
         await supabase
           .from('jobs')
           .update(jobData)
@@ -423,8 +424,8 @@ export function useJobs() {
     setError(null)
 
     try {
-      console.log('Deleting job:', id)
-      const { error: deleteError } = await withAuthRetryMutation(async () =>
+      log.debug('Deleting job:', id)
+      const { error: deleteError } = await withAuthRetry(async () =>
         await supabase
           .from('jobs')
           .delete()

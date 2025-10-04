@@ -9,6 +9,8 @@ import { OrgContextProvider } from './contexts/OrgContext'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useStartupDiagnostics } from './hooks/useStartupDiagnostics'
 import { Layout } from './components/layout/Layout'
+import { ErrorBoundary } from './components/ErrorBoundary'
+import { log } from './lib/logger'
 import Dashboard from './pages/Dashboard'
 import Jobs from './pages/Jobs'
 import JobDetail from './pages/JobDetail'
@@ -114,17 +116,21 @@ function App() {
   useStartupDiagnostics()
   
   return (
-    <QueryClientProvider client={queryClient}>
-      <AppBootstrap>
-        <AuthProvider>
-          <OrgContextProvider>
-            <Router>
-              <AppContent />
-            </Router>
-          </OrgContextProvider>
-        </AuthProvider>
-      </AppBootstrap>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <AppBootstrap>
+          <AuthProvider>
+            <OrgContextProvider>
+              <Router>
+                <ErrorBoundary>
+                  <AppContent />
+                </ErrorBoundary>
+              </Router>
+            </OrgContextProvider>
+          </AuthProvider>
+        </AppBootstrap>
+      </QueryClientProvider>
+    </ErrorBoundary>
   )
 }
 
@@ -142,7 +148,7 @@ function RequireAuth({ children }: { children: JSX.Element }) {
   useEffect(() => {
     if (!traceRef.current && sessionReady && (orgContextReady || isPlatformAdmin)) {
       traceRef.current = true
-      console.debug('[RequireAuth] Decision ready:', {
+      log.debug('[RequireAuth] Decision ready:', {
         isAuthenticated,
         sessionReady,
         orgContextReady,
