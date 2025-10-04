@@ -10,7 +10,7 @@ export interface Member {
   organization_id: string
   member_role: 'admin' | 'recruiter' | 'hiring_manager' | 'interviewer'
   user_status: 'active' | 'inactive' | 'invited'
-  user_type?: 'guest' | 'member' | 'workspace_owner' | 'platform_admin'
+  user_type?: 'member' | 'workspace_owner' | 'platform_admin'
   created_at: string
   updated_at: string
   invite_token?: string | null
@@ -27,7 +27,7 @@ export interface CreateMemberData {
   organization_id: string
   member_role: 'admin' | 'recruiter' | 'hiring_manager' | 'interviewer'
   user_status?: 'active' | 'inactive' | 'invited'
-  user_type?: 'guest' | 'member' | 'workspace_owner' | 'platform_admin'
+  user_type?: 'member' | 'workspace_owner' | 'platform_admin'
   email?: string
 }
 
@@ -140,7 +140,7 @@ export function useMembers() {
           ...member,
           member_role: member.member_role as 'admin' | 'recruiter' | 'hiring_manager' | 'interviewer',
           user_status: member.user_status as 'active' | 'inactive' | 'invited',
-          user_type: member.user_type as 'guest' | 'member' | 'workspace_owner' | 'platform_admin',
+          user_type: member.user_type as 'member' | 'workspace_owner' | 'platform_admin',
           organization_name: organizationsMap[member.organization_id] || null,
           user_first_name: profile?.first_name || null,
           user_last_name: profile?.last_name || null,
@@ -175,7 +175,7 @@ export function useMembers() {
           body: {
             memberId,
             email,
-            inviterName: user?.user_metadata?.first_name || user?.email
+            inviterName: user?.email || 'Team Member'
           }
         })
       )

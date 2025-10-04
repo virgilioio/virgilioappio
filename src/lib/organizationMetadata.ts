@@ -71,16 +71,21 @@ export async function injectOrganizationToUser(
 /**
  * Validate that a user has required organization context
  */
+/**
+ * @deprecated This function uses JWT metadata which is not the source of truth.
+ * Use DB-driven org context from AuthContext/OrgContext instead.
+ */
 export function validateOrganizationContext(user: any): {
   isValid: boolean
   organizationId: string | null
   errors: string[]
 } {
+  console.warn('[DEPRECATED] validateOrganizationContext uses JWT metadata. Use DB context instead.')
   const errors: string[] = []
   const organizationId = user?.user_metadata?.organization_id || null
 
   if (!organizationId) {
-    errors.push('Missing organization_id in user metadata')
+    errors.push('Missing organization_id - use DB context from AuthContext/OrgContext')
   }
 
   return {

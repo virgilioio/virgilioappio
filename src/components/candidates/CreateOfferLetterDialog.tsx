@@ -40,7 +40,7 @@ export function CreateOfferLetterDialog({
   job,
   organization
 }: CreateOfferLetterDialogProps) {
-  const { user } = useAuth()
+  const { user, organizationId } = useAuth()
   const { templates, isLoading: templatesLoading } = useOfferTemplates()
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('')
   const { fields, isLoading: fieldsLoading, fetchFieldOptions } = useOfferTemplateFields(selectedTemplateId)
@@ -290,7 +290,7 @@ const [previewLoading, setPreviewLoading] = useState(false)
         candidate_id: candidate.id,
         job_id: candidate.job_id || '',
         template_id: selectedTemplateId,
-        organization_id: user?.user_metadata?.organization_id || organization?.id,
+        organization_id: organizationId || organization?.id || '',
         title: offerTitle,
         content: processedContent,
         field_values: fieldValues,

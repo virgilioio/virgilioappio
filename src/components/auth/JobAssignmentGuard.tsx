@@ -18,9 +18,8 @@ export function JobAssignmentGuard({ children }: JobAssignmentGuardProps) {
   const { isAssigned, isLoading } = useIsAssignedToJob(jobId || '')
 
   useEffect(() => {
-    // Skip check for platform admins, workspace owners, and internal team members
-    if (permissions.isPlatformAdmin || permissions.isWorkspaceOwner || 
-        ['admin', 'recruiter'].includes(user?.user_metadata?.member_role || '')) {
+    // Skip check for platform admins, workspace owners, and internal team members (from DB context)
+    if (permissions.isPlatformAdmin || permissions.isWorkspaceOwner || permissions.isAdmin || permissions.isRecruiter) {
       return
     }
 

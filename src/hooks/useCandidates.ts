@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
+import { withAuthRetrySelect, withAuthRetryMutation } from '@/lib/authUtils'
 import { toast } from '@/hooks/use-toast'
 
 export interface Candidate {
@@ -65,37 +66,39 @@ export function useCandidates(jobId: string) {
     try {
       console.log('Fetching candidates for job:', jobId)
       
-      // Optimized query with better projection and proper JOINs
-      const { data, error: fetchError } = await supabase
-        .from('job_candidate_associations')
-        .select(`
-          id,
-          notes,
-          status,
-          current_stage_id,
-          added_by,
-          created_at,
-          candidates!inner (
+      // Optimized query with 401 retry wrapper
+      const { data, error: fetchError } = await withAuthRetrySelect(async () =>
+        await supabase
+          .from('job_candidate_associations')
+          .select(`
             id,
-            candidate_name,
-            email,
-            phone,
-            location_country,
-            location_state,
-            location_city,
-            salary_amount,
-            salary_currency,
-            salary_period,
-            profile_summary,
-            linkedin_url,
-            skills,
-            auto_generated_skills,
+            notes,
+            status,
+            current_stage_id,
+            added_by,
             created_at,
-            updated_at
-          )
-        `)
-        .eq('job_id', jobId)
-        .order('created_at', { ascending: false })
+            candidates!inner (
+              id,
+              candidate_name,
+              email,
+              phone,
+              location_country,
+              location_state,
+              location_city,
+              salary_amount,
+              salary_currency,
+              salary_period,
+              profile_summary,
+              linkedin_url,
+              skills,
+              auto_generated_skills,
+              created_at,
+              updated_at
+            )
+          `)
+          .eq('job_id', jobId)
+          .order('created_at', { ascending: false })
+      )
 
       if (fetchError) {
         console.error('Error fetching candidates:', fetchError)

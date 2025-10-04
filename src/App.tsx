@@ -7,6 +7,7 @@ import {
 import { AuthProvider } from './contexts/AuthContext'
 import { OrgContextProvider } from './contexts/OrgContext'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { useStartupDiagnostics } from './hooks/useStartupDiagnostics'
 import { Layout } from './components/layout/Layout'
 import Dashboard from './pages/Dashboard'
 import Jobs from './pages/Jobs'
@@ -108,6 +109,9 @@ function AppBootstrap({ children }: { children: React.ReactNode }) {
 }
 
 function App() {
+  // Run startup diagnostics in development
+  useStartupDiagnostics()
+  
   return (
     <QueryClientProvider client={queryClient}>
       <AppBootstrap>
@@ -124,17 +128,17 @@ function App() {
 }
 
 function RequireAuth({ children }: { children: JSX.Element }) {
-  const { isAuthenticated, isLoading: authLoading } = useAuth()
-  const { isLoading: orgLoading, hasOrganizationContext, userType } = useOrgContext()
+  const { isAuthenticated, isLoading: authLoading, userType } = useAuth()
+  const { isLoading: orgLoading, hasOrganizationContext } = useOrgContext()
   const location = window.location
 
-  // Show loading while auth or org context is being resolved
-  if (authLoading || orgLoading) {
+  // Block UI until auth is ready
+  if (authLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center space-y-4">
           <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin mx-auto"></div>
-          <p className="text-muted-foreground">Loading...</p>
+          <p className="text-muted-foreground">Authenticating...</p>
         </div>
       </div>
     )
@@ -144,11 +148,33 @@ function RequireAuth({ children }: { children: JSX.Element }) {
     return <Navigate to="/auth" replace />
   }
 
-  // Platform admins can access without org context
+  // Platform admins bypass org context requirement entirely
   const isPlatformAdmin = userType === 'platform_admin'
   
-  // Redirect to onboarding if no org context and not platform admin
-  if (!hasOrganizationContext && !isPlatformAdmin && location.pathname !== '/onboarding') {
+  // Block UI until org context is ready (unless platform admin)
+  if (!isPlatformAdmin && orgLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin mx-auto"></div>
+          <p className="text-muted-foreground">Loading workspace...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Platform admins don't need organization context - render immediately
+  if (isPlatformAdmin) {
+    return children
+  }
+
+  // Regular users without org context can access onboarding
+  if (!hasOrganizationContext && location.pathname === '/onboarding') {
+    return children
+  }
+
+  // Regular users without org context redirected to onboarding
+  if (!hasOrganizationContext) {
     return <Navigate to="/onboarding" replace />
   }
 

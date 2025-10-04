@@ -67,7 +67,7 @@ export function JobsTable({
     const activeMembers = members.filter(member => 
       member.user_status === 'active' && 
       member.user_id &&
-      (member.user_type === 'member' || member.user_type === 'guest' || member.user_type === 'workspace_owner')
+      (member.user_type === 'member' || member.user_type === 'workspace_owner')
     )
     
     return activeMembers.map(member => ({

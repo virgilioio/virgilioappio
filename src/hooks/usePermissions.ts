@@ -70,7 +70,6 @@ export function usePermissions(): PermissionsState {
   const isPlatformAdmin = userType === 'platform_admin'
   const isWorkspaceOwner = userType === 'workspace_owner'
   const isMember = userType === 'member' && hasOrganizationContext
-  const isGuest = userType === 'guest'
   
   // Member role classification (only for members)
   const isAdmin = isMember && memberRole === 'admin'
@@ -135,7 +134,7 @@ export function usePermissions(): PermissionsState {
     isRecruiter,
     isHiringManager,
     isInterviewer,
-    isGuest,
+    isGuest: false, // Guest type removed from MVP
     hasOrganizationContext,
   }
 }

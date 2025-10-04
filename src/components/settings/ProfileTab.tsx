@@ -150,7 +150,7 @@ export function ProfileTab() {
               <Shield className="h-3 w-3" />
               <span>User Type: </span>
               <Badge variant="secondary" className="text-xs">
-                {userType || 'guest'}
+                {userType || 'none'}
               </Badge>
             </div>
             {memberRole && (

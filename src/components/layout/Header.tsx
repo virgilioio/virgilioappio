@@ -111,9 +111,9 @@ export function Header() {
 
   const userDisplayName = (profile?.first_name && profile?.last_name
     ? `${profile.first_name} ${profile.last_name}`
-    : profile?.first_name) || user?.user_metadata?.first_name || user?.email?.split('@')[0] || 'User'
-  const userInitials = (profile?.first_name || user?.user_metadata?.first_name) && (profile?.last_name || user?.user_metadata?.last_name)
-    ? `${(profile?.first_name || user?.user_metadata?.first_name)[0]}${(profile?.last_name || user?.user_metadata?.last_name)[0]}`.toUpperCase()
+    : profile?.first_name) || user?.email?.split('@')[0] || 'User'
+  const userInitials = profile?.first_name && profile?.last_name
+    ? `${profile.first_name[0]}${profile.last_name[0]}`.toUpperCase()
     : user?.email?.[0]?.toUpperCase() || 'U'
 
   const NavigationContent = () => (
@@ -218,7 +218,7 @@ export function Header() {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-10 w-10 rounded-full">
                 <Avatar className="h-10 w-10">
-                  <AvatarImage src={profile?.avatar_url || user?.user_metadata?.avatar_url} alt={userDisplayName} />
+                  <AvatarImage src={profile?.avatar_url} alt={userDisplayName} />
                   <AvatarFallback className="text-sm">{userInitials}</AvatarFallback>
                 </Avatar>
               </Button>

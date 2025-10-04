@@ -41,15 +41,9 @@ export default function AuthCallback() {
         // Clear any stored state
         sessionStorage.removeItem('oauth_state')
         
-        // Navigate to appropriate page after short delay
+        // Navigate to dashboard after short delay - let RequireAuth handle org context
         setTimeout(() => {
-          // Check if user has organization context
-          const hasOrgContext = session.user?.user_metadata?.organization_id
-          console.log('Has org context:', hasOrgContext)
-          
-          const targetPath = hasOrgContext ? '/dashboard' : '/onboarding'
-          console.log('Navigating to:', targetPath)
-          navigate(targetPath, { replace: true })
+          navigate('/dashboard', { replace: true })
         }, 1500)
 
       } catch (error) {

@@ -83,7 +83,7 @@ export function DebugPanel() {
                   <div className="space-y-1 text-xs">
                     <div><strong>ID:</strong> {user.id.slice(0, 8)}...</div>
                     <div><strong>Email:</strong> {user.email}</div>
-                    <div><strong>Type:</strong> <Badge variant="outline" className="text-xs h-4">{userType || 'guest'}</Badge></div>
+                    <div><strong>Type:</strong> <Badge variant="outline" className="text-xs h-4">{userType || 'none'}</Badge></div>
                     <div><strong>Role:</strong> <Badge variant="outline" className="text-xs h-4">{memberRole || 'none'}</Badge></div>
                   </div>
                 </div>

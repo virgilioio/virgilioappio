@@ -68,8 +68,8 @@ export default function Settings() {
     return userType === 'workspace_owner' && organizationId
   }
 
-  // Guest users should not have access to billing tab
-  const canAccessBilling = canViewBilling && !isGuest
+  // All authenticated users with workspace owner status can access billing
+  const canAccessBilling = canViewBilling
 
   return (
     <Section>

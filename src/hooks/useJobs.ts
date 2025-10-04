@@ -285,12 +285,11 @@ export function useJobs() {
         targetOrganizationId = jobData.organization_id
         console.log('Platform admin creating job for organization:', targetOrganizationId)
       } else {
-        // Regular users can only create jobs for their own organization
-        const userOrganizationId = user.user_metadata?.organization_id || organizationId
-        if (!userOrganizationId) {
-          throw new Error('No organization found for user')
+        // Regular users can only create jobs for their own organization (from DB context)
+        if (!organizationId) {
+          throw new Error('No organization context found for user')
         }
-        targetOrganizationId = userOrganizationId
+        targetOrganizationId = organizationId
         console.log('Regular user creating job for their organization:', targetOrganizationId)
       }
 
