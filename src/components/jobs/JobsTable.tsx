@@ -7,7 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Plus, Search, Edit, Archive, FileText, Building, MapPin, DollarSign, Eye, UserPlus, ChevronLeft, ChevronRight, MoreHorizontal } from 'lucide-react'
+import { Plus, Search, FileText, Building, ChevronLeft, ChevronRight, MoreHorizontal, Eye, Edit, Archive } from 'lucide-react'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { EmptyState } from '@/components/ui/empty-state'
 import { PermissionGate } from '@/components/auth/PermissionGate'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -38,7 +39,6 @@ export function JobsTable({
   const { members, isLoading: membersLoading } = useMembers()
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('open')
-  const [levelFilter, setLevelFilter] = useState<string>('all')
   const [organizationFilter, setOrganizationFilter] = useState<string>('all')
   const [hiringTeamFilter, setHiringTeamFilter] = useState<string>('all')
   
@@ -61,21 +61,6 @@ export function JobsTable({
     }
   }
 
-  const formatSalary = (min: number | null, max: number | null, currency: string | null) => {
-    if (!min && !max) return 'Not specified'
-    
-    const curr = currency || 'USD'
-    if (min && max) {
-      return `${curr} ${min.toLocaleString()} - ${max.toLocaleString()}`
-    }
-    if (min) {
-      return `${curr} ${min.toLocaleString()}+`
-    }
-    if (max) {
-      return `Up to ${curr} ${max.toLocaleString()}`
-    }
-    return 'Not specified'
-  }
 
   const getAllOrganizationMembers = () => {
     // Get all active members and guests from the organization
@@ -99,7 +84,6 @@ export function JobsTable({
                          job.department?.toLowerCase().includes(searchTerm.toLowerCase())
     
     const matchesStatus = statusFilter === 'all' || job.status === statusFilter
-    const matchesLevel = levelFilter === 'all' || job.level === levelFilter
     
     // Check if user can view organizations for the organization filter
     const canViewOrganizations = permissions.canViewOrganizations || permissions.isPlatformAdmin
@@ -116,7 +100,7 @@ export function JobsTable({
       return isInHiringTeam
     })()
     
-    return matchesSearch && matchesStatus && matchesLevel && matchesOrganization && matchesHiringTeam
+    return matchesSearch && matchesStatus && matchesOrganization && matchesHiringTeam
   })
 
   // Calculate pagination
@@ -128,7 +112,7 @@ export function JobsTable({
   // Reset pagination when filters change
   useEffect(() => {
     setCurrentPage(1)
-  }, [searchTerm, statusFilter, levelFilter, organizationFilter, hiringTeamFilter])
+  }, [searchTerm, statusFilter, organizationFilter, hiringTeamFilter])
 
   // Generate page numbers for pagination
   const getPageNumbers = () => {
@@ -213,19 +197,6 @@ export function JobsTable({
                 <SelectItem value="archived">Archived</SelectItem>
               </SelectContent>
             </Select>
-            
-            <Select value={levelFilter} onValueChange={setLevelFilter}>
-              <SelectTrigger className="w-full sm:w-[180px]">
-                <SelectValue placeholder="Level" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Levels</SelectItem>
-                <SelectItem value="L1 - Specialists">L1 - Specialists</SelectItem>
-                <SelectItem value="L2 - Managers">L2 - Managers</SelectItem>
-                <SelectItem value="L3 - Directors / VPs / Executive Search">L3 - Directors / VPs / Executive Search</SelectItem>
-                <SelectItem value="L4 - C-Level">L4 - C-Level</SelectItem>
-              </SelectContent>
-            </Select>
 
             {(permissions.canViewOrganizations || permissions.isPlatformAdmin) && organizations.length > 0 && (
               <Select value={organizationFilter} onValueChange={setOrganizationFilter}>
@@ -302,10 +273,6 @@ export function JobsTable({
                     <TableRow>
                       <TableHead>Job Title</TableHead>
                       <TableHead>Organization</TableHead>
-                      <TableHead>Department</TableHead>
-                      <TableHead>Location</TableHead>
-                      <TableHead>Level</TableHead>
-                      <TableHead>Salary Range</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
@@ -325,66 +292,54 @@ export function JobsTable({
                             {job.organization_name || 'Organization'}
                           </div>
                         </TableCell>
-                        <TableCell>{job.department || 'Not specified'}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            <MapPin className="h-4 w-4 text-muted-foreground" />
-                            {job.location || 'Not specified'}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline">{job.level}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            <DollarSign className="h-4 w-4 text-muted-foreground" />
-                            {formatSalary(job.salary_min, job.salary_max, job.currency)}
-                          </div>
-                        </TableCell>
                         <TableCell>
                           <Badge variant={getStatusBadgeVariant(job.status)}>
                             {job.status}
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center justify-end gap-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                onView(job)
-                              }}
-                              className="h-8 w-8 p-0"
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <PermissionGate permission="canEditJobs">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={(e) => {
+                          <div className="flex items-center justify-end">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0"
+                                >
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-40">
+                                <DropdownMenuItem onClick={(e) => {
                                   e.stopPropagation()
-                                  onEdit(job)
-                                }}
-                                className="h-8 w-8 p-0"
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                            </PermissionGate>
-                            <PermissionGate permission="canArchiveJobs">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  onArchive(job.id)
-                                }}
-                                className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10"
-                              >
-                                <Archive className="h-4 w-4" />
-                              </Button>
-                            </PermissionGate>
+                                  onView(job)
+                                }}>
+                                  <Eye className="h-4 w-4 mr-2" />
+                                  View
+                                </DropdownMenuItem>
+                                <PermissionGate permission="canEditJobs">
+                                  <DropdownMenuItem onClick={(e) => {
+                                    e.stopPropagation()
+                                    onEdit(job)
+                                  }}>
+                                    <Edit className="h-4 w-4 mr-2" />
+                                    Edit
+                                  </DropdownMenuItem>
+                                </PermissionGate>
+                                <PermissionGate permission="canArchiveJobs">
+                                  <DropdownMenuItem 
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      onArchive(job.id)
+                                    }}
+                                    className="text-destructive focus:text-destructive"
+                                  >
+                                    <Archive className="h-4 w-4 mr-2" />
+                                    Archive
+                                  </DropdownMenuItem>
+                                </PermissionGate>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -405,73 +360,57 @@ export function JobsTable({
                         <div className="flex items-start justify-between mb-sm">
                           <div className="min-w-0 flex-1">
                             <h4 className="font-medium text-text-primary mb-1">{job.title}</h4>
-                            <div className="flex items-center gap-2 text-sm text-text-secondary mb-2">
+                            <div className="flex items-center gap-2 text-sm text-text-secondary">
                               <Building className="h-4 w-4" />
                               {job.organization_name || 'Organization'}
                             </div>
                           </div>
-                          <Badge variant={getStatusBadgeVariant(job.status)} className="shrink-0">
-                            {job.status}
-                          </Badge>
-                        </div>
-
-                        <div className="space-y-2 text-sm text-text-secondary">
-                          <div className="flex items-center gap-1">
-                            <MapPin className="h-4 w-4" />
-                            {job.location || 'Not specified'}
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <DollarSign className="h-4 w-4" />
-                            {formatSalary(job.salary_min, job.salary_max, job.currency)}
-                          </div>
                           <div className="flex items-center gap-2">
-                            <Badge variant="outline" className="text-xs">
-                              {job.level}
+                            <Badge variant={getStatusBadgeVariant(job.status)} className="shrink-0">
+                              {job.status}
                             </Badge>
-                            {job.department && (
-                              <span className="text-xs">{job.department}</span>
-                            )}
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0"
+                                >
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-40">
+                                <DropdownMenuItem onClick={(e) => {
+                                  e.stopPropagation()
+                                  onView(job)
+                                }}>
+                                  <Eye className="h-4 w-4 mr-2" />
+                                  View
+                                </DropdownMenuItem>
+                                <PermissionGate permission="canEditJobs">
+                                  <DropdownMenuItem onClick={(e) => {
+                                    e.stopPropagation()
+                                    onEdit(job)
+                                  }}>
+                                    <Edit className="h-4 w-4 mr-2" />
+                                    Edit
+                                  </DropdownMenuItem>
+                                </PermissionGate>
+                                <PermissionGate permission="canArchiveJobs">
+                                  <DropdownMenuItem 
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      onArchive(job.id)
+                                    }}
+                                    className="text-destructive focus:text-destructive"
+                                  >
+                                    <Archive className="h-4 w-4 mr-2" />
+                                    Archive
+                                  </DropdownMenuItem>
+                                </PermissionGate>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
-                        </div>
-
-                        <div className="flex items-center justify-end gap-2 mt-sm pt-sm border-t border-border">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              onView(job)
-                            }}
-                            className="h-8 w-8 p-0"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <PermissionGate permission="canEditJobs">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                onEdit(job)
-                              }}
-                              className="h-8 w-8 p-0"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                          </PermissionGate>
-                          <PermissionGate permission="canArchiveJobs">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                onArchive(job.id)
-                              }}
-                              className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10"
-                            >
-                              <Archive className="h-4 w-4" />
-                            </Button>
-                          </PermissionGate>
                         </div>
                       </div>
                     </CardContent>
