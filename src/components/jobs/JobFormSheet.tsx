@@ -100,6 +100,11 @@ export function JobFormSheet({ isOpen, onClose, onSubmit, job, isLoading }: JobF
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
+    // Validate organization is selected
+    if (!formData.organization_id) {
+      return // Button should be disabled, but extra safety
+    }
+    
     const submitData = {
       title: formData.title,
       description: formData.description || null,
@@ -324,6 +329,11 @@ export function JobFormSheet({ isOpen, onClose, onSubmit, job, isLoading }: JobF
                   ))}
                 </SelectContent>
               </Select>
+              {userType === 'platform_admin' && !formData.organization_id && (
+                <p className="text-sm text-muted-foreground mt-1">
+                  Platform admins must select an organization
+                </p>
+              )}
             </div>
 
             <div className="md:col-span-2">
@@ -429,7 +439,11 @@ export function JobFormSheet({ isOpen, onClose, onSubmit, job, isLoading }: JobF
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading}>
+            <Button 
+              type="submit" 
+              disabled={isLoading || !formData.organization_id}
+              title={!formData.organization_id ? 'Organization selection required' : ''}
+            >
               {isLoading ? 'Saving...' : (job ? 'Update Job' : 'Create Job')}
             </Button>
           </div>

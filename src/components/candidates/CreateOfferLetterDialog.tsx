@@ -275,6 +275,19 @@ const [previewLoading, setPreviewLoading] = useState(false)
 
   const handleCreateOfferLetter = async () => {
     try {
+      // Compute effective organization ID
+      const effectiveOrgId = organizationId || organization?.id || ''
+      
+      // Validate organization is selected
+      if (!effectiveOrgId) {
+        toast({
+          title: 'Organization Required',
+          description: 'Please select an organization to continue.',
+          variant: 'destructive'
+        })
+        return
+      }
+      
       // Validate data
       const requiredFields = fields.filter(f => f.is_required).map(f => f.field_name)
       const offerData: OfferLetterData = { candidate, job, organization, fieldValues }
@@ -290,7 +303,7 @@ const [previewLoading, setPreviewLoading] = useState(false)
         candidate_id: candidate.id,
         job_id: candidate.job_id || '',
         template_id: selectedTemplateId,
-        organization_id: organizationId || organization?.id || '',
+        organization_id: effectiveOrgId,
         title: offerTitle,
         content: processedContent,
         field_values: fieldValues,
@@ -341,11 +354,14 @@ const [previewLoading, setPreviewLoading] = useState(false)
   }
 
   const canProceed = () => {
+    const effectiveOrgId = organizationId || organization?.id
+    
     if (currentStep === 'template') return selectedTemplate
     if (currentStep === 'fields') {
       const requiredFields = fields.filter(f => f.is_required)
       return requiredFields.every(field => fieldValues[field.field_name])
     }
+    if (currentStep === 'review') return effectiveOrgId // Must have org to create
     return true
   }
 
@@ -668,7 +684,8 @@ const [previewLoading, setPreviewLoading] = useState(false)
         )}
       </div>
     </div>
-  )
+    )
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -706,7 +723,8 @@ const [previewLoading, setPreviewLoading] = useState(false)
           {currentStep === 'review' ? (
             <Button 
               onClick={handleCreateOfferLetter}
-              disabled={creatingLetter || !offerTitle.trim()}
+              disabled={creatingLetter || !canProceed()}
+              title={!canProceed() ? 'Organization selection required' : ''}
             >
               {creatingLetter ? 'Creating...' : 'Create Offer Letter'}
             </Button>

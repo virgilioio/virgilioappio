@@ -359,6 +359,18 @@ export function CandidateFormSheet({
   }
 
   const handleSubmit = form.handleSubmit(async (data) => {
+    // For new candidates without a job context, validate org/job selection
+    if (!candidate && !jobId) {
+      if (!selectedJobId && !organizationId) {
+        toast({
+          title: 'Selection Required',
+          description: 'Select a job (or organization) before creating a candidate.',
+          variant: 'destructive'
+        })
+        return
+      }
+    }
+    
     const submitData = {
       ...data,
       email: data.email?.trim() ? data.email.trim() : null,
@@ -811,7 +823,11 @@ export function CandidateFormSheet({
               <Button type="button" variant="outline" onClick={handleClose}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={isLoading}>
+              <Button 
+                type="submit" 
+                disabled={isLoading || (!candidate && !jobId && !selectedJobId && !organizationId)}
+                title={(!candidate && !jobId && !selectedJobId && !organizationId) ? 'Select a job or organization first' : ''}
+              >
                 {isLoading ? 'Saving...' : (candidate ? 'Update Candidate' : 'Add Candidate')}
               </Button>
             </div>
