@@ -48,8 +48,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const userType = orgContext?.userType || null
   const memberRole = orgContext?.role || null
   
-  // userTypeLoading: true until userType is definitively known (prevents race condition on cold boot)
-  const userTypeLoading = !ready || (!!session && userType === null)
+  // userTypeLoading: true until orgContext is fully resolved (prevents race condition on cold boot)
+  const userTypeLoading = !ready || (!!session && orgContext === null)
   
   // Check if we're impersonating a customer
   const isImpersonating = !!(selectedOrganizationId && 

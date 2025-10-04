@@ -18,70 +18,35 @@ export default function AuthCallback() {
     if (exchangedRef.current) return
     exchangedRef.current = true
 
-    const validateAndProcessAuth = async () => {
+    const processAuthCallback = async () => {
       try {
-        if (import.meta.env.DEV) {
-          console.debug('[AuthCallback] Starting OAuth callback processing...')
-          console.debug('[AuthCallback] URL:', window.location.href)
-        }
+        console.debug('[AuthCallback] Exchanging code for session...')
         
-        // 1) ✅ CRITICAL: Explicitly exchange the OAuth code for a session (Supabase v2)
-        const { data: exchangeData, error: exchangeError } = await supabase.auth.exchangeCodeForSession(
+        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(
           window.location.href
         )
         
         if (exchangeError) {
-          console.error('[AuthCallback] exchangeCodeForSession error:', exchangeError)
+          console.error('[AuthCallback] Exchange error:', exchangeError)
+          setErrorMessage(exchangeError.message || 'Failed to complete sign-in')
           setStatus('error')
-          setErrorMessage('Failed to complete sign-in. Please try again.')
           return
         }
 
-        if (import.meta.env.DEV) {
-          console.debug('[AuthCallback] exchangeCodeForSession successful')
-        }
-
-        // 2) ✅ Double-check session presence (belt-and-suspenders)
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-        
-        if (sessionError) {
-          console.error('[AuthCallback] getSession error:', sessionError)
-          setStatus('error')
-          setErrorMessage('Failed to establish authentication session.')
-          return
-        }
-
-        if (!session) {
-          console.error('[AuthCallback] No session after exchange')
-          setStatus('error')
-          setErrorMessage('No authentication session found.')
-          return
-        }
-
-        if (import.meta.env.DEV) {
-          console.debug('[AuthCallback] Session confirmed, user:', session.user.email)
-        }
-
+        console.debug('[AuthCallback] ✓ Session established')
         setStatus('success')
         
-        // Clear any stored OAuth state
-        sessionStorage.removeItem('oauth_state')
-        
-        // 3) ✅ Navigate immediately (no artificial delay)
-        // RequireAuth will handle org context and userType loading
-        if (import.meta.env.DEV) {
-          console.debug('[AuthCallback] Navigating to /dashboard')
-        }
+        console.debug('[AuthCallback] → Navigating to /dashboard')
         navigate('/dashboard', { replace: true })
 
-      } catch (error) {
-        console.error('[AuthCallback] Unexpected error:', error)
+      } catch (err) {
+        console.error('[AuthCallback] Unexpected error:', err)
+        setErrorMessage('An unexpected error occurred during sign-in')
         setStatus('error')
-        setErrorMessage('An unexpected error occurred during authentication.')
       }
     }
 
-    validateAndProcessAuth()
+    processAuthCallback()
   }, [navigate])
 
   const handleRetryAuth = () => {

@@ -24,6 +24,7 @@ import AcceptInvite from './pages/AcceptInvite'
 import VerifyEmail from './pages/VerifyEmail'
 import { useAuth } from './contexts/AuthContext'
 import { useOrgContext } from './contexts/OrgContext'
+import { useRef, useEffect } from 'react'
 import NotFound from './pages/NotFound'
 import CandidateProfile from '@/pages/CandidateProfile'
 import IndependentCandidateProfile from '@/pages/IndependentCandidateProfile'
@@ -132,23 +133,28 @@ function RequireAuth({ children }: { children: JSX.Element }) {
   const { isLoading: orgLoading, hasOrganizationContext } = useOrgContext()
   const isPlatformAdmin = userType === 'platform_admin'
 
-  // Dev trace for debugging auth flow
-  if (import.meta.env.DEV) {
-    console.debug('[RequireAuth]', { 
-      isAuthenticated, 
-      authLoading,
-      userTypeLoading,
-      userType,
-      isPlatformAdmin,
-      isLoggingOut,
-      orgLoading, 
-      hasOrganizationContext, 
-      path: window.location.pathname 
-    })
-  }
+  // Derived ready states
+  const sessionReady = !authLoading && !isLoggingOut
+  const orgContextReady = !userTypeLoading && !orgLoading
 
-  // 1) ✅ Wait for auth OR logout (no redirects during transient states)
-  if (authLoading || isLoggingOut) {
+  // ONE-TIME dev trace when decision is ready
+  const traceRef = useRef(false)
+  useEffect(() => {
+    if (!traceRef.current && sessionReady && (orgContextReady || isPlatformAdmin)) {
+      traceRef.current = true
+      console.debug('[RequireAuth] Decision ready:', {
+        isAuthenticated,
+        sessionReady,
+        orgContextReady,
+        isPlatformAdmin,
+        hasOrg: hasOrganizationContext,
+        path: window.location.pathname,
+      })
+    }
+  }, [sessionReady, orgContextReady, isPlatformAdmin, hasOrganizationContext, isAuthenticated])
+
+  // 1. Show loader until session is ready
+  if (!sessionReady) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center space-y-4">
@@ -161,30 +167,13 @@ function RequireAuth({ children }: { children: JSX.Element }) {
     )
   }
 
-  // 2) Gate unauthenticated
+  // 2. If not authenticated, redirect to auth
   if (!isAuthenticated) {
     return <Navigate to="/auth" replace />
   }
 
-  // 3) ✅ NEW: Wait for definitive userType before any admin/org checks
-  if (userTypeLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto" />
-          <p className="text-muted-foreground">Loading user profile...</p>
-        </div>
-      </div>
-    )
-  }
-
-  // 4) ✅ Platform admin bypass (no org checks needed)
-  if (isPlatformAdmin) {
-    return children
-  }
-
-  // 4) Wait for org only for non-admins
-  if (orgLoading) {
+  // 3. Show loader until orgContext is ready (unless platform admin)
+  if (!orgContextReady && !isPlatformAdmin) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center space-y-4">
@@ -195,13 +184,17 @@ function RequireAuth({ children }: { children: JSX.Element }) {
     )
   }
 
-  // 5) Non-admins: allow onboarding route if no org
-  if (!hasOrganizationContext && window.location.pathname === '/onboarding') {
+  // 4. ONE GATE DECISION: Only RequireAuth redirects to /onboarding
+  if (isPlatformAdmin) {
     return children
   }
 
-  // 6) Non-admins: otherwise redirect to onboarding
-  if (!hasOrganizationContext) {
+  if (hasOrganizationContext) {
+    return children
+  }
+
+  // No org → redirect to onboarding (ONLY place this happens)
+  if (window.location.pathname !== '/onboarding') {
     return <Navigate to="/onboarding" replace />
   }
 
