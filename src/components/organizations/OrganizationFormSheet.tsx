@@ -87,53 +87,54 @@ export function OrganizationFormSheet({
           </SheetHeader>
 
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleSubmit)} className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Organization Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Enter organization name" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="status"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Status</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+            <form onSubmit={form.handleSubmit(handleSubmit)} className="flex-1 flex flex-col h-full">
+              <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Organization Name</FormLabel>
                       <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select status" />
-                        </SelectTrigger>
+                        <Input placeholder="Enter organization name" {...field} />
                       </FormControl>
-                      <SelectContent>
-                        <SelectItem value="active">Active</SelectItem>
-                        <SelectItem value="inactive">Inactive</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
+                <FormField
+                  control={form.control}
+                  name="status"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Status</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select status" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="active">Active</SelectItem>
+                          <SelectItem value="inactive">Inactive</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div className="px-6 py-4 border-t border-border flex items-center justify-end gap-2">
+                <Button type="button" variant="ghost" onClick={handleClose}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={isLoading}>
+                  {isLoading ? 'Saving...' : (isEditing ? 'Update' : 'Create')}
+                </Button>
+              </div>
             </form>
-
-            <div className="px-6 py-4 border-t border-border flex items-center justify-end gap-2">
-              <Button type="button" variant="ghost" onClick={handleClose}>
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isLoading}>
-                {isLoading ? 'Saving...' : (isEditing ? 'Update' : 'Create')}
-              </Button>
-            </div>
           </Form>
         </div>
       </SheetContent>
