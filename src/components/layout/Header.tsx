@@ -56,7 +56,15 @@ export function Header() {
 
   const handleLogout = async () => {
     await logout()
-    // Navigation will be handled by auth state change in App.tsx
+    
+    // ✅ Belt-and-suspenders: explicit navigation after 100ms
+    // (in case onAuthStateChange doesn't trigger redirect)
+    setTimeout(() => {
+      if (import.meta.env.DEV) {
+        console.debug('[Header] Fallback navigation to /auth after logout')
+      }
+      navigate('/auth', { replace: true })
+    }, 100)
   }
 
   // Header scroll shadow

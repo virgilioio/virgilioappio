@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useEffect, useState, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -8,53 +8,81 @@ import { AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { VirgilioLogo } from '@/components/VirgilioLogo'
 
 export default function AuthCallback() {
-  const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const [status, setStatus] = useState<'validating' | 'success' | 'error'>('validating')
   const [errorMessage, setErrorMessage] = useState('')
+  const exchangedRef = useRef(false)
 
   useEffect(() => {
+    // Prevent double execution
+    if (exchangedRef.current) return
+    exchangedRef.current = true
+
     const validateAndProcessAuth = async () => {
       try {
-        console.log('Starting auth callback validation...')
+        if (import.meta.env.DEV) {
+          console.debug('[AuthCallback] Starting OAuth callback processing...')
+          console.debug('[AuthCallback] URL:', window.location.href)
+        }
         
-        // Check for auth session first
+        // 1) ✅ CRITICAL: Explicitly exchange the OAuth code for a session (Supabase v2)
+        const { data: exchangeData, error: exchangeError } = await supabase.auth.exchangeCodeForSession(
+          window.location.href
+        )
+        
+        if (exchangeError) {
+          console.error('[AuthCallback] exchangeCodeForSession error:', exchangeError)
+          setStatus('error')
+          setErrorMessage('Failed to complete sign-in. Please try again.')
+          return
+        }
+
+        if (import.meta.env.DEV) {
+          console.debug('[AuthCallback] exchangeCodeForSession successful')
+        }
+
+        // 2) ✅ Double-check session presence (belt-and-suspenders)
         const { data: { session }, error: sessionError } = await supabase.auth.getSession()
         
         if (sessionError) {
-          console.error('Session error:', sessionError)
+          console.error('[AuthCallback] getSession error:', sessionError)
           setStatus('error')
           setErrorMessage('Failed to establish authentication session.')
           return
         }
 
         if (!session) {
-          console.log('No session found, redirecting to auth')
+          console.error('[AuthCallback] No session after exchange')
           setStatus('error')
           setErrorMessage('No authentication session found.')
           return
         }
 
-        console.log('Session found, user:', session.user.email)
+        if (import.meta.env.DEV) {
+          console.debug('[AuthCallback] Session confirmed, user:', session.user.email)
+        }
+
         setStatus('success')
         
-        // Clear any stored state
+        // Clear any stored OAuth state
         sessionStorage.removeItem('oauth_state')
         
-        // Navigate to dashboard after short delay - let RequireAuth handle org context
-        setTimeout(() => {
-          navigate('/dashboard', { replace: true })
-        }, 1500)
+        // 3) ✅ Navigate immediately (no artificial delay)
+        // RequireAuth will handle org context and userType loading
+        if (import.meta.env.DEV) {
+          console.debug('[AuthCallback] Navigating to /dashboard')
+        }
+        navigate('/dashboard', { replace: true })
 
       } catch (error) {
-        console.error('Auth callback error:', error)
+        console.error('[AuthCallback] Unexpected error:', error)
         setStatus('error')
         setErrorMessage('An unexpected error occurred during authentication.')
       }
     }
 
     validateAndProcessAuth()
-  }, [searchParams, navigate])
+  }, [navigate])
 
   const handleRetryAuth = () => {
     navigate('/auth', { replace: true })

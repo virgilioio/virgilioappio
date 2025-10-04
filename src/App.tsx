@@ -128,7 +128,7 @@ function App() {
 }
 
 function RequireAuth({ children }: { children: JSX.Element }) {
-  const { isAuthenticated, isLoading: authLoading, userTypeLoading, userType } = useAuth()
+  const { isAuthenticated, isLoading: authLoading, userTypeLoading, userType, isLoggingOut } = useAuth()
   const { isLoading: orgLoading, hasOrganizationContext } = useOrgContext()
   const isPlatformAdmin = userType === 'platform_admin'
 
@@ -139,20 +139,23 @@ function RequireAuth({ children }: { children: JSX.Element }) {
       authLoading,
       userTypeLoading,
       userType,
-      isPlatformAdmin, 
+      isPlatformAdmin,
+      isLoggingOut,
       orgLoading, 
       hasOrganizationContext, 
       path: window.location.pathname 
     })
   }
 
-  // 1) Wait for auth only
-  if (authLoading) {
+  // 1) ✅ Wait for auth OR logout (no redirects during transient states)
+  if (authLoading || isLoggingOut) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center space-y-4">
           <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin mx-auto"></div>
-          <p className="text-muted-foreground">Authenticating...</p>
+          <p className="text-muted-foreground">
+            {isLoggingOut ? 'Signing out...' : 'Authenticating...'}
+          </p>
         </div>
       </div>
     )

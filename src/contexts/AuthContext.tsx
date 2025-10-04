@@ -140,18 +140,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       setIsLoggingOut(true)
       
-      // Clear local state immediately
+      // 1) ✅ Use reliable sign-out with explicit cleanup
+      const { safeSignOut } = await import('@/lib/authHelpers')
+      await safeSignOut()
+      
+      // 2) Clear local organization state immediately
       setSelectedOrganizationId(null)
       setAvailableOrganizations([])
       
-      // Attempt sign out
-      const { error } = await supabase.auth.signOut()
+      // 3) ✅ Tiny delay to let onAuthStateChange propagate
+      await new Promise(resolve => setTimeout(resolve, 50))
       
-      if (error && !error.message?.includes('session_not_found')) {
-        throw error
-      }
     } catch (err) {
-      console.error('Logout error:', err)
+      console.error('[AuthContext] Logout error:', err)
       toast({
         title: "Error",
         description: "Failed to log out. Please try again.",
