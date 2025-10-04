@@ -115,13 +115,16 @@ synced_count | skipped_count | details
 
 ### Option B: CLI Script (for dev environment)
 
-Create `scripts/run_sync_candidates.ts`:
+The script `scripts/run_sync_candidates.ts` is already created and uses environment variables from `.env`:
 
 ```typescript
 import { createClient } from '@supabase/supabase-js'
+import * as dotenv from 'dotenv'
 
-const SUPABASE_URL = 'https://etrxjxstjfcozdjumfsj.supabase.co'
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...' // From .env
+dotenv.config()
+
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL
+const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_PUBLISHABLE_KEY
 
 async function runSync() {
   const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)

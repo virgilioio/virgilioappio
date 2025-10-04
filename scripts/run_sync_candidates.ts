@@ -7,9 +7,19 @@
  */
 
 import { createClient } from '@supabase/supabase-js'
+import * as dotenv from 'dotenv'
 
-const SUPABASE_URL = 'https://etrxjxstjfcozdjumfsj.supabase.co'
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV0cnhqeHN0amZjb3pkanVtZnNqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk1MzM3MjMsImV4cCI6MjA2NTEwOTcyM30.xhhEmT2ikIqFO9IiZZC22zhWlSTC-ytBxP6EGGXtC44'
+// Load environment variables
+dotenv.config()
+
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL
+const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_PUBLISHABLE_KEY
+
+if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+  console.error('❌ Missing environment variables!')
+  console.error('   Please ensure VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY are set in .env')
+  process.exit(1)
+}
 
 async function runSync() {
   const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
