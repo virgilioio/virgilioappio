@@ -194,10 +194,6 @@ export default function SignUp() {
                       setError('')
                       setIsGoogleSubmitting(true)
                       try {
-                        // Generate simple UUID-based state for OAuth security
-                        const state = crypto.randomUUID()
-                        sessionStorage.setItem('oauth_state', state)
-                        
                         const { error } = await supabase.auth.signInWithOAuth({
                           provider: 'google',
                           options: {

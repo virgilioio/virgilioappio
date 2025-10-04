@@ -20,6 +20,21 @@ export default function AuthCallback() {
 
     const processAuthCallback = async () => {
       try {
+        // Log the full callback URL for debugging
+        console.debug('[AuthCallback] Callback URL:', window.location.href)
+        
+        // Extract and validate the authorization code
+        const params = new URLSearchParams(window.location.search)
+        const code = params.get('code')
+        console.debug('[AuthCallback] Authorization code present:', !!code)
+        
+        if (!code) {
+          console.error('[AuthCallback] No authorization code in URL')
+          setErrorMessage('Invalid or missing authorization code. Please sign in again.')
+          setStatus('error')
+          return
+        }
+        
         console.debug('[AuthCallback] Exchanging code for session...')
         
         const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(
@@ -33,7 +48,23 @@ export default function AuthCallback() {
           return
         }
 
-        console.debug('[AuthCallback] ✓ Session established')
+        console.debug('[AuthCallback] ✓ Code exchange completed without error')
+        
+        // Verify session was actually created
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+        
+        if (sessionError || !session) {
+          console.error('[AuthCallback] No session after exchange:', sessionError)
+          setErrorMessage('Failed to establish session after authentication')
+          setStatus('error')
+          return
+        }
+        
+        console.debug('[AuthCallback] ✓ Session confirmed:', {
+          userId: session.user.id,
+          email: session.user.email
+        })
+        
         setStatus('success')
         
         console.debug('[AuthCallback] → Navigating to /dashboard')

@@ -8,7 +8,7 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
   auth: {
     persistSession: true,
     autoRefreshToken: true,
-    detectSessionInUrl: true,
+    detectSessionInUrl: false, // Disabled: we manually call exchangeCodeForSession in AuthCallback
     storage: window.localStorage,
   },
   global: {
