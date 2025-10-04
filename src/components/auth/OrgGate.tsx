@@ -11,6 +11,7 @@ interface OrgGateProps {
 export function OrgGate({ children, fallback }: OrgGateProps) {
   const { user, isLoading: authLoading } = useAuth()
   const { hasOrganizationContext, isLoading: orgLoading, userType } = useOrgContext()
+  const isPlatformAdmin = userType === 'platform_admin'
 
   if (authLoading || orgLoading) {
     return (
@@ -23,7 +24,11 @@ export function OrgGate({ children, fallback }: OrgGateProps) {
     )
   }
 
-  // Platform admins can bypass org context requirement (hasOrganizationContext is already true for them in OrgContext)
+  // ✅ Platform admins bypass org context requirement
+  if (isPlatformAdmin) {
+    return <>{children}</>
+  }
+
   if (!hasOrganizationContext) {
     if (fallback) {
       return <>{fallback}</>

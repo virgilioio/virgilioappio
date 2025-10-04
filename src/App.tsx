@@ -130,9 +130,21 @@ function App() {
 function RequireAuth({ children }: { children: JSX.Element }) {
   const { isAuthenticated, isLoading: authLoading, userType } = useAuth()
   const { isLoading: orgLoading, hasOrganizationContext } = useOrgContext()
-  const location = window.location
+  const isPlatformAdmin = userType === 'platform_admin'
 
-  // Block UI until auth is ready
+  // Dev trace for debugging auth flow
+  if (import.meta.env.DEV) {
+    console.debug('[RequireAuth]', { 
+      isAuthenticated, 
+      isPlatformAdmin, 
+      authLoading, 
+      orgLoading, 
+      hasOrganizationContext, 
+      path: window.location.pathname 
+    })
+  }
+
+  // 1) Wait for auth only
   if (authLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -144,15 +156,18 @@ function RequireAuth({ children }: { children: JSX.Element }) {
     )
   }
 
+  // 2) Gate unauthenticated
   if (!isAuthenticated) {
     return <Navigate to="/auth" replace />
   }
 
-  // Platform admins bypass org context requirement entirely
-  const isPlatformAdmin = userType === 'platform_admin'
-  
-  // Block UI until org context is ready (unless platform admin)
-  if (!isPlatformAdmin && orgLoading) {
+  // 3) ✅ Platform admin bypass FIRST (no org checks)
+  if (isPlatformAdmin) {
+    return children
+  }
+
+  // 4) Wait for org only for non-admins
+  if (orgLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center space-y-4">
@@ -163,17 +178,12 @@ function RequireAuth({ children }: { children: JSX.Element }) {
     )
   }
 
-  // Platform admins don't need organization context - render immediately
-  if (isPlatformAdmin) {
+  // 5) Non-admins: allow onboarding route if no org
+  if (!hasOrganizationContext && window.location.pathname === '/onboarding') {
     return children
   }
 
-  // Regular users without org context can access onboarding
-  if (!hasOrganizationContext && location.pathname === '/onboarding') {
-    return children
-  }
-
-  // Regular users without org context redirected to onboarding
+  // 6) Non-admins: otherwise redirect to onboarding
   if (!hasOrganizationContext) {
     return <Navigate to="/onboarding" replace />
   }
