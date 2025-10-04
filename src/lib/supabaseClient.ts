@@ -8,7 +8,7 @@ export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABL
   auth: {
     persistSession: true,
     autoRefreshToken: true,
-    detectSessionInUrl: false, // Disabled: we manually call exchangeCodeForSession in AuthCallback
+    detectSessionInUrl: true, // Re-enabled: SDK automatically handles both hash and PKCE flows
     storage: window.localStorage,
   },
   global: {

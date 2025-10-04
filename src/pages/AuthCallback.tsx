@@ -11,73 +11,72 @@ export default function AuthCallback() {
   const navigate = useNavigate()
   const [status, setStatus] = useState<'validating' | 'success' | 'error'>('validating')
   const [errorMessage, setErrorMessage] = useState('')
-  const exchangedRef = useRef(false)
+  const processedRef = useRef(false)
 
   useEffect(() => {
     // Prevent double execution
-    if (exchangedRef.current) return
-    exchangedRef.current = true
+    if (processedRef.current) return
+    processedRef.current = true
 
-    const processAuthCallback = async () => {
-      try {
-        // Log the full callback URL for debugging
-        console.debug('[AuthCallback] Callback URL:', window.location.href)
+    // Dev-only: Log URL state for debugging
+    if (import.meta.env.DEV) {
+      console.debug('[AuthCallback] URL:', window.location.href)
+      console.debug('[AuthCallback] Has query code:', new URLSearchParams(window.location.search).has('code'))
+      console.debug('[AuthCallback] Has hash access_token:', window.location.hash.includes('access_token'))
+    }
+
+    let cancelled = false
+
+    const waitForSession = async () => {
+      const startTime = Date.now()
+      const timeout = 5000 // 5 seconds
+
+      while (!cancelled && Date.now() - startTime < timeout) {
+        const { data: { session }, error } = await supabase.auth.getSession()
         
-        // Extract and validate the authorization code
-        const params = new URLSearchParams(window.location.search)
-        const code = params.get('code')
-        console.debug('[AuthCallback] Authorization code present:', !!code)
-        
-        if (!code) {
-          console.error('[AuthCallback] No authorization code in URL')
-          setErrorMessage('Invalid or missing authorization code. Please sign in again.')
+        if (session) {
+          if (import.meta.env.DEV) {
+            console.debug('[AuthCallback] ✓ Session established:', {
+              userId: session.user.id,
+              email: session.user.email
+            })
+          }
+          
+          setStatus('success')
+          
+          // Optional: Clean URL hash before navigation
+          if (window.location.hash) {
+            window.history.replaceState(null, '', '/auth/callback')
+          }
+          
+          navigate('/dashboard', { replace: true })
+          return
+        }
+
+        if (error) {
+          console.error('[AuthCallback] Session error:', error)
+          setErrorMessage(error.message || 'Failed to establish session')
           setStatus('error')
           return
         }
-        
-        console.debug('[AuthCallback] Exchanging code for session...')
-        
-        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(
-          window.location.href
-        )
-        
-        if (exchangeError) {
-          console.error('[AuthCallback] Exchange error:', exchangeError)
-          setErrorMessage(exchangeError.message || 'Failed to complete sign-in')
-          setStatus('error')
-          return
-        }
 
-        console.debug('[AuthCallback] ✓ Code exchange completed without error')
-        
-        // Verify session was actually created
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-        
-        if (sessionError || !session) {
-          console.error('[AuthCallback] No session after exchange:', sessionError)
-          setErrorMessage('Failed to establish session after authentication')
-          setStatus('error')
-          return
-        }
-        
-        console.debug('[AuthCallback] ✓ Session confirmed:', {
-          userId: session.user.id,
-          email: session.user.email
-        })
-        
-        setStatus('success')
-        
-        console.debug('[AuthCallback] → Navigating to /dashboard')
-        navigate('/dashboard', { replace: true })
+        // Poll every 150ms
+        await new Promise(resolve => setTimeout(resolve, 150))
+      }
 
-      } catch (err) {
-        console.error('[AuthCallback] Unexpected error:', err)
-        setErrorMessage('An unexpected error occurred during sign-in')
+      // Timeout reached
+      if (!cancelled) {
+        console.error('[AuthCallback] Session timeout')
+        setErrorMessage('Could not complete sign-in. Please try again.')
         setStatus('error')
       }
     }
 
-    processAuthCallback()
+    waitForSession()
+
+    return () => {
+      cancelled = true
+    }
   }, [navigate])
 
   const handleRetryAuth = () => {
@@ -132,6 +131,17 @@ export default function AuthCallback() {
                 {errorMessage}
               </AlertDescription>
             </Alert>
+            
+            {import.meta.env.DEV && (
+              <Alert className="bg-muted border-muted-foreground/20">
+                <AlertDescription className="text-xs font-mono space-y-1">
+                  <div><strong>Debug Info:</strong></div>
+                  <div>URL: {window.location.href}</div>
+                  <div>Has query code: {new URLSearchParams(window.location.search).has('code') ? 'YES' : 'NO'}</div>
+                  <div>Has hash token: {window.location.hash.includes('access_token') ? 'YES' : 'NO'}</div>
+                </AlertDescription>
+              </Alert>
+            )}
             
             <Button onClick={handleRetryAuth} className="w-full">
               Return to Sign In
