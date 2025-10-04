@@ -168,7 +168,7 @@ export default function Login() {
                       setError('')
                       setIsGoogleSubmitting(true)
                       try {
-                        const { error } = await supabase.auth.signInWithOAuth({
+                        const { data, error } = await supabase.auth.signInWithOAuth({
                           provider: 'google',
                           options: {
                             redirectTo: `${window.location.origin}/auth/callback`
@@ -177,6 +177,15 @@ export default function Login() {
                         
                         if (error) {
                           setError(error.message)
+                          setIsGoogleSubmitting(false)
+                          return
+                        }
+                        
+                        if (data?.url) {
+                          if (import.meta.env.DEV) console.debug('[Google OAuth] Redirecting to:', data.url)
+                          window.location.assign(data.url)
+                        } else {
+                          setError('Failed to initiate Google sign-in')
                           setIsGoogleSubmitting(false)
                         }
                       } catch (err: any) {
