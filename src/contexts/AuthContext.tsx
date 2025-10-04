@@ -33,24 +33,23 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const { ready, session } = useAuthBootstrap()
+  const { ready, session, orgContext } = useAuthBootstrap()
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
-  const [memberData, setMemberData] = useState<any>(null)
   const [availableOrganizations, setAvailableOrganizations] = useState<OrganizationInfo[]>([])
   const [selectedOrganizationId, setSelectedOrganizationId] = useState<string | null>(null)
   const { toast } = useToast()
 
-  // Use selected organization if available, otherwise fall back to member data
-  const organizationId = selectedOrganizationId || memberData?.organization_id
+  // Get user type, role, and org from bootstrap data (single source of truth)
+  const organizationId = selectedOrganizationId || orgContext?.organizationId || null
   const hasOrganizationContext = !!organizationId
-  const userType = memberData?.user_type
-  const memberRole = memberData?.member_role
+  const userType = orgContext?.userType || null
+  const memberRole = orgContext?.role || null
   
   // Check if we're impersonating a customer
   const isImpersonating = !!(selectedOrganizationId && 
-    selectedOrganizationId !== memberData?.organization_id &&
+    selectedOrganizationId !== orgContext?.organizationId &&
     availableOrganizations?.find(org => 
       org.id === selectedOrganizationId && 
       org.organization_type === 'client' && 
@@ -62,34 +61,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(session?.user ?? null)
   }, [session])
 
-  const fetchMemberData = useCallback(async (userId: string) => {
-    try {
-      const { data, error } = await supabase.rpc('get_user_member_data')
-      
-      if (error) {
-        console.error('Error fetching member data:', error)
-        setMemberData(null)
-        return
-      }
-
-      if (data && data.length > 0) {
-        const memberInfo = data[0]
-        setMemberData(memberInfo)
-        
-        // For platform admins, fetch available organizations
-        if (memberInfo.user_type === 'platform_admin') {
-          await fetchAvailableOrganizations()
-        }
-      } else {
-        setMemberData(null)
-      }
-    } catch (err) {
-      console.error('Exception fetching member data:', err)
-      setMemberData(null)
-    }
-  }, [])
-
-  const fetchAvailableOrganizations = async () => {
+  // Fetch available organizations for platform admins
+  const fetchAvailableOrganizations = useCallback(async () => {
     try {
       const { data, error } = await withTimeout(
         withRetry(async () => {
@@ -115,22 +88,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.error('Exception fetching organizations:', err);
       setAvailableOrganizations([]);
     }
-  }
+  }, [])
 
   const switchOrganization = async (organizationId: string) => {
     setSelectedOrganizationId(organizationId)
     console.log('Organization switched to:', organizationId)
   }
 
-  // Fetch member data when user changes
+  // Fetch available organizations for platform admins when bootstrap completes
   useEffect(() => {
-    if (user?.id) {
-      fetchMemberData(user.id)
-    } else {
-      setMemberData(null)
-      setIsLoading(false)
+    if (ready && orgContext?.userType === 'platform_admin') {
+      fetchAvailableOrganizations()
     }
-  }, [user, fetchMemberData])
+  }, [ready, orgContext?.userType, fetchAvailableOrganizations])
 
   // Set loading to false when bootstrap is ready
   useEffect(() => {
@@ -167,7 +137,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoggingOut(true)
       
       // Clear local state immediately
-      setMemberData(null)
       setSelectedOrganizationId(null)
       setAvailableOrganizations([])
       
