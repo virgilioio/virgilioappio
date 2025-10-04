@@ -17,6 +17,7 @@ interface AuthContextType {
   session: Session | null
   isAuthenticated: boolean
   isLoading: boolean
+  userTypeLoading: boolean
   isLoggingOut: boolean
   organizationId: string | null
   hasOrganizationContext: boolean
@@ -46,6 +47,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const hasOrganizationContext = !!organizationId
   const userType = orgContext?.userType || null
   const memberRole = orgContext?.role || null
+  
+  // userTypeLoading: true until userType is definitively known (prevents race condition on cold boot)
+  const userTypeLoading = !ready || (!!session && userType === null)
   
   // Check if we're impersonating a customer
   const isImpersonating = !!(selectedOrganizationId && 
@@ -163,6 +167,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     session,
     isAuthenticated: !!user,
     isLoading,
+    userTypeLoading,
     isLoggingOut,
     organizationId,
     hasOrganizationContext,

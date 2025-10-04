@@ -128,7 +128,7 @@ function App() {
 }
 
 function RequireAuth({ children }: { children: JSX.Element }) {
-  const { isAuthenticated, isLoading: authLoading, userType } = useAuth()
+  const { isAuthenticated, isLoading: authLoading, userTypeLoading, userType } = useAuth()
   const { isLoading: orgLoading, hasOrganizationContext } = useOrgContext()
   const isPlatformAdmin = userType === 'platform_admin'
 
@@ -136,8 +136,10 @@ function RequireAuth({ children }: { children: JSX.Element }) {
   if (import.meta.env.DEV) {
     console.debug('[RequireAuth]', { 
       isAuthenticated, 
+      authLoading,
+      userTypeLoading,
+      userType,
       isPlatformAdmin, 
-      authLoading, 
       orgLoading, 
       hasOrganizationContext, 
       path: window.location.pathname 
@@ -161,7 +163,19 @@ function RequireAuth({ children }: { children: JSX.Element }) {
     return <Navigate to="/auth" replace />
   }
 
-  // 3) ✅ Platform admin bypass FIRST (no org checks)
+  // 3) ✅ NEW: Wait for definitive userType before any admin/org checks
+  if (userTypeLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto" />
+          <p className="text-muted-foreground">Loading user profile...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // 4) ✅ Platform admin bypass (no org checks needed)
   if (isPlatformAdmin) {
     return children
   }
