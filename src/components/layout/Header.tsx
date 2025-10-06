@@ -24,6 +24,7 @@ import {
   LogOut,
   User,
   Users,
+  TrendingUp,
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -107,6 +108,12 @@ export function Header() {
       href: '/jobs',
       icon: Briefcase,
       label: 'Jobs',
+      show: canViewJobs,
+    },
+    {
+      href: '/pipeline',
+      icon: TrendingUp,
+      label: 'Pipeline',
       show: canViewJobs,
     },
     {
