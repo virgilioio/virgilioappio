@@ -14,6 +14,7 @@ import { CandidateUrls } from '@/components/candidates/CandidateUrls'
 import { CandidateWorkExperienceComponent, CandidateWorkExperience } from '@/components/candidates/CandidateWorkExperience'
 import { CandidateEducationComponent, CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
 import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight, CheckCircle2, Circle, MoveRight, ThumbsDown, ThumbsUp, Star, Octagon } from 'lucide-react'
+import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 
@@ -341,7 +342,28 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
         <div className="flex h-full flex-col">
           <SheetHeader className="p-6 border-b">
             <div className="flex items-center justify-between">
-              <div />
+              <div className="flex items-center gap-3 min-w-0">
+                <h2 className="font-poppins font-bold tracking-page-title text-text-primary text-xl truncate">
+                  {candidate?.full_name || 'Loading...'}
+                  <span className="text-purple-period">.</span>
+                </h2>
+                {candidate?.linkedin_url && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="gap-2 flex-shrink-0 h-8 px-2"
+                    onClick={() => window.open(candidate.linkedin_url!, '_blank')}
+                    aria-label="Open LinkedIn profile"
+                  >
+                    <LinkedInFilled className="h-4 w-4" />
+                  </Button>
+                )}
+                {candidate && jobCandidate?.status && (
+                  <Badge variant="secondary" className="flex-shrink-0">
+                    {jobCandidate.status.replace('_', ' ').toUpperCase()}
+                  </Badge>
+                )}
+              </div>
               <div className="flex items-center gap-sm">
                 <Button
                   variant="ghost"
