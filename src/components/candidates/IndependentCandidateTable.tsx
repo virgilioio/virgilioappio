@@ -38,9 +38,6 @@ export function IndependentCandidateTable({
   
   const navigate = useNavigate()
   const [searchTerm, setSearchTerm] = useState('')
-  const [locationFilter, setLocationFilter] = useState<string>('all')
-  const [statusFilter, setStatusFilter] = useState<string>('all')
-  const [skillsFilter, setSkillsFilter] = useState<string>('all')
   
   // Selection mode state
   const [selectionMode, setSelectionMode] = useState(false)
@@ -49,6 +46,9 @@ export function IndependentCandidateTable({
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
+  
+  // Job association counts
+  const [jobCounts, setJobCounts] = useState<Record<string, number>>({})
 
 
   const handleViewProfile = (candidateId: string) => {
@@ -121,36 +121,54 @@ export function IndependentCandidateTable({
     return abbreviations[period] || '/yr'
   }
 
-  const getStatusColor = (status: string) => {
-    const colors: Record<string, string> = {
-      'available': 'bg-accent/20 text-accent-foreground',
-      'interviewing': 'bg-primary/20 text-primary-foreground',
-      'hired': 'bg-success/20 text-success-foreground',
-      'inactive': 'bg-muted text-muted-foreground'
+  const getRelativeTime = (dateString: string) => {
+    const now = new Date()
+    const added = new Date(dateString)
+    const diffMs = now.getTime() - added.getTime()
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
+    
+    if (diffDays < 30) {
+      return `${diffDays} day${diffDays !== 1 ? 's' : ''} ago`
+    } else if (diffDays < 365) {
+      const months = Math.floor(diffDays / 30)
+      return `${months} month${months !== 1 ? 's' : ''} ago`
+    } else {
+      const years = (diffDays / 365).toFixed(1)
+      return `${years} year${parseFloat(years) !== 1 ? 's' : ''} ago`
     }
-    return colors[status] || 'bg-muted text-muted-foreground'
   }
-
-  // Get unique skills for filter
-  const allSkills = candidates.flatMap(c => c.skills || [])
-  const uniqueSkills = Array.from(new Set(allSkills)).sort()
 
   // Filter logic
   const filteredCandidates = candidates.filter(candidate => {
     const matchesSearch = candidate.candidate_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (candidate.email && candidate.email.toLowerCase().includes(searchTerm.toLowerCase()))
     
-    const matchesLocation = locationFilter === 'all' || 
-      (candidate.location_country && candidate.location_country.toLowerCase().includes(locationFilter.toLowerCase())) ||
-      (candidate.location_city && candidate.location_city.toLowerCase().includes(locationFilter.toLowerCase()))
-    
-    const matchesStatus = statusFilter === 'all' || candidate.status === statusFilter
-
-    const matchesSkills = skillsFilter === 'all' || 
-      (candidate.skills && candidate.skills.includes(skillsFilter))
-    
-    return matchesSearch && matchesLocation && matchesStatus && matchesSkills
+    return matchesSearch
   })
+  
+  // Fetch job association counts
+  useEffect(() => {
+    const fetchJobCounts = async () => {
+      if (candidates.length === 0) return
+      
+      const candidateIds = candidates.map(c => c.id)
+      const { data, error } = await supabase
+        .from('job_candidate_associations')
+        .select('candidate_id')
+        .in('candidate_id', candidateIds)
+        .eq('status', 'active')
+      
+      if (!error && data) {
+        const counts = data.reduce((acc, item) => {
+          acc[item.candidate_id] = (acc[item.candidate_id] || 0) + 1
+          return acc
+        }, {} as Record<string, number>)
+        setJobCounts(counts)
+      }
+    }
+    
+    fetchJobCounts()
+  }, [candidates])
 
 // Calculate pagination
 const totalPages = Math.ceil(filteredCandidates.length / itemsPerPage)
@@ -161,7 +179,7 @@ const paginatedCandidates = filteredCandidates.slice(startIndex, endIndex)
 // Reset pagination when filters change
 useEffect(() => {
   setCurrentPage(1)
-}, [searchTerm, locationFilter, statusFilter, skillsFilter])
+}, [searchTerm])
 
 // Selection helpers
 const isAllCurrentPageSelected = useMemo(() => {
@@ -275,44 +293,6 @@ const getPageNumbers = () => {
               className="pl-10"
             />
           </div>
-          
-          <Select value={locationFilter} onValueChange={setLocationFilter}>
-            <SelectTrigger className="w-full sm:w-[150px]">
-              <SelectValue placeholder="Location" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Locations</SelectItem>
-              <SelectItem value="US">United States</SelectItem>
-              <SelectItem value="MX">Mexico</SelectItem>
-              <SelectItem value="CA">Canada</SelectItem>
-              <SelectItem value="remote">Remote</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-full sm:w-[150px]">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              <SelectItem value="available">Available</SelectItem>
-              <SelectItem value="interviewing">Interviewing</SelectItem>
-              <SelectItem value="hired">Hired</SelectItem>
-              <SelectItem value="inactive">Inactive</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Select value={skillsFilter} onValueChange={setSkillsFilter}>
-            <SelectTrigger className="w-full sm:w-[150px]">
-              <SelectValue placeholder="Skills" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Skills</SelectItem>
-              {uniqueSkills.map((skill) => (
-                <SelectItem key={skill} value={skill}>{skill}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
 
 <PermissionGate permission="canManageCandidates">
   <div className="ml-auto flex items-center gap-2">
@@ -374,10 +354,8 @@ const getPageNumbers = () => {
       )}
       <TableHead>Name</TableHead>
       <TableHead>Contact</TableHead>
-      <TableHead>Location</TableHead>
       <TableHead>Salary Expectations</TableHead>
-      <TableHead>Skills</TableHead>
-      <TableHead>Status</TableHead>
+      <TableHead>In Jobs</TableHead>
       <TableHead>Added</TableHead>
       <TableHead className="text-right">Actions</TableHead>
     </TableRow>
@@ -433,44 +411,18 @@ const getPageNumbers = () => {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1 text-sm text-text-secondary">
-                            <MapPin className="h-3 w-3 shrink-0" />
-                            <span>{formatLocation(candidate)}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1 text-sm text-text-secondary">
                             <DollarSign className="h-3 w-3 shrink-0" />
                             <span>{formatSalary(candidate)}</span>
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="flex flex-wrap gap-1">
-                            {(() => {
-                              const skills = candidate.skills || (candidate.auto_generated_skills || []).map((s: any) => s.name || s);
-                              return skills?.slice(0, 3).map((skill: string) => (
-                                <Badge key={skill} variant="outline" className="text-xs">
-                                  {skill}
-                                </Badge>
-                              ));
-                            })()}
-                            {(() => {
-                              const skills = candidate.skills || (candidate.auto_generated_skills || []).map((s: any) => s.name || s);
-                              return skills && skills.length > 3 && (
-                                <Badge variant="outline" className="text-xs">
-                                  +{skills.length - 3}
-                                </Badge>
-                              );
-                            })()}
+                          <div className="text-sm text-text-secondary">
+                            {jobCounts[candidate.id] || 0}
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge className={`text-xs ${getStatusColor(candidate.status)}`}>
-                            {candidate.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
                           <div className="text-sm text-text-secondary">
-                            {new Date(candidate.created_at).toLocaleDateString()}
+                            {getRelativeTime(candidate.created_at)}
                           </div>
                         </TableCell>
                         <TableCell>
@@ -508,17 +460,21 @@ const getPageNumbers = () => {
                       >
                         <div className="space-y-sm">
                           <div className="flex items-start justify-between">
-                            <div>
+                            <div className="space-y-1">
                               <h4 className="font-medium text-text-primary">
                                 {candidate.candidate_name}
                               </h4>
-                              <Badge className={`text-xs ${getStatusColor(candidate.status)} mt-1`}>
-                                {candidate.status}
-                              </Badge>
-                              <div className="flex items-center gap-1 text-sm text-text-secondary mt-1">
-                                <MapPin className="h-3 w-3" />
-                                {formatLocation(candidate)}
-                              </div>
+                              {candidate.linkedin_url && (
+                                <a 
+                                  href={candidate.linkedin_url} 
+                                  target="_blank" 
+                                  rel="noopener noreferrer"
+                                  className="text-sm text-primary hover:underline inline-flex items-center gap-1"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  LinkedIn <ExternalLink className="h-3 w-3" />
+                                </a>
+                              )}
                             </div>
                             <PermissionGate permission="canManageCandidates">
                               <Button 
@@ -541,23 +497,11 @@ const getPageNumbers = () => {
                             {formatSalary(candidate)}
                           </div>
 
-                          {(() => {
-                            const skills = candidate.skills || (candidate.auto_generated_skills || []).map((s: any) => s.name || s);
-                            return skills && skills.length > 0 && (
-                              <div className="flex flex-wrap gap-1">
-                                {skills.slice(0, 2).map((skill: string) => (
-                                  <Badge key={skill} variant="outline" className="text-xs">
-                                    {skill}
-                                  </Badge>
-                                ))}
-                                {skills.length > 2 && (
-                                  <Badge variant="outline" className="text-xs">
-                                    +{skills.length - 2}
-                                  </Badge>
-                                )}
-                              </div>
-                            );
-                          })()}
+                          <div className="flex items-center gap-4 text-sm text-text-secondary">
+                            <div>In {jobCounts[candidate.id] || 0} job{(jobCounts[candidate.id] || 0) !== 1 ? 's' : ''}</div>
+                            <div>•</div>
+                            <div>{getRelativeTime(candidate.created_at)}</div>
+                          </div>
                         </div>
                       </div>
                     </CardContent>
