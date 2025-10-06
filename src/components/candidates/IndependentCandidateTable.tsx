@@ -353,7 +353,6 @@ const getPageNumbers = () => {
         </TableHead>
       )}
       <TableHead>Name</TableHead>
-      <TableHead>Salary Expectations</TableHead>
       <TableHead>In Jobs</TableHead>
       <TableHead>Added</TableHead>
       <TableHead className="text-right">Actions</TableHead>
@@ -392,12 +391,6 @@ const getPageNumbers = () => {
         </a>
       )}
                     </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1 text-sm text-text-secondary">
-                            <DollarSign className="h-3 w-3 shrink-0" />
-                            <span>{formatSalary(candidate)}</span>
-                          </div>
-                        </TableCell>
                         <TableCell>
                           <div className="text-sm text-text-secondary">
                             {jobCounts[candidate.id] || 0}
