@@ -96,3 +96,104 @@ export const withAuthRetryRpc = withAuthRetry
 
 /** @deprecated Use withAuthRetry() directly */
 export const withAuthRetryEdgeFunction = withAuthRetry
+
+/**
+ * Resolve organization context with retry logic and timeout
+ * Returns organization context or null if resolution fails
+ */
+export async function resolveOrgContextWithRetry(
+  supabaseClient: any,
+  options: {
+    signal?: AbortSignal;
+    maxAttempts?: number;
+    baseMs?: number;
+    timeoutMs?: number;
+  } = {}
+): Promise<{
+  organizationId: string | null;
+  role: string | null;
+  userType: string | null;
+} | null> {
+  const {
+    signal,
+    maxAttempts = 3,
+    baseMs = 300,
+    timeoutMs = 8000,
+  } = options;
+
+  let lastError: any;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const controller = new AbortController();
+    
+    // Link external signal if provided
+    const effectiveSignal = signal
+      ? linkSignals([signal, controller.signal])
+      : controller.signal;
+
+    try {
+      // Set timeout for this attempt
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+      const { data, error } = await supabaseClient.rpc('resolve_org_context', {}, {
+        signal: effectiveSignal,
+      });
+
+      clearTimeout(timer);
+
+      if (error) throw error;
+
+      if (!data || data.length === 0) {
+        return {
+          organizationId: null,
+          role: null,
+          userType: 'guest',
+        };
+      }
+
+      return {
+        organizationId: data[0].organization_id,
+        role: data[0].role,
+        userType: data[0].user_type,
+      };
+    } catch (error: any) {
+      lastError = error;
+
+      // If external signal aborted, bail immediately
+      if (signal?.aborted) {
+        throw error;
+      }
+
+      // If this was our last attempt, throw
+      if (attempt >= maxAttempts) {
+        throw error;
+      }
+
+      // Exponential backoff with jitter
+      const backoffDelay = baseMs * Math.pow(2, attempt - 1) + Math.floor(Math.random() * 100);
+      log.info(`Org context resolve attempt ${attempt}/${maxAttempts} failed, retrying in ${backoffDelay}ms...`);
+      await new Promise((resolve) => setTimeout(resolve, backoffDelay));
+    }
+  }
+
+  throw lastError;
+}
+
+/**
+ * Link multiple AbortSignals together
+ * Returns a signal that aborts when any input signal aborts
+ */
+function linkSignals(signals: AbortSignal[]): AbortSignal {
+  const controller = new AbortController();
+
+  for (const signal of signals) {
+    if (signal.aborted) {
+      controller.abort();
+      return controller.signal;
+    }
+
+    signal.addEventListener('abort', () => controller.abort(), { once: true });
+  }
+
+  return controller.signal;
+}
