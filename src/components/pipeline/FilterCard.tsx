@@ -32,7 +32,7 @@ export function FilterCard({
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <Card className="border" style={{ borderColor: '#0d0d09' }}>
+    <Card>
       <CardContent className="pt-6">
         <Collapsible open={isOpen} onOpenChange={setIsOpen}>
           {/* Always Visible Filters */}
