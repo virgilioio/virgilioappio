@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { SuspendOrganizationDialog } from '@/components/settings/SuspendOrganizationDialog'
+import { useSuspendOrganization } from '@/hooks/useSaaSAdminActions'
 import {
   Table,
   TableBody,
@@ -28,6 +30,10 @@ export function SaaSCustomersList() {
   const { data: customers, isLoading } = useSaaSCustomers()
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [suspendDialogOpen, setSuspendDialogOpen] = useState(false)
+  const [selectedOrg, setSelectedOrg] = useState<{ id: string; name: string } | null>(null)
+  
+  const suspendMutation = useSuspendOrganization()
 
   const filteredCustomers = customers?.filter(customer => {
     const matchesSearch = customer.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -191,7 +197,14 @@ export function SaaSCustomersList() {
                           }}>
                             View Details
                           </DropdownMenuItem>
-                          <DropdownMenuItem onClick={(e) => e.stopPropagation()}>
+                          <DropdownMenuItem 
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setSelectedOrg({ id: customer.id, name: customer.name })
+                              setSuspendDialogOpen(true)
+                            }}
+                            disabled={customer.status === 'suspended'}
+                          >
                             Suspend Account
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={(e) => e.stopPropagation()}>
@@ -213,6 +226,19 @@ export function SaaSCustomersList() {
           )}
         </CardContent>
       </Card>
+
+      {selectedOrg && (
+        <SuspendOrganizationDialog
+          open={suspendDialogOpen}
+          onOpenChange={setSuspendDialogOpen}
+          onConfirm={(reason) => {
+            suspendMutation.mutate({ orgId: selectedOrg.id, reason })
+            setSuspendDialogOpen(false)
+          }}
+          organizationName={selectedOrg.name}
+          isPending={suspendMutation.isPending}
+        />
+      )}
     </div>
   )
 }

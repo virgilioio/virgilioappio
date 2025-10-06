@@ -14,6 +14,9 @@ export interface SaaSCustomerDetail {
   signup_source: string
   created_at: string
   updated_at: string
+  trial_end_date: string | null
+  suspended_at: string | null
+  suspended_reason: string | null
   jobs_created_30d: number
   candidates_added_30d: number
   members_active_count: number

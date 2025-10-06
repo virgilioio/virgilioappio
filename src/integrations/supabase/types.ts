@@ -1469,8 +1469,11 @@ export type Database = {
           renewal_date: string | null
           signup_source: string
           status: string
+          suspended_at: string | null
+          suspended_reason: string | null
           tenant_id: string | null
           tenant_type: string | null
+          trial_end_date: string | null
           updated_at: string
         }
         Insert: {
@@ -1492,8 +1495,11 @@ export type Database = {
           renewal_date?: string | null
           signup_source?: string
           status?: string
+          suspended_at?: string | null
+          suspended_reason?: string | null
           tenant_id?: string | null
           tenant_type?: string | null
+          trial_end_date?: string | null
           updated_at?: string
         }
         Update: {
@@ -1515,8 +1521,11 @@ export type Database = {
           renewal_date?: string | null
           signup_source?: string
           status?: string
+          suspended_at?: string | null
+          suspended_reason?: string | null
           tenant_id?: string | null
           tenant_type?: string | null
+          trial_end_date?: string | null
           updated_at?: string
         }
         Relationships: [

@@ -8,11 +8,14 @@ import { ExternalLink, Users, Briefcase, Activity, Calendar, AlertTriangle, Info
 import { useAuth } from '@/contexts/AuthContext'
 import { useSaaSCustomer } from '@/hooks/useSaaSCustomer'
 import { PageHeader } from '@/components/layout/PageHeader'
+import { useOpenBillingPortal, useCreateCheckout } from '@/hooks/useBillingPortal'
 import { format } from 'date-fns'
 
 export function SaaSSubscription() {
   const { organizationId } = useAuth()
   const { data: customer, isLoading } = useSaaSCustomer(organizationId!)
+  const openPortalMutation = useOpenBillingPortal()
+  const createCheckoutMutation = useCreateCheckout()
 
   if (isLoading) {
     return <div className="text-center py-8">Loading subscription details...</div>
@@ -69,7 +72,13 @@ export function SaaSSubscription() {
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription>
-            Your subscription is currently inactive. Contact support to reactivate.
+            <div className="font-medium">Your account has been suspended</div>
+            {customer.suspended_reason && (
+              <div className="text-sm mt-1">Reason: {customer.suspended_reason}</div>
+            )}
+            <div className="text-sm mt-1">
+              Please contact support to reactivate your account.
+            </div>
           </AlertDescription>
         </Alert>
       )}
@@ -110,22 +119,27 @@ export function SaaSSubscription() {
           </div>
           
           <div className="flex gap-3 mt-6">
-            <Button variant="outline">Change Plan</Button>
+            <Button 
+              variant="outline"
+              onClick={() => createCheckoutMutation.mutate({ interval: 'month' })}
+              disabled={createCheckoutMutation.isPending || isSuspended}
+            >
+              {createCheckoutMutation.isPending ? 'Loading...' : 'Upgrade Plan'}
+            </Button>
             
             {customer.billing_id ? (
-              <Button variant="outline" className="gap-2">
+              <Button 
+                variant="outline" 
+                className="gap-2"
+                onClick={() => openPortalMutation.mutate()}
+                disabled={openPortalMutation.isPending}
+              >
                 <ExternalLink className="h-4 w-4" />
-                Open Billing Portal
+                {openPortalMutation.isPending ? 'Opening...' : 'Manage Billing'}
               </Button>
             ) : (
               <Button variant="outline" disabled>
                 Billing Portal (Not Available)
-              </Button>
-            )}
-            
-            {!isSuspended && (
-              <Button variant="outline" className="text-destructive">
-                Cancel Subscription
               </Button>
             )}
           </div>

@@ -1,17 +1,29 @@
+import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, ExternalLink, Users, Briefcase, Activity, Calendar } from 'lucide-react'
+import { ArrowLeft, ExternalLink, Users, Briefcase, Activity, Calendar, AlertTriangle } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useSaaSCustomer } from '@/hooks/useSaaSCustomer'
 import { PageHeader } from '@/components/layout/PageHeader'
+import { SuspendOrganizationDialog } from '@/components/settings/SuspendOrganizationDialog'
+import { ExtendTrialDialog } from '@/components/settings/ExtendTrialDialog'
+import { useSuspendOrganization, useRestoreOrganization, useExtendTrial } from '@/hooks/useSaaSAdminActions'
 import { format } from 'date-fns'
 
 export function SaaSCustomerDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { data: customer, isLoading } = useSaaSCustomer(id!)
+  
+  const [suspendDialogOpen, setSuspendDialogOpen] = useState(false)
+  const [extendTrialDialogOpen, setExtendTrialDialogOpen] = useState(false)
+  
+  const suspendMutation = useSuspendOrganization()
+  const restoreMutation = useRestoreOrganization()
+  const extendTrialMutation = useExtendTrial()
 
   if (isLoading) {
     return <div className="text-center py-8">Loading customer details...</div>
@@ -56,6 +68,24 @@ export function SaaSCustomerDetail() {
           subtitle="SaaS customer details and management"
         />
       </div>
+
+      {/* Suspension Banner */}
+      {customer.status === 'suspended' && (
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            <div className="font-medium">Organization Suspended</div>
+            {customer.suspended_reason && (
+              <div className="text-sm mt-1">Reason: {customer.suspended_reason}</div>
+            )}
+            {customer.suspended_at && (
+              <div className="text-sm text-muted-foreground mt-1">
+                Suspended on {format(new Date(customer.suspended_at), 'MMMM d, yyyy')}
+              </div>
+            )}
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Summary Card */}
       <Card>
@@ -273,17 +303,57 @@ export function SaaSCustomerDetail() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Button variant="outline">Change Plan</Button>
                 <Button variant="outline">Assign New Owner</Button>
-                <Button variant="outline">Edit Trial End</Button>
-                {customer.status === 'active' ? (
-                  <Button variant="destructive">Suspend Account</Button>
+                <Button 
+                  variant="outline"
+                  onClick={() => setExtendTrialDialogOpen(true)}
+                >
+                  Extend Trial Period
+                </Button>
+                {customer.status === 'suspended' ? (
+                  <Button 
+                    variant="default"
+                    onClick={() => restoreMutation.mutate({ orgId: customer.id })}
+                    disabled={restoreMutation.isPending}
+                  >
+                    {restoreMutation.isPending ? 'Restoring...' : 'Restore Account'}
+                  </Button>
                 ) : (
-                  <Button variant="default">Restore Account</Button>
+                  <Button 
+                    variant="destructive"
+                    onClick={() => setSuspendDialogOpen(true)}
+                    disabled={suspendMutation.isPending}
+                  >
+                    Suspend Account
+                  </Button>
                 )}
               </div>
             </CardContent>
           </Card>
         </TabsContent>
       </Tabs>
+
+      <SuspendOrganizationDialog
+        open={suspendDialogOpen}
+        onOpenChange={setSuspendDialogOpen}
+        onConfirm={(reason) => {
+          suspendMutation.mutate({ orgId: customer.id, reason })
+          setSuspendDialogOpen(false)
+        }}
+        organizationName={customer.name}
+        isPending={suspendMutation.isPending}
+      />
+
+      <ExtendTrialDialog
+        open={extendTrialDialogOpen}
+        onOpenChange={setExtendTrialDialogOpen}
+        onConfirm={(newEndDate) => {
+          extendTrialMutation.mutate({ orgId: customer.id, newEndDate })
+          setExtendTrialDialogOpen(false)
+        }}
+        organizationName={customer.name}
+        currentTrialEnd={customer.trial_end_date ? new Date(customer.trial_end_date) : null}
+        isPending={extendTrialMutation.isPending}
+      />
     </div>
   )
 }
