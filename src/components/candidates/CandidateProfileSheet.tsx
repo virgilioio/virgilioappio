@@ -357,13 +357,8 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                     onClick={() => window.open(candidate.linkedin_url!, '_blank')}
                     aria-label="Open LinkedIn profile"
                   >
-                    <LinkedInFilled className="h-4 w-4" />
+                    <LinkedInFilled className="h-5 w-5" />
                   </Button>
-                )}
-                {candidate && jobCandidate?.status && (
-                  <Badge variant="secondary" className="flex-shrink-0">
-                    {jobCandidate.status.replace('_', ' ').toUpperCase()}
-                  </Badge>
                 )}
               </div>
               <div className="flex items-center gap-sm">
