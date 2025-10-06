@@ -22,8 +22,8 @@ export function MetricCard({
 }: MetricCardProps) {
   const card = (
     <Card 
-      className="transition-all hover:shadow-lg border-2" 
-      style={backgroundColor ? { backgroundColor } : undefined}
+      className="transition-all hover:shadow-lg border" 
+      style={backgroundColor ? { backgroundColor, borderColor: '#0d0d09' } : { borderColor: '#0d0d09' }}
     >
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
         <CardTitle className="text-sm font-semibold text-foreground/80">
