@@ -87,7 +87,7 @@ export default function Pipeline() {
             <PageHeader title="Pipeline" subtitle="Aggregate hiring pipeline across all jobs" />
           </Section>
 
-          <Section container className="animate-fade-in space-y-8">
+          <Section container className="animate-fade-in space-y-12">
             {/* Filters Card */}
             <FilterCard
               searchTerm={searchTerm}
