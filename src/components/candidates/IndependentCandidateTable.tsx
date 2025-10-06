@@ -353,7 +353,6 @@ const getPageNumbers = () => {
         </TableHead>
       )}
       <TableHead>Name</TableHead>
-      <TableHead>Contact</TableHead>
       <TableHead>Salary Expectations</TableHead>
       <TableHead>In Jobs</TableHead>
       <TableHead>Added</TableHead>
@@ -392,23 +391,7 @@ const getPageNumbers = () => {
           LinkedIn <ExternalLink className="h-3 w-3" />
         </a>
       )}
-    </TableCell>
-                        <TableCell>
-                          <div className="space-y-1">
-                            {candidate.email && (
-                              <div className="flex items-center gap-1 text-sm text-text-secondary">
-                                <Mail className="h-3 w-3 shrink-0" />
-                                <span>{candidate.email}</span>
-                              </div>
-                            )}
-                            {candidate.phone && (
-                              <div className="flex items-center gap-1 text-sm text-text-secondary">
-                                <Phone className="h-3 w-3 shrink-0" />
-                                <span>{candidate.phone}</span>
-                              </div>
-                            )}
-                          </div>
-                        </TableCell>
+                    </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1 text-sm text-text-secondary">
                             <DollarSign className="h-3 w-3 shrink-0" />
