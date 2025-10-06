@@ -86,7 +86,8 @@ Deno.serve(async (req) => {
         'empty-state-comments',
         'empty-state-attachments',
         'empty-state-templates',
-        'empty-state-independent-candidates'
+        'empty-state-independent-candidates',
+        'empty-state-urls'
       ]
       
       if (!validAssetTypes.includes(assetType)) {
@@ -108,7 +109,8 @@ Deno.serve(async (req) => {
         'empty-state-comments': ['image/png'],
         'empty-state-attachments': ['image/png'],
         'empty-state-templates': ['image/png'],
-        'empty-state-independent-candidates': ['image/png']
+        'empty-state-independent-candidates': ['image/png'],
+        'empty-state-urls': ['image/png']
       }
 
       if (!allowedTypes[assetType]?.includes(file.type)) {
@@ -132,7 +134,8 @@ Deno.serve(async (req) => {
         'empty-state-comments': 512 * 1024,
         'empty-state-attachments': 512 * 1024,
         'empty-state-templates': 512 * 1024,
-        'empty-state-independent-candidates': 512 * 1024
+        'empty-state-independent-candidates': 512 * 1024,
+        'empty-state-urls': 512 * 1024
       }
       if (file.size > (maxSizes[assetType] || 512 * 1024)) {
         return new Response(
