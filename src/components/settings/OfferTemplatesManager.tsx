@@ -15,6 +15,7 @@ import { useOfferTemplateFields } from '@/hooks/useOfferTemplateFields'
 import { OfferTemplateFieldsManager } from './OfferTemplateFieldsManager'
 import { PlaceholderHelper } from './PlaceholderHelper'
 import { sanitizeHtmlForEditor } from '@/utils/htmlSanitizer'
+import { EmptyState } from '@/components/ui/empty-state'
 
 interface OfferTemplatesManagerProps {
   context?: 'platform-defaults' | 'organization'
@@ -137,13 +138,12 @@ export function OfferTemplatesManager({ context = 'organization' }: OfferTemplat
           {isLoading ? (
             <div className="text-center py-8">Loading templates...</div>
           ) : templates.length === 0 ? (
-            <div className="text-center py-8">
-              <FileText className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
-              <p className="text-muted-foreground">No offer templates found</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Create your first template to get started
-              </p>
-            </div>
+            <EmptyState
+              assetType="empty-state-templates"
+              title="No offer templates found"
+              description="Create your first template to get started"
+              fallbackIcon={FileText}
+            />
           ) : (
             <Table>
                <TableHeader>

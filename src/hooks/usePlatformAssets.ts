@@ -5,7 +5,7 @@ import { useToast } from '@/hooks/use-toast'
 
 interface PlatformAsset {
   id: string
-  asset_type: 'logo' | 'favicon' | 'empty-state-organizations' | 'empty-state-jobs' | 'empty-state-candidates' | 'empty-state-members' | 'empty-state-comments' | 'empty-state-attachments' | 'empty-state-templates' | 'empty-state-independent-candidates'
+  asset_type: 'logo' | 'favicon' | 'empty-state-organizations' | 'empty-state-jobs' | 'empty-state-candidates' | 'empty-state-members' | 'empty-state-comments' | 'empty-state-attachments' | 'empty-state-templates' | 'empty-state-independent-candidates' | 'empty-state-urls'
   file_name: string
   file_url: string
   uploaded_by: string

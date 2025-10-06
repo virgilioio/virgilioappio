@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import { Upload, Image, Globe, AlertCircle, Settings, Save, Loader2, Building2, Briefcase, Users, MessageSquare, Paperclip, FileText, UserCheck } from 'lucide-react'
+import { Upload, Image, Globe, AlertCircle, Settings, Save, Loader2, Building2, Briefcase, Users, MessageSquare, Paperclip, FileText, UserCheck, ExternalLink } from 'lucide-react'
 import { usePlatformAssets } from '@/hooks/usePlatformAssets'
 import { usePlatformSettings } from '@/hooks/usePlatformSettings'
 import { EmptyState, type EmptyStateAssetType } from '@/components/ui/empty-state'
@@ -311,6 +311,7 @@ export function PlatformAssetUploader() {
     { type: 'empty-state-attachments' as const, label: 'Attachments', description: 'Empty attachments list' },
     { type: 'empty-state-templates' as const, label: 'Templates', description: 'Empty templates table' },
     { type: 'empty-state-independent-candidates' as const, label: 'Independent Candidates', description: 'Empty independent candidates table' },
+    { type: 'empty-state-urls' as const, label: 'URLs', description: 'Empty URLs list' },
   ]
 
   return (
@@ -506,6 +507,24 @@ export function PlatformAssetUploader() {
                       title="No templates yet"
                       description="Create your first template to get started"
                       fallbackIcon={FileText}
+                    />
+                  </div>
+                }
+              />
+              <AssetUploader
+                assetType="empty-state-urls"
+                title="URLs"
+                description="Empty URLs list"
+                acceptedTypes=".png"
+                maxSize="500KB"
+                currentAsset={getEmptyStateAsset('empty-state-urls')?.file_url}
+                preview={
+                  <div className="scale-75 transform-origin-top">
+                    <EmptyState
+                      assetType="empty-state-urls"
+                      title="No URLs added yet"
+                      description="Add links to portfolios and profiles"
+                      fallbackIcon={ExternalLink}
                     />
                   </div>
                 }
