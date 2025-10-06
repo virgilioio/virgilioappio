@@ -5,6 +5,7 @@ import { GuestRestriction } from '@/components/auth/GuestRestriction';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Section } from '@/components/layout/Section';
 import { PipelineMetricCard } from '@/components/pipeline/PipelineMetricCard';
+import { FilterCard } from '@/components/pipeline/FilterCard';
 import { JobRow } from '@/components/pipeline/JobRow';
 import { usePipelineGlobalMetrics, PipelineFilters } from '@/hooks/usePipelineGlobalMetrics';
 import { usePipelineJobMetrics } from '@/hooks/usePipelineJobMetrics';
@@ -12,10 +13,7 @@ import { useJobs } from '@/hooks/useJobs';
 import { useMembers } from '@/hooks/useMembers';
 import { usePermissions } from '@/hooks/usePermissions';
 import { Briefcase, Users, Clock, TrendingUp } from 'lucide-react';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Accordion } from '@/components/ui/accordion';
-import { MultiSelect } from '@/components/ui/multi-select';
 
 export default function Pipeline() {
   const permissions = usePermissions();
@@ -90,6 +88,18 @@ export default function Pipeline() {
           </Section>
 
           <Section container className="animate-fade-in space-y-8">
+            {/* Filters Card */}
+            <FilterCard
+              searchTerm={searchTerm}
+              onSearchChange={setSearchTerm}
+              jobStatus={jobStatus}
+              onJobStatusChange={setJobStatus}
+              selectedUsers={selectedUsers}
+              onSelectedUsersChange={setSelectedUsers}
+              userOptions={userOptions}
+              showUserFilter={showUserFilter}
+            />
+
             {/* Top Metrics Row */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <PipelineMetricCard
@@ -124,37 +134,6 @@ export default function Pipeline() {
                 backgroundColor="#d2ffc2"
                 iconColor="#16a34a"
               />
-            </div>
-
-            {/* Filters Row */}
-            <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
-              <Input
-                placeholder="Search by job title..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="sm:max-w-xs"
-              />
-              <Select value={jobStatus} onValueChange={setJobStatus}>
-                <SelectTrigger className="sm:w-[180px]">
-                  <SelectValue placeholder="Job Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="open">Open</SelectItem>
-                  <SelectItem value="paused">Paused</SelectItem>
-                  <SelectItem value="filled">Filled</SelectItem>
-                  <SelectItem value="closed">Closed</SelectItem>
-                </SelectContent>
-              </Select>
-              {showUserFilter && userOptions.length > 0 && (
-                <MultiSelect
-                  options={userOptions}
-                  selectedValues={selectedUsers}
-                  onSelectionChange={setSelectedUsers}
-                  placeholder="Filter by user..."
-                  className="sm:w-[220px]"
-                />
-              )}
             </div>
 
             {/* Job List with Embedded Kanban */}
