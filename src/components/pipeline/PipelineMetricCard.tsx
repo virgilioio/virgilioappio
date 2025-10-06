@@ -6,15 +6,19 @@ interface PipelineMetricCardProps {
   value: string | number | React.ReactNode;
   icon?: LucideIcon;
   tooltip?: string;
+  backgroundColor?: string;
+  iconColor?: string;
 }
 
-export function PipelineMetricCard({ title, value, icon: Icon, tooltip }: PipelineMetricCardProps) {
+export function PipelineMetricCard({ title, value, icon: Icon, tooltip, backgroundColor, iconColor }: PipelineMetricCardProps) {
   return (
     <MetricCard
       title={title}
       value={value}
       icon={Icon ? <Icon /> : undefined}
       tooltip={tooltip}
+      backgroundColor={backgroundColor}
+      iconColor={iconColor}
     />
   );
 }

@@ -89,32 +89,40 @@ export default function Pipeline() {
             <PageHeader title="Pipeline" subtitle="Aggregate hiring pipeline across all jobs" />
           </Section>
 
-          <Section container className="animate-fade-in space-y-6">
+          <Section container className="animate-fade-in space-y-8">
             {/* Top Metrics Row */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               <PipelineMetricCard
                 title="Active Jobs"
                 value={metricsLoading ? '...' : globalMetrics?.active_jobs || 0}
                 icon={Briefcase}
                 tooltip="Number of open jobs"
+                backgroundColor="#c5f5fb"
+                iconColor="#0891b2"
               />
               <PipelineMetricCard
                 title="In Application Review"
                 value={metricsLoading ? '...' : globalMetrics?.application_review_count || 0}
                 icon={Users}
                 tooltip="Candidates in Application Review (not yet in pipeline stages)"
+                backgroundColor="#d7c5fb"
+                iconColor="#7c3aed"
               />
               <PipelineMetricCard
                 title="Avg Days in App Review"
                 value={metricsLoading ? '...' : globalMetrics?.avg_days_in_application_review !== null ? `${globalMetrics.avg_days_in_application_review}d` : 'N/A'}
                 icon={Clock}
                 tooltip="Average time candidates spend in Application Review"
+                backgroundColor="#fffead"
+                iconColor="#ca8a04"
               />
               <PipelineMetricCard
                 title="Active Candidates"
                 value={metricsLoading ? '...' : globalMetrics?.active_candidates_count || 0}
                 icon={TrendingUp}
                 tooltip="Candidates currently in Recruiting Process stages"
+                backgroundColor="#d2ffc2"
+                iconColor="#16a34a"
               />
             </div>
 
@@ -157,7 +165,7 @@ export default function Pipeline() {
                 No jobs found matching your filters.
               </div>
             ) : (
-              <Accordion type="multiple" defaultValue={filteredJobs.map(j => j.id)} className="space-y-3">
+              <Accordion type="multiple" defaultValue={[]} className="space-y-4">
                 {filteredJobs.map(job => (
                   <JobRow key={job.id} job={job} metrics={metricsMap.get(job.id)} />
                 ))}

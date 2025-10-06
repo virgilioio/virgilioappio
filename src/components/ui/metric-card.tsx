@@ -7,6 +7,8 @@ interface MetricCardProps {
   icon?: React.ReactNode
   tooltip?: string
   variant?: 'default' | 'success' | 'warning' | 'destructive'
+  backgroundColor?: string
+  iconColor?: string
 }
 
 export function MetricCard({ 
@@ -14,18 +16,30 @@ export function MetricCard({
   value, 
   icon, 
   tooltip, 
-  variant = 'default'
+  variant = 'default',
+  backgroundColor,
+  iconColor
 }: MetricCardProps) {
   const card = (
-    <Card className="transition-colors">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
+    <Card 
+      className="transition-all hover:shadow-lg border-2" 
+      style={backgroundColor ? { backgroundColor } : undefined}
+    >
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+        <CardTitle className="text-sm font-semibold text-foreground/80">
           {title}
         </CardTitle>
-        {icon && <div className="h-5 w-5 text-muted-foreground">{icon}</div>}
+        {icon && (
+          <div 
+            className="h-6 w-6" 
+            style={iconColor ? { color: iconColor } : undefined}
+          >
+            {icon}
+          </div>
+        )}
       </CardHeader>
-      <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
+      <CardContent className="pt-1">
+        <div className="text-3xl font-bold tracking-tight">{value}</div>
       </CardContent>
     </Card>
   )
