@@ -9,6 +9,7 @@ import { UserDeletionDialog } from '@/components/organizations/UserDeletionDialo
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { useAuth } from '@/contexts/AuthContext'
 import { useOrganizations } from '@/hooks/useOrganizations'
+import { PageHeader } from '@/components/layout/PageHeader'
 // Tenant subscription functionality removed
 import { addMonths, addYears, format } from 'date-fns'
 
@@ -106,6 +107,11 @@ export function MembersTab() {
 
   return (
     <div className="space-y-6">
+      <PageHeader 
+        title="Team Members" 
+        subtitle="Manage your team members and guests"
+      />
+      
       <Tabs value={tab} onValueChange={(v) => setTab(v as 'members' | 'guests')} className="w-full">
         <TabsList>
           <TabsTrigger value="members">Members</TabsTrigger>

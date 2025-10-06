@@ -2,6 +2,7 @@ import { JobStagesManager } from './JobStagesManager'
 import { ApplicationFieldsManager } from './ApplicationFieldsManager'
 import { OfferTemplatesManager } from './OfferTemplatesManager'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { PageHeader } from '@/components/layout/PageHeader'
 
 interface JobSettingsManagerProps {
   context?: 'platform-defaults' | 'organization'
@@ -10,17 +11,13 @@ interface JobSettingsManagerProps {
 export function JobSettingsManager({ context = 'organization' }: JobSettingsManagerProps) {
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-text-primary">
-          {context === 'platform-defaults' ? 'Platform Job Settings' : 'Job Settings'}
-        </h1>
-        <p className="text-text-secondary mt-1">
-          {context === 'platform-defaults' 
-            ? 'Configure platform-wide default job settings that organizations can inherit'
-            : 'Configure job-related settings for your organization'
-          }
-        </p>
-      </div>
+      <PageHeader 
+        title={context === 'platform-defaults' ? 'Platform Job Settings' : 'Job Settings'}
+        subtitle={context === 'platform-defaults' 
+          ? 'Configure platform-wide default job settings that organizations can inherit'
+          : 'Configure job-related settings for your organization'
+        }
+      />
 
       <Tabs defaultValue="stages" className="w-full">
         <TabsList>

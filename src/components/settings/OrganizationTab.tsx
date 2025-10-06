@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Building, Edit, Lock, AlertTriangle, Save, Loader2 } from 'lucide-react'
-
+import { PageHeader } from '@/components/layout/PageHeader'
 import { OrganizationDisplay } from './OrganizationDisplay'
 import { OrganizationSwitcher } from './OrganizationSwitcher'
 // Currency settings removed
@@ -304,6 +304,11 @@ const [orgFormData, setOrgFormData] = useState<OrganizationFormData>({
   console.log('OrganizationTab - rendering content with organization:', userOrganization.name, 'editMode:', isEditMode)
   return (
     <div className="space-y-6">
+      <PageHeader 
+        title="Organization" 
+        subtitle="Manage your organization details and preferences"
+      />
+      
       {/* Organization Switcher for Platform Admins */}
       <OrganizationSwitcher />
       

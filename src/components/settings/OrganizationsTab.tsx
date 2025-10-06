@@ -3,6 +3,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { OrganizationsTable } from '@/components/organizations/OrganizationsTable'
 import { OrganizationFormSheet } from '@/components/organizations/OrganizationFormSheet'
 import { useOrganizations, Organization } from '@/hooks/useOrganizations'
+import { PageHeader } from '@/components/layout/PageHeader'
 
 export function OrganizationsTab() {
   const [isFormOpen, setIsFormOpen] = useState(false)
@@ -56,12 +57,10 @@ export function OrganizationsTab() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-medium">Organizations</h3>
-        <p className="text-sm text-muted-foreground">
-          Manage your organizations and departments
-        </p>
-      </div>
+      <PageHeader 
+        title="Organizations" 
+        subtitle="Manage your organizations and departments"
+      />
 
       <OrganizationsTable
         organizations={organizations}

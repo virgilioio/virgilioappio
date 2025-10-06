@@ -1,5 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Users, Building, DollarSign, Activity } from 'lucide-react'
+import { PageHeader } from '@/components/layout/PageHeader'
 
 export function CustomerManagementTab() {
   const isLoading = false
@@ -12,6 +13,11 @@ export function CustomerManagementTab() {
 
   return (
     <div className="space-y-6">
+      <PageHeader 
+        title="Customer Management" 
+        subtitle="Overview of SaaS customers and platform metrics"
+      />
+      
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

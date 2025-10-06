@@ -2,14 +2,15 @@ import { PlatformJobStagesManager } from './PlatformJobStagesManager'
 import { PlatformApplicationFieldsManager } from './PlatformApplicationFieldsManager'
 import { PlatformOfferTemplatesManager } from './PlatformOfferTemplatesManager'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { PageHeader } from '@/components/layout/PageHeader'
 
 export function PlatformJobSettingsManager() {
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-text-primary">Platform Job Settings</h1>
-        <p className="text-text-secondary mt-1">Manage platform-wide default settings that organizations can inherit</p>
-      </div>
+      <PageHeader 
+        title="Platform Job Settings" 
+        subtitle="Manage platform-wide default settings that organizations can inherit"
+      />
 
       <Tabs defaultValue="stages" className="w-full">
         <TabsList>

@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { User, Mail, Shield, Save } from 'lucide-react'
 import { AvatarUploader } from './AvatarUploader'
 import { ProfileForm } from './ProfileForm'
+import { PageHeader } from '@/components/layout/PageHeader'
 
 interface ProfileFormData {
   first_name: string
@@ -73,6 +74,11 @@ export function ProfileTab() {
 
   return (
     <div className="space-y-md">
+      <PageHeader 
+        title="Profile" 
+        subtitle="Manage your personal information and preferences"
+      />
+      
       {/* Profile Information Card */}
       <Card>
         <CardHeader className="pb-sm">
