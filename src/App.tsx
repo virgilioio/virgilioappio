@@ -13,6 +13,7 @@ import { ErrorBoundary } from './components/ErrorBoundary'
 import { log } from './lib/logger'
 import Dashboard from './pages/Dashboard'
 import Jobs from './pages/Jobs'
+import Pipeline from './pages/Pipeline'
 import JobDetail from './pages/JobDetail'
 import Members from './pages/Members'
 import Organizations from './pages/Organizations'
@@ -76,6 +77,7 @@ function AppContent() {
           <Route path="dashboard" element={<Dashboard />} />
           
           <Route path="jobs" element={<Jobs />} />
+          <Route path="pipeline" element={<Pipeline />} />
           <Route path="jobs/:id" element={<JobDetail />} />
           <Route path="jobs/:jobId/candidates/:candidateId" element={<CandidateProfile />} />
           <Route path="candidates" element={<Candidates />} />

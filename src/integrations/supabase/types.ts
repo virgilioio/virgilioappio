@@ -2356,6 +2356,24 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      get_pipeline_global_metrics: {
+        Args: {
+          job_statuses?: string[]
+          search_term?: string
+          user_ids?: string[]
+        }
+        Returns: Json
+      }
+      get_pipeline_job_metrics: {
+        Args: { job_ids: string[] }
+        Returns: {
+          active_candidates: number
+          job_id: string
+          overall_hired_count: number
+          overall_start_count: number
+          stages: Json
+        }[]
+      }
       get_stage_deletion_impact: {
         Args: { stage_id_param: string }
         Returns: {
