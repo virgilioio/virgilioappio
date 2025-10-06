@@ -61,19 +61,21 @@ export function CandidateNameCard({
       <CardContent className="p-layout-md">
         <div className="flex items-start justify-between mb-6">
           <div className="min-w-0">
-            <div className="flex items-center gap-2 mb-2">
+            <div className="mb-2">
               <StyledPageTitle className="text-2xl truncate">{name}</StyledPageTitle>
+            </div>
+            {linkedinUrl && (
               <Button
-                size="icon"
-                className="aspect-square rounded-md bg-foreground text-background hover:bg-foreground"
-                onClick={() => linkedinUrl && window.open(linkedinUrl, '_blank')}
-                disabled={!linkedinUrl}
+                size="sm"
+                variant="outline"
+                className="gap-2 mb-2"
+                onClick={() => window.open(linkedinUrl, '_blank')}
                 aria-label="Open LinkedIn profile"
-                title={linkedinUrl ? 'Open LinkedIn profile' : 'No LinkedIn profile'}
               >
                 <LinkedInFilled className="h-4 w-4" />
+                LinkedIn Profile
               </Button>
-            </div>
+            )}
             {badgeText && (
               <div className="mt-1">
                 <Badge variant="secondary">{badgeText}</Badge>
