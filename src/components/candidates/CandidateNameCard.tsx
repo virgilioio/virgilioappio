@@ -1,12 +1,6 @@
 import React from 'react'
 import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
-import { Mail, Phone, Copy } from 'lucide-react'
-import { toast } from '@/hooks/use-toast'
-import { StyledPageTitle } from '@/components/ui/styled-page-title'
 
 export type CandidateNameCardTab = {
   value: string
@@ -29,83 +23,18 @@ interface CandidateNameCardProps {
 }
 
 export function CandidateNameCard({
-  name,
-  linkedinUrl,
-  badgeText,
   tabs,
   activeTab,
   onTabChange,
   rightActions,
-  subtitle,
-  email,
-  phone,
   className,
 }: CandidateNameCardProps) {
-  const copyToClipboard = async (text: string, type: 'email' | 'phone') => {
-    try {
-      await navigator.clipboard.writeText(text)
-      toast({
-        title: 'Copied to clipboard',
-        description: `${type === 'email' ? 'Email' : 'Phone number'} copied successfully`,
-      })
-    } catch (err) {
-      toast({
-        title: 'Copy failed',
-        description: 'Failed to copy to clipboard',
-        variant: 'destructive',
-      })
-    }
-  }
   return (
     <Card className={cn('bg-surface-primary border-border', className)}>
       <CardContent className="p-layout-md">
         <div className="flex items-start justify-between mb-6">
-          <div className="min-w-0">
-            {(email || phone) && (
-              <div className="flex items-center gap-6 mt-2 text-sm">
-                {email && (
-                  <div className="flex items-center gap-1 group">
-                    <Mail className="h-3 w-3 text-text-secondary" />
-                    <a 
-                      href={`mailto:${email}`}
-                      className="text-blue-600 hover:text-blue-700 hover:underline"
-                    >
-                      {email}
-                    </a>
-                    <Button
-                      variant="ghost"
-                      className="!h-4 !w-4 !min-w-4 !max-w-4 !p-0 opacity-0 group-hover:opacity-100 transition-opacity ml-2 hover:!bg-black !rounded-sm flex items-center justify-center"
-                      onClick={() => copyToClipboard(email, 'email')}
-                      title="Copy email"
-                    >
-                      <Copy className="h-3 w-3 group-hover:text-white" />
-                    </Button>
-                  </div>
-                )}
-                {phone && (
-                  <div className="flex items-center gap-1 group">
-                    <Phone className="h-3 w-3 text-text-secondary" />
-                    <a 
-                      href={`tel:${phone}`}
-                      className="text-blue-600 hover:text-blue-700 hover:underline"
-                    >
-                      {phone}
-                    </a>
-                    <Button
-                      variant="ghost"
-                      className="!h-4 !w-4 !min-w-4 !max-w-4 !p-0 opacity-0 group-hover:opacity-100 transition-opacity ml-2 hover:!bg-black !rounded-sm flex items-center justify-center"
-                      onClick={() => copyToClipboard(phone, 'phone')}
-                      title="Copy phone number"
-                    >
-                      <Copy className="h-3 w-3 group-hover:text-white" />
-                    </Button>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
           {rightActions && (
-            <div className="flex items-center gap-sm">{rightActions}</div>
+            <div className="ml-auto flex items-center gap-sm">{rightActions}</div>
           )}
         </div>
 

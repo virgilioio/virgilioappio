@@ -17,6 +17,8 @@ import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight, CheckCircle
 import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
+import { copyToClipboard } from '@/utils/clipboard'
+import { Mail, Phone, Copy } from 'lucide-react'
 
 import { Link } from 'react-router-dom'
 import { SafeHtml } from '@/components/ui/safe-html'
@@ -561,17 +563,82 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
 
                     {/* Application Details Tab */}
                     {activeTab === 'application' && (
-                      <Card className="bg-surface-primary border-border">
-                        <CardHeader>
-                          <CardTitle className="text-lg">Application Details</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <CandidateApplicationResponses 
-                            candidateId={candidateId!} 
-                            jobId={jobId} 
-                          />
-                        </CardContent>
-                      </Card>
+                      <div className="space-y-6">
+                        {/* Contact Details Card */}
+                        <Card className="bg-surface-primary border-border">
+                          <CardHeader>
+                            <CardTitle className="text-lg">Contact Details</CardTitle>
+                          </CardHeader>
+                          <CardContent className="space-y-4">
+                            {candidate?.email && (
+                              <div className="flex items-center gap-3 group">
+                                <Mail className="h-4 w-4 text-text-secondary flex-shrink-0" />
+                                <a 
+                                  href={`mailto:${candidate.email}`}
+                                  className="text-blue-600 hover:text-blue-700 hover:underline flex-1 truncate"
+                                >
+                                  {candidate.email}
+                                </a>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  onClick={() => copyToClipboard(candidate.email, 'Email copied to clipboard')}
+                                  title="Copy email"
+                                >
+                                  <Copy className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            )}
+                            {candidate?.phone && (
+                              <div className="flex items-center gap-3 group">
+                                <Phone className="h-4 w-4 text-text-secondary flex-shrink-0" />
+                                <a 
+                                  href={`tel:${candidate.phone}`}
+                                  className="text-blue-600 hover:text-blue-700 hover:underline flex-1 truncate"
+                                >
+                                  {candidate.phone}
+                                </a>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  onClick={() => copyToClipboard(candidate.phone, 'Phone number copied to clipboard')}
+                                  title="Copy phone number"
+                                >
+                                  <Copy className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            )}
+                            {candidate?.linkedin_url && (
+                              <div className="flex items-center gap-3">
+                                <LinkedInFilled className="h-4 w-4 text-text-secondary flex-shrink-0" />
+                                <a 
+                                  href={candidate.linkedin_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-blue-600 hover:text-blue-700 hover:underline flex-1 truncate"
+                                >
+                                  {candidate.linkedin_url}
+                                </a>
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+
+                        {/* Application Responses */}
+                        <Card className="bg-surface-primary border-border">
+                          <CardHeader>
+                            <CardTitle className="text-lg">Application Details</CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <CandidateApplicationResponses 
+                              candidateId={candidateId!} 
+                              jobId={jobId} 
+                            />
+                          </CardContent>
+                        </Card>
+                      </div>
                     )}
 
                     {/* Resume Tab */}
