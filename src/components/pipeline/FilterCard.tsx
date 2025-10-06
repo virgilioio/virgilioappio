@@ -49,10 +49,10 @@ export function FilterCard({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Statuses</SelectItem>
+                <SelectItem value="draft">Draft</SelectItem>
                 <SelectItem value="open">Open</SelectItem>
-                <SelectItem value="paused">Paused</SelectItem>
-                <SelectItem value="filled">Filled</SelectItem>
                 <SelectItem value="closed">Closed</SelectItem>
+                <SelectItem value="archived">Archived</SelectItem>
               </SelectContent>
             </Select>
             {showUserFilter && userOptions.length > 0 && (

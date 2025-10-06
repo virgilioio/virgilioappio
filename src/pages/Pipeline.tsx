@@ -34,7 +34,7 @@ export default function Pipeline() {
   // Fetch global metrics
   const { data: globalMetrics, isLoading: metricsLoading } = usePipelineGlobalMetrics(filters);
 
-  // Filter jobs client-side based on same criteria
+  // Client-side filter to apply status & search
   const filteredJobs = useMemo(() => {
     return jobs.filter(job => {
       // Status filter
@@ -42,9 +42,6 @@ export default function Pipeline() {
       
       // Search filter
       if (searchTerm && !job.title.toLowerCase().includes(searchTerm.toLowerCase())) return false;
-      
-      // User filter (check job_assignments - simplified, assumes all jobs visible if admin)
-      // In practice, useJobs already respects RLS, so we trust the backend filtering
       
       return true;
     });
