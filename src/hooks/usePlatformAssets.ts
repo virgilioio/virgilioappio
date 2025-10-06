@@ -51,15 +51,34 @@ export function usePlatformAssets() {
       formData.append('file', file)
       formData.append('assetType', assetType)
 
-      const { data, error } = await supabase.functions.invoke('upload-platform-asset', {
-        method: 'POST',
-        body: formData
-      })
-
-      if (error) {
-        console.error('Supabase function error:', error)
-        throw error
+      // Get auth session for token
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session) {
+        throw new Error('No active session')
       }
+
+      // Use fetch instead of invoke for proper FormData handling
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
+      const response = await fetch(
+        `${supabaseUrl}/functions/v1/upload-platform-asset`,
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`
+            // Don't set Content-Type - browser will set it with boundary for FormData
+          },
+          body: formData
+        }
+      )
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Upload failed' }))
+        console.error('Upload failed:', errorData)
+        throw new Error(errorData.error || 'Upload failed')
+      }
+
+      const data = await response.json()
 
       console.log('Upload successful:', data)
       
