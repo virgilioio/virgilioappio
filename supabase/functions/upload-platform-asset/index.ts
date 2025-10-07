@@ -2,9 +2,8 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { createSecureCorsHeaders, handleSecureCorsPreFlight } from "../_shared/createSecureEdgeFunction.ts";
 
-const corsHeaders = createSecureCorsHeaders();
-
 Deno.serve(async (req) => {
+  const corsHeaders = createSecureCorsHeaders({}, req);
   const preflightResponse = handleSecureCorsPreFlight(req, corsHeaders);
   if (preflightResponse) return preflightResponse;
 
