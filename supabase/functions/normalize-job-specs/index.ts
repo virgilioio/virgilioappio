@@ -27,8 +27,6 @@ interface NormalizedSpecs {
 serve(async (req) => {
   const preflightResponse = handleSecureCorsPreFlight(req, corsHeaders);
   if (preflightResponse) return preflightResponse;
-    return new Response(null, { headers: corsHeaders });
-  }
 
   try {
     const supabaseClient = createClient(
