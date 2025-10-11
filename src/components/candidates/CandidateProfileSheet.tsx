@@ -38,6 +38,7 @@ import { EnhancedResumeDropzone } from '@/components/candidates/EnhancedResumeDr
 import MoveToPipelineMenu from '@/components/candidates/MoveToPipelineMenu'
 import { useJobHiringPlan, JobStage } from '@/hooks/useJobHiringPlan'
 import { cn } from '@/lib/utils'
+import { CandidateControlsCard } from '@/components/candidates/CandidateControlsCard'
 
 interface StageScorecardProps {
   stageInstanceId: string;
@@ -396,6 +397,22 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   {/* Left column (2x) */}
                   <div className="lg:col-span-2 space-y-6">
+                    {/* Controls Card */}
+                    <CandidateControlsCard
+                      associationId={associationId}
+                      associationStatus={associationStatus}
+                      currentStageId={currentStageId}
+                      candidateId={candidateId}
+                      jobId={jobId}
+                      candidate={candidate}
+                      job={job}
+                      planStages={planStages}
+                      onReject={() => handleSetStatus('rejected')}
+                      onMarkHired={() => handleSetStatus('hired')}
+                      onDownloadPdf={() => generateCandidatePdf({ candidate, job })}
+                    />
+
+                    {/* Name Card - Simplified to tabs only */}
                     <CandidateNameCard
                       name={candidate.candidate_name}
                       linkedinUrl={candidate.linkedin_url}
@@ -407,55 +424,9 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                         { value: 'application', label: 'Application Details', Icon: FileText },
                         { value: 'resume', label: 'Resume', Icon: FileText },
                         { value: 'overview', label: 'Overview', Icon: FileText },
-                        
                       ]}
                       activeTab={activeTab}
                       onTabChange={(v) => setActiveTab(v as 'job' | 'application' | 'resume' | 'overview')}
-                      rightActions={
-                        <>
-                          {associationId && associationStatus !== 'rejected' && (
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              onClick={() => handleSetStatus('rejected')}
-                              title="Reject candidate"
-                            >
-                              Reject
-                            </Button>
-                          )}
-                          {/* Mark Hired only when in Offer stage */}
-                          {(() => {
-                            const current = planStages.find(s => s.jhsId === currentStageId)
-                            const canMarkHired = !!associationId && associationStatus !== 'hired' && (associationStatus === 'offer' || current?.stage.stage_type === 'offer')
-                            return canMarkHired ? (
-                              <Button
-                                size="sm"
-                                onClick={() => handleSetStatus('hired')}
-                                title="Mark candidate as hired"
-                              >
-                                Mark Hired
-                              </Button>
-                            ) : null
-                          })()}
-                          {/* Move to Pipeline button for suggested candidates */}
-                          {!associationId && jobId && candidate.id && (
-                            <MoveToPipelineMenu
-                              jobId={jobId}
-                              candidateId={candidate.id}
-                              buttonText="Move to pipeline"
-                            />
-                          )}
-                          <Button
-                            variant="default"
-                            size="icon"
-                            className="aspect-square rounded-md bg-foreground text-background hover:bg-foreground"
-                            onClick={() => generateCandidatePdf({ candidate, job })}
-                            title="Download PDF"
-                          >
-                            <Download className="h-4 w-4" />
-                          </Button>
-                        </>
-                      }
                     />
 
                     {/* Job Application Tab */}
