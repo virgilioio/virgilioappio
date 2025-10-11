@@ -38,7 +38,7 @@ export function CandidateNameCard({
       )}
 
       {/* Tabs */}
-      <div className={cn("w-full bg-surface-secondary rounded-xl p-1 border border-border", className)}>
+      <div className={cn("w-full rounded-xl p-1 border border-border", className)} style={{ backgroundColor: '#d7c5fb' }}>
         <div className="inline-flex h-auto items-center justify-start rounded-xl bg-transparent p-0 text-muted-foreground w-full">
           {tabs.map(({ value, label, Icon }) => (
             <button
@@ -46,7 +46,7 @@ export function CandidateNameCard({
               onClick={() => onTabChange(value)}
               className={cn(
                 'inline-flex items-center justify-center whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-muted/50',
-                activeTab === value && 'bg-accent text-accent-foreground'
+                activeTab === value && 'bg-white text-gray-900'
               )}
             >
               {Icon ? <Icon className="h-4 w-4 mr-2" /> : null}
