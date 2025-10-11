@@ -32,11 +32,11 @@ export function CandidateNameCard({
   return (
     <Card className={cn('bg-surface-primary border-border', className)}>
       <CardContent className="p-layout-md">
-        <div className="flex items-start justify-between mb-6">
-          {rightActions && (
+        {rightActions && (
+          <div className="flex items-start justify-between mb-6">
             <div className="ml-auto flex items-center gap-sm">{rightActions}</div>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Tabs */}
         <div className="w-full bg-surface-secondary rounded-xl p-1">

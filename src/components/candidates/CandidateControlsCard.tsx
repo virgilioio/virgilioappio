@@ -43,7 +43,7 @@ export function CandidateControlsCard({
   const showMoveToPipeline = !associationId && jobId && candidateId
 
   return (
-    <Card className="bg-surface-primary border-border">
+    <Card className="bg-surface-secondary border-border shadow-sm">
       <CardContent className="p-4">
         <div className="flex items-center justify-between gap-4 flex-wrap">
           {/* Left side - Primary actions */}
