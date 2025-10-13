@@ -23,7 +23,6 @@ export default function Members() {
     createMember,
     updateMember,
     deactivateMember,
-    reactivateMember,
     resendInvitation,
     getMembers
   } = useMembers()
@@ -47,10 +46,6 @@ export default function Members() {
       await deactivateMember(deactivateMemberId)
       setDeactivateMemberId(null)
     }
-  }
-
-  const handleReactivate = async (id: string) => {
-    await reactivateMember(id)
   }
 
   const handleFormSubmit = async (data: any) => {
@@ -100,7 +95,6 @@ export default function Members() {
               isLoading={isLoading}
               onEdit={handleEdit}
               onDeactivate={handleDeactivate}
-              onReactivate={handleReactivate}
               onResendInvitation={handleResendInvitation}
               onDeleteUser={handleDeleteUser}
               onAddNew={handleCreateNew}

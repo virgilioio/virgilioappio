@@ -10,7 +10,6 @@ import { usePermissions } from '@/hooks/usePermissions'
 import { toast } from '@/hooks/use-toast'
 import { formatDistanceToNow } from 'date-fns'
 import { AttachmentPreviewDialog } from './AttachmentPreviewDialog'
-import { EmptyState } from '@/components/ui/empty-state'
 
 interface CandidateAttachmentsProps {
   candidateId: string
@@ -168,12 +167,15 @@ export function CandidateAttachments({ candidateId }: CandidateAttachmentsProps)
 
           {/* Attachments List */}
           {attachments.length === 0 ? (
-            <EmptyState
-              assetType="empty-state-attachments"
-              title="No attachments yet"
-              description={canManageCandidates ? "Upload files related to this candidate" : "You don't have permission to upload attachments"}
-              fallbackIcon={File}
-            />
+            <div className="text-center py-8 text-text-secondary">
+              <File className="h-8 w-8 mx-auto mb-2 opacity-50" />
+              <p className="text-[1.38rem] font-semibold mb-2 tracking-[-0.06em]">
+                <span>No attachments yet</span><span className="text-[#d7c5fb]">.</span>
+              </p>
+              {!canManageCandidates && (
+                <p className="text-xs mt-1">You don't have permission to upload attachments</p>
+              )}
+            </div>
           ) : (
             <div className="space-y-sm">
               {attachments.map((attachment) => {

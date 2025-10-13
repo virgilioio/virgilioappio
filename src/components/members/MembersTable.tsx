@@ -16,7 +16,6 @@ interface MembersTableProps {
   isLoading: boolean
   onEdit: (member: Member) => void
   onDeactivate: (id: string) => void
-  onReactivate: (id: string) => void
   onResendInvitation: (memberId: string, email: string) => void
   onDeleteUser: (member: Member) => void
   onAddNew?: () => void
@@ -27,7 +26,6 @@ export function MembersTable({
   isLoading,
   onEdit,
   onDeactivate,
-  onReactivate,
   onResendInvitation,
   onDeleteUser,
   onAddNew
@@ -271,7 +269,7 @@ export function MembersTable({
                             <>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem 
-                                onClick={() => onReactivate(member.id)}
+                                onClick={() => onEdit(member)}
                                 className="gap-2"
                               >
                                 <UserCheck className="h-4 w-4" />

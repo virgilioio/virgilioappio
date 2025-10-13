@@ -2282,13 +2282,6 @@ export type Database = {
         }
         Returns: Json
       }
-      check_org_member_access: {
-        Args: {
-          _organization_id: string
-          _required_role?: Database["public"]["Enums"]["member_role"]
-        }
-        Returns: boolean
-      }
       check_recursion_safety: {
         Args: Record<PropertyKey, never>
         Returns: boolean

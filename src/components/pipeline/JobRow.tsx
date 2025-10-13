@@ -4,8 +4,7 @@ import { PipelineOverview } from '@/components/jobs/PipelineOverview';
 import { Job } from '@/hooks/useJobs';
 import { PipelineJobMetric } from '@/hooks/usePipelineJobMetrics';
 import { formatDistanceToNow } from 'date-fns';
-import { ChevronRight, ExternalLink } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { ChevronRight } from 'lucide-react';
 
 interface JobRowProps {
   job: Job;
@@ -49,17 +48,6 @@ export function JobRow({ job, metrics }: JobRowProps) {
                 <Badge variant={statusVariants[job.status] || 'default'} className="capitalize">
                   {job.status}
                 </Badge>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    window.open(`/jobs/${job.id}`, '_blank');
-                  }}
-                >
-                  <ExternalLink className="h-4 w-4" />
-                </Button>
               </div>
               <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
                 <span>Active candidates: {metrics?.active_candidates || 0}</span>

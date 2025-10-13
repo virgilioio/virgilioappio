@@ -8,7 +8,6 @@ import { Trash2, MessageSquare, Send } from 'lucide-react'
 import { useCandidateComments } from '@/hooks/useCandidateComments'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePermissions } from '@/hooks/usePermissions'
-import { EmptyState } from '@/components/ui/empty-state'
 
 interface CandidateCommentsProps {
   candidateId: string
@@ -105,12 +104,13 @@ export function CandidateComments({ candidateId, jobId, organizationId }: Candid
               <div className="h-6 w-6 rounded-full border-2 border-primary border-t-transparent animate-spin"></div>
             </div>
           ) : comments.length === 0 ? (
-            <EmptyState
-              assetType="empty-state-comments"
-              title="No comments yet"
-              description="Be the first to add a comment"
-              fallbackIcon={MessageSquare}
-            />
+            <div className="text-center py-8 text-muted-foreground">
+              <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p className="text-[1.38rem] font-semibold mb-2 tracking-[-0.06em]">
+                <span>No comments yet</span><span className="text-[#d7c5fb]">.</span>
+              </p>
+              <p className="text-sm">Be the first to add a comment</p>
+            </div>
           ) : (
             comments.map((comment) => (
               <div key={comment.id} className="bg-muted/20 rounded-lg p-4 space-y-2">

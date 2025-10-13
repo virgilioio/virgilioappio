@@ -13,7 +13,7 @@ interface SecureCorsOptions {
   environment?: string
 }
 
-export function createSecureCorsHeaders(options: SecureCorsOptions = {}, req?: Request) {
+export function createSecureCorsHeaders(options: SecureCorsOptions = {}) {
   const {
     allowedOrigins = [
       'https://app.virgilio.io',
@@ -31,25 +31,13 @@ export function createSecureCorsHeaders(options: SecureCorsOptions = {}, req?: R
   const isProduction = environment === 'production' || 
                        Deno.env.get('SUPABASE_URL')?.includes('supabase.co')
   
-  // Get the actual request origin
-  const requestOrigin = req?.headers.get('Origin') || ''
-  
-  // Check if the request origin is allowed
-  const isAllowed = allowedOrigins.some(allowed => {
-    if (allowed.includes('*')) {
-      // Handle wildcard patterns like https://*.lovable.app
-      const pattern = allowed.replace(/\*/g, '[^.]+').replace(/\./g, '\\.')
-      return new RegExp(`^${pattern}$`).test(requestOrigin)
-    }
-    return allowed === requestOrigin
-  })
-  
-  // Return the specific origin if allowed, otherwise fallback appropriately
-  const origin = isAllowed 
-    ? requestOrigin 
-    : (isProduction ? 'https://app.virgilio.io' : '*')
+  // For production, restrict to known domains
+  // For development, allow localhost and preview URLs
+  const origin = isProduction 
+    ? allowedOrigins.filter(o => !o.includes('localhost')).join(', ')
+    : '*' // Allow all origins in development for easier testing
 
-  console.log(`[CORS] Environment: ${environment}, Production: ${isProduction}, Request Origin: ${requestOrigin}, Allowed: ${isAllowed}, Returning: ${origin}`)
+  console.log(`[CORS] Environment: ${environment}, Production: ${isProduction}, Origin: ${origin}`)
 
   return {
     'Access-Control-Allow-Origin': origin,

@@ -10,7 +10,7 @@ import { AuthGate } from '@/components/auth/AuthGate'
 import { PermissionGate } from '@/components/auth/PermissionGate'
 import { AppContainer } from '@/components/layout/AppContainer'
 import { useIndependentCandidates, IndependentCandidate } from '@/hooks/useIndependentCandidates'
-import { CandidateFormSheet } from '@/components/candidates/CandidateFormSheet'
+import { IndependentCandidateForm } from '@/components/candidates/IndependentCandidateForm'
 import { CandidateWorkExperienceComponent, CandidateWorkExperience } from '@/components/candidates/CandidateWorkExperience'
 import { CandidateEducationComponent, CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
 import { cn } from '@/lib/utils'
@@ -88,7 +88,6 @@ export default function IndependentCandidateProfile() {
     await updateCandidate(candidate.id, data)
     setIsFormOpen(false)
     // Refresh candidate data
-    await getCandidates()
     const updatedCandidate = candidates.find(c => c.id === candidateId)
     setCandidate(updatedCandidate || null)
   }
@@ -504,13 +503,14 @@ export default function IndependentCandidateProfile() {
             </div>
           </div>
 
-          {/* Edit Form Sheet */}
-          <CandidateFormSheet
+          {/* Edit Form Dialog */}
+          <IndependentCandidateForm
             isOpen={isFormOpen}
             onClose={() => setIsFormOpen(false)}
             onSubmit={handleFormSubmit}
-            candidate={candidate as any}
             isLoading={candidatesLoading}
+            initialData={candidate}
+            title="Edit Candidate"
           />
         </AppContainer>
       </PermissionGate>

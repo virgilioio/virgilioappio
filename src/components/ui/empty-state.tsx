@@ -12,7 +12,6 @@ export type EmptyStateAssetType =
   | 'empty-state-attachments'
   | 'empty-state-templates'
   | 'empty-state-independent-candidates'
-  | 'empty-state-urls'
 
 interface EmptyStateProps {
   assetType: EmptyStateAssetType

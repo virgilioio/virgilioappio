@@ -443,45 +443,6 @@ export function useMembers() {
     }
   }
 
-  const reactivateMember = async (id: string) => {
-    setIsLoading(true)
-    setError(null)
-
-    try {
-      console.log('Reactivating member:', id)
-      const { error: updateError } = await supabase
-        .from('members')
-        .update({ user_status: 'active' })
-        .eq('id', id)
-
-      if (updateError) {
-        console.error('Error reactivating member:', updateError)
-        throw updateError
-      }
-
-      console.log('Reactivated member:', id)
-      toast({
-        title: 'Success',
-        description: 'Member reactivated successfully'
-      })
-
-      await getMembers()
-      await syncSeatsAfterChange()
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to reactivate member'
-      console.error('Member reactivation error:', err)
-      setError(errorMessage)
-      toast({
-        title: 'Error',
-        description: errorMessage,
-        variant: 'destructive'
-      })
-      throw err
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
   const resendInvitation = async (memberId: string, email: string) => {
     setIsLoading(true)
     try {
@@ -517,7 +478,6 @@ export function useMembers() {
     createMember,
     updateMember,
     deactivateMember,
-    reactivateMember,
     resendInvitation,
     getInviteUrl
   }

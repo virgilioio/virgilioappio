@@ -14,7 +14,7 @@ import { PageHeader } from '@/components/layout/PageHeader'
 import { addMonths, addYears, format } from 'date-fns'
 
 export function MembersTab() {
-  const { members, isLoading, updateMember, deactivateMember, reactivateMember, createMember, resendInvitation, getMembers } = useMembers()
+  const { members, isLoading, updateMember, deactivateMember, createMember, resendInvitation, getMembers } = useMembers()
   const [isInviteSheetOpen, setIsInviteSheetOpen] = useState(false)
   const [editingMember, setEditingMember] = useState(null)
   const [userToDelete, setUserToDelete] = useState(null)
@@ -59,10 +59,6 @@ export function MembersTab() {
 
   const handleDeactivate = async (id) => {
     await deactivateMember(id)
-  }
-
-  const handleReactivate = async (id) => {
-    await reactivateMember(id)
   }
 
   const handleCreateNew = () => {
@@ -153,7 +149,6 @@ export function MembersTab() {
             isLoading={isLoading}
             onEdit={handleEdit}
             onDeactivate={handleDeactivate}
-            onReactivate={handleReactivate}
             onResendInvitation={handleResendInvitation}
             onDeleteUser={handleDeleteUser}
             onAddNew={permissions.canCreateMembers ? handleCreateNew : undefined}
@@ -165,7 +160,6 @@ export function MembersTab() {
             isLoading={isLoading}
             onEdit={handleEdit}
             onDeactivate={handleDeactivate}
-            onReactivate={handleReactivate}
             onResendInvitation={handleResendInvitation}
             onDeleteUser={handleDeleteUser}
             onAddNew={permissions.canCreateMembers ? handleCreateNew : undefined}

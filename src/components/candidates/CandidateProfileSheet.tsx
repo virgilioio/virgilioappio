@@ -14,11 +14,8 @@ import { CandidateUrls } from '@/components/candidates/CandidateUrls'
 import { CandidateWorkExperienceComponent, CandidateWorkExperience } from '@/components/candidates/CandidateWorkExperience'
 import { CandidateEducationComponent, CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
 import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight, CheckCircle2, Circle, MoveRight, ThumbsDown, ThumbsUp, Star, Octagon } from 'lucide-react'
-import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
-import { copyToClipboard } from '@/utils/clipboard'
-import { Mail, Phone, Copy } from 'lucide-react'
 
 import { Link } from 'react-router-dom'
 import { SafeHtml } from '@/components/ui/safe-html'
@@ -38,7 +35,6 @@ import { EnhancedResumeDropzone } from '@/components/candidates/EnhancedResumeDr
 import MoveToPipelineMenu from '@/components/candidates/MoveToPipelineMenu'
 import { useJobHiringPlan, JobStage } from '@/hooks/useJobHiringPlan'
 import { cn } from '@/lib/utils'
-import { CandidateControlsCard } from '@/components/candidates/CandidateControlsCard'
 
 interface StageScorecardProps {
   stageInstanceId: string;
@@ -341,27 +337,11 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-[90vw] sm:max-w-none h-full p-0">
+      <SheetContent side="right" className="w-[80vw] sm:max-w-none h-full p-0">
         <div className="flex h-full flex-col">
           <SheetHeader className="p-6 border-b">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3 min-w-0">
-                <h2 className="font-poppins font-bold tracking-page-title text-text-primary text-2xl md:text-3xl truncate">
-                  {candidate?.candidate_name || 'Loading...'}
-                  <span className="text-purple-period">.</span>
-                </h2>
-                {candidate?.linkedin_url && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="gap-2 flex-shrink-0 h-8 px-2"
-                    onClick={() => window.open(candidate.linkedin_url!, '_blank')}
-                    aria-label="Open LinkedIn profile"
-                  >
-                    <LinkedInFilled className="h-7 w-7" />
-                  </Button>
-                )}
-              </div>
+              <div />
               <div className="flex items-center gap-sm">
                 <Button
                   variant="ghost"
@@ -397,22 +377,6 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   {/* Left column (2x) */}
                   <div className="lg:col-span-2 space-y-6">
-                    {/* Controls Card */}
-                    <CandidateControlsCard
-                      associationId={associationId}
-                      associationStatus={associationStatus}
-                      currentStageId={currentStageId}
-                      candidateId={candidateId}
-                      jobId={jobId}
-                      candidate={candidate}
-                      job={job}
-                      planStages={planStages}
-                      onReject={() => handleSetStatus('rejected')}
-                      onMarkHired={() => handleSetStatus('hired')}
-                      onDownloadPdf={() => generateCandidatePdf({ candidate, job })}
-                    />
-
-                    {/* Name Card - Simplified to tabs only */}
                     <CandidateNameCard
                       name={candidate.candidate_name}
                       linkedinUrl={candidate.linkedin_url}
@@ -424,9 +388,55 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                         { value: 'application', label: 'Application Details', Icon: FileText },
                         { value: 'resume', label: 'Resume', Icon: FileText },
                         { value: 'overview', label: 'Overview', Icon: FileText },
+                        
                       ]}
                       activeTab={activeTab}
                       onTabChange={(v) => setActiveTab(v as 'job' | 'application' | 'resume' | 'overview')}
+                      rightActions={
+                        <>
+                          {associationId && associationStatus !== 'rejected' && (
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => handleSetStatus('rejected')}
+                              title="Reject candidate"
+                            >
+                              Reject
+                            </Button>
+                          )}
+                          {/* Mark Hired only when in Offer stage */}
+                          {(() => {
+                            const current = planStages.find(s => s.jhsId === currentStageId)
+                            const canMarkHired = !!associationId && associationStatus !== 'hired' && (associationStatus === 'offer' || current?.stage.stage_type === 'offer')
+                            return canMarkHired ? (
+                              <Button
+                                size="sm"
+                                onClick={() => handleSetStatus('hired')}
+                                title="Mark candidate as hired"
+                              >
+                                Mark Hired
+                              </Button>
+                            ) : null
+                          })()}
+                          {/* Move to Pipeline button for suggested candidates */}
+                          {!associationId && jobId && candidate.id && (
+                            <MoveToPipelineMenu
+                              jobId={jobId}
+                              candidateId={candidate.id}
+                              buttonText="Move to pipeline"
+                            />
+                          )}
+                          <Button
+                            variant="default"
+                            size="icon"
+                            className="aspect-square rounded-md bg-foreground text-background hover:bg-foreground"
+                            onClick={() => generateCandidatePdf({ candidate, job })}
+                            title="Download PDF"
+                          >
+                            <Download className="h-4 w-4" />
+                          </Button>
+                        </>
+                      }
                     />
 
                     {/* Job Application Tab */}
@@ -529,82 +539,17 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
 
                     {/* Application Details Tab */}
                     {activeTab === 'application' && (
-                      <div className="space-y-6">
-                        {/* Contact Details Card */}
-                        <Card className="bg-surface-primary border-border">
-                          <CardHeader>
-                            <CardTitle className="text-lg">Contact Details</CardTitle>
-                          </CardHeader>
-                          <CardContent className="space-y-4">
-                            {candidate?.email && (
-                              <div className="flex items-center gap-3 group">
-                                <Mail className="h-4 w-4 text-text-secondary flex-shrink-0" />
-                                <a 
-                                  href={`mailto:${candidate.email}`}
-                                  className="text-blue-600 hover:text-blue-700 hover:underline flex-1 truncate"
-                                >
-                                  {candidate.email}
-                                </a>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                                  onClick={() => copyToClipboard(candidate.email, 'Email copied to clipboard')}
-                                  title="Copy email"
-                                >
-                                  <Copy className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            )}
-                            {candidate?.phone && (
-                              <div className="flex items-center gap-3 group">
-                                <Phone className="h-4 w-4 text-text-secondary flex-shrink-0" />
-                                <a 
-                                  href={`tel:${candidate.phone}`}
-                                  className="text-blue-600 hover:text-blue-700 hover:underline flex-1 truncate"
-                                >
-                                  {candidate.phone}
-                                </a>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                                  onClick={() => copyToClipboard(candidate.phone, 'Phone number copied to clipboard')}
-                                  title="Copy phone number"
-                                >
-                                  <Copy className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            )}
-                            {candidate?.linkedin_url && (
-                              <div className="flex items-center gap-3">
-                                <LinkedInFilled className="h-4 w-4 text-text-secondary flex-shrink-0" />
-                                <a 
-                                  href={candidate.linkedin_url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-blue-600 hover:text-blue-700 hover:underline flex-1 truncate"
-                                >
-                                  {candidate.linkedin_url}
-                                </a>
-                              </div>
-                            )}
-                          </CardContent>
-                        </Card>
-
-                        {/* Application Responses */}
-                        <Card className="bg-surface-primary border-border">
-                          <CardHeader>
-                            <CardTitle className="text-lg">Application Details</CardTitle>
-                          </CardHeader>
-                          <CardContent>
-                            <CandidateApplicationResponses 
-                              candidateId={candidateId!} 
-                              jobId={jobId} 
-                            />
-                          </CardContent>
-                        </Card>
-                      </div>
+                      <Card className="bg-surface-primary border-border">
+                        <CardHeader>
+                          <CardTitle className="text-lg">Application Details</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <CandidateApplicationResponses 
+                            candidateId={candidateId!} 
+                            jobId={jobId} 
+                          />
+                        </CardContent>
+                      </Card>
                     )}
 
                     {/* Resume Tab */}

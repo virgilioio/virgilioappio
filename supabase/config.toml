@@ -9,9 +9,6 @@ verify_jwt = true
 [functions.upload-invoice-document]
 verify_jwt = true
 
-[functions.upload-platform-asset]
-verify_jwt = true
-
 [functions.set-current-organization]
 verify_jwt = true
 

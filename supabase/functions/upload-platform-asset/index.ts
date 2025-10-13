@@ -1,9 +1,10 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { createSecureCorsHeaders, handleSecureCorsPreFlight } from "../_shared/createSecureEdgeFunction.ts";
+import { createSecureCorsHeaders, handleSecureCorsPreFlight } from "../utils/createSecureEdgeFunction.ts";
+
+const corsHeaders = createSecureCorsHeaders();
 
 Deno.serve(async (req) => {
-  const corsHeaders = createSecureCorsHeaders({}, req);
   const preflightResponse = handleSecureCorsPreFlight(req, corsHeaders);
   if (preflightResponse) return preflightResponse;
 
@@ -85,8 +86,7 @@ Deno.serve(async (req) => {
         'empty-state-comments',
         'empty-state-attachments',
         'empty-state-templates',
-        'empty-state-independent-candidates',
-        'empty-state-urls'
+        'empty-state-independent-candidates'
       ]
       
       if (!validAssetTypes.includes(assetType)) {
@@ -108,8 +108,7 @@ Deno.serve(async (req) => {
         'empty-state-comments': ['image/png'],
         'empty-state-attachments': ['image/png'],
         'empty-state-templates': ['image/png'],
-        'empty-state-independent-candidates': ['image/png'],
-        'empty-state-urls': ['image/png']
+        'empty-state-independent-candidates': ['image/png']
       }
 
       if (!allowedTypes[assetType]?.includes(file.type)) {
@@ -133,8 +132,7 @@ Deno.serve(async (req) => {
         'empty-state-comments': 512 * 1024,
         'empty-state-attachments': 512 * 1024,
         'empty-state-templates': 512 * 1024,
-        'empty-state-independent-candidates': 512 * 1024,
-        'empty-state-urls': 512 * 1024
+        'empty-state-independent-candidates': 512 * 1024
       }
       if (file.size > (maxSizes[assetType] || 512 * 1024)) {
         return new Response(

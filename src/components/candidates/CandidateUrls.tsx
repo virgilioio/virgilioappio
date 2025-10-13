@@ -12,7 +12,6 @@ import { FormField } from '@/components/ui/form-field'
 import { Plus, ExternalLink, Trash2, Github } from 'lucide-react'
 import { useCandidateUrls } from '@/hooks/useCandidateUrls'
 import { usePermissions } from '@/hooks/usePermissions'
-import { EmptyState } from '@/components/ui/empty-state'
 
 interface CandidateUrlsProps {
   candidateId: string
@@ -160,12 +159,13 @@ export function CandidateUrls({ candidateId }: CandidateUrlsProps) {
       </CardHeader>
       <CardContent className="space-y-sm">
         {urls.length === 0 ? (
-          <EmptyState
-            assetType="empty-state-urls"
-            title="No URLs added yet"
-            description={canManageCandidates ? "Add links to portfolios, social profiles, and more" : "You don't have permission to add URLs"}
-            fallbackIcon={ExternalLink}
-          />
+          <div className="text-center py-8 text-text-secondary">
+            <ExternalLink className="h-8 w-8 mx-auto mb-2 opacity-50" />
+            <p className="text-sm">No URLs added yet</p>
+            {!canManageCandidates && (
+              <p className="text-xs mt-1">You don't have permission to add URLs</p>
+            )}
+          </div>
         ) : (
           <div className="space-y-sm">
             {urls.map((url) => {

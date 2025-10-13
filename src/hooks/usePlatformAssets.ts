@@ -5,7 +5,7 @@ import { useToast } from '@/hooks/use-toast'
 
 interface PlatformAsset {
   id: string
-  asset_type: 'logo' | 'favicon' | 'empty-state-organizations' | 'empty-state-jobs' | 'empty-state-candidates' | 'empty-state-members' | 'empty-state-comments' | 'empty-state-attachments' | 'empty-state-templates' | 'empty-state-independent-candidates' | 'empty-state-urls'
+  asset_type: 'logo' | 'favicon' | 'empty-state-organizations' | 'empty-state-jobs' | 'empty-state-candidates' | 'empty-state-members' | 'empty-state-comments' | 'empty-state-attachments' | 'empty-state-templates' | 'empty-state-independent-candidates'
   file_name: string
   file_url: string
   uploaded_by: string
@@ -51,34 +51,15 @@ export function usePlatformAssets() {
       formData.append('file', file)
       formData.append('assetType', assetType)
 
-      // Get auth session for token
-      const { data: { session } } = await supabase.auth.getSession()
-      
-      if (!session) {
-        throw new Error('No active session')
+      const { data, error } = await supabase.functions.invoke('upload-platform-asset', {
+        method: 'POST',
+        body: formData
+      })
+
+      if (error) {
+        console.error('Supabase function error:', error)
+        throw error
       }
-
-      // Use fetch instead of invoke for proper FormData handling
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL
-      const response = await fetch(
-        `${supabaseUrl}/functions/v1/upload-platform-asset`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`
-            // Don't set Content-Type - browser will set it with boundary for FormData
-          },
-          body: formData
-        }
-      )
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ error: 'Upload failed' }))
-        console.error('Upload failed:', errorData)
-        throw new Error(errorData.error || 'Upload failed')
-      }
-
-      const data = await response.json()
 
       console.log('Upload successful:', data)
       
