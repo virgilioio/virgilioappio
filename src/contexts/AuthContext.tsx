@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useCallback } from 'react'
+import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react'
 import { User, Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabaseClient'
 import { useToast } from '@/hooks/use-toast'
@@ -14,6 +14,7 @@ interface OrganizationInfo {
 
 interface AuthContextType {
   user: User | null
+  userId: string | null
   session: Session | null
   isAuthenticated: boolean
   isLoading: boolean
@@ -40,6 +41,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [availableOrganizations, setAvailableOrganizations] = useState<OrganizationInfo[]>([])
   const [selectedOrganizationId, setSelectedOrganizationId] = useState<string | null>(null)
+  const lastUserIdRef = useRef<string | null>(null)
   const { toast } = useToast()
 
   // Get user type, role, and org from bootstrap data (single source of truth)
@@ -60,9 +62,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       org.tenant_type === 'saas'
     ))
 
-  // Update user when session changes
+  // Update user only when the user ID changes (prevents refetches on tab focus)
   useEffect(() => {
-    setUser(session?.user ?? null)
+    const nextUser = session?.user ?? null
+    const nextId = nextUser?.id ?? null
+
+    if (lastUserIdRef.current !== nextId) {
+      lastUserIdRef.current = nextId
+      setUser(nextUser)
+    }
+    // else: same user ID → keep existing `user` object to preserve reference stability
   }, [session])
 
   // Fetch available organizations for platform admins
@@ -163,8 +172,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  const userId = user?.id ?? null
+
   const value = {
     user,
+    userId,
     session,
     isAuthenticated: !!user,
     isLoading,

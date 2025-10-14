@@ -72,7 +72,7 @@ export function useJobs() {
   const [jobs, setJobs] = useState<Job[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const { user, userType, organizationId } = useAuth()
+  const { user, userId, userType, organizationId } = useAuth()
   const { normalizeJobSpecs } = useJobSpecNormalization()
 
   // Optimized single query function to replace N+1 pattern
@@ -460,14 +460,14 @@ export function useJobs() {
   }
 
   useEffect(() => {
-    if (user) {
+    if (userId) {
       getJobs()
     }
-  }, [user, userType, organizationId])
+  }, [userId, userType, organizationId])
 
   // Add real-time subscriptions for jobs
   useEffect(() => {
-    if (!user) return
+    if (!userId) return
 
     console.log('Setting up real-time subscriptions for jobs')
     
@@ -537,7 +537,7 @@ export function useJobs() {
       supabase.removeChannel(jobRequestsChannel)
       supabase.removeChannel(jobAssignmentsChannel)
     }
-  }, [user, userType, organizationId])
+  }, [userId, userType, organizationId])
 
   return {
     jobs,

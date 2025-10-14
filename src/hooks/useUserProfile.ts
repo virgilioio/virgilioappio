@@ -22,7 +22,7 @@ export function useUserProfile() {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const { user } = useAuth()
+  const { user, userId } = useAuth()
 
   const getProfile = async () => {
     if (!user) return
@@ -140,10 +140,10 @@ export function useUserProfile() {
   }
 
   useEffect(() => {
-    if (user) {
+    if (userId) {
       getProfile()
     }
-  }, [user])
+  }, [userId])
 
   return {
     profile,
