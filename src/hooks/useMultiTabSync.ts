@@ -71,7 +71,7 @@ export function useMultiTabSync(onSessionUpdate?: (session: Session | null) => v
       console.log('💾 Storage change detected from another tab')
       
       // Prevent rapid-fire duplicate events
-      if (Date.now() - lastMessageTime.current < 100) return
+      if (Date.now() - lastMessageTime.current < 500) return
       lastMessageTime.current = Date.now()
       
       // Re-fetch the session

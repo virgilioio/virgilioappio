@@ -4,6 +4,8 @@ import { supabase } from '@/lib/supabaseClient'
 
 export function useFavicon() {
   useEffect(() => {
+    let hasRetried = false // Prevent infinite retry loops
+    
     const updateFavicon = async () => {
       try {
         const { data, error } = await supabase
@@ -81,28 +83,18 @@ export function useFavicon() {
       } catch (error) {
         console.log('Using default favicon - favicon loading failed:', error)
         
-        // Retry logic for mobile networks
-        setTimeout(() => {
-          console.log('Retrying favicon load...')
-          updateFavicon()
-        }, 2000)
+        // Only retry once with longer delay
+        if (!hasRetried) {
+          hasRetried = true
+          setTimeout(() => {
+            console.log('Retrying favicon load (one time only)...')
+            updateFavicon()
+          }, 5000)
+        }
       }
     }
 
-    // Initial load
+    // Load favicon once on mount
     updateFavicon()
-    
-    // Listen for page visibility changes (mobile apps coming back to foreground)
-    const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        updateFavicon()
-      }
-    }
-    
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-    
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
-    }
   }, [])
 }
