@@ -3,6 +3,8 @@ import { User, Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabaseClient'
 import { useToast } from '@/hooks/use-toast'
 import { useAuthBootstrap } from '@/hooks/useAuthBootstrap'
+import { log } from '@/lib/logger'
+import { extractErrorMessage } from '@/lib/authUtils'
 import { withTimeout, withRetry } from '@/utils/timeout'
 
 interface OrganizationInfo {
@@ -161,10 +163,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await new Promise(resolve => setTimeout(resolve, 50))
       
     } catch (err) {
-      console.error('[AuthContext] Logout error:', err)
+      log.error('[AuthContext] Logout error:', err)
       toast({
         title: "Error",
-        description: "Failed to log out. Please try again.",
+        description: extractErrorMessage(err),
         variant: "destructive",
       })
     } finally {

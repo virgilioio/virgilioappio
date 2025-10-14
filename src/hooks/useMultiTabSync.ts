@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { Session } from '@supabase/supabase-js'
+import { log } from '@/lib/logger'
 
 interface AuthSyncMessage {
   type: 'session_update' | 'session_refresh' | 'signout'
@@ -27,9 +28,9 @@ export function useMultiTabSync(onSessionUpdate?: (session: Session | null) => v
     
     try {
       channelRef.current.postMessage(message)
-      console.log('📡 Broadcast to other tabs:', type)
+      log.debug('📡 Broadcast to other tabs:', type)
     } catch (error) {
-      console.error('Failed to broadcast session update:', error)
+      log.error('Failed to broadcast session update:', error)
     }
   }, [])
 
@@ -38,7 +39,7 @@ export function useMultiTabSync(onSessionUpdate?: (session: Session | null) => v
     try {
       channelRef.current = new BroadcastChannel('supabase-auth')
     } catch (error) {
-      console.warn('BroadcastChannel not supported:', error)
+      log.warn('BroadcastChannel not supported:', error)
       return
     }
 
@@ -53,7 +54,7 @@ export function useMultiTabSync(onSessionUpdate?: (session: Session | null) => v
       if (Date.now() - lastMessageTime.current < 100) return
       lastMessageTime.current = Date.now()
       
-      console.log('📥 Received from other tab:', message.type)
+      log.debug('📥 Received from other tab:', message.type)
       
       // Update local session state based on message
       if (message.type === 'signout') {
@@ -73,7 +74,7 @@ export function useMultiTabSync(onSessionUpdate?: (session: Session | null) => v
       if (e.newValue === lastTokenValue.current) return
       lastTokenValue.current = e.newValue
       
-      console.log('💾 Storage change detected from another tab')
+      log.debug('💾 Storage change detected from another tab')
       
       // Prevent rapid-fire duplicate events
       if (Date.now() - lastMessageTime.current < 500) return
@@ -91,7 +92,7 @@ export function useMultiTabSync(onSessionUpdate?: (session: Session | null) => v
 
     // Set up auth state change listener to broadcast to other tabs
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('🔐 Auth state change:', event)
+      log.debug('🔐 Auth state change:', event)
       
       // Only broadcast events that other tabs MUST know about
       // SIGNED_IN events are already synced via storage events and handled by useAuthBootstrap

@@ -6,6 +6,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { VirgilioLogo } from '@/components/VirgilioLogo'
+import { log } from '@/lib/logger'
 
 export default function AuthCallback() {
   const navigate = useNavigate()
@@ -19,11 +20,9 @@ export default function AuthCallback() {
     processedRef.current = true
 
     // Dev-only: Log URL state for debugging
-    if (import.meta.env.DEV) {
-      console.debug('[AuthCallback] URL:', window.location.href)
-      console.debug('[AuthCallback] Has query code:', new URLSearchParams(window.location.search).has('code'))
-      console.debug('[AuthCallback] Has hash access_token:', window.location.hash.includes('access_token'))
-    }
+    log.debug('[AuthCallback] URL:', window.location.href)
+    log.debug('[AuthCallback] Has query code:', new URLSearchParams(window.location.search).has('code'))
+    log.debug('[AuthCallback] Has hash access_token:', window.location.hash.includes('access_token'))
 
     let cancelled = false
 
@@ -35,12 +34,10 @@ export default function AuthCallback() {
         const { data: { session }, error } = await supabase.auth.getSession()
         
         if (session) {
-          if (import.meta.env.DEV) {
-            console.debug('[AuthCallback] ✓ Session established:', {
-              userId: session.user.id,
-              email: session.user.email
-            })
-          }
+          log.debug('[AuthCallback] ✓ Session established:', {
+            userId: session.user.id,
+            email: session.user.email
+          })
           
           setStatus('success')
           
@@ -54,7 +51,7 @@ export default function AuthCallback() {
         }
 
         if (error) {
-          console.error('[AuthCallback] Session error:', error)
+          log.error('[AuthCallback] Session error:', error)
           setErrorMessage(error.message || 'Failed to establish session')
           setStatus('error')
           return
@@ -66,7 +63,7 @@ export default function AuthCallback() {
 
       // Timeout reached
       if (!cancelled) {
-        console.error('[AuthCallback] Session timeout')
+        log.error('[AuthCallback] Session timeout')
         setErrorMessage('Could not complete sign-in. Please try again.')
         setStatus('error')
       }

@@ -82,20 +82,6 @@ export async function withAuthRetry<T>(fn: () => Promise<T>): Promise<T> {
   }
 }
 
-// DEPRECATED: Legacy wrappers removed. Use withAuthRetry() directly.
-// These are kept temporarily for backwards compatibility but will be removed.
-
-/** @deprecated Use withAuthRetry() directly */
-export const withAuthRetrySelect = withAuthRetry
-
-/** @deprecated Use withAuthRetry() directly */
-export const withAuthRetryMutation = withAuthRetry
-
-/** @deprecated Use withAuthRetry() directly */
-export const withAuthRetryRpc = withAuthRetry
-
-/** @deprecated Use withAuthRetry() directly */
-export const withAuthRetryEdgeFunction = withAuthRetry
 
 /**
  * Resolve organization context with retry logic and timeout

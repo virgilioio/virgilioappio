@@ -72,11 +72,11 @@ export function useIndependentCandidates() {
       )
 
       if (fetchError) {
-        console.error('Error fetching independent candidates:', fetchError)
+        log.error('Error fetching independent candidates:', fetchError)
         throw fetchError
       }
 
-      console.log('Fetched independent candidates:', data)
+      log.debug('Fetched independent candidates:', data)
       // Type cast the data to fix auto_generated_skills type mismatch
       const typedData = (data || []).map(candidate => ({
         ...candidate,
@@ -104,7 +104,7 @@ export function useIndependentCandidates() {
     setError(null)
 
     try {
-      console.log('Adding independent candidate:', candidateData)
+      log.debug('Adding independent candidate:', candidateData)
       
       // Check for duplicates within the same organization
       if (candidateData.email || candidateData.candidate_name) {
@@ -121,7 +121,7 @@ export function useIndependentCandidates() {
         const count = (result as any).count
 
         if (result.error) {
-          console.error('Error checking for duplicates:', result.error)
+          log.error('Error checking for duplicates:', result.error)
         } else if (count && count > 0) {
           toast({
             title: 'Duplicate Candidate',
@@ -160,11 +160,11 @@ export function useIndependentCandidates() {
       )
 
       if (createError) {
-        console.error('Error adding independent candidate:', createError)
+        log.error('Error adding independent candidate:', createError)
         throw createError
       }
 
-      console.log('Added independent candidate:', newCandidate)
+      log.debug('Added independent candidate:', newCandidate)
       toast({
         title: 'Success',
         description: 'Candidate added successfully'
@@ -173,8 +173,8 @@ export function useIndependentCandidates() {
       await getCandidates() // Refresh the list
       return newCandidate
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to add candidate'
-      console.error('Independent candidate creation error:', err)
+      const errorMessage = extractErrorMessage(err)
+      log.error('Independent candidate creation error:', err)
       setError(errorMessage)
       toast({
         title: 'Error',
@@ -192,7 +192,7 @@ export function useIndependentCandidates() {
     setError(null)
 
     try {
-      console.log('Updating independent candidate:', id, candidateData)
+      log.debug('Updating independent candidate:', id, candidateData)
       
       // Explicitly map only valid database fields to prevent schema errors
       const updateData: Record<string, any> = {}
@@ -222,11 +222,11 @@ export function useIndependentCandidates() {
       )
 
       if (updateError) {
-        console.error('Error updating independent candidate:', updateError)
+        log.error('Error updating independent candidate:', updateError)
         throw updateError
       }
 
-      console.log('Updated independent candidate:', updatedCandidate)
+      log.debug('Updated independent candidate:', updatedCandidate)
       toast({
         title: 'Success',
         description: 'Candidate updated successfully'
@@ -235,8 +235,8 @@ export function useIndependentCandidates() {
       await getCandidates() // Refresh the list
       return updatedCandidate
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to update candidate'
-      console.error('Independent candidate update error:', err)
+      const errorMessage = extractErrorMessage(err)
+      log.error('Independent candidate update error:', err)
       setError(errorMessage)
       toast({
         title: 'Error',
@@ -263,11 +263,11 @@ export function useIndependentCandidates() {
       )
 
       if (deleteError) {
-        console.error('Error deleting independent candidate:', deleteError)
+        log.error('Error deleting independent candidate:', deleteError)
         throw deleteError
       }
 
-      console.log('Deleted independent candidate:', id)
+      log.debug('Deleted independent candidate:', id)
       toast({
         title: 'Success',
         description: 'Candidate deleted successfully'
@@ -275,8 +275,8 @@ export function useIndependentCandidates() {
 
       await getCandidates() // Refresh the list
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to delete candidate'
-      console.error('Independent candidate deletion error:', err)
+      const errorMessage = extractErrorMessage(err)
+      log.error('Independent candidate deletion error:', err)
       setError(errorMessage)
       toast({
         title: 'Error',

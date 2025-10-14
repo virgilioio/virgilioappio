@@ -103,7 +103,7 @@ export function useOrganizations() {
     setError(null)
 
     try {
-      console.log('Fetching organizations for user:', user.id, 'userType:', userType)
+      log.debug('Fetching organizations for user:', user.id, 'userType:', userType)
       
       let query = supabase
         .from('organizations')
@@ -139,11 +139,11 @@ export function useOrganizations() {
       )
 
       if (fetchError) {
-        console.error('Error fetching organizations:', fetchError)
+        log.error('Error fetching organizations:', fetchError)
         throw fetchError
       }
 
-      console.log('Successfully fetched organizations:', orgsData?.length)
+      log.debug('Successfully fetched organizations:', orgsData?.length)
       
       // Transform data to match Organization interface
       const organizationsWithDetails: Organization[] = (orgsData || []).map(org => {
@@ -175,8 +175,8 @@ export function useOrganizations() {
 
       setOrganizations(organizationsWithDetails)
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch organizations'
-      console.error('Organizations fetch error:', err)
+      const errorMessage = extractErrorMessage(err)
+      log.error('Organizations fetch error:', err)
       setError(errorMessage)
       toast({
         title: 'Error',
@@ -193,7 +193,7 @@ export function useOrganizations() {
     setError(null)
 
     try {
-      console.log('Creating organization:', data)
+      log.debug('Creating organization:', data)
       
       // Get user's tenant organization for parent assignment
       const tenantOrgId = await getUserTenantOrganization()
@@ -214,7 +214,7 @@ export function useOrganizations() {
         organization_type: 'client' // Client organization type
       }
       
-      console.log('Creating organization with data:', organizationData)
+      log.debug('Creating organization with data:', organizationData)
       
       const { data: newOrg, error: createError } = await supabase
         .from('organizations')
@@ -223,11 +223,11 @@ export function useOrganizations() {
         .single()
 
       if (createError) {
-        console.error('Error creating organization:', createError)
+        log.error('Error creating organization:', createError)
         throw createError
       }
 
-      console.log('Created organization:', newOrg)
+      log.debug('Created organization:', newOrg)
       toast({
         title: 'Success',
         description: 'Organization created successfully'
@@ -236,8 +236,8 @@ export function useOrganizations() {
       await getOrganizations()
       return newOrg
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to create organization'
-      console.error('Organization creation error:', err)
+      const errorMessage = extractErrorMessage(err)
+      log.error('Organization creation error:', err)
       setError(errorMessage)
       toast({
         title: 'Error',
@@ -255,7 +255,7 @@ export function useOrganizations() {
     setError(null)
 
     try {
-      console.log('Updating organization:', id, data)
+      log.debug('Updating organization:', id, data)
       
       const updateData = { ...data }
       if (data.billing_poc_user_id !== undefined || data.billing_poc_additional_email !== undefined || data.billing_poc_phone !== undefined) {
@@ -271,11 +271,11 @@ export function useOrganizations() {
         .single()
 
       if (updateError) {
-        console.error('Error updating organization:', updateError)
+        log.error('Error updating organization:', updateError)
         throw updateError
       }
 
-      console.log('Updated organization:', updatedOrg)
+      log.debug('Updated organization:', updatedOrg)
       toast({
         title: 'Success',
         description: 'Organization updated successfully'
@@ -284,8 +284,8 @@ export function useOrganizations() {
       await getOrganizations()
       return updatedOrg
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to update organization'
-      console.error('Organization update error:', err)
+      const errorMessage = extractErrorMessage(err)
+      log.error('Organization update error:', err)
       setError(errorMessage)
       toast({
         title: 'Error',
@@ -303,18 +303,18 @@ export function useOrganizations() {
     setError(null)
 
     try {
-      console.log('Soft deleting organization:', id)
+      log.debug('Soft deleting organization:', id)
       const { error: deleteError } = await supabase
         .from('organizations')
         .update({ status: 'inactive' })
         .eq('id', id)
 
       if (deleteError) {
-        console.error('Error deleting organization:', deleteError)
+        log.error('Error deleting organization:', deleteError)
         throw deleteError
       }
 
-      console.log('Soft deleted organization:', id)
+      log.debug('Soft deleted organization:', id)
       toast({
         title: 'Success',
         description: 'Organization deactivated successfully'
@@ -322,8 +322,8 @@ export function useOrganizations() {
 
       await getOrganizations()
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to deactivate organization'
-      console.error('Organization deletion error:', err)
+      const errorMessage = extractErrorMessage(err)
+      log.error('Organization deletion error:', err)
       setError(errorMessage)
       toast({
         title: 'Error',

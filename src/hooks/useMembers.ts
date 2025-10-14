@@ -51,7 +51,7 @@ export function useMembers() {
     setError(null)
 
     try {
-      console.log('Fetching members for user:', user.id)
+      log.debug('Fetching members for user:', user.id)
       
       const { data: membersData, error: membersError } = await supabase
         .from('members')
@@ -59,19 +59,19 @@ export function useMembers() {
         .order('created_at', { ascending: false })
 
       if (membersError) {
-        console.error('Error fetching members:', membersError)
+        log.error('Error fetching members:', membersError)
         if (membersError.message.includes('row-level security')) {
-          console.warn('RLS policy blocked access - user may not have permission to view members')
+          log.warn('RLS policy blocked access - user may not have permission to view members')
           setMembers([])
           return
         }
         throw membersError
       }
 
-      console.log('Fetched members:', membersData)
+      log.debug('Fetched members:', membersData)
 
       if (!membersData || membersData.length === 0) {
-        console.log('No members found')
+        log.debug('No members found')
         setMembers([])
         return
       }
@@ -123,17 +123,17 @@ export function useMembers() {
         // 3. If we have user_id but no profile, try the RPC call
         else if (member.user_id) {
           try {
-            console.log(`Fetching fallback email for member ${member.id} with user_id ${member.user_id}`)
+            log.debug(`Fetching fallback email for member ${member.id} with user_id ${member.user_id}`)
             const { data: memberInfo } = await supabase.rpc('get_member_display_info', {
               member_user_id: member.user_id
             })
             
             if (memberInfo && memberInfo.length > 0) {
               user_email = memberInfo[0].email
-              console.log(`Fallback email resolved: ${user_email}`)
+              log.debug(`Fallback email resolved: ${user_email}`)
             }
           } catch (error) {
-            console.warn('Failed to fetch fallback email for member:', member.id, error)
+            log.warn('Failed to fetch fallback email for member:', member.id, error)
           }
         }
         
@@ -151,11 +151,11 @@ export function useMembers() {
         return typedMember
       }))
 
-      console.log('Final members with details:', membersWithDetails)
+      log.debug('Final members with details:', membersWithDetails)
       setMembers(membersWithDetails)
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to fetch members'
-      console.error('Members fetch error:', err)
+      const errorMessage = extractErrorMessage(err)
+      log.error('Members fetch error:', err)
       setError(errorMessage)
       toast({
         title: 'Error',
@@ -182,14 +182,14 @@ export function useMembers() {
       )
 
       if (error) {
-        console.error('Error sending invitation email:', error)
+        log.error('Error sending invitation email:', error)
         throw error
       }
 
-      console.log('Invitation email sent successfully:', data)
+      log.debug('Invitation email sent successfully:', data)
       return data
     } catch (error) {
-      console.error('Failed to send invitation email:', error)
+      log.error('Failed to send invitation email:', error)
       throw error
     }
   }
@@ -211,22 +211,22 @@ export function useMembers() {
       const baseUrl = window.location.origin
       return `${baseUrl}/accept-invite/${member.invite_token}`
     } catch (error) {
-      console.error('Failed to get invite URL:', error)
+      log.error('Failed to get invite URL:', error)
       throw error
     }
   }
 
   const syncSeatsAfterChange = async () => {
     try {
-      console.log('Invoking update-seat-quantity after member change')
+      log.debug('Invoking update-seat-quantity after member change')
       const { data, error } = await supabase.functions.invoke('update-seat-quantity')
       if (error) {
-        console.warn('update-seat-quantity error (non-fatal):', error)
+        log.warn('update-seat-quantity error (non-fatal):', error)
       } else {
-        console.log('update-seat-quantity success:', data)
+        log.debug('update-seat-quantity success:', data)
       }
     } catch (e) {
-      console.warn('update-seat-quantity failed (ignored):', e)
+      log.warn('update-seat-quantity failed (ignored):', e)
     }
   }
 
@@ -241,12 +241,12 @@ export function useMembers() {
     setError(null)
 
     try {
-      console.log('Creating member with organization_id:', data.organization_id, 'Full data:', data)
+      log.debug('Creating member with organization_id:', data.organization_id, 'Full data:', data)
       
       // Check for email duplication if email is provided
       if (data.email) {
         const emailToCheck = data.email;
-        console.log('Checking for existing member with email:', emailToCheck)
+        log.debug('Checking for existing member with email:', emailToCheck)
         
         // Check for existing member with the same email in any organization
         const { data: existingMember, error: checkError } = await withAuthRetry(async () =>
@@ -259,7 +259,7 @@ export function useMembers() {
         )
 
         if (checkError && checkError.code !== 'PGRST116') { // PGRST116 = no rows returned
-          console.error('Error checking for existing member:', checkError)
+          log.error('Error checking for existing member:', checkError)
           throw checkError
         }
 
@@ -270,7 +270,7 @@ export function useMembers() {
             const now = new Date()
             
             if (expiresAt < now) {
-              console.log('Removing expired invitation for:', emailToCheck)
+              log.debug('Removing expired invitation for:', emailToCheck)
               await supabase
                 .from('members')
                 .delete()
@@ -310,11 +310,11 @@ export function useMembers() {
       )
 
       if (createError) {
-        console.error('Error creating member:', createError)
+        log.error('Error creating member:', createError)
         throw createError
       }
 
-      console.log('Created member:', newMember)
+      log.debug('Created member:', newMember)
 
       // Send invitation email if creating a new invitation with email
       const emailToInvite = data.email;
@@ -328,7 +328,7 @@ export function useMembers() {
           // Return the invite URL along with the member data
           return { ...newMember, inviteUrl: inviteData?.inviteUrl }
         } catch (emailError) {
-          console.error('Failed to send invitation email:', emailError)
+          log.error('Failed to send invitation email:', emailError)
           toast({
             title: 'Member Created',
             description: 'Member created but invitation email failed to send. You may need to resend the invitation.',
@@ -346,8 +346,8 @@ export function useMembers() {
       await syncSeatsAfterChange()
       return newMember
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to create member'
-      console.error('Member creation error:', err)
+      const errorMessage = extractErrorMessage(err)
+      log.error('Member creation error:', err)
       setError(errorMessage)
       toast({
         title: 'Error',
@@ -376,11 +376,11 @@ export function useMembers() {
       )
 
       if (updateError) {
-        console.error('Error updating member:', updateError)
+        log.error('Error updating member:', updateError)
         throw updateError
       }
 
-      console.log('Updated member:', updatedMember)
+      log.debug('Updated member:', updatedMember)
       toast({
         title: 'Success',
         description: 'Member updated successfully'
@@ -390,8 +390,8 @@ export function useMembers() {
       await syncSeatsAfterChange()
       return updatedMember
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to update member'
-      console.error('Member update error:', err)
+      const errorMessage = extractErrorMessage(err)
+      log.error('Member update error:', err)
       setError(errorMessage)
       toast({
         title: 'Error',
@@ -409,18 +409,18 @@ export function useMembers() {
     setError(null)
 
     try {
-      console.log('Deactivating member:', id)
+      log.debug('Deactivating member:', id)
       const { error: updateError } = await supabase
         .from('members')
         .update({ user_status: 'inactive' })
         .eq('id', id)
 
       if (updateError) {
-        console.error('Error deactivating member:', updateError)
+        log.error('Error deactivating member:', updateError)
         throw updateError
       }
 
-      console.log('Deactivated member:', id)
+      log.debug('Deactivated member:', id)
       toast({
         title: 'Success',
         description: 'Member deactivated successfully'
@@ -429,8 +429,8 @@ export function useMembers() {
       await getMembers()
       await syncSeatsAfterChange()
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to deactivate member'
-      console.error('Member deactivation error:', err)
+      const errorMessage = extractErrorMessage(err)
+      log.error('Member deactivation error:', err)
       setError(errorMessage)
       toast({
         title: 'Error',
@@ -452,7 +452,7 @@ export function useMembers() {
         description: 'Invitation resent successfully'
       })
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to resend invitation'
+      const errorMessage = extractErrorMessage(error)
       toast({
         title: 'Error',
         description: errorMessage,

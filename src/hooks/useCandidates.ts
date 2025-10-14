@@ -186,7 +186,7 @@ export function useCandidates(jobId: string) {
           .eq('id', candidateId)
 
         if (updateError) {
-          console.error('Error marking candidate as viewed:', updateError)
+          log.error('Error marking candidate as viewed:', updateError)
           return
         }
 
@@ -198,7 +198,7 @@ export function useCandidates(jobId: string) {
         ))
       }
     } catch (err) {
-      console.error('Error in markCandidateAsViewed:', err)
+      log.error('Error in markCandidateAsViewed:', err)
     }
   }
 
@@ -224,7 +224,7 @@ export function useCandidates(jobId: string) {
         .single()
 
       if (jobError) {
-        console.error('Error verifying job access:', jobError)
+        log.error('Error verifying job access:', jobError)
         throw new Error('Unable to verify job access. You may not have permission to add candidates to this job.')
       }
 
@@ -232,7 +232,7 @@ export function useCandidates(jobId: string) {
         throw new Error('Job not found or you do not have access to this job.')
       }
 
-      console.log('Job verification successful:', jobData)
+      log.debug('Job verification successful:', jobData)
 
       // Step 1: Check if candidate already exists in global candidates table
       let globalCandidateId: string | null = null
@@ -273,9 +273,9 @@ export function useCandidates(jobId: string) {
 
         if (!globalError && newGlobalCandidate) {
           globalCandidateId = newGlobalCandidate.id
-          console.log('Created global candidate:', globalCandidateId)
+          log.debug('Created global candidate:', globalCandidateId)
         } else {
-          console.error('Error creating global candidate:', globalError)
+          log.error('Error creating global candidate:', globalError)
           throw globalError || new Error('Failed to create global candidate')
         }
       } else {
@@ -310,7 +310,7 @@ export function useCandidates(jobId: string) {
         .single()
 
       if (assocError) {
-        console.error('Error creating association:', assocError)
+        log.error('Error creating association:', assocError)
         
         // Provide more specific error messages based on the error type
         if (assocError.message.includes('row-level security')) {
@@ -322,7 +322,7 @@ export function useCandidates(jobId: string) {
         }
       }
 
-      console.log('Added candidate association:', newAssociation)
+      log.debug('Added candidate association:', newAssociation)
       toast({
         title: 'Success',
         description: 'Candidate added. You can attach a resume from the candidate panel.',
@@ -331,8 +331,8 @@ export function useCandidates(jobId: string) {
       await getCandidates() // Refresh the list
       return newAssociation
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to add candidate'
-      console.error('Candidate creation error:', err)
+      const errorMessage = extractErrorMessage(err)
+      log.error('Candidate creation error:', err)
       setError(errorMessage)
       toast({
         title: 'Error',
@@ -350,7 +350,7 @@ export function useCandidates(jobId: string) {
     setError(null)
 
     try {
-      console.log('Updating global candidate:', id, candidateData)
+      log.debug('Updating global candidate:', id, candidateData)
       
       // Update the global candidate record (exclude notes as it belongs to association, not candidates table)
       const { notes, ...globalCandidateData } = candidateData
@@ -383,7 +383,7 @@ export function useCandidates(jobId: string) {
         .single()
 
       if (updateError) {
-        console.error('Error updating global candidate:', updateError)
+        log.error('Error updating global candidate:', updateError)
         throw updateError
       }
 
@@ -398,7 +398,7 @@ export function useCandidates(jobId: string) {
         }
       }
 
-      console.log('Updated candidate:', updatedCandidate)
+      log.debug('Updated candidate:', updatedCandidate)
       toast({
         title: 'Success',
         description: 'Candidate updated successfully'
@@ -407,8 +407,8 @@ export function useCandidates(jobId: string) {
       await getCandidates() // Refresh the list
       return updatedCandidate
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to update candidate'
-      console.error('Candidate update error:', err)
+      const errorMessage = extractErrorMessage(err)
+      log.error('Candidate update error:', err)
       setError(errorMessage)
       toast({
         title: 'Error',
@@ -426,7 +426,7 @@ export function useCandidates(jobId: string) {
     setError(null)
 
     try {
-      console.log('Removing candidate from job:', id)
+      log.debug('Removing candidate from job:', id)
       
       // Find the association for this candidate and job
       const candidate = candidates.find(c => c.id === id)
@@ -437,12 +437,12 @@ export function useCandidates(jobId: string) {
           .eq('id', candidate.association_id)
 
         if (deleteError) {
-          console.error('Error removing candidate association:', deleteError)
+          log.error('Error removing candidate association:', deleteError)
           throw deleteError
         }
       }
 
-      console.log('Removed candidate from job:', id)
+      log.debug('Removed candidate from job:', id)
       toast({
         title: 'Success',
         description: 'Candidate removed from job successfully'
@@ -450,8 +450,8 @@ export function useCandidates(jobId: string) {
 
       await getCandidates() // Refresh the list
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to delete candidate'
-      console.error('Candidate deletion error:', err)
+      const errorMessage = extractErrorMessage(err)
+      log.error('Candidate deletion error:', err)
       setError(errorMessage)
       toast({
         title: 'Error',
