@@ -13,6 +13,7 @@ export function useMultiTabSync(onSessionUpdate?: (session: Session | null) => v
   const channelRef = useRef<BroadcastChannel | null>(null)
   const tabId = useRef(Math.random().toString(36).substring(7))
   const lastMessageTime = useRef(0)
+  const lastTokenValue = useRef<string | null>(null)
   
   const broadcastSessionUpdate = useCallback((session: Session | null, type: AuthSyncMessage['type'] = 'session_update') => {
     if (!channelRef.current) return
@@ -67,6 +68,10 @@ export function useMultiTabSync(onSessionUpdate?: (session: Session | null) => v
     // Listen for storage events (fallback for older browsers)
     const handleStorageChange = (e: StorageEvent) => {
       if (!e.key?.includes('supabase.auth.token')) return
+      
+      // Only react if the token value actually changed
+      if (e.newValue === lastTokenValue.current) return
+      lastTokenValue.current = e.newValue
       
       console.log('💾 Storage change detected from another tab')
       

@@ -51,8 +51,8 @@ export function useSessionMonitor() {
   }, [])
 
   useEffect(() => {
-    // Check session expiry every 2 minutes
-    const interval = setInterval(checkSessionExpiry, 2 * 60 * 1000)
+    // Check session expiry every 15 minutes (reduced from 2 minutes)
+    const interval = setInterval(checkSessionExpiry, 15 * 60 * 1000)
     
     // Initial check
     checkSessionExpiry()

@@ -149,7 +149,7 @@ export function useAuthBootstrap() {
    */
   const debouncedBootstrap = debounce((session: Session) => {
     resolveOrgContext(session);
-  }, 150);
+  }, 1000); // Increased from 150ms to 1000ms to batch tab switches
 
   useEffect(() => {
     let mounted = true;
