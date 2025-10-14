@@ -133,7 +133,7 @@ export function CandidateNameCard({
         </div>
 
         {/* Tabs */}
-        <div className="w-full bg-surface-secondary rounded-xl p-1">
+        <div className="w-full rounded-xl p-1" style={{ backgroundColor: '#fffcf9' }}>
           <div className="inline-flex h-auto items-center justify-start rounded-xl bg-transparent p-0 text-muted-foreground w-full">
             {tabs.map(({ value, label, Icon }) => (
               <button
