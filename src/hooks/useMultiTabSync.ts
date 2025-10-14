@@ -93,13 +93,12 @@ export function useMultiTabSync(onSessionUpdate?: (session: Session | null) => v
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('🔐 Auth state change:', event)
       
-      // Broadcast to other tabs
+      // Only broadcast events that other tabs MUST know about
+      // SIGNED_IN events are already synced via storage events and handled by useAuthBootstrap
       if (event === 'SIGNED_OUT') {
         broadcastSessionUpdate(null, 'signout')
       } else if (event === 'TOKEN_REFRESHED') {
         broadcastSessionUpdate(session, 'session_refresh')
-      } else if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
-        broadcastSessionUpdate(session, 'session_update')
       }
     })
 
