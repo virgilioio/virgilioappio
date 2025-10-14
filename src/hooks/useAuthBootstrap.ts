@@ -28,6 +28,7 @@ export function useAuthBootstrap() {
   });
 
   const abortControllerRef = useRef<AbortController | null>(null);
+  const lastUserIdRef = useRef<string | null>(null);
 
   // Handle session updates from other tabs
   const handleSessionUpdate = (session: Session | null) => {
@@ -167,6 +168,7 @@ export function useAuthBootstrap() {
       }
 
       log.info('🔐 Bootstrap start (initial mount)');
+      lastUserIdRef.current = session.user.id;
       await resolveOrgContext(session);
     }
 
@@ -185,19 +187,35 @@ export function useAuthBootstrap() {
       }
 
       if (event === 'SIGNED_OUT') {
+        lastUserIdRef.current = null;
         clearOrgCache();
         setState({ ready: true, session: null, orgContext: null });
         return;
       }
 
       if (!session) {
+        lastUserIdRef.current = null;
         clearOrgCache();
         setState({ ready: true, session: null, orgContext: null });
         return;
       }
 
-      // Only trigger bootstrap for real events: SIGNED_IN, TOKEN_REFRESHED, USER_UPDATED
-      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+      // Filter out redundant SIGNED_IN events from tab visibility
+      const currentUserId = session.user.id;
+      const userChanged = lastUserIdRef.current !== currentUserId;
+      
+      if (event === 'SIGNED_IN') {
+        // Only bootstrap on SIGNED_IN if this is a different user
+        if (userChanged) {
+          log.info('🔐 New user signed in, bootstrapping...');
+          lastUserIdRef.current = currentUserId;
+          debouncedBootstrap(session);
+        } else {
+          log.info('⏭️ Ignoring redundant SIGNED_IN event for same user');
+        }
+      } else if (event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+        // Always update on token refresh or user updates
+        lastUserIdRef.current = currentUserId;
         debouncedBootstrap(session);
       }
     });
