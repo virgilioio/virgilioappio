@@ -141,8 +141,9 @@ export function CandidateNameCard({
                 onClick={() => onTabChange(value)}
                 className={cn(
                   'inline-flex items-center justify-center whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-muted/50',
-                  activeTab === value && 'bg-accent text-accent-foreground'
+                  activeTab === value && 'text-purple-900'
                 )}
+                style={activeTab === value ? { backgroundColor: '#d7c5fb' } : undefined}
               >
                 {Icon ? <Icon className="h-4 w-4 mr-2" /> : null}
                 {label}
