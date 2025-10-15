@@ -20,7 +20,11 @@ interface AuthBootstrapState {
   orgContext: OrgContext | null;
 }
 
-export function useAuthBootstrap() {
+interface AuthBootstrapReturn extends AuthBootstrapState {
+  forceRefresh: () => Promise<void>;
+}
+
+export function useAuthBootstrap(): AuthBootstrapReturn {
   const [state, setState] = useState<AuthBootstrapState>({
     ready: false,
     session: null,
@@ -44,6 +48,17 @@ export function useAuthBootstrap() {
 
   // Enable multi-tab synchronization
   useMultiTabSync(handleSessionUpdate);
+
+  /**
+   * Force refresh org context (bypasses cache)
+   */
+  const forceRefresh = async (): Promise<void> => {
+    const { data: { session: currentSession } } = await supabase.auth.getSession();
+    if (currentSession?.user) {
+      clearOrgCache();
+      await resolveOrgContext(currentSession);
+    }
+  };
 
   /**
    * Resolve org context with cache-first approach
@@ -229,5 +244,8 @@ export function useAuthBootstrap() {
     };
   }, []);
 
-  return state;
+  return {
+    ...state,
+    forceRefresh,
+  };
 }

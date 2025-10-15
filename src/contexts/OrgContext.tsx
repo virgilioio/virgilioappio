@@ -13,7 +13,7 @@ interface OrgContextType {
 const OrgContext = createContext<OrgContextType | undefined>(undefined)
 
 export function OrgContextProvider({ children }: { children: React.ReactNode }) {
-  const { ready, session, orgContext } = useAuthBootstrap()
+  const { ready, session, orgContext, forceRefresh } = useAuthBootstrap()
   const [organizationId, setOrganizationId] = useState<string | null>(null)
   const [role, setRole] = useState<string | null>(null)
   const [userType, setUserType] = useState<string | null>(null)
@@ -28,8 +28,8 @@ export function OrgContextProvider({ children }: { children: React.ReactNode }) 
   }, [ready, orgContext])
 
   const refreshOrgContext = async () => {
-    // Refresh is handled by auth state changes in useAuthBootstrap
-    // This is a no-op for now, but kept for API compatibility
+    // Force refresh the organization context from the database
+    await forceRefresh()
   }
 
   const hasOrganizationContext = organizationId !== null

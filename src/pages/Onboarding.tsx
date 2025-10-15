@@ -72,10 +72,13 @@ export default function Onboarding() {
       })
       if (setOrgErr) throw setOrgErr
 
-      toast({ title: 'Workspace created', description: 'Your trial is active for 30 days.' })
+      toast({ title: 'Success', description: 'Setting up your workspace...' })
       
       // Refresh org context from database (DB-driven, not JWT-driven)
       await refreshOrgContext()
+      
+      // Small delay to ensure context is fully updated
+      await new Promise(resolve => setTimeout(resolve, 500))
       
       navigate('/dashboard', { replace: true })
     } catch (err: any) {
