@@ -6,10 +6,6 @@ const corsHeaders = createSecureCorsHeaders();
 
 interface DeleteUserRequest {
   userId: string
-  reassignBillingPoc?: {
-    organizationId: string
-    newBillingPocUserId: string | null
-  }
 }
 
 Deno.serve(async (req) => {
@@ -62,31 +58,7 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Step 1: Handle billing POC reassignment if provided
-    if (body.reassignBillingPoc) {
-      const { organizationId, newBillingPocUserId } = body.reassignBillingPoc
-      
-      const { error: reassignError } = await supabaseClient
-        .from('organizations')
-        .update({ 
-          billing_poc_user_id: newBillingPocUserId,
-          billing_poc_updated_by: user.id,
-          billing_poc_updated_at: new Date().toISOString()
-        })
-        .eq('id', organizationId)
-
-      if (reassignError) {
-        console.error('Error reassigning billing POC:', reassignError)
-        return new Response(
-          JSON.stringify({ error: 'Failed to reassign billing POC', details: reassignError.message }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        )
-      }
-
-      console.log('Billing POC reassigned successfully')
-    }
-
-    // Step 2: Use the safe delete function to remove from public tables
+    // Step 1: Use the safe delete function to remove from public tables
     const { data: deleteResult, error: deleteError } = await supabaseClient
       .rpc('safe_delete_user', { target_user_id: body.userId })
 
@@ -107,7 +79,7 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Step 3: Delete from auth.users using admin client (only if user has auth record)
+    // Step 2: Delete from auth.users using admin client (only if user has auth record)
     let authDeleteMessage = 'No auth user to delete (invited member only)';
     
     // Only try to delete from auth if userId is a valid UUID and user exists
