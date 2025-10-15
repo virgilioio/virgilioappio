@@ -102,7 +102,8 @@ export default {
 					orange: 'hsl(var(--pastel-orange))',
 					'orange-foreground': 'hsl(var(--pastel-orange-foreground))'
 				},
-				'purple-period': 'hsl(var(--purple-period))'
+				'purple-period': 'hsl(var(--purple-period))',
+				'loading-ellipsis': '#d7c5fb'
 			},
 			borderRadius: {
 				xs: '4px',

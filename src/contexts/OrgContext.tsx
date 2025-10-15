@@ -28,8 +28,24 @@ export function OrgContextProvider({ children }: { children: React.ReactNode }) 
   }, [ready, orgContext])
 
   const refreshOrgContext = async () => {
-    // Force refresh the organization context from the database
+    // Step 1: Force refresh from database
     await forceRefresh()
+    
+    // Step 2: Wait for React state to propagate (give useEffect time to run)
+    await new Promise(resolve => setTimeout(resolve, 100))
+    
+    // Step 3: Poll until organizationId is actually set (with timeout)
+    let attempts = 0
+    const maxAttempts = 20 // 2 seconds max wait
+    
+    while (organizationId === null && attempts < maxAttempts) {
+      await new Promise(resolve => setTimeout(resolve, 100))
+      attempts++
+    }
+    
+    if (organizationId === null) {
+      throw new Error('Failed to load organization context after refresh')
+    }
   }
 
   const hasOrganizationContext = organizationId !== null

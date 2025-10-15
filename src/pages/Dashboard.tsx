@@ -10,10 +10,18 @@ import { usePermissions } from '@/hooks/usePermissions'
 import { PermissionGate } from '@/components/auth/PermissionGate'
 import { Section } from '@/components/layout/Section'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { useOrgContext } from '@/contexts/OrgContext'
+import { WorkspaceProvisioningLoader } from '@/components/onboarding/WorkspaceProvisioningLoader'
 
 export default function Dashboard() {
   const { profile, isLoading } = useUserProfile()
   const permissions = usePermissions()
+  const { isLoading: orgLoading, hasOrganizationContext } = useOrgContext()
+  
+  // Fallback loader if context isn't ready
+  if (orgLoading || !hasOrganizationContext) {
+    return <WorkspaceProvisioningLoader status="finalizing" />
+  }
 
   // Check what content will be visible - only platform admins can see billing
   const hasBillingContent = permissions.isPlatformAdmin

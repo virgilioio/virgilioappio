@@ -12,12 +12,14 @@ import { VerifyEmailPending } from '@/components/VerifyEmailPending'
 import { useAuth } from '@/contexts/AuthContext'
 import { useOrgContext } from '@/contexts/OrgContext'
 import onboardingHero from '@/assets/onboarding-hero-new.png'
+import { WorkspaceProvisioningLoader } from '@/components/onboarding/WorkspaceProvisioningLoader'
 
 export default function Onboarding() {
   const [workspaceName, setWorkspaceName] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [emailVerified, setEmailVerified] = useState<boolean | null>(null)
   const [userEmail, setUserEmail] = useState('')
+  const [provisioningStatus, setProvisioningStatus] = useState<'idle' | 'creating' | 'configuring' | 'finalizing'>('idle')
   const { toast } = useToast()
   const navigate = useNavigate()
   
@@ -48,44 +50,57 @@ export default function Onboarding() {
       toast({ title: 'Workspace name is required', variant: 'destructive' })
       return
     }
+    
     setIsSubmitting(true)
+    setProvisioningStatus('creating')
+    
     try {
+      // Step 1: Provision tenant
       const { data, error } = await supabase.functions.invoke('provision-tenant', {
         body: { workspaceName },
       })
       if (error) {
-        // Handle email verification error specifically
         if (error.message?.includes('EMAIL_NOT_VERIFIED')) {
           setEmailVerified(false)
+          setProvisioningStatus('idle')
           setIsSubmitting(false)
           return
         }
         throw error
       }
-      const tenantId = (data as any)?.tenantId
+      
       const workspaceId = (data as any)?.workspaceId
       if (!workspaceId) throw new Error('Provisioning failed: no workspace id')
 
-      // Set current organization context to the workspace
+      // Step 2: Set organization context
+      setProvisioningStatus('configuring')
+      
       const { error: setOrgErr } = await supabase.functions.invoke('set-current-organization', {
         body: { organizationId: workspaceId },
       })
       if (setOrgErr) throw setOrgErr
 
-      toast({ title: 'Success', description: 'Setting up your workspace...' })
+      // Step 3: Refresh and wait for full propagation
+      setProvisioningStatus('finalizing')
       
-      // Refresh org context from database (DB-driven, not JWT-driven)
-      await refreshOrgContext()
+      await refreshOrgContext() // This now polls until organizationId is set
       
-      // Small delay to ensure context is fully updated
+      // Step 4: Keep loader visible for smooth UX
       await new Promise(resolve => setTimeout(resolve, 500))
       
+      // Navigate - context is guaranteed ready
       navigate('/dashboard', { replace: true })
+      
     } catch (err: any) {
+      setProvisioningStatus('idle')
       if (err?.message?.includes('EMAIL_NOT_VERIFIED')) {
         setEmailVerified(false)
       } else {
-        toast({ title: 'Onboarding failed', description: err?.message || 'Please try again', variant: 'destructive' })
+        toast({ 
+          title: 'Onboarding failed', 
+          description: err?.message || 'Please try again', 
+          variant: 'destructive' 
+        })
       }
     } finally {
       setIsSubmitting(false)
@@ -115,7 +130,13 @@ export default function Onboarding() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col lg:flex-row">
+    <>
+      {/* Provisioning loader overlay */}
+      {provisioningStatus !== 'idle' && (
+        <WorkspaceProvisioningLoader status={provisioningStatus} />
+      )}
+      
+      <div className="min-h-screen flex flex-col lg:flex-row">
 
       {/* Left Side - Responsive width with #fffead background */}
       <div className="w-full lg:w-1/2 relative overflow-hidden flex items-center justify-center min-h-[50vh] lg:min-h-screen" style={{ backgroundColor: '#fffead' }}>
@@ -192,5 +213,6 @@ export default function Onboarding() {
         </div>
       </div>
     </div>
+    </>
   )
 }
