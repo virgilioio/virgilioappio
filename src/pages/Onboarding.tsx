@@ -19,7 +19,7 @@ export default function Onboarding() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [emailVerified, setEmailVerified] = useState<boolean | null>(null)
   const [userEmail, setUserEmail] = useState('')
-  const [provisioningStatus, setProvisioningStatus] = useState<'idle' | 'creating' | 'configuring' | 'finalizing'>('idle')
+  const [provisioningStatus, setProvisioningStatus] = useState<'idle' | 'creating' | 'configuring' | 'finalizing' | 'complete'>('idle')
   const { toast } = useToast()
   const navigate = useNavigate()
   
@@ -83,10 +83,13 @@ export default function Onboarding() {
       // Step 3: Refresh and wait for full propagation
       setProvisioningStatus('finalizing')
       
-      await refreshOrgContext() // This now polls until organizationId is set
+      await refreshOrgContext() // This now polls until organizationId is set (using ref)
       
-      // Step 4: Keep loader visible for smooth UX
-      await new Promise(resolve => setTimeout(resolve, 500))
+      // Step 4: Show "complete" state with fade-out
+      setProvisioningStatus('complete')
+      
+      // Wait for fade-out animation (300ms)
+      await new Promise(resolve => setTimeout(resolve, 300))
       
       // Navigate - context is guaranteed ready
       navigate('/dashboard', { replace: true })
@@ -133,7 +136,10 @@ export default function Onboarding() {
     <>
       {/* Provisioning loader overlay */}
       {provisioningStatus !== 'idle' && (
-        <WorkspaceProvisioningLoader status={provisioningStatus} />
+        <WorkspaceProvisioningLoader 
+          status={provisioningStatus === 'complete' ? 'finalizing' : provisioningStatus}
+          className={provisioningStatus === 'complete' ? 'animate-fade-out' : ''}
+        />
       )}
       
       <div className="min-h-screen flex flex-col lg:flex-row">

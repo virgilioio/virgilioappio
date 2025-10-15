@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react'
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react'
 import { useAuthBootstrap } from '@/hooks/useAuthBootstrap'
 
 interface OrgContextType {
@@ -17,6 +17,9 @@ export function OrgContextProvider({ children }: { children: React.ReactNode }) 
   const [organizationId, setOrganizationId] = useState<string | null>(null)
   const [role, setRole] = useState<string | null>(null)
   const [userType, setUserType] = useState<string | null>(null)
+  
+  // Create ref that always tracks latest organizationId
+  const organizationIdRef = useRef(organizationId)
 
   // Update state when bootstrap completes
   useEffect(() => {
@@ -26,6 +29,11 @@ export function OrgContextProvider({ children }: { children: React.ReactNode }) 
       setUserType(orgContext?.userType || null)
     }
   }, [ready, orgContext])
+  
+  // Keep ref in sync with state
+  useEffect(() => {
+    organizationIdRef.current = organizationId
+  }, [organizationId])
 
   const refreshOrgContext = async () => {
     // Step 1: Force refresh from database
@@ -35,15 +43,16 @@ export function OrgContextProvider({ children }: { children: React.ReactNode }) 
     await new Promise(resolve => setTimeout(resolve, 100))
     
     // Step 3: Poll until organizationId is actually set (with timeout)
+    // Use ref to avoid closure issues - ref always sees latest state
     let attempts = 0
     const maxAttempts = 20 // 2 seconds max wait
     
-    while (organizationId === null && attempts < maxAttempts) {
+    while (organizationIdRef.current === null && attempts < maxAttempts) {
       await new Promise(resolve => setTimeout(resolve, 100))
       attempts++
     }
     
-    if (organizationId === null) {
+    if (organizationIdRef.current === null) {
       throw new Error('Failed to load organization context after refresh')
     }
   }
