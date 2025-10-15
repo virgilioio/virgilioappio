@@ -70,18 +70,32 @@ export function useContractTemplates(context: ContractTemplatesContext = 'organi
     name: string;
     description?: string;
     content: string;
-    organization_id?: string | null;
   }) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
+      let orgId: string | null = null;
+      
+      if (context === 'organization') {
+        const { data: memberData } = await supabase
+          .from('members')
+          .select('organization_id')
+          .eq('user_id', user.id)
+          .single();
+        
+        orgId = memberData?.organization_id || null;
+      }
+
       const { error } = await supabase
         .from('contract_templates')
         .insert({
-          ...templateData,
+          name: templateData.name,
+          description: templateData.description,
+          content: templateData.content,
+          organization_id: orgId,
           created_by: user.id,
-          source: templateData.organization_id ? 'custom' : 'platform',
+          source: orgId ? 'custom' : 'platform',
         });
 
       if (error) throw error;

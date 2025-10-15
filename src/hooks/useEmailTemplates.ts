@@ -70,18 +70,32 @@ export function useEmailTemplates(context: EmailTemplatesContext = 'organization
     name: string;
     subject: string;
     body: string;
-    organization_id?: string | null;
   }) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
+      let orgId: string | null = null;
+      
+      if (context === 'organization') {
+        const { data: memberData } = await supabase
+          .from('members')
+          .select('organization_id')
+          .eq('user_id', user.id)
+          .single();
+        
+        orgId = memberData?.organization_id || null;
+      }
+
       const { error } = await supabase
         .from('email_templates')
         .insert({
-          ...templateData,
+          name: templateData.name,
+          subject: templateData.subject,
+          body: templateData.body,
+          organization_id: orgId,
           created_by: user.id,
-          source: templateData.organization_id ? 'custom' : 'platform',
+          source: orgId ? 'custom' : 'platform',
         });
 
       if (error) throw error;
