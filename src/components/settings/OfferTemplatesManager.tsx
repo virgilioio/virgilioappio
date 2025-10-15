@@ -9,18 +9,22 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Badge } from '@/components/ui/badge'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
-import { Plus, Edit, Trash2, FileText, Settings as SettingsIcon } from 'lucide-react'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { Plus, Edit, Trash2, FileText, Settings as SettingsIcon, Mail, FileCheck } from 'lucide-react'
 import { useOfferTemplates, type OfferTemplate } from '@/hooks/useOfferTemplates'
 import { useOfferTemplateFields } from '@/hooks/useOfferTemplateFields'
 import { OfferTemplateFieldsManager } from './OfferTemplateFieldsManager'
 import { PlaceholderHelper } from './PlaceholderHelper'
 import { sanitizeHtmlForEditor } from '@/utils/htmlSanitizer'
 
+type TemplateType = 'offer-letters' | 'email-templates' | 'contract-templates'
+
 interface OfferTemplatesManagerProps {
   context?: 'platform-defaults' | 'organization'
 }
 
 export function OfferTemplatesManager({ context = 'organization' }: OfferTemplatesManagerProps) {
+  const [templateType, setTemplateType] = useState<TemplateType>('offer-letters')
   const { templates, isLoading, createTemplate, updateTemplate, deleteTemplate } = useOfferTemplates(context)
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [editingTemplate, setEditingTemplate] = useState<OfferTemplate | null>(null)
@@ -122,108 +126,161 @@ export function OfferTemplatesManager({ context = 'organization' }: OfferTemplat
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="h-5 w-5" />
-              {context === 'platform-defaults' ? 'Platform Default Offer Templates' : 'Offer Letter Templates'}
-            </CardTitle>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                {context === 'platform-defaults' ? 'Platform Default Templates' : 'Templates'}
+              </CardTitle>
+              
+              <ToggleGroup 
+                type="single" 
+                value={templateType} 
+                onValueChange={(value) => value && setTemplateType(value as TemplateType)}
+                variant="outline"
+                size="sm"
+              >
+                <ToggleGroupItem value="offer-letters" aria-label="Offer Letters">
+                  <FileText className="h-4 w-4 mr-2" />
+                  <span className="hidden sm:inline">Offer Letters</span>
+                  <span className="sm:hidden">Offers</span>
+                </ToggleGroupItem>
+                <ToggleGroupItem value="email-templates" aria-label="Email Templates">
+                  <Mail className="h-4 w-4 mr-2" />
+                  <span className="hidden sm:inline">Email</span>
+                  <span className="sm:hidden">Email</span>
+                </ToggleGroupItem>
+                <ToggleGroupItem value="contract-templates" aria-label="Contract Templates">
+                  <FileCheck className="h-4 w-4 mr-2" />
+                  <span className="hidden sm:inline">Contracts</span>
+                  <span className="sm:hidden">Contracts</span>
+                </ToggleGroupItem>
+              </ToggleGroup>
+            </div>
+            
             <Button onClick={openCreateDialog}>
               <Plus className="h-4 w-4 mr-2" />
-              Create Template
+              {templateType === 'offer-letters' && 'Create Template'}
+              {templateType === 'email-templates' && 'Create Email'}
+              {templateType === 'contract-templates' && 'Create Contract'}
             </Button>
           </div>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
-            <div className="text-center py-8">Loading templates...</div>
-          ) : templates.length === 0 ? (
-            <div className="text-center py-8">
-              <FileText className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
-              <p className="text-muted-foreground">No offer templates found</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Create your first template to get started
-              </p>
-            </div>
-          ) : (
-            <Table>
-               <TableHeader>
-                 <TableRow>
-                   <TableHead>Name</TableHead>
-                   <TableHead>Description</TableHead>
-                   <TableHead>Created</TableHead>
-                   {context === 'organization' && <TableHead>Source</TableHead>}
-                   <TableHead className="text-right">Actions</TableHead>
-                 </TableRow>
-               </TableHeader>
-              <TableBody>
-                {templates.map((template) => (
-                  <TableRow key={template.id}>
-                    <TableCell className="font-medium">{template.name}</TableCell>
-                    <TableCell>
-                      {template.description || <span className="text-muted-foreground italic">No description</span>}
-                    </TableCell>
-                     <TableCell>
-                       {new Date(template.created_at).toLocaleDateString()}
-                     </TableCell>
-                     {context === 'organization' && (
-                       <TableCell>
-                         <Badge variant={template.source === 'platform' ? 'secondary' : 'default'}>
-                           {template.source === 'platform' ? 'Inherited' : 'Custom'}
-                         </Badge>
-                       </TableCell>
-                     )}
-                     <TableCell className="text-right">
-                       <div className="flex items-center justify-end gap-2">
-                         <Button
-                           variant="ghost"
-                           size="sm"
-                           onClick={() => openFieldsDialog(template.id)}
-                           disabled={context === 'organization' && template.source === 'platform'}
-                         >
-                           <SettingsIcon className="h-4 w-4" />
-                         </Button>
-                         <Button
-                           variant="ghost"
-                           size="sm"
-                           onClick={() => openEditDialog(template)}
-                           disabled={context === 'organization' && template.source === 'platform'}
-                         >
-                           <Edit className="h-4 w-4" />
-                         </Button>
-                         <AlertDialog>
-                           <AlertDialogTrigger asChild>
-                             <Button 
-                               variant="ghost" 
+          {templateType === 'offer-letters' && (
+            <>
+              {isLoading ? (
+                <div className="text-center py-8">Loading templates...</div>
+              ) : templates.length === 0 ? (
+                <div className="text-center py-8">
+                  <FileText className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
+                  <p className="text-muted-foreground">No offer templates found</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Create your first template to get started
+                  </p>
+                </div>
+              ) : (
+                <Table>
+                   <TableHeader>
+                     <TableRow>
+                       <TableHead>Name</TableHead>
+                       <TableHead>Description</TableHead>
+                       <TableHead>Created</TableHead>
+                       {context === 'organization' && <TableHead>Source</TableHead>}
+                       <TableHead className="text-right">Actions</TableHead>
+                     </TableRow>
+                   </TableHeader>
+                  <TableBody>
+                    {templates.map((template) => (
+                      <TableRow key={template.id}>
+                        <TableCell className="font-medium">{template.name}</TableCell>
+                        <TableCell>
+                          {template.description || <span className="text-muted-foreground italic">No description</span>}
+                        </TableCell>
+                         <TableCell>
+                           {new Date(template.created_at).toLocaleDateString()}
+                         </TableCell>
+                         {context === 'organization' && (
+                           <TableCell>
+                             <Badge variant={template.source === 'platform' ? 'secondary' : 'default'}>
+                               {template.source === 'platform' ? 'Inherited' : 'Custom'}
+                             </Badge>
+                           </TableCell>
+                         )}
+                         <TableCell className="text-right">
+                           <div className="flex items-center justify-end gap-2">
+                             <Button
+                               variant="ghost"
                                size="sm"
+                               onClick={() => openFieldsDialog(template.id)}
                                disabled={context === 'organization' && template.source === 'platform'}
                              >
-                               <Trash2 className="h-4 w-4" />
+                               <SettingsIcon className="h-4 w-4" />
                              </Button>
-                           </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Delete Template</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Are you sure you want to delete "{template.name}"? This action cannot be undone.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => handleDeleteTemplate(template)}
-                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                              >
-                                Delete
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                             <Button
+                               variant="ghost"
+                               size="sm"
+                               onClick={() => openEditDialog(template)}
+                               disabled={context === 'organization' && template.source === 'platform'}
+                             >
+                               <Edit className="h-4 w-4" />
+                             </Button>
+                             <AlertDialog>
+                               <AlertDialogTrigger asChild>
+                                 <Button 
+                                   variant="ghost" 
+                                   size="sm"
+                                   disabled={context === 'organization' && template.source === 'platform'}
+                                 >
+                                   <Trash2 className="h-4 w-4" />
+                                 </Button>
+                               </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete Template</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Are you sure you want to delete "{template.name}"? This action cannot be undone.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => handleDeleteTemplate(template)}
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  >
+                                    Delete
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </>
+          )}
+          
+          {templateType === 'email-templates' && (
+            <div className="text-center py-12">
+              <Mail className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-medium mb-2">Email Templates</h3>
+              <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                Email template management coming soon. You'll be able to create and manage automated email templates for your hiring workflow.
+              </p>
+            </div>
+          )}
+          
+          {templateType === 'contract-templates' && (
+            <div className="text-center py-12">
+              <FileCheck className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-medium mb-2">Contract Templates</h3>
+              <p className="text-sm text-muted-foreground max-w-md mx-auto">
+                Contract template management coming soon. You'll be able to create and manage contract templates for different employment types.
+              </p>
+            </div>
           )}
         </CardContent>
       </Card>
