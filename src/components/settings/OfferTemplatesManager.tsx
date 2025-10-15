@@ -126,37 +126,11 @@ export function OfferTemplatesManager({ context = 'organization' }: OfferTemplat
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                {context === 'platform-defaults' ? 'Platform Default Templates' : 'Templates'}
-              </CardTitle>
-              
-              <ToggleGroup 
-                type="single" 
-                value={templateType} 
-                onValueChange={(value) => value && setTemplateType(value as TemplateType)}
-                variant="outline"
-                size="sm"
-              >
-                <ToggleGroupItem value="offer-letters" aria-label="Offer Letters">
-                  <FileText className="h-4 w-4 mr-2" />
-                  <span className="hidden sm:inline">Offer Letters</span>
-                  <span className="sm:hidden">Offers</span>
-                </ToggleGroupItem>
-                <ToggleGroupItem value="email-templates" aria-label="Email Templates">
-                  <Mail className="h-4 w-4 mr-2" />
-                  <span className="hidden sm:inline">Email</span>
-                  <span className="sm:hidden">Email</span>
-                </ToggleGroupItem>
-                <ToggleGroupItem value="contract-templates" aria-label="Contract Templates">
-                  <FileCheck className="h-4 w-4 mr-2" />
-                  <span className="hidden sm:inline">Contracts</span>
-                  <span className="sm:hidden">Contracts</span>
-                </ToggleGroupItem>
-              </ToggleGroup>
-            </div>
+          <div className="flex items-center justify-between mb-4">
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              {context === 'platform-defaults' ? 'Platform Default Templates' : 'Templates'}
+            </CardTitle>
             
             <Button onClick={openCreateDialog}>
               <Plus className="h-4 w-4 mr-2" />
@@ -165,6 +139,30 @@ export function OfferTemplatesManager({ context = 'organization' }: OfferTemplat
               {templateType === 'contract-templates' && 'Create Contract'}
             </Button>
           </div>
+          
+          <ToggleGroup 
+            type="single" 
+            value={templateType} 
+            onValueChange={(value) => value && setTemplateType(value as TemplateType)}
+            variant="outline"
+            size="sm"
+          >
+            <ToggleGroupItem value="offer-letters" aria-label="Offer Letters">
+              <FileText className="h-4 w-4 mr-2" />
+              <span className="hidden sm:inline">Offer Letters</span>
+              <span className="sm:hidden">Offers</span>
+            </ToggleGroupItem>
+            <ToggleGroupItem value="email-templates" aria-label="Email Templates">
+              <Mail className="h-4 w-4 mr-2" />
+              <span className="hidden sm:inline">Email</span>
+              <span className="sm:hidden">Email</span>
+            </ToggleGroupItem>
+            <ToggleGroupItem value="contract-templates" aria-label="Contract Templates">
+              <FileCheck className="h-4 w-4 mr-2" />
+              <span className="hidden sm:inline">Contracts</span>
+              <span className="sm:hidden">Contracts</span>
+            </ToggleGroupItem>
+          </ToggleGroup>
         </CardHeader>
         <CardContent>
           {templateType === 'offer-letters' && (
