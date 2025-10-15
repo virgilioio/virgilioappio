@@ -83,15 +83,12 @@ export default function Onboarding() {
       // Step 3: Refresh and wait for full propagation
       setProvisioningStatus('finalizing')
       
-      await refreshOrgContext() // This now polls until organizationId is set (using ref)
+      await refreshOrgContext()
       
-      // Step 4: Show "complete" state with fade-out
-      setProvisioningStatus('complete')
+      // Set session flag to trigger welcome flow in Dashboard
+      sessionStorage.setItem('virgilio_show_welcome', 'phase1')
       
-      // Wait for fade-out animation (300ms)
-      await new Promise(resolve => setTimeout(resolve, 300))
-      
-      // Navigate - context is guaranteed ready
+      // Navigate to dashboard (loader stays visible)
       navigate('/dashboard', { replace: true })
       
     } catch (err: any) {

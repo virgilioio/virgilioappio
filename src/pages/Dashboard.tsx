@@ -1,4 +1,5 @@
 
+import { useState, useEffect } from 'react'
 import { WelcomeHeader } from '@/components/dashboard/WelcomeHeader'
 import { QuickAccess } from '@/components/dashboard/QuickAccess'
 import { JobsOverview } from '@/components/dashboard/JobsOverview'
@@ -17,6 +18,34 @@ export default function Dashboard() {
   const { profile, isLoading } = useUserProfile()
   const permissions = usePermissions()
   const { isLoading: orgLoading, hasOrganizationContext } = useOrgContext()
+  const [showWelcome, setShowWelcome] = useState(false)
+  
+  // Handle post-onboarding welcome flow
+  useEffect(() => {
+    const welcomePhase = sessionStorage.getItem('virgilio_show_welcome')
+    
+    if (welcomePhase === 'phase1') {
+      // Update to phase2 before refresh (sessionStorage survives reload)
+      sessionStorage.setItem('virgilio_show_welcome', 'phase2')
+      
+      // Trigger refresh to ensure all components initialize properly
+      window.location.reload()
+    } else if (welcomePhase === 'phase2') {
+      // After refresh, show welcome message
+      setShowWelcome(true)
+      
+      // Clear flag and hide welcome after 2.5 seconds
+      setTimeout(() => {
+        sessionStorage.removeItem('virgilio_show_welcome')
+        setShowWelcome(false)
+      }, 2500)
+    }
+  }, [])
+  
+  // Show welcome loader after onboarding
+  if (showWelcome) {
+    return <WorkspaceProvisioningLoader status="welcome" />
+  }
   
   // Fallback loader if context isn't ready
   if (orgLoading || !hasOrganizationContext) {
