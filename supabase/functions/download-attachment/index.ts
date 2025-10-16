@@ -101,6 +101,28 @@ Deno.serve(async (req) => {
 
     console.log(`Successfully downloaded file: ${attachment.file_name}`)
 
+    // Log audit event for file download
+    try {
+      // Get user ID from JWT
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      await supabase.rpc('log_audit_event', {
+        p_action: 'attachment_downloaded',
+        p_table_name: 'candidate_attachments',
+        p_record_id: attachmentId,
+        p_user_id: user?.id || null,
+        p_old_values: null,
+        p_new_values: {
+          file_name: attachment.file_name,
+          file_type: attachment.file_type,
+          downloaded_at: new Date().toISOString()
+        }
+      });
+    } catch (auditError) {
+      // Don't fail the download if audit logging fails
+      console.error('Failed to log download audit:', auditError);
+    }
+
     // Create response with proper download headers
     const headers = {
       ...corsHeaders,

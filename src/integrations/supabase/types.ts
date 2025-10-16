@@ -2523,6 +2523,17 @@ export type Database = {
         Args: { job_id_param: string }
         Returns: boolean
       }
+      log_audit_event: {
+        Args: {
+          p_action: string
+          p_new_values?: Json
+          p_old_values?: Json
+          p_record_id?: string
+          p_table_name?: string
+          p_user_id?: string
+        }
+        Returns: string
+      }
       organization_has_active_public_posting: {
         Args: { org_id_param: string }
         Returns: boolean

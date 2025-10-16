@@ -117,6 +117,26 @@ Deno.serve(async (req) => {
 
     console.log('Invitation accepted successfully:', result)
 
+    // Log audit event for invitation acceptance
+    try {
+      await supabase.rpc('log_audit_event', {
+        p_action: 'invitation_accepted',
+        p_table_name: 'members',
+        p_record_id: result.member_id,
+        p_user_id: newUserId,
+        p_old_values: null,
+        p_new_values: {
+          member_id: result.member_id,
+          user_type: result.user_type,
+          member_role: result.member_role,
+          organization_id: result.organization_id
+        }
+      });
+    } catch (auditError) {
+      // Don't fail the process if audit logging fails
+      console.error('Failed to log invitation acceptance audit:', auditError);
+    }
+
     // Inject metadata using admin client with better error handling
     try {
       const { data: updateResult, error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
