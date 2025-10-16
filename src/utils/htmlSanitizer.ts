@@ -13,12 +13,14 @@ export function sanitizeHtml(html: string): string {
   const config = {
     ALLOWED_TAGS: [
       'p', 'br', 'strong', 'b', 'em', 'i', 'u', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-      'ul', 'ol', 'li', 'a', 'span', 'div', 'blockquote', 'pre', 'code', 'hr'
+      'ul', 'ol', 'li', 'a', 'span', 'div', 'blockquote', 'pre', 'code', 'hr', 'table',
+      'thead', 'tbody', 'tfoot', 'tr', 'th', 'td'
     ],
-    ALLOWED_ATTR: ['href', 'title', 'class', 'target', 'rel'],
+    ALLOWED_ATTR: ['href', 'title', 'class', 'target', 'rel', 'colspan', 'rowspan'],
     ALLOW_DATA_ATTR: false,
-    FORBID_TAGS: ['script', 'object', 'embed', 'link', 'style', 'img', 'svg'],
-    FORBID_ATTR: ['style', 'on*'],
+    // Critical: Block dangerous tags including script and iframe
+    FORBID_TAGS: ['script', 'iframe', 'object', 'embed', 'link', 'style', 'img', 'svg', 'form', 'input'],
+    FORBID_ATTR: ['on*'], // Block all event handlers
     KEEP_CONTENT: true,
     RETURN_DOM: false
   }
@@ -96,11 +98,15 @@ function normalizeTypography(html: string): string {
  */
 export function sanitizeHtmlForEditor(html: string): string {
   if (!html) {
-    console.warn('⚠️ Empty HTML content provided to sanitizer')
+    if (import.meta.env.DEV) {
+      console.debug('Empty HTML content provided to sanitizer')
+    }
     return ''
   }
   
-  console.log('🧹 Sanitizing HTML:', html.substring(0, 200) + '...', `Total length: ${html.length}`)
+  if (import.meta.env.DEV) {
+    console.debug('Sanitizing HTML for editor', { length: html.length })
+  }
   
   try {
     // First sanitize with DOMPurify for security
@@ -183,17 +189,24 @@ export function sanitizeHtmlForEditor(html: string): string {
     })
     
     const sanitized = tempDiv.innerHTML
-    console.log('✅ Sanitized HTML:', sanitized.substring(0, 200) + '...', `Final length: ${sanitized.length}`)
+    
+    if (import.meta.env.DEV) {
+      console.debug('Sanitized HTML for editor', { finalLength: sanitized.length })
+    }
     
     // Validate the sanitized content is not empty
     if (!sanitized || sanitized.trim() === '') {
-      console.error('❌ Sanitization resulted in empty content')
+      if (import.meta.env.DEV) {
+        console.error('Sanitization resulted in empty content')
+      }
       return extractPlainTextFallback(html)
     }
     
     return sanitized
   } catch (error) {
-    console.error('❌ Error during HTML sanitization:', error)
+    if (import.meta.env.DEV) {
+      console.error('Error during HTML sanitization:', error)
+    }
     return extractPlainTextFallback(html)
   }
 }
@@ -206,10 +219,14 @@ function extractPlainTextFallback(html: string): string {
     const tempDiv = document.createElement('div')
     tempDiv.innerHTML = html
     const plainText = tempDiv.textContent || tempDiv.innerText || ''
-    console.log('🔄 Using plain text fallback:', plainText.substring(0, 100) + '...')
+    if (import.meta.env.DEV) {
+      console.debug('Using plain text fallback', { length: plainText.length })
+    }
     return `<p>${plainText}</p>`
   } catch (error) {
-    console.error('❌ Even plain text extraction failed:', error)
+    if (import.meta.env.DEV) {
+      console.error('Plain text extraction failed:', error)
+    }
     return '<p>Error: Could not process template content</p>'
   }
 }

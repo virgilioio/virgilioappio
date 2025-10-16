@@ -19,7 +19,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { saveTextCursorPosition, restoreTextCursorPosition, type TextCursorPosition } from '@/lib/cursorUtils'
-import { sanitizeHtml } from '@/utils/htmlSanitizer'
+import { sanitizeHtml, sanitizeHtmlForEditor } from '@/utils/htmlSanitizer'
 
 interface RichTextEditorProps {
   value: string
@@ -76,12 +76,18 @@ export function RichTextEditor({
     const newContent = editorRef.current.innerHTML
     updateContent(newContent)
     
-    // Restore cursor position after a brief delay
-    setTimeout(() => {
-      if (editorRef.current && cursorPositionRef.current) {
-        restoreTextCursorPosition(editorRef.current, cursorPositionRef.current)
+    // Restore cursor position after DOM update using rAF
+    requestAnimationFrame(() => {
+      try {
+        if (editorRef.current && cursorPositionRef.current) {
+          restoreTextCursorPosition(editorRef.current, cursorPositionRef.current)
+        }
+      } catch (error) {
+        if (import.meta.env.DEV) {
+          console.debug('Failed to restore cursor position:', error)
+        }
       }
-    }, 0)
+    })
   }, [execCommand, updateContent])
 
   const insertTable = useCallback(() => {
@@ -116,23 +122,31 @@ export function RichTextEditor({
     `
     
     // Insert the table at cursor position
-    const selection = window.getSelection()
-    if (selection && selection.rangeCount > 0) {
-      const range = selection.getRangeAt(0)
-      range.deleteContents()
-      
-      const tableContainer = document.createElement('div')
-      tableContainer.innerHTML = tableHTML
-      const table = tableContainer.firstElementChild
-      
-      if (table) {
-        range.insertNode(table)
-        range.setStartAfter(table)
-        range.setEndAfter(table)
-        selection.removeAllRanges()
-        selection.addRange(range)
+    try {
+      const selection = window.getSelection()
+      if (selection && selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0)
+        range.deleteContents()
+        
+        const tableContainer = document.createElement('div')
+        tableContainer.innerHTML = tableHTML
+        const table = tableContainer.firstElementChild
+        
+        if (table) {
+          range.insertNode(table)
+          range.setStartAfter(table)
+          range.setEndAfter(table)
+          selection.removeAllRanges()
+          selection.addRange(range)
+        }
+      } else {
+        // Fallback: append to end
+        editorRef.current.innerHTML += tableHTML
       }
-    } else {
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.debug('Failed to insert table at cursor:', error)
+      }
       // Fallback: append to end
       editorRef.current.innerHTML += tableHTML
     }
@@ -152,23 +166,31 @@ export function RichTextEditor({
     const linkHTML = `<a href="${linkUrl}" target="_blank" rel="noopener noreferrer" style="color: #2563eb; text-decoration: underline;">${displayText}</a>`
     
     // Insert the link at cursor position
-    const selection = window.getSelection()
-    if (selection && selection.rangeCount > 0) {
-      const range = selection.getRangeAt(0)
-      range.deleteContents()
-      
-      const linkContainer = document.createElement('div')
-      linkContainer.innerHTML = linkHTML
-      const link = linkContainer.firstElementChild
-      
-      if (link) {
-        range.insertNode(link)
-        range.setStartAfter(link)
-        range.setEndAfter(link)
-        selection.removeAllRanges()
-        selection.addRange(range)
+    try {
+      const selection = window.getSelection()
+      if (selection && selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0)
+        range.deleteContents()
+        
+        const linkContainer = document.createElement('div')
+        linkContainer.innerHTML = linkHTML
+        const link = linkContainer.firstElementChild
+        
+        if (link) {
+          range.insertNode(link)
+          range.setStartAfter(link)
+          range.setEndAfter(link)
+          selection.removeAllRanges()
+          selection.addRange(range)
+        }
+      } else {
+        // Fallback: append to end
+        editorRef.current.innerHTML += linkHTML
       }
-    } else {
+    } catch (error) {
+      if (import.meta.env.DEV) {
+        console.debug('Failed to insert link at cursor:', error)
+      }
       // Fallback: append to end
       editorRef.current.innerHTML += linkHTML
     }
@@ -201,8 +223,8 @@ export function RichTextEditor({
     let contentToInsert = ''
 
     if (htmlData) {
-      // Sanitize and normalize HTML content
-      contentToInsert = sanitizeHtml(htmlData)
+      // Sanitize HTML content through editor sanitizer (removes scripts, iframes)
+      contentToInsert = sanitizeHtmlForEditor(htmlData)
     } else if (textData) {
       // Convert plain text to HTML paragraphs
       const lines = textData.split(/\n+/).filter(line => line.trim())
@@ -214,29 +236,37 @@ export function RichTextEditor({
       cursorPositionRef.current = saveTextCursorPosition(editorRef.current)
 
       // Insert the normalized content at cursor position
-      const selection = window.getSelection()
-      if (selection && selection.rangeCount > 0) {
-        const range = selection.getRangeAt(0)
-        range.deleteContents()
+      try {
+        const selection = window.getSelection()
+        if (selection && selection.rangeCount > 0) {
+          const range = selection.getRangeAt(0)
+          range.deleteContents()
 
-        const tempDiv = document.createElement('div')
-        tempDiv.innerHTML = contentToInsert
+          const tempDiv = document.createElement('div')
+          tempDiv.innerHTML = contentToInsert
 
-        // Insert each node from the temp div
-        const nodes = Array.from(tempDiv.childNodes)
-        nodes.forEach(node => {
-          const toInsert = node.nodeType === Node.TEXT_NODE
-            ? document.createTextNode(node.textContent || '')
-            : (node.cloneNode(true) as Node)
-          range.insertNode(toInsert)
-          // Move caret after inserted node
-          range.setStartAfter(toInsert)
-          range.collapse(true)
-        })
+          // Insert each node from the temp div
+          const nodes = Array.from(tempDiv.childNodes)
+          nodes.forEach(node => {
+            const toInsert = node.nodeType === Node.TEXT_NODE
+              ? document.createTextNode(node.textContent || '')
+              : (node.cloneNode(true) as Node)
+            range.insertNode(toInsert)
+            // Move caret after inserted node
+            range.setStartAfter(toInsert)
+            range.collapse(true)
+          })
 
-        selection.removeAllRanges()
-        selection.addRange(range)
-      } else {
+          selection.removeAllRanges()
+          selection.addRange(range)
+        } else {
+          // Fallback: append to end
+          editorRef.current.innerHTML += contentToInsert
+        }
+      } catch (error) {
+        if (import.meta.env.DEV) {
+          console.debug('Failed to paste at cursor position:', error)
+        }
         // Fallback: append to end
         editorRef.current.innerHTML += contentToInsert
       }
@@ -256,21 +286,20 @@ export function RichTextEditor({
 
   // Update editor content when value prop changes from parent
   useEffect(() => {
-    console.log('🔄 RichTextEditor useEffect triggered')
-    console.log('📝 Value present:', !!value, 'Length:', value?.length || 0)
-    console.log('🎯 Content changed:', value !== lastContentRef.current)
-    console.log('🔀 isExternalUpdate prop:', isExternalUpdate)
-    console.log('📍 isExternalUpdateRef.current:', isExternalUpdateRef.current)
-    console.log('🔧 isUpdatingRef.current:', isUpdatingRef.current)
-    console.log('🏠 Editor exists:', !!editorRef.current)
+    if (import.meta.env.DEV) {
+      console.debug('RichTextEditor: value changed', { 
+        hasValue: !!value, 
+        length: value?.length || 0,
+        isExternalUpdate 
+      })
+    }
     
-    // CRITICAL FIX: Always set external update flag when prop indicates external update
+    // Set external update flag when prop indicates external update
     if (isExternalUpdate && !isExternalUpdateRef.current) {
-      console.log('🎯 SETTING isExternalUpdateRef to true')
       isExternalUpdateRef.current = true
     }
     
-    // MAIN CONTENT UPDATE LOGIC - ensure editor shows value on mount/remount
+    // Determine if content update is needed
     const editorEmpty = !!editorRef.current && (editorRef.current.innerHTML.trim() === '')
     const shouldUpdateContent = editorRef.current && 
                                value && 
@@ -278,57 +307,55 @@ export function RichTextEditor({
                                (isExternalUpdate || value !== lastContentRef.current || editorEmpty) && 
                                !isUpdatingRef.current
     
-    console.log('🔍 Should update content:', shouldUpdateContent)
+    if (!shouldUpdateContent) {
+      return
+    }
     
-    if (shouldUpdateContent) {
-      console.log('🚀 STARTING CONTENT UPDATE PROCESS')
-      console.log('📋 Content preview:', value.substring(0, 300) + '...')
+    // Defensive: Skip DOM update if content hasn't actually changed
+    const sanitizedValue = sanitizeHtmlForEditor(value)
+    if (editorRef.current.innerHTML === sanitizedValue) {
+      if (import.meta.env.DEV) {
+        console.debug('RichTextEditor: Skipping DOM update - content unchanged')
+      }
+      return
+    }
+    
+    // Use requestAnimationFrame to debounce external updates
+    isUpdatingRef.current = true
+    const savedPosition = isExternalUpdateRef.current ? saveTextCursorPosition(editorRef.current) : null
+    
+    requestAnimationFrame(() => {
+      if (!editorRef.current) {
+        isUpdatingRef.current = false
+        return
+      }
       
-      isUpdatingRef.current = true
-      
-      // Save cursor position for external updates
-      const savedPosition = isExternalUpdateRef.current ? saveTextCursorPosition(editorRef.current) : null
-      
-      // FORCE content update
-      console.log('🔥 FORCING innerHTML update')
-      editorRef.current.innerHTML = value
+      // Update DOM
+      editorRef.current.innerHTML = sanitizedValue
       lastContentRef.current = value
-      console.log('📝 Content PHYSICALLY set to innerHTML, new length:', editorRef.current.innerHTML.length)
       
-      // Short delay to ensure DOM is updated
-      setTimeout(() => {
-        const currentContent = editorRef.current?.innerHTML || ''
-        console.log('✅ Post-update verification:')
-        console.log('📊 Editor innerHTML length:', currentContent.length)
-        console.log('📄 Editor content preview:', currentContent.substring(0, 200) + '...')
-        console.log('🎯 External update was:', isExternalUpdateRef.current)
-        
-        // Restore cursor position for external updates
-        if (editorRef.current && savedPosition && isExternalUpdateRef.current) {
-          restoreTextCursorPosition(editorRef.current, savedPosition)
+      // Restore cursor position after DOM update
+      requestAnimationFrame(() => {
+        try {
+          if (editorRef.current && savedPosition && isExternalUpdateRef.current) {
+            restoreTextCursorPosition(editorRef.current, savedPosition)
+          }
+        } catch (error) {
+          if (import.meta.env.DEV) {
+            console.debug('Failed to restore cursor after external update:', error)
+          }
         }
         
         isUpdatingRef.current = false
         
         // Reset external update flag and call callback
         if (isExternalUpdateRef.current) {
-          console.log('🎯 RESETTING external update flag and calling completion callback')
           isExternalUpdateRef.current = false
-          
-          if (onExternalUpdateComplete) {
-            onExternalUpdateComplete()
-          }
+          onExternalUpdateComplete?.()
         }
-      }, 50)
-    } else {
-      console.log('❌ SKIPPING content update - Conditions not met:')
-      console.log('   - Editor exists:', !!editorRef.current)
-      console.log('   - Value exists:', !!value)
-      console.log('   - Value not empty:', value?.trim() !== '')
-      console.log('   - Content changed:', value !== lastContentRef.current)
-      console.log('   - Not currently updating:', !isUpdatingRef.current)
-    }
-  }, [value, isExternalUpdate])
+      })
+    })
+  }, [value, isExternalUpdate, onExternalUpdateComplete])
 
   return (
     <div className={cn(
