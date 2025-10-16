@@ -1,5 +1,6 @@
 import React from 'react'
 import { ErrorBoundary as ReactErrorBoundary } from 'react-error-boundary'
+import * as Sentry from '@sentry/react'
 import { AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -72,9 +73,18 @@ export function ErrorBoundary({ children, fallback }: ErrorBoundaryProps) {
         window.location.reload()
       }}
       onError={(error, errorInfo) => {
-        // TODO: Send to error reporting service (Sentry/Rollbar)
-        if (import.meta.env.DEV) {
-          console.error('ErrorBoundary caught an error:', error, errorInfo)
+        // Always log to console
+        console.error('ErrorBoundary caught an error:', error, errorInfo)
+        
+        // Send to Sentry in production when DSN is configured
+        if (!import.meta.env.DEV && import.meta.env.VITE_SENTRY_DSN) {
+          Sentry.captureException(error, {
+            contexts: {
+              react: {
+                componentStack: errorInfo.componentStack,
+              },
+            },
+          })
         }
       }}
     >
