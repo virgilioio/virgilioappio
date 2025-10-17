@@ -28,12 +28,12 @@ export function CreditsDropdown() {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button 
-          variant="ghost" 
-          size="icon"
-          className="h-10 w-10 relative"
+          variant="outline" 
+          size="sm"
+          className="flex items-center gap-2"
         >
           <Coins className="h-4 w-4" />
-          <span className="sr-only">View credits</span>
+          <span className="hidden sm:inline">Search Credits</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent 
