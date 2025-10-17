@@ -34,7 +34,7 @@ export function isAllowedOrigin(origin?: string): { allowed: boolean; host?: str
 }
 
 export function corsHeadersFor(origin?: string): Record<string, string> {
-  const { allowed, host } = isAllowedOrigin(origin);
+  const { allowed } = isAllowedOrigin(origin);
   const allow = allowed && origin ? origin : 'https://app.virgilio.io';
   
   return {
@@ -43,14 +43,6 @@ export function corsHeadersFor(origin?: string): Record<string, string> {
     'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
     'Access-Control-Allow-Headers': 'authorization, apikey, content-type, x-client-info',
     'Access-Control-Max-Age': '86400',
-    'X-Content-Type-Options': 'nosniff',
-    'X-Frame-Options': 'DENY',
-    'X-XSS-Protection': '1; mode=block',
-    'Referrer-Policy': 'strict-origin-when-cross-origin',
-    // Temporary debug headers (remove after verification)
-    'X-Debug-Origin': origin ?? '',
-    'X-Debug-AllowedHost': host ?? '',
-    'X-Debug-IsAllowed': String(allowed),
   };
 }
 
