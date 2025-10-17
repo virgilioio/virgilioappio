@@ -31,6 +31,7 @@ import { usePermissions } from '@/hooks/usePermissions'
 import { VirgilioLogo } from '@/components/VirgilioLogo'
 import { AdminModeIndicator } from '@/components/admin/AdminModeIndicator'
 import { GlobalCreateButton } from '@/components/layout/GlobalCreateButton'
+import { CreditsDropdown } from '@/components/layout/CreditsDropdown'
 
 import { cn } from '@/lib/utils'
 import { useMembers } from '@/hooks/useMembers'
@@ -212,6 +213,9 @@ export function Header() {
 
         {/* User Menu and Mobile Navigation */}
         <div className="flex items-center gap-md">
+          {/* Credits Dropdown */}
+          <CreditsDropdown />
+          
           {/* Global Create Button */}
           <GlobalCreateButton />
 
