@@ -470,7 +470,139 @@ return new Response(JSON.stringify({ candidate }), {
 
 ---
 
-## 7. Next Steps: UI Integration
+## 7. Edge Functions
+
+### 7.1 `sourcing-search` — External Candidate Search
+
+**Purpose**: Server-only search endpoint for external candidate discovery via CoreSignal  
+**Authentication**: Required (rejects anonymous requests)  
+**Authorization**: User must be active member of `organization_id`  
+**Credits**: Consumes 1 search credit per request (with 15min cache)
+
+#### Request Schema (POST JSON):
+```typescript
+{
+  organization_id: string,       // required: org context
+  job_id?: string,               // optional: for audit & caching scope
+  query: {
+    boolean?: string,            // optional: boolean search string
+    titles?: string[],           // preferred job titles
+    keywords?: string[],         // raw keywords
+    locations?: string[],        // cities/regions/countries
+    languages?: string[],        // ISO codes or names
+    seniority?: string[],        // e.g. ["mid","senior"]
+    has_email?: "only"|"any",
+    has_phone?: "only"|"any",
+    updated_within_days?: number // default: 365
+  },
+  pagination?: { 
+    page: number,                // default: 1
+    pageSize: number             // default: 25, max: 100
+  }
+}
+```
+
+#### Response Schema:
+```typescript
+{
+  total: number,
+  items: Array<{
+    provider_code: "coresignal",
+    provider_ref: string,        // external profile ID
+    name?: string,
+    title?: string,
+    company?: string,
+    location?: string,
+    profileUrl?: string,
+    lastUpdatedAt?: string,      // ISO timestamp
+    match: number                // 0-100 score
+  }>,
+  cache: {
+    hit: boolean,
+    ttl_seconds: number          // 900 (15min) if not hit
+  },
+  credits: {
+    charged: number,             // 0 if cache hit, 1 if fresh search
+    remaining?: number           // from provider if available
+  }
+}
+```
+
+#### Match Scoring Algorithm (0-100):
+- **Title Similarity** (40 pts): Fuzzy match against `query.titles`
+- **Keyword Overlap** (40 pts): Overlap of `query.keywords` in title/company/location
+- **Location/Language Fit** (20 pts): Match against `query.locations` and `query.languages`
+
+#### Caching Strategy:
+- **Cache Key**: `${org_id}:${job_id ?? "none"}:${hash(query)}:${page}`
+- **TTL**: 15 minutes
+- **Storage**: `external_candidate_matches` with `raw_data->>cache_key`
+- **Behavior**: Cache hit → return cached results with `credits.charged = 0`
+
+#### Error Codes:
+- **401 unauthorized**: Missing or invalid auth token
+- **403 forbidden**: User not member of `organization_id`
+- **400 invalid_input**: Malformed request (validation failure)
+- **402 CREDITS_EXHAUSTED**: No search credits remaining
+- **502 provider_unavailable**: CoreSignal API failure (includes retry logic)
+
+#### Provider Integration:
+- **API**: CoreSignal Base Employee Search
+- **Auth**: `CORESIGNAL_API_KEY` secret (never exposed client-side)
+- **Retry**: Max 2 retries with exponential backoff
+- **Rate Limiting**: Respects `retry-after` header (429 responses)
+- **5xx Handling**: Exponential backoff (1s, 2s, 4s)
+
+#### Security Features:
+- ✅ CORS headers via shared `createSecureCorsHeaders()`
+- ✅ Server-only execution (API key never sent to client)
+- ✅ Org-scoped permission check before credit consumption
+- ✅ Atomic credit consumption via `consume_sourcing_credits` RPC
+- ✅ Event logging for audit trail
+
+#### Event Logging:
+Every search (success or failure) creates a `sourcing_events` record:
+```typescript
+{
+  organization_id: string,
+  job_id: string | null,
+  event_type: 'search',
+  provider: 'coresignal',
+  credits_used: 1,           // Always 1 on cache miss
+  credit_type: 'search',
+  query_params: {...},       // Full query object
+  results_count: number,     // 0 on error
+  error_message?: string,    // Only on failure
+  performed_by: user_id
+}
+```
+
+#### Example Usage (TypeScript Client):
+```typescript
+const { data, error } = await supabase.functions.invoke('sourcing-search', {
+  body: {
+    organization_id: '68ac2c0e-00fd-419a-afec-bdcfc0d8a558',
+    job_id: 'abc-123',
+    query: {
+      titles: ['Senior Software Engineer', 'Staff Engineer'],
+      keywords: ['typescript', 'react', 'node.js'],
+      locations: ['San Francisco', 'Remote'],
+      seniority: ['senior', 'staff'],
+      has_email: 'only',
+      updated_within_days: 180
+    },
+    pagination: { page: 1, pageSize: 25 }
+  }
+});
+
+if (error?.message.includes('CREDITS_EXHAUSTED')) {
+  // Show refill UI
+}
+```
+
+---
+
+## 8. Next Steps: UI Integration
 
 ### TypeScript Hook Example (`useOrgCredits.ts`):
 ```typescript
