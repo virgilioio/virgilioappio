@@ -729,6 +729,97 @@ export type Database = {
           },
         ]
       }
+      external_candidate_matches: {
+        Row: {
+          candidate_name: string
+          collected_at: string | null
+          created_at: string
+          current_company: string | null
+          current_title: string | null
+          email: string | null
+          id: string
+          internal_candidate_id: string | null
+          is_collected: boolean
+          job_id: string | null
+          linkedin_url: string | null
+          location_city: string | null
+          location_country: string | null
+          match_score: number | null
+          organization_id: string
+          phone: string | null
+          provider: string
+          provider_id: string
+          raw_data: Json
+          updated_at: string
+        }
+        Insert: {
+          candidate_name: string
+          collected_at?: string | null
+          created_at?: string
+          current_company?: string | null
+          current_title?: string | null
+          email?: string | null
+          id?: string
+          internal_candidate_id?: string | null
+          is_collected?: boolean
+          job_id?: string | null
+          linkedin_url?: string | null
+          location_city?: string | null
+          location_country?: string | null
+          match_score?: number | null
+          organization_id: string
+          phone?: string | null
+          provider?: string
+          provider_id: string
+          raw_data?: Json
+          updated_at?: string
+        }
+        Update: {
+          candidate_name?: string
+          collected_at?: string | null
+          created_at?: string
+          current_company?: string | null
+          current_title?: string | null
+          email?: string | null
+          id?: string
+          internal_candidate_id?: string | null
+          is_collected?: boolean
+          job_id?: string | null
+          linkedin_url?: string | null
+          location_city?: string | null
+          location_country?: string | null
+          match_score?: number | null
+          organization_id?: string
+          phone?: string | null
+          provider?: string
+          provider_id?: string
+          raw_data?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "external_candidate_matches_internal_candidate_id_fkey"
+            columns: ["internal_candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "external_candidate_matches_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "external_candidate_matches_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_assignments: {
         Row: {
           assigned_by: string | null
@@ -1537,6 +1628,53 @@ export type Database = {
           },
         ]
       }
+      org_credit_usage: {
+        Row: {
+          collect_limit: number
+          collect_remaining: number
+          created_at: string
+          id: string
+          last_refill_at: string
+          next_refill_at: string
+          organization_id: string
+          search_limit: number
+          search_remaining: number
+          updated_at: string
+        }
+        Insert: {
+          collect_limit?: number
+          collect_remaining?: number
+          created_at?: string
+          id?: string
+          last_refill_at?: string
+          next_refill_at?: string
+          organization_id: string
+          search_limit?: number
+          search_remaining?: number
+          updated_at?: string
+        }
+        Update: {
+          collect_limit?: number
+          collect_remaining?: number
+          created_at?: string
+          id?: string
+          last_refill_at?: string
+          next_refill_at?: string
+          organization_id?: string
+          search_limit?: number
+          search_remaining?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "org_credit_usage_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: true
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organizations: {
         Row: {
           billing_id: string | null
@@ -1950,6 +2088,66 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      sourcing_events: {
+        Row: {
+          created_at: string
+          credit_type: string
+          credits_used: number
+          error_message: string | null
+          event_type: string
+          id: string
+          job_id: string | null
+          organization_id: string
+          performed_by: string | null
+          provider: string
+          query_params: Json | null
+          results_count: number | null
+        }
+        Insert: {
+          created_at?: string
+          credit_type: string
+          credits_used?: number
+          error_message?: string | null
+          event_type: string
+          id?: string
+          job_id?: string | null
+          organization_id: string
+          performed_by?: string | null
+          provider?: string
+          query_params?: Json | null
+          results_count?: number | null
+        }
+        Update: {
+          created_at?: string
+          credit_type?: string
+          credits_used?: number
+          error_message?: string | null
+          event_type?: string
+          id?: string
+          job_id?: string | null
+          organization_id?: string
+          performed_by?: string | null
+          provider?: string
+          query_params?: Json | null
+          results_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sourcing_events_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sourcing_events_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       standard_job_titles: {
         Row: {
@@ -2389,6 +2587,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: number
       }
+      consume_sourcing_credits: {
+        Args: { amount: number; credit_type: string; org_id: string }
+        Returns: boolean
+      }
       debug_user_permissions: {
         Args: Record<PropertyKey, never>
         Returns: {
@@ -2450,6 +2652,20 @@ export type Database = {
       get_member_role_safe: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      get_org_credits: {
+        Args: { org_id: string }
+        Returns: {
+          collect_limit: number
+          collect_remaining: number
+          created_at: string
+          last_refill_at: string
+          next_refill_at: string
+          organization_id: string
+          search_limit: number
+          search_remaining: number
+          updated_at: string
+        }[]
       }
       get_pipeline_global_metrics: {
         Args: {
@@ -2540,6 +2756,10 @@ export type Database = {
       }
       reassign_candidates_for_stage: {
         Args: { stage_id_param: string }
+        Returns: undefined
+      }
+      refill_org_sourcing_credits: {
+        Args: { collect_limit: number; org_id: string; search_limit: number }
         Returns: undefined
       }
       resequence_posting_fields_for_library_order: {
