@@ -39,7 +39,6 @@ import { useToast } from '@/components/ui/use-toast'
 import { supabase } from '@/lib/supabaseClient'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { useOrgCredits } from '@/hooks/useOrgCredits'
-import { CreditsMeter } from '@/components/sourcing/CreditsMeter'
 
 export function Header() {
   const { user, logout, organizationId, isLoggingOut } = useAuth()
@@ -58,10 +57,6 @@ export function Header() {
   const { members } = useMembers()
   const { toast } = useToast()
   const { profile } = useUserProfile()
-  const { credits, isLoading: isLoadingCredits, refetch: refetchCredits } = useOrgCredits()
-
-  // Only show credits meter if user has access to candidates (sourcing permission proxy)
-  const showCreditsMeter = canViewCandidates && credits && (credits.search.limit > 0 || credits.collect.limit > 0)
 
   const handleLogout = async () => {
     await logout()
@@ -218,19 +213,6 @@ export function Header() {
           
           {/* Global Create Button */}
           <GlobalCreateButton />
-
-          {/* Credits Meter */}
-          {showCreditsMeter && (
-            <CreditsMeter
-              searchCredits={credits.search}
-              collectCredits={credits.collect}
-              lastRefill={credits.lastRefill}
-              nextRefill={credits.nextRefill}
-              onRefresh={refetchCredits}
-              isLoading={isLoadingCredits}
-              compact
-            />
-          )}
           
           {/* Workspace Switcher */}
           {isPlatformAdmin && uniqueOrgs.length > 1 && (
