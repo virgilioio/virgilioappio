@@ -1,10 +1,9 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0';
-import { createSecureCorsHeaders, handleSecureCorsPreFlight } from "../_shared/cors.ts";
+import { corsHeadersFor, handlePreflight } from "../_shared/cors.ts";
 
 const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
-const corsHeaders = createSecureCorsHeaders();
 
 const supabase = createClient(
   Deno.env.get('SUPABASE_URL') ?? '',
@@ -12,8 +11,11 @@ const supabase = createClient(
 );
 
 serve(async (req) => {
-  const preflightResponse = handleSecureCorsPreFlight(req, corsHeaders);
-  if (preflightResponse) return preflightResponse;
+  const pre = handlePreflight(req);
+  if (pre) return pre;
+  
+  const origin = req.headers.get('Origin') ?? req.headers.get('origin') ?? undefined;
+  const cors = corsHeadersFor(origin);
 
   try {
     const { prompt } = await req.json();
@@ -266,7 +268,8 @@ Return ONLY valid JSON in this format:
     };
 
     return new Response(JSON.stringify(finalResponse), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 200,
+      headers: { 'Content-Type': 'application/json', ...cors },
     });
   } catch (error) {
     console.error('Error in generate-job-spec function:', error);
@@ -275,7 +278,7 @@ Return ONLY valid JSON in this format:
       details: 'Failed to generate job specification'
     }), {
       status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...cors },
     });
   }
 });

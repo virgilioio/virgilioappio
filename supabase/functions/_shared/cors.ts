@@ -12,7 +12,7 @@ export const ALLOWED_ORIGINS = [
   'http://localhost:5173',
 ];
 
-function isAllowed(origin?: string): boolean {
+export function isAllowedOrigin(origin?: string): boolean {
   if (!origin) return false;
   return ALLOWED_ORIGINS.some((item) =>
     typeof item === 'string' ? item === origin : item.test(origin)
@@ -20,12 +20,12 @@ function isAllowed(origin?: string): boolean {
 }
 
 export function corsHeadersFor(origin?: string): Record<string, string> {
-  const allow = isAllowed(origin) ? origin! : 'https://app.virgilio.io';
+  const allow = isAllowedOrigin(origin) ? origin! : 'https://app.virgilio.io';
   return {
     'Access-Control-Allow-Origin': allow,
     'Vary': 'Origin',
     'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
-    'Access-Control-Allow-Headers': 'authorization, content-type, x-client-info, apikey',
+    'Access-Control-Allow-Headers': 'authorization, apikey, content-type, x-client-info',
     'Access-Control-Max-Age': '86400',
     'X-Content-Type-Options': 'nosniff',
     'X-Frame-Options': 'DENY',
@@ -36,7 +36,7 @@ export function corsHeadersFor(origin?: string): Record<string, string> {
 
 export function handlePreflight(req: Request): Response | null {
   if (req.method === 'OPTIONS') {
-    const origin = req.headers.get('Origin') ?? undefined;
+    const origin = req.headers.get('Origin') ?? req.headers.get('origin') ?? undefined;
     return new Response('ok', { headers: corsHeadersFor(origin) });
   }
   return null;
