@@ -1,8 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import { createSecureCorsHeaders, handleSecureCorsPreFlight } from "../_shared/cors.ts";
-
-const corsHeaders = createSecureCorsHeaders();
+import { corsHeadersFor, handlePreflight } from "../_shared/mod.ts";
 
 // ============================================================================
 // TYPES
@@ -418,20 +416,47 @@ function normalizeEmployee(employee: CoreSignalEmployee, query: SearchRequest['q
 // ============================================================================
 
 serve(async (req) => {
-  const preflightResponse = handleSecureCorsPreFlight(req, corsHeaders);
-  if (preflightResponse) return preflightResponse;
+  // Handle CORS preflight
+  const pre = handlePreflight(req);
+  if (pre) return pre;
+
+  // Get origin for consistent CORS headers
+  const origin = req.headers.get('Origin') ?? req.headers.get('origin') ?? undefined;
+  const cors = corsHeadersFor(origin);
 
   try {
     logStep("Search request received");
+
+    // Parse JSON body with error handling
+    let body: SearchRequest;
+    try {
+      body = await req.json();
+    } catch {
+      return new Response(
+        JSON.stringify({ error: 'invalid_json', message: 'Request body must be valid JSON' }),
+        { status: 400, headers: { 'Content-Type': 'application/json', ...cors } }
+      );
+    }
 
     // Get authenticated user
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(
         JSON.stringify({ error: 'unauthorized', message: 'Missing authorization header' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 401, headers: { 'Content-Type': 'application/json', ...cors } }
       );
     }
+
+    // Create Supabase client with user's auth
+    const supabaseClient = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      {
+        global: {
+          headers: { Authorization: authHeader }
+        }
+      }
+    );
 
     // Create Supabase client with user's auth
     const supabaseClient = createClient(
@@ -451,18 +476,17 @@ serve(async (req) => {
       logStep("Auth validation failed", { error: authError });
       return new Response(
         JSON.stringify({ error: 'unauthorized', message: 'Invalid session' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 401, headers: { 'Content-Type': 'application/json', ...cors } }
       );
     }
 
-    // Parse and validate request
-    const body: SearchRequest = await req.json();
+    // Validate request
     const validation = validateRequest(body);
     
     if (!validation.valid) {
       return new Response(
         JSON.stringify({ error: 'invalid_input', message: validation.error }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers: { 'Content-Type': 'application/json', ...cors } }
       );
     }
 
@@ -477,7 +501,7 @@ serve(async (req) => {
     if (!permissionCheck.allowed) {
       return new Response(
         JSON.stringify({ error: 'forbidden', message: permissionCheck.error }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 403, headers: { 'Content-Type': 'application/json', ...cors } }
       );
     }
 
@@ -504,7 +528,7 @@ serve(async (req) => {
 
       return new Response(
         JSON.stringify(response),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 200, headers: { 'Content-Type': 'application/json', ...cors } }
       );
     }
 
@@ -527,7 +551,7 @@ serve(async (req) => {
       logStep("Credit consumption error", { error: creditError });
       return new Response(
         JSON.stringify({ error: 'internal_error', message: 'Failed to process credits' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 500, headers: { 'Content-Type': 'application/json', ...cors } }
       );
     }
 
@@ -538,7 +562,7 @@ serve(async (req) => {
           error: 'CREDITS_EXHAUSTED', 
           message: 'No search credits remaining. Contact your administrator to refill credits.' 
         }),
-        { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 402, headers: { 'Content-Type': 'application/json', ...cors } }
       );
     }
 
@@ -550,7 +574,7 @@ serve(async (req) => {
       logStep("CoreSignal API key not configured");
       return new Response(
         JSON.stringify({ error: 'provider_unavailable', message: 'Search provider not configured' }),
-        { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 502, headers: { 'Content-Type': 'application/json', ...cors } }
       );
     }
 
@@ -588,7 +612,7 @@ serve(async (req) => {
           error: 'provider_unavailable', 
           message: `Search provider error: ${(error as Error).message}` 
         }),
-        { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 502, headers: { 'Content-Type': 'application/json', ...cors } }
       );
     }
 
@@ -657,7 +681,7 @@ serve(async (req) => {
 
     return new Response(
       JSON.stringify(response),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 200, headers: { 'Content-Type': 'application/json', ...cors } }
     );
 
   } catch (error) {
@@ -669,7 +693,7 @@ serve(async (req) => {
         message: 'An unexpected error occurred',
         details: (error as Error).message
       }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 500, headers: { 'Content-Type': 'application/json', ...cors } }
     );
   }
 });

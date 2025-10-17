@@ -1,26 +1,42 @@
 /**
  * Shared CORS utilities for Supabase Edge Functions
- * Dynamic single-origin echo with security headers
+ * Dynamic single-origin echo with hostname-based allowlist
  */
 
-export const ALLOWED_ORIGINS = [
-  'https://app.virgilio.io',
-  'https://auth.virgilio.io',
-  'https://lovable.app',
-  // Matches subdomains like https://preview--virgilioappio.lovable.app
-  /https:\/\/[a-z0-9-]+\.lovable\.app$/,
-  'http://localhost:5173',
-];
+const ALLOWED_HOSTNAMES = new Set([
+  'app.virgilio.io',
+  'auth.virgilio.io',
+  'lovable.app',
+  'localhost',
+]);
 
-export function isAllowedOrigin(origin?: string): boolean {
-  if (!origin) return false;
-  return ALLOWED_ORIGINS.some((item) =>
-    typeof item === 'string' ? item === origin : item.test(origin)
-  );
+export function isAllowedOrigin(origin?: string): { allowed: boolean; host?: string } {
+  if (!origin) return { allowed: false };
+  
+  try {
+    const url = new URL(origin);
+    const host = url.hostname;
+    
+    // Check exact hostname match
+    if (ALLOWED_HOSTNAMES.has(host)) {
+      return { allowed: true, host };
+    }
+    
+    // Check if hostname ends with .lovable.app (for preview domains)
+    if (host.endsWith('.lovable.app')) {
+      return { allowed: true, host };
+    }
+    
+    return { allowed: false, host };
+  } catch {
+    return { allowed: false };
+  }
 }
 
 export function corsHeadersFor(origin?: string): Record<string, string> {
-  const allow = isAllowedOrigin(origin) ? origin! : 'https://app.virgilio.io';
+  const { allowed, host } = isAllowedOrigin(origin);
+  const allow = allowed && origin ? origin : 'https://app.virgilio.io';
+  
   return {
     'Access-Control-Allow-Origin': allow,
     'Vary': 'Origin',
@@ -30,7 +46,11 @@ export function corsHeadersFor(origin?: string): Record<string, string> {
     'X-Content-Type-Options': 'nosniff',
     'X-Frame-Options': 'DENY',
     'X-XSS-Protection': '1; mode=block',
-    'Referrer-Policy': 'strict-origin-when-cross-origin'
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+    // Temporary debug headers (remove after verification)
+    'X-Debug-Origin': origin ?? '',
+    'X-Debug-AllowedHost': host ?? '',
+    'X-Debug-IsAllowed': String(allowed),
   };
 }
 
