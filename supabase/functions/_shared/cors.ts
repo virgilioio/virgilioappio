@@ -1,60 +1,47 @@
 /**
  * Shared CORS utilities for Supabase Edge Functions
- * Restricts origins based on environment and adds security headers
+ * Dynamic single-origin echo with security headers
  */
 
-interface SecureCorsOptions {
-  allowedOrigins?: string[]
-  allowCredentials?: boolean
-  maxAge?: number
-  environment?: string
+export const ALLOWED_ORIGINS = [
+  'https://app.virgilio.io',
+  'https://auth.virgilio.io',
+  'https://lovable.app',
+  // Matches subdomains like https://preview--virgilioappio.lovable.app
+  /https:\/\/[a-z0-9-]+\.lovable\.app$/,
+  'http://localhost:5173',
+];
+
+function isAllowed(origin?: string): boolean {
+  if (!origin) return false;
+  return ALLOWED_ORIGINS.some((item) =>
+    typeof item === 'string' ? item === origin : item.test(origin)
+  );
 }
 
-export function createSecureCorsHeaders(options: SecureCorsOptions = {}) {
-  const {
-    allowedOrigins = [
-      'https://app.virgilio.io',
-      'https://auth.virgilio.io',
-      'https://lovable.app',
-      'https://*.lovable.app',
-      'http://localhost:5173'
-    ],
-    allowCredentials = true,
-    maxAge = 86400, // 24 hours
-    environment = Deno.env.get('ENVIRONMENT') || 'development'
-  } = options
-
-  // Detect environment based on request origin or env variable
-  const isProduction = environment === 'production' || 
-                       Deno.env.get('SUPABASE_URL')?.includes('supabase.co')
-  
-  // For production, restrict to known domains
-  // For development, allow localhost and preview URLs
-  const origin = isProduction 
-    ? allowedOrigins.filter(o => !o.includes('localhost')).join(', ')
-    : '*' // Allow all origins in development for easier testing
-
-  console.log(`[CORS] Environment: ${environment}, Production: ${isProduction}, Origin: ${origin}`)
-
+export function corsHeadersFor(origin?: string): Record<string, string> {
+  const allow = isAllowed(origin) ? origin! : 'https://app.virgilio.io';
   return {
-    'Access-Control-Allow-Origin': origin,
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-    'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-    'Access-Control-Allow-Credentials': allowCredentials.toString(),
-    'Access-Control-Max-Age': maxAge.toString(),
+    'Access-Control-Allow-Origin': allow,
+    'Vary': 'Origin',
+    'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
+    'Access-Control-Allow-Headers': 'authorization, content-type, x-client-info, apikey',
+    'Access-Control-Max-Age': '86400',
     'X-Content-Type-Options': 'nosniff',
     'X-Frame-Options': 'DENY',
     'X-XSS-Protection': '1; mode=block',
     'Referrer-Policy': 'strict-origin-when-cross-origin'
-  }
+  };
 }
 
-export function handleSecureCorsPreFlight(req: Request, corsHeaders: Record<string, string>) {
+export function handlePreflight(req: Request): Response | null {
   if (req.method === 'OPTIONS') {
-    return new Response(null, { 
-      status: 200, 
-      headers: corsHeaders 
-    })
+    const origin = req.headers.get('Origin') ?? undefined;
+    return new Response('ok', { headers: corsHeadersFor(origin) });
   }
-  return null
+  return null;
 }
+
+// Legacy exports for backward compatibility
+export const createSecureCorsHeaders = () => corsHeadersFor();
+export const handleSecureCorsPreFlight = (req: Request, _corsHeaders?: Record<string, string>) => handlePreflight(req);
