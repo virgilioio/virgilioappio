@@ -8,6 +8,7 @@ import { toast } from '@/hooks/use-toast'
 import { JobInfoStep } from './wizard/JobInfoStep'
 import { HiringPlanStep } from './wizard/HiringPlanStep'
 import { HiringTeamStep } from './wizard/HiringTeamStep'
+import { SourcingStep } from './wizard/SourcingStep'
 import { SummaryStep } from './wizard/SummaryStep'
 
 interface JobWizardProps {
@@ -25,8 +26,9 @@ interface WizardState {
 const STEPS = [
   { id: 1, title: 'Job Information', description: 'Basic job details' },
   { id: 2, title: 'Hiring Plan', description: 'Configure stages' },
-  { id: 3, title: 'Hiring Team', description: 'Assign team members' },
-  { id: 4, title: 'Summary', description: 'Review and create' }
+  { id: 3, title: 'Sourcing', description: 'Find candidates' },
+  { id: 4, title: 'Hiring Team', description: 'Assign team members' },
+  { id: 5, title: 'Summary', description: 'Review and create' }
 ]
 
 export function JobWizard({ isOpen, onClose }: JobWizardProps) {
@@ -114,8 +116,9 @@ export function JobWizard({ isOpen, onClose }: JobWizardProps) {
         return wizardState.jobData.title && wizardState.jobData.organization_id
       case 2:
       case 3:
-        return wizardState.createdJobId
       case 4:
+        return wizardState.createdJobId
+      case 5:
         return true
       default:
         return false
@@ -141,13 +144,21 @@ export function JobWizard({ isOpen, onClose }: JobWizardProps) {
         )
       case 3:
         return (
+          <SourcingStep
+            jobId={wizardState.createdJobId!}
+            onNext={handleNextStep}
+            onBack={handlePrevStep}
+          />
+        )
+      case 4:
+        return (
           <HiringTeamStep
             jobId={wizardState.createdJobId}
             onNext={handleNextStep}
             onBack={handlePrevStep}
           />
         )
-      case 4:
+      case 5:
         return (
           <SummaryStep
             jobData={wizardState.jobData}
@@ -236,8 +247,8 @@ export function JobWizard({ isOpen, onClose }: JobWizardProps) {
               {renderStepContent()}
             </div>
 
-            {/* Navigation Footer - Only show for steps 1 and 4 */}
-            {(wizardState.currentStep === 1 || wizardState.currentStep === 4) && (
+            {/* Navigation Footer - Only show for steps 1 and 5 */}
+            {(wizardState.currentStep === 1 || wizardState.currentStep === 5) && (
               <div className="px-6 py-4 border-t border-border flex items-center justify-between">
                 <Button 
                   variant="ghost" 
@@ -248,7 +259,7 @@ export function JobWizard({ isOpen, onClose }: JobWizardProps) {
                 </Button>
 
                 <div className="flex items-center gap-2">
-                  {wizardState.currentStep > 1 && wizardState.currentStep !== 4 && (
+                  {wizardState.currentStep > 1 && wizardState.currentStep !== 5 && (
                     <Button
                       variant="outline"
                       onClick={handlePrevStep}

@@ -1,16 +1,19 @@
-import { Card } from '@/components/ui/card';
 import { CreditsMeter } from '@/components/sourcing/CreditsMeter';
 import { useOrgCredits } from '@/hooks/useOrgCredits';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertCircle } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { SourcingTab } from '@/components/jobs/SourcingTab';
+import { Button } from '@/components/ui/button';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface SourcingStepProps {
-  jobId?: string;
-  jobTitle?: string;
+  jobId: string;
+  onNext: () => void;
+  onBack: () => void;
 }
 
-export function SourcingStep({ jobId, jobTitle }: SourcingStepProps) {
+export function SourcingStep({ jobId, onNext, onBack }: SourcingStepProps) {
   const { credits, isLoading, error, refetch } = useOrgCredits();
 
   if (isLoading) {
@@ -45,15 +48,13 @@ export function SourcingStep({ jobId, jobTitle }: SourcingStepProps) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col h-full">
       {/* Header with Credits Meter */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between pb-4">
         <div>
           <h2 className="text-2xl font-bold">Source Candidates</h2>
           <p className="text-muted-foreground mt-1">
-            {jobTitle 
-              ? `Find qualified candidates for ${jobTitle}`
-              : 'Find qualified candidates from external sources'}
+            Find qualified candidates from external sources
           </p>
         </div>
         
@@ -67,31 +68,29 @@ export function SourcingStep({ jobId, jobTitle }: SourcingStepProps) {
         />
       </div>
 
-      {/* Placeholder content - will be filled in later slices */}
-      <Card className="p-8 text-center">
-        <div className="max-w-md mx-auto space-y-4">
-          <div className="w-16 h-16 rounded-full bg-muted mx-auto flex items-center justify-center">
-            <svg
-              className="w-8 h-8 text-muted-foreground"
-              fill="none"
-              strokeWidth="1.5"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"
-              />
-            </svg>
-          </div>
-          <h3 className="text-lg font-semibold">External Sourcing Coming Soon</h3>
-          <p className="text-sm text-muted-foreground">
-            This step will allow you to search and collect candidate profiles from external providers.
-            Your search and collect credits are shown above.
-          </p>
-        </div>
-      </Card>
+      {/* Sourcing Tab */}
+      <div className="flex-1 overflow-hidden">
+        <SourcingTab jobId={jobId} />
+      </div>
+
+      {/* Navigation Footer */}
+      <div className="pt-4 border-t flex items-center justify-between">
+        <Button
+          variant="outline"
+          onClick={onBack}
+          className="flex items-center gap-2"
+        >
+          <ChevronLeft className="w-4 h-4" />
+          Back
+        </Button>
+        <Button
+          onClick={onNext}
+          className="flex items-center gap-2"
+        >
+          Continue
+          <ChevronRight className="w-4 h-4" />
+        </Button>
+      </div>
     </div>
   );
 }
