@@ -540,157 +540,213 @@ function buildCoreSignalRequest(query: SearchRequest['query'], pagination: { pag
 /**
  * Call CoreSignal API with retry logic
  */
+type CoreSignalEndpointType = 'dsl-live' | 'dsl-preview' | 'filter';
+
 async function callCoreSignalAPI(
   apiKey: string,
   request: any,
   requestId: string,
   useDSL: boolean,
   maxRetries = 2
-): Promise<{ results: CoreSignalEmployee[]; total: number; creditsRemaining?: number; providerRequestId?: string }> {
-  // Build URL with normalized slashes
+): Promise<{ results: CoreSignalEmployee[]; total: number; creditsRemaining?: number; providerRequestId?: string; endpointPath: string; endpointType: CoreSignalEndpointType }> {
   const base = (Deno.env.get('CORESIGNAL_BASE_URL') ?? 'https://api.coresignal.com').replace(/\/+$/, '');
-  
-  // Use explicit useDSL flag instead of reading environment again
-  const path = useDSL
-    ? (Deno.env.get('CORESIGNAL_PEOPLE_SEARCH_PREVIEW_PATH') ?? '/v2/employee_base/search/es_dsl/preview').replace(/^\/+/, '')
-    : (Deno.env.get('CORESIGNAL_PEOPLE_SEARCH_PATH') ?? '/v2/employee_base/search/filter').replace(/^\/+/, '');
-  
-  const url = `${base}/${path}`;
-  
   const logDebug = (Deno.env.get('LOG_LEVEL') === 'debug');
-  
-  // Log final URL at debug level
-  if (logDebug) {
-    console.debug('[CORESIGNAL] Final URL:', url);
-    console.debug('[CORESIGNAL] Using', useDSL ? 'ES-DSL' : 'REST filters', 'endpoint');
-  }
-  
+
+  const normalizePath = (path: string) => path.replace(/^\/+/, '');
+
+  const liveDslPath = normalizePath(
+    Deno.env.get('CORESIGNAL_PEOPLE_SEARCH_DSL_PATH') ?? '/v2/employee_base/search/es_dsl'
+  );
+  const previewEnabled = Deno.env.get('CORESIGNAL_USE_DSL_PREVIEW') === 'true';
+  const previewDslPath = normalizePath(
+    Deno.env.get('CORESIGNAL_PEOPLE_SEARCH_PREVIEW_PATH') ?? '/v2/employee_base/search/es_dsl/preview'
+  );
+  const filterPath = normalizePath(
+    Deno.env.get('CORESIGNAL_PEOPLE_SEARCH_PATH') ?? '/v2/employee_base/search/filter'
+  );
+
+  const pathCandidates: Array<{ path: string; type: CoreSignalEndpointType }> = useDSL
+    ? [
+        ...(previewEnabled ? [{ path: previewDslPath, type: 'dsl-preview' as const }] : []),
+        { path: liveDslPath, type: 'dsl-live' as const }
+      ]
+    : [{ path: filterPath, type: 'filter' as const }];
+
   let lastError: Error | null = null;
-  let retryCount = 0;
 
-  while (retryCount <= maxRetries) {
-    try {
-      // One-click debug probe: Log URL and payload before fetch
-      if (logDebug) {
-        console.debug('[CORESIGNAL] URL', url);
-        console.debug('[CORESIGNAL] Payload', JSON.stringify(request));
-      }
+  for (let candidateIndex = 0; candidateIndex < pathCandidates.length; candidateIndex++) {
+    const candidate = pathCandidates[candidateIndex];
+    const url = `${base}/${candidate.path}`;
+    const displayEndpoint = `/${candidate.path}`;
+    let retryCount = 0;
 
-      logStep("Calling CoreSignal API", { attempt: retryCount + 1, request });
+    if (logDebug) {
+      console.debug('[CORESIGNAL] Final URL:', url);
+      console.debug('[CORESIGNAL] Using', candidate.type, 'endpoint');
+    }
 
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(request)
-      });
-
-      // Debug probe: Log status and first 500 chars of body
-      if (logDebug) {
-        const txt = await response.clone().text();
-        console.debug('[CORESIGNAL] Status:', response.status);
-        console.debug('[CORESIGNAL] Body (first 500):', txt.slice(0, 500));
-      }
-
-      const creditsRemaining = response.headers.get('x-credits-remaining');
-
-      if (response.status === 429) {
-        const retryAfter = parseInt(response.headers.get('retry-after') || '60');
-        logStep("Rate limited by provider", { retryAfter, attempt: retryCount + 1 });
-        
-        if (retryCount < maxRetries) {
-          await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
-          retryCount++;
-          continue;
+    while (retryCount <= maxRetries) {
+      try {
+        if (logDebug) {
+          console.debug('[CORESIGNAL] URL', url);
+          console.debug('[CORESIGNAL] Payload', JSON.stringify(request));
         }
-        throw new Error(`Rate limited by provider. Retry after ${retryAfter}s`);
-      }
 
-      if (response.status >= 500) {
-        logStep("Provider server error", { status: response.status, attempt: retryCount + 1 });
-        
-        if (retryCount < maxRetries) {
-          const backoffMs = Math.pow(2, retryCount) * 1000; // Exponential backoff
+        logStep("Calling CoreSignal API", { attempt: retryCount + 1, request, endpoint: displayEndpoint });
+
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(request)
+        });
+
+        if (logDebug) {
+          const txt = await response.clone().text();
+          console.debug('[CORESIGNAL] Status:', response.status);
+          console.debug('[CORESIGNAL] Body (first 500):', txt.slice(0, 500));
+        }
+
+        const creditsRemaining = response.headers.get('x-credits-remaining');
+
+        if (response.status === 429) {
+          const retryAfter = parseInt(response.headers.get('retry-after') || '60');
+          logStep("Rate limited by provider", { retryAfter, attempt: retryCount + 1, endpoint: displayEndpoint });
+
+          if (retryCount < maxRetries) {
+            await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
+            retryCount++;
+            continue;
+          }
+          throw new Error(`Rate limited by provider. Retry after ${retryAfter}s`);
+        }
+
+        if (response.status >= 500) {
+          logStep("Provider server error", { status: response.status, attempt: retryCount + 1, endpoint: displayEndpoint });
+
+          if (retryCount < maxRetries) {
+            const backoffMs = Math.pow(2, retryCount) * 1000;
+            await new Promise(resolve => setTimeout(resolve, backoffMs));
+            retryCount++;
+            continue;
+          }
+
+          if (candidate.type === 'dsl-preview' && candidateIndex < pathCandidates.length - 1) {
+            lastError = new Error(`Preview endpoint server error (${response.status})`);
+            logStep("Preview endpoint failed, falling back to live DSL", {
+              status: response.status,
+              endpoint: displayEndpoint,
+              requestId
+            });
+            break;
+          }
+
+          throw new Error(`Provider server error (${response.status})`);
+        }
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          let errorBody: any = {};
+          try {
+            errorBody = JSON.parse(errorText);
+          } catch {
+            errorBody = { message: errorText };
+          }
+
+          const providerRequestId = errorBody.request_id || errorBody.requestId;
+
+          if ((response.status === 404 || response.status === 410) && candidate.type === 'dsl-preview' && candidateIndex < pathCandidates.length - 1) {
+            logStep("Preview endpoint unavailable, falling back", {
+              status: response.status,
+              endpoint: displayEndpoint,
+              providerRequestId,
+              requestId
+            });
+            lastError = new Error('Preview endpoint unavailable');
+            break;
+          }
+
+          if (response.status === 404) {
+            logStep("Provider endpoint not found (404)", {
+              url,
+              providerRequestId,
+              errorBody
+            });
+            const err = new Error('Search endpoint not found - check CoreSignal configuration');
+            (err as any).code = 'PROVIDER_UNAVAILABLE';
+            (err as any).providerRequestId = providerRequestId;
+            throw err;
+          }
+
+          if (response.status === 401 || response.status === 403) {
+            const error: any = new Error('Provider authentication failed');
+            error.code = "PROVIDER_AUTH_FAILED";
+            error.providerRequestId = providerRequestId;
+            throw error;
+          }
+
+          if (candidate.type === 'dsl-preview' && candidateIndex < pathCandidates.length - 1) {
+            lastError = new Error(`Preview endpoint error (${response.status})`);
+            logStep("Preview endpoint error - falling back to live DSL", {
+              status: response.status,
+              endpoint: displayEndpoint,
+              requestId,
+              providerRequestId
+            });
+            break;
+          }
+
+          throw new Error(`CoreSignal API error (${response.status}): ${errorText}`);
+        }
+
+        const data = await response.json();
+        const providerRequestId = data.request_id || data.requestId;
+
+        logStep("CoreSignal API success", {
+          total: data.total || data.hits?.total?.value || data.hits?.length || 0,
+          creditsRemaining,
+          providerRequestId,
+          endpoint: displayEndpoint
+        });
+
+        const hits = data.hits?.hits || data.hits || data.results || [];
+        const total = data.hits?.total?.value || data.total || hits.length;
+        const results = hits.map((hit: any) => hit._source || hit);
+
+        return {
+          results,
+          total,
+          creditsRemaining: creditsRemaining ? parseInt(creditsRemaining) : undefined,
+          providerRequestId,
+          endpointPath: displayEndpoint,
+          endpointType: candidate.type
+        };
+
+      } catch (error) {
+        lastError = error as Error;
+        logStep("CoreSignal API error", { error: lastError.message, attempt: retryCount + 1, endpoint: displayEndpoint });
+
+        if (retryCount < maxRetries && !lastError.message.includes('Rate limited')) {
+          const backoffMs = Math.pow(2, retryCount) * 1000;
           await new Promise(resolve => setTimeout(resolve, backoffMs));
           retryCount++;
           continue;
         }
-        throw new Error(`Provider server error (${response.status})`);
+        break;
       }
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        let errorBody: any = {};
-        try {
-          errorBody = JSON.parse(errorText);
-        } catch {
-          errorBody = { message: errorText };
-        }
-
-        const providerRequestId = errorBody.request_id || errorBody.requestId;
-
-        // Handle 404 - Endpoint not found
-        if (response.status === 404) {
-          logStep("Provider endpoint not found (404)", { 
-            url, 
-            providerRequestId,
-            errorBody 
-          });
-          const err = new Error('Search endpoint not found - check CORESIGNAL_PEOPLE_SEARCH_PATH configuration');
-          (err as any).code = 'PROVIDER_UNAVAILABLE';
-          (err as any).providerRequestId = providerRequestId;
-          throw err;
-        }
-
-        // Handle 401/403 - Auth failures
-        if (response.status === 401 || response.status === 403) {
-          const error: any = new Error('Provider authentication failed');
-          error.code = "PROVIDER_AUTH_FAILED";
-          error.providerRequestId = providerRequestId;
-          throw error;
-        }
-
-        // Generic error
-        throw new Error(`CoreSignal API error (${response.status}): ${errorText}`);
-      }
-
-      const data = await response.json();
-      const providerRequestId = data.request_id || data.requestId;
-      
-      logStep("CoreSignal API success", { 
-        total: data.total || data.hits?.total?.value || data.hits?.length || 0,
-        creditsRemaining,
-        providerRequestId
-      });
-
-      // Map ES-DSL response format (Base Employee uses hits.hits array)
-      const hits = data.hits?.hits || data.hits || data.results || [];
-      const total = data.hits?.total?.value || data.total || hits.length;
-
-      // Extract _source from each hit
-      const results = hits.map((hit: any) => hit._source || hit);
-
-      return {
-        results,
-        total,
-        creditsRemaining: creditsRemaining ? parseInt(creditsRemaining) : undefined,
-        providerRequestId
-      };
-
-    } catch (error) {
-      lastError = error as Error;
-      logStep("CoreSignal API error", { error: lastError.message, attempt: retryCount + 1 });
-      
-      if (retryCount < maxRetries && !lastError.message.includes('Rate limited')) {
-        const backoffMs = Math.pow(2, retryCount) * 1000;
-        await new Promise(resolve => setTimeout(resolve, backoffMs));
-        retryCount++;
-        continue;
-      }
-      break;
     }
+
+    if (candidate.type === 'dsl-preview' && candidateIndex < pathCandidates.length - 1) {
+      logStep("Switching to live DSL endpoint after preview failure", {
+        requestId,
+        lastError: lastError?.message
+      });
+      continue;
+    }
+
+    break;
   }
 
   throw lastError || new Error("Failed to call CoreSignal API");
@@ -822,7 +878,7 @@ function normalizeEmployee(employee: CoreSignalEmployee, query: SearchRequest['q
 // MAIN HANDLER
 // ============================================================================
 
-serve(async (req) => {
+const handler = async (req: Request) => {
   // Handle CORS preflight
   const pre = handlePreflight(req);
   if (pre) return pre;
@@ -942,9 +998,16 @@ serve(async (req) => {
         // Boolean test: Use DSL endpoint with boolean query
         testUseDSL = true;
         const base = (Deno.env.get('CORESIGNAL_BASE_URL') ?? 'https://api.coresignal.com').replace(/\/+$/, '');
-        const path = (Deno.env.get('CORESIGNAL_PEOPLE_SEARCH_PREVIEW_PATH') ?? '/v2/employee_base/search/es_dsl/preview').replace(/^\/+/, '');
-        testUrl = `${base}/${path}`;
-        
+        const previewEnabled = Deno.env.get('CORESIGNAL_USE_DSL_PREVIEW') === 'true';
+        const livePath = (Deno.env.get('CORESIGNAL_PEOPLE_SEARCH_DSL_PATH') ?? '/v2/employee_base/search/es_dsl').replace(/^\/+/, '');
+        const previewPath = (Deno.env.get('CORESIGNAL_PEOPLE_SEARCH_PREVIEW_PATH') ?? '/v2/employee_base/search/es_dsl/preview').replace(/^\/+/, '');
+        const selectedPath = previewEnabled ? previewPath : livePath;
+        testUrl = `${base}/${selectedPath}`;
+
+        if (!previewEnabled) {
+          logStep("Self-test boolean probe using live DSL endpoint", { endpoint: selectedPath });
+        }
+
         // Minimal DSL query with boolean logic
         testPayload = {
           query: {
@@ -1168,6 +1231,8 @@ serve(async (req) => {
     let total: number;
     let creditsRemaining: number | undefined;
     let providerRequestId: string | undefined;
+    let endpointPathUsed: string | undefined;
+    let endpointType: CoreSignalEndpointType | undefined;
     let creditsCharged = 0;
 
     try {
@@ -1176,6 +1241,23 @@ serve(async (req) => {
       total = apiResult.total;
       creditsRemaining = apiResult.creditsRemaining;
       providerRequestId = apiResult.providerRequestId;
+      endpointPathUsed = apiResult.endpointPath;
+      endpointType = apiResult.endpointType;
+
+      if (hasBooleanQuery) {
+        if (apiResult.endpointType === 'dsl-live') {
+          logStep("Boolean DSL search succeeded against live endpoint", {
+            requestId,
+            endpoint: apiResult.endpointPath
+          });
+        } else {
+          logStep("Boolean DSL search executed on non-live endpoint", {
+            requestId,
+            endpoint: apiResult.endpointPath,
+            endpointType: apiResult.endpointType
+          });
+        }
+      }
 
       // ✅ ONLY consume credits on successful 200 response
       logStep("Attempting to consume search credit after success", { requestId });
@@ -1331,11 +1413,13 @@ serve(async (req) => {
       query_params: query,
       results_count: normalizedResults.length,
       performed_by: user.id,
-      metadata: { 
-        requestId,
-        providerRequestId
-      }
-    });
+        metadata: {
+          requestId,
+          providerRequestId,
+          endpointType,
+          endpointPath: endpointPathUsed
+        }
+      });
 
     logStep("Search completed successfully", { 
       requestId,
@@ -1375,4 +1459,15 @@ serve(async (req) => {
       { status: 500, headers: { 'Content-Type': 'application/json', ...cors } }
     );
   }
-});
+};
+
+if (import.meta.main) {
+  serve(handler);
+}
+
+export {
+  buildCoreSignalFilterPayload,
+  buildCoreSignalRequest,
+  callCoreSignalAPI,
+  handler as sourcingSearchHandler
+};
