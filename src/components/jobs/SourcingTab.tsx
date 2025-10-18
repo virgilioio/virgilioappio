@@ -51,10 +51,17 @@ export function SourcingTab({ jobId }: SourcingTabProps) {
   const [announcement, setAnnouncement] = useState('');
 
   // Check if search can run
+  const effectiveBoolean = useMemo(() => {
+    if (booleanQuery.trim()) return booleanQuery.trim();
+    // Fallback: we could try to build default here, but for now just check emptiness
+    return '';
+  }, [booleanQuery]);
+
   const canSearch = useMemo(() => {
-    if (!credits) return { canProceed: false, reason: 'Loading credits...' };
-    return canRunExternalSearch({ searchRemaining: credits.search.remaining });
-  }, [credits]);
+    const hasCredits = (credits?.search.remaining ?? 0) > 0;
+    const hasValidQuery = !!effectiveBoolean && effectiveBoolean.length > 0;
+    return hasCredits && hasValidQuery && !isLoading;
+  }, [credits, effectiveBoolean, isLoading]);
 
   // Auto-populate boolean query on mount
   useEffect(() => {
@@ -136,10 +143,10 @@ export function SourcingTab({ jobId }: SourcingTabProps) {
       return;
     }
 
-    if (!canSearch.canProceed) {
+    if (!canSearch) {
       toast({
         title: 'Cannot Search',
-        description: canSearch.reason,
+        description: 'Ensure you have credits and a valid boolean query',
         variant: 'destructive',
       });
       return;
@@ -247,7 +254,7 @@ export function SourcingTab({ jobId }: SourcingTabProps) {
         setIsBooleanEditing(true);
       }
       // "R" to run search
-      if (e.key === 'r' && !isBooleanEditing && canSearch.canProceed) {
+      if (e.key === 'r' && !isBooleanEditing && canSearch) {
         e.preventDefault();
         handleRunSearch();
       }
@@ -369,7 +376,7 @@ export function SourcingTab({ jobId }: SourcingTabProps) {
           <div className="p-4 border-t space-y-2">
             <Button
               onClick={handleRunSearch}
-              disabled={!canSearch.canProceed || isLoading}
+              disabled={!canSearch}
               className="w-full"
             >
               <Search className="h-4 w-4 mr-2" />
