@@ -283,6 +283,69 @@ async function checkCache(
 }
 
 /**
+ * Build CoreSignal REST API filter payload for Base Employee search
+ * Strips null/empty values and formats for the REST /v1/professional-network/employee/search endpoint
+ */
+function buildCoreSignalFilterPayload(
+  query: SearchRequest['query'], 
+  pagination: { page: number; pageSize: number }
+): Record<string, any> {
+  const payload: Record<string, any> = {};
+
+  // Title - take first title if multiple provided
+  if (query.titles && query.titles.length > 0) {
+    const title = query.titles[0]?.trim();
+    if (title) {
+      payload.title = title;
+    }
+  }
+
+  // Keywords - dedupe and take top 10 from skills/keywords
+  const allKeywords = [...(query.keywords || [])];
+  const uniqueKeywords = [...new Set(allKeywords.map(k => k?.trim()).filter(Boolean))];
+  if (uniqueKeywords.length > 0) {
+    payload.keywords = uniqueKeywords.slice(0, 10);
+  }
+
+  // Locations - city/region/country tokens
+  if (query.locations && query.locations.length > 0) {
+    const cleanLocations = query.locations.map(l => l?.trim()).filter(Boolean);
+    if (cleanLocations.length > 0) {
+      payload.locations = cleanLocations;
+    }
+  }
+
+  // Languages - as strings
+  if (query.languages && query.languages.length > 0) {
+    const cleanLanguages = query.languages.map(l => l?.trim()).filter(Boolean);
+    if (cleanLanguages.length > 0) {
+      payload.languages = cleanLanguages;
+    }
+  }
+
+  // Updated within days - integer only
+  if (query.updated_within_days && Number.isInteger(query.updated_within_days) && query.updated_within_days > 0) {
+    payload.updated_within_days = query.updated_within_days;
+  }
+
+  // Pagination - clamp page_size to 1..100
+  const pageSize = Math.max(1, Math.min(pagination.pageSize ?? 25, 100));
+  const page = Math.max(1, pagination.page ?? 1);
+  
+  if (page > 1) {
+    payload.page = page;
+  }
+  if (pageSize !== 25) { // Only include if not default
+    payload.page_size = pageSize;
+  }
+
+  // Note: Boolean query is NOT included here - REST endpoint may not support it
+  // Note: require_email and require_phone are excluded - Base Employee search doesn't support them
+
+  return payload;
+}
+
+/**
  * Build CoreSignal ES-DSL API request for Base Employee index
  */
 function buildCoreSignalRequest(query: SearchRequest['query'], pagination: { page: number; pageSize: number }) {
@@ -910,8 +973,13 @@ serve(async (req) => {
       );
     }
 
-    // Build and call CoreSignal API
-    const coreSignalRequest = buildCoreSignalRequest(query, { page, pageSize });
+    // Build request payload based on endpoint type
+    const useDSL = Deno.env.get('CORESIGNAL_USE_DSL') === 'true';
+    const requestPayload = useDSL
+      ? buildCoreSignalRequest(query, { page, pageSize })
+      : buildCoreSignalFilterPayload(query, { page, pageSize });
+    
+    logStep("Built request payload", { requestId, useDSL, payload: requestPayload });
     
     let searchResults: CoreSignalEmployee[];
     let total: number;
@@ -920,7 +988,7 @@ serve(async (req) => {
     let creditsCharged = 0;
 
     try {
-      const apiResult = await callCoreSignalAPI(coreSignalApiKey, coreSignalRequest, requestId);
+      const apiResult = await callCoreSignalAPI(coreSignalApiKey, requestPayload, requestId);
       searchResults = apiResult.results;
       total = apiResult.total;
       creditsRemaining = apiResult.creditsRemaining;
@@ -994,43 +1062,48 @@ serve(async (req) => {
     if (logDebug && normalizedResults.length === 0) {
       console.debug('[SOURCING-SEARCH] Zero results - running diagnostic probe');
       
-      try {
-        // Probe 1: match_all to confirm index access
-        const probeMatchAll = await callCoreSignalAPI(
-          coresignalApiKey,
-          { query: { match_all: {} }, size: 1 },
-          `${requestId}-probe-matchall`
-        );
-        console.debug('[SOURCING-SEARCH] Probe match_all returned:', probeMatchAll.total, 'total records');
+      // Only run probes for DSL mode (REST mode doesn't support match_all)
+      if (useDSL) {
+        try {
+          // Probe 1: match_all to confirm index access
+          const probeMatchAll = await callCoreSignalAPI(
+            coreSignalApiKey,
+            { query: { match_all: {} }, size: 1 },
+            `${requestId}-probe-matchall`
+          );
+          console.debug('[SOURCING-SEARCH] Probe match_all returned:', probeMatchAll.total, 'total records');
 
-        // Probe 2: Simple nested title search
-        const probeTitle = await callCoreSignalAPI(
-          coresignalApiKey,
-          {
-            query: {
-              bool: {
-                must: [{
-                  nested: {
-                    path: "experience",
-                    query: {
-                      bool: {
-                        must: [
-                          { match_phrase: { "experience.title": "engineer" } },
-                          { term: { "experience.is_current": 1 } }
-                        ]
+          // Probe 2: Simple nested title search
+          const probeTitle = await callCoreSignalAPI(
+            coreSignalApiKey,
+            {
+              query: {
+                bool: {
+                  must: [{
+                    nested: {
+                      path: "experience",
+                      query: {
+                        bool: {
+                          must: [
+                            { match_phrase: { "experience.title": "engineer" } },
+                            { term: { "experience.is_current": 1 } }
+                          ]
+                        }
                       }
                     }
-                  }
-                }]
-              }
+                  }]
+                }
+              },
+              size: 1
             },
-            size: 1
-          },
-          `${requestId}-probe-title`
-        );
-        console.debug('[SOURCING-SEARCH] Probe title=engineer returned:', probeTitle.total, 'records');
-      } catch (probeError) {
-        console.debug('[SOURCING-SEARCH] Probe failed:', probeError);
+            `${requestId}-probe-title`
+          );
+          console.debug('[SOURCING-SEARCH] Probe title=engineer returned:', probeTitle.total, 'records');
+        } catch (probeError) {
+          console.debug('[SOURCING-SEARCH] Probe failed:', probeError);
+        }
+      } else {
+        console.debug('[SOURCING-SEARCH] Skipping DSL probes in REST mode');
       }
     }
 
