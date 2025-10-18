@@ -340,16 +340,6 @@ function buildCoreSignalRequest(query: SearchRequest['query'], pagination: { pag
 }
 
 /**
- * Build CoreSignal People Search URL
- */
-function buildPeopleSearchUrl({ baseUrl, path }: { baseUrl: string; path: string }): string {
-  // Remove trailing slash from baseUrl and leading slash from path if present
-  const cleanBase = baseUrl.replace(/\/$/, '');
-  const cleanPath = path.replace(/^\//, '');
-  return `${cleanBase}/${cleanPath}`;
-}
-
-/**
  * Call CoreSignal API with retry logic
  */
 async function callCoreSignalAPI(
@@ -358,10 +348,10 @@ async function callCoreSignalAPI(
   requestId: string,
   maxRetries = 2
 ): Promise<{ results: CoreSignalEmployee[]; total: number; creditsRemaining?: number; providerRequestId?: string }> {
-  // Read URL configuration from environment
-  const BASE = Deno.env.get("CORESIGNAL_BASE_URL") ?? "https://api.coresignal.com";
-  const PATH = Deno.env.get("CORESIGNAL_PEOPLE_SEARCH_PREVIEW_PATH") ?? "/v2/employee_base/search/es_dsl/preview";
-  const url = buildPeopleSearchUrl({ baseUrl: BASE, path: PATH });
+  // Build URL with normalized slashes
+  const base = (Deno.env.get('CORESIGNAL_BASE_URL') ?? 'https://api.coresignal.com').replace(/\/+$/, '');
+  const path = (Deno.env.get('CORESIGNAL_PEOPLE_SEARCH_PREVIEW_PATH') ?? '/v2/employee_base/search/es_dsl/preview').replace(/^\/+/, '');
+  const url = `${base}/${path}`;
   
   // Debug log ES-DSL payload
   if (Deno.env.get('LOG_LEVEL') === 'debug') {
