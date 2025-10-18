@@ -2,6 +2,23 @@ import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { buildDefaultBoolean, type JobForBoolean } from '@/lib/booleanQuery';
 
+/**
+ * Sanitizes a query object by removing null, undefined, empty strings, and empty arrays.
+ */
+export function sanitizeQuery(query: Record<string, any>): Record<string, any> {
+  const sanitized: Record<string, any> = {};
+  
+  for (const [key, value] of Object.entries(query)) {
+    // Skip null, undefined, empty string, or empty array
+    if (value === null || value === undefined || value === '' || (Array.isArray(value) && value.length === 0)) {
+      continue;
+    }
+    sanitized[key] = value;
+  }
+  
+  return sanitized;
+}
+
 export interface SourcingQuery {
   boolean?: string;
   titles?: string[];
@@ -63,18 +80,21 @@ export function useExternalSourcing() {
     setError(null);
 
     try {
+      // Build the query with sanitization
+      const rawQuery = {
+        boolean: (request.query?.boolean || buildDefaultBoolean(request.jobSpec || {})).trim(),
+        locations: request.query?.locations ?? [],
+        seniority: request.query?.seniority ?? [],
+        languages: request.query?.languages ?? [],
+        require_email: !!request.query?.has_email,
+        require_phone: !!request.query?.has_phone,
+        updated_within_days: request.query?.updated_within_days
+      };
+
       const body = {
         organization_id: request.organization_id,
         job_id: request.job_id ?? null,
-        query: {
-          boolean: (request.query?.boolean || buildDefaultBoolean(request.jobSpec || {})).trim(),
-          locations: request.query?.locations ?? [],
-          seniority: request.query?.seniority ?? [],
-          languages: request.query?.languages ?? [],
-          require_email: !!request.query?.has_email,
-          require_phone: !!request.query?.has_phone,
-          updated_within_days: request.query?.updated_within_days ?? null
-        },
+        query: sanitizeQuery(rawQuery),
         pagination: {
           page: request.pagination?.page ?? 1,
           pageSize: request.pagination?.pageSize ?? 25

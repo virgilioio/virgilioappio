@@ -126,7 +126,10 @@ export function SourcingTab({ jobId }: SourcingTabProps) {
         '6mo': 180,
         '12mo': 365,
       };
-      query.updated_within_days = daysMap[updatedWithin];
+      const days = daysMap[updatedWithin];
+      if (days !== undefined) {
+        query.updated_within_days = days;
+      }
     }
 
     return query;
