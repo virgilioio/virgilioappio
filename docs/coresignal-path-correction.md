@@ -68,6 +68,7 @@ Payload structure remains compatible - v2 filter endpoint uses the same field na
 - **Default**: `/v2/employee_base/search/es_dsl/preview` (corrected)
 - **Full URL**: `https://api.coresignal.com/v2/employee_base/search/es_dsl/preview`
 - **Feature Flag**: `CORESIGNAL_USE_DSL=true`
+- **Fallback behavior**: Authentication failures (401/403) automatically fall back to the live DSL endpoint, so keep the preview flag gated to avoid unexpected traffic without explicit opt-in.
 
 ### 5. Unit Tests Updated
 **File**: `supabase/functions/sourcing-search/buildFilterPayload.test.ts`

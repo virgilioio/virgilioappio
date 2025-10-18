@@ -681,6 +681,17 @@ async function callCoreSignalAPI(
           }
 
           if (response.status === 401 || response.status === 403) {
+            if (candidate.type === 'dsl-preview' && candidateIndex < pathCandidates.length - 1) {
+              logStep("Preview endpoint authentication failed, falling back to live DSL", {
+                status: response.status,
+                endpoint: displayEndpoint,
+                requestId,
+                providerRequestId
+              });
+              lastError = new Error('Preview endpoint authentication failed');
+              break;
+            }
+
             const error: any = new Error('Provider authentication failed');
             error.code = "PROVIDER_AUTH_FAILED";
             error.providerRequestId = providerRequestId;
