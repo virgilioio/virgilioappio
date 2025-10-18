@@ -31,8 +31,6 @@ export function SourcingTab({ jobId }: SourcingTabProps) {
   const [locations, setLocations] = useState<string>('');
   const [seniority, setSeniority] = useState<string>('');
   const [languages, setLanguages] = useState<string>('');
-  const [hasEmail, setHasEmail] = useState<'any' | 'only'>('any');
-  const [hasPhone, setHasPhone] = useState<'any' | 'only'>('any');
   const [updatedWithin, setUpdatedWithin] = useState<string>('');
   const [excludeInPipeline, setExcludeInPipeline] = useState(false);
   const [booleanQuery, setBooleanQuery] = useState('');
@@ -112,14 +110,6 @@ export function SourcingTab({ jobId }: SourcingTabProps) {
       query.languages = languages.split(',').map(l => l.trim()).filter(Boolean);
     }
 
-    if (hasEmail === 'only') {
-      query.has_email = 'only';
-    }
-
-    if (hasPhone === 'only') {
-      query.has_phone = 'only';
-    }
-
     if (updatedWithin && updatedWithin !== 'any') {
       const daysMap: Record<string, number> = {
         '30d': 30,
@@ -133,7 +123,7 @@ export function SourcingTab({ jobId }: SourcingTabProps) {
     }
 
     return query;
-  }, [booleanQuery, locations, seniority, languages, hasEmail, hasPhone, updatedWithin]);
+  }, [booleanQuery, locations, seniority, languages, updatedWithin]);
 
   // Handle search execution
   const handleRunSearch = useCallback(async () => {
@@ -181,8 +171,6 @@ export function SourcingTab({ jobId }: SourcingTabProps) {
     setLocations('');
     setSeniority('');
     setLanguages('');
-    setHasEmail('any');
-    setHasPhone('any');
     setUpdatedWithin('');
     setExcludeInPipeline(false);
     setBooleanQuery('');
@@ -316,34 +304,6 @@ export function SourcingTab({ jobId }: SourcingTabProps) {
                 onChange={(e) => setLanguages(e.target.value)}
               />
               <p className="text-xs text-muted-foreground">Comma-separated</p>
-            </div>
-
-            {/* Has Email */}
-            <div className="space-y-2">
-              <Label>Has Email</Label>
-              <Select value={hasEmail} onValueChange={(v) => setHasEmail(v as 'any' | 'only')}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="any">Any</SelectItem>
-                  <SelectItem value="only">Only</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Has Phone */}
-            <div className="space-y-2">
-              <Label>Has Phone</Label>
-              <Select value={hasPhone} onValueChange={(v) => setHasPhone(v as 'any' | 'only')}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="any">Any</SelectItem>
-                  <SelectItem value="only">Only</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
 
             {/* Updated Within */}

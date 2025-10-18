@@ -26,8 +26,6 @@ export interface SourcingQuery {
   locations?: string[];
   languages?: string[];
   seniority?: string[];
-  has_email?: 'only' | 'any';
-  has_phone?: 'only' | 'any';
   updated_within_days?: number;
 }
 
@@ -80,20 +78,20 @@ export function useExternalSourcing() {
     setError(null);
 
     try {
-      // Build the query with sanitization
+      // Build the query with sanitization (remove unsupported fields)
       const rawQuery = {
         boolean: (request.query?.boolean || buildDefaultBoolean(request.jobSpec || {})).trim(),
-        locations: request.query?.locations ?? [],
-        seniority: request.query?.seniority ?? [],
-        languages: request.query?.languages ?? [],
-        require_email: !!request.query?.has_email,
-        require_phone: !!request.query?.has_phone,
+        titles: request.query?.titles,
+        keywords: request.query?.keywords,
+        locations: request.query?.locations,
+        seniority: request.query?.seniority,
+        languages: request.query?.languages,
         updated_within_days: request.query?.updated_within_days
       };
 
       const body = {
         organization_id: request.organization_id,
-        job_id: request.job_id ?? null,
+        job_id: request.job_id,
         query: sanitizeQuery(rawQuery),
         pagination: {
           page: request.pagination?.page ?? 1,
