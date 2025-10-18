@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { buildDefaultBoolean, type JobForBoolean } from '@/lib/booleanQuery';
 
 export interface SourcingQuery {
   boolean?: string;
@@ -21,6 +22,7 @@ export interface SourcingSearchRequest {
     page: number;
     pageSize: number;
   };
+  jobSpec?: JobForBoolean;
 }
 
 export interface SearchResultItem {
@@ -61,10 +63,32 @@ export function useExternalSourcing() {
     setError(null);
 
     try {
+      const body = {
+        organization_id: request.organization_id,
+        job_id: request.job_id ?? null,
+        query: {
+          boolean: (request.query?.boolean || buildDefaultBoolean(request.jobSpec || {})).trim(),
+          locations: request.query?.locations ?? [],
+          seniority: request.query?.seniority ?? [],
+          languages: request.query?.languages ?? [],
+          require_email: !!request.query?.has_email,
+          require_phone: !!request.query?.has_phone,
+          updated_within_days: request.query?.updated_within_days ?? null
+        },
+        pagination: {
+          page: request.pagination?.page ?? 1,
+          pageSize: request.pagination?.pageSize ?? 25
+        }
+      };
+
+      if (import.meta.env.DEV) {
+        console.debug('[sourcing-search] request', body);
+      }
+
       const { data, error: invocationError } = await supabase.functions.invoke<SourcingSearchResponse>(
         'sourcing-search',
         {
-          body: request,
+          body,
         }
       );
 
