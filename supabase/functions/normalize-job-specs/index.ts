@@ -1,9 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
-import { createSecureCorsHeaders, handleSecureCorsPreFlight } from "../_shared/cors.ts";
-
-const corsHeaders = createSecureCorsHeaders();
+import { corsHeadersFor, handlePreflight } from '../_shared/mod.ts';
 
 interface JobSpecs {
   title?: string;
@@ -25,8 +23,12 @@ interface NormalizedSpecs {
 }
 
 serve(async (req) => {
-  const preflightResponse = handleSecureCorsPreFlight(req, corsHeaders);
-  if (preflightResponse) return preflightResponse;
+  // Handle preflight FIRST, before any other code runs
+  const pre = handlePreflight(req);
+  if (pre) return pre;
+
+  const origin = req.headers.get('Origin') ?? req.headers.get('origin') ?? undefined;
+  const cors = corsHeadersFor(origin);
 
   try {
     const supabaseClient = createClient(
@@ -106,14 +108,15 @@ serve(async (req) => {
     console.log('✅ Normalization complete:', JSON.stringify(normalized, null, 2));
 
     return new Response(JSON.stringify({ normalized }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...cors },
+      status: 200,
     });
 
   } catch (error) {
     console.error('❌ Normalization error:', error);
     return new Response(
       JSON.stringify({ error: 'Normalization failed', details: error instanceof Error ? error.message : 'Unknown error' }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
+      { headers: { 'Content-Type': 'application/json', ...cors }, status: 500 }
     );
   }
 });
