@@ -103,6 +103,38 @@ Deno.test("callCoreSignalAPI falls back to live endpoint when preview fails", as
   }
 });
 
+Deno.test("callCoreSignalAPI falls back to live endpoint when preview auth fails", async () => {
+  resetEnv();
+  Deno.env.set("CORESIGNAL_USE_DSL_PREVIEW", "true");
+
+  const calls: FetchCall[] = [];
+  const restoreFetch = stubFetch([
+    new Response(JSON.stringify({ message: "missing preview access" }), { status: 401 }),
+    new Response(JSON.stringify({ hits: { hits: [] }, total: 0 }), {
+      status: 200,
+      headers: { "x-credits-remaining": "2" }
+    })
+  ], calls);
+
+  try {
+    const result = await callCoreSignalAPI(
+      "test-key",
+      { query: { match_all: {} }, size: 1 },
+      "req-preview-auth-fallback",
+      true,
+      0
+    );
+
+    assertEquals(calls.length, 2);
+    assertEquals(calls[0].url, "https://api.coresignal.com/v2/employee_base/search/es_dsl/preview");
+    assertEquals(calls[1].url, "https://api.coresignal.com/v2/employee_base/search/es_dsl");
+    assertEquals(result.endpointType, "dsl-live");
+  } finally {
+    restoreFetch();
+    resetEnv();
+  }
+});
+
 Deno.test("callCoreSignalAPI honors preview flag when endpoint succeeds", async () => {
   resetEnv();
   Deno.env.set("CORESIGNAL_USE_DSL_PREVIEW", "true");
