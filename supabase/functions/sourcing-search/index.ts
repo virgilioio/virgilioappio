@@ -544,13 +544,13 @@ async function callCoreSignalAPI(
   apiKey: string,
   request: any,
   requestId: string,
+  useDSL: boolean,
   maxRetries = 2
 ): Promise<{ results: CoreSignalEmployee[]; total: number; creditsRemaining?: number; providerRequestId?: string }> {
   // Build URL with normalized slashes
   const base = (Deno.env.get('CORESIGNAL_BASE_URL') ?? 'https://api.coresignal.com').replace(/\/+$/, '');
   
-  // Feature flag: Use ES-DSL preview endpoint if enabled, otherwise use REST filters endpoint
-  const useDSL = Deno.env.get('CORESIGNAL_USE_DSL') === 'true';
+  // Use explicit useDSL flag instead of reading environment again
   const path = useDSL
     ? (Deno.env.get('CORESIGNAL_PEOPLE_SEARCH_PREVIEW_PATH') ?? '/v2/employee_base/search/es_dsl/preview').replace(/^\/+/, '')
     : (Deno.env.get('CORESIGNAL_PEOPLE_SEARCH_PATH') ?? '/v2/employee_base/search/filter').replace(/^\/+/, '');
@@ -837,9 +837,10 @@ serve(async (req) => {
   // Parse URL for query parameters
   const url = new URL(req.url);
   const selfTest = url.searchParams.get('self_test') === '1';
+  const booleanTest = url.searchParams.get('boolean_test') === '1';
 
   try {
-    logStep("Search request received", { requestId, selfTest });
+    logStep("Search request received", { requestId, selfTest, booleanTest });
 
     // Parse JSON body with error handling
     let body: SearchRequest;
@@ -900,7 +901,7 @@ serve(async (req) => {
     // ============================================================
     // SELF-TEST MODE (DEV ONLY)
     // ============================================================
-    if (selfTest) {
+    if (selfTest || booleanTest) {
       const isDev = Deno.env.get('ENVIRONMENT') === 'development' || 
                     Deno.env.get('ENV') === 'dev' ||
                     !Deno.env.get('ENVIRONMENT'); // Local dev has no ENVIRONMENT set
@@ -916,7 +917,7 @@ serve(async (req) => {
         );
       }
 
-      logStep("Self-test mode activated", { requestId });
+      logStep("Self-test mode activated", { requestId, mode: booleanTest ? 'boolean' : 'simple' });
 
       const coreSignalApiKey = Deno.env.get('CORESIGNAL_API_KEY');
       if (!coreSignalApiKey) {
@@ -930,21 +931,56 @@ serve(async (req) => {
         );
       }
 
-      // Minimal REST payload
-      const testPayload = {
-        title: "engineer",
-        page: 1,
-        page_size: 1
-      };
-
       const logDebug = (Deno.env.get('LOG_LEVEL') === 'debug');
       
-      try {
-        // Build URL (always use REST for self-test)
+      // Determine payload and endpoint based on test type
+      let testPayload: any;
+      let testUrl: string;
+      let testUseDSL: boolean;
+
+      if (booleanTest) {
+        // Boolean test: Use DSL endpoint with boolean query
+        testUseDSL = true;
+        const base = (Deno.env.get('CORESIGNAL_BASE_URL') ?? 'https://api.coresignal.com').replace(/\/+$/, '');
+        const path = (Deno.env.get('CORESIGNAL_PEOPLE_SEARCH_PREVIEW_PATH') ?? '/v2/employee_base/search/es_dsl/preview').replace(/^\/+/, '');
+        testUrl = `${base}/${path}`;
+        
+        // Minimal DSL query with boolean logic
+        testPayload = {
+          query: {
+            bool: {
+              must: [{
+                nested: {
+                  path: "experience",
+                  query: {
+                    bool: {
+                      must: [
+                        { match_phrase: { "experience.title": "engineer" } },
+                        { term: { "experience.is_current": 1 } }
+                      ]
+                    }
+                  }
+                }
+              }]
+            }
+          },
+          size: 1
+        };
+      } else {
+        // Simple test: Use REST endpoint
+        testUseDSL = false;
         const base = (Deno.env.get('CORESIGNAL_BASE_URL') ?? 'https://api.coresignal.com').replace(/\/+$/, '');
         const path = (Deno.env.get('CORESIGNAL_PEOPLE_SEARCH_PATH') ?? '/v2/employee_base/search/filter').replace(/^\/+/, '');
-        const testUrl = `${base}/${path}`;
-
+        testUrl = `${base}/${path}`;
+        
+        testPayload = {
+          title: "engineer",
+          page: 1,
+          page_size: 1
+        };
+      }
+      
+      try {
         if (logDebug) {
           console.debug('[CORESIGNAL] Self-test URL:', testUrl);
           console.debug('[CORESIGNAL] Self-test payload:', JSON.stringify(testPayload));
@@ -987,12 +1023,16 @@ serve(async (req) => {
           requestId, 
           status: response.status, 
           hitCount,
-          creditsConsumed: 0 
+          creditsConsumed: 0,
+          mode: booleanTest ? 'boolean' : 'simple',
+          usedDSL: testUseDSL
         });
 
         return new Response(
           JSON.stringify({
             self_test: true,
+            test_mode: booleanTest ? 'boolean' : 'simple',
+            used_dsl: testUseDSL,
             provider_status: response.status,
             provider_ok: response.ok,
             hit_count: hitCount,
@@ -1000,7 +1040,9 @@ serve(async (req) => {
             url: testUrl,
             payload: testPayload,
             requestId,
-            note: "Self-test mode - no credits consumed"
+            note: booleanTest 
+              ? "Boolean test mode - testing DSL endpoint with boolean query - no credits consumed"
+              : "Simple test mode - testing REST endpoint - no credits consumed"
           }),
           { status: 200, headers: { 'Content-Type': 'application/json', ...cors } }
         );
@@ -1109,13 +1151,18 @@ serve(async (req) => {
       );
     }
 
+    // Determine whether to use DSL endpoint:
+    // 1) If query.boolean is present, we MUST use DSL
+    // 2) Otherwise, check CORESIGNAL_USE_DSL env flag
+    const hasBooleanQuery = Boolean(query.boolean?.trim());
+    const useDSL = hasBooleanQuery || Deno.env.get('CORESIGNAL_USE_DSL') === 'true';
+    
     // Build request payload based on endpoint type
-    const useDSL = Deno.env.get('CORESIGNAL_USE_DSL') === 'true';
     const requestPayload = useDSL
       ? buildCoreSignalRequest(query, { page, pageSize })
       : buildCoreSignalFilterPayload(query, { page, pageSize });
     
-    logStep("Built request payload", { requestId, useDSL, payload: requestPayload });
+    logStep("Built request payload", { requestId, useDSL, hasBooleanQuery, payload: requestPayload });
     
     let searchResults: CoreSignalEmployee[];
     let total: number;
@@ -1124,7 +1171,7 @@ serve(async (req) => {
     let creditsCharged = 0;
 
     try {
-      const apiResult = await callCoreSignalAPI(coreSignalApiKey, requestPayload, requestId);
+      const apiResult = await callCoreSignalAPI(coreSignalApiKey, requestPayload, requestId, useDSL);
       searchResults = apiResult.results;
       total = apiResult.total;
       creditsRemaining = apiResult.creditsRemaining;
@@ -1205,7 +1252,8 @@ serve(async (req) => {
           const probeMatchAll = await callCoreSignalAPI(
             coreSignalApiKey,
             { query: { match_all: {} }, size: 1 },
-            `${requestId}-probe-matchall`
+            `${requestId}-probe-matchall`,
+            true // Use DSL for probes
           );
           console.debug('[SOURCING-SEARCH] Probe match_all returned:', probeMatchAll.total, 'total records');
 
@@ -1232,7 +1280,8 @@ serve(async (req) => {
               },
               size: 1
             },
-            `${requestId}-probe-title`
+            `${requestId}-probe-title`,
+            true // Use DSL for probes
           );
           console.debug('[SOURCING-SEARCH] Probe title=engineer returned:', probeTitle.total, 'records');
         } catch (probeError) {

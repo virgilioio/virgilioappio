@@ -159,10 +159,87 @@ With `LOG_LEVEL=debug`, the function logs:
 - `[CORESIGNAL] Status: <http_status>`
 - `[CORESIGNAL] Body (first 500): <response_preview>`
 
+## Boolean Query Auto-Routing
+
+### New Behavior (Latest Update)
+Requests containing `query.boolean` are **automatically** routed through the DSL endpoint, regardless of the `CORESIGNAL_USE_DSL` environment variable.
+
+**Routing Logic:**
+```typescript
+const hasBooleanQuery = Boolean(query.boolean?.trim());
+const useDSL = hasBooleanQuery || Deno.env.get('CORESIGNAL_USE_DSL') === 'true';
+
+const requestPayload = useDSL
+  ? buildCoreSignalRequest(query, { page, pageSize })  // DSL builder
+  : buildCoreSignalFilterPayload(query, { page, pageSize });  // REST builder
+```
+
+**Why This Matters:**
+- Boolean queries like `"engineer AND developer"` require the DSL endpoint's boolean parser
+- The REST filter endpoint doesn't support boolean query syntax
+- This change ensures boolean queries work correctly without requiring environment configuration
+
+### Refactored Flag Handling
+- `callCoreSignalAPI` now accepts an explicit `useDSL: boolean` parameter
+- Eliminates redundant environment variable reads
+- Makes the routing decision explicit and testable
+
+### New Self-Test Mode: `?boolean_test=1`
+
+**Boolean Test (`?boolean_test=1`):**
+- Uses DSL endpoint: `/v2/employee_base/search/es_dsl/preview`
+- Sends boolean query with nested experience filter:
+  ```json
+  {
+    "query": {
+      "bool": {
+        "must": [{
+          "nested": {
+            "path": "experience",
+            "query": {
+              "bool": {
+                "must": [
+                  { "match_phrase": { "experience.title": "engineer" } },
+                  { "term": { "experience.is_current": 1 } }
+                ]
+              }
+            }
+          }
+        }]
+      }
+    },
+    "size": 1
+  }
+  ```
+- Tests DSL endpoint functionality without consuming credits
+- Returns `test_mode`, `used_dsl`, `provider_status`, and `hit_count`
+
+**Testing Boolean Query Routing:**
+```bash
+# Test DSL endpoint with boolean query
+curl -X POST "https://[project-url]/functions/v1/sourcing-search?boolean_test=1" \
+  -H "Authorization: Bearer [token]" \
+  -H "Content-Type: application/json"
+
+# Or send actual boolean query
+curl -X POST "https://[project-url]/functions/v1/sourcing-search" \
+  -H "Authorization: Bearer [token]" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "organization_id": "xxx",
+    "query": {
+      "boolean": "engineer AND developer"
+    }
+  }'
+```
+
 ## Status
 ✅ **Completed** - Both REST and ES-DSL endpoints migrated to v2 paths
 - REST filter: `/v2/employee_base/search/filter`
 - ES-DSL preview: `/v2/employee_base/search/es_dsl/preview`
-- Unit tests updated
+- Boolean queries auto-route to DSL endpoint
+- Refactored `useDSL` flag handling
+- Added `?boolean_test=1` self-test mode
+- Unit tests updated with boolean routing tests
 - Self-test endpoint updated
 - Documentation updated

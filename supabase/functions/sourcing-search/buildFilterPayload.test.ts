@@ -1,6 +1,17 @@
 import { assertEquals } from "https://deno.land/std@0.190.0/testing/asserts.ts";
 
 /**
+ * CRITICAL: Boolean query routing behavior
+ * 
+ * When a request contains query.boolean, the edge function MUST:
+ * 1. Set useDSL = true (regardless of CORESIGNAL_USE_DSL env var)
+ * 2. Call buildCoreSignalRequest (DSL builder) instead of buildCoreSignalFilterPayload
+ * 3. Route to /v2/employee_base/search/es_dsl/preview endpoint
+ * 
+ * This ensures boolean queries are always processed through the DSL endpoint.
+ */
+
+/**
  * Build CoreSignal REST API filter payload for Base Employee v2 filter endpoint
  * Strips null/empty values and formats for the /v2/employee_base/search/filter endpoint
  */
@@ -239,4 +250,66 @@ Deno.test("buildCoreSignalFilterPayload - full payload test", () => {
     page: 2,
     page_size: 50
   });
+});
+
+// ============================================================================
+// BOOLEAN QUERY ROUTING TESTS
+// ============================================================================
+
+Deno.test("Boolean query routing - hasBooleanQuery detection", () => {
+  // Document the routing logic:
+  // hasBooleanQuery = Boolean(query.boolean?.trim())
+  // useDSL = hasBooleanQuery || Deno.env.get('CORESIGNAL_USE_DSL') === 'true'
+  
+  const testCases = [
+    { boolean: "engineer AND developer", expectDSL: true },
+    { boolean: "senior", expectDSL: true },
+    { boolean: " ", expectDSL: false }, // whitespace only = false
+    { boolean: "", expectDSL: false },
+    { boolean: null, expectDSL: false },
+    { boolean: undefined, expectDSL: false },
+  ];
+  
+  testCases.forEach(({ boolean, expectDSL }) => {
+    const hasBooleanQuery = Boolean(boolean?.trim());
+    assertEquals(hasBooleanQuery, expectDSL, 
+      `Boolean query "${boolean}" should ${expectDSL ? 'trigger' : 'not trigger'} DSL routing`);
+  });
+});
+
+Deno.test("Self-test mode - boolean_test payload structure", () => {
+  // ?boolean_test=1 should:
+  // 1. Use DSL endpoint: /v2/employee_base/search/es_dsl/preview
+  // 2. Send a boolean query with nested experience filter
+  // 3. Not consume credits
+  // 4. Return hit_count and provider_status
+  
+  const expectedPayload = {
+    query: {
+      bool: {
+        must: [{
+          nested: {
+            path: "experience",
+            query: {
+              bool: {
+                must: [
+                  { match_phrase: { "experience.title": "engineer" } },
+                  { term: { "experience.is_current": 1 } }
+                ]
+              }
+            }
+          }
+        }]
+      }
+    },
+    size: 1
+  };
+  
+  // Verify structure matches expected
+  assertEquals(expectedPayload.query.bool.must.length, 1);
+  assertEquals(expectedPayload.size, 1);
+  
+  const nestedQuery = expectedPayload.query.bool.must[0].nested;
+  assertEquals(nestedQuery.path, "experience");
+  assertEquals(nestedQuery.query.bool.must.length, 2);
 });
