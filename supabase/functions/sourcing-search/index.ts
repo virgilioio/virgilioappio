@@ -833,9 +833,13 @@ serve(async (req) => {
 
   // Generate request ID for tracking
   const requestId = generateRequestId();
+  
+  // Parse URL for query parameters
+  const url = new URL(req.url);
+  const selfTest = url.searchParams.get('self_test') === '1';
 
   try {
-    logStep("Search request received", { requestId });
+    logStep("Search request received", { requestId, selfTest });
 
     // Parse JSON body with error handling
     let body: SearchRequest;
@@ -892,6 +896,133 @@ serve(async (req) => {
         { status: 401, headers: { 'Content-Type': 'application/json', ...cors } }
       );
     }
+
+    // ============================================================
+    // SELF-TEST MODE (DEV ONLY)
+    // ============================================================
+    if (selfTest) {
+      const isDev = Deno.env.get('ENVIRONMENT') === 'development' || 
+                    Deno.env.get('ENV') === 'dev' ||
+                    !Deno.env.get('ENVIRONMENT'); // Local dev has no ENVIRONMENT set
+      
+      if (!isDev) {
+        return new Response(
+          JSON.stringify({ 
+            code: 'FORBIDDEN',
+            message: 'Self-test mode is only available in development',
+            requestId
+          }),
+          { status: 403, headers: { 'Content-Type': 'application/json', ...cors } }
+        );
+      }
+
+      logStep("Self-test mode activated", { requestId });
+
+      const coreSignalApiKey = Deno.env.get('CORESIGNAL_API_KEY');
+      if (!coreSignalApiKey) {
+        return new Response(
+          JSON.stringify({ 
+            code: 'PROVIDER_UNAVAILABLE',
+            message: 'CoreSignal API key not configured',
+            requestId
+          }),
+          { status: 502, headers: { 'Content-Type': 'application/json', ...cors } }
+        );
+      }
+
+      // Minimal REST payload
+      const testPayload = {
+        title: "engineer",
+        page: 1,
+        page_size: 1
+      };
+
+      const logDebug = (Deno.env.get('LOG_LEVEL') === 'debug');
+      
+      try {
+        // Build URL (always use REST for self-test)
+        const base = (Deno.env.get('CORESIGNAL_BASE_URL') ?? 'https://api.coresignal.com').replace(/\/+$/, '');
+        const path = (Deno.env.get('CORESIGNAL_PEOPLE_SEARCH_PATH') ?? '/v1/professional-network/employee/search').replace(/^\/+/, '');
+        const testUrl = `${base}/${path}`;
+
+        if (logDebug) {
+          console.debug('[CORESIGNAL] Self-test URL:', testUrl);
+          console.debug('[CORESIGNAL] Self-test payload:', JSON.stringify(testPayload));
+        }
+
+        logStep("Sending self-test request", { requestId, url: testUrl, payload: testPayload });
+
+        const response = await fetch(testUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${coreSignalApiKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(testPayload)
+        });
+
+        const responseText = await response.text();
+        
+        if (logDebug) {
+          console.debug('[CORESIGNAL] Self-test status:', response.status);
+          console.debug('[CORESIGNAL] Self-test body (first 500):', responseText.slice(0, 500));
+        }
+
+        let hitCount = 0;
+        let parsedResponse: any = {};
+        
+        try {
+          parsedResponse = JSON.parse(responseText);
+          // Try different response formats
+          hitCount = parsedResponse.total || 
+                     parsedResponse.hits?.total?.value || 
+                     parsedResponse.hits?.length || 
+                     parsedResponse.results?.length || 
+                     0;
+        } catch {
+          // Non-JSON response
+        }
+
+        logStep("Self-test completed", { 
+          requestId, 
+          status: response.status, 
+          hitCount,
+          creditsConsumed: 0 
+        });
+
+        return new Response(
+          JSON.stringify({
+            self_test: true,
+            provider_status: response.status,
+            provider_ok: response.ok,
+            hit_count: hitCount,
+            credits_consumed: 0,
+            url: testUrl,
+            payload: testPayload,
+            requestId,
+            note: "Self-test mode - no credits consumed"
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json', ...cors } }
+        );
+
+      } catch (error: any) {
+        logStep("Self-test failed", { requestId, error: error.message });
+        
+        return new Response(
+          JSON.stringify({
+            self_test: true,
+            error: error.message,
+            credits_consumed: 0,
+            requestId
+          }),
+          { status: 500, headers: { 'Content-Type': 'application/json', ...cors } }
+        );
+      }
+    }
+
+    // ============================================================
+    // NORMAL FLOW
+    // ============================================================
 
     // Validate request input
     const validation = validateRequest(body, requestId);
