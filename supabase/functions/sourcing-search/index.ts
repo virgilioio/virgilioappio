@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { corsHeadersFor, handlePreflight } from "../_shared/mod.ts";
+import { z } from "https://deno.land/x/zod@v3.22.4/mod.ts";
 
 // ============================================================================
 // TYPES
@@ -72,6 +73,13 @@ const logStep = (step: string, details?: any) => {
 };
 
 /**
+ * Generate a unique request ID for tracking
+ */
+function generateRequestId(): string {
+  return crypto.randomUUID();
+}
+
+/**
  * Generate a deterministic cache key for the search query
  */
 function generateCacheKey(orgId: string, jobId: string | undefined, query: any, page: number): string {
@@ -94,28 +102,58 @@ function hashString(str: string): string {
 }
 
 /**
- * Validate search request input
+ * Zod schema for input validation
  */
-function validateRequest(body: any): { valid: boolean; error?: string } {
-  if (!body.organization_id) {
-    return { valid: false, error: "organization_id is required" };
-  }
+const SearchRequestSchema = z.object({
+  organization_id: z.string().uuid("organization_id must be a valid UUID"),
+  job_id: z.string().uuid("job_id must be a valid UUID").nullable().optional(),
+  query: z.object({
+    boolean: z.string().min(1, "query.boolean cannot be empty").optional(),
+    titles: z.array(z.string()).optional(),
+    keywords: z.array(z.string()).optional(),
+    locations: z.array(z.string()).optional(),
+    languages: z.array(z.string()).optional(),
+    seniority: z.array(z.string()).optional(),
+    has_email: z.enum(['only', 'any']).optional(),
+    has_phone: z.enum(['only', 'any']).optional(),
+    updated_within_days: z.number().int().positive().optional(),
+    require_email: z.boolean().optional(),
+    require_phone: z.boolean().optional()
+  }),
+  pagination: z.object({
+    page: z.number().int().min(1, "pagination.page must be >= 1"),
+    pageSize: z.number().int().min(1).max(100, "pagination.pageSize must be between 1 and 100")
+  }).optional()
+});
 
-  if (!body.query || typeof body.query !== 'object') {
-    return { valid: false, error: "query object is required" };
-  }
-
-  const { pagination } = body;
-  if (pagination) {
-    if (pagination.page < 1) {
-      return { valid: false, error: "pagination.page must be >= 1" };
+/**
+ * Validate search request input using Zod
+ */
+function validateRequest(body: any, requestId: string): { valid: boolean; error?: string } {
+  try {
+    SearchRequestSchema.parse(body);
+    
+    // Additional validation: ensure boolean is present if no other query params
+    if (!body.query.boolean && 
+        !body.query.titles?.length && 
+        !body.query.keywords?.length && 
+        !body.query.locations?.length) {
+      return { 
+        valid: false, 
+        error: "query.boolean is required when no other query parameters are provided" 
+      };
     }
-    if (pagination.pageSize < 1 || pagination.pageSize > 100) {
-      return { valid: false, error: "pagination.pageSize must be between 1 and 100" };
+    
+    return { valid: true };
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      const firstError = error.errors[0];
+      const message = `${firstError.path.join('.')}: ${firstError.message}`;
+      logStep("Validation failed", { requestId, error: message, issues: error.errors });
+      return { valid: false, error: message };
     }
+    return { valid: false, error: "Invalid request format" };
   }
-
-  return { valid: true };
 }
 
 /**
@@ -424,16 +462,24 @@ serve(async (req) => {
   const origin = req.headers.get('Origin') ?? req.headers.get('origin') ?? undefined;
   const cors = corsHeadersFor(origin);
 
+  // Generate request ID for tracking
+  const requestId = generateRequestId();
+
   try {
-    logStep("Search request received");
+    logStep("Search request received", { requestId });
 
     // Parse JSON body with error handling
     let body: SearchRequest;
     try {
       body = await req.json();
     } catch {
+      logStep("Invalid JSON", { requestId });
       return new Response(
-        JSON.stringify({ error: 'invalid_json', message: 'Request body must be valid JSON' }),
+        JSON.stringify({ 
+          code: 'BAD_REQUEST',
+          message: 'Request body must be valid JSON',
+          requestId
+        }),
         { status: 400, headers: { 'Content-Type': 'application/json', ...cors } }
       );
     }
@@ -441,8 +487,13 @@ serve(async (req) => {
     // Get authenticated user
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
+      logStep("Missing auth header", { requestId });
       return new Response(
-        JSON.stringify({ error: 'unauthorized', message: 'Missing authorization header' }),
+        JSON.stringify({ 
+          code: 'UNAUTHORIZED',
+          message: 'Missing authorization header',
+          requestId
+        }),
         { status: 401, headers: { 'Content-Type': 'application/json', ...cors } }
       );
     }
@@ -462,46 +513,60 @@ serve(async (req) => {
     const { data: { user }, error: authError } = await supabaseClient.auth.getUser();
     
     if (authError || !user) {
-      logStep("Auth validation failed", { error: authError });
+      logStep("Auth validation failed", { requestId, error: authError });
       return new Response(
-        JSON.stringify({ error: 'unauthorized', message: 'Invalid session' }),
+        JSON.stringify({ 
+          code: 'UNAUTHORIZED',
+          message: 'Invalid session',
+          requestId
+        }),
         { status: 401, headers: { 'Content-Type': 'application/json', ...cors } }
       );
     }
 
-    // Validate request
-    const validation = validateRequest(body);
+    // Validate request input
+    const validation = validateRequest(body, requestId);
     
     if (!validation.valid) {
+      logStep("Validation failed", { requestId, error: validation.error });
       return new Response(
-        JSON.stringify({ error: 'invalid_input', message: validation.error }),
+        JSON.stringify({ 
+          code: 'BAD_REQUEST',
+          message: validation.error,
+          requestId
+        }),
         { status: 400, headers: { 'Content-Type': 'application/json', ...cors } }
       );
     }
 
     const { organization_id, job_id, query, pagination } = body;
-    const page = pagination?.page || 1;
-    const pageSize = pagination?.pageSize || 25;
+    const page = pagination?.page ?? 1;
+    const pageSize = pagination?.pageSize ?? 25;
 
-    logStep("Request validated", { organization_id, job_id, page, pageSize });
+    logStep("Request validated", { requestId, organization_id, job_id, page, pageSize });
 
     // Check organization permission
     const permissionCheck = await checkOrgPermission(supabaseClient, user.id, organization_id);
     if (!permissionCheck.allowed) {
+      logStep("Permission denied", { requestId, userId: user.id, organization_id });
       return new Response(
-        JSON.stringify({ error: 'forbidden', message: permissionCheck.error }),
+        JSON.stringify({ 
+          code: 'FORBIDDEN',
+          message: permissionCheck.error,
+          requestId
+        }),
         { status: 403, headers: { 'Content-Type': 'application/json', ...cors } }
       );
     }
 
     // Generate cache key
     const cacheKey = generateCacheKey(organization_id, job_id, query, page);
-    logStep("Cache key generated", { cacheKey });
+    logStep("Cache key generated", { requestId, cacheKey });
 
     // Check cache
     const cacheResult = await checkCache(supabaseClient, cacheKey);
     if (cacheResult.hit && cacheResult.data) {
-      logStep("Returning cached results");
+      logStep("Returning cached results", { requestId });
       
       const response: SearchResponse = {
         total: cacheResult.data.total,
@@ -529,7 +594,7 @@ serve(async (req) => {
     );
 
     // Consume search credit
-    logStep("Attempting to consume search credit");
+    logStep("Attempting to consume search credit", { requestId });
     const { data: consumed, error: creditError } = await serviceClient.rpc('consume_sourcing_credits', {
       org_id: organization_id,
       credit_type: 'search',
@@ -537,32 +602,41 @@ serve(async (req) => {
     });
 
     if (creditError) {
-      logStep("Credit consumption error", { error: creditError });
+      logStep("Credit consumption error", { requestId, error: creditError });
       return new Response(
-        JSON.stringify({ error: 'internal_error', message: 'Failed to process credits' }),
+        JSON.stringify({ 
+          code: 'INTERNAL_ERROR',
+          message: 'Failed to process credits',
+          requestId
+        }),
         { status: 500, headers: { 'Content-Type': 'application/json', ...cors } }
       );
     }
 
     if (!consumed) {
-      logStep("Insufficient credits");
+      logStep("Insufficient credits", { requestId });
       return new Response(
         JSON.stringify({ 
-          error: 'CREDITS_EXHAUSTED', 
-          message: 'No search credits remaining. Contact your administrator to refill credits.' 
+          code: 'CREDITS_EXHAUSTED',
+          message: 'No search credits remaining. Contact your administrator to refill credits.',
+          requestId
         }),
         { status: 402, headers: { 'Content-Type': 'application/json', ...cors } }
       );
     }
 
-    logStep("Credit consumed successfully");
+    logStep("Credit consumed successfully", { requestId });
 
     // Get CoreSignal API key
     const coreSignalApiKey = Deno.env.get('CORESIGNAL_API_KEY');
     if (!coreSignalApiKey) {
-      logStep("CoreSignal API key not configured");
+      logStep("CoreSignal API key not configured", { requestId });
       return new Response(
-        JSON.stringify({ error: 'provider_unavailable', message: 'Search provider not configured' }),
+        JSON.stringify({ 
+          code: 'PROVIDER_UNAVAILABLE',
+          message: 'Search provider not configured',
+          requestId
+        }),
         { status: 502, headers: { 'Content-Type': 'application/json', ...cors } }
       );
     }
@@ -580,7 +654,7 @@ serve(async (req) => {
       total = apiResult.total;
       creditsRemaining = apiResult.creditsRemaining;
     } catch (error) {
-      logStep("Provider call failed", { error: (error as Error).message });
+      logStep("Provider call failed", { requestId, error: (error as Error).message });
       
       // Log failed event
       await serviceClient.from('sourcing_events').insert({
@@ -593,13 +667,15 @@ serve(async (req) => {
         query_params: query,
         results_count: 0,
         error_message: (error as Error).message,
-        performed_by: user.id
+        performed_by: user.id,
+        metadata: { requestId }
       });
 
       return new Response(
         JSON.stringify({ 
-          error: 'provider_unavailable', 
-          message: `Search provider error: ${(error as Error).message}` 
+          code: 'PROVIDER_UNAVAILABLE',
+          message: `Search provider error: ${(error as Error).message}`,
+          requestId
         }),
         { status: 502, headers: { 'Content-Type': 'application/json', ...cors } }
       );
@@ -646,10 +722,12 @@ serve(async (req) => {
       credit_type: 'search',
       query_params: query,
       results_count: normalizedResults.length,
-      performed_by: user.id
+      performed_by: user.id,
+      metadata: { requestId }
     });
 
     logStep("Search completed successfully", { 
+      requestId,
       results: normalizedResults.length,
       total 
     });
@@ -674,12 +752,13 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    logStep("Unexpected error", { error: (error as Error).message });
+    logStep("Unexpected error", { requestId, error: (error as Error).message });
     
     return new Response(
       JSON.stringify({ 
-        error: 'internal_error', 
+        code: 'INTERNAL_ERROR',
         message: 'An unexpected error occurred',
+        requestId,
         details: (error as Error).message
       }),
       { status: 500, headers: { 'Content-Type': 'application/json', ...cors } }
