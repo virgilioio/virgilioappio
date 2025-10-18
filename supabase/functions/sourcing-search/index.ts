@@ -490,20 +490,15 @@ async function callCoreSignalAPI(
   
   const logDebug = (Deno.env.get('LOG_LEVEL') === 'debug');
   
-  // Log final URL at debug level
-  if (logDebug) {
-    console.debug('[SOURCING-SEARCH] Final Provider URL:', url);
-  }
-  
   let lastError: Error | null = null;
   let retryCount = 0;
 
   while (retryCount <= maxRetries) {
     try {
-      // Debug log URL and payload before fetch
+      // One-click debug probe: Log URL and payload before fetch
       if (logDebug) {
-        console.debug('[SOURCING-SEARCH] Provider URL:', url);
-        console.debug('[SOURCING-SEARCH] ES-DSL Payload:', JSON.stringify(request, null, 2));
+        console.debug('[CORESIGNAL] URL', url);
+        console.debug('[CORESIGNAL] Payload', JSON.stringify(request));
       }
 
       logStep("Calling CoreSignal API", { attempt: retryCount + 1, request });
@@ -517,11 +512,11 @@ async function callCoreSignalAPI(
         body: JSON.stringify(request)
       });
 
-      // Debug log response status and body
+      // Debug probe: Log status and first 500 chars of body
       if (logDebug) {
         const txt = await response.clone().text();
-        console.debug('[SOURCING-SEARCH] Provider status:', response.status);
-        console.debug('[SOURCING-SEARCH] Provider body:', txt.slice(0, 300));
+        console.debug('[CORESIGNAL] Status:', response.status);
+        console.debug('[CORESIGNAL] Body (first 500):', txt.slice(0, 500));
       }
 
       const creditsRemaining = response.headers.get('x-credits-remaining');
