@@ -597,7 +597,7 @@ async function callCoreSignalAPI(
         const response = await fetch(url, {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${apiKey}`,
+            apikey: apiKey,
             'Content-Type': 'application/json'
           },
           body: JSON.stringify(request)
@@ -1054,7 +1054,7 @@ const handler = async (req: Request) => {
         const response = await fetch(testUrl, {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${coreSignalApiKey}`,
+            apikey: coreSignalApiKey,
             'Content-Type': 'application/json'
           },
           body: JSON.stringify(testPayload)
