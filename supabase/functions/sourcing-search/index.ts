@@ -549,7 +549,7 @@ async function callCoreSignalAPI(
   useDSL: boolean,
   maxRetries = 2
 ): Promise<{ results: CoreSignalEmployee[]; total: number; creditsRemaining?: number; providerRequestId?: string; endpointPath: string; endpointType: CoreSignalEndpointType }> {
-  const base = (Deno.env.get('CORESIGNAL_BASE_URL') ?? 'https://api.coresignal.com').replace(/\/+$/, '');
+  const base = (Deno.env.get('CORESIGNAL_BASE_URL') ?? 'https://api.coresignal.com/cdapi').replace(/\/+$/, '');
   const logDebug = (Deno.env.get('LOG_LEVEL') === 'debug');
 
   const normalizePath = (path: string) => path.replace(/^\/+/, '');
@@ -1008,7 +1008,7 @@ const handler = async (req: Request) => {
       if (booleanTest) {
         // Boolean test: Use DSL endpoint with boolean query
         testUseDSL = true;
-        const base = (Deno.env.get('CORESIGNAL_BASE_URL') ?? 'https://api.coresignal.com').replace(/\/+$/, '');
+        const base = (Deno.env.get('CORESIGNAL_BASE_URL') ?? 'https://api.coresignal.com/cdapi').replace(/\/+$/, '');
         const previewEnabled = Deno.env.get('CORESIGNAL_USE_DSL_PREVIEW') === 'true';
         const livePath = (Deno.env.get('CORESIGNAL_PEOPLE_SEARCH_DSL_PATH') ?? '/v2/employee_base/search/es_dsl').replace(/^\/+/, '');
         const previewPath = (Deno.env.get('CORESIGNAL_PEOPLE_SEARCH_PREVIEW_PATH') ?? '/v2/employee_base/search/es_dsl/preview').replace(/^\/+/, '');
@@ -1043,7 +1043,7 @@ const handler = async (req: Request) => {
       } else {
         // Simple test: Use REST endpoint
         testUseDSL = false;
-        const base = (Deno.env.get('CORESIGNAL_BASE_URL') ?? 'https://api.coresignal.com').replace(/\/+$/, '');
+        const base = (Deno.env.get('CORESIGNAL_BASE_URL') ?? 'https://api.coresignal.com/cdapi').replace(/\/+$/, '');
         const path = (Deno.env.get('CORESIGNAL_PEOPLE_SEARCH_PATH') ?? '/v2/employee_base/search/filter').replace(/^\/+/, '');
         testUrl = `${base}/${path}`;
         
