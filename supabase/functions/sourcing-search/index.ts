@@ -353,16 +353,19 @@ async function callCoreSignalAPI(
   const path = (Deno.env.get('CORESIGNAL_PEOPLE_SEARCH_PREVIEW_PATH') ?? '/v2/employee_base/search/es_dsl/preview').replace(/^\/+/, '');
   const url = `${base}/${path}`;
   
-  // Debug log ES-DSL payload
-  if (Deno.env.get('LOG_LEVEL') === 'debug') {
-    console.debug('[SOURCING-SEARCH] ES-DSL Payload:', JSON.stringify(request, null, 2));
-  }
+  const logDebug = (Deno.env.get('LOG_LEVEL') === 'debug');
   
   let lastError: Error | null = null;
   let retryCount = 0;
 
   while (retryCount <= maxRetries) {
     try {
+      // Debug log URL and payload before fetch
+      if (logDebug) {
+        console.debug('[SOURCING-SEARCH] Provider URL:', url);
+        console.debug('[SOURCING-SEARCH] ES-DSL Payload:', JSON.stringify(request, null, 2));
+      }
+
       logStep("Calling CoreSignal API", { attempt: retryCount + 1, request });
 
       const response = await fetch(url, {
@@ -373,6 +376,13 @@ async function callCoreSignalAPI(
         },
         body: JSON.stringify(request)
       });
+
+      // Debug log response status and body
+      if (logDebug) {
+        const txt = await response.clone().text();
+        console.debug('[SOURCING-SEARCH] Provider status:', response.status);
+        console.debug('[SOURCING-SEARCH] Provider body:', txt.slice(0, 300));
+      }
 
       const creditsRemaining = response.headers.get('x-credits-remaining');
 
