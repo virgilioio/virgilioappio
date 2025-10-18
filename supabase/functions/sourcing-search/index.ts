@@ -423,10 +423,10 @@ async function callCoreSignalAPI(
 
         // Handle 404 - Endpoint not found
         if (response.status === 404) {
-          const error: any = new Error('Endpoint not found (check path)');
-          error.code = "PROVIDER_UNAVAILABLE";
-          error.providerRequestId = providerRequestId;
-          throw error;
+          const err = new Error('Endpoint not found (check path)');
+          (err as any).code = 'PROVIDER_UNAVAILABLE';
+          (err as any).providerRequestId = errorBody?.request_id;
+          throw err;
         }
 
         // Handle 401/403 - Auth failures
