@@ -316,6 +316,16 @@ function buildCoreSignalRequest(query: SearchRequest['query'], pagination: { pag
 }
 
 /**
+ * Build CoreSignal People Search URL
+ */
+function buildPeopleSearchUrl({ baseUrl, path }: { baseUrl: string; path: string }): string {
+  // Remove trailing slash from baseUrl and leading slash from path if present
+  const cleanBase = baseUrl.replace(/\/$/, '');
+  const cleanPath = path.replace(/^\//, '');
+  return `${cleanBase}/${cleanPath}`;
+}
+
+/**
  * Call CoreSignal API with retry logic
  */
 async function callCoreSignalAPI(
@@ -323,7 +333,10 @@ async function callCoreSignalAPI(
   request: any,
   maxRetries = 2
 ): Promise<{ results: CoreSignalEmployee[]; total: number; creditsRemaining?: number }> {
-  const baseUrl = "https://api.coresignal.com/v1/professional-network/employee/search";
+  // Read URL configuration from environment
+  const BASE = Deno.env.get("CORESIGNAL_BASE_URL")!;
+  const PATH = Deno.env.get("CORESIGNAL_PEOPLE_SEARCH_PATH") ?? "/v2/employee_base/search/es_dsl";
+  const url = buildPeopleSearchUrl({ baseUrl: BASE, path: PATH });
   
   let lastError: Error | null = null;
   let retryCount = 0;
@@ -332,7 +345,7 @@ async function callCoreSignalAPI(
     try {
       logStep("Calling CoreSignal API", { attempt: retryCount + 1, request });
 
-      const response = await fetch(baseUrl, {
+      const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${apiKey}`,
@@ -369,6 +382,28 @@ async function callCoreSignalAPI(
 
       if (!response.ok) {
         const errorText = await response.text();
+        let errorBody;
+        try {
+          errorBody = JSON.parse(errorText);
+        } catch {
+          errorBody = { message: errorText };
+        }
+
+        // Handle specific error cases
+        if (response.status === 404 && errorText.includes("no Route matched")) {
+          const error: any = new Error(`CoreSignal API error (${response.status}): ${errorText}`);
+          error.code = "PROVIDER_MISCONFIGURED";
+          error.details = errorBody.request_id ? { provider_request_id: errorBody.request_id } : undefined;
+          throw error;
+        }
+
+        if (response.status === 401 || response.status === 403) {
+          const error: any = new Error(`CoreSignal API error (${response.status}): ${errorText}`);
+          error.code = "PROVIDER_AUTH_FAILED";
+          error.details = errorBody.request_id ? { provider_request_id: errorBody.request_id } : undefined;
+          throw error;
+        }
+
         throw new Error(`CoreSignal API error (${response.status}): ${errorText}`);
       }
 
