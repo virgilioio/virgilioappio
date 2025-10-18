@@ -350,10 +350,15 @@ async function callCoreSignalAPI(
 ): Promise<{ results: CoreSignalEmployee[]; total: number; creditsRemaining?: number; providerRequestId?: string }> {
   // Build URL with normalized slashes
   const base = (Deno.env.get('CORESIGNAL_BASE_URL') ?? 'https://api.coresignal.com').replace(/\/+$/, '');
-  const path = (Deno.env.get('CORESIGNAL_PEOPLE_SEARCH_PREVIEW_PATH') ?? '/v2/employee_base/search/es_dsl/preview').replace(/^\/+/, '');
+  const path = (Deno.env.get('CORESIGNAL_PEOPLE_SEARCH_PREVIEW_PATH') ?? '/cdapi/v2/employee_base/search/es_dsl/preview').replace(/^\/+/, '');
   const url = `${base}/${path}`;
   
   const logDebug = (Deno.env.get('LOG_LEVEL') === 'debug');
+  
+  // Log final URL at debug level
+  if (logDebug) {
+    console.debug('[SOURCING-SEARCH] Final Provider URL:', url);
+  }
   
   let lastError: Error | null = null;
   let retryCount = 0;
