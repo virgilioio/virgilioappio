@@ -2,6 +2,11 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0';
 import { createSecureCorsHeaders, handleSecureCorsPreFlight } from "../_shared/cors.ts";
+import {
+  calculateEnhancedCandidateScore,
+  CandidateScore,
+  getMatchTier
+} from "../_shared/candidateMatching.ts";
 
 const corsHeaders = createSecureCorsHeaders();
 
@@ -16,28 +21,6 @@ interface JobMatchingRequest {
   job_id: string;
   limit?: number;
   count_only?: boolean;
-}
-
-interface SkillAnalysis {
-  skill: string;
-  frequency: number;
-  contexts: Array<{
-    source: 'job_title' | 'description' | 'skills_list' | 'summary';
-    prominence: number;
-    recency?: number;
-  }>;
-  density_score: number;
-  prominence_score: number;
-  recency_score: number;
-}
-
-interface CandidateScore {
-  skill_appearance: number;
-  skill_density: number;
-  experience_relevance: number;
-  total_score: number;
-  confidence: number;
-  match_reasoning: string[];
 }
 
 interface MatchedCandidate {
@@ -72,302 +55,16 @@ interface JobMatchingResult {
   };
 }
 
-// Reuse the skill matching logic from count-matching-candidates
-const SKILL_SYNONYMS: Record<string, string[]> = {
-  'sales development representative': ['sdr', 'sales development', 'sales rep', 'sales representative', 'bdr', 'business development representative'],
-  'javascript': ['js', 'javascript', 'ecmascript', 'node.js', 'nodejs'],
-  'react': ['reactjs', 'react.js', 'react native'],
-  'python': ['py', 'python3', 'python 3'],
-  'customer success': ['cs', 'customer support', 'client success'],
-  'project management': ['pm', 'project manager', 'program management'],
-  'business development': ['bd', 'biz dev', 'business dev', 'bdr'],
-  'machine learning': ['ml', 'artificial intelligence', 'ai', 'deep learning'],
-  'data science': ['data scientist', 'data analysis', 'analytics'],
-  'full stack': ['fullstack', 'full-stack', 'frontend and backend'],
-  'devops': ['dev ops', 'infrastructure', 'site reliability'],
-  'quality assurance': ['qa', 'testing', 'test automation'],
-  'user experience': ['ux', 'user interface', 'ui', 'ui/ux'],
-  'software engineer': ['software developer', 'developer', 'engineer', 'programmer'],
-  'marketing': ['digital marketing', 'growth marketing', 'content marketing'],
-  'account management': ['account manager', 'key account', 'client management'],
-  'human resources': ['hr', 'people operations', 'talent acquisition'],
-  'cold calling': ['outbound calling', 'prospecting calls', 'sales calls'],
-  'lead generation': ['lead gen', 'prospecting', 'lead qualification']
-};
-
-function normalizeSkill(skill: string): string {
-  return skill.toLowerCase().trim()
-    .replace(/[^\w\s]/g, '')
-    .replace(/\s+/g, ' ');
-}
-
-function getSkillWords(skill: string): string[] {
-  return normalizeSkill(skill).split(' ').filter(word => word.length > 2);
-}
-
-function findSkillSynonyms(skill: string): string[] {
-  const normalized = normalizeSkill(skill);
-  
-  if (SKILL_SYNONYMS[normalized]) {
-    return SKILL_SYNONYMS[normalized];
-  }
-  
-  for (const [key, synonyms] of Object.entries(SKILL_SYNONYMS)) {
-    if (synonyms.includes(normalized)) {
-      return [key, ...synonyms.filter(s => s !== normalized)];
-    }
-  }
-  
-  return [];
-}
-
-// Enhanced skill extraction with context analysis
-function analyzeSkillsInCandidate(candidate: any, jobSkills: string[]): Map<string, SkillAnalysis> {
-  const skillAnalysis = new Map<string, SkillAnalysis>();
-  
-  // Helper to add skill context
-  const addSkillContext = (skill: string, source: string, prominence: number, recency?: number) => {
-    const normalized = normalizeSkill(skill);
-    if (!skillAnalysis.has(normalized)) {
-      skillAnalysis.set(normalized, {
-        skill: normalized,
-        frequency: 0,
-        contexts: [],
-        density_score: 0,
-        prominence_score: 0,
-        recency_score: 0
-      });
-    }
-    
-    const analysis = skillAnalysis.get(normalized)!;
-    analysis.frequency++;
-    analysis.contexts.push({
-      source: source as any,
-      prominence,
-      recency
-    });
-  };
-
-  // Analyze skills from different sources
-  const candidateSkills = candidate.skills || candidate.standardized_skills || [];
-  candidateSkills.forEach((skill: string) => {
-    addSkillContext(skill, 'skills_list', 90, 100); // Skills list = high prominence
-  });
-
-  // Analyze current role (highest recency)
-  if (candidate.role_current) {
-    const roleWords = candidate.role_current.toLowerCase().split(/\s+/);
-    jobSkills.forEach(jobSkill => {
-      const normalized = normalizeSkill(jobSkill);
-      if (roleWords.some((word: string) => normalized.includes(word) || word.includes(normalized))) {
-        addSkillContext(jobSkill, 'job_title', 100, 100);
-      }
-    });
-  }
-
-  // Analyze profile summary with context weighting
-  if (candidate.profile_summary) {
-    const summary = candidate.profile_summary.toLowerCase();
-    jobSkills.forEach(jobSkill => {
-      const normalized = normalizeSkill(jobSkill);
-      const matches = (summary.match(new RegExp(normalized, 'gi')) || []).length;
-      if (matches > 0) {
-        // Higher matches = higher density
-        for (let i = 0; i < matches; i++) {
-          addSkillContext(jobSkill, 'summary', 60, 80);
-        }
-      }
-    });
-  }
-
-  // Calculate density, prominence, and recency scores
-  skillAnalysis.forEach((analysis, skill) => {
-    const totalContexts = analysis.contexts.length;
-    analysis.density_score = Math.min(100, (analysis.frequency / totalContexts) * 100);
-    analysis.prominence_score = analysis.contexts.reduce((sum, ctx) => sum + ctx.prominence, 0) / totalContexts;
-    analysis.recency_score = analysis.contexts.reduce((sum, ctx) => sum + (ctx.recency || 50), 0) / totalContexts;
-  });
-
-  return skillAnalysis;
-}
-
-function extractSkillsFromSummary(summary: string): string[] {
-  if (!summary) return [];
-  
-  const skillKeywords = [
-    'sales development representative', 'sdr', 'business development', 'bdr',
-    'sales', 'marketing', 'management', 'engineer', 'developer', 'designer', 'analyst',
-    'javascript', 'python', 'react', 'node', 'sql', 'aws', 'google', 'microsoft',
-    'crm', 'salesforce', 'hubspot', 'excel', 'powerbi', 'tableau', 'jira',
-    'recruiting', 'hr', 'human resources', 'onboarding', 'training', 'payroll',
-    'customer service', 'support', 'account management', 'cold calling',
-    'project management', 'agile', 'scrum', 'digital marketing', 'seo', 'sem',
-    'accounting', 'finance', 'operations', 'logistics', 'supply chain',
-    'lead generation', 'prospecting', 'outbound', 'inbound', 'qualification'
-  ];
-  
-  const cleanSummary = summary.toLowerCase().replace(/<[^>]*>/g, ' ').replace(/[^\w\s]/g, ' ');
-  const extractedSkills: string[] = [];
-  
-  for (const keyword of skillKeywords) {
-    if (cleanSummary.includes(keyword)) {
-      extractedSkills.push(keyword);
-    }
-  }
-  
-  return [...new Set(extractedSkills)];
-}
-
-// Enhanced multi-dimensional scoring system
-function calculateEnhancedCandidateScore(candidate: any, jobSkills: string[], job: any): CandidateScore {
-  const reasoning: string[] = [];
-  const skillAnalysis = analyzeSkillsInCandidate(candidate, jobSkills);
-  
-  // 1. Skill Appearance Score (40% weight)
-  let appearanceScore = 0;
-  let skillsFound = 0;
-  
-  for (const jobSkill of jobSkills) {
-    const normalized = normalizeSkill(jobSkill);
-    let bestMatch = 0;
-    
-    // Direct skill match
-    if (skillAnalysis.has(normalized)) {
-      bestMatch = 100;
-      skillsFound++;
-      reasoning.push(`✓ Direct match: ${jobSkill}`);
-    } else {
-      // Semantic/synonym matching
-      for (const [candidateSkill] of skillAnalysis) {
-        const synonyms = findSkillSynonyms(jobSkill);
-        const candidateSynonyms = findSkillSynonyms(candidateSkill);
-        
-        if (synonyms.includes(candidateSkill) || candidateSynonyms.includes(normalized)) {
-          bestMatch = Math.max(bestMatch, 80);
-          reasoning.push(`≈ Synonym match: ${jobSkill} ↔ ${candidateSkill}`);
-        } else if (candidateSkill.includes(normalized) || normalized.includes(candidateSkill)) {
-          bestMatch = Math.max(bestMatch, 60);
-          reasoning.push(`⊃ Partial match: ${jobSkill} ↔ ${candidateSkill}`);
-        }
-      }
-    }
-    
-    appearanceScore += bestMatch;
-  }
-  
-  appearanceScore = jobSkills.length > 0 ? (appearanceScore / jobSkills.length) : 0;
-  
-  // 2. Skill Density Score (35% weight)
-  let densityScore = 0;
-  let totalDensity = 0;
-  let densityCount = 0;
-  
-  skillAnalysis.forEach((analysis, skill) => {
-    if (jobSkills.some(js => normalizeSkill(js) === skill)) {
-      totalDensity += analysis.density_score * analysis.prominence_score / 100;
-      densityCount++;
-      
-      if (analysis.frequency > 2) {
-        reasoning.push(`🔥 High frequency: ${skill} appears ${analysis.frequency} times`);
-      }
-    }
-  });
-  
-  densityScore = densityCount > 0 ? (totalDensity / densityCount) : 0;
-  
-  // 3. Experience Relevance Score (25% weight)
-  let experienceScore = 50; // Base score
-  
-  // Current role relevance
-  if (candidate.role_current) {
-    const roleScore = calculateRoleRelevance(candidate.role_current, jobSkills, job.title);
-    experienceScore = Math.max(experienceScore, roleScore);
-    if (roleScore > 70) {
-      reasoning.push(`💼 Current role highly relevant: ${candidate.role_current}`);
-    }
-  }
-  
-  // Industry/company context
-  if (candidate.company_current) {
-    reasoning.push(`🏢 Currently at: ${candidate.company_current}`);
-  }
-  
-  // Experience level alignment
-  if (candidate.years_experience) {
-    const expAlignment = calculateExperienceAlignment(candidate.years_experience);
-    experienceScore = (experienceScore + expAlignment) / 2;
-    reasoning.push(`📅 ${candidate.years_experience} years experience`);
-  }
-  
-  // Calculate weighted total score
-  const weightedScore = (
-    (appearanceScore * 0.40) + 
-    (densityScore * 0.35) + 
-    (experienceScore * 0.25)
-  );
-  
-  // Calculate confidence based on data completeness
-  let confidence = 0;
-  if (candidate.skills?.length > 0) confidence += 30;
-  if (candidate.profile_summary) confidence += 25;
-  if (candidate.role_current) confidence += 25;
-  if (candidate.years_experience) confidence += 20;
-  
-  return {
-    skill_appearance: Math.round(appearanceScore),
-    skill_density: Math.round(densityScore),
-    experience_relevance: Math.round(experienceScore),
-    total_score: Math.round(weightedScore),
-    confidence: Math.round(confidence),
-    match_reasoning: reasoning
-  };
-}
-
-function calculateRoleRelevance(currentRole: string, jobSkills: string[], jobTitle: string): number {
-  const roleWords = currentRole.toLowerCase().split(/\s+/);
-  const titleWords = jobTitle.toLowerCase().split(/\s+/);
-  
-  let relevanceScore = 0;
-  
-  // Direct title similarity
-  const titleOverlap = titleWords.filter(word => roleWords.includes(word)).length;
-  relevanceScore += (titleOverlap / titleWords.length) * 40;
-  
-  // Skills mentioned in role
-  const skillMentions = jobSkills.filter(skill => 
-    currentRole.toLowerCase().includes(normalizeSkill(skill))
-  ).length;
-  relevanceScore += (skillMentions / jobSkills.length) * 60;
-  
-  return Math.min(100, relevanceScore);
-}
-
-function calculateExperienceAlignment(yearsExp: number): number {
-  // Assume ideal range is 2-8 years for most roles
-  if (yearsExp >= 2 && yearsExp <= 8) return 100;
-  if (yearsExp >= 1 && yearsExp <= 10) return 80;
-  if (yearsExp >= 0 && yearsExp <= 15) return 60;
-  return 40;
-}
-
 // Legacy function for backward compatibility
 function calculateSkillMatch(jobSkills: string[], candidateSkills: string[], candidateSummary?: string): number {
-  // Create a simplified candidate object for the enhanced scoring
   const mockCandidate = {
     skills: candidateSkills,
     profile_summary: candidateSummary
   };
-  
+
   const mockJob = { title: 'Generic Position' };
   const score = calculateEnhancedCandidateScore(mockCandidate, jobSkills, mockJob);
   return score.total_score;
-}
-
-function getMatchTier(score: number): 'excellent' | 'good' | 'fair' | 'minimal' {
-  if (score >= 85) return 'excellent';
-  if (score >= 70) return 'good';
-  if (score >= 50) return 'fair';
-  return 'minimal';
 }
 
 // Enhanced comparative analysis
