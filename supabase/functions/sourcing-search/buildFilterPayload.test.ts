@@ -1,8 +1,8 @@
 import { assertEquals } from "https://deno.land/std@0.190.0/testing/asserts.ts";
 
 /**
- * Build CoreSignal REST API filter payload for Base Employee search
- * Strips null/empty values and formats for the REST /v1/professional-network/employee/search endpoint
+ * Build CoreSignal REST API filter payload for Base Employee v2 filter endpoint
+ * Strips null/empty values and formats for the /v2/employee_base/search/filter endpoint
  */
 function buildCoreSignalFilterPayload(
   query: {
@@ -205,7 +205,7 @@ Deno.test("buildCoreSignalFilterPayload - includes page_size when not default", 
   assertEquals(result.page_size, 50);
 });
 
-Deno.test("buildCoreSignalFilterPayload - excludes boolean query (not supported in REST)", () => {
+Deno.test("buildCoreSignalFilterPayload - excludes boolean query (not supported in v2 filter)", () => {
   const result = buildCoreSignalFilterPayload(
     { 
       titles: ["Engineer"],

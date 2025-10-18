@@ -283,8 +283,8 @@ async function checkCache(
 }
 
 /**
- * Build CoreSignal REST API filter payload for Base Employee search
- * Strips null/empty values and formats for the REST /v1/professional-network/employee/search endpoint
+ * Build CoreSignal REST API filter payload for Base Employee v2 filter endpoint
+ * Strips null/empty values and formats for the /v2/employee_base/search/filter endpoint
  */
 function buildCoreSignalFilterPayload(
   query: SearchRequest['query'], 
@@ -339,7 +339,7 @@ function buildCoreSignalFilterPayload(
     payload.page_size = pageSize;
   }
 
-  // Note: Boolean query is NOT included here - REST endpoint may not support it
+  // Note: Boolean query is NOT included here - v2 filter endpoint uses structured filters
   // Note: require_email and require_phone are excluded - Base Employee search doesn't support them
 
   return payload;
@@ -553,7 +553,7 @@ async function callCoreSignalAPI(
   const useDSL = Deno.env.get('CORESIGNAL_USE_DSL') === 'true';
   const path = useDSL
     ? (Deno.env.get('CORESIGNAL_PEOPLE_SEARCH_PREVIEW_PATH') ?? '/v2/employee_base/search/es_dsl/preview').replace(/^\/+/, '')
-    : (Deno.env.get('CORESIGNAL_PEOPLE_SEARCH_PATH') ?? '/v1/professional-network/employee/search').replace(/^\/+/, '');
+    : (Deno.env.get('CORESIGNAL_PEOPLE_SEARCH_PATH') ?? '/v2/employee_base/search/filter').replace(/^\/+/, '');
   
   const url = `${base}/${path}`;
   
@@ -942,7 +942,7 @@ serve(async (req) => {
       try {
         // Build URL (always use REST for self-test)
         const base = (Deno.env.get('CORESIGNAL_BASE_URL') ?? 'https://api.coresignal.com').replace(/\/+$/, '');
-        const path = (Deno.env.get('CORESIGNAL_PEOPLE_SEARCH_PATH') ?? '/v1/professional-network/employee/search').replace(/^\/+/, '');
+        const path = (Deno.env.get('CORESIGNAL_PEOPLE_SEARCH_PATH') ?? '/v2/employee_base/search/filter').replace(/^\/+/, '');
         const testUrl = `${base}/${path}`;
 
         if (logDebug) {

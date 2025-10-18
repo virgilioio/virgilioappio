@@ -1,11 +1,26 @@
-# CoreSignal API Path Correction
+# CoreSignal API Path Migration to v2
 
 ## Summary
-Updated the default ES-DSL preview endpoint path to remove the deprecated `cdapi` segment.
+Migrated both REST and ES-DSL endpoints to v2 API paths:
+- REST endpoint: `/v1/professional-network/employee/search` → `/v2/employee_base/search/filter`
+- ES-DSL preview: `/cdapi/v2/employee_base/search/es_dsl/preview` → `/v2/employee_base/search/es_dsl/preview`
 
 ## Changes Made
 
-### 1. Default Path Updated
+### 1. REST Filter Endpoint (Default)
+**File**: `supabase/functions/sourcing-search/index.ts`
+
+**Before**:
+```typescript
+Deno.env.get('CORESIGNAL_PEOPLE_SEARCH_PATH') ?? '/v1/professional-network/employee/search'
+```
+
+**After**:
+```typescript
+Deno.env.get('CORESIGNAL_PEOPLE_SEARCH_PATH') ?? '/v2/employee_base/search/filter'
+```
+
+### 2. ES-DSL Preview Endpoint (Feature Flag)
 **File**: `supabase/functions/sourcing-search/index.ts`
 
 **Before**:
@@ -18,13 +33,35 @@ Deno.env.get('CORESIGNAL_PEOPLE_SEARCH_PREVIEW_PATH') ?? '/cdapi/v2/employee_bas
 Deno.env.get('CORESIGNAL_PEOPLE_SEARCH_PREVIEW_PATH') ?? '/v2/employee_base/search/es_dsl/preview'
 ```
 
-### 2. Environment Variables
+### 3. Payload Function Updated
+**File**: `supabase/functions/sourcing-search/index.ts`
 
-#### REST Endpoint (Default)
+**Function**: `buildCoreSignalFilterPayload`
+
+Updated documentation to reflect v2 filter endpoint:
+```typescript
+/**
+ * Build CoreSignal REST API filter payload for Base Employee v2 filter endpoint
+ * Strips null/empty values and formats for the /v2/employee_base/search/filter endpoint
+ */
+```
+
+Payload structure remains compatible - v2 filter endpoint uses the same field names:
+- `title` (string)
+- `keywords` (string[])
+- `locations` (string[])
+- `languages` (string[])
+- `updated_within_days` (integer)
+- `page` (integer)
+- `page_size` (integer, clamped 1-100)
+
+### 4. Environment Variables
+
+#### REST Filter Endpoint (Default)
 - **Variable**: `CORESIGNAL_PEOPLE_SEARCH_PATH`
-- **Default**: `/v1/professional-network/employee/search`
-- **Full URL**: `https://api.coresignal.com/v1/professional-network/employee/search`
-- **Status**: ✅ No changes needed
+- **Default**: `/v2/employee_base/search/filter` (updated)
+- **Full URL**: `https://api.coresignal.com/v2/employee_base/search/filter`
+- **Feature Flag**: None (default behavior)
 
 #### ES-DSL Preview Endpoint (Feature Flag)
 - **Variable**: `CORESIGNAL_PEOPLE_SEARCH_PREVIEW_PATH`
@@ -32,19 +69,20 @@ Deno.env.get('CORESIGNAL_PEOPLE_SEARCH_PREVIEW_PATH') ?? '/v2/employee_base/sear
 - **Full URL**: `https://api.coresignal.com/v2/employee_base/search/es_dsl/preview`
 - **Feature Flag**: `CORESIGNAL_USE_DSL=true`
 
-### 3. Configuration Verification
+### 5. Unit Tests Updated
+**File**: `supabase/functions/sourcing-search/buildFilterPayload.test.ts`
 
-#### Checked Files
-- ✅ `supabase/functions/sourcing-search/index.ts` - Updated
-- ✅ `supabase/functions/sourcing-search/buildFilterPayload.test.ts` - No path references
-- ✅ `docs/sourcing-search-implementation-report.md` - Already uses correct REST path
-- ✅ `docs/sourcing-foundations-implementation-report.md` - Generic references only
-- ✅ `docs/sourcing-ui-search-only-implementation-report.md` - Generic references only
+- Updated function documentation to reference v2 filter endpoint
+- Updated test name: "excludes boolean query (not supported in v2 filter)"
+- All payload assertions remain valid (field names unchanged)
 
-#### No References Found
-No configuration files, tests, or documentation contained references to the old `cdapi` path segment.
+### 6. Self-Test Endpoint Updated
+The `?self_test=1` endpoint now uses the v2 filter path:
+```typescript
+const path = (Deno.env.get('CORESIGNAL_PEOPLE_SEARCH_PATH') ?? '/v2/employee_base/search/filter').replace(/^\/+/, '');
+```
 
-### 4. URL Building Logic
+### 7. URL Building Logic
 
 The function uses normalized URL building with proper slash handling:
 
@@ -53,7 +91,7 @@ const base = (Deno.env.get('CORESIGNAL_BASE_URL') ?? 'https://api.coresignal.com
 const useDSL = Deno.env.get('CORESIGNAL_USE_DSL') === 'true';
 const path = useDSL
   ? (Deno.env.get('CORESIGNAL_PEOPLE_SEARCH_PREVIEW_PATH') ?? '/v2/employee_base/search/es_dsl/preview').replace(/^\/+/, '')
-  : (Deno.env.get('CORESIGNAL_PEOPLE_SEARCH_PATH') ?? '/v1/professional-network/employee/search').replace(/^\/+/, '');
+  : (Deno.env.get('CORESIGNAL_PEOPLE_SEARCH_PATH') ?? '/v2/employee_base/search/filter').replace(/^\/+/, '');
 const url = `${base}/${path}`;
 ```
 
@@ -78,14 +116,37 @@ To test the ES-DSL preview endpoint:
 3. Run a search request
 4. Verify logs show: `https://api.coresignal.com/v2/employee_base/search/es_dsl/preview`
 
+### REST Filter Testing
+Default behavior (no feature flag):
+1. Set `LOG_LEVEL=debug` to see URL logging
+2. Run a search request
+3. Verify logs show: `https://api.coresignal.com/v2/employee_base/search/filter`
+
 ## Migration Notes
 
 ### For Existing Deployments
-No migration required - the old path was never deployed to production. The default behavior uses the REST endpoint (`/v1/professional-network/employee/search`), which was already correct.
+**Action Required**: Update any custom `CORESIGNAL_PEOPLE_SEARCH_PATH` environment variables from v1 to v2.
+
+**Before**:
+```
+CORESIGNAL_PEOPLE_SEARCH_PATH=/v1/professional-network/employee/search
+```
+
+**After**:
+```
+CORESIGNAL_PEOPLE_SEARCH_PATH=/v2/employee_base/search/filter
+```
+
+If not set, the default will automatically use the v2 endpoint.
 
 ### For Custom Configurations
-If you have manually set `CORESIGNAL_PEOPLE_SEARCH_PREVIEW_PATH` in your environment:
-- ✅ Keep your custom value
+If you have manually set environment variables:
+
+**REST Path**:
+- ⚠️ Update from: `/v1/professional-network/employee/search`
+- ✅ Update to: `/v2/employee_base/search/filter`
+
+**ES-DSL Preview Path**:
 - ⚠️ Remove `cdapi` segment if present
 - ✅ Correct format: `/v2/employee_base/search/es_dsl/preview`
 
@@ -99,4 +160,9 @@ With `LOG_LEVEL=debug`, the function logs:
 - `[CORESIGNAL] Body (first 500): <response_preview>`
 
 ## Status
-✅ **Completed** - Default path corrected, no legacy references found
+✅ **Completed** - Both REST and ES-DSL endpoints migrated to v2 paths
+- REST filter: `/v2/employee_base/search/filter`
+- ES-DSL preview: `/v2/employee_base/search/es_dsl/preview`
+- Unit tests updated
+- Self-test endpoint updated
+- Documentation updated
