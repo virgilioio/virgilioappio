@@ -17,6 +17,7 @@ import { SkillsEditor } from './SkillsEditor'
 import { useJobs } from '@/hooks/useJobs'
 import { useAuth } from '@/contexts/AuthContext'
 import { SafeHtml } from '@/components/ui/safe-html'
+import { SourcingStep } from '@/components/jobs/wizard/SourcingStep'
 
 interface JobSpec {
   job_title: string
@@ -85,11 +86,12 @@ export function AIJobAssistant() {
   const [editableSkills, setEditableSkills] = useState<string[]>([])
   const [isCreatingJob, setIsCreatingJob] = useState(false)
   const [organizationName, setOrganizationName] = useState<string>('')
-  const [currentStep, setCurrentStep] = useState<'prompt' | 'specs' | 'decision'>('prompt')
+  const [currentStep, setCurrentStep] = useState<'prompt' | 'specs' | 'sourcing' | 'decision'>('prompt')
   const [isEditing, setIsEditing] = useState<{[key: string]: boolean}>({})
   const [editableJobSpec, setEditableJobSpec] = useState<JobSpec | null>(null)
   const [isRefreshingMatches, setIsRefreshingMatches] = useState(false)
   const [marketInsights, setMarketInsights] = useState<any>(null)
+  const [createdJobId, setCreatedJobId] = useState<string | null>(null)
   const { toast } = useToast()
   const { createJob } = useJobs()
   const navigate = useNavigate()
@@ -153,12 +155,70 @@ export function AIJobAssistant() {
     }
   }
 
-  const handleCreateJob = async () => {
-    if (!editableJobSpec) return
+  const handleSaveDraft = async () => {
+    if (!editableJobSpec || createdJobId) return // Idempotent check
 
     setIsCreatingJob(true)
     try {
       // Map AI level format to database enum
+      const levelMapping: Record<string, any> = {
+        'L1': 'L1 - Specialists',
+        'L2': 'L2 - Managers', 
+        'L3': 'L3 - Directors / VPs / Executive Search'
+      }
+
+      const jobData = {
+        title: selectedTitle,
+        description: editableJobSpec.job_description,
+        level: levelMapping[editableJobSpec.level] || 'L1 - Specialists',
+        location: editableJobSpec.location,
+        department: editableJobSpec.department,
+        salary_min: editableJobSpec.salary_range.min,
+        salary_max: editableJobSpec.salary_range.max,
+        currency: editableJobSpec.salary_range.currency,
+        status: 'draft' as const,
+        skills: editableSkills,
+        organization_id: organizationId
+      }
+
+      const newJob = await createJob(jobData)
+      
+      setCreatedJobId(newJob.id)
+      setCurrentStep('sourcing') // Navigate to sourcing, don't close modal
+      
+      toast({
+        title: 'Draft Saved',
+        description: `"${selectedTitle}" has been saved as a draft. Continue to candidate sourcing.`,
+      })
+    } catch (error: any) {
+      console.error('Error saving draft:', error)
+      toast({
+        title: 'Failed to Save Draft',
+        description: error.message || 'An error occurred while saving the draft job.',
+        variant: 'destructive'
+      })
+    } finally {
+      setIsCreatingJob(false)
+    }
+  }
+
+  const handleCreateJob = async () => {
+    if (!editableJobSpec) return
+
+    // If already created (via draft), just close and navigate
+    if (createdJobId) {
+      toast({
+        title: 'Job Ready',
+        description: `"${selectedTitle}" has been created and is ready for review.`,
+      })
+      setShowModal(false)
+      navigate(`/jobs/${createdJobId}`)
+      return
+    }
+
+    // Otherwise create new (fallback if user skipped sourcing somehow)
+    setIsCreatingJob(true)
+    try {
       const levelMapping: Record<string, any> = {
         'L1': 'L1 - Specialists',
         'L2': 'L2 - Managers', 
@@ -271,6 +331,9 @@ export function AIJobAssistant() {
         setCurrentStep('specs')
         break
       case 'specs':
+        await handleSaveDraft()
+        break
+      case 'sourcing':
         setCurrentStep('decision')
         break
       default:
@@ -283,7 +346,9 @@ export function AIJobAssistant() {
       case 'prompt':
         return 'Continue to Specs'
       case 'specs':
-        return 'Create Job'
+        return isCreatingJob ? 'Saving Draft...' : 'Save & Continue to Sourcing'
+      case 'sourcing':
+        return 'Continue to Review'
       default:
         return 'Continue'
     }
@@ -294,7 +359,9 @@ export function AIJobAssistant() {
       case 'prompt':
         return jobSpec !== null
       case 'specs':
-        return editableJobSpec !== null
+        return editableJobSpec !== null && !isCreatingJob
+      case 'sourcing':
+        return true
       default:
         return false
     }
@@ -466,10 +533,11 @@ export function AIJobAssistant() {
               </div>
 
                <Tabs value={currentStep} onValueChange={(value) => setCurrentStep(value as any)} className="space-y-6">
-                 <TabsList className="grid w-full grid-cols-3 h-auto p-1">
+                 <TabsList className="grid w-full grid-cols-4 h-auto p-1">
                    <TabsTrigger value="prompt" className="text-xs sm:text-sm px-2 py-2">Prompt</TabsTrigger>
                    <TabsTrigger value="specs" className="text-xs sm:text-sm px-2 py-2">Specs</TabsTrigger>
-                   <TabsTrigger value="decision" className="text-xs sm:text-sm px-2 py-2">Create</TabsTrigger>
+                   <TabsTrigger value="sourcing" className="text-xs sm:text-sm px-2 py-2">Sourcing</TabsTrigger>
+                   <TabsTrigger value="decision" className="text-xs sm:text-sm px-2 py-2">Review</TabsTrigger>
                  </TabsList>
 
                 <TabsContent value="prompt" className="space-y-4">
@@ -687,6 +755,20 @@ export function AIJobAssistant() {
                   </div>
                 </TabsContent>
 
+                <TabsContent value="sourcing" className="space-y-6">
+                  {createdJobId ? (
+                    <SourcingStep
+                      jobId={createdJobId}
+                      onNext={() => setCurrentStep('decision')}
+                      onBack={() => setCurrentStep('specs')}
+                    />
+                  ) : (
+                    <div className="py-8 text-center">
+                      <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
+                      <p className="text-sm text-muted-foreground">Saving draft job...</p>
+                    </div>
+                  )}
+                </TabsContent>
 
                 <TabsContent value="decision" className="space-y-6">
                   <div className="space-y-4">
