@@ -54,12 +54,32 @@ interface SearchResponse {
 
 interface CoreSignalEmployee {
   id: string;
-  name?: string;
-  title?: string;
+  full_name?: string;
+  name?: string; // fallback
+  title?: string; // fallback if experience not available
   company_name?: string;
   location?: string;
-  linkedin_url?: string;
-  last_updated?: string;
+  profile_url?: string;
+  linkedin_url?: string; // fallback
+  updated_at?: string;
+  last_updated?: string; // fallback
+  country?: string;
+  country_iso_2?: string;
+  country_iso_3?: string;
+  experience?: Array<{
+    title?: string;
+    is_current?: number;
+    order_in_profile?: number;
+    [key: string]: any;
+  }>;
+  skills?: Array<{
+    skill?: string;
+    [key: string]: any;
+  } | string>;
+  languages?: Array<{
+    language?: string;
+    [key: string]: any;
+  } | string>;
   [key: string]: any;
 }
 
@@ -263,80 +283,195 @@ async function checkCache(
 }
 
 /**
- * Build CoreSignal ES-DSL API request from search query
+ * Build CoreSignal ES-DSL API request for Base Employee index
  */
 function buildCoreSignalRequest(query: SearchRequest['query'], pagination: { page: number; pageSize: number }) {
   const must: any[] = [];
-  const should: any[] = [];
   const filter: any[] = [];
+  const should: any[] = [];
 
-  // Boolean query string (if present)
-  if (query.boolean?.trim()) {
-    must.push({ query_string: { query: query.boolean.trim() } });
-  }
+  // 1) Pagination
+  const pageSize = Math.max(1, Math.min(pagination.pageSize ?? 25, 100));
+  const from = Math.max(0, (pagination.page ?? 1) - 1) * pageSize;
 
-  // Title as match_phrase (use first title or combine)
+  // 2) Title → nested current experience
   if (query.titles && query.titles.length > 0) {
-    must.push({ match_phrase: { job_title: query.titles[0].trim() } });
+    const title = query.titles[0].trim();
+    if (title) {
+      must.push({
+        nested: {
+          path: "experience",
+          query: {
+            bool: {
+              must: [
+                { match_phrase: { "experience.title": title } },
+                { term: { "experience.is_current": 1 } }
+              ]
+            }
+          }
+        }
+      });
+    }
   }
 
-  // Skills (keywords) as terms in should for boosting
+  // 3) Boolean query → top-level query_string
+  if (query.boolean?.trim()) {
+    must.push({
+      query_string: {
+        query: query.boolean.trim(),
+        default_operator: "AND"
+      }
+    });
+  }
+
+  // 4) Skills → nested skills with match_phrase
   const skills = query.keywords || [];
   if (Array.isArray(skills) && skills.length > 0) {
-    should.push({ terms: { skills: skills.slice(0, 15) } });
-  }
-
-  // Locations as terms in filter
-  if (Array.isArray(query.locations) && query.locations.length > 0) {
-    filter.push({ terms: { locations: query.locations.slice(0, 10) } });
-  }
-
-  // Email requirement
-  if (query.require_email || query.has_email === 'only') {
-    filter.push({ term: { has_email: true } });
-  }
-
-  // Phone requirement
-  if (query.require_phone || query.has_phone === 'only') {
-    filter.push({ term: { has_phone: true } });
-  }
-
-  // Updated within days
-  if (typeof query.updated_within_days === 'number') {
-    filter.push({ range: { updated_at: { gte: `now-${query.updated_within_days}d` } } });
-  }
-
-  // Build query object
-  const queryObj = must.length || should.length || filter.length
-    ? { bool: { must, should, filter } }
-    : { match_all: {} };
-
-  // Calculate pagination
-  const pageSize = Math.min(pagination.pageSize ?? 25, 100);
-  const from = Math.max(((pagination.page ?? 1) - 1), 0) * pageSize;
-
-  // Sanitize: remove empty arrays from must/should/filter
-  const sanitizedQuery: any = {};
-  if (queryObj.bool) {
-    const boolObj: any = {};
-    if (queryObj.bool.must && queryObj.bool.must.length > 0) boolObj.must = queryObj.bool.must;
-    if (queryObj.bool.should && queryObj.bool.should.length > 0) boolObj.should = queryObj.bool.should;
-    if (queryObj.bool.filter && queryObj.bool.filter.length > 0) boolObj.filter = queryObj.bool.filter;
+    const skillClauses = skills.slice(0, 10).map(skill => ({
+      match_phrase: { "skills.skill": skill }
+    }));
     
-    // Only set query if we have clauses
-    if (Object.keys(boolObj).length > 0) {
-      sanitizedQuery.query = { bool: boolObj };
-    } else {
-      sanitizedQuery.query = { match_all: {} };
+    if (skillClauses.length > 0) {
+      must.push({
+        nested: {
+          path: "skills",
+          query: {
+            bool: {
+              should: skillClauses,
+              minimum_should_match: 1
+            }
+          }
+        }
+      });
     }
-  } else {
-    sanitizedQuery.query = queryObj;
   }
 
-  sanitizedQuery.size = pageSize;
-  sanitizedQuery.from = from;
+  // 5) Location mapping (country vs free-text)
+  if (Array.isArray(query.locations) && query.locations.length > 0) {
+    const locations = query.locations.filter(l => l?.trim());
+    
+    if (locations.length > 0) {
+      // Check if locations look like country codes/names
+      const isCountryBased = locations.every(loc => {
+        const normalized = loc.trim();
+        // 2-letter ISO codes, 3-letter ISO codes, or common country names
+        return normalized.length === 2 || 
+               normalized.length === 3 || 
+               ['United States', 'Mexico', 'Canada', 'United Kingdom', 'Germany', 'France', 'Spain', 'Italy'].some(c => 
+                 normalized.toLowerCase().includes(c.toLowerCase())
+               );
+      });
 
-  return sanitizedQuery;
+      if (isCountryBased) {
+        // Use country field with terms
+        const countryTerms: any = {};
+        
+        // Determine which field to use based on format
+        const twoLetterCodes = locations.filter(l => l.length === 2);
+        const threeLetterCodes = locations.filter(l => l.length === 3);
+        const countryNames = locations.filter(l => l.length > 3);
+
+        if (twoLetterCodes.length > 0) {
+          filter.push({ terms: { "country_iso_2": twoLetterCodes } });
+        }
+        if (threeLetterCodes.length > 0) {
+          filter.push({ terms: { "country_iso_3": threeLetterCodes } });
+        }
+        if (countryNames.length > 0) {
+          filter.push({ terms: { "country": countryNames } });
+        }
+      } else {
+        // Free-text city/region search using top-level location
+        const locationClauses = locations.map(loc => ({
+          match_phrase: { "location": loc }
+        }));
+
+        filter.push({
+          bool: {
+            should: locationClauses,
+            minimum_should_match: 1
+          }
+        });
+      }
+    }
+  }
+
+  // 6) Updated within N days
+  if (typeof query.updated_within_days === 'number' && query.updated_within_days > 0) {
+    filter.push({
+      range: {
+        updated_at: {
+          gte: `now-${query.updated_within_days}d`
+        }
+      }
+    });
+  }
+
+  // 7) Languages → nested languages
+  if (Array.isArray(query.languages) && query.languages.length > 0) {
+    const languageClauses = query.languages
+      .filter(lang => lang?.trim())
+      .map(lang => ({
+        match_phrase: { "languages.language": lang.toLowerCase() }
+      }));
+
+    if (languageClauses.length > 0) {
+      must.push({
+        nested: {
+          path: "languages",
+          query: {
+            bool: {
+              should: languageClauses,
+              minimum_should_match: 1
+            }
+          }
+        }
+      });
+    }
+  }
+
+  // 8) DO NOT send has_email/has_phone for Base Employee (not supported)
+  // These fields don't exist in Base Employee index
+
+  // 9) Build final query object
+  const hasConstraints = must.length > 0 || filter.length > 0 || should.length > 0;
+  
+  const finalQuery: any = {
+    from,
+    size: pageSize
+  };
+
+  if (hasConstraints) {
+    const boolQuery: any = {};
+    if (must.length > 0) boolQuery.must = must;
+    if (filter.length > 0) boolQuery.filter = filter;
+    if (should.length > 0) {
+      boolQuery.should = should;
+      boolQuery.minimum_should_match = 0;
+    }
+    finalQuery.query = { bool: boolQuery };
+  } else {
+    finalQuery.query = { match_all: {} };
+  }
+
+  // 10) Add _source to narrow payload (optional but recommended)
+  finalQuery._source = [
+    "id",
+    "full_name",
+    "location",
+    "profile_url",
+    "updated_at",
+    "experience",
+    "skills",
+    "country",
+    "country_iso_2",
+    "country_iso_3"
+  ];
+
+  // 11) Sorting (use default ES score)
+  finalQuery.sort = ["_score"];
+
+  return finalQuery;
 }
 
 /**
@@ -450,17 +585,21 @@ async function callCoreSignalAPI(
       const providerRequestId = data.request_id || data.requestId;
       
       logStep("CoreSignal API success", { 
-        total: data.total || data.hits?.length || 0,
+        total: data.total || data.hits?.total?.value || data.hits?.length || 0,
         creditsRemaining,
         providerRequestId
       });
 
-      // Map ES-DSL response format (hits array)
-      const results = data.hits || data.results || [];
+      // Map ES-DSL response format (Base Employee uses hits.hits array)
+      const hits = data.hits?.hits || data.hits || data.results || [];
+      const total = data.hits?.total?.value || data.total || hits.length;
+
+      // Extract _source from each hit
+      const results = hits.map((hit: any) => hit._source || hit);
 
       return {
         results,
-        total: data.total || results.length,
+        total,
         creditsRemaining: creditsRemaining ? parseInt(creditsRemaining) : undefined,
         providerRequestId
       };
@@ -483,31 +622,46 @@ async function callCoreSignalAPI(
 }
 
 /**
- * Calculate match score for a candidate
+ * Calculate match score for a candidate from Base Employee schema
  */
 function calculateMatchScore(
   candidate: CoreSignalEmployee,
-  query: SearchRequest['query']
+  query: SearchRequest['query'],
+  currentTitle?: string
 ): number {
   let score = 0;
 
-  // Title similarity (40 points)
-  if (query.titles && candidate.title) {
-    const titleLower = candidate.title.toLowerCase();
+  // Title similarity (40 points) - use extracted current title
+  const titleToMatch = currentTitle || candidate.title;
+  if (query.titles && titleToMatch) {
+    const titleLower = titleToMatch.toLowerCase();
     const matchedTitles = query.titles.filter(t => 
       titleLower.includes(t.toLowerCase()) || t.toLowerCase().includes(titleLower)
     );
     score += (matchedTitles.length / query.titles.length) * 40;
-  } else if (candidate.title) {
+    
+    // Boost if current title matches closely
+    if (currentTitle && matchedTitles.length > 0) {
+      score += 5; // Extra boost for current title match
+    }
+  } else if (titleToMatch) {
     score += 20; // Has title but no query titles
   }
 
-  // Keyword overlap (40 points)
+  // Skills overlap (40 points) - check skills array from nested schema
   if (query.keywords && query.keywords.length > 0) {
+    let candidateSkills: string[] = [];
+    if (Array.isArray(candidate.skills)) {
+      candidateSkills = candidate.skills.map((s: any) => 
+        typeof s === 'string' ? s : s.skill || ''
+      ).filter(Boolean);
+    }
+
     const candidateText = [
-      candidate.title,
+      titleToMatch,
       candidate.company_name,
-      candidate.location
+      candidate.location,
+      ...candidateSkills
     ].filter(Boolean).join(' ').toLowerCase();
 
     const matchedKeywords = query.keywords.filter(k =>
@@ -531,11 +685,25 @@ function calculateMatchScore(
     locationLanguageScore += 10;
   }
 
-  // Language is harder to match from basic employee data, give default points
-  if (!query.languages || query.languages.length === 0) {
-    locationLanguageScore += 10;
+  // Language matching from nested languages
+  if (query.languages && query.languages.length > 0) {
+    let candidateLanguages: string[] = [];
+    if (Array.isArray(candidate.languages)) {
+      candidateLanguages = candidate.languages.map((l: any) => 
+        typeof l === 'string' ? l : l.language || ''
+      ).filter(Boolean).map(lang => lang.toLowerCase());
+    }
+
+    const matchedLanguages = query.languages.filter(queryLang =>
+      candidateLanguages.some(candLang => 
+        candLang.includes(queryLang.toLowerCase()) || 
+        queryLang.toLowerCase().includes(candLang)
+      )
+    );
+    
+    locationLanguageScore += (matchedLanguages.length / query.languages.length) * 10;
   } else {
-    locationLanguageScore += 5; // Partial credit if languages specified
+    locationLanguageScore += 10;
   }
 
   score += locationLanguageScore;
@@ -544,19 +712,34 @@ function calculateMatchScore(
 }
 
 /**
- * Normalize CoreSignal employee to SearchResult
+ * Normalize CoreSignal Base Employee to SearchResult
  */
 function normalizeEmployee(employee: CoreSignalEmployee, query: SearchRequest['query']): SearchResult {
+  // Extract current title from experience array
+  let currentTitle: string | undefined;
+  if (Array.isArray(employee.experience)) {
+    const currentExp = employee.experience.find((exp: any) => exp.is_current === 1);
+    if (currentExp) {
+      currentTitle = currentExp.title;
+    } else if (employee.experience.length > 0) {
+      // Fallback to highest order_in_profile or first entry
+      const sorted = [...employee.experience].sort((a: any, b: any) => 
+        (a.order_in_profile || 999) - (b.order_in_profile || 999)
+      );
+      currentTitle = sorted[0]?.title;
+    }
+  }
+
   return {
     provider_code: "coresignal",
     provider_ref: employee.id,
-    name: employee.name,
-    title: employee.title,
+    name: employee.full_name || employee.name,
+    title: currentTitle || employee.title,
     company: employee.company_name,
     location: employee.location,
-    profileUrl: employee.linkedin_url,
-    lastUpdatedAt: employee.last_updated,
-    match: calculateMatchScore(employee, query)
+    profileUrl: employee.profile_url || employee.linkedin_url,
+    lastUpdatedAt: employee.updated_at || employee.last_updated,
+    match: calculateMatchScore(employee, query, currentTitle)
   };
 }
 
@@ -798,6 +981,51 @@ serve(async (req) => {
 
     // Normalize and score results
     const normalizedResults: SearchResult[] = searchResults.map(emp => normalizeEmployee(emp, query));
+
+    // 13) Debug diagnostics for zero results
+    const logDebug = (Deno.env.get('LOG_LEVEL') === 'debug');
+    if (logDebug && normalizedResults.length === 0) {
+      console.debug('[SOURCING-SEARCH] Zero results - running diagnostic probe');
+      
+      try {
+        // Probe 1: match_all to confirm index access
+        const probeMatchAll = await callCoreSignalAPI(
+          coresignalApiKey,
+          { query: { match_all: {} }, size: 1 },
+          `${requestId}-probe-matchall`
+        );
+        console.debug('[SOURCING-SEARCH] Probe match_all returned:', probeMatchAll.total, 'total records');
+
+        // Probe 2: Simple nested title search
+        const probeTitle = await callCoreSignalAPI(
+          coresignalApiKey,
+          {
+            query: {
+              bool: {
+                must: [{
+                  nested: {
+                    path: "experience",
+                    query: {
+                      bool: {
+                        must: [
+                          { match_phrase: { "experience.title": "engineer" } },
+                          { term: { "experience.is_current": 1 } }
+                        ]
+                      }
+                    }
+                  }
+                }]
+              }
+            },
+            size: 1
+          },
+          `${requestId}-probe-title`
+        );
+        console.debug('[SOURCING-SEARCH] Probe title=engineer returned:', probeTitle.total, 'records');
+      } catch (probeError) {
+        console.debug('[SOURCING-SEARCH] Probe failed:', probeError);
+      }
+    }
 
     // Store in external_candidate_matches with cache key
     if (normalizedResults.length > 0) {
