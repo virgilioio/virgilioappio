@@ -6,8 +6,9 @@ import { assertEquals } from "https://deno.land/std@0.190.0/testing/asserts.ts";
  * When a request contains query.boolean, the edge function MUST:
  * 1. Set useDSL = true (regardless of CORESIGNAL_USE_DSL env var)
  * 2. Call buildCoreSignalRequest (DSL builder) instead of buildCoreSignalFilterPayload
- * 3. Route to /v2/employee_base/search/es_dsl/preview endpoint
- * 
+ * 3. Route to /v2/employee_base/search/es_dsl endpoint by default
+ *    (Only use /preview when CORESIGNAL_USE_DSL_PREVIEW feature flag is enabled)
+ *
  * This ensures boolean queries are always processed through the DSL endpoint.
  */
 
@@ -279,7 +280,7 @@ Deno.test("Boolean query routing - hasBooleanQuery detection", () => {
 
 Deno.test("Self-test mode - boolean_test payload structure", () => {
   // ?boolean_test=1 should:
-  // 1. Use DSL endpoint: /v2/employee_base/search/es_dsl/preview
+  // 1. Use DSL endpoint: /v2/employee_base/search/es_dsl (preview only behind feature flag)
   // 2. Send a boolean query with nested experience filter
   // 3. Not consume credits
   // 4. Return hit_count and provider_status
