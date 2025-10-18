@@ -633,9 +633,14 @@ async function callCoreSignalAPI(
 
         // Handle 404 - Endpoint not found
         if (response.status === 404) {
-          const err = new Error('Endpoint not found (check path)');
+          logStep("Provider endpoint not found (404)", { 
+            url, 
+            providerRequestId,
+            errorBody 
+          });
+          const err = new Error('Search endpoint not found - check CORESIGNAL_PEOPLE_SEARCH_PATH configuration');
           (err as any).code = 'PROVIDER_UNAVAILABLE';
-          (err as any).providerRequestId = errorBody?.request_id;
+          (err as any).providerRequestId = providerRequestId;
           throw err;
         }
 
