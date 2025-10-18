@@ -274,7 +274,7 @@ POST https://api.coresignal.com/v1/professional-network/employee/search
 
 ### Request Headers
 ```
-Authorization: Bearer ${CORESIGNAL_API_KEY}
+apikey: ${CORESIGNAL_API_KEY}
 Content-Type: application/json
 ```
 
