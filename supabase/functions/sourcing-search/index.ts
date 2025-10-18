@@ -263,56 +263,80 @@ async function checkCache(
 }
 
 /**
- * Build CoreSignal API request from search query
+ * Build CoreSignal ES-DSL API request from search query
  */
 function buildCoreSignalRequest(query: SearchRequest['query'], pagination: { page: number; pageSize: number }) {
-  const filters: any = {};
+  const must: any[] = [];
+  const should: any[] = [];
+  const filter: any[] = [];
 
+  // Boolean query string (if present)
+  if (query.boolean?.trim()) {
+    must.push({ query_string: { query: query.boolean.trim() } });
+  }
+
+  // Title as match_phrase (use first title or combine)
   if (query.titles && query.titles.length > 0) {
-    filters.title = query.titles.join(' OR ');
+    must.push({ match_phrase: { job_title: query.titles[0].trim() } });
   }
 
-  if (query.keywords && query.keywords.length > 0) {
-    filters.keywords = query.keywords.join(' ');
+  // Skills (keywords) as terms in should for boosting
+  const skills = query.keywords || [];
+  if (Array.isArray(skills) && skills.length > 0) {
+    should.push({ terms: { skills: skills.slice(0, 15) } });
   }
 
-  if (query.locations && query.locations.length > 0) {
-    filters.location = query.locations.join(' OR ');
+  // Locations as terms in filter
+  if (Array.isArray(query.locations) && query.locations.length > 0) {
+    filter.push({ terms: { locations: query.locations.slice(0, 10) } });
   }
 
-  if (query.languages && query.languages.length > 0) {
-    filters.languages = query.languages;
+  // Email requirement
+  if (query.require_email || query.has_email === 'only') {
+    filter.push({ term: { has_email: true } });
   }
 
-  if (query.seniority && query.seniority.length > 0) {
-    filters.seniority = query.seniority;
+  // Phone requirement
+  if (query.require_phone || query.has_phone === 'only') {
+    filter.push({ term: { has_phone: true } });
   }
 
-  if (query.has_email === 'only') {
-    filters.has_email = true;
+  // Updated within days
+  if (typeof query.updated_within_days === 'number') {
+    filter.push({ range: { updated_at: { gte: `now-${query.updated_within_days}d` } } });
   }
 
-  if (query.has_phone === 'only') {
-    filters.has_phone = true;
-  }
+  // Build query object
+  const queryObj = must.length || should.length || filter.length
+    ? { bool: { must, should, filter } }
+    : { match_all: {} };
 
-  if (query.updated_within_days) {
-    const daysAgo = new Date();
-    daysAgo.setDate(daysAgo.getDate() - query.updated_within_days);
-    filters.updated_since = daysAgo.toISOString();
+  // Calculate pagination
+  const pageSize = Math.min(pagination.pageSize ?? 25, 100);
+  const from = Math.max(((pagination.page ?? 1) - 1), 0) * pageSize;
+
+  // Sanitize: remove empty arrays from must/should/filter
+  const sanitizedQuery: any = {};
+  if (queryObj.bool) {
+    const boolObj: any = {};
+    if (queryObj.bool.must && queryObj.bool.must.length > 0) boolObj.must = queryObj.bool.must;
+    if (queryObj.bool.should && queryObj.bool.should.length > 0) boolObj.should = queryObj.bool.should;
+    if (queryObj.bool.filter && queryObj.bool.filter.length > 0) boolObj.filter = queryObj.bool.filter;
+    
+    // Only set query if we have clauses
+    if (Object.keys(boolObj).length > 0) {
+      sanitizedQuery.query = { bool: boolObj };
+    } else {
+      sanitizedQuery.query = { match_all: {} };
+    }
   } else {
-    // Default to 365 days
-    const daysAgo = new Date();
-    daysAgo.setDate(daysAgo.getDate() - 365);
-    filters.updated_since = daysAgo.toISOString();
+    sanitizedQuery.query = queryObj;
   }
 
-  return {
-    filters,
-    page: pagination.page,
-    page_size: pagination.pageSize,
-    boolean_query: query.boolean
-  };
+  sanitizedQuery.size = pageSize;
+  sanitizedQuery.from = from;
+
+  return sanitizedQuery;
 }
 
 /**
@@ -331,12 +355,18 @@ function buildPeopleSearchUrl({ baseUrl, path }: { baseUrl: string; path: string
 async function callCoreSignalAPI(
   apiKey: string,
   request: any,
+  requestId: string,
   maxRetries = 2
-): Promise<{ results: CoreSignalEmployee[]; total: number; creditsRemaining?: number }> {
+): Promise<{ results: CoreSignalEmployee[]; total: number; creditsRemaining?: number; providerRequestId?: string }> {
   // Read URL configuration from environment
-  const BASE = Deno.env.get("CORESIGNAL_BASE_URL")!;
-  const PATH = Deno.env.get("CORESIGNAL_PEOPLE_SEARCH_PATH") ?? "/v2/employee_base/search/es_dsl";
+  const BASE = Deno.env.get("CORESIGNAL_BASE_URL") ?? "https://api.coresignal.com";
+  const PATH = Deno.env.get("CORESIGNAL_PEOPLE_SEARCH_PREVIEW_PATH") ?? "/v2/employee_base/search/es_dsl/preview";
   const url = buildPeopleSearchUrl({ baseUrl: BASE, path: PATH });
+  
+  // Debug log ES-DSL payload
+  if (Deno.env.get('LOG_LEVEL') === 'debug') {
+    console.debug('[SOURCING-SEARCH] ES-DSL Payload:', JSON.stringify(request, null, 2));
+  }
   
   let lastError: Error | null = null;
   let retryCount = 0;
@@ -382,41 +412,52 @@ async function callCoreSignalAPI(
 
       if (!response.ok) {
         const errorText = await response.text();
-        let errorBody;
+        let errorBody: any = {};
         try {
           errorBody = JSON.parse(errorText);
         } catch {
           errorBody = { message: errorText };
         }
 
-        // Handle specific error cases
-        if (response.status === 404 && errorText.includes("no Route matched")) {
-          const error: any = new Error(`CoreSignal API error (${response.status}): ${errorText}`);
-          error.code = "PROVIDER_MISCONFIGURED";
-          error.details = errorBody.request_id ? { provider_request_id: errorBody.request_id } : undefined;
+        const providerRequestId = errorBody.request_id || errorBody.requestId;
+
+        // Handle 404 - Endpoint not found
+        if (response.status === 404) {
+          const error: any = new Error('Endpoint not found (check path)');
+          error.code = "PROVIDER_UNAVAILABLE";
+          error.providerRequestId = providerRequestId;
           throw error;
         }
 
+        // Handle 401/403 - Auth failures
         if (response.status === 401 || response.status === 403) {
-          const error: any = new Error(`CoreSignal API error (${response.status}): ${errorText}`);
+          const error: any = new Error('Provider authentication failed');
           error.code = "PROVIDER_AUTH_FAILED";
-          error.details = errorBody.request_id ? { provider_request_id: errorBody.request_id } : undefined;
+          error.providerRequestId = providerRequestId;
           throw error;
         }
 
+        // Generic error
         throw new Error(`CoreSignal API error (${response.status}): ${errorText}`);
       }
 
       const data = await response.json();
+      const providerRequestId = data.request_id || data.requestId;
+      
       logStep("CoreSignal API success", { 
-        total: data.total || data.results?.length || 0,
-        creditsRemaining 
+        total: data.total || data.hits?.length || 0,
+        creditsRemaining,
+        providerRequestId
       });
 
+      // Map ES-DSL response format (hits array)
+      const results = data.hits || data.results || [];
+
       return {
-        results: data.results || [],
-        total: data.total || data.results?.length || 0,
-        creditsRemaining: creditsRemaining ? parseInt(creditsRemaining) : undefined
+        results,
+        total: data.total || results.length,
+        creditsRemaining: creditsRemaining ? parseInt(creditsRemaining) : undefined,
+        providerRequestId
       };
 
     } catch (error) {
@@ -653,46 +694,12 @@ serve(async (req) => {
       );
     }
 
-    // Create service role client for credit consumption
+    // Create service role client for credit operations
     const serviceClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
       { auth: { persistSession: false } }
     );
-
-    // Consume search credit
-    logStep("Attempting to consume search credit", { requestId });
-    const { data: consumed, error: creditError } = await serviceClient.rpc('consume_sourcing_credits', {
-      org_id: organization_id,
-      credit_type: 'search',
-      amount: 1
-    });
-
-    if (creditError) {
-      logStep("Credit consumption error", { requestId, error: creditError });
-      return new Response(
-        JSON.stringify({ 
-          code: 'INTERNAL_ERROR',
-          message: 'Failed to process credits',
-          requestId
-        }),
-        { status: 500, headers: { 'Content-Type': 'application/json', ...cors } }
-      );
-    }
-
-    if (!consumed) {
-      logStep("Insufficient credits", { requestId });
-      return new Response(
-        JSON.stringify({ 
-          code: 'CREDITS_EXHAUSTED',
-          message: 'No search credits remaining. Contact your administrator to refill credits.',
-          requestId
-        }),
-        { status: 402, headers: { 'Content-Type': 'application/json', ...cors } }
-      );
-    }
-
-    logStep("Credit consumed successfully", { requestId });
 
     // Get CoreSignal API key
     const coreSignalApiKey = Deno.env.get('CORESIGNAL_API_KEY');
@@ -714,35 +721,71 @@ serve(async (req) => {
     let searchResults: CoreSignalEmployee[];
     let total: number;
     let creditsRemaining: number | undefined;
+    let providerRequestId: string | undefined;
+    let creditsCharged = 0;
 
     try {
-      const apiResult = await callCoreSignalAPI(coreSignalApiKey, coreSignalRequest);
+      const apiResult = await callCoreSignalAPI(coreSignalApiKey, coreSignalRequest, requestId);
       searchResults = apiResult.results;
       total = apiResult.total;
       creditsRemaining = apiResult.creditsRemaining;
-    } catch (error) {
-      logStep("Provider call failed", { requestId, error: (error as Error).message });
+      providerRequestId = apiResult.providerRequestId;
+
+      // ✅ ONLY consume credits on successful 200 response
+      logStep("Attempting to consume search credit after success", { requestId });
+      const { data: consumed, error: creditError } = await serviceClient.rpc('consume_sourcing_credits', {
+        org_id: organization_id,
+        credit_type: 'search',
+        amount: 1
+      });
+
+      if (creditError) {
+        logStep("Credit consumption error after success", { requestId, error: creditError });
+        // Continue anyway - we got results, just log the credit issue
+        creditsCharged = 1; // Mark as charged even if RPC failed
+      } else if (consumed) {
+        creditsCharged = 1;
+        logStep("Credit consumed successfully after API success", { requestId });
+      }
+
+    } catch (error: any) {
+      const errorCode = error.code || 'PROVIDER_UNAVAILABLE';
+      const errorMessage = error.message || 'Unknown provider error';
+      const errorProviderRequestId = error.providerRequestId;
+
+      logStep("Provider call failed", { 
+        requestId, 
+        error: errorMessage, 
+        code: errorCode,
+        providerRequestId: errorProviderRequestId
+      });
       
-      // Log failed event
+      // Log failed event (0 credits used)
       await serviceClient.from('sourcing_events').insert({
         organization_id,
         job_id: job_id || null,
         event_type: 'search',
         provider: 'coresignal',
-        credits_used: 1,
+        credits_used: 0,
         credit_type: 'search',
         query_params: query,
         results_count: 0,
-        error_message: (error as Error).message,
+        error_message: errorMessage,
         performed_by: user.id,
-        metadata: { requestId }
+        metadata: { 
+          requestId,
+          providerRequestId: errorProviderRequestId,
+          errorCode
+        }
       });
 
       return new Response(
         JSON.stringify({ 
-          code: 'PROVIDER_UNAVAILABLE',
-          message: `Search provider error: ${(error as Error).message}`,
-          requestId
+          code: errorCode,
+          message: errorMessage,
+          requestId,
+          providerRequestId: errorProviderRequestId,
+          credits_used: 0
         }),
         { status: 502, headers: { 'Content-Type': 'application/json', ...cors } }
       );
@@ -785,12 +828,15 @@ serve(async (req) => {
       job_id: job_id || null,
       event_type: 'search',
       provider: 'coresignal',
-      credits_used: 1,
+      credits_used: creditsCharged,
       credit_type: 'search',
       query_params: query,
       results_count: normalizedResults.length,
       performed_by: user.id,
-      metadata: { requestId }
+      metadata: { 
+        requestId,
+        providerRequestId
+      }
     });
 
     logStep("Search completed successfully", { 
@@ -808,7 +854,7 @@ serve(async (req) => {
         ttl_seconds: 15 * 60
       },
       credits: {
-        charged: 1,
+        charged: creditsCharged,
         remaining: creditsRemaining
       }
     };
