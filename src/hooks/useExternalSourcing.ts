@@ -2,6 +2,94 @@ import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { buildDefaultBoolean, type JobForBoolean } from '@/lib/booleanQuery';
 
+type EdgeErrorDetails = {
+  message?: string;
+  code?: string | number;
+  payload?: unknown;
+};
+
+function safeParseJson(text: string) {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
+
+async function extractEdgeErrorDetails(error: unknown): Promise<EdgeErrorDetails | null> {
+  if (!error || typeof error !== 'object') {
+    return null;
+  }
+
+  const context = (error as { context?: Record<string, unknown> }).context;
+  const response = context && 'response' in context ? (context.response as any) : undefined;
+
+  let payload: unknown;
+
+  if (response) {
+    const maybeResponse = typeof response.clone === 'function' ? response.clone() : response;
+
+    try {
+      if (typeof maybeResponse.json === 'function') {
+        payload = await maybeResponse.json();
+      } else if (typeof maybeResponse.text === 'function') {
+        const text = await maybeResponse.text();
+        payload = safeParseJson(text) ?? text;
+      } else if ('data' in maybeResponse) {
+        payload = (maybeResponse as { data?: unknown }).data;
+      }
+    } catch (parseError) {
+      if (import.meta.env.DEV) {
+        console.debug('[sourcing-search] failed to parse edge error response', parseError);
+      }
+    }
+  }
+
+  if (!payload && context && 'error' in context) {
+    payload = (context as { error?: unknown }).error;
+  }
+
+  if (!payload && context && 'data' in context) {
+    payload = (context as { data?: unknown }).data;
+  }
+
+  if (!payload) {
+    return null;
+  }
+
+  let message: string | undefined;
+  let code: string | number | undefined;
+
+  if (typeof payload === 'string') {
+    message = payload;
+  } else if (typeof payload === 'object' && payload !== null) {
+    const payloadRecord = payload as Record<string, unknown>;
+    const potentialMessage =
+      payloadRecord.message ?? payloadRecord.error ?? payloadRecord.msg ?? payloadRecord.description;
+
+    if (typeof potentialMessage === 'string') {
+      message = potentialMessage;
+    }
+
+    const potentialCode =
+      payloadRecord.code ??
+      payloadRecord.status ??
+      payloadRecord.error_code ??
+      payloadRecord.errorCode ??
+      payloadRecord.type;
+
+    if (typeof potentialCode === 'string' || typeof potentialCode === 'number') {
+      code = potentialCode;
+    }
+  }
+
+  return {
+    message,
+    code,
+    payload,
+  };
+}
+
 /**
  * Sanitizes a query object by removing null, undefined, empty strings, and empty arrays.
  */
@@ -123,8 +211,24 @@ export function useExternalSourcing() {
       setCacheInfo(data.cache);
       setCreditsInfo(data.credits);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to search candidates';
-      setError(errorMessage);
+      const defaultMessage = err instanceof Error && err.message ? err.message : 'Failed to search candidates';
+      const edgeErrorDetails = await extractEdgeErrorDetails(err);
+
+      if (import.meta.env.DEV && edgeErrorDetails?.payload) {
+        console.debug('[sourcing-search] edge function error payload', edgeErrorDetails.payload);
+      }
+
+      let finalMessage = edgeErrorDetails?.message ?? defaultMessage;
+
+      if (!finalMessage) {
+        finalMessage = 'Failed to search candidates';
+      }
+
+      if (edgeErrorDetails?.code !== undefined) {
+        finalMessage = `${finalMessage} (${edgeErrorDetails.code})`;
+      }
+
+      setError(finalMessage);
       console.error('External sourcing error:', err);
     } finally {
       setIsLoading(false);

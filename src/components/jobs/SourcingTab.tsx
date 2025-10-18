@@ -48,6 +48,18 @@ export function SourcingTab({ jobId }: SourcingTabProps) {
   // Live region for accessibility
   const [announcement, setAnnouncement] = useState('');
 
+  useEffect(() => {
+    if (!error) {
+      return;
+    }
+
+    toast({
+      title: 'External search failed',
+      description: error,
+      variant: 'destructive',
+    });
+  }, [error]);
+
   // Check if search can run
   const effectiveBoolean = useMemo(() => {
     if (booleanQuery.trim()) return booleanQuery.trim();
