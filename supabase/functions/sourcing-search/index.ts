@@ -552,7 +552,7 @@ async function callCoreSignalAPI(
   // Feature flag: Use ES-DSL preview endpoint if enabled, otherwise use REST filters endpoint
   const useDSL = Deno.env.get('CORESIGNAL_USE_DSL') === 'true';
   const path = useDSL
-    ? (Deno.env.get('CORESIGNAL_PEOPLE_SEARCH_PREVIEW_PATH') ?? '/cdapi/v2/employee_base/search/es_dsl/preview').replace(/^\/+/, '')
+    ? (Deno.env.get('CORESIGNAL_PEOPLE_SEARCH_PREVIEW_PATH') ?? '/v2/employee_base/search/es_dsl/preview').replace(/^\/+/, '')
     : (Deno.env.get('CORESIGNAL_PEOPLE_SEARCH_PATH') ?? '/v1/professional-network/employee/search').replace(/^\/+/, '');
   
   const url = `${base}/${path}`;
