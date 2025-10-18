@@ -102,6 +102,19 @@ function hashString(str: string): string {
 }
 
 /**
+ * Sanitize an object by removing undefined values
+ */
+function sanitizeObject<T extends Record<string, any>>(obj: T): Partial<T> {
+  const sanitized: Partial<T> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== undefined) {
+      sanitized[key as keyof T] = value;
+    }
+  }
+  return sanitized;
+}
+
+/**
  * Zod schema for input validation
  */
 const SearchRequestSchema = z.object({
@@ -116,9 +129,12 @@ const SearchRequestSchema = z.object({
     seniority: z.array(z.string()).optional(),
     has_email: z.enum(['only', 'any']).optional(),
     has_phone: z.enum(['only', 'any']).optional(),
-    updated_within_days: z.number().int().positive().optional(),
-    require_email: z.boolean().optional(),
-    require_phone: z.boolean().optional()
+    updated_within_days: z.coerce.number().int().min(1).max(365).optional().nullable()
+      .transform(v => (v == null ? undefined : v)),
+    require_email: z.boolean().optional().nullable()
+      .transform(v => (v == null ? undefined : v)),
+    require_phone: z.boolean().optional().nullable()
+      .transform(v => (v == null ? undefined : v))
   }),
   pagination: z.object({
     page: z.number().int().min(1, "pagination.page must be >= 1"),
@@ -127,24 +143,38 @@ const SearchRequestSchema = z.object({
 });
 
 /**
- * Validate search request input using Zod
+ * Validate and normalize search request input using Zod
  */
-function validateRequest(body: any, requestId: string): { valid: boolean; error?: string } {
+function validateRequest(body: any, requestId: string): { valid: boolean; error?: string; normalized?: any } {
   try {
-    SearchRequestSchema.parse(body);
+    const parsed = SearchRequestSchema.parse(body);
+    
+    // Sanitize the query object to remove undefined values
+    const normalizedQuery = sanitizeObject(parsed.query);
+    
+    // Debug log in development/diagnostic mode
+    if (Deno.env.get('LOG_LEVEL') === 'debug') {
+      logStep("Normalized query", { requestId, normalizedQuery });
+    }
     
     // Additional validation: ensure boolean is present if no other query params
-    if (!body.query.boolean && 
-        !body.query.titles?.length && 
-        !body.query.keywords?.length && 
-        !body.query.locations?.length) {
+    if (!normalizedQuery.boolean && 
+        !normalizedQuery.titles?.length && 
+        !normalizedQuery.keywords?.length && 
+        !normalizedQuery.locations?.length) {
       return { 
         valid: false, 
         error: "query.boolean is required when no other query parameters are provided" 
       };
     }
     
-    return { valid: true };
+    return { 
+      valid: true, 
+      normalized: {
+        ...parsed,
+        query: normalizedQuery
+      }
+    };
   } catch (error) {
     if (error instanceof z.ZodError) {
       const firstError = error.errors[0];
@@ -539,7 +569,9 @@ serve(async (req) => {
       );
     }
 
-    const { organization_id, job_id, query, pagination } = body;
+    // Use normalized data from validation
+    const normalizedBody = validation.normalized || body;
+    const { organization_id, job_id, query, pagination } = normalizedBody;
     const page = pagination?.page ?? 1;
     const pageSize = pagination?.pageSize ?? 25;
 
