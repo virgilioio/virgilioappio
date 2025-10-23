@@ -31,14 +31,12 @@ import { usePermissions } from '@/hooks/usePermissions'
 import { VirgilioLogo } from '@/components/VirgilioLogo'
 import { AdminModeIndicator } from '@/components/admin/AdminModeIndicator'
 import { GlobalCreateButton } from '@/components/layout/GlobalCreateButton'
-import { CreditsDropdown } from '@/components/layout/CreditsDropdown'
 
 import { cn } from '@/lib/utils'
 import { useMembers } from '@/hooks/useMembers'
 import { useToast } from '@/components/ui/use-toast'
 import { supabase } from '@/lib/supabaseClient'
 import { useUserProfile } from '@/hooks/useUserProfile'
-import { useOrgCredits } from '@/hooks/useOrgCredits'
 
 export function Header() {
   const { user, logout, organizationId, isLoggingOut } = useAuth()
@@ -208,9 +206,6 @@ export function Header() {
 
         {/* User Menu and Mobile Navigation */}
         <div className="flex items-center gap-md">
-          {/* Credits Dropdown */}
-          {import.meta.env.VITE_FEATURE_SOURCING_ENABLED !== 'false' && <CreditsDropdown />}
-          
           {/* Global Create Button */}
           <GlobalCreateButton />
           
