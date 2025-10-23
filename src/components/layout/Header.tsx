@@ -209,7 +209,7 @@ export function Header() {
         {/* User Menu and Mobile Navigation */}
         <div className="flex items-center gap-md">
           {/* Credits Dropdown */}
-          <CreditsDropdown />
+          {import.meta.env.VITE_FEATURE_SOURCING_ENABLED !== 'false' && <CreditsDropdown />}
           
           {/* Global Create Button */}
           <GlobalCreateButton />

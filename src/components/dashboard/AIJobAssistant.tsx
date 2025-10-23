@@ -184,12 +184,21 @@ export function AIJobAssistant() {
       const newJob = await createJob(jobData)
       
       setCreatedJobId(newJob.id)
-      setCurrentStep('sourcing') // Navigate to sourcing, don't close modal
       
-      toast({
-        title: 'Draft Saved',
-        description: `"${selectedTitle}" has been saved as a draft. Continue to candidate sourcing.`,
-      })
+      // Navigate to sourcing if enabled, otherwise go to decision
+      if (import.meta.env.VITE_FEATURE_SOURCING_ENABLED !== 'false') {
+        setCurrentStep('sourcing')
+        toast({
+          title: 'Draft Saved',
+          description: `"${selectedTitle}" has been saved as a draft. Continue to candidate sourcing.`,
+        })
+      } else {
+        setCurrentStep('decision')
+        toast({
+          title: 'Draft Saved',
+          description: `"${selectedTitle}" has been saved as a draft.`,
+        })
+      }
     } catch (error: any) {
       console.error('Error saving draft:', error)
       toast({
@@ -334,7 +343,9 @@ export function AIJobAssistant() {
         await handleSaveDraft()
         break
       case 'sourcing':
-        setCurrentStep('decision')
+        if (import.meta.env.VITE_FEATURE_SOURCING_ENABLED !== 'false') {
+          setCurrentStep('decision')
+        }
         break
       default:
         break
@@ -346,7 +357,10 @@ export function AIJobAssistant() {
       case 'prompt':
         return 'Continue to Specs'
       case 'specs':
-        return isCreatingJob ? 'Saving Draft...' : 'Save & Continue to Sourcing'
+        if (import.meta.env.VITE_FEATURE_SOURCING_ENABLED !== 'false') {
+          return isCreatingJob ? 'Saving Draft...' : 'Save & Continue to Sourcing'
+        }
+        return isCreatingJob ? 'Saving Draft...' : 'Save Draft'
       case 'sourcing':
         return 'Continue to Review'
       default:
@@ -533,10 +547,12 @@ export function AIJobAssistant() {
               </div>
 
                <Tabs value={currentStep} onValueChange={(value) => setCurrentStep(value as any)} className="space-y-6">
-                 <TabsList className="grid w-full grid-cols-4 h-auto p-1">
+                 <TabsList className={`grid w-full ${import.meta.env.VITE_FEATURE_SOURCING_ENABLED !== 'false' ? 'grid-cols-4' : 'grid-cols-3'} h-auto p-1`}>
                    <TabsTrigger value="prompt" className="text-xs sm:text-sm px-2 py-2">Prompt</TabsTrigger>
                    <TabsTrigger value="specs" className="text-xs sm:text-sm px-2 py-2">Specs</TabsTrigger>
-                   <TabsTrigger value="sourcing" className="text-xs sm:text-sm px-2 py-2">Sourcing</TabsTrigger>
+                   {import.meta.env.VITE_FEATURE_SOURCING_ENABLED !== 'false' && (
+                     <TabsTrigger value="sourcing" className="text-xs sm:text-sm px-2 py-2">Sourcing</TabsTrigger>
+                   )}
                    <TabsTrigger value="decision" className="text-xs sm:text-sm px-2 py-2">Review</TabsTrigger>
                  </TabsList>
 
@@ -755,20 +771,22 @@ export function AIJobAssistant() {
                   </div>
                 </TabsContent>
 
-                <TabsContent value="sourcing" className="space-y-6">
-                  {createdJobId ? (
-                    <SourcingStep
-                      jobId={createdJobId}
-                      onNext={() => setCurrentStep('decision')}
-                      onBack={() => setCurrentStep('specs')}
-                    />
-                  ) : (
-                    <div className="py-8 text-center">
-                      <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
-                      <p className="text-sm text-muted-foreground">Saving draft job...</p>
-                    </div>
-                  )}
-                </TabsContent>
+{import.meta.env.VITE_FEATURE_SOURCING_ENABLED !== 'false' && (
+                  <TabsContent value="sourcing" className="space-y-6">
+                    {createdJobId ? (
+                      <SourcingStep
+                        jobId={createdJobId}
+                        onNext={() => setCurrentStep('decision')}
+                        onBack={() => setCurrentStep('specs')}
+                      />
+                    ) : (
+                      <div className="py-8 text-center">
+                        <Loader2 className="h-6 w-6 animate-spin mx-auto mb-2" />
+                        <p className="text-sm text-muted-foreground">Saving draft job...</p>
+                      </div>
+                    )}
+                  </TabsContent>
+                )}
 
                 <TabsContent value="decision" className="space-y-6">
                   <div className="space-y-4">

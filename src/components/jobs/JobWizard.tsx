@@ -26,7 +26,7 @@ interface WizardState {
 const STEPS = [
   { id: 1, title: 'Job Information', description: 'Basic job details' },
   { id: 2, title: 'Hiring Plan', description: 'Configure stages' },
-  { id: 3, title: 'Sourcing', description: 'Find candidates' },
+  ...(import.meta.env.VITE_FEATURE_SOURCING_ENABLED !== 'false' ? [{ id: 3, title: 'Sourcing', description: 'Find candidates' }] : []),
   { id: 4, title: 'Hiring Team', description: 'Assign team members' },
   { id: 5, title: 'Summary', description: 'Review and create' }
 ]
@@ -143,13 +143,17 @@ export function JobWizard({ isOpen, onClose }: JobWizardProps) {
           />
         )
       case 3:
-        return (
-          <SourcingStep
-            jobId={wizardState.createdJobId!}
-            onNext={handleNextStep}
-            onBack={handlePrevStep}
-          />
-        )
+        if (import.meta.env.VITE_FEATURE_SOURCING_ENABLED !== 'false') {
+          return (
+            <SourcingStep
+              jobId={wizardState.createdJobId!}
+              onNext={handleNextStep}
+              onBack={handlePrevStep}
+            />
+          )
+        }
+        // If sourcing disabled, fall through to next step
+        return null
       case 4:
         return (
           <HiringTeamStep
