@@ -35,7 +35,7 @@ export function MinimizableEmailComposer({
   return (
     <div
       className={cn(
-        "fixed bottom-4 right-4 z-[100] bg-background border rounded-lg shadow-2xl transition-all duration-300",
+        "fixed bottom-4 right-4 z-[150] bg-background border rounded-lg shadow-2xl transition-all duration-300",
         isMinimized ? "w-[320px]" : "w-[600px]",
         isOpen ? "animate-slide-in-bottom-right" : "animate-slide-out-bottom-right"
       )}
