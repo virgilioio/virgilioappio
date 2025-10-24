@@ -2737,10 +2737,6 @@ export type Database = {
       check_recursion_safety: { Args: never; Returns: boolean }
       cleanup_expired_invitations: { Args: never; Returns: number }
       cleanup_expired_salary_data: { Args: never; Returns: number }
-      consume_sourcing_credits: {
-        Args: { amount: number; credit_type: string; org_id: string }
-        Returns: boolean
-      }
       debug_user_permissions: {
         Args: never
         Returns: {
@@ -2785,20 +2781,6 @@ export type Database = {
       }
       get_member_role: { Args: never; Returns: string }
       get_member_role_safe: { Args: never; Returns: string }
-      get_org_credits: {
-        Args: { org_id: string }
-        Returns: {
-          collect_limit: number
-          collect_remaining: number
-          created_at: string
-          last_refill_at: string
-          next_refill_at: string
-          organization_id: string
-          search_limit: number
-          search_remaining: number
-          updated_at: string
-        }[]
-      }
       get_pipeline_global_metrics: {
         Args: {
           job_statuses?: string[]
@@ -2873,10 +2855,6 @@ export type Database = {
       }
       reassign_candidates_for_stage: {
         Args: { stage_id_param: string }
-        Returns: undefined
-      }
-      refill_org_sourcing_credits: {
-        Args: { collect_limit: number; org_id: string; search_limit: number }
         Returns: undefined
       }
       resequence_posting_fields_for_library_order: {
