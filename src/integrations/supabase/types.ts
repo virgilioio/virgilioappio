@@ -847,6 +847,119 @@ export type Database = {
           },
         ]
       }
+      email_logs: {
+        Row: {
+          attachments: Json | null
+          bcc_addresses: string[] | null
+          body_html: string | null
+          body_text: string | null
+          candidate_id: string | null
+          cc_addresses: string[] | null
+          clicked_at: string | null
+          created_at: string
+          error_message: string | null
+          from_address: string
+          headers: Json | null
+          id: string
+          job_id: string | null
+          mail_identity_id: string | null
+          opened_at: string | null
+          organization_id: string
+          provider_message_id: string | null
+          replied_at: string | null
+          sent_at: string | null
+          status: string
+          subject: string
+          thread_id: string | null
+          to_addresses: string[]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          attachments?: Json | null
+          bcc_addresses?: string[] | null
+          body_html?: string | null
+          body_text?: string | null
+          candidate_id?: string | null
+          cc_addresses?: string[] | null
+          clicked_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          from_address: string
+          headers?: Json | null
+          id?: string
+          job_id?: string | null
+          mail_identity_id?: string | null
+          opened_at?: string | null
+          organization_id: string
+          provider_message_id?: string | null
+          replied_at?: string | null
+          sent_at?: string | null
+          status?: string
+          subject: string
+          thread_id?: string | null
+          to_addresses: string[]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          attachments?: Json | null
+          bcc_addresses?: string[] | null
+          body_html?: string | null
+          body_text?: string | null
+          candidate_id?: string | null
+          cc_addresses?: string[] | null
+          clicked_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          from_address?: string
+          headers?: Json | null
+          id?: string
+          job_id?: string | null
+          mail_identity_id?: string | null
+          opened_at?: string | null
+          organization_id?: string
+          provider_message_id?: string | null
+          replied_at?: string | null
+          sent_at?: string | null
+          status?: string
+          subject?: string
+          thread_id?: string | null
+          to_addresses?: string[]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_logs_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_logs_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_logs_mail_identity_id_fkey"
+            columns: ["mail_identity_id"]
+            isOneToOne: false
+            referencedRelation: "user_mail_identities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_logs_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_templates: {
         Row: {
           body: string
