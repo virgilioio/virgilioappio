@@ -39,10 +39,16 @@ export default function MailOAuthCallback() {
         localStorage.removeItem(`mail_oauth:${state}:provider`);
 
         // Notify the opener and close
-        window.opener?.postMessage(
-          { type: 'mail-oauth-success', payload: data },
-          window.location.origin
-        );
+        try {
+          if (window.opener && !window.opener.closed) {
+            window.opener.postMessage(
+              { type: 'mail-oauth-success', payload: data },
+              window.location.origin
+            );
+          }
+        } catch (e) {
+          console.warn('Could not post message to opener:', e);
+        }
         
         setMsg('Connected! You can close this window.');
         
@@ -53,10 +59,16 @@ export default function MailOAuthCallback() {
       } catch (err: any) {
         console.error('OAuth callback error:', err);
         
-        window.opener?.postMessage(
-          { type: 'mail-oauth-error', error: err.message || String(err) },
-          window.location.origin
-        );
+        try {
+          if (window.opener && !window.opener.closed) {
+            window.opener.postMessage(
+              { type: 'mail-oauth-error', error: err.message || String(err) },
+              window.location.origin
+            );
+          }
+        } catch (e) {
+          console.warn('Could not post message to opener:', e);
+        }
         
         setMsg('Could not connect your account. You can close this window.');
       }
