@@ -37,7 +37,8 @@ import { EnhancedResumeDropzone } from '@/components/candidates/EnhancedResumeDr
 import MoveToPipelineMenu from '@/components/candidates/MoveToPipelineMenu'
 import { useJobHiringPlan, JobStage } from '@/hooks/useJobHiringPlan'
 import { cn } from '@/lib/utils'
-import { MinimizableEmailComposer } from '@/components/candidates/MinimizableEmailComposer'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { EmailComposer } from '@/components/candidates/EmailComposer'
 
 interface StageScorecardProps {
   stageInstanceId: string;
@@ -910,19 +911,24 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
 
           </div>
         </div>
+
+          {/* Email Composer Dialog (nested inside Sheet) */}
+          <Dialog open={emailComposerOpen} onOpenChange={setEmailComposerOpen}>
+            <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Send Email to {candidate?.candidate_name}</DialogTitle>
+              </DialogHeader>
+              <EmailComposer
+                candidateId={candidateId || undefined}
+                jobId={jobId}
+                defaultTo={candidate?.email}
+                onSuccess={() => setEmailComposerOpen(false)}
+                embedded
+              />
+            </DialogContent>
+          </Dialog>
       </SheetContent>
     </Sheet>
-
-    {/* Minimizable Email Composer */}
-    <MinimizableEmailComposer
-      isOpen={emailComposerOpen}
-      onOpenChange={setEmailComposerOpen}
-      candidateId={candidateId || undefined}
-      jobId={jobId}
-      defaultTo={candidate?.email}
-      candidateName={candidate?.candidate_name}
-      onSuccess={() => setEmailComposerOpen(false)}
-    />
   </>
   )
 }
