@@ -1,0 +1,357 @@
+import { useState, useRef } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useMailIdentities } from '@/hooks/useMailIdentities';
+import { useSendEmail, SendEmailRequest } from '@/hooks/useSendEmail';
+import { Paperclip, X, Send, Mail } from 'lucide-react';
+import { toast } from 'sonner';
+import { Link } from 'react-router-dom';
+
+const emailSchema = z.object({
+  from_email: z.string().email('Invalid email address'),
+  to: z.string().min(1, 'At least one recipient is required'),
+  cc: z.string().optional(),
+  bcc: z.string().optional(),
+  subject: z.string().min(1, 'Subject is required').max(998, 'Subject too long'),
+  body_html: z.string().min(1, 'Email body is required'),
+});
+
+type EmailFormData = z.infer<typeof emailSchema>;
+
+interface EmailComposerProps {
+  candidateId?: string;
+  jobId?: string;
+  defaultTo?: string;
+  onSuccess?: () => void;
+}
+
+interface Attachment {
+  file: File;
+  name: string;
+  size: number;
+}
+
+export function EmailComposer({ candidateId, jobId, defaultTo, onSuccess }: EmailComposerProps) {
+  const { identities, isLoading: loadingIdentities } = useMailIdentities();
+  const sendEmail = useSendEmail();
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [bodyHtml, setBodyHtml] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const activeIdentities = identities.filter(id => id.is_active);
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+    setValue,
+    watch,
+  } = useForm<EmailFormData>({
+    resolver: zodResolver(emailSchema),
+    defaultValues: {
+      to: defaultTo || '',
+      from_email: activeIdentities[0]?.email_address || '',
+      subject: '',
+      cc: '',
+      bcc: '',
+      body_html: '',
+    },
+  });
+
+  const fromEmail = watch('from_email');
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    const newAttachments: Attachment[] = [];
+    
+    for (const file of files) {
+      const totalSize = [...attachments, ...newAttachments].reduce((sum, a) => sum + a.size, 0);
+      
+      if (totalSize + file.size > 10 * 1024 * 1024) {
+        toast.error('Total attachment size cannot exceed 10MB');
+        break;
+      }
+      
+      newAttachments.push({
+        file,
+        name: file.name,
+        size: file.size,
+      });
+    }
+    
+    setAttachments([...attachments, ...newAttachments]);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const removeAttachment = (index: number) => {
+    setAttachments(attachments.filter((_, i) => i !== index));
+  };
+
+  const parseEmailList = (emailString: string): string[] => {
+    return emailString
+      .split(/[,;]/)
+      .map(e => e.trim())
+      .filter(e => e.length > 0);
+  };
+
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const base64 = (reader.result as string).split(',')[1];
+        resolve(base64);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const onSubmit = async (data: EmailFormData) => {
+    try {
+      // Convert attachments to base64
+      const attachmentPromises = attachments.map(async (att) => ({
+        filename: att.name,
+        content: await fileToBase64(att.file),
+        content_type: att.file.type || 'application/octet-stream',
+      }));
+
+      const processedAttachments = await Promise.all(attachmentPromises);
+
+      const request: SendEmailRequest = {
+        from_email: data.from_email,
+        to: parseEmailList(data.to),
+        cc: data.cc ? parseEmailList(data.cc) : undefined,
+        bcc: data.bcc ? parseEmailList(data.bcc) : undefined,
+        subject: data.subject,
+        body_html: bodyHtml,
+        body_text: bodyHtml.replace(/<[^>]*>/g, ''), // Simple HTML strip
+        attachments: processedAttachments.length > 0 ? processedAttachments : undefined,
+        candidate_id: candidateId,
+        job_id: jobId,
+      };
+
+      await sendEmail.mutateAsync(request);
+      
+      // Reset form
+      setBodyHtml('');
+      setAttachments([]);
+      setValue('subject', '');
+      setValue('cc', '');
+      setValue('bcc', '');
+      if (!defaultTo) setValue('to', '');
+      
+      onSuccess?.();
+    } catch (error) {
+      console.error('Failed to send email:', error);
+    }
+  };
+
+  if (loadingIdentities) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Send Email</CardTitle>
+          <CardDescription>Loading email accounts...</CardDescription>
+        </CardHeader>
+      </Card>
+    );
+  }
+
+  if (activeIdentities.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Mail className="h-5 w-5" />
+            Send Email
+          </CardTitle>
+          <CardDescription>
+            Connect your email account to send messages to candidates
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Link to="/settings?tab=email">
+            <Button variant="outline">
+              <Mail className="h-4 w-4 mr-2" />
+              Connect Mailbox
+            </Button>
+          </Link>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Mail className="h-5 w-5" />
+          Send Email
+        </CardTitle>
+        <CardDescription>
+          Compose and send an email to the candidate
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          {/* From */}
+          <div className="space-y-2">
+            <Label htmlFor="from_email">From</Label>
+            <Select
+              value={fromEmail}
+              onValueChange={(value) => setValue('from_email', value)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select email account" />
+              </SelectTrigger>
+              <SelectContent>
+                {activeIdentities.map((identity) => (
+                  <SelectItem key={identity.id} value={identity.email_address}>
+                    {identity.display_name} ({identity.email_address})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {errors.from_email && (
+              <p className="text-sm text-destructive">{errors.from_email.message}</p>
+            )}
+          </div>
+
+          {/* To */}
+          <div className="space-y-2">
+            <Label htmlFor="to">To</Label>
+            <Input
+              id="to"
+              {...register('to')}
+              placeholder="recipient@example.com, another@example.com"
+            />
+            {errors.to && (
+              <p className="text-sm text-destructive">{errors.to.message}</p>
+            )}
+          </div>
+
+          {/* CC */}
+          <div className="space-y-2">
+            <Label htmlFor="cc">CC (optional)</Label>
+            <Input
+              id="cc"
+              {...register('cc')}
+              placeholder="cc@example.com"
+            />
+          </div>
+
+          {/* BCC */}
+          <div className="space-y-2">
+            <Label htmlFor="bcc">BCC (optional)</Label>
+            <Input
+              id="bcc"
+              {...register('bcc')}
+              placeholder="bcc@example.com"
+            />
+          </div>
+
+          {/* Subject */}
+          <div className="space-y-2">
+            <Label htmlFor="subject">Subject</Label>
+            <Input
+              id="subject"
+              {...register('subject')}
+              placeholder="Email subject"
+            />
+            {errors.subject && (
+              <p className="text-sm text-destructive">{errors.subject.message}</p>
+            )}
+          </div>
+
+          {/* Body */}
+          <div className="space-y-2">
+            <Label>Message</Label>
+            <RichTextEditor
+              value={bodyHtml}
+              onChange={(content) => {
+                setBodyHtml(content);
+                setValue('body_html', content);
+              }}
+              placeholder="Write your email message here..."
+            />
+            {errors.body_html && (
+              <p className="text-sm text-destructive">{errors.body_html.message}</p>
+            )}
+          </div>
+
+          {/* Attachments */}
+          <div className="space-y-2">
+            <Label>Attachments</Label>
+            <div className="flex flex-wrap gap-2">
+              {attachments.map((att, index) => (
+                <div
+                  key={index}
+                  className="flex items-center gap-2 bg-muted px-3 py-1.5 rounded-md text-sm"
+                >
+                  <Paperclip className="h-3 w-3" />
+                  <span>{att.name}</span>
+                  <span className="text-muted-foreground">
+                    ({(att.size / 1024).toFixed(1)} KB)
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => removeAttachment(index)}
+                    className="ml-1 hover:text-destructive"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              onChange={handleFileSelect}
+              className="hidden"
+              id="file-upload"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <Paperclip className="h-4 w-4 mr-2" />
+              Attach Files
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              Maximum 10MB total for all attachments
+            </p>
+          </div>
+
+          {/* Submit */}
+          <div className="flex justify-end gap-2">
+            <Button
+              type="submit"
+              disabled={sendEmail.isPending}
+            >
+              {sendEmail.isPending ? (
+                <>Sending...</>
+              ) : (
+                <>
+                  <Send className="h-4 w-4 mr-2" />
+                  Send Email
+                </>
+              )}
+            </Button>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
+  );
+}
