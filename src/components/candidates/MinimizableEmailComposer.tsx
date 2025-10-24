@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { EmailComposer } from '@/components/candidates/EmailComposer';
@@ -32,13 +33,14 @@ export function MinimizableEmailComposer({
     onOpenChange(false);
   };
 
-  return (
+  return createPortal(
     <div
       className={cn(
-        "fixed bottom-4 right-4 z-[150] bg-background border rounded-lg shadow-2xl transition-all duration-300",
+        "fixed bottom-4 right-4 z-[9999] bg-background border rounded-lg shadow-2xl transition-all duration-300 pointer-events-auto",
         isMinimized ? "w-[320px]" : "w-[600px]",
         isOpen ? "animate-slide-in-bottom-right" : "animate-slide-out-bottom-right"
       )}
+      onClick={(e) => e.stopPropagation()}
     >
       {/* Header Bar */}
       <div
@@ -84,6 +86,7 @@ export function MinimizableEmailComposer({
           />
         </div>
       )}
-    </div>
+    </div>,
+    document.body
   );
 }
