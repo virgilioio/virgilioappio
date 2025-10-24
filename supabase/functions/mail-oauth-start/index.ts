@@ -59,6 +59,23 @@ const handler = async (req: Request): Promise<Response> => {
 
     const { provider }: OAuthStartRequest = await req.json();
 
+    // Guard: Check for required environment variables
+    const appBase = Deno.env.get('OAUTH_REDIRECT_BASE');
+    if (!appBase) {
+      console.error('[mail-oauth-start] Missing OAUTH_REDIRECT_BASE');
+      return new Response(JSON.stringify({ error: 'Server misconfiguration: OAUTH_REDIRECT_BASE not set' }), {
+        status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      });
+    }
+
+    const googleClientId = Deno.env.get('GOOGLE_CLIENT_ID');
+    if (!googleClientId) {
+      console.error('[mail-oauth-start] Missing GOOGLE_CLIENT_ID');
+      return new Response(JSON.stringify({ error: 'Server misconfiguration: GOOGLE_CLIENT_ID not set' }), {
+        status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders },
+      });
+    }
+
     // Generate PKCE values
     const codeVerifier = generateCodeVerifier();
     const codeChallenge = await generateCodeChallenge(codeVerifier);
@@ -71,10 +88,9 @@ const handler = async (req: Request): Promise<Response> => {
     }));
 
     let authUrl: string;
-    const redirectUri = `${Deno.env.get('OAUTH_REDIRECT_BASE')}/functions/v1/mail-oauth-callback`;
+    const redirectUri = `${appBase}/mail/oauth/callback`;
 
     if (provider === 'gmail') {
-      const googleClientId = Deno.env.get('GOOGLE_CLIENT_ID');
       const scopes = [
         'https://www.googleapis.com/auth/gmail.send',
         'https://www.googleapis.com/auth/userinfo.email',
@@ -82,7 +98,7 @@ const handler = async (req: Request): Promise<Response> => {
       ];
 
       authUrl = 'https://accounts.google.com/o/oauth2/v2/auth?' + new URLSearchParams({
-        client_id: googleClientId!,
+        client_id: googleClientId,
         redirect_uri: redirectUri,
         response_type: 'code',
         scope: scopes.join(' '),
@@ -97,6 +113,13 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     console.log('OAuth start initiated for user:', user.id, 'provider:', provider);
+    
+    // Debug logging
+    const logLevel = Deno.env.get('LOG_LEVEL');
+    if (logLevel === 'debug') {
+      console.log('[DEBUG] redirectUri:', redirectUri);
+      console.log('[DEBUG] scopes:', scopes.join(' '));
+    }
 
     // Store code_verifier in a temporary table or return it to the client
     // For security, we'll return it to be stored client-side temporarily
