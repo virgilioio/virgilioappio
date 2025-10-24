@@ -397,68 +397,75 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
             ) : !candidate ? (
               <div className="text-text-secondary text-sm">No data available.</div>
             ) : (
-               <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'job' | 'application' | 'resume' | 'overview')}>
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  {/* Left column (2x) */}
-                  <div className="lg:col-span-2 space-y-6">
-                    <CandidateNameCard
-                      email={candidate.email}
-                      phone={candidate.phone}
-                      tabs={[
-                        { value: 'job', label: 'Job Application', Icon: FileText },
-                        { value: 'application', label: 'Application Details', Icon: FileText },
-                        { value: 'resume', label: 'Resume', Icon: FileText },
-                        { value: 'overview', label: 'Overview', Icon: FileText },
-                        
-                      ]}
-                      activeTab={activeTab}
-                      onTabChange={(v) => setActiveTab(v as 'job' | 'application' | 'resume' | 'overview')}
-                      rightActions={
-                        <>
-                          {associationId && associationStatus !== 'rejected' && (
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              onClick={() => handleSetStatus('rejected')}
-                              title="Reject candidate"
-                            >
-                              Reject
-                            </Button>
-                          )}
-                          {/* Mark Hired only when in Offer stage */}
-                          {(() => {
-                            const current = planStages.find(s => s.jhsId === currentStageId)
-                            const canMarkHired = !!associationId && associationStatus !== 'hired' && (associationStatus === 'offer' || current?.stage.stage_type === 'offer')
-                            return canMarkHired ? (
-                              <Button
-                                size="sm"
-                                onClick={() => handleSetStatus('hired')}
-                                title="Mark candidate as hired"
-                              >
-                                Mark Hired
-                              </Button>
-                            ) : null
-                          })()}
-                          {/* Move to Pipeline button for suggested candidates */}
-                          {!associationId && jobId && candidate.id && (
-                            <MoveToPipelineMenu
-                              jobId={jobId}
-                              candidateId={candidate.id}
-                              buttonText="Move to pipeline"
-                            />
-                          )}
-                          <Button
-                            variant="default"
-                            size="icon"
-                            className="aspect-square rounded-md bg-foreground text-background hover:bg-foreground"
-                            onClick={() => generateCandidatePdf({ candidate, job })}
-                            title="Download PDF"
-                          >
-                            <Download className="h-4 w-4" />
-                          </Button>
-                        </>
-                      }
-                    />
+                <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'job' | 'application' | 'resume' | 'overview')}>
+                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                   {/* Left column (2x) */}
+                   <div className="lg:col-span-2 space-y-6">
+                     {/* Controls Card */}
+                     <Card className="bg-surface-primary border-border">
+                       <CardContent className="p-4">
+                         <div className="flex items-center justify-between">
+                           <h3 className="text-sm font-medium text-text-secondary">Actions</h3>
+                           <div className="flex items-center gap-2">
+                             {associationId && associationStatus !== 'rejected' && (
+                               <Button
+                                 variant="destructive"
+                                 size="sm"
+                                 onClick={() => handleSetStatus('rejected')}
+                                 title="Reject candidate"
+                               >
+                                 Reject
+                               </Button>
+                             )}
+                             {/* Mark Hired only when in Offer stage */}
+                             {(() => {
+                               const current = planStages.find(s => s.jhsId === currentStageId)
+                               const canMarkHired = !!associationId && associationStatus !== 'hired' && (associationStatus === 'offer' || current?.stage.stage_type === 'offer')
+                               return canMarkHired ? (
+                                 <Button
+                                   size="sm"
+                                   onClick={() => handleSetStatus('hired')}
+                                   title="Mark candidate as hired"
+                                 >
+                                   Mark Hired
+                                 </Button>
+                               ) : null
+                             })()}
+                             {/* Move to Pipeline button for suggested candidates */}
+                             {!associationId && jobId && candidate.id && (
+                               <MoveToPipelineMenu
+                                 jobId={jobId}
+                                 candidateId={candidate.id}
+                                 buttonText="Move to pipeline"
+                               />
+                             )}
+                             <Button
+                               variant="default"
+                               size="icon"
+                               className="aspect-square rounded-md bg-foreground text-background hover:bg-foreground"
+                               onClick={() => generateCandidatePdf({ candidate, job })}
+                               title="Download PDF"
+                             >
+                               <Download className="h-4 w-4" />
+                             </Button>
+                           </div>
+                         </div>
+                       </CardContent>
+                     </Card>
+
+                     <CandidateNameCard
+                       email={candidate.email}
+                       phone={candidate.phone}
+                       tabs={[
+                         { value: 'job', label: 'Job Application', Icon: FileText },
+                         { value: 'application', label: 'Application Details', Icon: FileText },
+                         { value: 'resume', label: 'Resume', Icon: FileText },
+                         { value: 'overview', label: 'Overview', Icon: FileText },
+                         
+                       ]}
+                       activeTab={activeTab}
+                       onTabChange={(v) => setActiveTab(v as 'job' | 'application' | 'resume' | 'overview')}
+                     />
 
                     {/* Job Application Tab */}
                     {activeTab === 'job' && (
