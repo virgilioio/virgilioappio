@@ -37,6 +37,7 @@ import { EnhancedResumeDropzone } from '@/components/candidates/EnhancedResumeDr
 import MoveToPipelineMenu from '@/components/candidates/MoveToPipelineMenu'
 import { useJobHiringPlan, JobStage } from '@/hooks/useJobHiringPlan'
 import { cn } from '@/lib/utils'
+import { EmailComposer } from '@/components/candidates/EmailComposer'
 
 interface StageScorecardProps {
   stageInstanceId: string;
@@ -89,6 +90,7 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
   const [associationStatus, setAssociationStatus] = useState<'active' | 'rejected' | 'hired' | 'offer' | null>(null)
   const [currentStageId, setCurrentStageId] = useState<string | null>(null)
   const [movingStageId, setMovingStageId] = useState<string | null>(null)
+  const [emailComposerOpen, setEmailComposerOpen] = useState(false)
   
   // Use the candidate resolver to get the correct ID for attachments
   const { independentCandidateId } = useCandidateResolver(candidateId)
@@ -338,6 +340,7 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
   }
 
   return (
+    <>
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-[80vw] sm:max-w-none h-full p-0">
         <div className="flex h-full flex-col">
@@ -443,7 +446,7 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                                 variant="default"
                                 size="icon"
                                 className="aspect-square rounded-md"
-                                onClick={() => setActiveTab('overview')}
+                                onClick={() => setEmailComposerOpen(true)}
                                 title="Send Email"
                               >
                                 <Send className="h-4 w-4" />
@@ -909,5 +912,23 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
         </div>
       </SheetContent>
     </Sheet>
+
+    {/* Email Composer Sheet */}
+    <Sheet open={emailComposerOpen} onOpenChange={setEmailComposerOpen}>
+      <SheetContent side="right" className="w-[600px] sm:max-w-[600px]">
+        <SheetHeader>
+          <SheetTitle>Send Email to {candidate?.candidate_name}</SheetTitle>
+        </SheetHeader>
+        <div className="mt-6">
+          <EmailComposer
+            candidateId={candidateId || undefined}
+            jobId={jobId}
+            defaultTo={candidate?.email}
+            onSuccess={() => setEmailComposerOpen(false)}
+          />
+        </div>
+      </SheetContent>
+    </Sheet>
+  </>
   )
 }
