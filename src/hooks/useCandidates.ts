@@ -55,6 +55,46 @@ export interface CreateCandidateData {
   job_id?: string | null
 }
 
+/**
+ * Smart merge two candidate records, keeping the most complete information
+ * Prefers non-null, non-empty values from new data over existing data
+ */
+function smartMerge(existing: any, incoming: any): any {
+  const merged = { ...existing }
+  
+  // Field priority rules
+  const fields = [
+    'email', 'phone', 'location_country', 'location_state', 'location_city',
+    'salary_amount', 'salary_currency', 'salary_period', 
+    'profile_summary', 'linkedin_url', 'resume_url',
+    'years_experience', 'role_current', 'company_current', 'bio'
+  ]
+  
+  fields.forEach(field => {
+    const incomingValue = incoming[field]
+    const existingValue = existing[field]
+    
+    // Use incoming if it's more complete
+    if (incomingValue !== null && incomingValue !== undefined && incomingValue !== '') {
+      // For strings, prefer longer values
+      if (typeof incomingValue === 'string' && typeof existingValue === 'string') {
+        merged[field] = incomingValue.length > existingValue.length ? incomingValue : existingValue
+      } else {
+        // For other types, prefer non-null incoming
+        merged[field] = incomingValue
+      }
+    }
+  })
+  
+  // Merge skills arrays (combine and deduplicate)
+  if (incoming.skills && Array.isArray(incoming.skills)) {
+    const existingSkills = existing.skills || []
+    merged.skills = [...new Set([...existingSkills, ...incoming.skills])]
+  }
+  
+  return merged
+}
+
 export function useCandidates(jobId: string) {
   const [candidates, setCandidates] = useState<Candidate[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -239,25 +279,48 @@ export function useCandidates(jobId: string) {
 
       // Step 1: Check if candidate already exists in global candidates table
       let globalCandidateId: string | null = null
-      
+      let existingCandidateData: any = null
+
       if (candidateData.candidate_name) {
-        let q = supabase
-          .from('candidates')
-          .select('id')
-          .eq('candidate_name', candidateData.candidate_name)
-        if (candidateData.location_country === null || candidateData.location_country === undefined) {
-          q = q.is('location_country', null)
+        // Primary check: by email + name (matches DB unique constraint)
+        if (candidateData.email) {
+          const { data: existingCandidate } = await supabase
+            .from('candidates')
+            .select('*')  // Get full record for merge comparison
+            .eq('candidate_name', candidateData.candidate_name)
+            .eq('email', candidateData.email)
+            .maybeSingle()
+          
+          if (existingCandidate) {
+            globalCandidateId = existingCandidate.id
+            existingCandidateData = existingCandidate
+          }
         } else {
-          q = q.eq('location_country', candidateData.location_country)
+          // Fallback check: by name + location
+          let q = supabase
+            .from('candidates')
+            .select('*')
+            .eq('candidate_name', candidateData.candidate_name)
+          
+          if (candidateData.location_country === null || candidateData.location_country === undefined) {
+            q = q.is('location_country', null)
+          } else {
+            q = q.eq('location_country', candidateData.location_country)
+          }
+          
+          if (candidateData.location_city === null || candidateData.location_city === undefined) {
+            q = q.is('location_city', null)
+          } else {
+            q = q.eq('location_city', candidateData.location_city)
+          }
+          
+          const { data: existingCandidate } = await q.maybeSingle()
+          
+          if (existingCandidate) {
+            globalCandidateId = existingCandidate.id
+            existingCandidateData = existingCandidate
+          }
         }
-        if (candidateData.location_city === null || candidateData.location_city === undefined) {
-          q = q.is('location_city', null)
-        } else {
-          q = q.eq('location_city', candidateData.location_city)
-        }
-        const { data: existingCandidate } = await q.maybeSingle()
-        
-        globalCandidateId = existingCandidate?.id || null
       }
 
       // Step 2: If not exists, create in global candidates table
@@ -272,7 +335,7 @@ export function useCandidates(jobId: string) {
             source: 'job_application',
             created_by: user.id,
           }])
-          .select('id')
+          .select('*')  // Return full record
           .single()
 
         if (!globalError && newGlobalCandidate) {
@@ -283,19 +346,22 @@ export function useCandidates(jobId: string) {
           throw globalError || new Error('Failed to create global candidate')
         }
       } else {
-        // If exists, update the global candidate record with any new data
-        const updateData: any = {}
-        if (candidateData.email) updateData.email = candidateData.email
-        if (candidateData.phone) updateData.phone = candidateData.phone
-        if (candidateData.profile_summary) updateData.profile_summary = candidateData.profile_summary
-        if (candidateData.linkedin_url) updateData.linkedin_url = candidateData.linkedin_url
-        if (candidateData.skills) updateData.skills = candidateData.skills
-
-        if (Object.keys(updateData).length > 0) {
-          await supabase
+        // Candidate exists - perform smart merge
+        const mergedData = smartMerge(existingCandidateData, candidateData)
+        
+        const { notes, assignedJobId, assignedStageId, job_id, ...updateFields } = mergedData
+        
+        if (Object.keys(updateFields).length > 0) {
+          const { error: updateError } = await supabase
             .from('candidates')
-            .update(updateData)
+            .update(updateFields)
             .eq('id', globalCandidateId)
+          
+          if (updateError) {
+            log.error('Error updating candidate during merge:', updateError)
+          } else {
+            log.debug('Merged candidate data:', { candidateId: globalCandidateId, fieldsUpdated: Object.keys(updateFields) })
+          }
         }
       }
 
@@ -333,7 +399,13 @@ export function useCandidates(jobId: string) {
       })
 
       await getCandidates() // Refresh the list
-      return newAssociation
+      
+      return {
+        id: globalCandidateId,
+        wasMerged: !!existingCandidateData,
+        existingData: existingCandidateData,
+        mergedData: existingCandidateData ? smartMerge(existingCandidateData, candidateData) : null
+      }
     } catch (err) {
       const errorMessage = extractErrorMessage(err)
       log.error('Candidate creation error:', err)

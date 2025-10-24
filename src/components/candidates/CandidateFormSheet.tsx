@@ -30,11 +30,12 @@ import { EnhancedResumeDropzone, ParsedResumeData } from './EnhancedResumeDropzo
 import { useJobsForCandidateAssignment } from '@/hooks/useJobsForCandidateAssignment'
 import { useJobHiringPlan } from '@/hooks/useJobHiringPlan'
 import { SearchableSelect } from '@/components/ui/searchable-select'
+import { CandidateMergeDialog } from './CandidateMergeDialog'
 
 interface CandidateFormSheetProps {
   isOpen: boolean
   onClose: () => void
-  onSubmit: (data: any) => void
+  onSubmit: (data: any) => Promise<any> | void
   candidate?: Candidate | null
   jobId?: string // Made optional for global candidate creation
   stageId?: string // Optional pre-selected stage
@@ -97,6 +98,14 @@ export function CandidateFormSheet({
 
   const { isParsing, parseResume } = useResumeParsing();
   const { generateSkills, isGenerating } = useSkillsGeneration();
+  
+  const [mergeDialogOpen, setMergeDialogOpen] = useState(false)
+  const [mergeData, setMergeData] = useState<{
+    existing: any
+    incoming: any
+    merged: any
+  } | null>(null)
+  const [pendingSubmitData, setPendingSubmitData] = useState<any>(null)
 
   const form = useForm<FormData>({
     defaultValues: {
@@ -358,6 +367,48 @@ export function CandidateFormSheet({
     }
   }
 
+  const handlePostSubmitActions = async (result: any) => {
+    if (!candidate) {
+      if (pendingFiles.length > 0 && (result as any)?.id) {
+        try {
+          setIsUploadingResume(true)
+          for (const f of pendingFiles) {
+            await uploadFileForCandidate((result as any).id, f)
+          }
+          toast({ title: 'Resume uploaded', description: 'Attachment added to candidate.' })
+          setPendingFiles([])
+        } finally {
+          setIsUploadingResume(false)
+        }
+      }
+      clearPersistedData()
+    }
+  }
+
+  const handleMergeConfirm = async () => {
+    setMergeDialogOpen(false)
+    
+    toast({
+      title: 'Candidate Merged',
+      description: 'The candidate information has been merged and added to the job.',
+    })
+    
+    // Complete post-submit actions
+    if (pendingSubmitData) {
+      await handlePostSubmitActions({ id: mergeData?.existing?.id })
+    }
+    
+    setMergeData(null)
+    setPendingSubmitData(null)
+    onClose()
+  }
+
+  const handleMergeCancel = () => {
+    setMergeDialogOpen(false)
+    setMergeData(null)
+    setPendingSubmitData(null)
+  }
+
   const handleSubmit = form.handleSubmit(async (data) => {
     // For new candidates without a job context, validate org/job selection
     if (!candidate && !jobId) {
@@ -387,24 +438,25 @@ export function CandidateFormSheet({
       })
     }
 
+    // Store for later if merge dialog appears
+    setPendingSubmitData(submitData)
+
     const result = await onSubmit(submitData as any)
 
-    // After create, upload any queued files
-    if (!candidate) {
-      if (pendingFiles.length > 0 && (result as any)?.id) {
-        try {
-          setIsUploadingResume(true)
-          for (const f of pendingFiles) {
-            await uploadFileForCandidate((result as any).id, f)
-          }
-          toast({ title: 'Resume uploaded', description: 'Attachment added to candidate.' })
-          setPendingFiles([])
-        } finally {
-          setIsUploadingResume(false)
-        }
-      }
-      // Clear persisted data after successful submission
-      clearPersistedData()
+    // Check if merge occurred
+    if (result && (result as any).wasMerged) {
+      setMergeData({
+        existing: (result as any).existingData,
+        incoming: submitData,
+        merged: (result as any).mergedData
+      })
+      setMergeDialogOpen(true)
+      return // Don't proceed with file upload yet
+    }
+
+    // Normal flow for new candidates
+    if (result) {
+      await handlePostSubmitActions(result)
     }
   })
 
@@ -834,6 +886,17 @@ export function CandidateFormSheet({
           </form>
         </div>
       </SheetContent>
+      
+      {mergeData && (
+        <CandidateMergeDialog
+          isOpen={mergeDialogOpen}
+          onConfirm={handleMergeConfirm}
+          onCancel={handleMergeCancel}
+          existingCandidate={mergeData.existing}
+          newCandidate={mergeData.incoming}
+          mergedCandidate={mergeData.merged}
+        />
+      )}
     </Sheet>
   )
 }
