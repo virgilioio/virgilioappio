@@ -69,12 +69,17 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("Failed to create reset token");
     }
 
-    // Fix the reset URL - use the proper application URL
-    const resetUrl = `https://etrxjxstjfcozdjumfsj.supabase.co/reset-password?token=${token}`;
+    // Build the reset URL pointing to the app domain
+    const resetUrl = `https://app.virgilio.io/reset-password?token=${token}`;
+    
+    // Validate URL construction
+    if (!resetUrl.includes(token) || !resetUrl.startsWith('https://app.virgilio.io')) {
+      throw new Error('Invalid reset URL construction');
+    }
     
     // Send email with Resend
     const emailResponse = await resend.emails.send({
-      from: "Virgilio <noreply@resend.dev>",
+      from: "Virgilio <noreply@app.virgilio.io>",
       to: [email],
       subject: "Reset your password",
       html: `
