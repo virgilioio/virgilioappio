@@ -13,7 +13,7 @@ import { CandidateResumeViewer } from '@/components/candidates/CandidateResumeVi
 import { CandidateUrls } from '@/components/candidates/CandidateUrls'
 import { CandidateWorkExperienceComponent, CandidateWorkExperience } from '@/components/candidates/CandidateWorkExperience'
 import { CandidateEducationComponent, CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
-import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight, CheckCircle2, Circle, MoveRight, ThumbsDown, ThumbsUp, Star, Octagon, Mail, Phone, Copy, ExternalLink } from 'lucide-react'
+import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight, CheckCircle2, Circle, MoveRight, ThumbsDown, ThumbsUp, Star, Octagon, Mail, Phone, Copy, ExternalLink, Send } from 'lucide-react'
 import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
@@ -405,50 +405,59 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                      <Card className="bg-surface-primary border-border">
                        <CardContent className="p-4">
                          <div className="flex items-center justify-between">
-                           <h3 className="text-sm font-medium text-text-secondary">Actions</h3>
-                           <div className="flex items-center gap-2">
-                             {associationId && associationStatus !== 'rejected' && (
-                               <Button
-                                 variant="destructive"
-                                 size="sm"
-                                 onClick={() => handleSetStatus('rejected')}
-                                 title="Reject candidate"
-                               >
-                                 Reject
-                               </Button>
-                             )}
-                             {/* Mark Hired only when in Offer stage */}
-                             {(() => {
-                               const current = planStages.find(s => s.jhsId === currentStageId)
-                               const canMarkHired = !!associationId && associationStatus !== 'hired' && (associationStatus === 'offer' || current?.stage.stage_type === 'offer')
-                               return canMarkHired ? (
-                                 <Button
-                                   size="sm"
-                                   onClick={() => handleSetStatus('hired')}
-                                   title="Mark candidate as hired"
-                                 >
-                                   Mark Hired
-                                 </Button>
-                               ) : null
-                             })()}
-                             {/* Move to Pipeline button for suggested candidates */}
-                             {!associationId && jobId && candidate.id && (
-                               <MoveToPipelineMenu
-                                 jobId={jobId}
-                                 candidateId={candidate.id}
-                                 buttonText="Move to pipeline"
-                               />
-                             )}
-                             <Button
-                               variant="default"
-                               size="icon"
-                               className="aspect-square rounded-md bg-foreground text-background hover:bg-foreground"
-                               onClick={() => generateCandidatePdf({ candidate, job })}
-                               title="Download PDF"
-                             >
-                               <Download className="h-4 w-4" />
-                             </Button>
-                           </div>
+                            <h3 className="text-sm font-medium text-text-secondary">Actions</h3>
+                            <div className="flex items-center gap-2">
+                              {associationId && associationStatus !== 'rejected' && (
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  onClick={() => handleSetStatus('rejected')}
+                                  title="Reject candidate"
+                                >
+                                  Reject
+                                </Button>
+                              )}
+                              {/* Mark Hired only when in Offer stage */}
+                              {(() => {
+                                const current = planStages.find(s => s.jhsId === currentStageId)
+                                const canMarkHired = !!associationId && associationStatus !== 'hired' && (associationStatus === 'offer' || current?.stage.stage_type === 'offer')
+                                return canMarkHired ? (
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleSetStatus('hired')}
+                                    title="Mark candidate as hired"
+                                  >
+                                    Mark Hired
+                                  </Button>
+                                ) : null
+                              })()}
+                              {/* Move to Pipeline button for suggested candidates */}
+                              {!associationId && jobId && candidate.id && (
+                                <MoveToPipelineMenu
+                                  jobId={jobId}
+                                  candidateId={candidate.id}
+                                  buttonText="Move to pipeline"
+                                />
+                              )}
+                              <Button
+                                variant="default"
+                                size="icon"
+                                className="aspect-square rounded-md"
+                                onClick={() => setActiveTab('overview')}
+                                title="Send Email"
+                              >
+                                <Send className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="default"
+                                size="icon"
+                                className="aspect-square rounded-md bg-foreground text-background hover:bg-foreground"
+                                onClick={() => generateCandidatePdf({ candidate, job })}
+                                title="Download PDF"
+                              >
+                                <Download className="h-4 w-4" />
+                              </Button>
+                            </div>
                          </div>
                        </CardContent>
                      </Card>
