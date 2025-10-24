@@ -40,7 +40,7 @@ import Onboarding from './pages/Onboarding'
 import Privacy from './pages/Privacy'
 import Terms from './pages/Terms'
 import AuthCallback from './pages/AuthCallback'
-import OAuthCallback from './pages/OAuthCallback'
+import MailOAuthCallback from './pages/MailOAuthCallback'
 import { SaaSCustomerDetail } from './pages/settings/saas-customers/SaaSCustomerDetail'
 const queryClient = new QueryClient()
 
@@ -60,7 +60,7 @@ function AppContent() {
         <Route path="/accept-invite/:token" element={<AcceptInvite />} />
         <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
-        <Route path="/oauth/callback" element={<RequireAuth><OAuthCallback /></RequireAuth>} />
+        <Route path="/mail/oauth/callback" element={<RequireAuth><MailOAuthCallback /></RequireAuth>} />
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/terms" element={<Terms />} />
         {/* Public job posting route */}

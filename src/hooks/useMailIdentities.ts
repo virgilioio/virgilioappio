@@ -35,7 +35,7 @@ export function useMailIdentities() {
   const connectGmail = useMutation({
     mutationFn: async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('Not authenticated');
+      if (!session?.access_token) throw new Error('Not authenticated');
 
       const { data, error } = await supabase.functions.invoke('mail-oauth-start', {
         body: { provider: 'gmail' },
@@ -45,41 +45,41 @@ export function useMailIdentities() {
       return data as { auth_url: string; code_verifier: string; state: string };
     },
     onSuccess: (data) => {
-      // Store code_verifier temporarily for callback
-      sessionStorage.setItem('oauth_code_verifier', data.code_verifier);
-      sessionStorage.setItem('oauth_state', data.state);
-      
+      const { auth_url, code_verifier, state } = data;
+
+      // Save verifier keyed by state (localStorage is shared with popup)
+      localStorage.setItem(`mail_oauth:${state}:code_verifier`, code_verifier);
+      localStorage.setItem(`mail_oauth:${state}:provider`, 'gmail');
+
       // Open OAuth popup
-      const width = 600;
-      const height = 700;
-      const left = window.screen.width / 2 - width / 2;
-      const top = window.screen.height / 2 - height / 2;
-      
       const popup = window.open(
-        data.auth_url,
-        'Gmail OAuth',
-        `width=${width},height=${height},left=${left},top=${top}`
+        auth_url,
+        'gmail-oauth',
+        'width=520,height=640,scrollbars=yes'
       );
 
-      // Poll for OAuth callback
-      const pollTimer = setInterval(() => {
-        try {
-          if (popup?.closed) {
-            clearInterval(pollTimer);
-            // Check if callback was successful
-            const success = sessionStorage.getItem('oauth_success');
-            if (success === 'true') {
-              toast.success('Gmail account connected successfully');
-              queryClient.invalidateQueries({ queryKey: ['mail-identities'] });
-              sessionStorage.removeItem('oauth_success');
-              sessionStorage.removeItem('oauth_code_verifier');
-              sessionStorage.removeItem('oauth_state');
-            }
-          }
-        } catch (e) {
-          // Cross-origin errors are expected
+      if (!popup) {
+        toast.error('Please allow popups for this site');
+        return;
+      }
+
+      // Listen for success/error from the popup
+      const onMessage = (e: MessageEvent) => {
+        if (e.origin !== window.location.origin) return;
+        
+        if (e.data?.type === 'mail-oauth-success') {
+          window.removeEventListener('message', onMessage);
+          toast.success(`Connected ${e.data.payload.email}`);
+          queryClient.invalidateQueries({ queryKey: ['mail-identities'] });
         }
-      }, 500);
+        
+        if (e.data?.type === 'mail-oauth-error') {
+          window.removeEventListener('message', onMessage);
+          toast.error(e.data.error || 'Failed to connect account');
+        }
+      };
+      
+      window.addEventListener('message', onMessage);
     },
     onError: (error: Error) => {
       toast.error(`Failed to connect Gmail: ${error.message}`);
@@ -87,34 +87,20 @@ export function useMailIdentities() {
   });
 
   const handleOAuthCallback = useMutation({
-    mutationFn: async (params: { code: string; state: string }) => {
-      const codeVerifier = sessionStorage.getItem('oauth_code_verifier');
-      const storedState = sessionStorage.getItem('oauth_state');
-
-      if (!codeVerifier || params.state !== storedState) {
-        throw new Error('Invalid OAuth state');
-      }
-
+    mutationFn: async (params: { code: string; state: string; code_verifier: string }) => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error('Not authenticated');
+      if (!session?.access_token) throw new Error('Not authenticated');
 
       const { data, error } = await supabase.functions.invoke('mail-oauth-callback', {
         body: {
           code: params.code,
           state: params.state,
-          code_verifier: codeVerifier,
+          code_verifier: params.code_verifier,
         },
       });
 
       if (error) throw error;
       return data;
-    },
-    onSuccess: () => {
-      sessionStorage.setItem('oauth_success', 'true');
-      queryClient.invalidateQueries({ queryKey: ['mail-identities'] });
-    },
-    onError: (error: Error) => {
-      toast.error(`OAuth callback failed: ${error.message}`);
     },
   });
 
