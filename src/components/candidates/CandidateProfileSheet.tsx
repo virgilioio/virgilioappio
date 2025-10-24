@@ -14,6 +14,7 @@ import { CandidateUrls } from '@/components/candidates/CandidateUrls'
 import { CandidateWorkExperienceComponent, CandidateWorkExperience } from '@/components/candidates/CandidateWorkExperience'
 import { CandidateEducationComponent, CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
 import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight, CheckCircle2, Circle, MoveRight, ThumbsDown, ThumbsUp, Star, Octagon } from 'lucide-react'
+import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 
@@ -341,7 +342,29 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
         <div className="flex h-full flex-col">
           <SheetHeader className="p-6 border-b">
             <div className="flex items-center justify-between">
-              <div />
+              <div className="flex flex-col gap-2">
+                <h2 className="font-poppins font-bold tracking-page-title text-text-primary text-2xl">
+                  {candidate?.candidate_name || 'Loading...'}
+                  <span className="text-purple-period">.</span>
+                </h2>
+                {candidate?.linkedin_url && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="gap-2 w-fit"
+                    onClick={() => window.open(candidate.linkedin_url, '_blank')}
+                    aria-label="Open LinkedIn profile"
+                  >
+                    <LinkedInFilled className="h-4 w-4" />
+                    LinkedIn Profile
+                  </Button>
+                )}
+                {job?.title && (
+                  <Badge variant="secondary" className="w-fit">
+                    {`${job.title}${associationStatus && associationStatus !== 'active' ? ' • ' + (associationStatus[0].toUpperCase() + associationStatus.slice(1)) : ''}`}
+                  </Badge>
+                )}
+              </div>
               <div className="flex items-center gap-sm">
                 <Button
                   variant="ghost"
@@ -378,9 +401,6 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                   {/* Left column (2x) */}
                   <div className="lg:col-span-2 space-y-6">
                     <CandidateNameCard
-                      name={candidate.candidate_name}
-                      linkedinUrl={candidate.linkedin_url}
-                      badgeText={`${(job?.title ?? '')}${associationStatus && associationStatus !== 'active' ? ' • ' + (associationStatus[0].toUpperCase() + associationStatus.slice(1)) : ''}` || candidate.status}
                       email={candidate.email}
                       phone={candidate.phone}
                       tabs={[

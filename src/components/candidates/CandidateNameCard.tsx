@@ -6,7 +6,6 @@ import { cn } from '@/lib/utils'
 import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
 import { Mail, Phone, Copy } from 'lucide-react'
 import { toast } from '@/hooks/use-toast'
-import { StyledPageTitle } from '@/components/ui/styled-page-title'
 
 export type CandidateNameCardTab = {
   value: string
@@ -15,7 +14,7 @@ export type CandidateNameCardTab = {
 }
 
 interface CandidateNameCardProps {
-  name: string
+  name?: string
   linkedinUrl?: string | null
   badgeText?: string | null
   tabs: CandidateNameCardTab[]
@@ -61,31 +60,8 @@ export function CandidateNameCard({
       <CardContent className="p-layout-md">
         <div className="flex items-start justify-between mb-6">
           <div className="min-w-0">
-            <div className="mb-2">
-              <StyledPageTitle className="text-2xl truncate">{name}</StyledPageTitle>
-            </div>
-            {linkedinUrl && (
-              <Button
-                size="sm"
-                variant="outline"
-                className="gap-2 mb-2"
-                onClick={() => window.open(linkedinUrl, '_blank')}
-                aria-label="Open LinkedIn profile"
-              >
-                <LinkedInFilled className="h-4 w-4" />
-                LinkedIn Profile
-              </Button>
-            )}
-            {badgeText && (
-              <div className="mt-1">
-                <Badge variant="secondary">{badgeText}</Badge>
-              </div>
-            )}
-            {subtitle && (
-              <p className="text-text-secondary mt-1 text-sm">{subtitle}</p>
-            )}
             {(email || phone) && (
-              <div className="flex items-center gap-6 mt-2 text-sm">
+              <div className="flex items-center gap-6 text-sm">
                 {email && (
                   <div className="flex items-center gap-1 group">
                     <Mail className="h-3 w-3 text-text-secondary" />
