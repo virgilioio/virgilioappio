@@ -52,6 +52,7 @@ export interface CreateCandidateData {
   notes?: string | null
   assignedJobId?: string | null
   assignedStageId?: string | null
+  job_id?: string | null
 }
 
 export function useCandidates(jobId: string) {
@@ -262,7 +263,7 @@ export function useCandidates(jobId: string) {
       // Step 2: If not exists, create in global candidates table
       if (!globalCandidateId) {
         // Remove association-specific fields that don't belong in candidates table
-        const { notes, assignedJobId, assignedStageId, ...globalCandidateData } = candidateData
+        const { notes, assignedJobId, assignedStageId, job_id, ...globalCandidateData } = candidateData
         const { data: newGlobalCandidate, error: globalError } = await supabase
           .from('candidates')
           .insert([{
