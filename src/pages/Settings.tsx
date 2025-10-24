@@ -16,6 +16,7 @@ import { PlatformTab } from '@/components/settings/PlatformTab'
 import { CustomerManagementTab } from '@/pages/settings/customer-management/CustomerManagementTab'
 import { SaaSSubscription } from '@/pages/settings/saas-customers/SaaSSubscription'
 import { SaaSCustomersList } from '@/pages/settings/saas-customers/SaaSCustomersList'
+import { EmailSettingsTab } from '@/components/settings/EmailSettingsTab'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useAuth } from '@/contexts/AuthContext'
 import { AppContainer } from '@/components/layout/AppContainer'
@@ -126,6 +127,10 @@ export default function Settings() {
                     <MembersTab />
                   </TabsContent>
                 )}
+
+                <TabsContent value="email">
+                  <EmailSettingsTab />
+                </TabsContent>
                 
                 {isPlatformAdmin && (
                   <>
