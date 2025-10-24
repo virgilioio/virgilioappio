@@ -13,7 +13,7 @@ import { CandidateResumeViewer } from '@/components/candidates/CandidateResumeVi
 import { CandidateUrls } from '@/components/candidates/CandidateUrls'
 import { CandidateWorkExperienceComponent, CandidateWorkExperience } from '@/components/candidates/CandidateWorkExperience'
 import { CandidateEducationComponent, CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
-import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight, CheckCircle2, Circle, MoveRight, ThumbsDown, ThumbsUp, Star, Octagon } from 'lucide-react'
+import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight, CheckCircle2, Circle, MoveRight, ThumbsDown, ThumbsUp, Star, Octagon, Mail, Phone, Copy, ExternalLink } from 'lucide-react'
 import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
@@ -29,6 +29,7 @@ import { generateCandidatePdf } from '@/utils/candidatePdfGenerator'
 import CandidateFormSheet from '@/components/candidates/CandidateFormSheet'
 import { toast } from '@/hooks/use-toast'
 import CandidateNameCard from '@/components/candidates/CandidateNameCard'
+import { copyToClipboard } from '@/utils/clipboard'
 import { usePipelineActions } from '@/hooks/usePipelineActions'
 import { useCandidateAttachments } from '@/hooks/useCandidateAttachments'
 import { useCandidateResolver } from '@/hooks/useCandidateResolver'
@@ -687,6 +688,84 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
 
                   {/* Right column (1x) */}
                   <div className="space-y-6">
+                    {/* Contact Information */}
+                    <Card className="bg-surface-primary border-border">
+                      <CardHeader>
+                        <CardTitle className="text-lg">Contact Information</CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        {!candidate?.email && !candidate?.phone_number && !candidate?.linkedin_url ? (
+                          <div className="text-sm text-text-secondary">No contact information available</div>
+                        ) : (
+                          <>
+                            {/* Email */}
+                            {candidate?.email && (
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex items-start gap-2 flex-1 min-w-0">
+                                  <Mail className="h-4 w-4 text-text-secondary mt-0.5 flex-shrink-0" />
+                                  <a
+                                    href={`mailto:${candidate.email}`}
+                                    className="text-sm text-blue-600 hover:text-blue-700 hover:underline break-all"
+                                  >
+                                    {candidate.email}
+                                  </a>
+                                </div>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 w-6 p-0 flex-shrink-0"
+                                  onClick={() => copyToClipboard(candidate.email, 'Email copied to clipboard')}
+                                >
+                                  <Copy className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                            )}
+
+                            {/* Phone */}
+                            {candidate?.phone_number && (
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex items-start gap-2 flex-1 min-w-0">
+                                  <Phone className="h-4 w-4 text-text-secondary mt-0.5 flex-shrink-0" />
+                                  <a
+                                    href={`tel:${candidate.phone_number}`}
+                                    className="text-sm text-blue-600 hover:text-blue-700 hover:underline break-all"
+                                  >
+                                    {candidate.phone_number}
+                                  </a>
+                                </div>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 w-6 p-0 flex-shrink-0"
+                                  onClick={() => copyToClipboard(candidate.phone_number, 'Phone number copied to clipboard')}
+                                >
+                                  <Copy className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
+                            )}
+
+                            {/* LinkedIn */}
+                            {candidate?.linkedin_url && (
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="flex items-start gap-2 flex-1 min-w-0">
+                                  <LinkedInFilled className="h-4 w-4 text-text-secondary mt-0.5 flex-shrink-0" />
+                                  <a
+                                    href={candidate.linkedin_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-sm text-blue-600 hover:text-blue-700 hover:underline break-all"
+                                  >
+                                    LinkedIn Profile
+                                  </a>
+                                </div>
+                                <ExternalLink className="h-3.5 w-3.5 text-text-tertiary flex-shrink-0 mt-0.5" />
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </CardContent>
+                    </Card>
+
                     {/* Quick Actions */}
                     <Card className="bg-surface-primary border-border">
                       <CardHeader>
