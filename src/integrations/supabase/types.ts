@@ -2541,7 +2541,7 @@ export type Database = {
         Returns: undefined
       }
       audit_platform_admin_access: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           has_member_record: boolean
           issue_description: string
@@ -2552,10 +2552,7 @@ export type Database = {
           user_type: string
         }[]
       }
-      backfill_default_stages_to_all_jobs: {
-        Args: Record<PropertyKey, never>
-        Returns: number
-      }
+      backfill_default_stages_to_all_jobs: { Args: never; Returns: number }
       categorize_skills: {
         Args: { generated_skills: Json; manual_skills: string[] }
         Returns: Json
@@ -2575,24 +2572,15 @@ export type Database = {
         }
         Returns: boolean
       }
-      check_recursion_safety: {
-        Args: Record<PropertyKey, never>
-        Returns: boolean
-      }
-      cleanup_expired_invitations: {
-        Args: Record<PropertyKey, never>
-        Returns: number
-      }
-      cleanup_expired_salary_data: {
-        Args: Record<PropertyKey, never>
-        Returns: number
-      }
+      check_recursion_safety: { Args: never; Returns: boolean }
+      cleanup_expired_invitations: { Args: never; Returns: number }
+      cleanup_expired_salary_data: { Args: never; Returns: number }
       consume_sourcing_credits: {
         Args: { amount: number; credit_type: string; org_id: string }
         Returns: boolean
       }
       debug_user_permissions: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           can_see_all_orgs: boolean
           current_user_id: string
@@ -2611,16 +2599,10 @@ export type Database = {
         }
         Returns: string
       }
-      execute_candidate_sync: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
-      generate_invite_token: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      execute_candidate_sync: { Args: never; Returns: undefined }
+      generate_invite_token: { Args: never; Returns: string }
       get_all_feature_flags: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           created_at: string
           description: string
@@ -2629,14 +2611,8 @@ export type Database = {
           updated_at: string
         }[]
       }
-      get_feature_flag: {
-        Args: { flag_name_param: string }
-        Returns: boolean
-      }
-      get_invite_expiry: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      get_feature_flag: { Args: { flag_name_param: string }; Returns: boolean }
+      get_invite_expiry: { Args: never; Returns: string }
       get_member_display_info: {
         Args: { member_user_id: string }
         Returns: {
@@ -2645,14 +2621,8 @@ export type Database = {
           last_name: string
         }[]
       }
-      get_member_role: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      get_member_role_safe: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      get_member_role: { Args: never; Returns: string }
+      get_member_role_safe: { Args: never; Returns: string }
       get_org_credits: {
         Args: { org_id: string }
         Returns: {
@@ -2700,33 +2670,18 @@ export type Database = {
         Returns: number
       }
       get_user_member_data: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           member_role: string
           organization_id: string
           user_type: string
         }[]
       }
-      get_user_organization_id: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      get_user_tenant_id: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      get_user_type: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      get_user_type_safe: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      get_user_type_secure: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      get_user_organization_id: { Args: never; Returns: string }
+      get_user_tenant_id: { Args: never; Returns: string }
+      get_user_type: { Args: never; Returns: string }
+      get_user_type_safe: { Args: never; Returns: string }
+      get_user_type_secure: { Args: never; Returns: string }
       increment_term_usage: {
         Args: { table_name: string; term_name: string }
         Returns: undefined
@@ -2767,7 +2722,7 @@ export type Database = {
         Returns: undefined
       }
       resolve_org_context: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           organization_id: string
           role: string
@@ -2786,12 +2741,9 @@ export type Database = {
         Args: { stage_id_param: string }
         Returns: undefined
       }
-      sync_all_postings_field_order: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
+      sync_all_postings_field_order: { Args: never; Returns: undefined }
       sync_job_candidates_to_independent: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           details: Json
           skipped_count: number
@@ -2799,7 +2751,7 @@ export type Database = {
         }[]
       }
       test_get_user_organization_id: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: {
           expected_org_id: string
           members_table_org_id: string
@@ -2826,10 +2778,7 @@ export type Database = {
           organization_name: string
         }[]
       }
-      whoami: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      whoami: { Args: never; Returns: string }
     }
     Enums: {
       activity_type:
