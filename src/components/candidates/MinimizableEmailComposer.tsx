@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { createPortal } from 'react-dom';
 import { X, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { EmailComposer } from '@/components/candidates/EmailComposer';
@@ -33,12 +32,11 @@ export function MinimizableEmailComposer({
     onOpenChange(false);
   };
 
-  return createPortal(
+  return (
     <div
       className={cn(
-        "fixed bottom-4 right-4 z-[9999] bg-background border rounded-lg shadow-2xl transition-all duration-300 pointer-events-auto",
-        isMinimized ? "w-[320px]" : "w-[600px]",
-        isOpen ? "animate-slide-in-bottom-right" : "animate-slide-out-bottom-right"
+        "absolute bottom-4 right-4 z-[60] bg-background border rounded-lg shadow-2xl transition-all duration-300 pointer-events-auto",
+        isMinimized ? "w-[360px] h-[52px]" : "w-[600px] max-w-[min(95vw,600px)]"
       )}
       onClick={(e) => e.stopPropagation()}
     >
@@ -47,8 +45,8 @@ export function MinimizableEmailComposer({
         className="flex items-center justify-between p-4 border-b bg-muted/30 rounded-t-lg cursor-pointer hover:bg-muted/50 transition-colors"
         onClick={() => setIsMinimized(!isMinimized)}
       >
-        <h3 className="font-semibold text-sm">
-          Send Email to {candidateName || 'Candidate'}
+        <h3 className="font-semibold text-sm truncate">
+          {isMinimized ? `Compose: ${candidateName || 'Candidate'}` : `Send Email to ${candidateName || 'Candidate'}`}
         </h3>
         <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
           <Button
@@ -86,7 +84,6 @@ export function MinimizableEmailComposer({
           />
         </div>
       )}
-    </div>,
-    document.body
+    </div>
   );
 }
