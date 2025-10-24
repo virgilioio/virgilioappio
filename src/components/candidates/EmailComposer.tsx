@@ -30,6 +30,7 @@ interface EmailComposerProps {
   jobId?: string;
   defaultTo?: string;
   onSuccess?: () => void;
+  embedded?: boolean;
 }
 
 interface Attachment {
@@ -38,7 +39,7 @@ interface Attachment {
   size: number;
 }
 
-export function EmailComposer({ candidateId, jobId, defaultTo, onSuccess }: EmailComposerProps) {
+export function EmailComposer({ candidateId, jobId, defaultTo, onSuccess, embedded = false }: EmailComposerProps) {
   const { identities, isLoading: loadingIdentities } = useMailIdentities();
   const sendEmail = useSendEmail();
   const [attachments, setAttachments] = useState<Attachment[]>([]);
@@ -190,19 +191,8 @@ export function EmailComposer({ candidateId, jobId, defaultTo, onSuccess }: Emai
     );
   }
 
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Mail className="h-5 w-5" />
-          Send Email
-        </CardTitle>
-        <CardDescription>
-          Compose and send an email to the candidate
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+  const formContent = (
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           {/* From */}
           <div className="space-y-2">
             <Label htmlFor="from_email">From</Label>
@@ -351,6 +341,25 @@ export function EmailComposer({ candidateId, jobId, defaultTo, onSuccess }: Emai
             </Button>
           </div>
         </form>
+  );
+
+  if (embedded) {
+    return formContent;
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Mail className="h-5 w-5" />
+          Send Email
+        </CardTitle>
+        <CardDescription>
+          Compose and send an email to the candidate
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {formContent}
       </CardContent>
     </Card>
   );
