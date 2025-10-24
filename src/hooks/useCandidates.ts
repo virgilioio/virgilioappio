@@ -371,7 +371,7 @@ export function useCandidates(jobId: string) {
         .insert([{
           job_id: jobId,
           candidate_id: globalCandidateId,
-          current_stage_id: null, // Application Review
+          current_stage_id: candidateData.assignedStageId || null,
           status: 'active',
           notes: candidateData.notes,
           added_by: user.id,
