@@ -631,7 +631,7 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                             <CardTitle className="text-lg">Contact Information</CardTitle>
                           </CardHeader>
                           <CardContent className="space-y-4">
-                            {!candidate?.email && !candidate?.phone_number && !candidate?.linkedin_url ? (
+                            {!candidate?.email && !candidate?.phone && !candidate?.linkedin_url ? (
                               <div className="text-sm text-text-secondary">No contact information available</div>
                             ) : (
                               <>
@@ -659,22 +659,22 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                                 )}
 
                                 {/* Phone */}
-                                {candidate?.phone_number && (
+                                {candidate?.phone && (
                                   <div className="flex items-start justify-between gap-2">
                                     <div className="flex items-start gap-2 flex-1 min-w-0">
                                       <Phone className="h-4 w-4 text-text-secondary mt-0.5 flex-shrink-0" />
                                       <a
-                                        href={`tel:${candidate.phone_number}`}
+                                        href={`tel:${candidate.phone}`}
                                         className="text-sm text-blue-600 hover:text-blue-700 hover:underline break-all"
                                       >
-                                        {candidate.phone_number}
+                                        {candidate.phone}
                                       </a>
                                     </div>
                                     <Button
                                       variant="ghost"
                                       size="sm"
                                       className="h-6 w-6 p-0 flex-shrink-0"
-                                      onClick={() => copyToClipboard(candidate.phone_number, 'Phone number copied to clipboard')}
+                                      onClick={() => copyToClipboard(candidate.phone, 'Phone number copied to clipboard')}
                                     >
                                       <Copy className="h-3.5 w-3.5" />
                                     </Button>
