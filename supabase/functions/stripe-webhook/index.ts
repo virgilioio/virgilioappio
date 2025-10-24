@@ -215,46 +215,6 @@ async function handlePaymentSucceeded(supabaseClient: any, invoice: Stripe.Invoi
       .eq("stripe_customer_id", customerId);
 
     logStep("Updated subscription after successful payment", { customerId });
-
-    // Refill sourcing credits on successful renewal payment
-    try {
-      // Get tenant_id for this customer
-      const { data: subscription } = await supabaseClient
-        .from("tenant_subscriptions")
-        .select("tenant_id, subscription_tier")
-        .eq("stripe_customer_id", customerId)
-        .single();
-
-      if (subscription?.tenant_id) {
-        // Define credit limits per tier (can be moved to config/env later)
-        const CREDIT_LIMITS: Record<string, { search: number; collect: number }> = {
-          "Basic": { search: 50, collect: 25 },
-          "Premium": { search: 150, collect: 75 },
-          "Enterprise": { search: 500, collect: 250 },
-        };
-
-        const limits = CREDIT_LIMITS[subscription.subscription_tier] || CREDIT_LIMITS["Basic"];
-
-        // Call refill_org_sourcing_credits RPC
-        const { error: refillError } = await supabaseClient.rpc('refill_org_sourcing_credits', {
-          org_id: subscription.tenant_id,
-          search_limit: limits.search,
-          collect_limit: limits.collect
-        });
-
-        if (refillError) {
-          logStep("ERROR refilling sourcing credits", { tenantId: subscription.tenant_id, error: refillError });
-        } else {
-          logStep("Refilled sourcing credits", { 
-            tenantId: subscription.tenant_id, 
-            tier: subscription.subscription_tier,
-            limits 
-          });
-        }
-      }
-    } catch (error) {
-      logStep("ERROR during credit refill process", { error: error instanceof Error ? error.message : String(error) });
-    }
   }
 }
 
