@@ -349,14 +349,12 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                 </h2>
                 {candidate?.linkedin_url && (
                   <Button
-                    size="sm"
                     variant="outline"
-                    className="gap-2 w-fit"
+                    className="h-8 w-8 p-0"
                     onClick={() => window.open(candidate.linkedin_url, '_blank')}
                     aria-label="Open LinkedIn profile"
                   >
-                    <LinkedInFilled className="h-4 w-4" />
-                    LinkedIn Profile
+                    <LinkedInFilled className="h-5 w-5" />
                   </Button>
                 )}
                 {job?.title && (
