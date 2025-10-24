@@ -342,8 +342,8 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
   return (
     <>
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-[80vw] sm:max-w-none h-full p-0 relative" showOverlay={!emailComposerOpen}>
-        <div className="flex h-full flex-col">
+      <SheetContent side="right" className="w-[80vw] sm:max-w-none h-full p-0" showOverlay={!emailComposerOpen}>
+        <div className="flex h-full flex-col relative">
           <SheetHeader className="p-6 border-b">
             <div className="flex items-center justify-between">
               <div className="flex flex-col gap-2">
