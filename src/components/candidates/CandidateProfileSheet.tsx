@@ -343,20 +343,22 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
           <SheetHeader className="p-6 border-b">
             <div className="flex items-center justify-between">
               <div className="flex flex-col gap-2">
-                <h2 className="font-poppins font-bold tracking-page-title text-text-primary text-2xl">
-                  {candidate?.candidate_name || 'Loading...'}
-                  <span className="text-purple-period">.</span>
-                </h2>
-                {candidate?.linkedin_url && (
-                  <Button
-                    variant="outline"
-                    className="h-8 w-8 p-0"
-                    onClick={() => window.open(candidate.linkedin_url, '_blank')}
-                    aria-label="Open LinkedIn profile"
-                  >
-                    <LinkedInFilled className="h-5 w-5" />
-                  </Button>
-                )}
+                <div className="flex items-center gap-2">
+                  <h2 className="font-poppins font-bold tracking-page-title text-text-primary text-2xl">
+                    {candidate?.candidate_name || 'Loading...'}
+                    <span className="text-purple-period">.</span>
+                  </h2>
+                  {candidate?.linkedin_url && (
+                    <Button
+                      variant="outline"
+                      className="h-8 w-8 p-0"
+                      onClick={() => window.open(candidate.linkedin_url, '_blank')}
+                      aria-label="Open LinkedIn profile"
+                    >
+                      <LinkedInFilled className="h-5 w-5" />
+                    </Button>
+                  )}
+                </div>
                 {job?.title && (
                   <Badge variant="secondary" className="w-fit">
                     {`${job.title}${associationStatus && associationStatus !== 'active' ? ' • ' + (associationStatus[0].toUpperCase() + associationStatus.slice(1)) : ''}`}
