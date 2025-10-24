@@ -6,6 +6,7 @@ import { createSecureCorsHeaders, handleSecureCorsPreFlight } from "../_shared/c
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 const hookSecret = Deno.env.get("SEND_EMAIL_HOOK_SECRET") as string;
+const emailFrom = Deno.env.get("EMAIL_DEFAULT_FROM") || "Virgilio <noreply@app.virgilio.io>";
 const corsHeaders = createSecureCorsHeaders();
 
 const handler = async (req: Request): Promise<Response> => {
@@ -51,7 +52,7 @@ const handler = async (req: Request): Promise<Response> => {
     console.log("Generated confirm URL:", confirmUrl);
 
     const emailResponse = await resend.emails.send({
-      from: "Virgilio <noreply@app.virgilio.io>",
+      from: emailFrom,
       to: [user.email],
       subject: "Confirm your Virgilio account",
       html: `

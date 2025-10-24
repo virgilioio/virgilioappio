@@ -5,6 +5,7 @@ import { Resend } from "https://esm.sh/resend@2.0.0";
 import { createSecureCorsHeaders, handleSecureCorsPreFlight } from "../_shared/cors.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
+const emailFrom = Deno.env.get("EMAIL_DEFAULT_FROM") || "Virgilio <noreply@app.virgilio.io>";
 const corsHeaders = createSecureCorsHeaders();
 
 interface SendInvitationRequest {
@@ -79,7 +80,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Send the invitation email with Virgilio branding
     const emailResponse = await resend.emails.send({
-      from: "Virgilio <noreply@app.virgilio.io>",
+      from: emailFrom,
       to: [email],
       subject: `You've been invited to join ${organizationName} on Virgilio`,
       html: `

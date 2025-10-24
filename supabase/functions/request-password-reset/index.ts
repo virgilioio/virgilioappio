@@ -7,6 +7,7 @@ import { createSecureCorsHeaders, handleSecureCorsPreFlight } from "../_shared/c
 const corsHeaders = createSecureCorsHeaders();
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
+const emailFrom = Deno.env.get("EMAIL_DEFAULT_FROM") || "Virgilio <noreply@app.virgilio.io>";
 
 interface RequestPasswordResetRequest {
   email: string;
@@ -79,7 +80,7 @@ const handler = async (req: Request): Promise<Response> => {
     
     // Send email with Resend
     const emailResponse = await resend.emails.send({
-      from: "Virgilio <noreply@app.virgilio.io>",
+      from: emailFrom,
       to: [email],
       subject: "Reset your password",
       html: `

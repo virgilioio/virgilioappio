@@ -60,6 +60,26 @@ This project is built with:
 - shadcn-ui
 - Tailwind CSS
 
+## Setup
+
+### Email Configuration
+
+This project uses [Resend](https://resend.com) for transactional emails (verification, invitations, password resets).
+
+**Required Setup:**
+
+1. **Create a Resend account** at [resend.com](https://resend.com)
+2. **Verify your domain** at [resend.com/domains](https://resend.com/domains)
+3. **Create an API key** at [resend.com/api-keys](https://resend.com/api-keys)
+4. **Configure Supabase secrets:**
+   - Go to your [Supabase Dashboard → Edge Functions → Secrets](https://supabase.com/dashboard/project/etrxjxstjfcozdjumfsj/settings/functions)
+   - Add the following secrets:
+     - `RESEND_API_KEY` - Your Resend API key
+     - `SEND_EMAIL_HOOK_SECRET` - A secure random string (for email webhooks)
+     - `EMAIL_DEFAULT_FROM` (optional) - Default: `"Virgilio <noreply@app.virgilio.io>"`
+
+**Note:** All email environment variables are stored as Supabase secrets (not in `.env` files) for security.
+
 ## How can I deploy this project?
 
 Simply open [Lovable](https://lovable.dev/projects/aba41743-9dfe-4b0e-88f2-0c24aeb910c4) and click on Share -> Publish.
