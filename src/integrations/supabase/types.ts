@@ -14,6 +14,168 @@ export type Database = {
   }
   public: {
     Tables: {
+      _archived_external_candidate_matches: {
+        Row: {
+          archived_at: string | null
+          candidate_name: string | null
+          collected_at: string | null
+          created_at: string | null
+          current_company: string | null
+          current_title: string | null
+          email: string | null
+          id: string | null
+          internal_candidate_id: string | null
+          is_collected: boolean | null
+          job_id: string | null
+          linkedin_url: string | null
+          location_city: string | null
+          location_country: string | null
+          match_score: number | null
+          organization_id: string | null
+          phone: string | null
+          provider: string | null
+          provider_id: string | null
+          raw_data: Json | null
+          updated_at: string | null
+        }
+        Insert: {
+          archived_at?: string | null
+          candidate_name?: string | null
+          collected_at?: string | null
+          created_at?: string | null
+          current_company?: string | null
+          current_title?: string | null
+          email?: string | null
+          id?: string | null
+          internal_candidate_id?: string | null
+          is_collected?: boolean | null
+          job_id?: string | null
+          linkedin_url?: string | null
+          location_city?: string | null
+          location_country?: string | null
+          match_score?: number | null
+          organization_id?: string | null
+          phone?: string | null
+          provider?: string | null
+          provider_id?: string | null
+          raw_data?: Json | null
+          updated_at?: string | null
+        }
+        Update: {
+          archived_at?: string | null
+          candidate_name?: string | null
+          collected_at?: string | null
+          created_at?: string | null
+          current_company?: string | null
+          current_title?: string | null
+          email?: string | null
+          id?: string | null
+          internal_candidate_id?: string | null
+          is_collected?: boolean | null
+          job_id?: string | null
+          linkedin_url?: string | null
+          location_city?: string | null
+          location_country?: string | null
+          match_score?: number | null
+          organization_id?: string | null
+          phone?: string | null
+          provider?: string | null
+          provider_id?: string | null
+          raw_data?: Json | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      _archived_org_credit_usage: {
+        Row: {
+          archived_at: string | null
+          collect_limit: number | null
+          collect_remaining: number | null
+          created_at: string | null
+          id: string | null
+          last_refill_at: string | null
+          next_refill_at: string | null
+          organization_id: string | null
+          search_limit: number | null
+          search_remaining: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          archived_at?: string | null
+          collect_limit?: number | null
+          collect_remaining?: number | null
+          created_at?: string | null
+          id?: string | null
+          last_refill_at?: string | null
+          next_refill_at?: string | null
+          organization_id?: string | null
+          search_limit?: number | null
+          search_remaining?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          archived_at?: string | null
+          collect_limit?: number | null
+          collect_remaining?: number | null
+          created_at?: string | null
+          id?: string | null
+          last_refill_at?: string | null
+          next_refill_at?: string | null
+          organization_id?: string | null
+          search_limit?: number | null
+          search_remaining?: number | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      _archived_sourcing_events: {
+        Row: {
+          archived_at: string | null
+          created_at: string | null
+          credit_type: string | null
+          credits_used: number | null
+          error_message: string | null
+          event_type: string | null
+          id: string | null
+          job_id: string | null
+          organization_id: string | null
+          performed_by: string | null
+          provider: string | null
+          query_params: Json | null
+          results_count: number | null
+        }
+        Insert: {
+          archived_at?: string | null
+          created_at?: string | null
+          credit_type?: string | null
+          credits_used?: number | null
+          error_message?: string | null
+          event_type?: string | null
+          id?: string | null
+          job_id?: string | null
+          organization_id?: string | null
+          performed_by?: string | null
+          provider?: string | null
+          query_params?: Json | null
+          results_count?: number | null
+        }
+        Update: {
+          archived_at?: string | null
+          created_at?: string | null
+          credit_type?: string | null
+          credits_used?: number | null
+          error_message?: string | null
+          event_type?: string | null
+          id?: string | null
+          job_id?: string | null
+          organization_id?: string | null
+          performed_by?: string | null
+          provider?: string | null
+          query_params?: Json | null
+          results_count?: number | null
+        }
+        Relationships: []
+      }
       activities: {
         Row: {
           activity_type: Database["public"]["Enums"]["activity_type"]
