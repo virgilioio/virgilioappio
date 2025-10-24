@@ -2484,6 +2484,95 @@ export type Database = {
         }
         Relationships: []
       }
+      user_mail_identities: {
+        Row: {
+          access_token: string | null
+          created_at: string
+          display_name: string | null
+          email_address: string
+          id: string
+          imap_host: string | null
+          imap_password_encrypted: string | null
+          imap_port: number | null
+          imap_username: string | null
+          is_active: boolean
+          is_default: boolean
+          last_sync_at: string | null
+          organization_id: string | null
+          provider: string
+          refresh_token_encrypted: string | null
+          smtp_host: string | null
+          smtp_password_encrypted: string | null
+          smtp_port: number | null
+          smtp_username: string | null
+          sync_error: string | null
+          sync_status: string | null
+          token_expires_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token?: string | null
+          created_at?: string
+          display_name?: string | null
+          email_address: string
+          id?: string
+          imap_host?: string | null
+          imap_password_encrypted?: string | null
+          imap_port?: number | null
+          imap_username?: string | null
+          is_active?: boolean
+          is_default?: boolean
+          last_sync_at?: string | null
+          organization_id?: string | null
+          provider: string
+          refresh_token_encrypted?: string | null
+          smtp_host?: string | null
+          smtp_password_encrypted?: string | null
+          smtp_port?: number | null
+          smtp_username?: string | null
+          sync_error?: string | null
+          sync_status?: string | null
+          token_expires_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string | null
+          created_at?: string
+          display_name?: string | null
+          email_address?: string
+          id?: string
+          imap_host?: string | null
+          imap_password_encrypted?: string | null
+          imap_port?: number | null
+          imap_username?: string | null
+          is_active?: boolean
+          is_default?: boolean
+          last_sync_at?: string | null
+          organization_id?: string | null
+          provider?: string
+          refresh_token_encrypted?: string | null
+          smtp_host?: string | null
+          smtp_password_encrypted?: string | null
+          smtp_port?: number | null
+          smtp_username?: string | null
+          sync_error?: string | null
+          sync_status?: string | null
+          token_expires_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_mail_identities_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -2550,6 +2639,10 @@ export type Database = {
           user_type: string
         }[]
       }
+      decrypt_refresh_token: {
+        Args: { encrypted_token: string }
+        Returns: string
+      }
       duplicate_job_posting: {
         Args: {
           new_description?: string
@@ -2559,6 +2652,7 @@ export type Database = {
         }
         Returns: string
       }
+      encrypt_refresh_token: { Args: { token: string }; Returns: string }
       execute_candidate_sync: { Args: never; Returns: undefined }
       generate_invite_token: { Args: never; Returns: string }
       get_all_feature_flags: {
