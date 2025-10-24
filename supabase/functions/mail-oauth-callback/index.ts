@@ -70,7 +70,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Exchange code for tokens
-    const redirectUri = `${Deno.env.get('OAUTH_REDIRECT_BASE')}/functions/v1/mail-oauth-callback`;
+    const redirectUri = `${Deno.env.get('OAUTH_REDIRECT_BASE')}/mail/oauth/callback`;
     const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: {
