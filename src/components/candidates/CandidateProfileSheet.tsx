@@ -13,7 +13,7 @@ import { CandidateResumeViewer } from '@/components/candidates/CandidateResumeVi
 import { CandidateUrls } from '@/components/candidates/CandidateUrls'
 import { CandidateWorkExperienceComponent, CandidateWorkExperience } from '@/components/candidates/CandidateWorkExperience'
 import { CandidateEducationComponent, CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
-import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight, CheckCircle2, Circle, MoveRight, ThumbsDown, ThumbsUp, Star, Octagon, Mail, Phone, Copy, ExternalLink, Send, X, Check } from 'lucide-react'
+import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight, CheckCircle2, Circle, MoveRight, ThumbsDown, ThumbsUp, Star, Octagon, Mail, Phone, Copy, ExternalLink, Send, X, Check, RotateCcw } from 'lucide-react'
 import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
@@ -503,6 +503,18 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                                     </Button>
                                   ) : null
                                 })()}
+                                {/* Restore button - show when status is not active */}
+                                {associationId && associationStatus && associationStatus !== 'active' && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleSetStatus('active')}
+                                    title="Restore candidate to active status"
+                                  >
+                                    <RotateCcw className="h-4 w-4 mr-1.5" />
+                                    Restore
+                                  </Button>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -828,23 +840,7 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
 
                    {/* Right column (1x) */}
                    <div className="space-y-6">
-                     {/* Quick Actions */}
-                    <Card className="bg-surface-primary border-border">
-                      <CardHeader>
-                        <CardTitle className="text-lg">Quick Actions</CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-3">
-                         <>
-                          {associationId && associationStatus && associationStatus !== 'active' && (
-                            <Button variant="outline" className="w-full gap-sm" onClick={() => handleSetStatus('active')}>
-                              Restore
-                            </Button>
-                          )}
-                        </>
-                      </CardContent>
-                    </Card>
-
-                    {/* Notes */}
+                     {/* Notes */}
                     <Card className="bg-surface-primary border-border">
                       <CardHeader>
                         <CardTitle className="text-lg">Notes</CardTitle>
