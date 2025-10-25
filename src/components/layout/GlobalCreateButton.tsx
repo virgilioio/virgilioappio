@@ -32,27 +32,45 @@ export function GlobalCreateButton() {
       
       // If job is assigned, create the job-candidate association
       if (candidateData.assignedJobId && newCandidate) {
-        const { error: associationError } = await supabase
+        // Check if association already exists
+        const { data: existingAssoc } = await supabase
           .from('job_candidate_associations')
-          .insert({
-            job_id: candidateData.assignedJobId,
-            candidate_id: newCandidate.id,
-            current_stage_id: candidateData.assignedStageId || null,
-            added_by: (await supabase.auth.getUser()).data.user?.id
-          })
-
-        if (associationError) {
-          console.error('Error creating job association:', associationError)
-          toast({
-            title: 'Warning',
-            description: 'Candidate created but could not be assigned to job. You can assign them manually.',
-            variant: 'destructive'
-          })
-        } else {
+          .select('id')
+          .eq('job_id', candidateData.assignedJobId)
+          .eq('candidate_id', newCandidate.id)
+          .maybeSingle()
+        
+        if (existingAssoc) {
+          // Association already exists (from merge flow)
           toast({
             title: 'Success',
             description: 'Candidate created and assigned to job successfully!'
           })
+        } else {
+          // Create new association
+          const { error: associationError } = await supabase
+            .from('job_candidate_associations')
+            .insert({
+              job_id: candidateData.assignedJobId,
+              candidate_id: newCandidate.id,
+              current_stage_id: candidateData.assignedStageId || null,
+              status: 'active',
+              added_by: (await supabase.auth.getUser()).data.user?.id
+            })
+
+          if (associationError) {
+            console.error('Error creating job association:', associationError)
+            toast({
+              title: 'Warning',
+              description: 'Candidate created but could not be assigned to job. You can assign them manually.',
+              variant: 'destructive'
+            })
+          } else {
+            toast({
+              title: 'Success',
+              description: 'Candidate created and assigned to job successfully!'
+            })
+          }
         }
       } else {
         toast({
