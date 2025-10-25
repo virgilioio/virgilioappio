@@ -39,6 +39,7 @@ import MoveToPipelineMenu from '@/components/candidates/MoveToPipelineMenu'
 import { useJobHiringPlan, JobStage } from '@/hooks/useJobHiringPlan'
 import { cn } from '@/lib/utils'
 import { MinimizableEmailComposer } from '@/components/candidates/MinimizableEmailComposer'
+import { EmailHistoryList } from './EmailHistoryList'
 
 interface StageScorecardProps {
   stageInstanceId: string;
@@ -957,17 +958,20 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                        </>
                      )}
 
-                     {/* Emails Tab */}
-                     {rightActiveTab === 'emails' && (
-                       <Card className="bg-surface-primary border-border">
-                         <CardHeader>
-                           <CardTitle className="text-lg">Email History</CardTitle>
-                         </CardHeader>
-                         <CardContent>
-                           <div className="text-sm text-text-secondary">Coming soon: View all email communications with this candidate.</div>
-                         </CardContent>
-                       </Card>
-                     )}
+                      {/* Emails Tab */}
+                      {rightActiveTab === 'emails' && (
+                        <Card className="bg-surface-primary border-border">
+                          <CardHeader>
+                            <CardTitle className="text-lg">Email History</CardTitle>
+                          </CardHeader>
+                          <CardContent>
+                            <EmailHistoryList 
+                              candidateId={candidate.id} 
+                              jobId={jobId}
+                            />
+                          </CardContent>
+                        </Card>
+                      )}
 
                       {/* Job Information */}
                       <Card className="bg-surface-primary border-border">
