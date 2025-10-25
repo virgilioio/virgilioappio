@@ -61,14 +61,14 @@ export function useJobHiringPlan() {
   }, [toast])
 
   // Returns plan with job_hiring_stages ids for safe pipeline moves
-  type HiringPlanStageOption = { jhsId: string; stage: JobStage; position: number }
+  type HiringPlanStageOption = { jhsId: string; stage: JobStage; position: number; customStageName?: string | null }
 
   const loadHiringPlanInstances = useCallback(async (jobId: string): Promise<HiringPlanStageOption[]> => {
     setIsLoadingPlan(true)
     try {
       const { data: planEntries, error: planError } = await supabase
         .from('job_hiring_stages')
-        .select('id, stage_id, position')
+        .select('id, stage_id, position, custom_stage_name')
         .eq('job_id', jobId)
         .order('position', { ascending: true })
 
@@ -86,9 +86,9 @@ export function useJobHiringPlan() {
 
       const byId = new Map(stages.map((s) => [s.id, s]))
       const ordered: HiringPlanStageOption[] = planEntries
-        .map((e: { id: string; stage_id: string; position: number }) => {
+        .map((e: { id: string; stage_id: string; position: number; custom_stage_name?: string | null }) => {
           const s = byId.get(e.stage_id)
-          return s ? { jhsId: e.id, stage: s, position: e.position } : null
+          return s ? { jhsId: e.id, stage: s, position: e.position, customStageName: e.custom_stage_name } : null
         })
         .filter(Boolean) as HiringPlanStageOption[]
 

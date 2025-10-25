@@ -22,6 +22,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { ReadOnlyOverlay } from '@/components/ui/read-only-overlay'
+import { StageConfigSheet } from './StageConfigSheet'
 interface JobStage {
   id: string
   stage_name: string
@@ -44,14 +45,18 @@ export function HiringPlanTab({ jobId, readOnly = false }: HiringPlanTabProps) {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const { isSavingPlan, loadHiringPlan, loadHiringPlanInstances, saveHiringPlan } = useJobHiringPlan()
 
-  // Map of stage_id -> { jhsId, position } for current persisted plan
-  const [instancesMap, setInstancesMap] = useState<Map<string, { jhsId: string; position: number }>>(new Map())
+  // Map of stage_id -> { jhsId, position, customStageName } for current persisted plan
+  const [instancesMap, setInstancesMap] = useState<Map<string, { jhsId: string; position: number; customStageName?: string | null }>>(new Map())
 
   // Delete confirmation dialog state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [stagePendingDelete, setStagePendingDelete] = useState<JobStage | null>(null)
   const [pendingDeleteCount, setPendingDeleteCount] = useState<number | null>(null)
   const [countLoading, setCountLoading] = useState(false)
+  
+  // Configuration sheet state
+  const [configSheetOpen, setConfigSheetOpen] = useState(false)
+  const [configJhsId, setConfigJhsId] = useState<string | null>(null)
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
@@ -118,10 +123,10 @@ export function HiringPlanTab({ jobId, readOnly = false }: HiringPlanTabProps) {
         setHasUnsavedChanges(false)
       }
 
-      // Also load current persisted instances (stage_id -> jhsId, position)
+      // Also load current persisted instances (stage_id -> jhsId, position, customStageName)
       const opts = await loadHiringPlanInstances(jobId as string)
-      const map = new Map<string, { jhsId: string; position: number }>()
-      ;(opts || []).forEach(o => map.set(o.stage.id, { jhsId: o.jhsId, position: o.position }))
+      const map = new Map<string, { jhsId: string; position: number; customStageName?: string | null }>()
+      ;(opts || []).forEach(o => map.set(o.stage.id, { jhsId: o.jhsId, position: o.position, customStageName: o.customStageName }))
       setInstancesMap(map)
     })()
   }, [jobId, loadHiringPlan, loadHiringPlanInstances])
@@ -253,8 +258,8 @@ export function HiringPlanTab({ jobId, readOnly = false }: HiringPlanTabProps) {
 
       // Refresh instances map
       const opts = await loadHiringPlanInstances(jobId as string)
-      const map = new Map<string, { jhsId: string; position: number }>()
-      ;(opts || []).forEach(o => map.set(o.stage.id, { jhsId: o.jhsId, position: o.position }))
+      const map = new Map<string, { jhsId: string; position: number; customStageName?: string | null }>()
+      ;(opts || []).forEach(o => map.set(o.stage.id, { jhsId: o.jhsId, position: o.position, customStageName: o.customStageName }))
       setInstancesMap(map)
 
       toast({
@@ -271,6 +276,11 @@ export function HiringPlanTab({ jobId, readOnly = false }: HiringPlanTabProps) {
     if (!jobId) return
     await saveHiringPlan(jobId as string, selectedStages)
     setHasUnsavedChanges(false)
+  }
+  
+  const handleConfigure = (jhsId: string) => {
+    setConfigJhsId(jhsId)
+    setConfigSheetOpen(true)
   }
 
   if (isLoading) {
@@ -308,15 +318,21 @@ export function HiringPlanTab({ jobId, readOnly = false }: HiringPlanTabProps) {
                   strategy={verticalListSortingStrategy}
                 >
                   <div className="space-y-3">
-                    {selectedStages.map((stage, index) => (
-                      <DraggableStageItem
-                        key={stage.id}
-                        stage={stage}
-                        index={index}
-                        onRemove={handleRemoveStageRequest}
-                        isDragging={activeId === stage.id}
-                      />
-                    ))}
+                    {selectedStages.map((stage, index) => {
+                      const instance = instancesMap.get(stage.id)
+                      return (
+                        <DraggableStageItem
+                          key={stage.id}
+                          stage={stage}
+                          index={index}
+                          onRemove={handleRemoveStageRequest}
+                          onConfigure={handleConfigure}
+                          jhsId={instance?.jhsId}
+                          customStageName={instance?.customStageName}
+                          isDragging={activeId === stage.id}
+                        />
+                      )
+                    })}
                   </div>
                 </SortableContext>
               </DndContext>
@@ -396,6 +412,13 @@ export function HiringPlanTab({ jobId, readOnly = false }: HiringPlanTabProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <StageConfigSheet
+        open={configSheetOpen}
+        onOpenChange={setConfigSheetOpen}
+        jhsId={configJhsId}
+        jobId={jobId}
+      />
     </div>
   )
 }

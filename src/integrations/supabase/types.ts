@@ -1162,6 +1162,7 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string | null
+          custom_stage_name: string | null
           id: string
           job_id: string
           position: number
@@ -1171,6 +1172,7 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by?: string | null
+          custom_stage_name?: string | null
           id?: string
           job_id: string
           position: number
@@ -1180,6 +1182,7 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string | null
+          custom_stage_name?: string | null
           id?: string
           job_id?: string
           position?: number
