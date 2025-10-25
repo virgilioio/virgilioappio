@@ -7,6 +7,8 @@ import { log } from '@/lib/logger'
 import { extractErrorMessage } from '@/lib/authUtils'
 import { withTimeout, withRetry } from '@/utils/timeout'
 
+const VIRGILIO_ORG_ID = '5ba7b145-f251-4b18-8900-724cb06028ab';
+
 interface OrganizationInfo {
   id: string
   name: string
@@ -106,8 +108,50 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const switchOrganization = async (organizationId: string) => {
-    setSelectedOrganizationId(organizationId)
-    console.log('Organization switched to:', organizationId)
+    // Block organization switching for Virgilio staff
+    if (orgContext?.organizationId === VIRGILIO_ORG_ID) {
+      toast({
+        title: "Organization switching disabled",
+        description: "Virgilio staff cannot switch organizations.",
+        variant: "default",
+      });
+      log.info('🚫 Organization switch blocked for Virgilio staff');
+      return;
+    }
+
+    try {
+      // Set organization in JWT metadata
+      const { error: setOrgError } = await supabase.functions.invoke('set-current-organization', {
+        body: { organizationId }
+      });
+
+      if (setOrgError) {
+        throw new Error(`Failed to set organization: ${setOrgError.message}`);
+      }
+
+      // Refresh session to get updated JWT
+      const { error: refreshError } = await supabase.auth.refreshSession();
+      
+      if (refreshError) {
+        throw new Error(`Failed to refresh session: ${refreshError.message}`);
+      }
+
+      // Update local state
+      setSelectedOrganizationId(organizationId);
+      log.info('✅ Organization switched to:', organizationId);
+      
+      toast({
+        title: "Organization switched",
+        description: "Your workspace has been updated.",
+      });
+    } catch (error: any) {
+      log.error('Failed to switch organization:', error);
+      toast({
+        title: "Error switching organization",
+        description: extractErrorMessage(error),
+        variant: "destructive",
+      });
+    }
   }
 
   // Fetch available organizations for platform admins when bootstrap completes

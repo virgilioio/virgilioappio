@@ -13,6 +13,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { Building2, RotateCcw, Users, Eye } from 'lucide-react'
 
+const VIRGILIO_ORG_ID = '5ba7b145-f251-4b18-8900-724cb06028ab';
+
 export function OrganizationSwitcher() {
   const { 
     userType, 
@@ -25,6 +27,12 @@ export function OrganizationSwitcher() {
 
   // Only show for platform admins
   if (userType !== 'platform_admin' || !availableOrganizations) {
+    return null
+  }
+
+  // Hide switcher for Virgilio staff (they cannot switch)
+  const isVirgilioStaff = organizationId === VIRGILIO_ORG_ID
+  if (isVirgilioStaff) {
     return null
   }
 
