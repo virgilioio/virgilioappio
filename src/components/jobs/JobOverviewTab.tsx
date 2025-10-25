@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { SafeHtml } from '@/components/ui/safe-html'
-import { Edit, Building, Briefcase, MapPin, DollarSign, Users, Calendar, UserCheck, User } from 'lucide-react'
+import { Edit, Building, Briefcase, MapPin, DollarSign, Users, Calendar, UserCheck, User, Archive } from 'lucide-react'
 import { PermissionGate } from '@/components/auth/PermissionGate'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useQuery } from '@tanstack/react-query'
@@ -14,9 +14,10 @@ import { getSkillColor } from '@/utils/skillColors'
 interface JobOverviewTabProps {
   job: Job
   onEdit: () => void
+  onArchive: () => void
 }
 
-export function JobOverviewTab({ job, onEdit }: JobOverviewTabProps) {
+export function JobOverviewTab({ job, onEdit, onArchive }: JobOverviewTabProps) {
   const permissions = usePermissions()
 
   // Fetch creator information
@@ -104,10 +105,18 @@ export function JobOverviewTab({ job, onEdit }: JobOverviewTabProps) {
             </div>
             
             {permissions.canEditJobs && (
-              <Button variant="outline" onClick={onEdit} className="gap-2">
-                <Edit className="h-5 w-5" />
-                Edit Job
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button variant="outline" onClick={onEdit} className="gap-2">
+                  <Edit className="h-5 w-5" />
+                  Edit Job
+                </Button>
+                {job.status !== 'archived' && (
+                  <Button variant="outline" onClick={onArchive} className="gap-2">
+                    <Archive className="h-5 w-5" />
+                    Archive Job
+                  </Button>
+                )}
+              </div>
             )}
           </div>
         </CardHeader>

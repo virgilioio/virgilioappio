@@ -577,14 +577,7 @@ export default function JobDetail() {
 
         {!isMobile && (
           <div className="mb-2 animate-fade-in">
-            <PageHeader title={job.title} compact>
-              {permissions.canEditJobs && job.status !== 'archived' && (
-                <Button variant="outline" onClick={handleArchiveJob} className="gap-2">
-                  <Archive className="h-4 w-4" />
-                  Archive Job
-                </Button>
-              )}
-            </PageHeader>
+            <PageHeader title={job.title} compact />
           </div>
         )}
 
@@ -653,6 +646,7 @@ export default function JobDetail() {
                     hiring_team: (job.hiring_team as any[]) || []
                   }}
                   onEdit={handleEditJob}
+                  onArchive={handleArchiveJob}
                 />
               </TabsContent>
                <TabsContent value="pipeline">
@@ -1010,6 +1004,7 @@ export default function JobDetail() {
                       hiring_team: (job.hiring_team as any[]) || []
                     }}
                     onEdit={handleEditJob}
+                    onArchive={handleArchiveJob}
                   />
                 </TabsContent>
                 <TabsContent value="pipeline">

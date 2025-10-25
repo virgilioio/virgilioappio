@@ -12,9 +12,10 @@ interface JobSetupPanelProps {
   jobTitle: string
   job: any
   onEdit: () => void
+  onArchive: () => void
 }
 
-export function JobSetupPanel({ jobId, jobTitle, job, onEdit }: JobSetupPanelProps) {
+export function JobSetupPanel({ jobId, jobTitle, job, onEdit, onArchive }: JobSetupPanelProps) {
   const { isHiringManager, isInterviewer } = usePermissions()
   return (
     <Card>
@@ -37,6 +38,7 @@ export function JobSetupPanel({ jobId, jobTitle, job, onEdit }: JobSetupPanelPro
                 hiring_team: (job.hiring_team as any[]) || []
               }} 
               onEdit={onEdit}
+              onArchive={onArchive}
             />
           </TabsContent>
           
