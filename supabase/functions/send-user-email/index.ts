@@ -132,6 +132,43 @@ function base64UrlEncode(str: string): string {
   return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
+async function replacePlaceholders(
+  text: string,
+  candidate: any,
+  job: any,
+  user: any
+): Promise<string> {
+  let result = text;
+  
+  // Candidate placeholders
+  if (candidate) {
+    result = result.replace(/\{\{candidate\.name\}\}/g, candidate.candidate_name || '');
+    result = result.replace(/\{\{candidate\.email\}\}/g, candidate.email || '');
+    result = result.replace(/\{\{candidate\.phone\}\}/g, candidate.phone || '');
+    result = result.replace(/\{\{candidate\.location\}\}/g, 
+      [candidate.location_city, candidate.location_state, candidate.location_country]
+        .filter(Boolean)
+        .join(', ') || ''
+    );
+  }
+  
+  // Job placeholders
+  if (job) {
+    result = result.replace(/\{\{job\.title\}\}/g, job.title || '');
+    result = result.replace(/\{\{job\.department\}\}/g, job.department || '');
+    result = result.replace(/\{\{job\.location\}\}/g, job.location || '');
+  }
+  
+  // User placeholders (sender)
+  if (user) {
+    const fullName = [user.first_name, user.last_name].filter(Boolean).join(' ');
+    result = result.replace(/\{\{sender\.name\}\}/g, fullName || user.email || '');
+    result = result.replace(/\{\{sender\.email\}\}/g, user.email || '');
+  }
+  
+  return result;
+}
+
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === 'OPTIONS') {
     return handleSecureCorsPreFlight(req);
@@ -207,8 +244,55 @@ const handler = async (req: Request): Promise<Response> => {
       accessToken = await refreshAccessToken(supabase, identity);
     }
 
+    // Fetch candidate data if provided
+    let candidateData = null;
+    if (request.candidate_id) {
+      const { data: candidate } = await supabase
+        .from('candidates')
+        .select('candidate_name, email, phone, location_city, location_state, location_country')
+        .eq('id', request.candidate_id)
+        .single();
+      
+      if (candidate) {
+        candidateData = candidate;
+      }
+    }
+
+    // Fetch job data if provided
+    let jobData = null;
+    if (request.job_id) {
+      const { data: job } = await supabase
+        .from('jobs')
+        .select('title, department, location')
+        .eq('id', request.job_id)
+        .single();
+      
+      if (job) {
+        jobData = job;
+      }
+    }
+
+    // Get user profile for sender placeholders
+    const { data: userProfile } = await supabase
+      .from('profiles')
+      .select('first_name, last_name, email')
+      .eq('user_id', user.id)
+      .single();
+
+    // Replace placeholders in subject and body
+    const processedRequest = {
+      ...request,
+      subject: await replacePlaceholders(request.subject, candidateData, jobData, userProfile || user),
+      body_text: request.body_text 
+        ? await replacePlaceholders(request.body_text, candidateData, jobData, userProfile || user)
+        : undefined,
+      body_html: request.body_html
+        ? await replacePlaceholders(request.body_html, candidateData, jobData, userProfile || user)
+        : undefined,
+    };
+
     // Build RFC822 email
-    const rfc822 = buildRFC822Email(request);
+    const rfc822 = buildRFC822Email(processedRequest);
     const encodedEmail = base64UrlEncode(rfc822);
 
     // Send via Gmail API
@@ -230,17 +314,17 @@ const handler = async (req: Request): Promise<Response> => {
         user_id: user.id,
         organization_id: memberData.organization_id,
         mail_identity_id: identity.id,
-        from_address: request.from_email,
-        to_addresses: request.to,
-        cc_addresses: request.cc || [],
-        bcc_addresses: request.bcc || [],
-        subject: request.subject,
-        body_text: request.body_text,
-        body_html: request.body_html,
+        from_address: processedRequest.from_email,
+        to_addresses: processedRequest.to,
+        cc_addresses: processedRequest.cc || [],
+        bcc_addresses: processedRequest.bcc || [],
+        subject: processedRequest.subject,
+        body_text: processedRequest.body_text,
+        body_html: processedRequest.body_html,
         status: 'failed',
         error_message: error,
-        candidate_id: request.candidate_id || null,
-        job_id: request.job_id || null,
+        candidate_id: processedRequest.candidate_id || null,
+        job_id: processedRequest.job_id || null,
       });
 
       throw new Error('Failed to send email via Gmail');
@@ -255,20 +339,20 @@ const handler = async (req: Request): Promise<Response> => {
         user_id: user.id,
         organization_id: memberData.organization_id,
         mail_identity_id: identity.id,
-        from_address: request.from_email,
-        to_addresses: request.to,
-        cc_addresses: request.cc || [],
-        bcc_addresses: request.bcc || [],
-        subject: request.subject,
-        body_text: request.body_text,
-        body_html: request.body_html,
+        from_address: processedRequest.from_email,
+        to_addresses: processedRequest.to,
+        cc_addresses: processedRequest.cc || [],
+        bcc_addresses: processedRequest.bcc || [],
+        subject: processedRequest.subject,
+        body_text: processedRequest.body_text,
+        body_html: processedRequest.body_html,
         status: 'sent',
         provider_message_id: gmailData.id,
         thread_id: gmailData.threadId,
         sent_at: new Date().toISOString(),
-        candidate_id: request.candidate_id || null,
-        job_id: request.job_id || null,
-        attachments: request.attachments || [],
+        candidate_id: processedRequest.candidate_id || null,
+        job_id: processedRequest.job_id || null,
+        attachments: processedRequest.attachments || [],
       })
       .select()
       .single();
@@ -278,11 +362,11 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Log to activity feed if candidate_id is provided
-    if (request.candidate_id) {
-      const activityTitle = `Email sent: ${request.subject}`;
-      const activityDescription = `Email sent to ${request.to.join(', ')}${request.cc?.length ? ` (CC: ${request.cc.join(', ')})` : ''}`;
+    if (processedRequest.candidate_id) {
+      const activityTitle = `Email sent: ${processedRequest.subject}`;
+      const activityDescription = `Email sent to ${processedRequest.to.join(', ')}${processedRequest.cc?.length ? ` (CC: ${processedRequest.cc.join(', ')})` : ''}`;
       
-      const { error: activityError } = await supabaseClient.rpc('log_activity', {
+      const { error: activityError } = await supabase.rpc('log_activity', {
         p_user_id: user.id,
         p_organization_id: memberData.organization_id,
         p_activity_type: 'candidate_email_sent',
@@ -292,13 +376,13 @@ const handler = async (req: Request): Promise<Response> => {
           email_log_id: logData?.id,
           message_id: gmailData.id,
           thread_id: gmailData.threadId,
-          subject: request.subject,
-          to: request.to,
-          cc: request.cc,
-          has_attachments: (request.attachments?.length || 0) > 0,
+          subject: processedRequest.subject,
+          to: processedRequest.to,
+          cc: processedRequest.cc,
+          has_attachments: (processedRequest.attachments?.length || 0) > 0,
         },
         p_entity_type: 'candidate',
-        p_entity_id: request.candidate_id,
+        p_entity_id: processedRequest.candidate_id,
       });
 
       if (activityError) {

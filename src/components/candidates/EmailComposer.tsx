@@ -123,46 +123,42 @@ export function EmailComposer({ candidateId, jobId, defaultTo, onSuccess, embedd
   };
 
   const onSubmit = async (data: EmailFormData) => {
-    try {
-      // Convert attachments to base64
-      const attachmentPromises = attachments.map(async (att) => ({
-        filename: att.name,
-        content: await fileToBase64(att.file),
-        content_type: att.file.type || 'application/octet-stream',
-      }));
+    // Convert attachments to base64
+    const attachmentPromises = attachments.map(async (att) => ({
+      filename: att.name,
+      content: await fileToBase64(att.file),
+      content_type: att.file.type || 'application/octet-stream',
+    }));
 
-      const processedAttachments = await Promise.all(attachmentPromises);
+    const processedAttachments = await Promise.all(attachmentPromises);
 
-      const request: SendEmailRequest = {
-        from_email: data.from_email,
-        to: parseEmailList(data.to),
-        cc: data.cc ? parseEmailList(data.cc) : undefined,
-        bcc: data.bcc ? parseEmailList(data.bcc) : undefined,
-        subject: data.subject,
-        body_html: bodyHtml,
-        body_text: bodyHtml.replace(/<[^>]*>/g, ''), // Simple HTML strip
-        attachments: processedAttachments.length > 0 ? processedAttachments : undefined,
-        candidate_id: candidateId,
-        job_id: jobId,
-      };
+    const request: SendEmailRequest = {
+      from_email: data.from_email,
+      to: parseEmailList(data.to),
+      cc: data.cc ? parseEmailList(data.cc) : undefined,
+      bcc: data.bcc ? parseEmailList(data.bcc) : undefined,
+      subject: data.subject,
+      body_html: bodyHtml,
+      body_text: bodyHtml.replace(/<[^>]*>/g, ''), // Simple HTML strip
+      attachments: processedAttachments.length > 0 ? processedAttachments : undefined,
+      candidate_id: candidateId,
+      job_id: jobId,
+    };
 
-      await sendEmail.mutateAsync(request);
-      
-      // Reset form
-      setBodyHtml('');
-      setAttachments([]);
-      setShowCC(false);
-      setShowBCC(false);
-      setSelectedTemplateId(null);
-      setValue('subject', '');
-      setValue('cc', '');
-      setValue('bcc', '');
-      if (!defaultTo) setValue('to', '');
-      
-      onSuccess?.();
-    } catch (error) {
-      console.error('Failed to send email:', error);
-    }
+    await sendEmail.mutateAsync(request);
+    
+    // Reset form only on success (mutateAsync will throw on error)
+    setBodyHtml('');
+    setAttachments([]);
+    setShowCC(false);
+    setShowBCC(false);
+    setSelectedTemplateId(null);
+    setValue('subject', '');
+    setValue('cc', '');
+    setValue('bcc', '');
+    if (!defaultTo) setValue('to', '');
+    
+    onSuccess?.();
   };
 
   if (loadingIdentities) {
