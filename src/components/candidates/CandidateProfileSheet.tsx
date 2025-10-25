@@ -18,6 +18,7 @@ import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { Separator } from '@/components/ui/separator'
+import { ScrollArea } from '@/components/ui/scroll-area'
 
 import { Link } from 'react-router-dom'
 import { SafeHtml } from '@/components/ui/safe-html'
@@ -935,11 +936,15 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                          <CardHeader>
                            <CardTitle className="text-lg">Activity Feed</CardTitle>
                          </CardHeader>
-                         <CardContent>
-                           <ActivityFeedList 
-                             candidateId={candidate.id}
-                             jobId={jobId}
-                           />
+                         <CardContent className="p-0">
+                           <ScrollArea className="h-[500px]">
+                             <div className="p-6">
+                               <ActivityFeedList 
+                                 candidateId={candidate.id}
+                                 jobId={jobId}
+                               />
+                             </div>
+                           </ScrollArea>
                          </CardContent>
                        </Card>
                      )}
@@ -968,11 +973,15 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                           <CardHeader>
                             <CardTitle className="text-lg">Email History</CardTitle>
                           </CardHeader>
-                          <CardContent>
-                            <EmailHistoryList 
-                              candidateId={candidate.id} 
-                              jobId={jobId}
-                            />
+                          <CardContent className="p-0">
+                            <ScrollArea className="h-[500px]">
+                              <div className="p-6">
+                                <EmailHistoryList 
+                                  candidateId={candidate.id} 
+                                  jobId={jobId}
+                                />
+                              </div>
+                            </ScrollArea>
                           </CardContent>
                         </Card>
                       )}
