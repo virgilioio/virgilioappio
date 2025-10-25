@@ -40,6 +40,7 @@ import { useJobHiringPlan, JobStage } from '@/hooks/useJobHiringPlan'
 import { cn } from '@/lib/utils'
 import { MinimizableEmailComposer } from '@/components/candidates/MinimizableEmailComposer'
 import { EmailHistoryList } from './EmailHistoryList'
+import { ActivityFeedList } from './ActivityFeedList'
 
 interface StageScorecardProps {
   stageInstanceId: string;
@@ -935,7 +936,10 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                            <CardTitle className="text-lg">Activity Feed</CardTitle>
                          </CardHeader>
                          <CardContent>
-                           <div className="text-sm text-text-secondary">Coming soon: Activity timeline showing candidate interactions, stage changes, and updates.</div>
+                           <ActivityFeedList 
+                             candidateId={candidate.id}
+                             jobId={jobId}
+                           />
                          </CardContent>
                        </Card>
                      )}

@@ -2847,6 +2847,19 @@ export type Database = {
         Args: { job_id_param: string }
         Returns: boolean
       }
+      log_activity: {
+        Args: {
+          p_activity_type: Database["public"]["Enums"]["activity_type"]
+          p_description?: string
+          p_entity_id?: string
+          p_entity_type?: string
+          p_metadata?: Json
+          p_organization_id: string
+          p_title: string
+          p_user_id: string
+        }
+        Returns: string
+      }
       log_audit_event: {
         Args: {
           p_action: string
@@ -2943,6 +2956,15 @@ export type Database = {
         | "candidate_added"
         | "invoice_created"
         | "invoice_paid"
+        | "candidate_created"
+        | "candidate_updated"
+        | "candidate_assigned_to_job"
+        | "candidate_stage_changed"
+        | "candidate_status_changed"
+        | "candidate_note_added"
+        | "candidate_email_sent"
+        | "candidate_attachment_uploaded"
+        | "candidate_profile_updated"
       application_field_source: "library" | "custom"
       contract_status_enum:
         | "active"
@@ -3151,6 +3173,15 @@ export const Constants = {
         "candidate_added",
         "invoice_created",
         "invoice_paid",
+        "candidate_created",
+        "candidate_updated",
+        "candidate_assigned_to_job",
+        "candidate_stage_changed",
+        "candidate_status_changed",
+        "candidate_note_added",
+        "candidate_email_sent",
+        "candidate_attachment_uploaded",
+        "candidate_profile_updated",
       ],
       application_field_source: ["library", "custom"],
       contract_status_enum: [
