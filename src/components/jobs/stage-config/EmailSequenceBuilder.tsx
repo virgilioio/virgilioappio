@@ -1,15 +1,17 @@
+import { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Plus, Trash2, AlertTriangle, Repeat } from 'lucide-react';
+import { Plus, Trash2, AlertTriangle, Repeat, ChevronDown, ChevronRight } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useEmailTemplates } from '@/hooks/useEmailTemplates';
 import { useMailIdentities } from '@/hooks/useMailIdentities';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import type { AutomationEmail } from '@/hooks/useStageAutomations';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 interface EmailSequenceBuilderProps {
   emails: Omit<AutomationEmail, 'id' | 'template_name'>[];
@@ -27,12 +29,20 @@ export function EmailSequenceBuilder({
 }: EmailSequenceBuilderProps) {
   const { templates } = useEmailTemplates('organization');
   const { identities } = useMailIdentities();
+  const [expandedEmails, setExpandedEmails] = useState<Record<number, boolean>>({});
   
   const hasRecurringEmail = emails.some(e => e.is_recurring);
   const firstRecurringIndex = emails.findIndex(e => e.is_recurring);
   
   const addEmail = () => {
     if (hasRecurringEmail) return;
+    
+    // Collapse all emails when adding a new one
+    const newExpandedState = { ...expandedEmails };
+    emails.forEach((_, index) => {
+      newExpandedState[index] = false;
+    });
+    setExpandedEmails(newExpandedState);
     
     onChange([
       ...emails,
@@ -77,187 +87,232 @@ export function EmailSequenceBuilder({
     }
   };
   
+  const toggleEmail = (index: number) => {
+    setExpandedEmails(prev => ({
+      ...prev,
+      [index]: !prev[index]
+    }));
+  };
+  
+  const isEmailEmpty = (email: Omit<AutomationEmail, 'id' | 'template_name'>) => {
+    return !email.subject && !email.body;
+  };
+
   return (
     <div className="space-y-4">
       {emails.map((email, index) => {
         const isDisabled = hasRecurringEmail && index > firstRecurringIndex;
+        const isExpanded = expandedEmails[index] ?? (isSingleEmail || index === 0);
+        const isEmpty = isEmailEmpty(email);
         
         return (
-          <Card key={index} className={`p-4 ${isDisabled ? 'opacity-50' : ''}`}>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h4 className="font-medium">Email {index + 1}</h4>
-                {emails.length > 1 && !isDisabled && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => removeEmail(index)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                )}
+          <Collapsible
+            key={index}
+            open={isExpanded}
+            onOpenChange={() => !isSingleEmail && toggleEmail(index)}
+          >
+            <Card className={`${isDisabled ? 'opacity-50' : ''}`}>
+              <div className={`flex items-center justify-between ${isSingleEmail ? 'p-4' : 'p-3'}`}>
+                <div className="flex items-center gap-2 flex-1">
+                  {!isSingleEmail && (
+                    <CollapsibleTrigger asChild>
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                        {isExpanded ? (
+                          <ChevronDown className="h-4 w-4" />
+                        ) : (
+                          <ChevronRight className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </CollapsibleTrigger>
+                  )}
+                  <h4 className="font-medium">Email {index + 1}</h4>
+                </div>
+                <div className="flex items-center gap-2">
+                  {!isSingleEmail && !isExpanded && isEmpty && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => toggleEmail(index)}
+                    >
+                      Create Email
+                    </Button>
+                  )}
+                  {emails.length > 1 && !isDisabled && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeEmail(index)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
               </div>
               
-              {isDisabled && (
-                <Alert>
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertDescription>
-                    This email cannot be sent because Email {firstRecurringIndex + 1} is set to recurring.
-                    Recurring emails prevent subsequent emails from being sent.
-                  </AlertDescription>
-                </Alert>
-              )}
-              
-              {index > 0 && !isDisabled && (
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Delay from previous email</Label>
-                    <Input
-                      type="number"
-                      min="1"
-                      value={email.delay_value || ''}
-                      onChange={(e) => updateEmail(index, { delay_value: parseInt(e.target.value) })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Unit</Label>
-                    <Select
-                      value={email.delay_unit || 'days'}
-                      onValueChange={(v: 'days' | 'weeks') => updateEmail(index, { delay_unit: v })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="days">Days</SelectItem>
-                        <SelectItem value="weeks">Weeks</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              )}
-              
-              {!isDisabled && (
-                <>
-                  <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <Repeat className="h-4 w-4" />
-                      <Label className="cursor-pointer">Make this a recurring email</Label>
-                    </div>
-                    <Switch
-                      checked={email.is_recurring}
-                      onCheckedChange={(checked) => updateEmail(index, { is_recurring: checked })}
-                    />
-                  </div>
+              <CollapsibleContent>
+                <div className="space-y-4 p-4 pt-0">
+                  {isDisabled && (
+                    <Alert>
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertDescription>
+                        This email cannot be sent because Email {firstRecurringIndex + 1} is set to recurring.
+                        Recurring emails prevent subsequent emails from being sent.
+                      </AlertDescription>
+                    </Alert>
+                  )}
                   
-                  {email.is_recurring && (
+                  {index > 0 && !isDisabled && (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Delay from previous email</Label>
+                        <Input
+                          type="number"
+                          min="1"
+                          value={email.delay_value || ''}
+                          onChange={(e) => updateEmail(index, { delay_value: parseInt(e.target.value) })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Unit</Label>
+                        <Select
+                          value={email.delay_unit || 'days'}
+                          onValueChange={(v: 'days' | 'weeks') => updateEmail(index, { delay_unit: v })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="days">Days</SelectItem>
+                            <SelectItem value="weeks">Weeks</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {!isDisabled && (
                     <>
-                      <Alert>
-                        <AlertTriangle className="h-4 w-4" />
-                        <AlertDescription>
-                          This email will repeat until the candidate moves stages or the job closes.
-                          No emails after this one will be sent.
-                        </AlertDescription>
-                      </Alert>
+                      <div className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <Repeat className="h-4 w-4" />
+                          <Label className="cursor-pointer">Make this a recurring email</Label>
+                        </div>
+                        <Switch
+                          checked={email.is_recurring}
+                          onCheckedChange={(checked) => updateEmail(index, { is_recurring: checked })}
+                        />
+                      </div>
                       
-                      <div className="grid grid-cols-3 gap-4">
-                        <div className="space-y-2">
-                          <Label>Repeat every</Label>
-                          <Input
-                            type="number"
-                            min="1"
-                            value={email.recurrence_interval_value || ''}
-                            onChange={(e) => updateEmail(index, { 
-                              recurrence_interval_value: parseInt(e.target.value) 
-                            })}
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Unit</Label>
-                          <Select
-                            value={email.recurrence_interval_unit || 'days'}
-                            onValueChange={(v: 'days' | 'weeks') => 
-                              updateEmail(index, { recurrence_interval_unit: v })
-                            }
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="days">Days</SelectItem>
-                              <SelectItem value="weeks">Weeks</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Max sends (optional)</Label>
-                          <Input
-                            type="number"
-                            min="1"
-                            placeholder="10"
-                            value={email.max_occurrences || ''}
-                            onChange={(e) => updateEmail(index, { 
-                              max_occurrences: e.target.value ? parseInt(e.target.value) : null 
-                            })}
-                          />
-                        </div>
+                      {email.is_recurring && (
+                        <>
+                          <Alert>
+                            <AlertTriangle className="h-4 w-4" />
+                            <AlertDescription>
+                              This email will repeat until the candidate moves stages or the job closes.
+                              No emails after this one will be sent.
+                            </AlertDescription>
+                          </Alert>
+                          
+                          <div className="grid grid-cols-3 gap-4">
+                            <div className="space-y-2">
+                              <Label>Repeat every</Label>
+                              <Input
+                                type="number"
+                                min="1"
+                                value={email.recurrence_interval_value || ''}
+                                onChange={(e) => updateEmail(index, { 
+                                  recurrence_interval_value: parseInt(e.target.value) 
+                                })}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Unit</Label>
+                              <Select
+                                value={email.recurrence_interval_unit || 'days'}
+                                onValueChange={(v: 'days' | 'weeks') => 
+                                  updateEmail(index, { recurrence_interval_unit: v })
+                                }
+                              >
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="days">Days</SelectItem>
+                                  <SelectItem value="weeks">Weeks</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Max sends (optional)</Label>
+                              <Input
+                                type="number"
+                                min="1"
+                                placeholder="10"
+                                value={email.max_occurrences || ''}
+                                onChange={(e) => updateEmail(index, { 
+                                  max_occurrences: e.target.value ? parseInt(e.target.value) : null 
+                                })}
+                              />
+                            </div>
+                          </div>
+                        </>
+                      )}
+                      
+                      <div className="space-y-2">
+                        <Label>Load from template (optional)</Label>
+                        <Select onValueChange={(v) => loadTemplate(index, v)}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Choose a template..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {templates.map(t => (
+                              <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label>From Email</Label>
+                        <Select
+                          value={email.from_email}
+                          onValueChange={(v) => updateEmail(index, { from_email: v })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {identities.map(identity => (
+                              <SelectItem key={identity.id} value={identity.email_address}>
+                                {identity.email_address}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label>Subject</Label>
+                        <Input
+                          value={email.subject}
+                          onChange={(e) => updateEmail(index, { subject: e.target.value })}
+                          placeholder="Email subject with {{placeholders}}"
+                        />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label>Body</Label>
+                        <RichTextEditor
+                          value={email.body}
+                          onChange={(v) => updateEmail(index, { body: v })}
+                        />
                       </div>
                     </>
                   )}
-                  
-                  <div className="space-y-2">
-                    <Label>Load from template (optional)</Label>
-                    <Select onValueChange={(v) => loadTemplate(index, v)}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Choose a template..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {templates.map(t => (
-                          <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label>From Email</Label>
-                    <Select
-                      value={email.from_email}
-                      onValueChange={(v) => updateEmail(index, { from_email: v })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {identities.map(identity => (
-                          <SelectItem key={identity.id} value={identity.email_address}>
-                            {identity.email_address}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label>Subject</Label>
-                    <Input
-                      value={email.subject}
-                      onChange={(e) => updateEmail(index, { subject: e.target.value })}
-                      placeholder="Email subject with {{placeholders}}"
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label>Body</Label>
-                    <RichTextEditor
-                      value={email.body}
-                      onChange={(v) => updateEmail(index, { body: v })}
-                    />
-                  </div>
-                </>
-              )}
-            </div>
-          </Card>
+                </div>
+              </CollapsibleContent>
+            </Card>
+          </Collapsible>
         );
       })}
       
