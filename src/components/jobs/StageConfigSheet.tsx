@@ -12,6 +12,9 @@ import { Badge } from '@/components/ui/badge'
 import { Settings, Users, Zap, ClipboardList, Loader2 } from 'lucide-react'
 import { useStageConfiguration, type StageConfiguration } from '@/hooks/useStageConfiguration'
 import { BasicsTab } from './stage-config/BasicsTab'
+import { TeamTab } from './stage-config/TeamTab'
+import { useQuery } from '@tanstack/react-query'
+import { supabase } from '@/lib/supabaseClient'
 
 interface StageConfigSheetProps {
   open: boolean
@@ -23,6 +26,21 @@ interface StageConfigSheetProps {
 export function StageConfigSheet({ open, onOpenChange, jhsId, jobId }: StageConfigSheetProps) {
   const { loadStageConfig, updateCustomStageName, isLoading } = useStageConfiguration()
   const [config, setConfig] = useState<StageConfiguration | null>(null)
+  
+  // Fetch job data for organization_id
+  const { data: job } = useQuery({
+    queryKey: ['job', jobId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('jobs')
+        .select('organization_id')
+        .eq('id', jobId)
+        .single()
+      if (error) throw error
+      return data
+    },
+    enabled: !!jobId
+  })
   
   useEffect(() => {
     if (open && jhsId) {
@@ -70,10 +88,9 @@ export function StageConfigSheet({ open, onOpenChange, jhsId, jobId }: StageConf
               <Settings className="h-4 w-4 mr-2" />
               Basics
             </TabsTrigger>
-            <TabsTrigger value="team" disabled>
+            <TabsTrigger value="team">
               <Users className="h-4 w-4 mr-2" />
               Team
-              <Badge variant="secondary" className="ml-2 text-xs">Soon</Badge>
             </TabsTrigger>
             <TabsTrigger value="automations" disabled>
               <Zap className="h-4 w-4 mr-2" />
@@ -96,7 +113,13 @@ export function StageConfigSheet({ open, onOpenChange, jhsId, jobId }: StageConf
           </TabsContent>
           
           <TabsContent value="team" className="mt-6">
-            {/* Phase 2 */}
+            {job && jhsId && (
+              <TeamTab 
+                jhsId={jhsId} 
+                jobId={jobId}
+                organizationId={job.organization_id}
+              />
+            )}
           </TabsContent>
           
           <TabsContent value="automations" className="mt-6">

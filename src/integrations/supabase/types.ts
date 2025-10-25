@@ -2229,6 +2229,48 @@ export type Database = {
         }
         Relationships: []
       }
+      stage_interviewer_assignments: {
+        Row: {
+          assignment_type: string | null
+          created_at: string | null
+          id: string
+          job_hiring_stage_id: string
+          member_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          assignment_type?: string | null
+          created_at?: string | null
+          id?: string
+          job_hiring_stage_id: string
+          member_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          assignment_type?: string | null
+          created_at?: string | null
+          id?: string
+          job_hiring_stage_id?: string
+          member_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stage_interviewer_assignments_job_hiring_stage_id_fkey"
+            columns: ["job_hiring_stage_id"]
+            isOneToOne: false
+            referencedRelation: "job_hiring_stages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stage_interviewer_assignments_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       standard_job_titles: {
         Row: {
           canonical_title: string

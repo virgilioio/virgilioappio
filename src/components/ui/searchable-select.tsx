@@ -3,6 +3,7 @@ import * as React from "react"
 import { Check, ChevronsUpDown } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import {
   Command,
   CommandEmpty,
@@ -20,6 +21,8 @@ import {
 export interface SearchableSelectOption {
   value: string
   label: string
+  badge?: string
+  badgeVariant?: 'default' | 'secondary' | 'outline' | 'destructive'
 }
 
 interface SearchableSelectProps {
@@ -86,7 +89,14 @@ export function SearchableSelect({
                       value === option.value ? "opacity-100" : "opacity-0"
                     )}
                   />
-                  {option.label}
+                  <div className="flex items-center justify-between w-full">
+                    <span>{option.label}</span>
+                    {option.badge && (
+                      <Badge variant={option.badgeVariant || 'secondary'} className="ml-2 text-xs">
+                        {option.badge}
+                      </Badge>
+                    )}
+                  </div>
                 </CommandItem>
               ))}
             </CommandGroup>
