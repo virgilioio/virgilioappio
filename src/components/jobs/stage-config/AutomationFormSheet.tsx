@@ -58,7 +58,7 @@ export function AutomationFormSheet({
   
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:w-[800px] overflow-y-auto">
+      <SheetContent className="w-full sm:max-w-3xl overflow-y-auto">
         <SheetHeader>
           <SheetTitle>Create Email Automation</SheetTitle>
         </SheetHeader>
