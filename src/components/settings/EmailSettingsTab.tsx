@@ -6,6 +6,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useMailIdentities } from '@/hooks/useMailIdentities';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatDistanceToNow } from 'date-fns';
+import { GoogleLogo } from '@/components/icons/GoogleLogo';
 
 export function EmailSettingsTab() {
   const { identities, isLoading, connectGmail, disconnectIdentity } = useMailIdentities();
@@ -32,7 +33,7 @@ export function EmailSettingsTab() {
         {identities.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
-              <Mail className="h-12 w-12 text-muted-foreground mb-4" />
+              <GoogleLogo size={48} className="text-muted-foreground mb-4" />
               <p className="text-sm text-muted-foreground mb-4">
                 No email accounts connected yet
               </p>
@@ -40,7 +41,7 @@ export function EmailSettingsTab() {
                 onClick={() => connectGmail.mutate()}
                 disabled={connectGmail.isPending}
               >
-                <Mail className="mr-2 h-4 w-4" />
+                <GoogleLogo size={16} className="mr-2" />
                 {connectGmail.isPending ? 'Connecting...' : 'Connect Gmail'}
               </Button>
             </CardContent>
@@ -124,7 +125,7 @@ export function EmailSettingsTab() {
               variant="outline"
               className="w-full"
             >
-              <Mail className="mr-2 h-4 w-4" />
+              <GoogleLogo size={16} className="mr-2" />
               {connectGmail.isPending ? 'Connecting...' : 'Connect Another Gmail Account'}
             </Button>
           </>
