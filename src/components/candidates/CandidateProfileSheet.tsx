@@ -458,6 +458,17 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                               >
                                 <MoveRight className="h-4 w-4" />
                               </Button>
+                              {jobCandidateId && associationStatus === 'offer' && (
+                                <Link to={`/jobs/${jobId}/candidates/${jobCandidateId}`}>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    title="Create Offer Letter"
+                                  >
+                                    <FileText className="h-4 w-4" />
+                                  </Button>
+                                </Link>
+                              )}
                               <Button
                                 variant="default"
                                 size="icon"
@@ -811,14 +822,6 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                             <Button variant="outline" className="w-full gap-sm" onClick={() => handleSetStatus('active')}>
                               Restore
                             </Button>
-                          )}
-                          {jobCandidateId && associationStatus === 'offer' && (
-                            <Link to={`/jobs/${jobId}/candidates/${jobCandidateId}`}>
-                              <Button variant="outline" className="w-full gap-sm">
-                                <FileText className="h-4 w-4" />
-                                Create Offer Letter
-                              </Button>
-                            </Link>
                           )}
                         </>
                       </CardContent>
