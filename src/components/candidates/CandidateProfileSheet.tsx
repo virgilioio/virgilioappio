@@ -13,7 +13,7 @@ import { CandidateResumeViewer } from '@/components/candidates/CandidateResumeVi
 import { CandidateUrls } from '@/components/candidates/CandidateUrls'
 import { CandidateWorkExperienceComponent, CandidateWorkExperience } from '@/components/candidates/CandidateWorkExperience'
 import { CandidateEducationComponent, CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
-import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight, CheckCircle2, Circle, MoveRight, ThumbsDown, ThumbsUp, Star, Octagon, Mail, Phone, Copy, ExternalLink, Send } from 'lucide-react'
+import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight, CheckCircle2, Circle, MoveRight, ThumbsDown, ThumbsUp, Star, Octagon, Mail, Phone, Copy, ExternalLink, Send, X, Check } from 'lucide-react'
 import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
@@ -425,6 +425,7 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                                   onClick={() => handleSetStatus('rejected')}
                                   title="Reject candidate"
                                 >
+                                  <X className="h-4 w-4 mr-1.5" />
                                   Reject
                                 </Button>
                               )}
@@ -434,10 +435,12 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                                 const canMarkHired = !!associationId && associationStatus !== 'hired' && (associationStatus === 'offer' || current?.stage.stage_type === 'offer')
                                 return canMarkHired ? (
                                   <Button
+                                    variant="default"
                                     size="sm"
                                     onClick={() => handleSetStatus('hired')}
                                     title="Mark candidate as hired"
                                   >
+                                    <Check className="h-4 w-4 mr-1.5" />
                                     Mark Hired
                                   </Button>
                                 ) : null
@@ -470,18 +473,16 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                                 </Link>
                               )}
                               <Button
-                                variant="default"
-                                size="icon"
-                                className="aspect-square rounded-md"
+                                variant="outline"
+                                size="sm"
                                 onClick={() => setEmailComposerOpen(true)}
                                 title="Send Email"
                               >
                                 <Send className="h-4 w-4" />
                               </Button>
                               <Button
-                                variant="default"
-                                size="icon"
-                                className="aspect-square rounded-md bg-foreground text-background hover:bg-foreground"
+                                variant="outline"
+                                size="sm"
                                 onClick={() => generateCandidatePdf({ candidate, job })}
                                 title="Download PDF"
                               >
