@@ -13,7 +13,7 @@ import { CandidateResumeViewer } from '@/components/candidates/CandidateResumeVi
 import { CandidateUrls } from '@/components/candidates/CandidateUrls'
 import { CandidateWorkExperienceComponent, CandidateWorkExperience } from '@/components/candidates/CandidateWorkExperience'
 import { CandidateEducationComponent, CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
-import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight, CheckCircle2, Circle, MoveRight, ThumbsDown, ThumbsUp, Star, Octagon, Mail, Phone, Copy, ExternalLink, Send, X, Check, RotateCcw } from 'lucide-react'
+import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight, CheckCircle2, Circle, MoveRight, ThumbsDown, ThumbsUp, Star, Octagon, Mail, Phone, Copy, ExternalLink, Send, X, Check, RotateCcw, Activity, StickyNote } from 'lucide-react'
 import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
@@ -82,6 +82,7 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
   const [jobCandidateId, setJobCandidateId] = useState<string | null>(null)
   const [job, setJob] = useState<any | null>(null)
   const [activeTab, setActiveTab] = useState<'job' | 'application' | 'resume' | 'overview'>('job')
+  const [rightActiveTab, setRightActiveTab] = useState<'feed' | 'notes' | 'emails'>('notes')
   const [workExperience, setWorkExperience] = useState<CandidateWorkExperience[]>([])
   const [education, setEducation] = useState<CandidateEducation[]>([])
   const [editOpen, setEditOpen] = useState(false)
@@ -837,57 +838,98 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
 
                    {/* Right column (1x) */}
                    <div className="space-y-6">
-                     {/* Notes */}
-                    <Card className="bg-surface-primary border-border">
-                      <CardHeader>
-                        <CardTitle className="text-lg">Notes</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        {organizationId && candidateId ? (
-                          <CandidateComments candidateId={candidateId} jobId={jobId} organizationId={organizationId} />
-                        ) : (
-                          <div className="text-sm text-text-secondary">No candidate data available.</div>
-                        )}
-                      </CardContent>
-                    </Card>
+                     {/* Tab Navigation */}
+                     <CandidateNameCard
+                       email={candidate.email}
+                       phone={candidate.phone}
+                       tabs={[
+                         { value: 'feed', label: 'Feed', Icon: Activity },
+                         { value: 'notes', label: 'Notes', Icon: StickyNote },
+                         { value: 'emails', label: 'Emails', Icon: Mail },
+                       ]}
+                       activeTab={rightActiveTab}
+                       onTabChange={(v) => setRightActiveTab(v as 'feed' | 'notes' | 'emails')}
+                     />
 
-                    {/* Job Information */}
-                    <Card className="bg-surface-primary border-border">
-                      <CardHeader>
-                        <CardTitle className="text-lg">Job Information</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <div className="text-sm text-text-primary">{job?.title || '—'}</div>
-                      </CardContent>
-                    </Card>
+                     {/* Feed Tab */}
+                     {rightActiveTab === 'feed' && (
+                       <Card className="bg-surface-primary border-border">
+                         <CardHeader>
+                           <CardTitle className="text-lg">Activity Feed</CardTitle>
+                         </CardHeader>
+                         <CardContent>
+                           <div className="text-sm text-text-secondary">Coming soon: Activity timeline showing candidate interactions, stage changes, and updates.</div>
+                         </CardContent>
+                       </Card>
+                     )}
 
-                    {/* URLs */}
-                    {independentCandidateId || candidateId ? (
-                      <CandidateUrls candidateId={independentCandidateId || candidateId!} />
-                    ) : (
-                      <Card className="bg-surface-primary border-border">
-                        <CardHeader>
-                          <CardTitle className="text-lg">URLs</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="text-sm text-text-secondary">No candidate data available.</div>
-                        </CardContent>
-                      </Card>
-                    )}
+                     {/* Notes Tab */}
+                     {rightActiveTab === 'notes' && (
+                       <>
+                         {organizationId && candidateId ? (
+                           <CandidateComments candidateId={candidateId} jobId={jobId} organizationId={organizationId} />
+                         ) : (
+                           <Card className="bg-surface-primary border-border">
+                             <CardHeader>
+                               <CardTitle className="text-lg">Notes</CardTitle>
+                             </CardHeader>
+                             <CardContent>
+                               <div className="text-sm text-text-secondary">No candidate data available.</div>
+                             </CardContent>
+                           </Card>
+                         )}
+                       </>
+                     )}
 
-                    {/* Attachments */}
-                    {independentCandidateId || candidateId ? (
-                      <CandidateAttachments candidateId={independentCandidateId || candidateId!} />
-                    ) : (
-                      <Card className="bg-surface-primary border-border">
-                        <CardHeader>
-                          <CardTitle className="text-lg">Attachments</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="text-sm text-text-secondary">No candidate data available.</div>
-                        </CardContent>
-                      </Card>
-                    )}
+                     {/* Emails Tab */}
+                     {rightActiveTab === 'emails' && (
+                       <Card className="bg-surface-primary border-border">
+                         <CardHeader>
+                           <CardTitle className="text-lg">Email History</CardTitle>
+                         </CardHeader>
+                         <CardContent>
+                           <div className="text-sm text-text-secondary">Coming soon: View all email communications with this candidate.</div>
+                         </CardContent>
+                       </Card>
+                     )}
+
+                     {/* Job Information */}
+                     <Card className="bg-surface-primary border-border">
+                       <CardHeader>
+                         <CardTitle className="text-lg">Job Information</CardTitle>
+                       </CardHeader>
+                       <CardContent>
+                         <div className="text-sm text-text-primary">{job?.title || '—'}</div>
+                       </CardContent>
+                     </Card>
+
+                     {/* URLs */}
+                     {independentCandidateId || candidateId ? (
+                       <CandidateUrls candidateId={independentCandidateId || candidateId!} />
+                     ) : (
+                       <Card className="bg-surface-primary border-border">
+                         <CardHeader>
+                           <CardTitle className="text-lg">URLs</CardTitle>
+                         </CardHeader>
+                         <CardContent>
+                           <div className="text-sm text-text-secondary">No candidate data available.</div>
+                         </CardContent>
+                       </Card>
+                     )}
+
+                     {/* Attachments */}
+                     {independentCandidateId || candidateId ? (
+                       <CandidateAttachments candidateId={independentCandidateId || candidateId!} />
+                     ) : (
+                       <Card className="bg-surface-primary border-border">
+                         <CardHeader>
+                           <CardTitle className="text-lg">Attachments</CardTitle>
+                         </CardHeader>
+                         <CardContent>
+                           <div className="text-sm text-text-secondary">No candidate data available.</div>
+                         </CardContent>
+                       </Card>
+                     )}
                   </div>
                 </div>
               </Tabs>
