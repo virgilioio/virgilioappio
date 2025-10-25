@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -7,7 +7,7 @@ import { useStageAutomations, type AutomationEmail } from '@/hooks/useStageAutom
 import { EmailSequenceBuilder } from './EmailSequenceBuilder';
 import { useMailIdentities } from '@/hooks/useMailIdentities';
 
-interface AutomationFormDialogProps {
+interface AutomationFormSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   jhsId: string;
@@ -15,13 +15,13 @@ interface AutomationFormDialogProps {
   organizationId: string;
 }
 
-export function AutomationFormDialog({ 
+export function AutomationFormSheet({ 
   open, 
   onOpenChange, 
   jhsId,
   jobId,
   organizationId 
-}: AutomationFormDialogProps) {
+}: AutomationFormSheetProps) {
   const { createAutomation } = useStageAutomations(jhsId);
   const { identities } = useMailIdentities();
   const [automationType, setAutomationType] = useState<'single_email' | 'email_sequence'>('single_email');
@@ -57,13 +57,13 @@ export function AutomationFormDialog({
   const isValid = emails.every(e => e.subject && e.body && e.from_email);
   
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Create Email Automation</DialogTitle>
-        </DialogHeader>
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent className="w-full sm:w-[800px] overflow-y-auto">
+        <SheetHeader>
+          <SheetTitle>Create Email Automation</SheetTitle>
+        </SheetHeader>
         
-        <div className="space-y-6 py-4">
+        <div className="space-y-6 py-6">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Automation Type</Label>
@@ -101,7 +101,7 @@ export function AutomationFormDialog({
           />
         </div>
         
-        <DialogFooter>
+        <div className="flex justify-end gap-2 pt-4 border-t">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
@@ -111,8 +111,8 @@ export function AutomationFormDialog({
           >
             {createAutomation.isPending ? 'Creating...' : 'Create Automation'}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }

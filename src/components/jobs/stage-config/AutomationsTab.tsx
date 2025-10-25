@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Plus, Mail, Trash2, Calendar, Repeat } from 'lucide-react';
 import { useStageAutomations } from '@/hooks/useStageAutomations';
-import { AutomationFormDialog } from './AutomationFormDialog';
+import { AutomationFormSheet } from './AutomationFormSheet';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 interface AutomationsTabProps {
@@ -129,7 +129,7 @@ export function AutomationsTab({ jhsId, jobId, organizationId }: AutomationsTabP
         </div>
       )}
       
-      <AutomationFormDialog
+      <AutomationFormSheet
         open={isDialogOpen}
         onOpenChange={setIsDialogOpen}
         jhsId={jhsId}
