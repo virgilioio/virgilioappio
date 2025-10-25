@@ -409,7 +409,15 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                        <CardContent className="p-4">
                          <div className="flex items-center justify-between">
                             <h3 className="text-sm font-medium text-text-secondary">Actions</h3>
-                            <div className="flex items-center gap-2">
+                             <div className="flex items-center gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setEditOpen(true)}
+                                title="Edit candidate"
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
                               {associationId && associationStatus !== 'rejected' && (
                                 <Button
                                   variant="destructive"
@@ -790,11 +798,7 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                         <CardTitle className="text-lg">Quick Actions</CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-3">
-                        <>
-                          <Button className="w-full gap-sm" onClick={() => setEditOpen(true)}>
-                            <Edit className="h-4 w-4" />
-                            Edit Candidate
-                          </Button>
+                         <>
                           {associationId && associationStatus && associationStatus !== 'active' && (
                             <Button variant="outline" className="w-full gap-sm" onClick={() => handleSetStatus('active')}>
                               Restore
