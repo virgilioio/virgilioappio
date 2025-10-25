@@ -35,6 +35,7 @@ export function useAuthBootstrap(): AuthBootstrapReturn {
 
   const abortControllerRef = useRef<AbortController | null>(null);
   const lastUserIdRef = useRef<string | null>(null);
+  const isBootstrappingRef = useRef<boolean>(false);
 
   // Handle session updates from other tabs
   const handleSessionUpdate = (session: Session | null) => {
@@ -66,6 +67,13 @@ export function useAuthBootstrap(): AuthBootstrapReturn {
    * Resolve org context with cache-first approach
    */
   const resolveOrgContext = async (session: Session): Promise<void> => {
+    // Prevent concurrent bootstrap attempts
+    if (isBootstrappingRef.current) {
+      log.info('⏭️ Bootstrap already in progress, skipping...');
+      return;
+    }
+
+    isBootstrappingRef.current = true;
     const userId = session.user.id;
     
     // 1. Try cache first for instant UI
@@ -117,39 +125,11 @@ export function useAuthBootstrap(): AuthBootstrapReturn {
       let finalRole = resolved?.role;
       let finalUserType = resolved?.userType;
 
+      // DISABLED: Virgilio staff JWT refresh to prevent token refresh loop (Phase 1 fix)
+      // This was causing 429 "Too Many Requests" errors due to concurrent refreshes
+      // from multi-tab sync + auth state changes
       if (resolved?.organizationId === VIRGILIO_ORG_ID) {
-        log.info('🏢 Virgilio staff detected - forcing organization context');
-        
-        try {
-          // Set organization in JWT metadata
-          const { error: setOrgError } = await supabase.functions.invoke('set-current-organization', {
-            body: { organizationId: VIRGILIO_ORG_ID }
-          });
-
-          if (setOrgError) {
-            log.error('Failed to set Virgilio organization:', setOrgError);
-          } else {
-            // Refresh session to get updated JWT
-            const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-            
-            if (refreshError) {
-              log.error('Failed to refresh session:', refreshError);
-            } else if (refreshData.session) {
-              log.info('✅ JWT refreshed for Virgilio staff');
-              
-              // Verify JWT metadata in dev mode
-              const { data: { user } } = await supabase.auth.getUser();
-              const jwtOrgId = user?.user_metadata?.organization_id;
-              log.info('🔍 JWT verification:', {
-                expected: VIRGILIO_ORG_ID,
-                actual: jwtOrgId,
-                match: jwtOrgId === VIRGILIO_ORG_ID
-              });
-            }
-          }
-        } catch (error: any) {
-          log.error('Error forcing Virgilio context:', error);
-        }
+        log.info('🏢 Virgilio staff detected - organization context set (JWT refresh disabled)');
       }
 
       const orgContext: OrgContext = resolved
@@ -199,6 +179,8 @@ export function useAuthBootstrap(): AuthBootstrapReturn {
       } else {
         setState({ ready: true, session, orgContext: null });
       }
+    } finally {
+      isBootstrappingRef.current = false;
     }
   };
 
