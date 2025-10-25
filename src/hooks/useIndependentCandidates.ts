@@ -301,8 +301,11 @@ export function useIndependentCandidates() {
 
     console.log('🔄 Setting up real-time subscriptions for candidates')
     
+    // Create unique channel name to avoid subscription conflicts
+    const channelId = Math.random().toString(36).substr(2, 9)
+    
     const channel = supabase
-      .channel('candidates-changes')
+      .channel(`candidates-changes-${channelId}`)
       .on(
         'postgres_changes',
         {
