@@ -1,6 +1,6 @@
 
 import { cn } from '@/lib/utils'
-import { LayoutDashboard, Settings, Kanban } from 'lucide-react'
+import { LayoutDashboard, Settings, Kanban, Users } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 
@@ -22,6 +22,11 @@ export function JobDetailFloatingSidebar({
       id: 'candidates',
       label: 'Job Dashboard',
       icon: LayoutDashboard,
+    },
+    {
+      id: 'all-candidates',
+      label: 'All Candidates',
+      icon: Users,
     },
     {
       id: 'pipeline',

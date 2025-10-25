@@ -1266,7 +1266,7 @@ export default function JobDetail() {
                                 onSelectedIdsChange={setSelectedCandidateIds}
                               />
                             </div>
-                          )}
+                           )}
                         </ScrollArea>
                       </CardContent>
                     </Card>
@@ -1274,6 +1274,33 @@ export default function JobDetail() {
                 </TabsContent>
               </div>
             </div>
+          )}
+
+          {/* All Candidates Tab */}
+          {activeTab === 'all-candidates' && (
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-semibold">All Candidates</h2>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {allAssociatedCandidates.length} candidate{allAssociatedCandidates.length !== 1 ? 's' : ''} associated with this job
+                  </p>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <CandidateTable
+                  candidates={allAssociatedCandidates}
+                  isLoading={statusListsLoading}
+                  onRowClick={(candidateId) => openProfileInPlace(candidateId, 'pipeline', allAssociatedCandidates)}
+                  onEdit={() => {}}
+                  onDelete={() => {}}
+                  markCandidateAsViewed={markCandidateAsViewed}
+                  isCandidateNewForUser={isCandidateNewForUser}
+                  showJobInfo={false}
+                  hideActions={true}
+                />
+              </CardContent>
+            </Card>
           )}
         </Tabs>
 
