@@ -348,7 +348,7 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
             <div className="flex items-center justify-between">
               <div className="flex flex-col gap-2">
                 <div className="flex items-center gap-2">
-                  <h2 className="font-poppins font-bold tracking-page-title text-text-primary text-2xl">
+                  <h2 className="font-poppins font-bold tracking-page-title text-text-primary text-3xl">
                     {candidate?.candidate_name || 'Loading...'}
                     <span className="text-purple-period">.</span>
                   </h2>
