@@ -229,9 +229,11 @@ export function EmailComposer({ candidateId, jobId, defaultTo, onSuccess, embedd
           <div className="space-y-2">
             <Label htmlFor="template">Email Template (Optional)</Label>
             <Select
-              value={selectedTemplateId || ''}
+              value={selectedTemplateId || '__none__'}
               onValueChange={(value) => {
-                if (value) {
+                if (value === '__none__') {
+                  setSelectedTemplateId(null);
+                } else {
                   setSelectedTemplateId(value);
                   const template = templates.find(t => t.id === value);
                   if (template) {
@@ -240,8 +242,6 @@ export function EmailComposer({ candidateId, jobId, defaultTo, onSuccess, embedd
                     setValue('body_html', template.body);
                     toast.success('Template applied');
                   }
-                } else {
-                  setSelectedTemplateId(null);
                 }
               }}
               disabled={loadingTemplates}
@@ -250,7 +250,7 @@ export function EmailComposer({ candidateId, jobId, defaultTo, onSuccess, embedd
                 <SelectValue placeholder="Select a template..." />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">No template</SelectItem>
+                <SelectItem value="__none__">No template</SelectItem>
                 {templates.map((template) => (
                   <SelectItem key={template.id} value={template.id}>
                     <div className="flex items-center gap-2">
