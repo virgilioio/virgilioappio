@@ -888,6 +888,32 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
 
                    {/* Right column (1x) */}
                    <div className="space-y-6">
+                     {/* Controls Card - Right Side */}
+                     <Card className="bg-surface-primary border-border">
+                       <CardContent className="p-4">
+                         <div className="flex items-center justify-between w-full">
+                           <div className="flex items-center gap-2">
+                             <Button
+                               variant="outline"
+                               size="sm"
+                               onClick={() => setRightActiveTab('notes')}
+                             >
+                               <StickyNote className="h-4 w-4 mr-2" />
+                               Add Note
+                             </Button>
+                             <Button
+                               variant="outline"
+                               size="sm"
+                               onClick={() => setEmailComposerOpen(true)}
+                             >
+                               <Mail className="h-4 w-4 mr-2" />
+                               Send Email
+                             </Button>
+                           </div>
+                         </div>
+                       </CardContent>
+                     </Card>
+
                      {/* Tab Navigation */}
                      <CandidateNameCard
                        email={candidate.email}
