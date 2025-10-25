@@ -805,20 +805,12 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                             </Button>
                           )}
                           {jobCandidateId && (
-                            <>
-                              <Link to={`/jobs/${jobId}/candidates/${jobCandidateId}`}>
-                                <Button variant="outline" className="w-full gap-sm">
-                                  <FileText className="h-4 w-4" />
-                                  Create Offer Letter
-                                </Button>
-                              </Link>
-                              <Link to={`/jobs/${jobId}/candidates/${jobCandidateId}`}>
-                                <Button variant="outline" className="w-full gap-sm">
-                                  <Clock className="h-4 w-4" />
-                                  Schedule
-                                </Button>
-                              </Link>
-                            </>
+                            <Link to={`/jobs/${jobId}/candidates/${jobCandidateId}`}>
+                              <Button variant="outline" className="w-full gap-sm">
+                                <FileText className="h-4 w-4" />
+                                Create Offer Letter
+                              </Button>
+                            </Link>
                           )}
                           <Button variant="outline" className="w-full gap-sm" onClick={handleMoveToOffer}>
                             <MoveRight className="h-4 w-4" />
