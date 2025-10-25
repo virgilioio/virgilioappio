@@ -13,7 +13,7 @@ import { CandidateResumeViewer } from '@/components/candidates/CandidateResumeVi
 import { CandidateUrls } from '@/components/candidates/CandidateUrls'
 import { CandidateWorkExperienceComponent, CandidateWorkExperience } from '@/components/candidates/CandidateWorkExperience'
 import { CandidateEducationComponent, CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
-import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight, CheckCircle2, Circle, MoveRight, ThumbsDown, ThumbsUp, Star, Octagon, Mail, Phone, Copy, ExternalLink, Send, X, Check, RotateCcw, Activity, StickyNote } from 'lucide-react'
+import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight, CheckCircle2, Circle, MoveRight, ThumbsDown, ThumbsUp, Star, Octagon, Mail, Phone, Copy, ExternalLink, Send, X, Check, RotateCcw, Activity, StickyNote, Sparkles } from 'lucide-react'
 import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
@@ -859,7 +859,10 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                         <AccordionItem value="summary" className="border-0">
                           <Card className="bg-surface-primary border-border">
                             <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                              <CardTitle className="text-lg">Profile Summary</CardTitle>
+                              <div className="flex items-center justify-between w-full pr-4">
+                                <CardTitle className="text-lg">Profile Summary</CardTitle>
+                                <Sparkles className="h-4 w-4 text-purple-500 flex-shrink-0" />
+                              </div>
                             </AccordionTrigger>
                             <AccordionContent>
                               <CardContent className="pt-0">
