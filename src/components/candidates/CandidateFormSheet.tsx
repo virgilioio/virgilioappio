@@ -368,18 +368,32 @@ export function CandidateFormSheet({
   }
 
   const handlePostSubmitActions = async (result: any) => {
+    console.log('📎 handlePostSubmitActions called', { result, pendingFilesCount: pendingFiles.length, isNewCandidate: !candidate })
+    
     if (!candidate) {
-      if (pendingFiles.length > 0 && (result as any)?.id) {
+      const candidateId = result?.id
+      console.log('📎 Candidate ID from result:', candidateId)
+      
+      if (pendingFiles.length > 0 && candidateId) {
         try {
           setIsUploadingResume(true)
+          console.log('📎 Uploading pending files:', pendingFiles.length)
+          
           for (const f of pendingFiles) {
-            await uploadFileForCandidate((result as any).id, f)
+            console.log('📎 Uploading file:', f.name)
+            await uploadFileForCandidate(candidateId, f)
           }
+          
           toast({ title: 'Resume uploaded', description: 'Attachment added to candidate.' })
           setPendingFiles([])
+          console.log('📎 All files uploaded successfully')
+        } catch (error) {
+          console.error('📎 Error uploading files:', error)
         } finally {
           setIsUploadingResume(false)
         }
+      } else {
+        console.log('📎 Skipping file upload:', { hasPendingFiles: pendingFiles.length > 0, hasCandidateId: !!candidateId })
       }
       clearPersistedData()
     }
@@ -442,9 +456,11 @@ export function CandidateFormSheet({
     setPendingSubmitData(submitData)
 
     const result = await onSubmit(submitData as any)
+    console.log('📎 onSubmit result:', result)
 
     // Check if merge occurred
     if (result && (result as any).wasMerged) {
+      console.log('📎 Merge detected, opening merge dialog')
       setMergeData({
         existing: (result as any).existingData,
         incoming: submitData,
@@ -455,8 +471,11 @@ export function CandidateFormSheet({
     }
 
     // Normal flow for new candidates
+    console.log('📎 Normal flow - calling handlePostSubmitActions')
     if (result) {
       await handlePostSubmitActions(result)
+    } else {
+      console.log('📎 No result returned from onSubmit')
     }
   })
 

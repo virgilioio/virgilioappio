@@ -54,19 +54,22 @@ export default function Candidates() {
 
   const handleSubmit = async (candidateData: CreateIndependentCandidateData & { assignedJobId?: string; assignedStageId?: string }) => {
     try {
+      let result
       if (selectedCandidate) {
         // For editing, ignore job assignment fields
         const { assignedJobId, assignedStageId, ...updateData } = candidateData
-        await updateCandidate(selectedCandidate.id, updateData)
+        result = await updateCandidate(selectedCandidate.id, updateData)
       } else {
         // For new candidates, just create without job assignment (no job context on candidates page)
         const { assignedJobId, assignedStageId, ...createData } = candidateData
-        await addCandidate(createData)
+        result = await addCandidate(createData)
       }
       handleFormClose()
+      return result // Return the result so CandidateFormSheet can access the candidate ID
     } catch (error) {
       // Error is handled in the hook
       console.error('Error submitting candidate:', error)
+      throw error // Re-throw so CandidateFormSheet knows there was an error
     }
   }
 
