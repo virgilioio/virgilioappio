@@ -17,6 +17,7 @@ import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight, CheckCircle
 import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
+import { Separator } from '@/components/ui/separator'
 
 import { Link } from 'react-router-dom'
 import { SafeHtml } from '@/components/ui/safe-html'
@@ -407,89 +408,104 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                      {/* Controls Card */}
                      <Card className="bg-surface-primary border-border">
                        <CardContent className="p-4">
-                         <div className="flex items-center justify-between">
+                          <div className="flex items-center justify-between">
                             <h3 className="text-sm font-medium text-text-secondary">Actions</h3>
-                             <div className="flex items-center gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setEditOpen(true)}
-                                title="Edit candidate"
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              {associationId && associationStatus !== 'rejected' && (
+                              <div className="flex items-center gap-2">
+                              {/* Group 1: Communication Actions */}
+                              <div className="flex items-center gap-2">
                                 <Button
-                                  variant="destructive"
+                                  variant="outline"
                                   size="sm"
-                                  onClick={() => handleSetStatus('rejected')}
-                                  title="Reject candidate"
+                                  onClick={() => setEmailComposerOpen(true)}
+                                  title="Send Email"
                                 >
-                                  <X className="h-4 w-4 mr-1.5" />
-                                  Reject
+                                  <Send className="h-4 w-4" />
                                 </Button>
-                              )}
-                              {/* Mark Hired only when in Offer stage */}
-                              {(() => {
-                                const current = planStages.find(s => s.jhsId === currentStageId)
-                                const canMarkHired = !!associationId && associationStatus !== 'hired' && (associationStatus === 'offer' || current?.stage.stage_type === 'offer')
-                                return canMarkHired ? (
+                              </div>
+
+                              <Separator orientation="vertical" className="h-6" />
+
+                              {/* Group 2: Data Management Actions */}
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setEditOpen(true)}
+                                  title="Edit candidate"
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => generateCandidatePdf({ candidate, job })}
+                                  title="Download PDF"
+                                >
+                                  <Download className="h-4 w-4" />
+                                </Button>
+                              </div>
+
+                              <Separator orientation="vertical" className="h-6" />
+
+                              {/* Group 3: Pipeline & Status Actions */}
+                              <div className="flex items-center gap-2">
+                                {/* Move to Pipeline button for suggested candidates */}
+                                {!associationId && jobId && candidate.id && (
+                                  <MoveToPipelineMenu
+                                    jobId={jobId}
+                                    candidateId={candidate.id}
+                                    buttonText="Move to pipeline"
+                                  />
+                                )}
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={handleMoveToOffer}
+                                  title="Move to Offer"
+                                >
+                                  <MoveRight className="h-4 w-4" />
+                                </Button>
+                                {jobCandidateId && associationStatus === 'offer' && (
+                                  <Link to={`/jobs/${jobId}/candidates/${jobCandidateId}`}>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      title="Create Offer Letter"
+                                    >
+                                      <FileText className="h-4 w-4" />
+                                    </Button>
+                                  </Link>
+                                )}
+                                {associationId && associationStatus !== 'rejected' && (
                                   <Button
-                                    variant="default"
+                                    variant="destructive"
                                     size="sm"
-                                    onClick={() => handleSetStatus('hired')}
-                                    title="Mark candidate as hired"
+                                    onClick={() => handleSetStatus('rejected')}
+                                    title="Reject candidate"
                                   >
-                                    <Check className="h-4 w-4 mr-1.5" />
-                                    Mark Hired
+                                    <X className="h-4 w-4 mr-1.5" />
+                                    Reject
                                   </Button>
-                                ) : null
-                              })()}
-                              {/* Move to Pipeline button for suggested candidates */}
-                              {!associationId && jobId && candidate.id && (
-                                <MoveToPipelineMenu
-                                  jobId={jobId}
-                                  candidateId={candidate.id}
-                                  buttonText="Move to pipeline"
-                                />
-                              )}
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={handleMoveToOffer}
-                                title="Move to Offer"
-                              >
-                                <MoveRight className="h-4 w-4" />
-                              </Button>
-                              {jobCandidateId && associationStatus === 'offer' && (
-                                <Link to={`/jobs/${jobId}/candidates/${jobCandidateId}`}>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    title="Create Offer Letter"
-                                  >
-                                    <FileText className="h-4 w-4" />
-                                  </Button>
-                                </Link>
-                              )}
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setEmailComposerOpen(true)}
-                                title="Send Email"
-                              >
-                                <Send className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => generateCandidatePdf({ candidate, job })}
-                                title="Download PDF"
-                              >
-                                <Download className="h-4 w-4" />
-                              </Button>
+                                )}
+                                {/* Mark Hired only when in Offer stage */}
+                                {(() => {
+                                  const current = planStages.find(s => s.jhsId === currentStageId)
+                                  const canMarkHired = !!associationId && associationStatus !== 'hired' && (associationStatus === 'offer' || current?.stage.stage_type === 'offer')
+                                  return canMarkHired ? (
+                                    <Button
+                                      variant="default"
+                                      size="sm"
+                                      onClick={() => handleSetStatus('hired')}
+                                      title="Mark candidate as hired"
+                                    >
+                                      <Check className="h-4 w-4 mr-1.5" />
+                                      Mark Hired
+                                    </Button>
+                                  ) : null
+                                })()}
+                              </div>
                             </div>
-                         </div>
+                          </div>
                        </CardContent>
                      </Card>
 
