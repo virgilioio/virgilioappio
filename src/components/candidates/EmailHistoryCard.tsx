@@ -76,12 +76,16 @@ export function EmailHistoryCard({ email }: EmailHistoryCardProps) {
   const hasRecipients = email.cc_addresses?.length || email.bcc_addresses?.length;
 
   return (
-    <Card className={cn(
-      "relative border-l-4 transition-all",
-      email.status === 'sent' && "border-l-green-500",
-      email.status === 'failed' && "border-l-red-500",
-      email.status === 'pending' && "border-l-gray-400"
-    )}>
+    <Card 
+      className="relative border-l-4 transition-all"
+      style={{
+        borderLeftColor: 
+          email.status === 'sent' ? '#d2ffc2' :
+          email.status === 'failed' ? '#ffc2c2' :
+          email.status === 'pending' ? '#f5f5f5' :
+          undefined
+      }}
+    >
       <CardContent className="p-4">
         {/* Header */}
         <div className="flex items-start justify-between mb-3">
