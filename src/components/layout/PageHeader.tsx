@@ -48,7 +48,7 @@ export function PageHeader({
               <Card key={idx} className="min-w-[140px]">
                 <CardHeader className="py-3 px-4">
                   <div className="text-xs text-text-secondary font-medium mb-1">{metric.label}</div>
-                  <div className="text-6xl font-semibold text-text-primary">{metric.value}</div>
+                  <div className="text-4xl font-semibold text-text-primary">{metric.value}</div>
                 </CardHeader>
               </Card>
             ))}
