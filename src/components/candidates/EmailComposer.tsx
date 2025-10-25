@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
 import { convertPlaceholdersToHtml, convertHtmlToPlaceholders, containsPlaceholders } from '@/utils/placeholderUtils';
+import { SubjectInputWithBadges } from './SubjectInputWithBadges';
 
 const emailSchema = z.object({
   from_email: z.string().email('Invalid email address'),
@@ -48,6 +49,7 @@ export function EmailComposer({ candidateId, jobId, defaultTo, onSuccess, embedd
   const sendEmail = useSendEmail();
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [bodyHtml, setBodyHtml] = useState('');
+  const [subjectHtml, setSubjectHtml] = useState('');
   const [showCC, setShowCC] = useState(false);
   const [showBCC, setShowBCC] = useState(false);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
@@ -134,7 +136,7 @@ export function EmailComposer({ candidateId, jobId, defaultTo, onSuccess, embedd
     const processedAttachments = await Promise.all(attachmentPromises);
 
     // Convert badge HTML back to placeholder text for backend processing
-    const subjectWithPlaceholders = convertHtmlToPlaceholders(data.subject);
+    const subjectWithPlaceholders = convertHtmlToPlaceholders(subjectHtml);
     const bodyHtmlWithPlaceholders = convertHtmlToPlaceholders(bodyHtml);
     const bodyTextWithPlaceholders = bodyHtmlWithPlaceholders.replace(/<[^>]*>/g, '');
 
@@ -155,6 +157,7 @@ export function EmailComposer({ candidateId, jobId, defaultTo, onSuccess, embedd
     
     // Reset form only on success (mutateAsync will throw on error)
     setBodyHtml('');
+    setSubjectHtml('');
     setAttachments([]);
     setShowCC(false);
     setShowBCC(false);
@@ -246,6 +249,7 @@ export function EmailComposer({ candidateId, jobId, defaultTo, onSuccess, embedd
                     const subjectWithBadges = convertPlaceholdersToHtml(template.subject);
                     const bodyWithBadges = convertPlaceholdersToHtml(template.body);
                     
+                    setSubjectHtml(subjectWithBadges);
                     setValue('subject', subjectWithBadges);
                     setBodyHtml(bodyWithBadges);
                     setValue('body_html', bodyWithBadges);
@@ -367,9 +371,13 @@ export function EmailComposer({ candidateId, jobId, defaultTo, onSuccess, embedd
           {/* Subject */}
           <div className="space-y-2">
             <Label htmlFor="subject">Subject</Label>
-            <Input
+            <SubjectInputWithBadges
               id="subject"
-              {...register('subject')}
+              value={subjectHtml}
+              onChange={(html) => {
+                setSubjectHtml(html);
+                setValue('subject', html);
+              }}
               placeholder="Email subject"
             />
             {errors.subject && (
