@@ -812,7 +812,7 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                               Restore
                             </Button>
                           )}
-                          {jobCandidateId && (
+                          {jobCandidateId && associationStatus === 'offer' && (
                             <Link to={`/jobs/${jobId}/candidates/${jobCandidateId}`}>
                               <Button variant="outline" className="w-full gap-sm">
                                 <FileText className="h-4 w-4" />
