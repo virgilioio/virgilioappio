@@ -15,6 +15,7 @@ import { Paperclip, X, Send, Mail } from 'lucide-react';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
 import { Badge } from '@/components/ui/badge';
+import { convertPlaceholdersToHtml, convertHtmlToPlaceholders, containsPlaceholders } from '@/utils/placeholderUtils';
 
 const emailSchema = z.object({
   from_email: z.string().email('Invalid email address'),
@@ -132,14 +133,19 @@ export function EmailComposer({ candidateId, jobId, defaultTo, onSuccess, embedd
 
     const processedAttachments = await Promise.all(attachmentPromises);
 
+    // Convert badge HTML back to placeholder text for backend processing
+    const subjectWithPlaceholders = convertHtmlToPlaceholders(data.subject);
+    const bodyHtmlWithPlaceholders = convertHtmlToPlaceholders(bodyHtml);
+    const bodyTextWithPlaceholders = bodyHtmlWithPlaceholders.replace(/<[^>]*>/g, '');
+
     const request: SendEmailRequest = {
       from_email: data.from_email,
       to: parseEmailList(data.to),
       cc: data.cc ? parseEmailList(data.cc) : undefined,
       bcc: data.bcc ? parseEmailList(data.bcc) : undefined,
-      subject: data.subject,
-      body_html: bodyHtml,
-      body_text: bodyHtml.replace(/<[^>]*>/g, ''), // Simple HTML strip
+      subject: subjectWithPlaceholders,
+      body_html: bodyHtmlWithPlaceholders,
+      body_text: bodyTextWithPlaceholders,
       attachments: processedAttachments.length > 0 ? processedAttachments : undefined,
       candidate_id: candidateId,
       job_id: jobId,
@@ -236,10 +242,14 @@ export function EmailComposer({ candidateId, jobId, defaultTo, onSuccess, embedd
                   setSelectedTemplateId(value);
                   const template = templates.find(t => t.id === value);
                   if (template) {
-                    setValue('subject', template.subject);
-                    setBodyHtml(template.body);
-                    setValue('body_html', template.body);
-                    toast.success('Template applied');
+                    // Convert placeholders to badges in subject and body
+                    const subjectWithBadges = convertPlaceholdersToHtml(template.subject);
+                    const bodyWithBadges = convertPlaceholdersToHtml(template.body);
+                    
+                    setValue('subject', subjectWithBadges);
+                    setBodyHtml(bodyWithBadges);
+                    setValue('body_html', bodyWithBadges);
+                    toast.success('Template applied - placeholders shown as badges');
                   }
                 }
               }}
@@ -378,9 +388,9 @@ export function EmailComposer({ candidateId, jobId, defaultTo, onSuccess, embedd
               }}
               placeholder="Write your email message here..."
             />
-            {bodyHtml.includes('{{') && (
-              <p className="text-xs text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-800 rounded px-2 py-1">
-                ✨ Placeholders like <code className="bg-purple-100 dark:bg-purple-900/40 px-1 rounded">{'{{candidate.name}}'}</code> will be automatically replaced when you send this email
+            {containsPlaceholders(bodyHtml) && (
+              <p className="text-xs text-primary bg-primary/10 border border-primary/30 rounded px-2 py-1">
+                ✨ Colored badges represent placeholders that will be automatically replaced with candidate/job information when sent
               </p>
             )}
             {errors.body_html && (

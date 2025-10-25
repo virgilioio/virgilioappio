@@ -21,6 +21,33 @@ import { cn } from '@/lib/utils'
 import { saveTextCursorPosition, restoreTextCursorPosition, type TextCursorPosition } from '@/lib/cursorUtils'
 import { sanitizeHtml, sanitizeHtmlForEditor } from '@/utils/htmlSanitizer'
 
+// Placeholder badge styles - injected into document head
+const PLACEHOLDER_BADGE_STYLES = `
+  .placeholder-badge {
+    background-color: hsl(var(--primary) / 0.1);
+    color: hsl(var(--primary));
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 500;
+    display: inline-block;
+    margin: 0 2px;
+    user-select: none;
+    cursor: default;
+    border: 1px solid hsl(var(--primary) / 0.3);
+    font-size: 0.875em;
+  }
+  
+  .dark .placeholder-badge {
+    background-color: hsl(var(--primary) / 0.15);
+    color: hsl(var(--primary-foreground));
+    border-color: hsl(var(--primary) / 0.4);
+  }
+  
+  .placeholder-badge:hover {
+    background-color: hsl(var(--primary) / 0.15);
+  }
+`;
+
 interface RichTextEditorProps {
   value: string
   onChange: (value: string) => void
@@ -284,6 +311,42 @@ export function RichTextEditor({
     setIsFocused(false)
   }, [])
 
+  // Handle keyboard events to prevent editing placeholders
+  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
+    const selection = window.getSelection()
+    if (!selection || !selection.anchorNode) return
+    
+    // Check if cursor is next to a placeholder badge
+    const anchorElement = selection.anchorNode.parentElement
+    const isBadge = anchorElement?.classList.contains('placeholder-badge')
+    const nextSibling = selection.anchorNode.nextSibling as HTMLElement
+    const prevSibling = selection.anchorNode.previousSibling as HTMLElement
+    
+    // Prevent backspace/delete from partially deleting badges
+    if (e.key === 'Backspace' && prevSibling?.classList?.contains('placeholder-badge')) {
+      e.preventDefault()
+      prevSibling.remove()
+      if (editorRef.current) updateContent(editorRef.current.innerHTML)
+    } else if (e.key === 'Delete' && nextSibling?.classList?.contains('placeholder-badge')) {
+      e.preventDefault()
+      nextSibling.remove()
+      if (editorRef.current) updateContent(editorRef.current.innerHTML)
+    } else if (isBadge) {
+      // Prevent typing inside badges
+      e.preventDefault()
+    }
+  }, [updateContent])
+
+  // Inject placeholder badge styles on mount
+  useEffect(() => {
+    if (!document.getElementById('placeholder-badge-styles')) {
+      const styleEl = document.createElement('style')
+      styleEl.id = 'placeholder-badge-styles'
+      styleEl.textContent = PLACEHOLDER_BADGE_STYLES
+      document.head.appendChild(styleEl)
+    }
+  }, [])
+
   // Update editor content when value prop changes from parent
   useEffect(() => {
     if (import.meta.env.DEV) {
@@ -505,6 +568,7 @@ export function RichTextEditor({
           onInput={handleInput}
           onPaste={handlePaste}
           onFocus={handleFocus}
+          onKeyDown={handleKeyDown}
           onBlur={handleBlur}
           suppressContentEditableWarning={true}
           className={cn(
