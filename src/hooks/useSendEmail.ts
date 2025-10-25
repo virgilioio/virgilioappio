@@ -42,6 +42,18 @@ export function useSendEmail() {
         queryClient.invalidateQueries({ 
           queryKey: ['email-logs', variables.candidate_id] 
         });
+        
+        // Invalidate activity feed for this candidate
+        queryClient.invalidateQueries({ 
+          queryKey: ['activity-feed', variables.candidate_id] 
+        });
+        
+        // Also invalidate with job_id if provided
+        if (variables.job_id) {
+          queryClient.invalidateQueries({ 
+            queryKey: ['activity-feed', variables.candidate_id, variables.job_id] 
+          });
+        }
       }
       
       // Invalidate all email logs

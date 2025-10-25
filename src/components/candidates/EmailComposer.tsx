@@ -158,6 +158,9 @@ export function EmailComposer({ candidateId, jobId, defaultTo, onSuccess, embedd
     setValue('bcc', '');
     if (!defaultTo) setValue('to', '');
     
+    // Small delay to ensure toast is visible before closing
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
     onSuccess?.();
   };
 
@@ -375,6 +378,11 @@ export function EmailComposer({ candidateId, jobId, defaultTo, onSuccess, embedd
               }}
               placeholder="Write your email message here..."
             />
+            {bodyHtml.includes('{{') && (
+              <p className="text-xs text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/20 border border-purple-200 dark:border-purple-800 rounded px-2 py-1">
+                ✨ Placeholders like <code className="bg-purple-100 dark:bg-purple-900/40 px-1 rounded">{'{{candidate.name}}'}</code> will be automatically replaced when you send this email
+              </p>
+            )}
             {errors.body_html && (
               <p className="text-sm text-destructive">{errors.body_html.message}</p>
             )}
