@@ -277,6 +277,38 @@ const handler = async (req: Request): Promise<Response> => {
       console.error('Failed to log email:', logError);
     }
 
+    // Log to activity feed if candidate_id is provided
+    if (request.candidate_id) {
+      const activityTitle = `Email sent: ${request.subject}`;
+      const activityDescription = `Email sent to ${request.to.join(', ')}${request.cc?.length ? ` (CC: ${request.cc.join(', ')})` : ''}`;
+      
+      const { error: activityError } = await supabaseClient.rpc('log_activity', {
+        p_user_id: user.id,
+        p_organization_id: memberData.organization_id,
+        p_activity_type: 'candidate_email_sent',
+        p_title: activityTitle,
+        p_description: activityDescription,
+        p_metadata: {
+          email_log_id: logData?.id,
+          message_id: gmailData.id,
+          thread_id: gmailData.threadId,
+          subject: request.subject,
+          to: request.to,
+          cc: request.cc,
+          has_attachments: (request.attachments?.length || 0) > 0,
+        },
+        p_entity_type: 'candidate',
+        p_entity_id: request.candidate_id,
+      });
+
+      if (activityError) {
+        console.error('Failed to log email activity:', activityError);
+        // Don't throw - email was sent successfully, just activity logging failed
+      } else {
+        console.log('Email activity logged successfully');
+      }
+    }
+
     console.log('Email sent successfully:', gmailData.id);
 
     return new Response(
