@@ -9,10 +9,6 @@ export interface StageInterviewerAssignment {
   assignment_type: 'required' | 'optional' | 'backup'
   created_at: string
   updated_at: string
-  member_name: string
-  member_email: string
-  member_role: string
-  user_id: string | null
 }
 
 export function useStageInterviewerAssignments(jhsId?: string) {
@@ -26,34 +22,13 @@ export function useStageInterviewerAssignments(jhsId?: string) {
       
       const { data, error } = await supabase
         .from('stage_interviewer_assignments')
-        .select(`
-          id,
-          job_hiring_stage_id,
-          member_id,
-          assignment_type,
-          created_at,
-          updated_at,
-          members!inner(
-            id,
-            user_id,
-            user_first_name,
-            user_last_name,
-            user_email,
-            member_role
-          )
-        `)
+        .select('id, job_hiring_stage_id, member_id, assignment_type, created_at, updated_at')
         .eq('job_hiring_stage_id', jhsId)
         .order('created_at', { ascending: true })
       
       if (error) throw error
       
-      return data.map((item: any) => ({
-        ...item,
-        member_name: `${item.members.user_first_name || ''} ${item.members.user_last_name || ''}`.trim() || 'Unnamed',
-        member_email: item.members.user_email || 'No email',
-        member_role: item.members.member_role,
-        user_id: item.members.user_id
-      })) as StageInterviewerAssignment[]
+      return data as StageInterviewerAssignment[]
     },
     enabled: !!jhsId
   })

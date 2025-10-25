@@ -21,8 +21,22 @@ export function TeamTab({ jhsId, jobId, organizationId }: TeamTabProps) {
   const [selectedType, setSelectedType] = useState<'required' | 'optional' | 'backup'>('required')
   const [orgTree, setOrgTree] = useState<string[]>([organizationId])
   
-  const { interviewers, isLoading, addInterviewer, removeInterviewer, updateAssignmentType } = 
+  const { interviewers: rawInterviewers, isLoading, addInterviewer, removeInterviewer, updateAssignmentType } = 
     useStageInterviewerAssignments(jhsId)
+  
+  // Enrich interviewers with member details from useMembers
+  const interviewers = rawInterviewers.map(assignment => {
+    const member = members.find(m => m.id === assignment.member_id)
+    return {
+      ...assignment,
+      member_name: member 
+        ? `${member.user_first_name || ''} ${member.user_last_name || ''}`.trim() || member.user_email || 'Unnamed'
+        : 'Unknown User',
+      member_email: member?.user_email || 'No email',
+      member_role: member?.member_role || 'Unknown',
+      user_id: member?.user_id || null
+    }
+  })
   const { members } = useMembers()
   const { assignments } = useJobAssignments(jobId)
   
