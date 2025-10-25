@@ -2837,6 +2837,7 @@ export type Database = {
         Args: { tenant_id_param: string }
         Returns: number
       }
+      get_user_email: { Args: never; Returns: string }
       get_user_member_data: {
         Args: never
         Returns: {
@@ -2845,12 +2846,19 @@ export type Database = {
           user_type: string
         }[]
       }
-      get_user_org_hierarchy: {
-        Args: never
-        Returns: {
-          org_id: string
-        }[]
-      }
+      get_user_org_hierarchy:
+        | {
+            Args: never
+            Returns: {
+              org_id: string
+            }[]
+          }
+        | {
+            Args: { root_org_id: string }
+            Returns: {
+              id: string
+            }[]
+          }
       get_user_organization_id: { Args: never; Returns: string }
       get_user_tenant_id: { Args: never; Returns: string }
       get_user_type: { Args: never; Returns: string }
