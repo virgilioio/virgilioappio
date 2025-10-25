@@ -44,6 +44,8 @@ export function EmailComposer({ candidateId, jobId, defaultTo, onSuccess, embedd
   const sendEmail = useSendEmail();
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [bodyHtml, setBodyHtml] = useState('');
+  const [showCC, setShowCC] = useState(false);
+  const [showBCC, setShowBCC] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const activeIdentities = identities.filter(id => id.is_active);
@@ -145,6 +147,8 @@ export function EmailComposer({ candidateId, jobId, defaultTo, onSuccess, embedd
       // Reset form
       setBodyHtml('');
       setAttachments([]);
+      setShowCC(false);
+      setShowBCC(false);
       setValue('subject', '');
       setValue('cc', '');
       setValue('bcc', '');
@@ -227,27 +231,79 @@ export function EmailComposer({ candidateId, jobId, defaultTo, onSuccess, embedd
             {errors.to && (
               <p className="text-sm text-destructive">{errors.to.message}</p>
             )}
+            
+            {/* CC/BCC Toggle Links */}
+            <div className="flex gap-3 text-xs">
+              {!showCC && (
+                <button
+                  type="button"
+                  onClick={() => setShowCC(true)}
+                  className="text-text-tertiary hover:text-text-primary transition-colors underline"
+                >
+                  Add CC
+                </button>
+              )}
+              {!showBCC && (
+                <button
+                  type="button"
+                  onClick={() => setShowBCC(true)}
+                  className="text-text-tertiary hover:text-text-primary transition-colors underline"
+                >
+                  Add BCC
+                </button>
+              )}
+            </div>
           </div>
 
-          {/* CC */}
-          <div className="space-y-2">
-            <Label htmlFor="cc">CC (optional)</Label>
-            <Input
-              id="cc"
-              {...register('cc')}
-              placeholder="cc@example.com"
-            />
-          </div>
+          {/* CC - Conditional */}
+          {showCC && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="cc">CC</Label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCC(false);
+                    setValue('cc', '');
+                  }}
+                  className="text-text-tertiary hover:text-destructive transition-colors"
+                  title="Remove CC field"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+              <Input
+                id="cc"
+                {...register('cc')}
+                placeholder="cc@example.com"
+              />
+            </div>
+          )}
 
-          {/* BCC */}
-          <div className="space-y-2">
-            <Label htmlFor="bcc">BCC (optional)</Label>
-            <Input
-              id="bcc"
-              {...register('bcc')}
-              placeholder="bcc@example.com"
-            />
-          </div>
+          {/* BCC - Conditional */}
+          {showBCC && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="bcc">BCC</Label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowBCC(false);
+                    setValue('bcc', '');
+                  }}
+                  className="text-text-tertiary hover:text-destructive transition-colors"
+                  title="Remove BCC field"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+              <Input
+                id="bcc"
+                {...register('bcc')}
+                placeholder="bcc@example.com"
+              />
+            </div>
+          )}
 
           {/* Subject */}
           <div className="space-y-2">
