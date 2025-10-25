@@ -828,13 +828,41 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                                <div className="text-sm text-text-secondary">No summary available.</div>
                              )}
                            </CardContent>
-                         </Card>
+                          </Card>
 
-                       </>
-                     ) : (
-                       <></>
-                     )}
-                  </div>
+                          {/* URLs */}
+                          {independentCandidateId || candidateId ? (
+                            <CandidateUrls candidateId={independentCandidateId || candidateId!} />
+                          ) : (
+                            <Card className="bg-surface-primary border-border">
+                              <CardHeader>
+                                <CardTitle className="text-lg">URLs</CardTitle>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="text-sm text-text-secondary">No candidate data available.</div>
+                              </CardContent>
+                            </Card>
+                          )}
+
+                          {/* Attachments */}
+                          {independentCandidateId || candidateId ? (
+                            <CandidateAttachments candidateId={independentCandidateId || candidateId!} />
+                          ) : (
+                            <Card className="bg-surface-primary border-border">
+                              <CardHeader>
+                                <CardTitle className="text-lg">Attachments</CardTitle>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="text-sm text-text-secondary">No candidate data available.</div>
+                              </CardContent>
+                            </Card>
+                          )}
+
+                        </>
+                      ) : (
+                        <></>
+                      )}
+                   </div>
 
                    {/* Right column (1x) */}
                    <div className="space-y-6">
@@ -893,43 +921,15 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                        </Card>
                      )}
 
-                     {/* Job Information */}
-                     <Card className="bg-surface-primary border-border">
-                       <CardHeader>
-                         <CardTitle className="text-lg">Job Information</CardTitle>
-                       </CardHeader>
-                       <CardContent>
-                         <div className="text-sm text-text-primary">{job?.title || '—'}</div>
-                       </CardContent>
-                     </Card>
-
-                     {/* URLs */}
-                     {independentCandidateId || candidateId ? (
-                       <CandidateUrls candidateId={independentCandidateId || candidateId!} />
-                     ) : (
-                       <Card className="bg-surface-primary border-border">
-                         <CardHeader>
-                           <CardTitle className="text-lg">URLs</CardTitle>
-                         </CardHeader>
-                         <CardContent>
-                           <div className="text-sm text-text-secondary">No candidate data available.</div>
-                         </CardContent>
-                       </Card>
-                     )}
-
-                     {/* Attachments */}
-                     {independentCandidateId || candidateId ? (
-                       <CandidateAttachments candidateId={independentCandidateId || candidateId!} />
-                     ) : (
-                       <Card className="bg-surface-primary border-border">
-                         <CardHeader>
-                           <CardTitle className="text-lg">Attachments</CardTitle>
-                         </CardHeader>
-                         <CardContent>
-                           <div className="text-sm text-text-secondary">No candidate data available.</div>
-                         </CardContent>
-                       </Card>
-                     )}
+                      {/* Job Information */}
+                      <Card className="bg-surface-primary border-border">
+                        <CardHeader>
+                          <CardTitle className="text-lg">Job Information</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="text-sm text-text-primary">{job?.title || '—'}</div>
+                        </CardContent>
+                      </Card>
                   </div>
                 </div>
               </Tabs>
