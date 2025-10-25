@@ -415,9 +415,9 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                                   variant="outline"
                                   size="sm"
                                   onClick={() => setEmailComposerOpen(true)}
-                                  title="Send Email"
                                 >
-                                  <Send className="h-4 w-4" />
+                                  <Send className="h-4 w-4 mr-2" />
+                                  Send Email
                                 </Button>
                               </div>
 
@@ -429,17 +429,17 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                                   variant="outline"
                                   size="sm"
                                   onClick={() => setEditOpen(true)}
-                                  title="Edit candidate"
                                 >
-                                  <Edit className="h-4 w-4" />
+                                  <Edit className="h-4 w-4 mr-2" />
+                                  Edit
                                 </Button>
                                 <Button
                                   variant="outline"
                                   size="sm"
                                   onClick={() => generateCandidatePdf({ candidate, job })}
-                                  title="Download PDF"
                                 >
-                                  <Download className="h-4 w-4" />
+                                  <Download className="h-4 w-4 mr-2" />
+                                  Download
                                 </Button>
                               </div>
 
@@ -459,18 +459,18 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                                   variant="outline"
                                   size="sm"
                                   onClick={handleMoveToOffer}
-                                  title="Move to Offer"
                                 >
-                                  <MoveRight className="h-4 w-4" />
+                                  <MoveRight className="h-4 w-4 mr-2" />
+                                  Move to Offer
                                 </Button>
                                 {jobCandidateId && associationStatus === 'offer' && (
                                   <Link to={`/jobs/${jobId}/candidates/${jobCandidateId}`}>
                                     <Button
                                       variant="outline"
                                       size="sm"
-                                      title="Create Offer Letter"
                                     >
-                                      <FileText className="h-4 w-4" />
+                                      <FileText className="h-4 w-4 mr-2" />
+                                      Create Offer
                                     </Button>
                                   </Link>
                                 )}
