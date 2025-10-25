@@ -120,11 +120,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     try {
-      // Set organization in JWT metadata
-      const { error: setOrgError } = await supabase.functions.invoke('set-current-organization', {
+      // Set organization in JWT metadata with timeout
+      const setOrgPromise = supabase.functions.invoke('set-current-organization', {
         body: { organizationId }
       });
-
+      
+      const timeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Set org timeout')), 8000)
+      );
+      
+      const { error: setOrgError } = await Promise.race([setOrgPromise, timeout]) as any;
+      
       if (setOrgError) {
         throw new Error(`Failed to set organization: ${setOrgError.message}`);
       }

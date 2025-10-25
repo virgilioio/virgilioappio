@@ -84,17 +84,38 @@ export function Header() {
 
   const switchWorkspace = async (orgId: string) => {
     try {
-      const { error } = await supabase.functions.invoke('set-current-organization', {
+      // Add 8 second timeout
+      const switchPromise = supabase.functions.invoke('set-current-organization', {
         body: { organizationId: orgId }
-      })
-      if (error) throw error
+      });
+      
+      const timeout = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Switch timeout')), 8000)
+      );
+      
+      const { error } = await Promise.race([switchPromise, timeout]) as any;
+      if (error) throw error;
+      
       // Refresh the auth session so updated user_metadata is available immediately
       await supabase.auth.refreshSession()
       toast({ title: 'Workspace switched', description: 'Reloading your data...' })
       window.location.reload()
     } catch (e) {
-      console.error('Failed to switch workspace', e)
-      toast({ title: 'Failed to switch', description: 'Please try again or contact support.', variant: 'destructive' })
+      console.error('[Workspace Switch] Failed:', e);
+      if (e instanceof Error && e.message.includes('timeout')) {
+        console.error('[Workspace Switch] Edge function timeout after 8s');
+        toast({ 
+          title: 'Switch timeout', 
+          description: 'The operation took too long. Please try again.',
+          variant: 'destructive'
+        })
+      } else {
+        toast({ 
+          title: 'Failed to switch', 
+          description: 'Please try again or contact support.', 
+          variant: 'destructive' 
+        })
+      }
     }
   }
 

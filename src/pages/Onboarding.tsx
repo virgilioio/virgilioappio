@@ -72,13 +72,28 @@ export default function Onboarding() {
       const workspaceId = (data as any)?.workspaceId
       if (!workspaceId) throw new Error('Provisioning failed: no workspace id')
 
-      // Step 2: Set organization context
+      // Step 2: Set organization context (non-blocking fallback)
       setProvisioningStatus('configuring')
       
-      const { error: setOrgErr } = await supabase.functions.invoke('set-current-organization', {
-        body: { organizationId: workspaceId },
-      })
-      if (setOrgErr) throw setOrgErr
+      try {
+        const setOrgPromise = supabase.functions.invoke('set-current-organization', {
+          body: { organizationId: workspaceId },
+        });
+        
+        // Wait max 8 seconds
+        const timeout = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Set org timeout')), 8000)
+        );
+        
+        const { error: setOrgErr } = await Promise.race([setOrgPromise, timeout]) as any;
+        if (setOrgErr) {
+          console.warn('[Onboarding] Set org failed, will retry in background:', setOrgErr);
+          // Don't throw - continue with refresh which will set context via RPC
+        }
+      } catch (err) {
+        console.warn('[Onboarding] Set org timeout, continuing:', err);
+        // Non-fatal - the refreshOrgContext below will handle it
+      }
 
       // Step 3: Refresh and wait for full propagation
       setProvisioningStatus('finalizing')
