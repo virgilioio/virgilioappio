@@ -451,6 +451,14 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                                 />
                               )}
                               <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={handleMoveToOffer}
+                                title="Move to Offer"
+                              >
+                                <MoveRight className="h-4 w-4" />
+                              </Button>
+                              <Button
                                 variant="default"
                                 size="icon"
                                 className="aspect-square rounded-md"
@@ -812,10 +820,6 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                               </Button>
                             </Link>
                           )}
-                          <Button variant="outline" className="w-full gap-sm" onClick={handleMoveToOffer}>
-                            <MoveRight className="h-4 w-4" />
-                            Move to Offer
-                          </Button>
                         </>
                       </CardContent>
                     </Card>
