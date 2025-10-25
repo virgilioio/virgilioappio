@@ -240,7 +240,7 @@ export function EmailComposer({ candidateId, jobId, defaultTo, onSuccess, embedd
                   onClick={() => setShowCC(true)}
                   className="text-text-tertiary hover:text-text-primary transition-colors underline"
                 >
-                  Add CC
+                  CC
                 </button>
               )}
               {!showBCC && (
@@ -249,7 +249,7 @@ export function EmailComposer({ candidateId, jobId, defaultTo, onSuccess, embedd
                   onClick={() => setShowBCC(true)}
                   className="text-text-tertiary hover:text-text-primary transition-colors underline"
                 >
-                  Add BCC
+                  BCC
                 </button>
               )}
             </div>
