@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useOrgContext } from '@/contexts/OrgContext';
 
 export interface MailIdentity {
   id: string;
@@ -18,18 +19,25 @@ export interface MailIdentity {
 
 export function useMailIdentities() {
   const queryClient = useQueryClient();
+  const { organizationId, hasOrganizationContext } = useOrgContext();
 
   const { data: identities, isLoading } = useQuery({
-    queryKey: ['mail-identities'],
+    queryKey: ['mail-identities', organizationId],
     queryFn: async () => {
+      if (!hasOrganizationContext || !organizationId) {
+        return [];
+      }
+
       const { data, error } = await supabase
         .from('user_mail_identities')
         .select('*')
+        .eq('organization_id', organizationId)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
       return data as MailIdentity[];
     },
+    enabled: hasOrganizationContext && !!organizationId,
   });
 
   const connectGmail = useMutation({
