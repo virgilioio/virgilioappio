@@ -313,6 +313,70 @@ export type Database = {
         }
         Relationships: []
       }
+      automation_email_queue: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          id: string
+          job_candidate_association_id: string
+          occurrence_number: number | null
+          parent_queue_id: string | null
+          scheduled_for: string
+          sent_at: string | null
+          stage_automation_email_id: string
+          status: Database["public"]["Enums"]["queue_status"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          job_candidate_association_id: string
+          occurrence_number?: number | null
+          parent_queue_id?: string | null
+          scheduled_for: string
+          sent_at?: string | null
+          stage_automation_email_id: string
+          status?: Database["public"]["Enums"]["queue_status"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          job_candidate_association_id?: string
+          occurrence_number?: number | null
+          parent_queue_id?: string | null
+          scheduled_for?: string
+          sent_at?: string | null
+          stage_automation_email_id?: string
+          status?: Database["public"]["Enums"]["queue_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_email_queue_job_candidate_association_id_fkey"
+            columns: ["job_candidate_association_id"]
+            isOneToOne: false
+            referencedRelation: "job_candidate_associations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "automation_email_queue_parent_queue_id_fkey"
+            columns: ["parent_queue_id"]
+            isOneToOne: false
+            referencedRelation: "automation_email_queue"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "automation_email_queue_stage_automation_email_id_fkey"
+            columns: ["stage_automation_email_id"]
+            isOneToOne: false
+            referencedRelation: "stage_automation_emails"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       candidate_application_limits: {
         Row: {
           applied_at: string
@@ -2229,6 +2293,128 @@ export type Database = {
         }
         Relationships: []
       }
+      stage_automation_emails: {
+        Row: {
+          body: string
+          created_at: string
+          custom_recipients: string[] | null
+          delay_unit: Database["public"]["Enums"]["delay_unit"] | null
+          delay_value: number | null
+          email_template_id: string | null
+          from_email: string
+          id: string
+          is_recurring: boolean
+          max_occurrences: number | null
+          recurrence_interval_unit:
+            | Database["public"]["Enums"]["delay_unit"]
+            | null
+          recurrence_interval_value: number | null
+          send_to: Database["public"]["Enums"]["email_send_to"]
+          sequence_order: number
+          stage_automation_id: string
+          subject: string
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          custom_recipients?: string[] | null
+          delay_unit?: Database["public"]["Enums"]["delay_unit"] | null
+          delay_value?: number | null
+          email_template_id?: string | null
+          from_email: string
+          id?: string
+          is_recurring?: boolean
+          max_occurrences?: number | null
+          recurrence_interval_unit?:
+            | Database["public"]["Enums"]["delay_unit"]
+            | null
+          recurrence_interval_value?: number | null
+          send_to: Database["public"]["Enums"]["email_send_to"]
+          sequence_order?: number
+          stage_automation_id: string
+          subject: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          custom_recipients?: string[] | null
+          delay_unit?: Database["public"]["Enums"]["delay_unit"] | null
+          delay_value?: number | null
+          email_template_id?: string | null
+          from_email?: string
+          id?: string
+          is_recurring?: boolean
+          max_occurrences?: number | null
+          recurrence_interval_unit?:
+            | Database["public"]["Enums"]["delay_unit"]
+            | null
+          recurrence_interval_value?: number | null
+          send_to?: Database["public"]["Enums"]["email_send_to"]
+          sequence_order?: number
+          stage_automation_id?: string
+          subject?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stage_automation_emails_email_template_id_fkey"
+            columns: ["email_template_id"]
+            isOneToOne: false
+            referencedRelation: "email_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stage_automation_emails_stage_automation_id_fkey"
+            columns: ["stage_automation_id"]
+            isOneToOne: false
+            referencedRelation: "stage_automations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stage_automations: {
+        Row: {
+          automation_type: Database["public"]["Enums"]["automation_type"]
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          job_hiring_stage_id: string
+          trigger_event: Database["public"]["Enums"]["trigger_event_type"]
+          updated_at: string
+        }
+        Insert: {
+          automation_type: Database["public"]["Enums"]["automation_type"]
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          job_hiring_stage_id: string
+          trigger_event: Database["public"]["Enums"]["trigger_event_type"]
+          updated_at?: string
+        }
+        Update: {
+          automation_type?: Database["public"]["Enums"]["automation_type"]
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          job_hiring_stage_id?: string
+          trigger_event?: Database["public"]["Enums"]["trigger_event_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stage_automations_job_hiring_stage_id_fkey"
+            columns: ["job_hiring_stage_id"]
+            isOneToOne: false
+            referencedRelation: "job_hiring_stages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stage_interviewer_assignments: {
         Row: {
           assignment_type: string | null
@@ -2972,6 +3158,10 @@ export type Database = {
           success: boolean
         }[]
       }
+      should_stop_automation: {
+        Args: { p_jca_id: string; p_job_id: string }
+        Returns: boolean
+      }
       soft_delete_job_stage: {
         Args: { stage_id_param: string }
         Returns: undefined
@@ -3039,6 +3229,7 @@ export type Database = {
         | "candidate_attachment_uploaded"
         | "candidate_profile_updated"
       application_field_source: "library" | "custom"
+      automation_type: "single_email" | "email_sequence"
       contract_status_enum:
         | "active"
         | "pending"
@@ -3052,6 +3243,8 @@ export type Database = {
         | "fixed_term"
         | "seasonal"
       contractor_payment_type_enum: "fixed_rate" | "hourly_rate" | "per_project"
+      delay_unit: "days" | "weeks"
+      email_send_to: "candidate" | "hiring_team" | "interviewers" | "custom"
       employment_duration_enum: "indefinite" | "definite"
       employment_type_enum:
         | "full_time"
@@ -3085,6 +3278,7 @@ export type Database = {
         | "weekly"
         | "daily"
         | "hourly"
+      queue_status: "pending" | "sent" | "failed" | "cancelled"
       score_rating: "definitely_no" | "no" | "yes" | "strong_yes"
       seniority_level_enum:
         | "entry"
@@ -3105,6 +3299,7 @@ export type Database = {
         | "offer"
         | "onboarding"
         | "custom"
+      trigger_event_type: "on_stage_enter" | "on_stage_exit"
       user_type_enum: "platform_admin" | "workspace_owner" | "member" | "guest"
     }
     CompositeTypes: {
@@ -3257,6 +3452,7 @@ export const Constants = {
         "candidate_profile_updated",
       ],
       application_field_source: ["library", "custom"],
+      automation_type: ["single_email", "email_sequence"],
       contract_status_enum: [
         "active",
         "pending",
@@ -3276,6 +3472,8 @@ export const Constants = {
         "hourly_rate",
         "per_project",
       ],
+      delay_unit: ["days", "weeks"],
+      email_send_to: ["candidate", "hiring_team", "interviewers", "custom"],
       employment_duration_enum: ["indefinite", "definite"],
       employment_type_enum: [
         "full_time",
@@ -3313,6 +3511,7 @@ export const Constants = {
         "daily",
         "hourly",
       ],
+      queue_status: ["pending", "sent", "failed", "cancelled"],
       score_rating: ["definitely_no", "no", "yes", "strong_yes"],
       seniority_level_enum: [
         "entry",
@@ -3335,6 +3534,7 @@ export const Constants = {
         "onboarding",
         "custom",
       ],
+      trigger_event_type: ["on_stage_enter", "on_stage_exit"],
       user_type_enum: ["platform_admin", "workspace_owner", "member", "guest"],
     },
   },

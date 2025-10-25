@@ -13,6 +13,7 @@ import { Settings, Users, Zap, ClipboardList, Loader2 } from 'lucide-react'
 import { useStageConfiguration, type StageConfiguration } from '@/hooks/useStageConfiguration'
 import { BasicsTab } from './stage-config/BasicsTab'
 import { TeamTab } from './stage-config/TeamTab'
+import { AutomationsTab } from './stage-config/AutomationsTab'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
 
@@ -92,10 +93,9 @@ export function StageConfigSheet({ open, onOpenChange, jhsId, jobId }: StageConf
               <Users className="h-4 w-4 mr-2" />
               Team
             </TabsTrigger>
-            <TabsTrigger value="automations" disabled>
+            <TabsTrigger value="automations">
               <Zap className="h-4 w-4 mr-2" />
               Automations
-              <Badge variant="secondary" className="ml-2 text-xs">Soon</Badge>
             </TabsTrigger>
             <TabsTrigger value="scorecards" disabled>
               <ClipboardList className="h-4 w-4 mr-2" />
@@ -123,7 +123,13 @@ export function StageConfigSheet({ open, onOpenChange, jhsId, jobId }: StageConf
           </TabsContent>
           
           <TabsContent value="automations" className="mt-6">
-            {/* Phase 3 */}
+            {job?.organization_id && jhsId && (
+              <AutomationsTab 
+                jhsId={jhsId} 
+                jobId={jobId}
+                organizationId={job.organization_id}
+              />
+            )}
           </TabsContent>
           
           <TabsContent value="scorecards" className="mt-6">
