@@ -105,11 +105,10 @@ export function useJobs() {
       .select(baseQuery)
       .order('created_at', { ascending: false })
 
-    // Apply database-level filtering for performance
-    // All users (including platform admins) see jobs for their current organization
-    if (organizationId && !isGuest && !isRecruiter) {
-      query = query.eq('organization_id', organizationId)
-    }
+    // RLS policies handle organization filtering:
+    // - Virgilio staff: see all jobs in hierarchy (excluding SaaS)
+    // - Other users: see only their org jobs
+    // Guest/recruiter filtering applied below
 
     const { data: jobsData, error: fetchError } = await query
 
