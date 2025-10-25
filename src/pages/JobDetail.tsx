@@ -577,28 +577,27 @@ export default function JobDetail() {
         )}
 
         {!isMobile && (
-          <div className="mb-2 animate-fade-in">
-            <PageHeader 
-              title={job.title} 
-              compact
-              metrics={[
-                { label: 'Total Candidates', value: totalCandidates },
-                { label: 'Active Candidates', value: activeCount },
-                { label: 'Hired Candidates', value: hiredCount },
-                { label: 'Rejected Candidates', value: rejectedCount }
-              ]}
-            />
-          </div>
-        )}
-
-        {/* Desktop Header with Back and Archive buttons - separate from content */}
-        {!isMobile && (
-          <div className="flex items-center justify-between mb-6">
-            <Button variant="outline" onClick={handleBackToJobs} className="gap-2">
-              <ArrowLeft className="h-4 w-4" />
-              Back to Jobs
-            </Button>
-          </div>
+          <>
+            <div className="mb-4 animate-fade-in">
+              <Button variant="outline" onClick={handleBackToJobs} className="gap-2">
+                <ArrowLeft className="h-4 w-4" />
+                Back to Jobs
+              </Button>
+            </div>
+            
+            <div className="mb-2 animate-fade-in">
+              <PageHeader 
+                title={job.title} 
+                compact
+                metrics={[
+                  { label: 'Total Candidates', value: totalCandidates },
+                  { label: 'Active Candidates', value: activeCount },
+                  { label: 'Hired Candidates', value: hiredCount },
+                  { label: 'Rejected Candidates', value: rejectedCount }
+                ]}
+              />
+            </div>
+          </>
         )}
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
