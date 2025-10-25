@@ -469,7 +469,7 @@ export function useJobs() {
   useEffect(() => {
     if (!userId) return
 
-    console.log('Setting up real-time subscriptions for jobs')
+    console.log('🔄 Setting up real-time subscriptions for jobs')
     
     // Create unique channel names to avoid subscription conflicts
     const channelId = Math.random().toString(36).substr(2, 9)
@@ -485,12 +485,14 @@ export function useJobs() {
           table: 'jobs'
         },
         (payload) => {
-          console.log('Jobs table change detected:', payload)
+          console.log('📡 Real-time job change detected:', payload)
           // Refresh jobs when changes occur
           getJobs()
         }
       )
-      .subscribe()
+      .subscribe((status) => {
+        console.log('📡 Jobs subscription status:', status)
+      })
 
     // Subscribe to job requests changes (to catch when they're approved and jobs are created)
     const jobRequestsChannel = supabase

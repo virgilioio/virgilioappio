@@ -295,6 +295,37 @@ export function useIndependentCandidates() {
     }
   }, [user, organizationId])
 
+  // Add real-time subscription for candidates
+  useEffect(() => {
+    if (!user?.id || !organizationId) return
+
+    console.log('🔄 Setting up real-time subscriptions for candidates')
+    
+    const channel = supabase
+      .channel('candidates-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'candidates',
+          filter: `organization_id=eq.${organizationId}`
+        },
+        (payload) => {
+          console.log('📡 Real-time candidate change detected:', payload)
+          getCandidates() // Refresh the list
+        }
+      )
+      .subscribe((status) => {
+        console.log('📡 Candidates subscription status:', status)
+      })
+
+    return () => {
+      console.log('🔄 Cleaning up candidates subscription')
+      supabase.removeChannel(channel)
+    }
+  }, [user?.id, organizationId])
+
   return {
     candidates,
     isLoading,
