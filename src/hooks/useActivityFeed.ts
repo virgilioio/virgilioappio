@@ -24,21 +24,11 @@ export function useActivityFeed(candidateId?: string, jobId?: string) {
     queryFn: async () => {
       if (!candidateId) return [];
       
-      // Build query to get activities related to this candidate
-      let query = supabase
-        .from('activities')
-        .select('*')
-        .order('created_at', { ascending: false });
-      
-      // Filter by candidate_id in metadata or entity_id
-      query = query.or(`entity_id.eq.${candidateId},metadata->>candidate_id.eq.${candidateId}`);
-      
-      // If jobId is provided, also filter by job_id in metadata
-      if (jobId) {
-        query = query.eq('metadata->>job_id', jobId);
-      }
-      
-      const { data, error } = await query;
+      // Call the secure database function to get activities
+      const { data, error } = await supabase.rpc('get_candidate_activities', {
+        p_candidate_id: candidateId,
+        p_job_id: jobId || null,
+      });
       
       if (error) throw error;
       

@@ -2778,6 +2778,21 @@ export type Database = {
           updated_at: string
         }[]
       }
+      get_candidate_activities: {
+        Args: { p_candidate_id: string; p_job_id?: string }
+        Returns: {
+          activity_type: Database["public"]["Enums"]["activity_type"]
+          created_at: string
+          description: string
+          entity_id: string
+          entity_type: string
+          id: string
+          metadata: Json
+          organization_id: string
+          title: string
+          user_id: string
+        }[]
+      }
       get_feature_flag: { Args: { flag_name_param: string }; Returns: boolean }
       get_invite_expiry: { Args: never; Returns: string }
       get_member_display_info: {
