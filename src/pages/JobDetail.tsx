@@ -966,6 +966,8 @@ export default function JobDetail() {
                 currentTab={activeTab}
                 onTabChange={setActiveTab}
                 jobTitle={job.title}
+                candidates={allAssociatedCandidates}
+                onCandidateClick={(candidateId) => openProfileInPlace(candidateId, 'pipeline', allAssociatedCandidates)}
               />
               
               {/* Main content */}
