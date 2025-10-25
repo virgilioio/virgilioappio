@@ -407,10 +407,8 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                    <div className="space-y-6">
                      {/* Controls Card */}
                      <Card className="bg-surface-primary border-border">
-                       <CardContent className="p-4">
-                          <div className="flex items-center justify-between">
-                            <h3 className="text-sm font-medium text-text-secondary">Actions</h3>
-                              <div className="flex items-center gap-2">
+                        <CardContent className="p-4">
+                           <div className="flex items-center justify-between w-full">
                               {/* Group 1: Communication Actions */}
                               <div className="flex items-center gap-2">
                                 <Button
@@ -516,8 +514,7 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                                   </Button>
                                 )}
                               </div>
-                            </div>
-                          </div>
+                           </div>
                        </CardContent>
                      </Card>
 
