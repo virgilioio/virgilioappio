@@ -106,11 +106,8 @@ export function useJobs() {
       .order('created_at', { ascending: false })
 
     // Apply database-level filtering for performance
-    if (userType === 'platform_admin') {
-      // Platform admins see all jobs
-      console.log('Platform admin - showing all jobs')
-    } else if (organizationId && !isGuest && !isRecruiter) {
-      // Regular organization members see their organization's jobs
+    // All users (including platform admins) see jobs for their current organization
+    if (organizationId && !isGuest && !isRecruiter) {
       query = query.eq('organization_id', organizationId)
     }
 
@@ -126,7 +123,7 @@ export function useJobs() {
     let filteredJobs = jobsData || []
 
     // Apply role-based filtering for guest and recruiter users
-    if (userType !== 'platform_admin' && (isGuest || isRecruiter)) {
+    if (isGuest || isRecruiter) {
       // Get job assignments for this user (already optimized with indexes)
       const { data: jobAssignments } = await supabase
         .from('job_assignments')
