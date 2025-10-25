@@ -971,7 +971,38 @@ export default function JobDetail() {
               {/* Main content */}
               <div className="flex-1 min-h-0 min-w-0 flex flex-col">
                 <TabsContent value="candidates">
-...
+                  <div className="space-y-6">
+                    <SalaryInsightsCard 
+                      candidates={allAssociatedCandidates.length ? allAssociatedCandidates : applicationReviewCandidates}
+                      jobCurrency={job.currency || 'USD'}
+                    />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                      <Card>
+                        <CardHeader className="pb-2">
+                          <div className="text-sm text-text-secondary">Active Candidates</div>
+                          <div className="text-3xl font-semibold text-text-primary">{activeCount}</div>
+                        </CardHeader>
+                      </Card>
+                      <Card>
+                        <CardHeader className="pb-2">
+                          <div className="text-sm text-text-secondary">Offers</div>
+                          <div className="text-3xl font-semibold text-text-primary">{offerCount}</div>
+                        </CardHeader>
+                      </Card>
+                      <Card>
+                        <CardHeader className="pb-2">
+                          <div className="text-sm text-text-secondary">Hired</div>
+                          <div className="text-3xl font-semibold text-text-primary">{hiredCount}</div>
+                        </CardHeader>
+                      </Card>
+                      <Card>
+                        <CardHeader className="pb-2">
+                          <div className="text-sm text-text-secondary">Rejected</div>
+                          <div className="text-3xl font-semibold text-text-primary">{rejectedCount}</div>
+                        </CardHeader>
+                      </Card>
+                    </div>
+                  </div>
                 </TabsContent>
                 
                 {/* All Candidates Tab */}
