@@ -2845,6 +2845,12 @@ export type Database = {
           user_type: string
         }[]
       }
+      get_user_org_hierarchy: {
+        Args: never
+        Returns: {
+          org_id: string
+        }[]
+      }
       get_user_organization_id: { Args: never; Returns: string }
       get_user_tenant_id: { Args: never; Returns: string }
       get_user_type: { Args: never; Returns: string }
