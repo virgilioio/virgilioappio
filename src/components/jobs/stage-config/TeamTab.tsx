@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useStageInterviewerAssignments } from '@/hooks/useStageInterviewerAssignments'
 import { useMembers } from '@/hooks/useMembers'
 import { useJobAssignments } from '@/hooks/useJobAssignments'
+import { getOrganizationTree } from '@/lib/organizationHelpers'
 import { User, UserPlus, Users, Trash2, Info, Loader2 } from 'lucide-react'
 
 interface TeamTabProps {
@@ -18,6 +19,7 @@ interface TeamTabProps {
 export function TeamTab({ jhsId, jobId, organizationId }: TeamTabProps) {
   const [selectedMemberId, setSelectedMemberId] = useState('')
   const [selectedType, setSelectedType] = useState<'required' | 'optional' | 'backup'>('required')
+  const [orgTree, setOrgTree] = useState<string[]>([organizationId])
   
   const { interviewers, isLoading, addInterviewer, removeInterviewer, updateAssignmentType } = 
     useStageInterviewerAssignments(jhsId)
@@ -27,12 +29,21 @@ export function TeamTab({ jhsId, jobId, organizationId }: TeamTabProps) {
   // Build sets for quick lookups
   const assignedMemberIds = new Set(interviewers.map(i => i.member_id))
   const jobAssignedUserIds = new Set(assignments.map(a => a.user_id))
+
+  // Fetch organization tree on mount
+  useEffect(() => {
+    async function loadOrgTree() {
+      const tree = await getOrganizationTree(organizationId)
+      setOrgTree(tree)
+    }
+    loadOrgTree()
+  }, [organizationId])
   
-  // Filter members: only active members from this org, not already stage interviewers
+  // Filter members: only active members from org tree, not already stage interviewers
   const availableMembers = members.filter(m => 
     m.user_id && 
     m.user_status === 'active' &&
-    m.organization_id === organizationId &&
+    orgTree.includes(m.organization_id) &&
     !assignedMemberIds.has(m.id)
   )
   
@@ -92,17 +103,18 @@ export function TeamTab({ jhsId, jobId, organizationId }: TeamTabProps) {
           <div className="space-y-2">
             <Label htmlFor="member-select">Select Team Member</Label>
             <SearchableSelect
-              options={availableMembers.map(m => {
-                const name = `${m.user_first_name || ''} ${m.user_last_name || ''}`.trim() || m.user_email || 'Unnamed'
-                const isOnJobTeam = m.user_id ? jobAssignedUserIds.has(m.user_id) : false
-                
-                return {
-                  value: m.id,
-                  label: name,
-                  badge: isOnJobTeam ? 'On Job Team' : 'Will be added to team',
-                  badgeVariant: isOnJobTeam ? 'secondary' : 'default'
-                }
-              })}
+                options={availableMembers.map(m => {
+                  const name = `${m.user_first_name || ''} ${m.user_last_name || ''}`.trim() || m.user_email || 'Unnamed'
+                  const isOnJobTeam = m.user_id ? jobAssignedUserIds.has(m.user_id) : false
+                  const isSameOrg = m.organization_id === organizationId
+                  
+                  return {
+                    value: m.id,
+                    label: isSameOrg ? name : `${name} (${m.organization_name || 'Other org'})`,
+                    badge: isOnJobTeam ? 'On Job Team' : 'Will be added to team',
+                    badgeVariant: isOnJobTeam ? 'secondary' : 'default'
+                  }
+                })}
               value={selectedMemberId}
               onValueChange={setSelectedMemberId}
               placeholder="Search for a team member..."
