@@ -10,9 +10,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useMailIdentities } from '@/hooks/useMailIdentities';
 import { useSendEmail, SendEmailRequest } from '@/hooks/useSendEmail';
+import { useEmailTemplates } from '@/hooks/useEmailTemplates';
 import { Paperclip, X, Send, Mail } from 'lucide-react';
 import { toast } from 'sonner';
 import { Link } from 'react-router-dom';
+import { Badge } from '@/components/ui/badge';
 
 const emailSchema = z.object({
   from_email: z.string().email('Invalid email address'),
@@ -41,11 +43,13 @@ interface Attachment {
 
 export function EmailComposer({ candidateId, jobId, defaultTo, onSuccess, embedded = false }: EmailComposerProps) {
   const { identities, isLoading: loadingIdentities } = useMailIdentities();
+  const { templates, isLoading: loadingTemplates } = useEmailTemplates('organization');
   const sendEmail = useSendEmail();
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [bodyHtml, setBodyHtml] = useState('');
   const [showCC, setShowCC] = useState(false);
   const [showBCC, setShowBCC] = useState(false);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const activeIdentities = identities.filter(id => id.is_active);
@@ -149,6 +153,7 @@ export function EmailComposer({ candidateId, jobId, defaultTo, onSuccess, embedd
       setAttachments([]);
       setShowCC(false);
       setShowBCC(false);
+      setSelectedTemplateId(null);
       setValue('subject', '');
       setValue('cc', '');
       setValue('bcc', '');
@@ -218,6 +223,51 @@ export function EmailComposer({ candidateId, jobId, defaultTo, onSuccess, embedd
             {errors.from_email && (
               <p className="text-sm text-destructive">{errors.from_email.message}</p>
             )}
+          </div>
+
+          {/* Template Selector */}
+          <div className="space-y-2">
+            <Label htmlFor="template">Email Template (Optional)</Label>
+            <Select
+              value={selectedTemplateId || ''}
+              onValueChange={(value) => {
+                if (value) {
+                  setSelectedTemplateId(value);
+                  const template = templates.find(t => t.id === value);
+                  if (template) {
+                    setValue('subject', template.subject);
+                    setBodyHtml(template.body);
+                    setValue('body_html', template.body);
+                    toast.success('Template applied');
+                  }
+                } else {
+                  setSelectedTemplateId(null);
+                }
+              }}
+              disabled={loadingTemplates}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select a template..." />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">No template</SelectItem>
+                {templates.map((template) => (
+                  <SelectItem key={template.id} value={template.id}>
+                    <div className="flex items-center gap-2">
+                      <span>{template.name}</span>
+                      {template.source === 'platform' && (
+                        <Badge variant="outline" className="text-xs">
+                          Platform
+                        </Badge>
+                      )}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Templates can include placeholders like {'{{'}candidate.name{'}}'}
+            </p>
           </div>
 
           {/* To */}
