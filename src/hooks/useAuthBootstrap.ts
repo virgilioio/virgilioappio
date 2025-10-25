@@ -8,6 +8,8 @@ import { log } from '@/lib/logger';
 import { toast } from '@/hooks/use-toast';
 import { debounce } from '@/utils/debounce';
 
+const VIRGILIO_ORG_ID = '5ba7b145-f251-4b18-8900-724cb06028ab';
+
 interface OrgContext {
   organizationId: string | null;
   role: string | null;
@@ -110,11 +112,51 @@ export function useAuthBootstrap(): AuthBootstrapReturn {
         role: resolved?.role,
       });
 
+      // Force Virgilio organization context for Virgilio staff
+      let finalOrgId = resolved?.organizationId;
+      let finalRole = resolved?.role;
+      let finalUserType = resolved?.userType;
+
+      if (resolved?.organizationId === VIRGILIO_ORG_ID) {
+        log.info('🏢 Virgilio staff detected - forcing organization context');
+        
+        try {
+          // Set organization in JWT metadata
+          const { error: setOrgError } = await supabase.functions.invoke('set-current-organization', {
+            body: { organizationId: VIRGILIO_ORG_ID }
+          });
+
+          if (setOrgError) {
+            log.error('Failed to set Virgilio organization:', setOrgError);
+          } else {
+            // Refresh session to get updated JWT
+            const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+            
+            if (refreshError) {
+              log.error('Failed to refresh session:', refreshError);
+            } else if (refreshData.session) {
+              log.info('✅ JWT refreshed for Virgilio staff');
+              
+              // Verify JWT metadata in dev mode
+              const { data: { user } } = await supabase.auth.getUser();
+              const jwtOrgId = user?.user_metadata?.organization_id;
+              log.info('🔍 JWT verification:', {
+                expected: VIRGILIO_ORG_ID,
+                actual: jwtOrgId,
+                match: jwtOrgId === VIRGILIO_ORG_ID
+              });
+            }
+          }
+        } catch (error: any) {
+          log.error('Error forcing Virgilio context:', error);
+        }
+      }
+
       const orgContext: OrgContext = resolved
         ? {
-            organizationId: resolved.organizationId,
-            role: resolved.role,
-            userType: resolved.userType,
+            organizationId: finalOrgId,
+            role: finalRole,
+            userType: finalUserType,
           }
         : null;
 
