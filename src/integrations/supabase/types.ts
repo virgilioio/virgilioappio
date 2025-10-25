@@ -2805,6 +2805,12 @@ export type Database = {
       }
       get_member_role: { Args: never; Returns: string }
       get_member_role_safe: { Args: never; Returns: string }
+      get_org_hierarchy: {
+        Args: { root_org_id: string }
+        Returns: {
+          id: string
+        }[]
+      }
       get_pipeline_global_metrics: {
         Args: {
           job_statuses?: string[]
