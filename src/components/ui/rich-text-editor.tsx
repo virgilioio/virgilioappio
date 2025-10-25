@@ -24,27 +24,29 @@ import { sanitizeHtml, sanitizeHtmlForEditor } from '@/utils/htmlSanitizer'
 // Placeholder badge styles - injected into document head
 const PLACEHOLDER_BADGE_STYLES = `
   .placeholder-badge {
-    background-color: hsl(var(--primary) / 0.1);
-    color: hsl(var(--primary));
-    padding: 2px 6px;
-    border-radius: 4px;
+    background-color: rgb(168 85 247 / 0.15);
+    color: rgb(147 51 234);
+    padding: 3px 10px;
+    border-radius: 12px;
     font-weight: 500;
+    font-size: 0.9em;
     display: inline-block;
     margin: 0 2px;
     user-select: none;
     cursor: default;
-    border: 1px solid hsl(var(--primary) / 0.3);
-    font-size: 0.875em;
+    border: 1px solid rgb(168 85 247 / 0.4);
+    white-space: nowrap;
   }
   
   .dark .placeholder-badge {
-    background-color: hsl(var(--primary) / 0.15);
-    color: hsl(var(--primary-foreground));
-    border-color: hsl(var(--primary) / 0.4);
+    background-color: rgb(168 85 247 / 0.2);
+    color: rgb(192 132 252);
+    border-color: rgb(168 85 247 / 0.5);
   }
   
   .placeholder-badge:hover {
-    background-color: hsl(var(--primary) / 0.15);
+    background-color: rgb(168 85 247 / 0.25);
+    border-color: rgb(168 85 247 / 0.6);
   }
 `;
 
