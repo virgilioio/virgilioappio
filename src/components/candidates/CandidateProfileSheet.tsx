@@ -401,9 +401,9 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
               <div className="text-text-secondary text-sm">No data available.</div>
             ) : (
                 <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'job' | 'application' | 'resume' | 'overview')}>
-                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                   {/* Left column (2x) */}
-                   <div className="lg:col-span-2 space-y-6">
+                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                   {/* Left column (50%) */}
+                   <div className="space-y-6">
                      {/* Controls Card */}
                      <Card className="bg-surface-primary border-border">
                        <CardContent className="p-4">
