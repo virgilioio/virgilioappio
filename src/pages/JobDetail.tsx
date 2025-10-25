@@ -564,7 +564,7 @@ export default function JobDetail() {
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
-      <div className="container mx-auto py-2 sm:py-4 lg:py-6 px-4 sm:px-6 lg:px-8">
+      <div className="container mx-auto pt-2 pb-4 sm:pt-3 sm:pb-6 lg:pt-4 lg:pb-8 px-4 sm:px-6 lg:px-8">
         {/* Mobile Header */}
         {isMobile && (
           <div className="mb-6">
