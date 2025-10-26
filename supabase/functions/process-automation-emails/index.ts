@@ -101,9 +101,12 @@ Deno.serve(async (req) => {
           job_id: association.job_id
         };
         
-        // Send email via send-user-email function
+        // Send email via send-user-email function with service role auth
         const { data: sendResult, error: sendError } = await supabase.functions.invoke('send-user-email', {
-          body: emailRequest
+          body: emailRequest,
+          headers: {
+            Authorization: `Bearer ${supabaseServiceKey}`,
+          }
         });
         
         if (sendError) {

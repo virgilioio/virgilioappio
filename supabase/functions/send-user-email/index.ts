@@ -186,15 +186,31 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
-    const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
     
-    const supabase = createClient(supabaseUrl, supabaseKey, {
-      global: { headers: { Authorization: authHeader } },
-    });
+    // Check if request is from service role (automation/cron jobs)
+    const isServiceRole = authHeader.includes(supabaseServiceKey);
+    
+    const supabase = createClient(
+      supabaseUrl, 
+      isServiceRole ? supabaseServiceKey : supabaseAnonKey,
+      {
+        global: { headers: { Authorization: authHeader } },
+      }
+    );
 
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
-      throw new Error('Unauthorized');
+    // For service role calls, we skip user session check
+    // For user calls, we validate the session
+    let user = null;
+    let organizationId = null;
+    
+    if (!isServiceRole) {
+      const { data: { user: authUser }, error: userError } = await supabase.auth.getUser();
+      if (userError || !authUser) {
+        throw new Error('Unauthorized');
+      }
+      user = authUser;
     }
 
     // Parse and validate request
@@ -216,29 +232,57 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    // Get user's organization
-    const { data: memberData, error: memberError } = await supabase
-      .from('members')
-      .select('organization_id')
-      .eq('user_id', user.id)
-      .eq('user_status', 'active')
-      .single();
+    // Get organization and verify from_email
+    let memberData = null;
+    let identity = null;
+    
+    if (isServiceRole) {
+      // For service role: just verify the from_email exists and is active
+      const { data: mailIdentity, error: identityError } = await supabase
+        .from('user_mail_identities')
+        .select('*, members!inner(organization_id, user_id)')
+        .eq('email_address', request.from_email)
+        .eq('is_active', true)
+        .single();
+      
+      if (identityError || !mailIdentity) {
+        throw new Error('From email is not a valid connected identity');
+      }
+      
+      identity = mailIdentity;
+      organizationId = mailIdentity.members.organization_id;
+      user = { id: mailIdentity.members.user_id }; // Set user for logging purposes
+      
+    } else {
+      // For user calls: verify organization and from_email ownership
+      const { data: member, error: memberError } = await supabase
+        .from('members')
+        .select('organization_id')
+        .eq('user_id', user.id)
+        .eq('user_status', 'active')
+        .single();
 
-    if (memberError) {
-      throw new Error('Failed to fetch user organization');
-    }
+      if (memberError) {
+        throw new Error('Failed to fetch user organization');
+      }
+      
+      memberData = member;
+      organizationId = member.organization_id;
 
-    // Verify from_email belongs to user
-    const { data: identity, error: identityError } = await supabase
-      .from('user_mail_identities')
-      .select('*')
-      .eq('user_id', user.id)
-      .eq('email_address', request.from_email)
-      .eq('is_active', true)
-      .single();
+      // Verify from_email belongs to user
+      const { data: mailIdentity, error: identityError } = await supabase
+        .from('user_mail_identities')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('email_address', request.from_email)
+        .eq('is_active', true)
+        .single();
 
-    if (identityError || !identity) {
-      throw new Error('From email is not a connected identity for this user');
+      if (identityError || !mailIdentity) {
+        throw new Error('From email is not a connected identity for this user');
+      }
+      
+      identity = mailIdentity;
     }
 
     // Check if token needs refresh (expires within 5 minutes)
@@ -317,7 +361,7 @@ const handler = async (req: Request): Promise<Response> => {
       // Log failed attempt
       await supabase.from('email_logs').insert({
         user_id: user.id,
-        organization_id: memberData.organization_id,
+        organization_id: organizationId,
         mail_identity_id: identity.id,
         from_address: processedRequest.from_email,
         to_addresses: processedRequest.to,
@@ -342,7 +386,7 @@ const handler = async (req: Request): Promise<Response> => {
       .from('email_logs')
       .insert({
         user_id: user.id,
-        organization_id: memberData.organization_id,
+        organization_id: organizationId,
         mail_identity_id: identity.id,
         from_address: processedRequest.from_email,
         to_addresses: processedRequest.to,
@@ -373,7 +417,7 @@ const handler = async (req: Request): Promise<Response> => {
       
       const { error: activityError } = await supabase.rpc('log_activity', {
         p_user_id: user.id,
-        p_organization_id: memberData.organization_id,
+        p_organization_id: organizationId,
         p_activity_type: 'candidate_email_sent',
         p_title: activityTitle,
         p_description: activityDescription,
