@@ -32,6 +32,16 @@ export function PlaceholderHelper({ templateId }: PlaceholderHelperProps) {
     { key: '{{organization.default_currency}}', description: 'Default currency' }
   ]
 
+  const senderPlaceholders = [
+    { key: '{{sender.name}}', description: 'Your full name' },
+    { key: '{{sender.first_name}}', description: 'Your first name' },
+    { key: '{{sender.last_name}}', description: 'Your last name' },
+    { key: '{{sender.email}}', description: 'Your email address' },
+    { key: '{{sender.title}}', description: 'Your job title' },
+    { key: '{{sender.phone}}', description: 'Your phone number' },
+    { key: '{{sender.linkedin}}', description: 'Your LinkedIn profile URL' }
+  ]
+
   const candidatePlaceholders = [
     { key: '{{candidate.name}}', description: 'Candidate name' },
     { key: '{{candidate.location_city}}', description: 'Candidate city' },
@@ -82,9 +92,9 @@ export function PlaceholderHelper({ templateId }: PlaceholderHelperProps) {
         {placeholders.map((placeholder) => (
           <div
             key={placeholder.key}
-            className="flex items-center justify-between p-2 rounded border border-border hover:bg-muted/50 transition-colors"
+            className="grid grid-cols-[1fr,auto] gap-2 p-2 rounded border border-border hover:bg-muted/50 transition-colors"
           >
-            <div className="flex-1 min-w-0">
+            <div className="min-w-0">
               <code className="text-xs font-mono bg-muted px-1 rounded">
                 {placeholder.key}
               </code>
@@ -95,7 +105,7 @@ export function PlaceholderHelper({ templateId }: PlaceholderHelperProps) {
             <Button
               variant="ghost"
               size="sm"
-              className="h-6 w-6 p-0 ml-2"
+              className="h-6 w-6 p-0 flex-shrink-0"
               onClick={() => copyToClipboard(placeholder.key)}
             >
               <Copy className="h-3 w-3" />
@@ -127,6 +137,12 @@ export function PlaceholderHelper({ templateId }: PlaceholderHelperProps) {
               title="Organization"
               icon={Building}
               placeholders={organizationPlaceholders}
+            />
+
+            <PlaceholderSection
+              title="Sender Information"
+              icon={User}
+              placeholders={senderPlaceholders}
             />
 
             <PlaceholderSection
