@@ -12,6 +12,7 @@ import { useMailIdentities } from '@/hooks/useMailIdentities';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import type { AutomationEmail } from '@/hooks/useStageAutomations';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { PlaceholderHelper } from '@/components/settings/PlaceholderHelper';
 
 interface EmailSequenceBuilderProps {
   emails: Omit<AutomationEmail, 'id' | 'template_name'>[];
@@ -99,8 +100,9 @@ export function EmailSequenceBuilder({
   };
 
   return (
-    <div className="space-y-4">
-      {emails.map((email, index) => {
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="lg:col-span-2 space-y-4">
+        {emails.map((email, index) => {
         const isDisabled = hasRecurringEmail && index > firstRecurringIndex;
         const isExpanded = expandedEmails[index] ?? (isSingleEmail || index === 0);
         const isEmpty = isEmailEmpty(email);
@@ -316,22 +318,27 @@ export function EmailSequenceBuilder({
         );
       })}
       
-      {!isSingleEmail && !hasRecurringEmail && (
-        <Button variant="outline" onClick={addEmail} className="w-full">
-          <Plus className="h-4 w-4 mr-2" />
-          Add Email to Sequence
-        </Button>
-      )}
+        {!isSingleEmail && !hasRecurringEmail && (
+          <Button variant="outline" onClick={addEmail} className="w-full">
+            <Plus className="h-4 w-4 mr-2" />
+            Add Email to Sequence
+          </Button>
+        )}
+        
+        {hasRecurringEmail && (
+          <Alert>
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>
+              Cannot add more emails because Email {firstRecurringIndex + 1} is set to recurring.
+              Disable recurring on that email to add more to the sequence.
+            </AlertDescription>
+          </Alert>
+        )}
+      </div>
       
-      {hasRecurringEmail && (
-        <Alert>
-          <AlertTriangle className="h-4 w-4" />
-          <AlertDescription>
-            Cannot add more emails because Email {firstRecurringIndex + 1} is set to recurring.
-            Disable recurring on that email to add more to the sequence.
-          </AlertDescription>
-        </Alert>
-      )}
+      <div className="lg:col-span-1">
+        <PlaceholderHelper />
+      </div>
     </div>
   );
 }
