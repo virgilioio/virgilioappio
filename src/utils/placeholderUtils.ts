@@ -41,5 +41,10 @@ export const AVAILABLE_PLACEHOLDERS = [
   { value: '{{job.department}}', label: 'Job Department', category: 'Job' },
   { value: '{{job.location}}', label: 'Job Location', category: 'Job' },
   { value: '{{sender.name}}', label: 'Your Name', category: 'Sender' },
+  { value: '{{sender.first_name}}', label: 'Your First Name', category: 'Sender' },
+  { value: '{{sender.last_name}}', label: 'Your Last Name', category: 'Sender' },
   { value: '{{sender.email}}', label: 'Your Email', category: 'Sender' },
+  { value: '{{sender.title}}', label: 'Your Job Title', category: 'Sender' },
+  { value: '{{sender.phone}}', label: 'Your Phone', category: 'Sender' },
+  { value: '{{sender.linkedin}}', label: 'Your LinkedIn URL', category: 'Sender' },
 ];

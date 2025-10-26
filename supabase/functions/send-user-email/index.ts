@@ -164,6 +164,11 @@ async function replacePlaceholders(
     const fullName = [user.first_name, user.last_name].filter(Boolean).join(' ');
     result = result.replace(/\{\{sender\.name\}\}/g, fullName || user.email || '');
     result = result.replace(/\{\{sender\.email\}\}/g, user.email || '');
+    result = result.replace(/\{\{sender\.first_name\}\}/g, user.first_name || '');
+    result = result.replace(/\{\{sender\.last_name\}\}/g, user.last_name || '');
+    result = result.replace(/\{\{sender\.title\}\}/g, user.title || '');
+    result = result.replace(/\{\{sender\.phone\}\}/g, user.phone || '');
+    result = result.replace(/\{\{sender\.linkedin\}\}/g, user.linkedin_url || '');
   }
   
   return result;
