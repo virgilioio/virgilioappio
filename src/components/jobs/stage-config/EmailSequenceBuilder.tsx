@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,7 +9,8 @@ import { Plus, Trash2, AlertTriangle, Repeat, ChevronDown, ChevronRight } from '
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useEmailTemplates } from '@/hooks/useEmailTemplates';
 import { useMailIdentities } from '@/hooks/useMailIdentities';
-import { RichTextEditor } from '@/components/ui/rich-text-editor';
+import { RichTextEditor, type RichTextEditorHandle } from '@/components/ui/rich-text-editor';
+import { PlaceholderInput, type PlaceholderInputHandle } from '@/components/ui/placeholder-input';
 import type { AutomationEmail } from '@/hooks/useStageAutomations';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { PlaceholderHelper } from '@/components/settings/PlaceholderHelper';
@@ -31,9 +32,22 @@ export function EmailSequenceBuilder({
   const { templates } = useEmailTemplates('organization');
   const { identities } = useMailIdentities();
   const [expandedEmails, setExpandedEmails] = useState<Record<number, boolean>>({});
+  const bodyRefs = useRef<(RichTextEditorHandle | null)[]>([]);
+  const subjectRefs = useRef<(PlaceholderInputHandle | null)[]>([]);
   
   const hasRecurringEmail = emails.some(e => e.is_recurring);
   const firstRecurringIndex = emails.findIndex(e => e.is_recurring);
+
+  const handleInsertPlaceholder = (placeholder: string) => {
+    // Find the first expanded email and insert into its body
+    const expandedIndex = Object.entries(expandedEmails).find(([_, isExpanded]) => isExpanded)?.[0];
+    if (expandedIndex !== undefined) {
+      const index = parseInt(expandedIndex);
+      if (bodyRefs.current[index]) {
+        bodyRefs.current[index]?.insertPlaceholder(placeholder);
+      }
+    }
+  };
   
   const addEmail = () => {
     if (hasRecurringEmail) return;
@@ -295,9 +309,10 @@ export function EmailSequenceBuilder({
                       
                       <div className="space-y-2">
                         <Label>Subject</Label>
-                        <Input
+                        <PlaceholderInput
+                          ref={(el) => { subjectRefs.current[index] = el }}
                           value={email.subject}
-                          onChange={(e) => updateEmail(index, { subject: e.target.value })}
+                          onChange={(v) => updateEmail(index, { subject: v })}
                           placeholder="Email subject with {{placeholders}}"
                         />
                       </div>
@@ -305,6 +320,7 @@ export function EmailSequenceBuilder({
                       <div className="space-y-2">
                         <Label>Body</Label>
                         <RichTextEditor
+                          ref={(el) => { bodyRefs.current[index] = el }}
                           value={email.body}
                           onChange={(v) => updateEmail(index, { body: v })}
                         />
@@ -337,7 +353,7 @@ export function EmailSequenceBuilder({
       </div>
       
       <div className="lg:col-span-1">
-        <PlaceholderHelper />
+        <PlaceholderHelper onInsert={handleInsertPlaceholder} />
       </div>
     </div>
   );

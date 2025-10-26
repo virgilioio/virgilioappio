@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,7 +9,8 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet';
-import { RichTextEditor } from '@/components/ui/rich-text-editor';
+import { RichTextEditor, type RichTextEditorHandle } from '@/components/ui/rich-text-editor';
+import { PlaceholderInput, type PlaceholderInputHandle } from '@/components/ui/placeholder-input';
 import { PlaceholderHelper } from '../PlaceholderHelper';
 import { useEmailTemplates } from '@/hooks/useEmailTemplates';
 import { Loader2 } from 'lucide-react';
@@ -34,9 +35,18 @@ export function EmailTemplateSheet({
     body: '',
   });
   const [isSaving, setIsSaving] = useState(false);
+  const subjectRef = useRef<PlaceholderInputHandle>(null);
+  const bodyRef = useRef<RichTextEditorHandle>(null);
 
   const isEditMode = !!templateId;
   const editingTemplate = templates.find(t => t.id === templateId);
+
+  const handleInsertPlaceholder = (placeholder: string) => {
+    // Try to insert into the body editor first (most common use case)
+    if (bodyRef.current) {
+      bodyRef.current.insertPlaceholder(placeholder);
+    }
+  };
 
   useEffect(() => {
     if (isEditMode && editingTemplate) {
@@ -98,10 +108,11 @@ export function EmailTemplateSheet({
 
             <div className="space-y-2">
               <Label htmlFor="subject">Subject Line</Label>
-              <Input
+              <PlaceholderInput
+                ref={subjectRef}
                 id="subject"
                 value={formData.subject}
-                onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+                onChange={(value) => setFormData({ ...formData, subject: value })}
                 placeholder="e.g., Interview Invitation for {{job.title}}"
               />
             </div>
@@ -109,6 +120,7 @@ export function EmailTemplateSheet({
             <div className="space-y-2">
               <Label htmlFor="body">Email Body</Label>
               <RichTextEditor
+                ref={bodyRef}
                 value={formData.body}
                 onChange={(value) => setFormData({ ...formData, body: value })}
                 placeholder="Enter your email template content here. Use placeholders like {{job.title}} or {{candidate.name}}"
@@ -127,7 +139,7 @@ export function EmailTemplateSheet({
           </div>
 
           <div className="lg:col-span-1">
-            <PlaceholderHelper />
+            <PlaceholderHelper onInsert={handleInsertPlaceholder} />
           </div>
         </div>
       </SheetContent>

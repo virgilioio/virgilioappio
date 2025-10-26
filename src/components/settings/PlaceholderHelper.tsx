@@ -3,15 +3,16 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
-import { Copy, Code, User, Building, Briefcase } from 'lucide-react'
+import { CornerDownLeft, Code, User, Building, Briefcase } from 'lucide-react'
 import { useOfferTemplateFields } from '@/hooks/useOfferTemplateFields'
 import { useToast } from '@/hooks/use-toast'
 
 interface PlaceholderHelperProps {
   templateId?: string
+  onInsert?: (placeholder: string) => void
 }
 
-export function PlaceholderHelper({ templateId }: PlaceholderHelperProps) {
+export function PlaceholderHelper({ templateId, onInsert }: PlaceholderHelperProps) {
   const { fields } = useOfferTemplateFields(templateId)
   const { toast } = useToast()
 
@@ -58,19 +59,28 @@ export function PlaceholderHelper({ templateId }: PlaceholderHelperProps) {
     description: field.field_label
   }))
 
-  const copyToClipboard = async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text)
+  const handleAction = async (text: string) => {
+    if (onInsert) {
+      onInsert(text)
       toast({
-        title: 'Copied!',
-        description: 'Placeholder copied to clipboard'
+        title: 'Inserted!',
+        description: 'Placeholder inserted into editor'
       })
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to copy to clipboard',
-        variant: 'destructive'
-      })
+    } else {
+      // Fallback to copy if no onInsert
+      try {
+        await navigator.clipboard.writeText(text)
+        toast({
+          title: 'Copied!',
+          description: 'Placeholder copied to clipboard'
+        })
+      } catch (error) {
+        toast({
+          title: 'Error',
+          description: 'Failed to copy to clipboard',
+          variant: 'destructive'
+        })
+      }
     }
   }
 
@@ -94,11 +104,14 @@ export function PlaceholderHelper({ templateId }: PlaceholderHelperProps) {
             key={placeholder.key}
             className="grid grid-cols-[1fr,auto] gap-2 p-2 rounded border border-border hover:bg-muted/50 transition-colors"
           >
-            <div className="min-w-0">
-              <code className="text-xs font-mono bg-muted px-1 rounded">
+            <div className="min-w-0 flex flex-col gap-1">
+              <Badge 
+                variant="secondary" 
+                className="bg-purple-100 text-purple-700 border border-purple-300 dark:bg-purple-900/20 dark:text-purple-300 dark:border-purple-700 font-mono text-xs w-fit"
+              >
                 {placeholder.key}
-              </code>
-              <p className="text-xs text-muted-foreground mt-1 truncate">
+              </Badge>
+              <p className="text-xs text-muted-foreground truncate">
                 {placeholder.description}
               </p>
             </div>
@@ -106,9 +119,10 @@ export function PlaceholderHelper({ templateId }: PlaceholderHelperProps) {
               variant="ghost"
               size="sm"
               className="h-6 w-6 p-0 flex-shrink-0"
-              onClick={() => copyToClipboard(placeholder.key)}
+              onClick={() => handleAction(placeholder.key)}
+              title={onInsert ? "Insert placeholder" : "Copy placeholder"}
             >
-              <Copy className="h-3 w-3" />
+              <CornerDownLeft className="h-3 w-3" />
             </Button>
           </div>
         ))}

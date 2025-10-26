@@ -1,5 +1,5 @@
 
-import React, { useState, useCallback, useRef, useEffect } from 'react'
+import React, { useState, useCallback, useRef, useEffect, useImperativeHandle, forwardRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Toggle } from '@/components/ui/toggle'
 import { Separator } from '@/components/ui/separator'
@@ -20,6 +20,7 @@ import {
 import { cn } from '@/lib/utils'
 import { saveTextCursorPosition, restoreTextCursorPosition, type TextCursorPosition } from '@/lib/cursorUtils'
 import { sanitizeHtml, sanitizeHtmlForEditor } from '@/utils/htmlSanitizer'
+import { convertPlaceholdersToHtml } from '@/utils/placeholderUtils'
 
 // Placeholder badge styles - injected into document head
 const PLACEHOLDER_BADGE_STYLES = `
@@ -60,15 +61,21 @@ interface RichTextEditorProps {
   onExternalUpdateComplete?: () => void
 }
 
-export function RichTextEditor({ 
-  value, 
-  onChange, 
-  placeholder = "Start typing...", 
-  className,
-  minHeight = "200px",
-  isExternalUpdate = false,
-  onExternalUpdateComplete
-}: RichTextEditorProps) {
+export interface RichTextEditorHandle {
+  insertPlaceholder: (placeholder: string) => void
+}
+
+export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorProps>((props, ref) => {
+  const {
+    value, 
+    onChange, 
+    placeholder = "Start typing...", 
+    className,
+    minHeight = "200px",
+    isExternalUpdate = false,
+    onExternalUpdateComplete
+  } = props
+  
   const [isFocused, setIsFocused] = useState(false)
   const [linkUrl, setLinkUrl] = useState('')
   const [linkText, setLinkText] = useState('')
@@ -230,17 +237,43 @@ export function RichTextEditor({
     setIsLinkPopoverOpen(false)
   }, [linkUrl, linkText, updateContent])
 
+  const processPlaceholders = useCallback((html: string): string => {
+    return convertPlaceholdersToHtml(html)
+  }, [])
+
   const handleInput = useCallback((e: React.FormEvent<HTMLDivElement>) => {
     if (isUpdatingRef.current) return
     
     const target = e.target as HTMLDivElement
-    const newContent = target.innerHTML
+    let newContent = target.innerHTML
+    
+    // Process placeholders
+    const processed = processPlaceholders(newContent)
+    if (processed !== newContent) {
+      // Save cursor position
+      cursorPositionRef.current = saveTextCursorPosition(target)
+      target.innerHTML = processed
+      newContent = processed
+      
+      // Restore cursor position
+      requestAnimationFrame(() => {
+        try {
+          if (cursorPositionRef.current) {
+            restoreTextCursorPosition(target, cursorPositionRef.current)
+          }
+        } catch (error) {
+          if (import.meta.env.DEV) {
+            console.debug('Failed to restore cursor after processing:', error)
+          }
+        }
+      })
+    }
     
     // Save cursor position before triggering onChange
     cursorPositionRef.current = saveTextCursorPosition(target)
     
     updateContent(newContent)
-  }, [updateContent])
+  }, [updateContent, processPlaceholders])
 
   const handlePaste = useCallback((e: React.ClipboardEvent<HTMLDivElement>) => {
     e.preventDefault()
@@ -300,10 +333,12 @@ export function RichTextEditor({
         editorRef.current.innerHTML += contentToInsert
       }
 
-      // Update content
-      updateContent(editorRef.current.innerHTML)
+      // Process placeholders and update content
+      const processed = processPlaceholders(editorRef.current.innerHTML)
+      editorRef.current.innerHTML = processed
+      updateContent(processed)
     }
-  }, [updateContent])
+  }, [updateContent, processPlaceholders])
 
   const handleFocus = useCallback(() => {
     setIsFocused(true)
@@ -338,6 +373,42 @@ export function RichTextEditor({
       e.preventDefault()
     }
   }, [updateContent])
+
+  const insertPlaceholder = useCallback((placeholder: string) => {
+    if (!editorRef.current) return
+    
+    editorRef.current.focus()
+    const badgeHtml = convertPlaceholdersToHtml(placeholder)
+    
+    const selection = window.getSelection()
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0)
+      range.deleteContents()
+      
+      const tempDiv = document.createElement('div')
+      tempDiv.innerHTML = badgeHtml
+      const badge = tempDiv.firstElementChild
+      
+      if (badge) {
+        range.insertNode(badge)
+        // Add space after badge
+        const space = document.createTextNode(' ')
+        range.insertNode(space)
+        range.setStartAfter(space)
+        range.collapse(true)
+        selection.removeAllRanges()
+        selection.addRange(range)
+      }
+    } else {
+      editorRef.current.innerHTML += badgeHtml + ' '
+    }
+    
+    updateContent(editorRef.current.innerHTML)
+  }, [updateContent])
+
+  useImperativeHandle(ref, () => ({
+    insertPlaceholder
+  }))
 
   // Inject placeholder badge styles on mount
   useEffect(() => {
@@ -395,8 +466,9 @@ export function RichTextEditor({
         return
       }
       
-      // Update DOM
-      editorRef.current.innerHTML = sanitizedValue
+      // Update DOM with processed placeholders
+      const processedValue = processPlaceholders(sanitizedValue)
+      editorRef.current.innerHTML = processedValue
       lastContentRef.current = value
       
       // Restore cursor position after DOM update
@@ -420,7 +492,7 @@ export function RichTextEditor({
         }
       })
     })
-  }, [value, isExternalUpdate, onExternalUpdateComplete])
+  }, [value, isExternalUpdate, onExternalUpdateComplete, processPlaceholders])
 
   return (
     <div className={cn(
@@ -590,4 +662,6 @@ export function RichTextEditor({
       </div>
     </div>
   )
-}
+})
+
+RichTextEditor.displayName = 'RichTextEditor'
