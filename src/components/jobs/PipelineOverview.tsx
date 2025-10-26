@@ -11,7 +11,7 @@ import DraggableCandidateCard from './DraggableCandidateCard'
 import DroppableStage from './DroppableStage'
 import CandidateProfileSheet from '@/components/candidates/CandidateProfileSheet'
 import { Button } from '@/components/ui/button'
-import { LayoutGrid, List } from 'lucide-react'
+import { LayoutGrid, List, Zap } from 'lucide-react'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { SortableHeader } from '@/components/ui/sortable-header'
 import { useSortableTable } from '@/hooks/useSortableTable'
@@ -23,6 +23,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { ExternalLink } from 'lucide-react'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { Checkbox } from '@/components/ui/checkbox'
+import { useQuery } from '@tanstack/react-query'
+import { supabase } from '@/integrations/supabase/client'
 
 
 interface PipelineOverviewProps {
@@ -59,6 +61,36 @@ const isLastPriorityStage = (stage: JobStage) => {
 export function PipelineOverview({ jobId, showHeader = true, externalScroll = false, viewMode: controlledView, onViewModeChange, selectionMode: controlledSelectionMode, onSelectionModeChange, onSelectedIdsChange, refreshToken, onStageChanged }: PipelineOverviewProps) {
   const { loadHiringPlanInstances, isLoadingPlan } = useJobHiringPlan()
   const { fetchAssociationsForJob, moveAssociationToStage, updateAssociationStatus } = usePipelineActions()
+
+  // Query all automations for this job's stages
+  const { data: allAutomations } = useQuery({
+    queryKey: ['job-stage-automations', jobId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('stage_automations')
+        .select(`
+          id,
+          job_hiring_stage_id,
+          is_active
+        `)
+        .eq('is_active', true);
+      
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!jobId
+  });
+
+  // Map of jhsId -> has active automation
+  const stageHasAutomation = useMemo(() => {
+    const map = new Map<string, boolean>();
+    if (allAutomations) {
+      allAutomations.forEach(automation => {
+        map.set(automation.job_hiring_stage_id, true);
+      });
+    }
+    return map;
+  }, [allAutomations]);
 
   const [stageOptions, setStageOptions] = useState<{ jhsId: string; stage: JobStage; position: number }[]>([])
   const [isLoadingCandidates, setIsLoadingCandidates] = useState(false)
@@ -435,9 +467,14 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
                   <CardHeader className={`pb-2 rounded-t-md shrink-0 ${getHeaderBgClass(opt.stage.stage_type)}`}>
                     <div className="flex items-center justify-between gap-2 flex-wrap">
                       <div className="flex items-center gap-2 min-w-0">
-                        <CardTitle className="text-base font-medium truncate max-w-[160px]" title={opt.stage.stage_name}>
-                          {opt.stage.stage_name}
-                        </CardTitle>
+                        <div className="flex items-center gap-1.5">
+                          <CardTitle className="text-base font-medium truncate max-w-[160px]" title={opt.stage.stage_name}>
+                            {opt.stage.stage_name}
+                          </CardTitle>
+                          {stageHasAutomation.get(opt.jhsId) && (
+                            <Zap className="h-4 w-4 text-purple-500 fill-purple-500 flex-shrink-0" />
+                          )}
+                        </div>
                         {opt.stage.is_default && (
                           <Badge variant="outline">Default</Badge>
                         )}
