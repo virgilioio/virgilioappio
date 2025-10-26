@@ -467,14 +467,9 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
                   <CardHeader className={`pb-2 rounded-t-md shrink-0 ${getHeaderBgClass(opt.stage.stage_type)}`}>
                     <div className="flex items-center justify-between gap-2 flex-wrap">
                       <div className="flex items-center gap-2 min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <CardTitle className="text-base font-medium truncate max-w-[160px]" title={opt.stage.stage_name}>
-                            {opt.stage.stage_name}
-                          </CardTitle>
-                          {stageHasAutomation.get(opt.jhsId) && (
-                            <Zap className="h-4 w-4 text-purple-500 fill-purple-500 flex-shrink-0" />
-                          )}
-                        </div>
+                        <CardTitle className="text-base font-medium truncate max-w-[160px]" title={opt.stage.stage_name}>
+                          {opt.stage.stage_name}
+                        </CardTitle>
                         {opt.stage.is_default && (
                           <Badge variant="outline">Default</Badge>
                         )}
@@ -482,16 +477,21 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
                           <Badge variant="outline">Last</Badge>
                         )}
                       </div>
-                      {selectionMode && (
-                        <div className="flex items-center gap-2 pr-1" onClick={(e) => e.stopPropagation()}>
-                          <Checkbox
-                            checked={(byStage[opt.jhsId] || []).length > 0 && (byStage[opt.jhsId] || []).every(a => isSelected(a.id))}
-                            onCheckedChange={() => selectAllInStage(opt.jhsId)}
-                            aria-label="Select all in stage"
-                          />
-                          <span className="text-xs text-text-secondary">All</span>
-                        </div>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {stageHasAutomation.get(opt.jhsId) && (
+                          <Zap className="h-4 w-4 text-purple-500 fill-purple-500 flex-shrink-0" />
+                        )}
+                        {selectionMode && (
+                          <div className="flex items-center gap-2 pr-1" onClick={(e) => e.stopPropagation()}>
+                            <Checkbox
+                              checked={(byStage[opt.jhsId] || []).length > 0 && (byStage[opt.jhsId] || []).every(a => isSelected(a.id))}
+                              onCheckedChange={() => selectAllInStage(opt.jhsId)}
+                              aria-label="Select all in stage"
+                            />
+                            <span className="text-xs text-text-secondary">All</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent className={`${getHeaderBgClass(opt.stage.stage_type)} rounded-b-md flex-1 overflow-y-auto`}>
