@@ -237,10 +237,11 @@ const handler = async (req: Request): Promise<Response> => {
     let identity = null;
     
     if (isServiceRole) {
-      // For service role: just verify the from_email exists and is active
+      // For service role: verify the from_email exists and is active
+      // Step 1: Get the mail identity
       const { data: mailIdentity, error: identityError } = await supabase
         .from('user_mail_identities')
-        .select('*, members!inner(organization_id, user_id)')
+        .select('*')
         .eq('email_address', request.from_email)
         .eq('is_active', true)
         .single();
@@ -249,9 +250,21 @@ const handler = async (req: Request): Promise<Response> => {
         throw new Error('From email is not a valid connected identity');
       }
       
+      // Step 2: Verify the user is a member of the organization
+      const { data: memberData, error: memberError } = await supabase
+        .from('members')
+        .select('organization_id, user_id')
+        .eq('user_id', mailIdentity.user_id)
+        .eq('organization_id', mailIdentity.organization_id)
+        .single();
+      
+      if (memberError || !memberData) {
+        throw new Error('User is not a member of the organization');
+      }
+      
       identity = mailIdentity;
-      organizationId = mailIdentity.members.organization_id;
-      user = { id: mailIdentity.members.user_id }; // Set user for logging purposes
+      organizationId = memberData.organization_id;
+      user = { id: memberData.user_id }; // Set user for logging purposes
       
     } else {
       // For user calls: verify organization and from_email ownership
