@@ -32,3 +32,6 @@ verify_jwt = true
 
 [functions.send-user-email]
 verify_jwt = true
+
+[functions.process-automation-emails]
+verify_jwt = false
