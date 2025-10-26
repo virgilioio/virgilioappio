@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
-import { CornerDownLeft, Code, User, Building, Briefcase } from 'lucide-react'
+import { CornerDownLeft, Code, User, Building, Briefcase, type LucideIcon } from 'lucide-react'
 import { useOfferTemplateFields } from '@/hooks/useOfferTemplateFields'
 import { useToast } from '@/hooks/use-toast'
 
@@ -90,7 +90,7 @@ export function PlaceholderHelper({ templateId, onInsert }: PlaceholderHelperPro
     placeholders 
   }: { 
     title: string
-    icon: any
+    icon: LucideIcon
     placeholders: Array<{ key: string; description: string }>
   }) => (
     <div className="space-y-2">
