@@ -1,13 +1,14 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2';
-import { corsHeaders } from '../_shared/cors.ts';
+import { corsHeadersFor, handlePreflight } from '../_shared/cors.ts';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const preflightResponse = handlePreflight(req);
+  if (preflightResponse) return preflightResponse;
+
+  const origin = req.headers.get('Origin') ?? undefined;
 
   try {
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -173,14 +174,14 @@ Deno.serve(async (req) => {
         success: true,
         processed: queuedEmails?.length || 0 
       }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { headers: { ...corsHeadersFor(origin), 'Content-Type': 'application/json' } }
     );
     
   } catch (error) {
     console.error('[Automation Processor] Error processing automation emails:', error);
     return new Response(
       JSON.stringify({ error: error.message }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 500, headers: { ...corsHeadersFor(origin), 'Content-Type': 'application/json' } }
     );
   }
 });
