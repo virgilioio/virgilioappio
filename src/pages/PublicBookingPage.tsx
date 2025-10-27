@@ -147,12 +147,18 @@ export default function PublicBookingPage() {
       return data;
     },
     onSuccess: (data) => {
-      toast({
-        title: 'Booking Confirmed!',
-        description: data.meet_link 
-          ? 'Your interview has been scheduled. Check your email for the Google Meet link.'
-          : 'Your interview has been scheduled. You will receive a confirmation email shortly.',
-      });
+      if (!data.google_event_created) {
+        toast({
+          title: 'Booking Confirmed',
+          description: 'Your interview has been scheduled, but the calendar invitation could not be sent. The interviewer has been notified.',
+          variant: 'default',
+        });
+      } else {
+        toast({
+          title: 'Booking Confirmed!',
+          description: 'Your interview has been scheduled. A calendar invitation with a Google Meet link has been sent to your email.',
+        });
+      }
       setBookingSuccess(true);
       setSelectedSlot(null);
     },
