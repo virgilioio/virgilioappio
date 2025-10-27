@@ -71,14 +71,22 @@ export function useCalendarIdentities() {
       return data;
     },
     onSuccess: (data) => {
+      console.log('[Calendar Test] Response data:', data);
       queryClient.invalidateQueries({ queryKey: ['calendar-identities'] });
       
+      if (!data) {
+        toast.error('No response from calendar service');
+        return;
+      }
+
       if (data.warning) {
         toast.warning(data.warning);
       } else if (data.error) {
         toast.error(data.error);
-      } else {
+      } else if (data.busy_slots !== undefined) {
         toast.success(`Connection successful! Found ${data.busy_slots?.length || 0} events in the next 7 days.`);
+      } else {
+        toast.success('Connection test completed successfully');
       }
     },
     onError: (error: Error) => {
