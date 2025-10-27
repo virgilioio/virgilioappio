@@ -1,5 +1,5 @@
 
-import { User, Building, Building2, Receipt, Users, Shield, Settings as SettingsIcon, Megaphone, FileText, Image, Globe, BarChart3, UserCheck, Briefcase, UsersIcon, CreditCard, Layers, Mail } from 'lucide-react'
+import { User, Building, Building2, Receipt, Users, Shield, Settings as SettingsIcon, Megaphone, FileText, Image, Globe, BarChart3, UserCheck, Briefcase, UsersIcon, CreditCard, Layers, Mail, Calendar } from 'lucide-react'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useAuth } from '@/contexts/AuthContext'
 import { cn } from '@/lib/utils'
@@ -48,6 +48,12 @@ export function SettingsSidebar({ currentTab, onTabChange, className }: Settings
       id: 'email', 
       label: 'Email Accounts', 
       icon: Mail, 
+      show: true 
+    },
+    { 
+      id: 'calendar', 
+      label: 'Calendar', 
+      icon: Calendar, 
       show: true 
     },
     { 

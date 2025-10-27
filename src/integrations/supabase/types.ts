@@ -377,6 +377,68 @@ export type Database = {
           },
         ]
       }
+      calendar_identities: {
+        Row: {
+          access_token: string
+          created_at: string | null
+          display_name: string | null
+          email_address: string
+          encrypted_refresh_token: string
+          id: string
+          is_active: boolean | null
+          last_sync_at: string | null
+          organization_id: string
+          provider: string
+          sync_error_message: string | null
+          sync_status: string | null
+          token_expires_at: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          access_token: string
+          created_at?: string | null
+          display_name?: string | null
+          email_address: string
+          encrypted_refresh_token: string
+          id?: string
+          is_active?: boolean | null
+          last_sync_at?: string | null
+          organization_id: string
+          provider: string
+          sync_error_message?: string | null
+          sync_status?: string | null
+          token_expires_at: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          access_token?: string
+          created_at?: string | null
+          display_name?: string | null
+          email_address?: string
+          encrypted_refresh_token?: string
+          id?: string
+          is_active?: boolean | null
+          last_sync_at?: string | null
+          organization_id?: string
+          provider?: string
+          sync_error_message?: string | null
+          sync_status?: string | null
+          token_expires_at?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calendar_identities_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       candidate_application_limits: {
         Row: {
           applied_at: string

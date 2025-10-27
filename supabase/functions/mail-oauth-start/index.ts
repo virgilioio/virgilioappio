@@ -91,11 +91,13 @@ const handler = async (req: Request): Promise<Response> => {
     const redirectUri = `${appBase}/mail/oauth/callback`;
 
     if (provider === 'gmail') {
-      const scopes = [
-        'https://www.googleapis.com/auth/gmail.send',
-        'https://www.googleapis.com/auth/userinfo.email',
-        'https://www.googleapis.com/auth/userinfo.profile',
-      ];
+  const scopes = [
+    'https://www.googleapis.com/auth/gmail.send',
+    'https://www.googleapis.com/auth/userinfo.email',
+    'https://www.googleapis.com/auth/userinfo.profile',
+    'https://www.googleapis.com/auth/calendar.readonly',
+    'https://www.googleapis.com/auth/calendar.events.readonly',
+  ];
 
       authUrl = 'https://accounts.google.com/o/oauth2/v2/auth?' + new URLSearchParams({
         client_id: googleClientId,

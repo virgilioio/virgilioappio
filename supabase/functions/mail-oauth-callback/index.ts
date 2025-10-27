@@ -178,6 +178,51 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log('Successfully stored mail identity for user:', user.id);
 
+    // Also store calendar identity with same credentials
+    const calendarIdentityData = {
+      user_id: user.id,
+      organization_id: memberData.organization_id,
+      provider: 'google',
+      email_address: userInfo.email,
+      display_name: userInfo.name || userInfo.email,
+      access_token: tokens.access_token,
+      encrypted_refresh_token: encryptedToken,
+      token_expires_at: new Date(Date.now() + tokens.expires_in * 1000).toISOString(),
+      is_active: true,
+      sync_status: 'healthy',
+      last_sync_at: new Date().toISOString(),
+    };
+
+    const { data: existingCalendarIdentity } = await supabase
+      .from('calendar_identities')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('email_address', userInfo.email)
+      .single();
+
+    let calendarResult;
+    if (existingCalendarIdentity) {
+      calendarResult = await supabase
+        .from('calendar_identities')
+        .update(calendarIdentityData)
+        .eq('id', existingCalendarIdentity.id)
+        .select()
+        .single();
+    } else {
+      calendarResult = await supabase
+        .from('calendar_identities')
+        .insert(calendarIdentityData)
+        .select()
+        .single();
+    }
+
+    if (calendarResult.error) {
+      console.error('Failed to store calendar identity:', calendarResult.error);
+      // Don't throw - mail identity is already stored successfully
+    } else {
+      console.log('Successfully stored calendar identity for user:', user.id);
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
