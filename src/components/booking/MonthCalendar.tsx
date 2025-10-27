@@ -89,12 +89,15 @@ export function MonthCalendar({
               key={idx}
               onClick={() => isAvailable && isCurrentMonth && !isPast && onDateSelect(day)}
               disabled={!isAvailable || !isCurrentMonth || isPast}
+              style={{
+                backgroundColor: isSelected ? '#7e3eff' : 'transparent',
+                color: isSelected ? '#ffffff' : isCurrentMonth && isAvailable ? '#7e3eff' : '',
+              }}
               className={`
                 aspect-square p-2 rounded-lg text-sm font-medium transition-all
                 ${!isCurrentMonth ? 'text-text-tertiary' : ''}
                 ${isCurrentMonth && !isAvailable ? 'text-text-tertiary cursor-not-allowed' : ''}
-                ${isCurrentMonth && isAvailable && !isSelected ? 'text-primary hover:bg-accent cursor-pointer' : ''}
-                ${isSelected ? 'bg-primary text-primary-foreground' : ''}
+                ${isCurrentMonth && isAvailable && !isSelected ? 'hover:bg-[#d7c5fb] cursor-pointer' : ''}
                 ${isPast ? 'opacity-40 cursor-not-allowed' : ''}
               `}
             >

@@ -1,7 +1,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { Clock, Video } from 'lucide-react';
+import { Clock } from 'lucide-react';
 
 interface InterviewerCardProps {
   profile: {
@@ -17,17 +17,25 @@ interface InterviewerCardProps {
 }
 
 export function InterviewerCard({ profile, config }: InterviewerCardProps) {
+  const initials = `${profile.first_name?.[0] || ''}${profile.last_name?.[0] || ''}`.toUpperCase();
+
   return (
     <Card>
       <CardContent className="p-6 space-y-4">
-        <div>
-          <h3 className="text-xl font-semibold text-text-primary mb-2">
-            {config.display_name}
-          </h3>
-          <Badge variant="secondary" className="gap-1.5">
-            <Clock className="h-3.5 w-3.5" />
-            {config.duration_minutes} min
-          </Badge>
+        <div className="flex items-center gap-3">
+          <Avatar className="h-12 w-12">
+            <AvatarImage src={profile.avatar_url || undefined} alt={`${profile.first_name} ${profile.last_name}`} />
+            <AvatarFallback>{initials}</AvatarFallback>
+          </Avatar>
+          <div className="flex-1">
+            <h3 className="text-lg font-semibold text-text-primary">
+              {config.display_name}
+            </h3>
+            <Badge variant="secondary" className="gap-1.5 mt-1">
+              <Clock className="h-3.5 w-3.5" />
+              {config.duration_minutes} min
+            </Badge>
+          </div>
         </div>
         
         {config.description && (
