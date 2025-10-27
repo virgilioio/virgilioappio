@@ -1,16 +1,14 @@
-// Version: 1.0.1 - Interview cancellation handler with email notifications
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+// Version: 1.1.0 - Interview cancellation with shared CORS utilities
+import { serve } from 'https://deno.land/std@0.190.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { corsHeadersFor, handlePreflight } from '../_shared/cors.ts';
 
 serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+  // Handle CORS preflight
+  const preflightResponse = handlePreflight(req);
+  if (preflightResponse) return preflightResponse;
+
+  const corsHeaders = corsHeadersFor(req.headers.get('Origin') ?? undefined);
 
   try {
     const supabase = createClient(
