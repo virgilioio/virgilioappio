@@ -1,6 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
+import { useOrgContext } from '@/contexts/OrgContext';
+import { useUserProfile } from './useUserProfile';
 import { toast } from 'sonner';
 
 export interface BookingConfig {
@@ -26,6 +28,8 @@ export interface BookingConfig {
 
 export function useBookingConfig() {
   const { user } = useAuth();
+  const { organizationId } = useOrgContext();
+  const { profile } = useUserProfile();
   const queryClient = useQueryClient();
 
   const { data: config, isLoading, error } = useQuery({
@@ -89,6 +93,28 @@ export function useBookingConfig() {
     },
   });
 
+  // Auto-create booking config if profile is complete
+  const needsProfileCompletion = !profile?.first_name || !profile?.last_name;
+  const canCreateBookingConfig = !needsProfileCompletion && !!organizationId;
+
+  // Lazy creation effect
+  useQuery({
+    queryKey: ['booking-config-lazy-create', user?.id, canCreateBookingConfig],
+    queryFn: async () => {
+      if (!config && canCreateBookingConfig && profile && organizationId) {
+        console.log('[BookingConfig] Auto-creating booking config for existing user');
+        createMutation.mutate({
+          first_name: profile.first_name!,
+          last_name: profile.last_name!,
+          organization_id: organizationId,
+          timezone: profile.timezone || undefined,
+        });
+      }
+      return null;
+    },
+    enabled: !config && canCreateBookingConfig && !createMutation.isPending,
+  });
+
   const bookingUrl = config 
     ? `${window.location.origin}/schedule/${config.short_code}` 
     : null;
@@ -102,5 +128,7 @@ export function useBookingConfig() {
     createConfig: createMutation.mutate,
     isCreating: createMutation.isPending,
     bookingUrl,
+    needsProfileCompletion,
+    canCreateBookingConfig,
   };
 }

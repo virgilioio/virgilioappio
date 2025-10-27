@@ -127,18 +127,21 @@ export function useCalendarIdentities() {
           toast.success(`Calendar connected: ${e.data.payload.email}`);
           queryClient.invalidateQueries({ queryKey: ['calendar-identities'] });
 
-          // Check if booking config exists and is inactive
+          // Check if booking config exists
           const { data: { user } } = await supabase.auth.getUser();
           if (user) {
             const { data: bookingConfig } = await supabase
               .from('booking_configurations')
               .select('id, is_active')
               .eq('user_id', user.id)
-              .eq('is_active', false)
               .maybeSingle();
 
-            if (bookingConfig) {
-              // Activate booking config
+            if (!bookingConfig) {
+              // Trigger lazy creation by invalidating the query
+              queryClient.invalidateQueries({ queryKey: ['booking-config'] });
+              toast.success('Calendar connected! Setting up your booking link...');
+            } else if (!bookingConfig.is_active) {
+              // Activate existing config
               await supabase
                 .from('booking_configurations')
                 .update({ is_active: true })

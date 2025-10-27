@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useUserProfile } from '@/hooks/useUserProfile'
+import { useQueryClient } from '@tanstack/react-query'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -26,6 +27,7 @@ interface ProfileFormData {
 export function ProfileTab() {
   const { user, userType, memberRole } = useAuth()
   const { profile, updateProfile, uploadAvatar, isLoading: profileLoading } = useUserProfile()
+  const queryClient = useQueryClient()
   
   const [profileFormData, setProfileFormData] = useState<ProfileFormData>({
     first_name: '',
@@ -54,8 +56,16 @@ export function ProfileTab() {
 
   const handleProfileSave = async () => {
     try {
+      const hadNoNames = !profile?.first_name || !profile?.last_name
+      const nowHasNames = profileFormData.first_name && profileFormData.last_name
+      
       await updateProfile(profileFormData)
       setLastUpdated(new Date().toLocaleString())
+      
+      // If user just completed their profile, trigger booking config creation
+      if (hadNoNames && nowHasNames) {
+        queryClient.invalidateQueries({ queryKey: ['booking-config'] })
+      }
     } catch (error) {
       // Error handling is done in the hook
     }
@@ -108,7 +118,7 @@ export function ProfileTab() {
           </div>
 
           {/* Profile Form */}
-          <div className="space-y-sm">
+          <div className="space-y-sm" id="profile-form">
             <div className="flex items-center justify-between">
               <h4 className="text-sm font-medium">Personal Information</h4>
               {lastUpdated && (

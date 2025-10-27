@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Copy, ExternalLink, Check, ChevronDown, ChevronUp } from 'lucide-react';
+import { Copy, ExternalLink, Check, ChevronDown, ChevronUp, AlertCircle, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
@@ -40,7 +41,15 @@ const TIMEZONE_OPTIONS = [
 ];
 
 export function BookingLinkSection() {
-  const { config, isLoading, updateConfig, isUpdating, bookingUrl } = useBookingConfig();
+  const { 
+    config, 
+    isLoading, 
+    updateConfig, 
+    isUpdating, 
+    bookingUrl,
+    needsProfileCompletion,
+    isCreating
+  } = useBookingConfig();
   const { identities } = useCalendarIdentities();
   const [copied, setCopied] = useState(false);
   const [isCustomizing, setIsCustomizing] = useState(false);
@@ -107,17 +116,58 @@ export function BookingLinkSection() {
     );
   }
 
-  if (!config) {
+  // State 1: Profile Incomplete
+  if (needsProfileCompletion) {
     return (
       <Card>
         <CardHeader>
           <CardTitle>Your Booking Link</CardTitle>
           <CardDescription>
-            No booking link found. This will be created automatically during onboarding.
+            Complete your profile to generate your booking link
           </CardDescription>
         </CardHeader>
+        <CardContent>
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Profile Incomplete</AlertTitle>
+            <AlertDescription>
+              Please add your first and last name to your profile to enable booking links.
+            </AlertDescription>
+          </Alert>
+          <Button 
+            variant="outline" 
+            className="mt-4"
+            onClick={() => {
+              document.getElementById('profile-form')?.scrollIntoView({ behavior: 'smooth' });
+            }}
+          >
+            Complete Profile Above
+          </Button>
+        </CardContent>
       </Card>
     );
+  }
+
+  // State 2: Creating Booking Config
+  if (isCreating || (!config && !needsProfileCompletion)) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Your Booking Link</CardTitle>
+          <CardDescription>Setting up your booking link...</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-3">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            <span>Generating your unique booking link...</span>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!config) {
+    return null; // Shouldn't reach here but safety fallback
   }
 
   return (
