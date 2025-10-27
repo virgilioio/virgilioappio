@@ -163,6 +163,16 @@ serve(async (req) => {
   }
 });
 
+// Helper: Convert local timezone time to UTC
+function createDateInTimezone(dateStr: string, timeStr: string, tz: string): Date {
+  const combined = `${dateStr}T${timeStr}:00`;
+  const utc = new Date(combined + 'Z');
+  const tzStr = utc.toLocaleString('en-US', { timeZone: tz, hour12: false });
+  const tzDate = new Date(tzStr);
+  const offset = utc.getTime() - tzDate.getTime();
+  return new Date(new Date(combined).getTime() - offset);
+}
+
 // Helper: Generate potential slots
 function generatePotentialSlots(
   startDate: Date,
@@ -181,22 +191,21 @@ function generatePotentialSlots(
     const dayConfig = weeklySchedule[dayName];
 
     if (dayConfig && dayConfig.enabled) {
-      // Parse start and end times
-      const [startHour, startMinute] = dayConfig.start.split(':').map(Number);
-      const [endHour, endMinute] = dayConfig.end.split(':').map(Number);
+      // Create date string for timezone conversion
+      const dateStr = currentDate.toISOString().split('T')[0]; // "YYYY-MM-DD"
+      
+      // Convert local timezone times to UTC
+      const slotStart = createDateInTimezone(dateStr, dayConfig.start, timezone);
+      const dayEnd = createDateInTimezone(dateStr, dayConfig.end, timezone);
+      
+      let currentSlot = new Date(slotStart);
 
-      let slotStart = new Date(currentDate);
-      slotStart.setHours(startHour, startMinute, 0, 0);
-
-      const dayEnd = new Date(currentDate);
-      dayEnd.setHours(endHour, endMinute, 0, 0);
-
-      while (slotStart.getTime() + durationMinutes * 60 * 1000 <= dayEnd.getTime()) {
-        const slotEnd = new Date(slotStart.getTime() + durationMinutes * 60 * 1000);
-        slots.push({ start: new Date(slotStart), end: slotEnd });
+      while (currentSlot.getTime() + durationMinutes * 60 * 1000 <= dayEnd.getTime()) {
+        const slotEnd = new Date(currentSlot.getTime() + durationMinutes * 60 * 1000);
+        slots.push({ start: new Date(currentSlot), end: slotEnd });
         
         // Move to next slot (duration + buffer)
-        slotStart = new Date(slotStart.getTime() + (durationMinutes + bufferMinutes) * 60 * 1000);
+        currentSlot = new Date(currentSlot.getTime() + (durationMinutes + bufferMinutes) * 60 * 1000);
       }
     }
 
