@@ -2,7 +2,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Calendar, AlertCircle, CheckCircle, XCircle } from "lucide-react"
+import { AlertCircle, CheckCircle, XCircle } from "lucide-react"
+import { GoogleCalendarLogo } from "@/components/icons/GoogleCalendarLogo"
 import { useCalendarIdentities } from "@/hooks/useCalendarIdentities"
 import { useAuth } from "@/contexts/AuthContext"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
@@ -60,7 +61,7 @@ export function CalendarIntegrationSection() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5" />
+              <GoogleCalendarLogo className="h-5 w-5" />
               No Calendars Connected
             </CardTitle>
             <CardDescription>
