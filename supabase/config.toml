@@ -1,46 +1,49 @@
 project_id = "etrxjxstjfcozdjumfsj"
 
+[functions.check-calendar-availability]
+verify_jwt = true
+
+[functions.convert-document-to-pdf]
+verify_jwt = false
+
+[functions.create-booking]
+verify_jwt = false
+
 [functions.create-dev-admin]
 verify_jwt = false
 
 [functions.download-attachment]
 verify_jwt = true
 
-[functions.upload-invoice-document]
+[functions.generate-comprehensive-skills]
 verify_jwt = true
 
-[functions.set-current-organization]
-verify_jwt = true
-
-[functions.parse-resume]
-verify_jwt = true
-
-[functions.public-submit-application]
-verify_jwt = false
-
-[functions.convert-document-to-pdf]
-verify_jwt = false
-
-[functions.stripe-webhook]
-verify_jwt = false
-
-[functions.mail-oauth-start]
+[functions.get-booking-availability]
 verify_jwt = false
 
 [functions.mail-oauth-callback]
 verify_jwt = true
 
-[functions.send-user-email]
-verify_jwt = true
+[functions.mail-oauth-start]
+verify_jwt = false
 
-[functions.check-calendar-availability]
+[functions.parse-resume]
 verify_jwt = true
 
 [functions.process-automation-emails]
 verify_jwt = false
 
-[functions.get-booking-availability]
+[functions.public-submit-application]
 verify_jwt = false
 
-[functions.create-booking]
+[functions.send-user-email]
+verify_jwt = true
+
+[functions.set-current-organization]
+verify_jwt = true
+
+[functions.stripe-webhook]
 verify_jwt = false
+
+[functions.upload-invoice-document]
+verify_jwt = true
