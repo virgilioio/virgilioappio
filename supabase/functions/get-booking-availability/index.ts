@@ -165,12 +165,37 @@ serve(async (req) => {
 
 // Helper: Convert local timezone time to UTC
 function createDateInTimezone(dateStr: string, timeStr: string, tz: string): Date {
-  const combined = `${dateStr}T${timeStr}:00`;
-  const utc = new Date(combined + 'Z');
-  const tzStr = utc.toLocaleString('en-US', { timeZone: tz, hour12: false });
-  const tzDate = new Date(tzStr);
-  const offset = utc.getTime() - tzDate.getTime();
-  return new Date(new Date(combined).getTime() - offset);
+  // Create an ISO string for the local time
+  const localISO = `${dateStr}T${timeStr}:00`;
+  
+  // Parse as if it's in UTC (wrong, but we'll fix it)
+  const utcDate = new Date(localISO + 'Z');
+  
+  // See what time this UTC moment is in the target timezone
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: tz,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  });
+  
+  const parts = formatter.formatToParts(utcDate);
+  const tzHour = parseInt(parts.find(p => p.type === 'hour')?.value || '0');
+  const tzMinute = parseInt(parts.find(p => p.type === 'minute')?.value || '0');
+  
+  // Parse our desired time
+  const [wantedHour, wantedMinute] = timeStr.split(':').map(Number);
+  
+  // Calculate the difference
+  const tzTotalMinutes = tzHour * 60 + tzMinute;
+  const wantedTotalMinutes = wantedHour * 60 + wantedMinute;
+  const diffMinutes = wantedTotalMinutes - tzTotalMinutes;
+  
+  // Apply the difference to get correct UTC time
+  return new Date(utcDate.getTime() + diffMinutes * 60 * 1000);
 }
 
 // Helper: Generate potential slots
