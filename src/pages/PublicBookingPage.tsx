@@ -278,22 +278,13 @@ export default function PublicBookingPage() {
                   onMonthChange={setCurrentMonth}
                 />
                 
-                {/* Timezone selector */}
+                {/* Timezone display */}
                 <div className="mt-6 pt-6 border-t border-border">
-                  <div className="flex items-center gap-2">
-                    <Globe className="h-4 w-4 text-text-secondary" />
-                    <Select value={candidateTimezone} onValueChange={setCandidateTimezone}>
-                      <SelectTrigger className="flex-1">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {COMMON_TIMEZONES.map((tz) => (
-                          <SelectItem key={tz.value} value={tz.value}>
-                            {tz.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                  <div className="flex items-center gap-2 text-sm text-text-secondary">
+                    <Globe className="h-4 w-4" />
+                    <span>
+                      Times shown in {candidateTimezone.replace(/_/g, ' ')}
+                    </span>
                   </div>
                 </div>
               </CardContent>
