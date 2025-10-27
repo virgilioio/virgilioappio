@@ -2431,6 +2431,7 @@ export type Database = {
       }
       scheduled_bookings: {
         Row: {
+          booked_by: string | null
           booking_config_id: string
           cancellation_reason: string | null
           cancelled_at: string | null
@@ -2447,6 +2448,7 @@ export type Database = {
           id: string
           interviewer_id: string | null
           job_candidate_association_id: string | null
+          job_hiring_stage_id: string | null
           job_id: string | null
           meeting_location: string | null
           meeting_type: string | null
@@ -2458,6 +2460,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          booked_by?: string | null
           booking_config_id: string
           cancellation_reason?: string | null
           cancelled_at?: string | null
@@ -2474,6 +2477,7 @@ export type Database = {
           id?: string
           interviewer_id?: string | null
           job_candidate_association_id?: string | null
+          job_hiring_stage_id?: string | null
           job_id?: string | null
           meeting_location?: string | null
           meeting_type?: string | null
@@ -2485,6 +2489,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          booked_by?: string | null
           booking_config_id?: string
           cancellation_reason?: string | null
           cancelled_at?: string | null
@@ -2501,6 +2506,7 @@ export type Database = {
           id?: string
           interviewer_id?: string | null
           job_candidate_association_id?: string | null
+          job_hiring_stage_id?: string | null
           job_id?: string | null
           meeting_location?: string | null
           meeting_type?: string | null
@@ -2531,6 +2537,13 @@ export type Database = {
             columns: ["job_candidate_association_id"]
             isOneToOne: false
             referencedRelation: "job_candidate_associations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scheduled_bookings_job_hiring_stage_id_fkey"
+            columns: ["job_hiring_stage_id"]
+            isOneToOne: false
+            referencedRelation: "job_hiring_stages"
             referencedColumns: ["id"]
           },
           {

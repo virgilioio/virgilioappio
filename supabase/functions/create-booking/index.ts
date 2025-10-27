@@ -16,16 +16,22 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const {
-      booking_config_id,
-      candidate_name,
-      candidate_email,
-      candidate_phone,
-      candidate_timezone,
-      scheduled_start,
-      scheduled_end,
-      notes,
-    } = await req.json();
+  const {
+    booking_config_id,
+    candidate_name,
+    candidate_email,
+    candidate_phone,
+    candidate_timezone,
+    scheduled_start,
+    scheduled_end,
+    notes,
+    // Internal booking context (optional)
+    job_id,
+    candidate_id,
+    job_candidate_association_id,
+    job_hiring_stage_id,
+    booked_by_user_id,
+  } = await req.json();
 
     console.log('[create-booking] Creating booking for:', candidate_email);
 
@@ -278,6 +284,12 @@ serve(async (req) => {
         google_event_id: googleEventId,
         google_meet_link: googleMeetLink,
         status: 'confirmed',
+        // Internal booking context
+        candidate_id: candidate_id || null,
+        job_id: job_id || null,
+        job_candidate_association_id: job_candidate_association_id || null,
+        job_hiring_stage_id: job_hiring_stage_id || null,
+        booked_by: booked_by_user_id || null,
       })
       .select()
       .single();
@@ -421,18 +433,29 @@ serve(async (req) => {
 
     // Log activity
     try {
+      const activityMetadata: Record<string, any> = {
+        booking_id: bookingId,
+        candidate_email,
+        scheduled_start,
+        scheduled_end,
+      };
+
+      // Add internal booking context to metadata if present
+      if (job_id) activityMetadata.job_id = job_id;
+      if (candidate_id) activityMetadata.candidate_id = candidate_id;
+      if (job_hiring_stage_id) activityMetadata.job_hiring_stage_id = job_hiring_stage_id;
+
+      const activityTitle = booked_by_user_id
+        ? `Interview scheduled for ${candidate_name}`
+        : `Interview scheduled with ${candidate_name}`;
+
       await supabase.rpc('log_activity', {
-        p_user_id: config.user_id,
+        p_user_id: booked_by_user_id || config.user_id,
         p_organization_id: config.organization_id,
         p_activity_type: 'interview_scheduled',
-        p_title: `Interview scheduled with ${candidate_name}`,
+        p_title: activityTitle,
         p_description: `Candidate ${candidate_name} booked an interview for ${new Date(scheduled_start).toLocaleString()}`,
-        p_metadata: { 
-          booking_id: bookingId, 
-          candidate_email,
-          scheduled_start,
-          scheduled_end,
-        },
+        p_metadata: activityMetadata,
       });
     } catch (activityError) {
       console.error('[create-booking] Failed to log activity:', activityError);

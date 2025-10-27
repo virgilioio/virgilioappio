@@ -13,7 +13,7 @@ import { CandidateResumeViewer } from '@/components/candidates/CandidateResumeVi
 import { CandidateUrls } from '@/components/candidates/CandidateUrls'
 import { CandidateWorkExperienceComponent, CandidateWorkExperience } from '@/components/candidates/CandidateWorkExperience'
 import { CandidateEducationComponent, CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
-import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight, CheckCircle2, Circle, MoveRight, ThumbsDown, ThumbsUp, Star, Octagon, Mail, Phone, Copy, ExternalLink, Send, X, Check, RotateCcw, Activity, StickyNote, Sparkles } from 'lucide-react'
+import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight, CheckCircle2, Circle, MoveRight, ThumbsDown, ThumbsUp, Star, Octagon, Mail, Phone, Copy, ExternalLink, Send, X, Check, RotateCcw, Activity, StickyNote, Sparkles, Calendar } from 'lucide-react'
 import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
@@ -42,6 +42,7 @@ import { cn } from '@/lib/utils'
 import { MinimizableEmailComposer } from '@/components/candidates/MinimizableEmailComposer'
 import { EmailHistoryList } from './EmailHistoryList'
 import { ActivityFeedList } from './ActivityFeedList'
+import { ScheduleInterviewSheet } from './ScheduleInterviewSheet'
 
 interface StageScorecardProps {
   stageInstanceId: string;
@@ -112,6 +113,11 @@ const { rows: myScorecards, byStage: myScorecardsByStage, upsertMyScorecard, ref
 const [scoreOpen, setScoreOpen] = useState(false)
 const [scoreStageInstId, setScoreStageInstId] = useState<string | null>(null)
 const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefined)
+
+// Schedule Interview
+const [scheduleOpen, setScheduleOpen] = useState(false)
+const [scheduleStageId, setScheduleStageId] = useState<string | null>(null)
+const [scheduleStageName, setScheduleStageName] = useState<string>('')
   // Resume helpers
   const resumeAttachment = attachments.find((a) => a.is_resume)
   const replaceResumeInputRef = useRef<HTMLInputElement>(null)
@@ -590,6 +596,25 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
             </div>
           )}
 
+          {/* Schedule Interview Button for screening/interview stages */}
+          {(opt.stage.stage_type === 'screening' || opt.stage.stage_type === 'interview') && (
+            <div className="mt-3">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setScheduleStageId(opt.jhsId)
+                  setScheduleStageName(opt.stage.stage_name)
+                  setScheduleOpen(true)
+                }}
+                className="gap-2"
+              >
+                <Calendar className="h-4 w-4" />
+                Schedule Interview
+              </Button>
+            </div>
+          )}
+
           {!isCurrent && (
             <div className="mt-3">
               <Button
@@ -1025,6 +1050,23 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                 await refetchScorecards()
                 toast({ title: 'Scorecard saved', description: 'Your scorecard has been saved.' })
               }}
+            />
+          )}
+
+          {scheduleStageId && candidateId && (
+            <ScheduleInterviewSheet
+              open={scheduleOpen}
+              onOpenChange={setScheduleOpen}
+              candidateId={candidateId}
+              candidateName={candidate?.candidate_name || ''}
+              candidateEmail={candidate?.email || ''}
+              candidatePhone={candidate?.phone}
+              jobId={jobId}
+              jobTitle={job?.title || 'Job'}
+              organizationId={organizationId!}
+              jhsId={scheduleStageId}
+              stageName={scheduleStageName}
+              associationId={associationId!}
             />
           )}
 
