@@ -93,11 +93,21 @@ export function MonthCalendar({
                 backgroundColor: isSelected ? '#7e3eff' : 'transparent',
                 color: isSelected ? '#ffffff' : isCurrentMonth && isAvailable ? '#7e3eff' : '',
               }}
+              onMouseEnter={(e) => {
+                if (isAvailable && isCurrentMonth && !isPast && !isSelected) {
+                  e.currentTarget.style.backgroundColor = '#d7c5fb';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!isSelected) {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }
+              }}
               className={`
                 aspect-square p-2 rounded-lg text-sm font-medium transition-all
                 ${!isCurrentMonth ? 'text-text-tertiary' : ''}
                 ${isCurrentMonth && !isAvailable ? 'text-text-tertiary cursor-not-allowed' : ''}
-                ${isCurrentMonth && isAvailable && !isSelected ? 'hover:bg-[#d7c5fb] cursor-pointer' : ''}
+                ${isCurrentMonth && isAvailable && !isSelected ? 'cursor-pointer' : ''}
                 ${isPast ? 'opacity-40 cursor-not-allowed' : ''}
               `}
             >
