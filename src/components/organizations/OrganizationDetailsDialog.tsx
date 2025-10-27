@@ -206,7 +206,7 @@ export function OrganizationDetailsDialog({
                           </div>
                           
                           {member.user_status === 'invited' && (
-                            <div className="text-xs text-muted-foreground bg-yellow-50 border border-yellow-200 rounded px-2 py-1">
+                            <div className="text-xs text-muted-foreground bg-purple-50 border border-purple-200 rounded px-2 py-1">
                               Invitation pending
                             </div>
                           )}

@@ -67,7 +67,7 @@
 
     --border: 0 0% 88%; /* Subtle hairline border for separation */
     --input: 0 0% 100%; /* Remove input border visibility */
-    --ring: 60 100% 85%;
+    --ring: 267 84% 87%;
 
     --radius: 8px;
 
@@ -217,7 +217,7 @@
 
     --border: 215 20% 30%; /* Subtle hairline border in dark mode */
     --input: 0 0% 0% / 0; /* Remove input border visibility in dark mode */
-    --ring: 60 100% 85%;
+    --ring: 267 84% 87%;
 
     /* Dark mode surface colors - maintain depth hierarchy */
     --surface-primary: 217.2 32.6% 17.5%; /* #1e293b - elevated cards */
