@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from '@/hooks/use-toast'
 import { useAuth } from '@/contexts/AuthContext'
+import type { PermissionsState } from '@/hooks/usePermissions'
 
 export type BookingStatus = 'upcoming' | 'past'
 
@@ -82,15 +83,38 @@ interface BookingFromDB {
   } | null
 }
 
-export function useScheduledBookings(status?: BookingStatus) {
-  const { user } = useAuth()
+export function useScheduledBookings(status?: BookingStatus, permissions?: PermissionsState) {
+  const { user, organizationId } = useAuth()
   const queryClient = useQueryClient()
 
   const { data: bookings, isLoading } = useQuery({
-    queryKey: ['scheduled-bookings', user?.id, status],
+    queryKey: ['scheduled-bookings', user?.id, status, organizationId],
     queryFn: async () => {
       if (!user) return []
+
+      // Step 1: Get user's accessible job IDs (for recruiters/hiring managers)
+      let accessibleJobIds: string[] = []
       
+      if (permissions?.isRecruiter || permissions?.isHiringManager) {
+        // Get jobs user is assigned to
+        const { data: assignments } = await supabase
+          .from('job_assignments')
+          .select('job_id')
+          .eq('user_id', user.id)
+
+        // Get jobs user created
+        const { data: createdJobs } = await supabase
+          .from('jobs')
+          .select('id')
+          .eq('created_by', user.id)
+
+        accessibleJobIds = [
+          ...(assignments?.map(a => a.job_id) || []),
+          ...(createdJobs?.map(j => j.id) || []),
+        ]
+      }
+
+      // Step 2: Build conditional query based on permissions
       let query = supabase
         .from('scheduled_bookings')
         .select(`
@@ -99,8 +123,24 @@ export function useScheduledBookings(status?: BookingStatus) {
           jobs(id, title),
           job_hiring_stages(id, job_stages(stage_name))
         `)
-        .eq('interviewer_id', user.id)
 
+      // Apply role-based visibility filters
+      if (permissions?.isPlatformAdmin) {
+        // Platform admins see all bookings - no filter
+      } else if (permissions?.isWorkspaceOwner || permissions?.isAdmin) {
+        // Workspace owners and admins see all bookings in their organization
+        if (organizationId) {
+          query = query.eq('organization_id', organizationId)
+        }
+      } else if ((permissions?.isRecruiter || permissions?.isHiringManager) && accessibleJobIds.length > 0) {
+        // Recruiters/hiring managers see bookings where they're interviewer OR for their jobs
+        query = query.or(`interviewer_id.eq.${user.id},job_id.in.(${accessibleJobIds.join(',')})`)
+      } else {
+        // Default: only see bookings where user is the interviewer
+        query = query.eq('interviewer_id', user.id)
+      }
+
+      // Apply status-based filters
       if (status === 'upcoming') {
         query = query
           .gte('scheduled_start', new Date().toISOString())

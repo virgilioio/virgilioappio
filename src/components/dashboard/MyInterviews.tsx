@@ -39,6 +39,8 @@ import {
   ExternalLink,
 } from 'lucide-react'
 import { useScheduledBookings, type ScheduledBooking } from '@/hooks/useScheduledBookings'
+import { usePermissions } from '@/hooks/usePermissions'
+import { useAuth } from '@/contexts/AuthContext'
 import { BookingDetailsDialog } from '@/components/booking/BookingDetailsDialog'
 import { toast } from '@/hooks/use-toast'
 
@@ -51,8 +53,11 @@ export function MyInterviews() {
   const [bookingToCancel, setBookingToCancel] = useState<string | null>(null)
   const [statusUpdateBooking, setStatusUpdateBooking] = useState<{ id: string; status: string } | null>(null)
 
+  const permissions = usePermissions()
+  const { user } = useAuth()
+  
   const { bookings, isLoading, cancelBooking, updateStatus, isCancelling, isUpdating } =
-    useScheduledBookings(activeTab)
+    useScheduledBookings(activeTab, permissions)
 
   const displayedBookings = isExpanded ? bookings : bookings.slice(0, 5)
 
@@ -177,6 +182,9 @@ export function MyInterviews() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Candidate</TableHead>
+                        {(permissions.isRecruiter || permissions.isHiringManager || permissions.isAdmin || permissions.isWorkspaceOwner || permissions.isPlatformAdmin) && (
+                          <TableHead>Interviewer</TableHead>
+                        )}
                         <TableHead>Date & Time</TableHead>
                         <TableHead>Duration</TableHead>
                         <TableHead>Status</TableHead>
@@ -193,6 +201,24 @@ export function MyInterviews() {
                           <TableCell className="font-medium">
                             {booking.candidate?.candidate_name || booking.candidate_name}
                           </TableCell>
+                          {(permissions.isRecruiter || permissions.isHiringManager || permissions.isAdmin || permissions.isWorkspaceOwner || permissions.isPlatformAdmin) && (
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                {booking.interviewer_profile ? (
+                                  <>
+                                    <span className="text-sm">
+                                      {booking.interviewer_profile.first_name} {booking.interviewer_profile.last_name}
+                                    </span>
+                                    {booking.interviewer_id !== user?.id && (
+                                      <Badge variant="outline" className="text-xs">Team</Badge>
+                                    )}
+                                  </>
+                                ) : (
+                                  <span className="text-sm text-muted-foreground">Unknown</span>
+                                )}
+                              </div>
+                            </TableCell>
+                          )}
                           <TableCell>{formatInterviewDate(booking.scheduled_start)}</TableCell>
                           <TableCell>
                             <Badge variant="outline" className="gap-1">
@@ -286,6 +312,9 @@ export function MyInterviews() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Candidate</TableHead>
+                        {(permissions.isRecruiter || permissions.isHiringManager || permissions.isAdmin || permissions.isWorkspaceOwner || permissions.isPlatformAdmin) && (
+                          <TableHead>Interviewer</TableHead>
+                        )}
                         <TableHead>Date & Time</TableHead>
                         <TableHead>Duration</TableHead>
                         <TableHead>Status</TableHead>
@@ -302,6 +331,24 @@ export function MyInterviews() {
                           <TableCell className="font-medium">
                             {booking.candidate?.candidate_name || booking.candidate_name}
                           </TableCell>
+                          {(permissions.isRecruiter || permissions.isHiringManager || permissions.isAdmin || permissions.isWorkspaceOwner || permissions.isPlatformAdmin) && (
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                {booking.interviewer_profile ? (
+                                  <>
+                                    <span className="text-sm">
+                                      {booking.interviewer_profile.first_name} {booking.interviewer_profile.last_name}
+                                    </span>
+                                    {booking.interviewer_id !== user?.id && (
+                                      <Badge variant="outline" className="text-xs">Team</Badge>
+                                    )}
+                                  </>
+                                ) : (
+                                  <span className="text-sm text-muted-foreground">Unknown</span>
+                                )}
+                              </div>
+                            </TableCell>
+                          )}
                           <TableCell>{format(parseISO(booking.scheduled_start), 'MMM d, h:mm a')}</TableCell>
                           <TableCell>
                             <Badge variant="outline" className="gap-1">
