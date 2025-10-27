@@ -5,10 +5,13 @@ import { useUserProfile } from '@/hooks/useUserProfile'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Separator } from '@/components/ui/separator'
 import { User, Mail, Shield, Save } from 'lucide-react'
 import { AvatarUploader } from './AvatarUploader'
 import { ProfileForm } from './ProfileForm'
 import { PageHeader } from '@/components/layout/PageHeader'
+import { EmailAccountsSection } from './EmailAccountsSection'
+import { CalendarIntegrationSection } from './CalendarIntegrationSection'
 
 interface ProfileFormData {
   first_name: string
@@ -135,6 +138,16 @@ export function ProfileTab() {
         </CardContent>
       </Card>
 
+      <Separator className="my-8" />
+      
+      <EmailAccountsSection />
+      
+      <Separator className="my-8" />
+      
+      <CalendarIntegrationSection />
+      
+      <Separator className="my-8" />
+      
       {/* Account Information Card */}
       <Card>
         <CardHeader className="pb-sm">
