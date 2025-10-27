@@ -145,11 +145,18 @@ serve(async (req) => {
       if (updErr) throw new Error(`Failed to update stripe_customer_id: ${updErr.message}`);
     }
 
-    const unit_amount = interval === "year" ? 29900 : 2900;
+    // Use Stripe Price IDs from environment
+    const priceId = interval === "year" 
+      ? Deno.env.get("STRIPE_PRICE_YEARLY")
+      : Deno.env.get("STRIPE_PRICE_MONTHLY");
+
+    if (!priceId) {
+      throw new Error(`Missing Stripe Price ID for interval: ${interval}`);
+    }
 
     const origin = req.headers.get("origin") || "http://localhost:5173";
-    const success_url = `${origin}/?billing=success`;
-    const cancel_url = `${origin}/?billing=cancel`;
+    const success_url = `${origin}/settings/billing?session_id={CHECKOUT_SESSION_ID}`;
+    const cancel_url = `${origin}/settings/billing?canceled=true`;
 
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
@@ -157,17 +164,12 @@ serve(async (req) => {
       customer_email: customerId ? undefined : user.email,
       line_items: [
         {
-          price_data: {
-            currency: "usd",
-            product_data: { name: "Virgilio Pro (per active seat)" },
-            unit_amount,
-            recurring: { interval },
-          },
+          price: priceId,  // Use Price ID instead of price_data
           quantity,
         },
       ],
       subscription_data: {
-        trial_period_days: 30,
+        // No trial - subscription starts immediately after checkout
         metadata: {
           tenant_id: String(tenantId),
         },

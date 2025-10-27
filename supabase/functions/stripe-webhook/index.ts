@@ -78,6 +78,10 @@ serve(async (req) => {
 
     // Handle different event types
     switch (event.type) {
+      case "checkout.session.completed":
+        await handleCheckoutCompleted(supabaseClient, stripe, event.data.object as Stripe.Checkout.Session);
+        break;
+
       case "customer.subscription.created":
       case "customer.subscription.updated":
         await handleSubscriptionChange(supabaseClient, event.data.object as Stripe.Subscription);
@@ -122,20 +126,22 @@ serve(async (req) => {
 });
 
 async function handleSubscriptionChange(supabaseClient: any, subscription: Stripe.Subscription) {
-  logStep("Handling subscription change", { subscriptionId: subscription.id, status: subscription.status });
+  logStep("Handling subscription change", { 
+    subscriptionId: subscription.id, 
+    status: subscription.status 
+  });
 
   const customerId = subscription.customer as string;
   
-  // Get tenant ID from customer metadata or by looking up the customer
+  // Get tenant ID from subscription metadata or lookup by customer
   let tenantId = subscription.metadata?.tenant_id;
   
   if (!tenantId) {
-    // Try to find tenant by customer ID
     const { data: existingSubscription } = await supabaseClient
       .from("tenant_subscriptions")
       .select("tenant_id")
       .eq("stripe_customer_id", customerId)
-      .single();
+      .maybeSingle();
     
     if (existingSubscription) {
       tenantId = existingSubscription.tenant_id;
@@ -147,37 +153,57 @@ async function handleSubscriptionChange(supabaseClient: any, subscription: Strip
     return;
   }
 
-  // Determine subscription tier from price
-  let subscriptionTier = "Basic";
-  if (subscription.items.data.length > 0) {
-    const priceId = subscription.items.data[0].price.id;
-    // You can customize this logic based on your price IDs
-    if (priceId.includes("premium")) {
-      subscriptionTier = "Premium";
-    } else if (priceId.includes("enterprise")) {
-      subscriptionTier = "Enterprise";
-    }
-  }
+  // Map Stripe status to our billing_status
+  let billing_status = 'active';
+  if (subscription.status === 'trialing') billing_status = 'active'; // Stripe trials are active
+  if (subscription.status === 'past_due') billing_status = 'past_due';
+  if (subscription.status === 'canceled') billing_status = 'canceled';
+  if (subscription.status === 'unpaid') billing_status = 'locked';
+  if (subscription.status === 'incomplete') billing_status = 'locked';
+  if (subscription.status === 'incomplete_expired') billing_status = 'locked';
 
-  const isActive = subscription.status === "active" || subscription.status === "trialing";
-  const subscriptionEnd = subscription.current_period_end ? new Date(subscription.current_period_end * 1000).toISOString() : null;
-  const trialEnd = subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : null;
+  const isSubscribed = ['active', 'trialing'].includes(subscription.status);
+  const quantity = subscription.items.data[0]?.quantity || 1;
+  const interval = subscription.items.data[0]?.price.recurring?.interval || 'month';
+  
+  const currentPeriodStart = subscription.current_period_start 
+    ? new Date(subscription.current_period_start * 1000).toISOString() 
+    : null;
+  const currentPeriodEnd = subscription.current_period_end 
+    ? new Date(subscription.current_period_end * 1000).toISOString() 
+    : null;
 
-  // Update tenant_subscriptions
+  // Update tenant_subscriptions - CLEAR trial fields since Stripe subscription is now active
   await supabaseClient
     .from("tenant_subscriptions")
-    .upsert({
-      tenant_id: tenantId,
+    .update({
       stripe_customer_id: customerId,
-      subscribed: isActive,
-      subscription_tier: subscriptionTier,
-      billing_interval: subscription.items.data[0]?.price.recurring?.interval || "month",
-      trial_end: trialEnd,
-      subscription_end: subscriptionEnd,
+      stripe_subscription_id: subscription.id,
+      subscribed: isSubscribed,
+      subscription_status: subscription.status,
+      billing_status: billing_status,
+      billing_interval: interval,
+      seat_quantity: quantity,
+      current_period_start: currentPeriodStart,
+      current_period_end_at: currentPeriodEnd,
+      subscription_end: currentPeriodEnd,
+      cancel_at_period_end: subscription.cancel_at_period_end || false,
+      
+      // CLEAR DB trial fields - trial is over, subscription is active
+      trial_started_at: null,
+      trial_ends_at: null,
+      trial_source: null,
+      
       updated_at: new Date().toISOString(),
-    }, { onConflict: "tenant_id" });
+    })
+    .eq("tenant_id", tenantId);
 
-  logStep("Updated tenant subscription", { tenantId, subscribed: isActive, tier: subscriptionTier });
+  logStep("Updated tenant subscription", { 
+    tenantId, 
+    billing_status, 
+    quantity,
+    subscribed: isSubscribed 
+  });
 }
 
 async function handleSubscriptionDeleted(supabaseClient: any, subscription: Stripe.Subscription) {
@@ -185,18 +211,18 @@ async function handleSubscriptionDeleted(supabaseClient: any, subscription: Stri
 
   const customerId = subscription.customer as string;
 
-  // Update tenant_subscriptions to mark as unsubscribed
   await supabaseClient
     .from("tenant_subscriptions")
     .update({
       subscribed: false,
+      billing_status: 'canceled',
       subscription_tier: null,
       subscription_end: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     })
     .eq("stripe_customer_id", customerId);
 
-  logStep("Marked subscription as deleted", { customerId });
+  logStep("Marked subscription as canceled", { customerId });
 }
 
 async function handlePaymentSucceeded(supabaseClient: any, invoice: Stripe.Invoice) {
@@ -205,11 +231,11 @@ async function handlePaymentSucceeded(supabaseClient: any, invoice: Stripe.Invoi
   if (invoice.subscription) {
     const customerId = invoice.customer as string;
     
-    // Update payment status
     await supabaseClient
       .from("tenant_subscriptions")
       .update({
         subscribed: true,
+        billing_status: 'active',
         updated_at: new Date().toISOString(),
       })
       .eq("stripe_customer_id", customerId);
@@ -224,9 +250,15 @@ async function handlePaymentFailed(supabaseClient: any, invoice: Stripe.Invoice)
   if (invoice.subscription) {
     const customerId = invoice.customer as string;
     
-    // You might want to implement logic here to handle failed payments
-    // For now, we'll just log it
-    logStep("Payment failed for customer", { customerId });
+    await supabaseClient
+      .from("tenant_subscriptions")
+      .update({
+        billing_status: 'past_due',
+        updated_at: new Date().toISOString(),
+      })
+      .eq("stripe_customer_id", customerId);
+    
+    logStep("Marked subscription as past_due", { customerId });
   }
 }
 
@@ -237,4 +269,26 @@ async function handleTrialWillEnd(supabaseClient: any, subscription: Stripe.Subs
   // For now, we'll just log it
   const trialEnd = subscription.trial_end ? new Date(subscription.trial_end * 1000).toISOString() : null;
   logStep("Trial ending soon", { subscriptionId: subscription.id, trialEnd });
+}
+
+async function handleCheckoutCompleted(
+  supabaseClient: any, 
+  stripe: Stripe, 
+  session: Stripe.Checkout.Session
+) {
+  logStep("Handling checkout completed", { sessionId: session.id });
+
+  const subscriptionId = session.subscription as string;
+  if (!subscriptionId) {
+    logStep("No subscription in checkout session", { sessionId: session.id });
+    return;
+  }
+
+  // Retrieve full subscription object
+  const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+  
+  // Reuse subscription handler to update DB and clear trial fields
+  await handleSubscriptionChange(supabaseClient, subscription);
+  
+  logStep("Checkout session processed", { sessionId: session.id, subscriptionId });
 }
