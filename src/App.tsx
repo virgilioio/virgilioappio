@@ -36,6 +36,7 @@ import { useBrowserTitle } from './hooks/useBrowserTitle'
 import { Toaster } from '@/components/ui/toaster'
 import { useAuthBootstrap } from './hooks/useAuthBootstrap'
 import PublicJobPosting from './pages/PublicJobPosting'
+import PublicBookingPage from './pages/PublicBookingPage'
 import Onboarding from './pages/Onboarding'
 import Privacy from './pages/Privacy'
 import Terms from './pages/Terms'
@@ -67,6 +68,8 @@ function AppContent() {
         <Route path="/terms" element={<Terms />} />
         {/* Public job posting route */}
         <Route path="/p/:slug" element={<PublicJobPosting />} />
+        {/* Public booking page route */}
+        <Route path="/schedule/:shortCode" element={<PublicBookingPage />} />
         {/* Onboarding for authenticated users without org context */}
         <Route path="/onboarding" element={<RequireAuth><Onboarding /></RequireAuth>} />
         <Route

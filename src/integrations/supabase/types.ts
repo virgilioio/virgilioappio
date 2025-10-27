@@ -2429,6 +2429,71 @@ export type Database = {
         }
         Relationships: []
       }
+      scheduled_bookings: {
+        Row: {
+          booking_config_id: string
+          cancellation_reason: string | null
+          cancelled_at: string | null
+          candidate_email: string
+          candidate_name: string
+          candidate_phone: string | null
+          candidate_timezone: string
+          created_at: string | null
+          google_event_id: string | null
+          google_meet_link: string | null
+          id: string
+          notes: string | null
+          scheduled_end: string
+          scheduled_start: string
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          booking_config_id: string
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          candidate_email: string
+          candidate_name: string
+          candidate_phone?: string | null
+          candidate_timezone: string
+          created_at?: string | null
+          google_event_id?: string | null
+          google_meet_link?: string | null
+          id?: string
+          notes?: string | null
+          scheduled_end: string
+          scheduled_start: string
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          booking_config_id?: string
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
+          candidate_email?: string
+          candidate_name?: string
+          candidate_phone?: string | null
+          candidate_timezone?: string
+          created_at?: string | null
+          google_event_id?: string | null
+          google_meet_link?: string | null
+          id?: string
+          notes?: string | null
+          scheduled_end?: string
+          scheduled_start?: string
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scheduled_bookings_booking_config_id_fkey"
+            columns: ["booking_config_id"]
+            isOneToOne: false
+            referencedRelation: "booking_configurations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stage_automation_emails: {
         Row: {
           body: string
