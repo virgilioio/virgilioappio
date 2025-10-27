@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
 import { AlertCircle, CheckCircle, XCircle } from "lucide-react"
-import { GoogleLogo } from "@/components/icons/GoogleLogo"
+import { GmailLogo } from "@/components/icons/GmailLogo"
 import { useMailIdentities } from "@/hooks/useMailIdentities"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { formatDistanceToNow } from "date-fns"
@@ -51,7 +51,7 @@ export function EmailAccountsSection() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <GoogleLogo size={20} />
+              <GmailLogo size={20} />
               No Email Accounts Connected
             </CardTitle>
             <CardDescription>
