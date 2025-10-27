@@ -54,6 +54,7 @@ function AppContent() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Routes>
+        {/* Public routes - no authentication required */}
         <Route path="/auth" element={<Login />} />
         <Route path="/login" element={<Navigate to="/auth" replace />} />
         <Route path="/signup" element={<SignUp />} />
@@ -62,41 +63,33 @@ function AppContent() {
         <Route path="/accept-invite/:token" element={<AcceptInvite />} />
         <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
-        <Route path="/account-setup" element={<RequireAuth><AccountSetup /></RequireAuth>} />
-        <Route path="/mail/oauth/callback" element={<RequireAuth><MailOAuthCallback /></RequireAuth>} />
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/terms" element={<Terms />} />
-        {/* Public job posting route */}
         <Route path="/p/:slug" element={<PublicJobPosting />} />
-        {/* Public booking page route */}
         <Route path="/schedule/:shortCode" element={<PublicBookingPage />} />
-        {/* Onboarding for authenticated users without org context */}
-        <Route path="/onboarding" element={<RequireAuth><Onboarding /></RequireAuth>} />
-        <Route
-          path="/*"
-          element={
-            <RequireAuth>
-              <Layout />
-            </RequireAuth>
-          }
-        >
-          <Route index element={<Dashboard />} />
-          <Route path="dashboard" element={<Dashboard />} />
-          
-          <Route path="jobs" element={<Jobs />} />
-          <Route path="pipeline" element={<Pipeline />} />
-          <Route path="jobs/:id" element={<JobDetail />} />
-          <Route path="jobs/:jobId/candidates/:candidateId" element={<CandidateProfile />} />
-          <Route path="candidates" element={<Candidates />} />
-          <Route path="candidates/:candidateId" element={<IndependentCandidateProfile />} />
-          <Route path="members" element={<Members />} />
-          <Route path="organizations" element={<Navigate to="/settings?tab=organizations" replace />} />
-          
-          <Route path="billing" element={<Settings />} />
-          <Route path="settings" element={<Settings />} />
-          <Route path="settings/platform/saas-customers/:id" element={<SaaSCustomerDetail />} />
-          <Route path="*" element={<NotFound />} />
+
+        {/* Authenticated routes wrapped with RequireAuth and Layout */}
+        <Route element={<RequireAuth><Layout /></RequireAuth>}>
+          <Route path="/" element={<Dashboard />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/jobs" element={<Jobs />} />
+          <Route path="/pipeline" element={<Pipeline />} />
+          <Route path="/jobs/:id" element={<JobDetail />} />
+          <Route path="/jobs/:jobId/candidates/:candidateId" element={<CandidateProfile />} />
+          <Route path="/candidates" element={<Candidates />} />
+          <Route path="/candidates/:candidateId" element={<IndependentCandidateProfile />} />
+          <Route path="/members" element={<Members />} />
+          <Route path="/organizations" element={<Navigate to="/settings?tab=organizations" replace />} />
+          <Route path="/billing" element={<Settings />} />
+          <Route path="/settings" element={<Settings />} />
+          <Route path="/settings/platform/saas-customers/:id" element={<SaaSCustomerDetail />} />
+          <Route path="/account-setup" element={<AccountSetup />} />
+          <Route path="/mail/oauth/callback" element={<MailOAuthCallback />} />
+          <Route path="/onboarding" element={<Onboarding />} />
         </Route>
+
+        {/* 404 catch-all - must be last */}
+        <Route path="*" element={<NotFound />} />
       </Routes>
       <Toaster />
     </div>
