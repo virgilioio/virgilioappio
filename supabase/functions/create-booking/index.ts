@@ -252,17 +252,28 @@ serve(async (req) => {
       console.log('[create-booking] No calendar integration available, proceeding without calendar event');
     }
 
-    // Insert booking
+    // Generate unique ICS UID
+    const bookingId = crypto.randomUUID();
+    const icsUid = `booking-${bookingId}@virgilio.io`;
+
+    // Insert booking with all Phase 4 fields
     const { data: booking, error: insertError } = await supabase
       .from('scheduled_bookings')
       .insert({
+        id: bookingId,
         booking_config_id,
+        interviewer_id: config.user_id,
+        organization_id: config.organization_id,
         candidate_name,
         candidate_email,
         candidate_phone,
         candidate_timezone,
         scheduled_start,
         scheduled_end,
+        duration_minutes: config.duration_minutes,
+        meeting_location: googleMeetLink || config.meeting_location,
+        meeting_type: googleMeetLink ? 'google_meet' : 'other',
+        ics_uid: icsUid,
         notes,
         google_event_id: googleEventId,
         google_meet_link: googleMeetLink,
@@ -275,13 +286,167 @@ serve(async (req) => {
 
     console.log('[create-booking] Booking created successfully:', booking.id);
 
+    // Generate ICS file content
+    const formatDateForICS = (date: Date): string => {
+      return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+    };
+
+    const escapeICSText = (text: string): string => {
+      return text.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n');
+    };
+
+    const icsContent = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//Virgilio//Interview Scheduler//EN',
+      'CALSCALE:GREGORIAN',
+      'METHOD:REQUEST',
+      'BEGIN:VEVENT',
+      `UID:${icsUid}`,
+      `DTSTAMP:${formatDateForICS(new Date())}`,
+      `DTSTART:${formatDateForICS(new Date(scheduled_start))}`,
+      `DTEND:${formatDateForICS(new Date(scheduled_end))}`,
+      `SUMMARY:${escapeICSText(`Interview with ${profile.first_name} ${profile.last_name}`)}`,
+      `DESCRIPTION:${escapeICSText(`Scheduled via Virgilio\n\nCandidate Notes:\n${notes || 'None'}`)}`,
+      `LOCATION:${escapeICSText(googleMeetLink || config.meeting_location || '')}`,
+      `ORGANIZER;CN=${escapeICSText(`${profile.first_name} ${profile.last_name}`)}:mailto:${profile.email}`,
+      `ATTENDEE;CN=${escapeICSText(candidate_name)};RSVP=TRUE:mailto:${candidate_email}`,
+      'STATUS:CONFIRMED',
+      'SEQUENCE:0',
+      'END:VEVENT',
+      'END:VCALENDAR',
+    ].join('\r\n');
+
+    const icsBase64 = btoa(icsContent);
+
+    // Send confirmation email to candidate
+    try {
+      const candidateEmailBody = `
+        <h2>Your Interview is Confirmed!</h2>
+        <p>Hi ${candidate_name},</p>
+        <p>Your interview with <strong>${profile.first_name} ${profile.last_name}</strong> has been confirmed.</p>
+        
+        <h3>Meeting Details:</h3>
+        <ul>
+          <li><strong>Date:</strong> ${new Date(scheduled_start).toLocaleString('en-US', { 
+            weekday: 'long', 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+            timeZone: candidate_timezone,
+          })}</li>
+          <li><strong>Duration:</strong> ${config.duration_minutes} minutes</li>
+          <li><strong>Location:</strong> ${googleMeetLink ? `<a href="${googleMeetLink}">Google Meet Link</a>` : config.meeting_location}</li>
+        </ul>
+        
+        <p>A calendar invite is attached to this email. Please add it to your calendar.</p>
+        ${notes ? `<p><strong>Your notes:</strong> ${notes}</p>` : ''}
+        <p>If you need to reschedule, please contact us directly.</p>
+        <p>Best regards,<br/>The Virgilio Team</p>
+      `;
+
+      await supabase.functions.invoke('send-user-email', {
+        body: {
+          from_email: profile.email,
+          to: [candidate_email],
+          subject: `Interview Confirmed: ${profile.first_name} ${profile.last_name}`,
+          body_html: candidateEmailBody,
+          attachments: [{
+            filename: 'interview.ics',
+            content: icsBase64,
+            content_type: 'text/calendar',
+          }],
+        },
+      });
+
+      console.log('[create-booking] Candidate confirmation email sent');
+    } catch (emailError) {
+      console.error('[create-booking] Failed to send candidate email:', emailError);
+    }
+
+    // Send notification email to interviewer
+    try {
+      const interviewerEmailBody = `
+        <h2>New Interview Scheduled</h2>
+        <p>Hi ${profile.first_name},</p>
+        <p>A candidate has booked an interview with you:</p>
+        
+        <h3>Candidate Details:</h3>
+        <ul>
+          <li><strong>Name:</strong> ${candidate_name}</li>
+          <li><strong>Email:</strong> ${candidate_email}</li>
+          ${candidate_phone ? `<li><strong>Phone:</strong> ${candidate_phone}</li>` : ''}
+        </ul>
+        
+        <h3>Meeting Details:</h3>
+        <ul>
+          <li><strong>Date:</strong> ${new Date(scheduled_start).toLocaleString('en-US', { 
+            weekday: 'long', 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+            timeZone: config.timezone,
+          })}</li>
+          <li><strong>Duration:</strong> ${config.duration_minutes} minutes</li>
+          <li><strong>Location:</strong> ${googleMeetLink ? `<a href="${googleMeetLink}">Google Meet Link</a>` : config.meeting_location}</li>
+        </ul>
+        
+        ${notes ? `<h3>Candidate Notes:</h3><p>${notes}</p>` : ''}
+        <p>The calendar invite is attached. ${googleEventId ? 'It has also been added to your Google Calendar.' : ''}</p>
+        <p>View details in your <a href="https://virgilio.tech/settings">Virgilio dashboard</a>.</p>
+      `;
+
+      await supabase.functions.invoke('send-user-email', {
+        body: {
+          from_email: 'noreply@virgilio.tech',
+          to: [profile.email],
+          subject: `New Interview Scheduled: ${candidate_name}`,
+          body_html: interviewerEmailBody,
+          attachments: [{
+            filename: 'interview.ics',
+            content: icsBase64,
+            content_type: 'text/calendar',
+          }],
+        },
+      });
+
+      console.log('[create-booking] Interviewer notification email sent');
+    } catch (emailError) {
+      console.error('[create-booking] Failed to send interviewer email:', emailError);
+    }
+
+    // Log activity
+    try {
+      await supabase.rpc('log_activity', {
+        p_user_id: config.user_id,
+        p_organization_id: config.organization_id,
+        p_activity_type: 'interview_scheduled',
+        p_title: `Interview scheduled with ${candidate_name}`,
+        p_description: `Candidate ${candidate_name} booked an interview for ${new Date(scheduled_start).toLocaleString()}`,
+        p_metadata: { 
+          booking_id: bookingId, 
+          candidate_email,
+          scheduled_start,
+          scheduled_end,
+        },
+      });
+    } catch (activityError) {
+      console.error('[create-booking] Failed to log activity:', activityError);
+    }
+
     return new Response(JSON.stringify({
       success: true,
       booking_id: booking.id,
+      ics_uid: icsUid,
       google_event_created: !!googleEventId,
       google_event_id: googleEventId,
       google_meet_link: googleMeetLink,
       warning: googleEventId ? null : 'Booking created but calendar event could not be created',
+      confirmation_message: 'Booking confirmed! Check your email for details.',
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });

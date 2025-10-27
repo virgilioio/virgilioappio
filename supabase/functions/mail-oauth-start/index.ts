@@ -96,7 +96,7 @@ const handler = async (req: Request): Promise<Response> => {
     'https://www.googleapis.com/auth/userinfo.email',
     'https://www.googleapis.com/auth/userinfo.profile',
     'https://www.googleapis.com/auth/calendar.readonly',
-    'https://www.googleapis.com/auth/calendar.events.readonly',
+    'https://www.googleapis.com/auth/calendar.events', // Changed from .readonly to enable event creation
   ];
 
       authUrl = 'https://accounts.google.com/o/oauth2/v2/auth?' + new URLSearchParams({

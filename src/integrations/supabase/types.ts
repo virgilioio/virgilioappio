@@ -2435,14 +2435,23 @@ export type Database = {
           cancellation_reason: string | null
           cancelled_at: string | null
           candidate_email: string
+          candidate_id: string | null
           candidate_name: string
           candidate_phone: string | null
           candidate_timezone: string
           created_at: string | null
+          duration_minutes: number | null
           google_event_id: string | null
           google_meet_link: string | null
+          ics_uid: string | null
           id: string
+          interviewer_id: string | null
+          job_candidate_association_id: string | null
+          job_id: string | null
+          meeting_location: string | null
+          meeting_type: string | null
           notes: string | null
+          organization_id: string | null
           scheduled_end: string
           scheduled_start: string
           status: string
@@ -2453,14 +2462,23 @@ export type Database = {
           cancellation_reason?: string | null
           cancelled_at?: string | null
           candidate_email: string
+          candidate_id?: string | null
           candidate_name: string
           candidate_phone?: string | null
           candidate_timezone: string
           created_at?: string | null
+          duration_minutes?: number | null
           google_event_id?: string | null
           google_meet_link?: string | null
+          ics_uid?: string | null
           id?: string
+          interviewer_id?: string | null
+          job_candidate_association_id?: string | null
+          job_id?: string | null
+          meeting_location?: string | null
+          meeting_type?: string | null
           notes?: string | null
+          organization_id?: string | null
           scheduled_end: string
           scheduled_start: string
           status?: string
@@ -2471,14 +2489,23 @@ export type Database = {
           cancellation_reason?: string | null
           cancelled_at?: string | null
           candidate_email?: string
+          candidate_id?: string | null
           candidate_name?: string
           candidate_phone?: string | null
           candidate_timezone?: string
           created_at?: string | null
+          duration_minutes?: number | null
           google_event_id?: string | null
           google_meet_link?: string | null
+          ics_uid?: string | null
           id?: string
+          interviewer_id?: string | null
+          job_candidate_association_id?: string | null
+          job_id?: string | null
+          meeting_location?: string | null
+          meeting_type?: string | null
           notes?: string | null
+          organization_id?: string | null
           scheduled_end?: string
           scheduled_start?: string
           status?: string
@@ -2490,6 +2517,34 @@ export type Database = {
             columns: ["booking_config_id"]
             isOneToOne: false
             referencedRelation: "booking_configurations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scheduled_bookings_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scheduled_bookings_job_candidate_association_id_fkey"
+            columns: ["job_candidate_association_id"]
+            isOneToOne: false
+            referencedRelation: "job_candidate_associations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scheduled_bookings_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scheduled_bookings_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]

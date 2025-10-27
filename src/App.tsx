@@ -37,6 +37,7 @@ import { Toaster } from '@/components/ui/toaster'
 import { useAuthBootstrap } from './hooks/useAuthBootstrap'
 import PublicJobPosting from './pages/PublicJobPosting'
 import PublicBookingPage from './pages/PublicBookingPage'
+import BookingConfirmed from './pages/BookingConfirmed'
 import Onboarding from './pages/Onboarding'
 import Privacy from './pages/Privacy'
 import Terms from './pages/Terms'
@@ -67,6 +68,7 @@ function AppContent() {
         <Route path="/terms" element={<Terms />} />
         <Route path="/p/:slug" element={<PublicJobPosting />} />
         <Route path="/schedule/:shortCode" element={<PublicBookingPage />} />
+        <Route path="/schedule/:shortCode/confirmed/:bookingId" element={<BookingConfirmed />} />
 
         {/* Authenticated routes wrapped with RequireAuth and Layout */}
         <Route element={<RequireAuth><Layout /></RequireAuth>}>

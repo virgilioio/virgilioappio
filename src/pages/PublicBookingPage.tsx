@@ -39,7 +39,6 @@ export default function PublicBookingPage() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<{ start: string; end: string } | null>(null);
-  const [bookingSuccess, setBookingSuccess] = useState(false);
 
   // Fetch booking configuration
   const { data: config, isLoading, error } = useQuery({
@@ -147,20 +146,8 @@ export default function PublicBookingPage() {
       return data;
     },
     onSuccess: (data) => {
-      if (!data.google_event_created) {
-        toast({
-          title: 'Booking Confirmed',
-          description: 'Your interview has been scheduled, but the calendar invitation could not be sent. The interviewer has been notified.',
-          variant: 'default',
-        });
-      } else {
-        toast({
-          title: 'Booking Confirmed!',
-          description: 'Your interview has been scheduled. A calendar invitation with a Google Meet link has been sent to your email.',
-        });
-      }
-      setBookingSuccess(true);
-      setSelectedSlot(null);
+      // Navigate to confirmation page
+      window.location.href = `/schedule/${shortCode}/confirmed/${data.booking_id}`;
     },
     onError: (error: any) => {
       toast({
@@ -219,52 +206,6 @@ export default function PublicBookingPage() {
       </div>
     );
   }
-
-  if (bookingSuccess) {
-    return (
-      <div className="min-h-screen bg-white">
-        <header className="border-b border-virgilio-border bg-white">
-          <div className="container mx-auto px-4 py-4">
-            <Link to="/">
-              <VirgilioLogo />
-            </Link>
-          </div>
-        </header>
-        <main className="container mx-auto px-4 py-16 max-w-2xl">
-          <Card className="shadow-calendly border-virgilio-border">
-            <CardContent className="pt-12 pb-12 text-center space-y-6">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-virgilio-success/10">
-                <CheckCircle2 className="w-8 h-8 text-virgilio-success" />
-              </div>
-              <h1 className="text-h2-mobile md:text-h2-desktop font-poppins font-bold text-virgilio-text">
-                You're Scheduled<span className="text-virgilio-purple">!</span>
-              </h1>
-              <p className="text-base text-virgilio-muted leading-relaxed max-w-md mx-auto">
-                A calendar invitation with a Google Meet link has been sent to your email. We look forward to meeting you!
-              </p>
-              
-              {/* Add to calendar buttons */}
-              <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
-                <Button
-                  variant="outline"
-                  className="border-virgilio-border hover:border-virgilio-purple hover:bg-virgilio-purple/5"
-                >
-                  Add to Google Calendar
-                </Button>
-                <Button
-                  variant="outline"
-                  className="border-virgilio-border hover:border-virgilio-purple hover:bg-virgilio-purple/5"
-                >
-                  Add to Outlook
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </main>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-white">
       <header className="sticky top-0 z-50 border-b border-virgilio-border bg-white/95 backdrop-blur-sm">
