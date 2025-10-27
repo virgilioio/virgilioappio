@@ -181,7 +181,7 @@ export function MyInterviews() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Candidate</TableHead>
+                        <TableHead className="min-w-[180px] max-w-[220px]">Candidate</TableHead>
                         {(permissions.isRecruiter || permissions.isHiringManager || permissions.isAdmin || permissions.isWorkspaceOwner || permissions.isPlatformAdmin) && (
                           <TableHead>Interviewer</TableHead>
                         )}
@@ -198,8 +198,10 @@ export function MyInterviews() {
                           className="cursor-pointer hover:bg-muted/50"
                           onClick={() => handleViewDetails(booking.id)}
                         >
-                          <TableCell className="font-medium">
-                            {booking.candidate?.candidate_name || booking.candidate_name}
+                          <TableCell className="font-medium max-w-[220px]">
+                            <div className="truncate" title={booking.candidate?.candidate_name || booking.candidate_name}>
+                              {booking.candidate?.candidate_name || booking.candidate_name}
+                            </div>
                           </TableCell>
                           {(permissions.isRecruiter || permissions.isHiringManager || permissions.isAdmin || permissions.isWorkspaceOwner || permissions.isPlatformAdmin) && (
                             <TableCell>
@@ -213,8 +215,14 @@ export function MyInterviews() {
                                       <Badge variant="outline" className="text-xs">Team</Badge>
                                     )}
                                   </>
+                                ) : booking.interviewer_id ? (
+                                  <span className="text-sm text-muted-foreground" title={`Interviewer ID: ${booking.interviewer_id}`}>
+                                    Profile Not Found
+                                  </span>
                                 ) : (
-                                  <span className="text-sm text-muted-foreground">Unknown</span>
+                                  <span className="text-sm text-muted-foreground">
+                                    Not Assigned
+                                  </span>
                                 )}
                               </div>
                             </TableCell>
@@ -311,7 +319,7 @@ export function MyInterviews() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Candidate</TableHead>
+                        <TableHead className="min-w-[180px] max-w-[220px]">Candidate</TableHead>
                         {(permissions.isRecruiter || permissions.isHiringManager || permissions.isAdmin || permissions.isWorkspaceOwner || permissions.isPlatformAdmin) && (
                           <TableHead>Interviewer</TableHead>
                         )}
@@ -328,8 +336,10 @@ export function MyInterviews() {
                           className="cursor-pointer hover:bg-muted/50"
                           onClick={() => handleViewDetails(booking.id)}
                         >
-                          <TableCell className="font-medium">
-                            {booking.candidate?.candidate_name || booking.candidate_name}
+                          <TableCell className="font-medium max-w-[220px]">
+                            <div className="truncate" title={booking.candidate?.candidate_name || booking.candidate_name}>
+                              {booking.candidate?.candidate_name || booking.candidate_name}
+                            </div>
                           </TableCell>
                           {(permissions.isRecruiter || permissions.isHiringManager || permissions.isAdmin || permissions.isWorkspaceOwner || permissions.isPlatformAdmin) && (
                             <TableCell>
@@ -343,8 +353,14 @@ export function MyInterviews() {
                                       <Badge variant="outline" className="text-xs">Team</Badge>
                                     )}
                                   </>
+                                ) : booking.interviewer_id ? (
+                                  <span className="text-sm text-muted-foreground" title={`Interviewer ID: ${booking.interviewer_id}`}>
+                                    Profile Not Found
+                                  </span>
                                 ) : (
-                                  <span className="text-sm text-muted-foreground">Unknown</span>
+                                  <span className="text-sm text-muted-foreground">
+                                    Not Assigned
+                                  </span>
                                 )}
                               </div>
                             </TableCell>

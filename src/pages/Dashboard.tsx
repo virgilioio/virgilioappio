@@ -72,17 +72,17 @@ export default function Dashboard() {
               <AIJobAssistant />
             )}
             
-            {/* Three column layout with Jobs Overview spanning 3 columns (60%) and My Interviews 2 columns (40%) */}
-            <div className="grid gap-6 lg:grid-cols-5">
-              {/* Jobs Overview - spans 3 columns */}
+            {/* 50/50 layout with Jobs Overview and My Interviews */}
+            <div className="grid gap-6 lg:grid-cols-2">
+              {/* Jobs Overview */}
               {hasJobContent && (
-                <div className="lg:col-span-3">
+                <div>
                   <JobsOverview permissions={permissions} />
                 </div>
               )}
               
-              {/* Right column for other components - spans 2 columns */}
-              <div className="lg:col-span-2 space-y-6">
+              {/* My Interviews */}
+              <div className="space-y-6">
                 <MyInterviews />
               </div>
             </div>
