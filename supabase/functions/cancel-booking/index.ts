@@ -41,17 +41,10 @@ serve(async (req) => {
       });
     }
 
-    // Fetch booking details
+    // Fetch booking details (without join to handle NULL foreign keys)
     const { data: booking, error: fetchError } = await supabase
       .from('scheduled_bookings')
-      .select(`
-        *,
-        interviewer_profile:profiles!scheduled_bookings_interviewer_id_fkey(
-          first_name,
-          last_name,
-          email
-        )
-      `)
+      .select('*')
       .eq('id', booking_id)
       .single();
 
@@ -60,6 +53,18 @@ serve(async (req) => {
         status: 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
+    }
+
+    // Fetch interviewer profile separately if interviewer_id exists
+    let interviewerProfile = null;
+    if (booking.interviewer_id) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('first_name, last_name, email')
+        .eq('user_id', booking.interviewer_id)
+        .maybeSingle();
+      
+      interviewerProfile = profile;
     }
 
     if (booking.status === 'cancelled') {
@@ -73,12 +78,12 @@ serve(async (req) => {
     let jobTitle = 'Position';
     let stageName = 'Interview';
 
-    if (booking.job_id && booking.job_hiring_stage_id) {
+    if (booking.job_hiring_stage_id) {
       const { data: stageData } = await supabase
         .from('job_hiring_stages')
         .select('stage_name, job:jobs(title)')
         .eq('id', booking.job_hiring_stage_id)
-        .single();
+        .maybeSingle();
 
       if (stageData) {
         jobTitle = stageData.job?.title || jobTitle;
@@ -201,7 +206,7 @@ serve(async (req) => {
       `DTEND:${formatDateForICS(new Date(booking.scheduled_end))}`,
       `SUMMARY:${escapeICSText('CANCELLED: ' + interviewTitle)}`,
       `DESCRIPTION:${escapeICSText('This interview has been cancelled.' + (reason ? '\n\nReason: ' + reason : ''))}`,
-      `ORGANIZER;CN=${escapeICSText(booking.interviewer_profile?.first_name + ' ' + booking.interviewer_profile?.last_name)}:mailto:${booking.interviewer_profile?.email}`,
+      `ORGANIZER;CN=${escapeICSText(interviewerProfile ? `${interviewerProfile.first_name} ${interviewerProfile.last_name}` : 'Interviewer')}:mailto:${interviewerProfile?.email || 'no-reply@virgilio.io'}`,
       `ATTENDEE;CN=${escapeICSText(booking.candidate_name)};RSVP=TRUE:mailto:${booking.candidate_email}`,
       'STATUS:CANCELLED',
       'SEQUENCE:1',
@@ -237,32 +242,34 @@ serve(async (req) => {
       },
     });
 
-    // Send cancellation email to interviewer
-    await supabase.functions.invoke('send-user-email', {
-      body: {
-        to: [booking.interviewer_profile?.email],
-        subject: `Interview Cancelled: ${interviewTitle}`,
-        html: `
-          <h2>Interview Cancelled</h2>
-          <p>Hello ${booking.interviewer_profile?.first_name},</p>
-          <p>An interview has been cancelled:</p>
-          <ul>
-            <li><strong>Candidate:</strong> ${booking.candidate_name} (${booking.candidate_email})</li>
-            <li><strong>Interview:</strong> ${interviewTitle}</li>
-            <li><strong>Originally Scheduled:</strong> ${new Date(booking.scheduled_start).toLocaleString()}</li>
-            ${reason ? `<li><strong>Reason:</strong> ${reason}</li>` : ''}
-          </ul>
-          <p>The cancellation has been added to your calendar.</p>
-          <p>Best regards,<br/>The Recruiting Team</p>
-        `,
-        attachments: [{
-          filename: 'cancellation.ics',
-          content: icsBase64,
-          encoding: 'base64',
-          contentType: 'text/calendar',
-        }],
-      },
-    });
+    // Send cancellation email to interviewer if available
+    if (interviewerProfile?.email) {
+      await supabase.functions.invoke('send-user-email', {
+        body: {
+          to: [interviewerProfile.email],
+          subject: `Interview Cancelled: ${interviewTitle}`,
+          html: `
+            <h2>Interview Cancelled</h2>
+            <p>Hello ${interviewerProfile.first_name},</p>
+            <p>An interview has been cancelled:</p>
+            <ul>
+              <li><strong>Candidate:</strong> ${booking.candidate_name} (${booking.candidate_email})</li>
+              <li><strong>Interview:</strong> ${interviewTitle}</li>
+              <li><strong>Originally Scheduled:</strong> ${new Date(booking.scheduled_start).toLocaleString()}</li>
+              ${reason ? `<li><strong>Reason:</strong> ${reason}</li>` : ''}
+            </ul>
+            <p>The cancellation has been added to your calendar.</p>
+            <p>Best regards,<br/>The Recruiting Team</p>
+          `,
+          attachments: [{
+            filename: 'cancellation.ics',
+            content: icsBase64,
+            encoding: 'base64',
+            contentType: 'text/calendar',
+          }],
+        },
+      });
+    }
 
     // Log activity
     if (booking.candidate_id && booking.job_id) {

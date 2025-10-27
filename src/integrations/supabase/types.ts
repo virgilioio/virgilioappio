@@ -2451,7 +2451,7 @@ export type Database = {
           candidate_confirmation_status: string | null
           candidate_confirmed_at: string | null
           candidate_email: string
-          candidate_id: string | null
+          candidate_id: string
           candidate_name: string
           candidate_phone: string | null
           candidate_timezone: string
@@ -2463,9 +2463,9 @@ export type Database = {
           id: string
           interviewer_confirmation_status: string | null
           interviewer_confirmed_at: string | null
-          interviewer_id: string | null
+          interviewer_id: string
           job_candidate_association_id: string | null
-          job_hiring_stage_id: string | null
+          job_hiring_stage_id: string
           job_id: string | null
           meeting_location: string | null
           meeting_type: string | null
@@ -2485,7 +2485,7 @@ export type Database = {
           candidate_confirmation_status?: string | null
           candidate_confirmed_at?: string | null
           candidate_email: string
-          candidate_id?: string | null
+          candidate_id: string
           candidate_name: string
           candidate_phone?: string | null
           candidate_timezone: string
@@ -2497,9 +2497,9 @@ export type Database = {
           id?: string
           interviewer_confirmation_status?: string | null
           interviewer_confirmed_at?: string | null
-          interviewer_id?: string | null
+          interviewer_id: string
           job_candidate_association_id?: string | null
-          job_hiring_stage_id?: string | null
+          job_hiring_stage_id: string
           job_id?: string | null
           meeting_location?: string | null
           meeting_type?: string | null
@@ -2519,7 +2519,7 @@ export type Database = {
           candidate_confirmation_status?: string | null
           candidate_confirmed_at?: string | null
           candidate_email?: string
-          candidate_id?: string | null
+          candidate_id?: string
           candidate_name?: string
           candidate_phone?: string | null
           candidate_timezone?: string
@@ -2531,9 +2531,9 @@ export type Database = {
           id?: string
           interviewer_confirmation_status?: string | null
           interviewer_confirmed_at?: string | null
-          interviewer_id?: string | null
+          interviewer_id?: string
           job_candidate_association_id?: string | null
-          job_hiring_stage_id?: string | null
+          job_hiring_stage_id?: string
           job_id?: string | null
           meeting_location?: string | null
           meeting_type?: string | null
