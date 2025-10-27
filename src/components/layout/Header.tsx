@@ -170,10 +170,10 @@ export function Header() {
                 to={item.href}
                 onClick={() => setIsSheetOpen(false)}
                 aria-current={isActive ? 'page' : undefined}
-                className={`relative flex items-center gap-2 px-2 py-1 text-sm font-medium rounded-md transition-colors ${
+                className={`relative flex items-center gap-2 px-2 py-1 text-sm font-poppins font-medium tracking-tight rounded-md transition-all duration-200 ease-out ${
                   isActive
-                    ? 'bg-primary text-primary-foreground after:absolute after:bottom-0 after:left-2 after:right-2 after:h-0.5 after:bg-primary-foreground/80 after:rounded-full'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                    ? 'bg-virgilio-purple text-white font-semibold after:absolute after:bottom-0 after:left-2 after:right-2 after:h-0.5 after:bg-white after:rounded-full'
+                    : 'text-virgilio-text hover:bg-virgilio-purple/10 hover:-translate-y-0.5 hover:text-virgilio-text'
                 }`}
               >
                 <Icon className="h-3.5 w-3.5" />
@@ -187,8 +187,8 @@ export function Header() {
 
   return (
     <header className={cn(
-      "fixed top-0 left-0 right-0 z-50 border-b border-border transition-shadow supports-[backdrop-filter]:bg-surface-primary/60 bg-surface-primary/90 backdrop-blur",
-      scrolled && "shadow-sm"
+      "fixed top-0 left-0 right-0 z-50 border-b border-virgilio-border transition-shadow supports-[backdrop-filter]:bg-surface-primary/60 bg-surface-primary/90 backdrop-blur",
+      scrolled && "shadow-calendly"
     )}>
       <div className="flex items-center justify-between px-md py-2 sm:px-lg">
         {/* Logo and Desktop Navigation */}
@@ -211,10 +211,10 @@ export function Header() {
                     key={item.href}
                     to={item.href}
                     aria-current={isActive ? 'page' : undefined}
-                    className={`relative flex items-center gap-2 px-2 py-1 text-sm font-medium rounded-md transition-colors ${
+                    className={`relative flex items-center gap-2 px-2 py-1 text-sm font-poppins font-medium tracking-tight rounded-md transition-all duration-200 ease-out ${
                       isActive
-                        ? 'bg-primary text-primary-foreground after:absolute after:bottom-0 after:left-2 after:right-2 after:h-0.5 after:bg-primary-foreground/80 after:rounded-full'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                        ? 'bg-virgilio-purple text-white font-semibold after:absolute after:bottom-0 after:left-2 after:right-2 after:h-0.5 after:bg-white after:rounded-full'
+                        : 'text-virgilio-text hover:bg-virgilio-purple/10 hover:-translate-y-0.5 hover:text-virgilio-text'
                     }`}
                   >
                     <Icon className="h-3.5 w-3.5" />
@@ -234,14 +234,21 @@ export function Header() {
           {isPlatformAdmin && uniqueOrgs.length > 1 && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="hidden sm:inline-flex">
+                <Button variant="outline" className="hidden sm:inline-flex font-poppins font-semibold">
                   {currentOrgName}
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>Switch workspace</DropdownMenuLabel>
+              <DropdownMenuContent align="end" className="shadow-calendly border-virgilio-border">
+                <DropdownMenuLabel className="font-poppins font-semibold text-virgilio-text">Switch workspace</DropdownMenuLabel>
                 {uniqueOrgs.map((o) => (
-                  <DropdownMenuItem key={o.id} onClick={() => switchWorkspace(o.id)}>
+                  <DropdownMenuItem 
+                    key={o.id} 
+                    onClick={() => switchWorkspace(o.id)}
+                    className={cn(
+                      "font-poppins hover:bg-virgilio-purple/5 hover:text-virgilio-text transition-colors cursor-pointer",
+                      o.id === organizationId && "bg-virgilio-purple/10 text-virgilio-purple font-semibold"
+                    )}
+                  >
                     {o.name}
                   </DropdownMenuItem>
                 ))}
@@ -253,37 +260,37 @@ export function Header() {
           {/* User Menu */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+              <Button variant="ghost" className="relative h-10 w-10 rounded-full hover:ring-2 hover:ring-virgilio-purple/20 transition-all">
                 <Avatar className="h-10 w-10">
                   <AvatarImage src={profile?.avatar_url} alt={userDisplayName} />
-                  <AvatarFallback className="text-sm">{userInitials}</AvatarFallback>
+                  <AvatarFallback className="text-sm bg-virgilio-purple text-white font-poppins font-semibold">{userInitials}</AvatarFallback>
                 </Avatar>
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-52" align="end" forceMount>
+            <DropdownMenuContent className="w-52 shadow-calendly border-virgilio-border" align="end" forceMount>
               <DropdownMenuLabel className="font-normal">
                 <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium leading-none">{userDisplayName}</p>
-                  <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
+                  <p className="text-sm font-poppins font-semibold text-virgilio-text leading-none">{userDisplayName}</p>
+                  <p className="text-xs font-poppins leading-none text-virgilio-muted">{user?.email}</p>
                 </div>
               </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
+              <DropdownMenuSeparator className="bg-virgilio-border" />
+              <DropdownMenuItem asChild className="hover:bg-virgilio-purple/5 hover:text-virgilio-text transition-colors cursor-pointer">
                 <Link to="/settings" className="flex items-center gap-2 w-full">
                   <User className="h-3.5 w-3.5" />
-                  Profile
+                  <span className="font-poppins">Profile</span>
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem asChild>
+              <DropdownMenuItem asChild className="hover:bg-virgilio-purple/5 hover:text-virgilio-text transition-colors cursor-pointer">
                 <Link to="/settings" className="flex items-center gap-2 w-full">
                   <Settings className="h-3.5 w-3.5" />
-                  Settings
+                  <span className="font-poppins">Settings</span>
                 </Link>
               </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleLogout} disabled={isLoggingOut} className="text-red-600 focus:text-red-600">
+              <DropdownMenuSeparator className="bg-virgilio-border" />
+              <DropdownMenuItem onClick={handleLogout} disabled={isLoggingOut} className="text-virgilio-error hover:bg-virgilio-error/10 hover:text-virgilio-error transition-colors cursor-pointer">
                 <LogOut className="h-3.5 w-3.5 mr-2" />
-                {isLoggingOut ? 'Logging out...' : 'Log out'}
+                <span className="font-poppins">{isLoggingOut ? 'Logging out...' : 'Log out'}</span>
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -296,7 +303,7 @@ export function Header() {
                 <span className="sr-only">Toggle navigation menu</span>
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-64">
+            <SheetContent side="left" className="w-64 shadow-calendly">
               <div className="flex flex-col gap-md">
                 <Link to="/dashboard" className="flex items-center gap-sm" onClick={() => setIsSheetOpen(false)}>
                   <VirgilioLogo className="h-6 w-auto" />
