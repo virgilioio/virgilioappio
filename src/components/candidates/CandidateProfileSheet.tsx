@@ -27,6 +27,7 @@ import { ScorecardSheet } from '@/components/candidates/ScorecardSheet'
 import { useMyScorecards } from '@/hooks/useScorecards'
 import { useAllStageScorecards } from '@/hooks/useAllStageScorecards'
 import { ExpandableScoreDisplay } from '@/components/candidates/ExpandableScoreDisplay'
+import { StageBookingsList } from '@/components/candidates/StageBookingsList'
 import { generateCandidatePdf } from '@/utils/candidatePdfGenerator'
 import CandidateFormSheet from '@/components/candidates/CandidateFormSheet'
 import { toast } from '@/hooks/use-toast'
@@ -597,6 +598,15 @@ const [scheduleStageName, setScheduleStageName] = useState<string>('')
           )}
 
           {/* Schedule Interview Button for screening/interview stages */}
+          {/* Scheduled Interviews for this Stage */}
+          {(opt.stage.stage_type === 'screening' || opt.stage.stage_type === 'interview') && candidateId && (
+            <StageBookingsList 
+              jhsId={opt.jhsId}
+              candidateId={candidateId}
+            />
+          )}
+
+          {/* Schedule Interview Button */}
           {(opt.stage.stage_type === 'screening' || opt.stage.stage_type === 'interview') && (
             <div className="mt-3">
               <Button

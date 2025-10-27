@@ -35,6 +35,36 @@ serve(async (req) => {
 
     console.log('[create-booking] Creating booking for:', candidate_email);
 
+    // Fetch stage name and job title if this is an internal booking
+    let stageName = 'Interview';
+    let jobTitle = '';
+
+    if (job_hiring_stage_id) {
+      const { data: stageData } = await supabase
+        .from('job_hiring_stages')
+        .select('stage:job_stages(stage_name)')
+        .eq('id', job_hiring_stage_id)
+        .single();
+      
+      if (stageData?.stage?.stage_name) {
+        stageName = stageData.stage.stage_name;
+      }
+    }
+
+    if (job_id) {
+      const { data: jobData } = await supabase
+        .from('jobs')
+        .select('title')
+        .eq('id', job_id)
+        .single();
+      
+      if (jobData?.title) {
+        jobTitle = ` - ${jobData.title}`;
+      }
+    }
+
+    const interviewTitle = `${stageName} with ${candidate_name}${jobTitle}`;
+
     // Load booking config
     const { data: config, error: configError } = await supabase
       .from('booking_configurations')
@@ -191,7 +221,7 @@ serve(async (req) => {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              summary: `Interview with ${candidate_name}`,
+              summary: interviewTitle,
               description: `Interview scheduled via Virgilio booking system.\n\nCandidate: ${candidate_name}\nEmail: ${candidate_email}${notes ? '\n\nNotes: ' + notes : ''}`,
               start: {
                 dateTime: scheduled_start,
@@ -318,7 +348,7 @@ serve(async (req) => {
       `DTSTAMP:${formatDateForICS(new Date())}`,
       `DTSTART:${formatDateForICS(new Date(scheduled_start))}`,
       `DTEND:${formatDateForICS(new Date(scheduled_end))}`,
-      `SUMMARY:${escapeICSText(`Interview with ${profile.first_name} ${profile.last_name}`)}`,
+      `SUMMARY:${escapeICSText(interviewTitle)}`,
       `DESCRIPTION:${escapeICSText(`Scheduled via Virgilio\n\nCandidate Notes:\n${notes || 'None'}`)}`,
       `LOCATION:${escapeICSText(googleMeetLink || config.meeting_location || '')}`,
       `ORGANIZER;CN=${escapeICSText(`${profile.first_name} ${profile.last_name}`)}:mailto:${profile.email}`,
@@ -363,7 +393,7 @@ serve(async (req) => {
         body: {
           from_email: profile.email,
           to: [candidate_email],
-          subject: `Interview Confirmed: ${profile.first_name} ${profile.last_name}`,
+          subject: `Your Interview is Confirmed: ${stageName}${jobTitle}`,
           body_html: candidateEmailBody,
           attachments: [{
             filename: 'interview.ics',
@@ -416,7 +446,7 @@ serve(async (req) => {
         body: {
           from_email: 'noreply@virgilio.tech',
           to: [profile.email],
-          subject: `New Interview Scheduled: ${candidate_name}`,
+          subject: `New Interview Scheduled: ${stageName} with ${candidate_name}${jobTitle}`,
           body_html: interviewerEmailBody,
           attachments: [{
             filename: 'interview.ics',

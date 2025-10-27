@@ -404,6 +404,9 @@ export function ScheduleInterviewSheet({
       // Invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: ['scheduled-bookings'] });
       queryClient.invalidateQueries({ queryKey: ['activity-feed'] });
+      queryClient.invalidateQueries({ 
+        queryKey: ['stage-bookings', jhsId, candidateId] 
+      });
       
       // Reset state and close
       setSelectedInterviewer(null);
