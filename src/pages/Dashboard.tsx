@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from 'react'
 import { WelcomeHeader } from '@/components/dashboard/WelcomeHeader'
-import { QuickAccess } from '@/components/dashboard/QuickAccess'
+import { MyInterviews } from '@/components/dashboard/MyInterviews'
 import { JobsOverview } from '@/components/dashboard/JobsOverview'
 
 
@@ -83,8 +83,7 @@ export default function Dashboard() {
               
               {/* Right column for other components */}
               <div className="space-y-6">
-                {hasQuickAccess && <QuickAccess permissions={permissions} />}
-                
+                <MyInterviews />
               </div>
             </div>
         </div>
