@@ -25,7 +25,7 @@ export function useStageBookings(
       const interviewerIds = [...new Set(data.map(b => b.interviewer_id))];
       const { data: profiles } = await supabase
         .from('profiles')
-        .select('user_id, first_name, last_name, email')
+        .select('user_id, first_name, last_name, email, avatar_url')
         .in('user_id', interviewerIds);
       
       const profilesMap = new Map(profiles?.map(p => [p.user_id, p]) || []);
