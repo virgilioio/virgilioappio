@@ -3320,6 +3320,10 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_fallback_interviewer_id: {
+        Args: { booking_id: string }
+        Returns: string
+      }
       get_feature_flag: { Args: { flag_name_param: string }; Returns: boolean }
       get_invite_expiry: { Args: never; Returns: string }
       get_member_display_info: {
