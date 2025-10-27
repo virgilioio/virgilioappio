@@ -1,17 +1,19 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 import { VirgilioLogo } from '@/components/VirgilioLogo';
 import { InterviewerCard } from '@/components/booking/InterviewerCard';
-import { AvailabilityCalendar } from '@/components/booking/AvailabilityCalendar';
+import { MonthCalendar } from '@/components/booking/MonthCalendar';
+import { TimeSlotsList } from '@/components/booking/TimeSlotsList';
 import { BookingConfirmationForm } from '@/components/booking/BookingConfirmationForm';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
-import { AlertCircle, CheckCircle2 } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Globe } from 'lucide-react';
+import { startOfMonth, endOfMonth, isSameDay, parseISO } from 'date-fns';
+import { useBookingAvailability } from '@/hooks/useBookingAvailability';
 
 // Common timezones for the selector
 const COMMON_TIMEZONES = [
@@ -33,7 +35,9 @@ export default function PublicBookingPage() {
   const [candidateTimezone, setCandidateTimezone] = useState(
     Intl.DateTimeFormat().resolvedOptions().timeZone
   );
-  const [selectedSlot, setSelectedSlot] = useState<{ start: Date; end: Date } | null>(null);
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [selectedSlot, setSelectedSlot] = useState<{ start: string; end: string } | null>(null);
   const [bookingSuccess, setBookingSuccess] = useState(false);
 
   // Fetch booking configuration
@@ -69,6 +73,41 @@ export default function PublicBookingPage() {
     retry: false,
   });
 
+  // Fetch availability for the current month
+  const monthStart = startOfMonth(currentMonth);
+  const monthEnd = endOfMonth(currentMonth);
+  
+  const { data: availabilityData, isLoading: isLoadingAvailability } = useBookingAvailability(
+    config?.id,
+    monthStart,
+    monthEnd,
+    config?.duration_minutes || 30,
+    candidateTimezone
+  );
+
+  // Extract available dates from availability data
+  const availableDates = useMemo(() => {
+    if (!availabilityData?.available_slots) return [];
+    
+    const uniqueDates = new Set<string>();
+    availabilityData.available_slots.forEach(slot => {
+      const date = parseISO(slot.start);
+      uniqueDates.add(date.toDateString());
+    });
+    
+    return Array.from(uniqueDates).map(dateStr => new Date(dateStr));
+  }, [availabilityData]);
+
+  // Filter time slots for selected date
+  const timeSlotsForSelectedDate = useMemo(() => {
+    if (!selectedDate || !availabilityData?.available_slots) return [];
+    
+    return availabilityData.available_slots.filter(slot => {
+      const slotDate = parseISO(slot.start);
+      return isSameDay(slotDate, selectedDate);
+    });
+  }, [selectedDate, availabilityData]);
+
   // Create booking mutation
   const createBookingMutation = useMutation({
     mutationFn: async (formData: {
@@ -86,8 +125,8 @@ export default function PublicBookingPage() {
           candidate_email: formData.candidate_email,
           candidate_phone: formData.candidate_phone || null,
           candidate_timezone: candidateTimezone,
-          scheduled_start: selectedSlot.start.toISOString(),
-          scheduled_end: selectedSlot.end.toISOString(),
+          scheduled_start: selectedSlot.start,
+          scheduled_end: selectedSlot.end,
           notes: formData.notes || null,
         },
       });
@@ -198,10 +237,12 @@ export default function PublicBookingPage() {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8 max-w-6xl">
-        <div className="grid md:grid-cols-3 gap-8">
-          {/* Left: Interviewer Info */}
-          <div className="md:col-span-1">
+      <main className="container mx-auto px-4 py-8 max-w-7xl">
+        <h1 className="text-3xl font-bold text-text-primary mb-8">Select a Date & Time</h1>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Left sidebar - Interviewer info */}
+          <div className="lg:col-span-3">
             {config.profiles && (
               <InterviewerCard
                 profile={config.profiles}
@@ -214,48 +255,67 @@ export default function PublicBookingPage() {
             )}
           </div>
 
-          {/* Right: Calendar & Booking */}
-          <div className="md:col-span-2 space-y-4">
-            {/* Timezone Selector */}
+          {/* Middle - Month calendar */}
+          <div className="lg:col-span-5">
             <Card>
-              <CardContent className="pt-6">
-                <div className="space-y-2">
-                  <Label htmlFor="timezone">Your Timezone</Label>
-                  <Select value={candidateTimezone} onValueChange={setCandidateTimezone}>
-                    <SelectTrigger id="timezone">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {COMMON_TIMEZONES.map(tz => (
-                        <SelectItem key={tz.value} value={tz.value}>
-                          {tz.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+              <CardContent className="p-6">
+                <MonthCalendar
+                  availableDates={availableDates}
+                  selectedDate={selectedDate}
+                  onDateSelect={setSelectedDate}
+                  currentMonth={currentMonth}
+                  onMonthChange={setCurrentMonth}
+                />
+                
+                {/* Timezone selector */}
+                <div className="mt-6 pt-6 border-t border-border">
+                  <div className="flex items-center gap-2">
+                    <Globe className="h-4 w-4 text-text-secondary" />
+                    <Select value={candidateTimezone} onValueChange={setCandidateTimezone}>
+                      <SelectTrigger className="flex-1">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {COMMON_TIMEZONES.map((tz) => (
+                          <SelectItem key={tz.value} value={tz.value}>
+                            {tz.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </CardContent>
             </Card>
+          </div>
 
-            {/* Availability Calendar */}
-            <AvailabilityCalendar
-              bookingConfigId={config.id}
-              durationMinutes={config.duration_minutes}
-              candidateTimezone={candidateTimezone}
-              onSlotSelect={setSelectedSlot}
-              selectedSlot={selectedSlot}
-            />
+          {/* Right - Time slots */}
+          <div className="lg:col-span-4">
+            <Card>
+              <CardContent className="p-6">
+                <TimeSlotsList
+                  selectedDate={selectedDate}
+                  timeSlots={timeSlotsForSelectedDate}
+                  selectedSlot={selectedSlot}
+                  onSlotSelect={setSelectedSlot}
+                  isLoading={isLoadingAvailability}
+                />
+                
+                {selectedSlot && (
+                  <div className="mt-6 pt-6 border-t border-border">
+                    <BookingConfirmationForm
+                      selectedSlot={selectedSlot}
+                      candidateTimezone={candidateTimezone}
+                      onCancel={() => setSelectedSlot(null)}
+                      onConfirm={createBookingMutation.mutateAsync}
+                    />
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
         </div>
       </main>
-
-      {/* Booking Confirmation Form */}
-      <BookingConfirmationForm
-        selectedSlot={selectedSlot}
-        candidateTimezone={candidateTimezone}
-        onCancel={() => setSelectedSlot(null)}
-        onConfirm={createBookingMutation.mutateAsync}
-      />
     </div>
   );
 }

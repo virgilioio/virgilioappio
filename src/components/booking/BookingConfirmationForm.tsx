@@ -20,7 +20,7 @@ const formSchema = z.object({
 type FormData = z.infer<typeof formSchema>;
 
 interface BookingConfirmationFormProps {
-  selectedSlot: { start: Date; end: Date } | null;
+  selectedSlot: { start: string; end: string } | null;
   candidateTimezone: string;
   onCancel: () => void;
   onConfirm: (formData: FormData) => Promise<void>;
@@ -68,13 +68,13 @@ export function BookingConfirmationForm({
             <div className="flex items-center gap-2 text-sm">
               <Calendar className="w-4 h-4 text-text-secondary" />
               <span className="font-medium">
-                {format(selectedSlot.start, 'EEEE, MMMM d, yyyy')}
+                {format(new Date(selectedSlot.start), 'EEEE, MMMM d, yyyy')}
               </span>
             </div>
             <div className="flex items-center gap-2 text-sm">
               <Clock className="w-4 h-4 text-text-secondary" />
               <span>
-                {format(selectedSlot.start, 'h:mm a')} - {format(selectedSlot.end, 'h:mm a')}
+                {format(new Date(selectedSlot.start), 'h:mm a')} - {format(new Date(selectedSlot.end), 'h:mm a')}
               </span>
             </div>
             <div className="flex items-center gap-2 text-sm">
