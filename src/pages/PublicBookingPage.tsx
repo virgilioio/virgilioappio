@@ -65,9 +65,20 @@ export default function PublicBookingPage() {
         console.warn('Failed to load profile:', profileError);
       }
       
+      // Construct full avatar URL if avatar_url exists
+      let fullAvatarUrl = null;
+      if (profile?.avatar_url) {
+        const { data } = supabase.storage
+          .from('avatars')
+          .getPublicUrl(profile.avatar_url);
+        fullAvatarUrl = data.publicUrl;
+      }
+      
       return {
         ...bookingConfig,
-        profiles: profile || { first_name: 'User', last_name: '', avatar_url: null },
+        profiles: profile 
+          ? { ...profile, avatar_url: fullAvatarUrl }
+          : { first_name: 'User', last_name: '', avatar_url: null },
       };
     },
     retry: false,

@@ -52,13 +52,13 @@ export function TimeSlotsList({
   }
 
   return (
-    <div className="space-y-3">
-      <h4 className="text-sm font-semibold text-text-primary">
+    <div className="border rounded-lg p-4 max-w-xs mx-auto" style={{ borderColor: '#d7c5fb' }}>
+      <h4 className="text-sm font-semibold text-text-primary text-center mb-3">
         {format(selectedDate, 'EEEE, MMMM d')}
       </h4>
       
-      <ScrollArea className="h-[400px] pr-4">
-        <div className="space-y-2">
+      <ScrollArea className="h-[400px]">
+        <div className="space-y-2 pr-2">
           {timeSlots.map((slot, idx) => {
             const isSelected = selectedSlot && 
               selectedSlot.start === slot.start && 
@@ -67,9 +67,24 @@ export function TimeSlotsList({
             return (
               <Button
                 key={idx}
-                variant={isSelected ? "default" : "outline"}
+                variant="outline"
                 onClick={() => onSlotSelect(slot)}
-                className="w-full justify-start text-left h-auto py-3 px-4"
+                style={{
+                  backgroundColor: isSelected ? '#7e3eff' : 'transparent',
+                  color: isSelected ? '#ffffff' : 'inherit',
+                  borderColor: '#d7c5fb',
+                }}
+                onMouseEnter={(e) => {
+                  if (!isSelected) {
+                    e.currentTarget.style.backgroundColor = '#d7c5fb';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!isSelected) {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                  }
+                }}
+                className="w-full justify-center text-center h-auto py-3 px-4"
               >
                 <span className="text-base font-medium">
                   {format(new Date(slot.start), 'h:mm a')}
