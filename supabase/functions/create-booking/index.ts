@@ -314,6 +314,10 @@ serve(async (req) => {
         google_event_id: googleEventId,
         google_meet_link: googleMeetLink,
         status: 'confirmed',
+        // Confirmation tracking
+        interviewer_confirmation_status: 'pending',
+        candidate_confirmation_status: 'confirmed',
+        candidate_confirmed_at: new Date().toISOString(),
         // Internal booking context
         candidate_id: candidate_id || null,
         job_id: job_id || null,

@@ -13,6 +13,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { useStageBookings } from '@/hooks/useStageBookings';
 import { GoogleMeetLogo } from '@/components/icons/GoogleMeetLogo';
+import { ConfirmationBadge } from './ConfirmationBadge';
 
 interface StageBookingsListProps {
   jhsId: string;
@@ -44,9 +45,12 @@ export function StageBookingsList({ jhsId, candidateId }: StageBookingsListProps
                     <AvatarImage src={booking.interviewer_profile?.avatar_url || undefined} />
                     <AvatarFallback className="text-xs">{interviewerInitials}</AvatarFallback>
                   </Avatar>
-                  <div>
-                    <div className="text-sm font-medium">
-                      {booking.interviewer_profile?.first_name} {booking.interviewer_profile?.last_name}
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium">
+                        {booking.interviewer_profile?.first_name} {booking.interviewer_profile?.last_name}
+                      </span>
+                      <ConfirmationBadge status={(booking.interviewer_confirmation_status || 'pending') as 'pending' | 'confirmed' | 'declined'} />
                     </div>
                     <div className="text-xs text-text-tertiary">Interviewer</div>
                   </div>
@@ -62,6 +66,12 @@ export function StageBookingsList({ jhsId, candidateId }: StageBookingsListProps
                   <span className="font-medium">
                     {format(new Date(booking.scheduled_start), 'h:mm a')}
                   </span>
+                </div>
+                
+                {/* Candidate Confirmation Status */}
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="text-text-secondary">Candidate:</span>
+                  <ConfirmationBadge status={(booking.candidate_confirmation_status || 'confirmed') as 'pending' | 'confirmed' | 'declined'} />
                 </div>
                 
                 {/* Google Meet Button */}

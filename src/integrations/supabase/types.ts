@@ -2435,6 +2435,8 @@ export type Database = {
           booking_config_id: string
           cancellation_reason: string | null
           cancelled_at: string | null
+          candidate_confirmation_status: string | null
+          candidate_confirmed_at: string | null
           candidate_email: string
           candidate_id: string | null
           candidate_name: string
@@ -2446,6 +2448,8 @@ export type Database = {
           google_meet_link: string | null
           ics_uid: string | null
           id: string
+          interviewer_confirmation_status: string | null
+          interviewer_confirmed_at: string | null
           interviewer_id: string | null
           job_candidate_association_id: string | null
           job_hiring_stage_id: string | null
@@ -2464,6 +2468,8 @@ export type Database = {
           booking_config_id: string
           cancellation_reason?: string | null
           cancelled_at?: string | null
+          candidate_confirmation_status?: string | null
+          candidate_confirmed_at?: string | null
           candidate_email: string
           candidate_id?: string | null
           candidate_name: string
@@ -2475,6 +2481,8 @@ export type Database = {
           google_meet_link?: string | null
           ics_uid?: string | null
           id?: string
+          interviewer_confirmation_status?: string | null
+          interviewer_confirmed_at?: string | null
           interviewer_id?: string | null
           job_candidate_association_id?: string | null
           job_hiring_stage_id?: string | null
@@ -2493,6 +2501,8 @@ export type Database = {
           booking_config_id?: string
           cancellation_reason?: string | null
           cancelled_at?: string | null
+          candidate_confirmation_status?: string | null
+          candidate_confirmed_at?: string | null
           candidate_email?: string
           candidate_id?: string | null
           candidate_name?: string
@@ -2504,6 +2514,8 @@ export type Database = {
           google_meet_link?: string | null
           ics_uid?: string | null
           id?: string
+          interviewer_confirmation_status?: string | null
+          interviewer_confirmed_at?: string | null
           interviewer_id?: string | null
           job_candidate_association_id?: string | null
           job_hiring_stage_id?: string | null
