@@ -25,7 +25,7 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.mail-oauth-start]
-verify_jwt = true
+verify_jwt = false
 
 [functions.mail-oauth-callback]
 verify_jwt = true
