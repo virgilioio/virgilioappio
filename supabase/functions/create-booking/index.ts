@@ -32,21 +32,32 @@ serve(async (req) => {
     // Load booking config
     const { data: config, error: configError } = await supabase
       .from('booking_configurations')
-      .select(`
-        *,
-        profiles:user_id (
-          first_name,
-          last_name,
-          email
-        )
-      `)
+      .select('*')
       .eq('id', booking_config_id)
       .eq('is_active', true)
       .single();
 
     if (configError || !config) {
+      console.error('[create-booking] Config error:', configError);
       return new Response(JSON.stringify({
         error: 'Booking configuration not found',
+      }), {
+        status: 404,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Fetch profile separately
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('first_name, last_name, email')
+      .eq('user_id', config.user_id)
+      .single();
+
+    if (profileError || !profile) {
+      console.error('[create-booking] Profile error:', profileError);
+      return new Response(JSON.stringify({
+        error: 'Interviewer profile not found',
       }), {
         status: 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -106,7 +117,7 @@ serve(async (req) => {
             },
             attendees: [
               { email: candidate_email },
-              { email: config.profiles.email },
+              { email: profile.email },
             ],
             conferenceData: {
               createRequest: {
