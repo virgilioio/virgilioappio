@@ -28,8 +28,8 @@
     --muted-foreground: 0 0% 50%; /* Better contrast */
 
     /* Virgilio.io Brand Colors */
-    --accent: 60 100% 85%; /* #fffead */
-    --accent-foreground: 60 100% 4%;
+    --accent: 267 84% 87%; /* #d7c5fb - Lilac Frost */
+    --accent-foreground: 267 100% 62%; /* #7e3eff - Twilight Lilac */
 
     --success: 120 100% 88%; /* #d2ffc2 */
     --success-foreground: 120 100% 15%;
@@ -186,8 +186,8 @@
     --muted: 217.2 32.6% 17.5%;
     --muted-foreground: 215 20.2% 65.1%; /* Better contrast */
 
-    --accent: 60 100% 85%;
-    --accent-foreground: 60 100% 4%;
+    --accent: 267 84% 87%; /* #d7c5fb - Lilac Frost */
+    --accent-foreground: 267 100% 62%; /* #7e3eff - Twilight Lilac */
 
     --success: 120 100% 88%;
     --success-foreground: 120 100% 15%;
