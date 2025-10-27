@@ -1,7 +1,6 @@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
-import { Clock } from 'lucide-react';
+import { Clock, Video } from 'lucide-react';
 
 interface InterviewerCardProps {
   profile: {
@@ -20,28 +19,50 @@ export function InterviewerCard({ profile, config }: InterviewerCardProps) {
   const initials = `${profile.first_name?.[0] || ''}${profile.last_name?.[0] || ''}`.toUpperCase();
 
   return (
-    <Card>
-      <CardContent className="p-6 space-y-4">
+    <Card className="shadow-calendly border-virgilio-border rounded-lg">
+      <CardContent className="p-6 space-y-6">
+        {/* Host Info */}
         <div className="flex items-center gap-3">
-          <Avatar className="h-12 w-12">
+          <Avatar className="h-14 w-14">
             <AvatarImage src={profile.avatar_url || undefined} alt={`${profile.first_name} ${profile.last_name}`} />
-            <AvatarFallback>{initials}</AvatarFallback>
+            <AvatarFallback className="bg-virgilio-purple text-white text-lg font-semibold">
+              {initials}
+            </AvatarFallback>
           </Avatar>
-          <div className="flex-1">
-            <h3 className="text-lg font-semibold text-text-primary">
-              {config.display_name}
-            </h3>
-            <Badge variant="secondary" className="gap-1.5 mt-1">
-              <Clock className="h-3.5 w-3.5" />
-              {config.duration_minutes} min
-            </Badge>
+          <div>
+            <p className="text-sm text-virgilio-muted font-medium">
+              {profile.first_name} {profile.last_name}
+            </p>
           </div>
         </div>
-        
+
+        {/* Event Title */}
+        <div>
+          <h3 className="text-h4-mobile md:text-h4-desktop font-poppins font-bold text-virgilio-text">
+            {config.display_name}
+            <span className="text-virgilio-purple">.</span>
+          </h3>
+        </div>
+
+        {/* Duration & Location */}
+        <div className="space-y-3 pt-3 border-t border-virgilio-border">
+          <div className="flex items-center gap-2 text-virgilio-muted">
+            <Clock className="h-4 w-4" />
+            <span className="text-sm font-medium">{config.duration_minutes} min</span>
+          </div>
+          <div className="flex items-center gap-2 text-virgilio-muted">
+            <Video className="h-4 w-4" />
+            <span className="text-sm font-medium">Google Meet</span>
+          </div>
+        </div>
+
+        {/* Description */}
         {config.description && (
-          <p className="text-sm text-text-secondary leading-relaxed">
-            {config.description}
-          </p>
+          <div className="pt-3 border-t border-virgilio-border">
+            <p className="text-sm text-virgilio-muted leading-relaxed">
+              {config.description}
+            </p>
+          </div>
         )}
       </CardContent>
     </Card>

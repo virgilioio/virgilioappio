@@ -7,6 +7,7 @@ import { InterviewerCard } from '@/components/booking/InterviewerCard';
 import { MonthCalendar } from '@/components/booking/MonthCalendar';
 import { TimeSlotsList } from '@/components/booking/TimeSlotsList';
 import { BookingConfirmationForm } from '@/components/booking/BookingConfirmationForm';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -215,22 +216,42 @@ export default function PublicBookingPage() {
 
   if (bookingSuccess) {
     return (
-      <div className="min-h-screen bg-background">
-        <header className="border-b border-border bg-background-elevated">
+      <div className="min-h-screen bg-white">
+        <header className="border-b border-virgilio-border bg-white">
           <div className="container mx-auto px-4 py-4">
             <Link to="/">
               <VirgilioLogo />
             </Link>
           </div>
         </header>
-        <main className="container mx-auto px-4 py-8 max-w-2xl">
-          <Card>
-            <CardContent className="pt-6 text-center space-y-4">
-              <CheckCircle2 className="w-16 h-16 text-success mx-auto" />
-              <h1 className="text-2xl font-semibold text-text-primary">Interview Scheduled!</h1>
-              <p className="text-text-secondary">
-                Your interview has been confirmed. You will receive a confirmation email with all the details and a Google Meet link.
+        <main className="container mx-auto px-4 py-16 max-w-2xl">
+          <Card className="shadow-calendly border-virgilio-border">
+            <CardContent className="pt-12 pb-12 text-center space-y-6">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-virgilio-success/10">
+                <CheckCircle2 className="w-8 h-8 text-virgilio-success" />
+              </div>
+              <h1 className="text-h2-mobile md:text-h2-desktop font-poppins font-bold text-virgilio-text">
+                You're Scheduled<span className="text-virgilio-purple">!</span>
+              </h1>
+              <p className="text-base text-virgilio-muted leading-relaxed max-w-md mx-auto">
+                A calendar invitation with a Google Meet link has been sent to your email. We look forward to meeting you!
               </p>
+              
+              {/* Add to calendar buttons */}
+              <div className="flex flex-col sm:flex-row gap-3 justify-center pt-4">
+                <Button
+                  variant="outline"
+                  className="border-virgilio-border hover:border-virgilio-purple hover:bg-virgilio-purple/5"
+                >
+                  Add to Google Calendar
+                </Button>
+                <Button
+                  variant="outline"
+                  className="border-virgilio-border hover:border-virgilio-purple hover:bg-virgilio-purple/5"
+                >
+                  Add to Outlook
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </main>
@@ -239,21 +260,23 @@ export default function PublicBookingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-background-elevated">
-        <div className="container mx-auto px-4 py-4">
+    <div className="min-h-screen bg-white">
+      <header className="sticky top-0 z-50 border-b border-virgilio-border bg-white/95 backdrop-blur-sm">
+        <div className="container mx-auto px-4 md:px-6 lg:px-8 py-4">
           <Link to="/">
             <VirgilioLogo />
           </Link>
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8 max-w-7xl">
-        <h1 className="text-3xl font-bold text-text-primary mb-8">Select a Date & Time</h1>
+      <main className="container mx-auto px-4 md:px-6 lg:px-8 py-8 md:py-12 max-w-[1400px]">
+        <h1 className="text-h1-mobile md:text-h1-desktop font-poppins font-bold text-virgilio-text mb-8">
+          Select a Date & Time<span className="text-virgilio-purple">.</span>
+        </h1>
         
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Left sidebar - Interviewer info */}
-          <div className="lg:col-span-3">
+        <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr_380px] gap-8">
+          {/* Left column - Event summary */}
+          <div className="order-1">
             {config.profiles && (
               <InterviewerCard
                 profile={config.profiles}
@@ -266,9 +289,9 @@ export default function PublicBookingPage() {
             )}
           </div>
 
-          {/* Middle - Month calendar */}
-          <div className="lg:col-span-5">
-            <Card>
+          {/* Middle column - Calendar */}
+          <div className="order-2">
+            <Card className="shadow-calendly border-virgilio-border">
               <CardContent className="p-6">
                 <MonthCalendar
                   availableDates={availableDates}
@@ -279,8 +302,8 @@ export default function PublicBookingPage() {
                 />
                 
                 {/* Timezone display */}
-                <div className="mt-6 pt-6 border-t border-border">
-                  <div className="flex items-center gap-2 text-sm text-text-secondary">
+                <div className="mt-6 pt-6 border-t border-virgilio-border">
+                  <div className="flex items-center gap-2 text-sm text-virgilio-muted">
                     <Globe className="h-4 w-4" />
                     <span>
                       Times shown in {candidateTimezone.replace(/_/g, ' ')}
@@ -291,30 +314,28 @@ export default function PublicBookingPage() {
             </Card>
           </div>
 
-          {/* Right - Time slots */}
-          <div className="lg:col-span-4">
-            <Card>
-              <CardContent className="p-6">
-                <TimeSlotsList
-                  selectedDate={selectedDate}
-                  timeSlots={timeSlotsForSelectedDate}
-                  selectedSlot={selectedSlot}
-                  onSlotSelect={setSelectedSlot}
-                  isLoading={isLoadingAvailability}
-                />
-                
-                {selectedSlot && (
-                  <div className="mt-6 pt-6 border-t border-border">
-                    <BookingConfirmationForm
-                      selectedSlot={selectedSlot}
-                      candidateTimezone={candidateTimezone}
-                      onCancel={() => setSelectedSlot(null)}
-                      onConfirm={createBookingMutation.mutateAsync}
-                    />
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+          {/* Right column - Time slots & Form */}
+          <div className="order-3">
+            {!selectedSlot ? (
+              <Card className="shadow-calendly border-virgilio-border">
+                <CardContent className="p-6">
+                  <TimeSlotsList
+                    selectedDate={selectedDate}
+                    timeSlots={timeSlotsForSelectedDate}
+                    selectedSlot={selectedSlot}
+                    onSlotSelect={setSelectedSlot}
+                    isLoading={isLoadingAvailability}
+                  />
+                </CardContent>
+              </Card>
+            ) : (
+              <BookingConfirmationForm
+                selectedSlot={selectedSlot}
+                candidateTimezone={candidateTimezone}
+                onCancel={() => setSelectedSlot(null)}
+                onConfirm={createBookingMutation.mutateAsync}
+              />
+            )}
           </div>
         </div>
       </main>

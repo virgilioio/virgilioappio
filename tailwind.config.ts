@@ -103,7 +103,14 @@ export default {
 					'orange-foreground': 'hsl(var(--pastel-orange-foreground))'
 				},
 				'purple-period': 'hsl(var(--purple-period))',
-				'loading-ellipsis': '#d7c5fb'
+				'loading-ellipsis': '#d7c5fb',
+				// Virgilio Calendly-style brand colors
+				'virgilio-purple': '#6F3FF5',
+				'virgilio-text': '#0F1222',
+				'virgilio-muted': '#5A6072',
+				'virgilio-border': '#E7E8EE',
+				'virgilio-success': '#12B886',
+				'virgilio-error': '#FA5252',
 			},
 			borderRadius: {
 				xs: '4px',
@@ -116,7 +123,7 @@ export default {
 				full: '9999px'
 			},
 			fontFamily: {
-				poppins: ['Poppins', 'sans-serif'],
+				poppins: ['Poppins', 'ui-sans-serif', 'system-ui', '-apple-system', 'Segoe UI', 'Roboto', 'Helvetica', 'Arial', 'sans-serif'],
 				'poppins-black': ['Poppins', 'sans-serif'],
 				inter: ['Inter', 'Roboto', 'Work Sans', 'sans-serif'],
 				mono: ['Monaco', 'Menlo', 'monospace']
@@ -130,7 +137,16 @@ export default {
 				xl: 'var(--font-size-xl)',
 				'2xl': 'var(--font-size-2xl)',
 				'3xl': 'var(--font-size-3xl)',
-				'4xl': 'var(--font-size-4xl)'
+				'4xl': 'var(--font-size-4xl)',
+				// Virgilio Calendly-style heading sizes
+				'h1-mobile': ['34px', { lineHeight: '1.15', letterSpacing: '-0.06em', fontWeight: '700' }],
+				'h1-desktop': ['48px', { lineHeight: '1.15', letterSpacing: '-0.06em', fontWeight: '700' }],
+				'h2-mobile': ['28px', { lineHeight: '1.15', letterSpacing: '-0.06em', fontWeight: '700' }],
+				'h2-desktop': ['36px', { lineHeight: '1.15', letterSpacing: '-0.06em', fontWeight: '700' }],
+				'h3-mobile': ['22px', { lineHeight: '1.15', letterSpacing: '-0.06em', fontWeight: '700' }],
+				'h3-desktop': ['28px', { lineHeight: '1.15', letterSpacing: '-0.06em', fontWeight: '700' }],
+				'h4-mobile': ['18px', { lineHeight: '1.2', letterSpacing: '-0.06em', fontWeight: '700' }],
+				'h4-desktop': ['22px', { lineHeight: '1.2', letterSpacing: '-0.06em', fontWeight: '700' }],
 			},
 			lineHeight: {
 				tight: 'var(--line-height-tight)',
@@ -174,7 +190,8 @@ export default {
 				elevated: 'var(--shadow-elevated)',
 				'neumorphic': 'var(--shadow-neumorphic-base)',
 				'neumorphic-hover': 'var(--shadow-neumorphic-hover)',
-				'neumorphic-active': 'var(--shadow-neumorphic-active)'
+				'neumorphic-active': 'var(--shadow-neumorphic-active)',
+				'calendly': '0 8px 24px rgba(15, 18, 34, 0.08)',
 			},
 			letterSpacing: {
 				tighter: '-0.05em',

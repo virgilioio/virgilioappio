@@ -1,4 +1,4 @@
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
@@ -24,8 +24,10 @@ export function TimeSlotsList({
 }: TimeSlotsListProps) {
   if (!selectedDate) {
     return (
-      <div className="flex items-center justify-center h-64 text-text-secondary">
-        <p className="text-sm">Select a date to view available times</p>
+      <div className="flex flex-col items-center justify-center h-[400px] text-center px-4">
+        <p className="text-sm text-virgilio-muted font-medium">
+          Select a date to view available times
+        </p>
       </div>
     );
   }
@@ -34,7 +36,10 @@ export function TimeSlotsList({
     return (
       <div className="space-y-3">
         {[1, 2, 3, 4, 5].map((i) => (
-          <div key={i} className="h-12 bg-accent animate-pulse rounded-lg" />
+          <div 
+            key={i} 
+            className="h-10 bg-virgilio-border/30 animate-pulse rounded-lg" 
+          />
         ))}
       </div>
     );
@@ -42,24 +47,43 @@ export function TimeSlotsList({
 
   if (timeSlots.length === 0) {
     return (
-      <div className="flex items-center justify-center h-64 text-text-secondary">
-        <div className="text-center">
-          <p className="text-sm font-medium">No available times</p>
-          <p className="text-xs mt-1">Please select another date</p>
-        </div>
+      <div className="flex flex-col items-center justify-center h-[400px] text-center px-4">
+        <p className="text-sm font-semibold text-virgilio-text mb-1">
+          No available times
+        </p>
+        <p className="text-xs text-virgilio-muted">
+          Please select another date
+        </p>
       </div>
     );
   }
 
-  return (
-    <div className="border rounded-lg p-4 max-w-xs mx-auto" style={{ borderColor: '#d7c5fb' }}>
-      <h4 className="text-sm font-semibold text-text-primary text-center mb-3">
-        {format(selectedDate, 'EEEE, MMMM d')}
-      </h4>
-      
-      <ScrollArea className="h-[400px]">
-        <div className="space-y-2 pr-2">
-          {timeSlots.map((slot, idx) => {
+  // Group slots by time of day
+  const morningSlots = timeSlots.filter(slot => {
+    const hour = parseISO(slot.start).getHours();
+    return hour < 12;
+  });
+
+  const afternoonSlots = timeSlots.filter(slot => {
+    const hour = parseISO(slot.start).getHours();
+    return hour >= 12 && hour < 17;
+  });
+
+  const eveningSlots = timeSlots.filter(slot => {
+    const hour = parseISO(slot.start).getHours();
+    return hour >= 17;
+  });
+
+  const renderSlots = (slots: TimeSlot[], label: string) => {
+    if (slots.length === 0) return null;
+    
+    return (
+      <div className="space-y-3">
+        <h4 className="text-xs font-semibold text-virgilio-muted uppercase tracking-wide">
+          {label}
+        </h4>
+        <div className="space-y-2">
+          {slots.map((slot, idx) => {
             const isSelected = selectedSlot && 
               selectedSlot.start === slot.start && 
               selectedSlot.end === slot.end;
@@ -69,29 +93,41 @@ export function TimeSlotsList({
                 key={idx}
                 variant="outline"
                 onClick={() => onSlotSelect(slot)}
-                style={{
-                  backgroundColor: isSelected ? '#7e3eff' : 'transparent',
-                  color: isSelected ? '#ffffff' : 'inherit',
-                  borderColor: '#d7c5fb',
-                }}
-                onMouseEnter={(e) => {
-                  if (!isSelected) {
-                    e.currentTarget.style.backgroundColor = '#d7c5fb';
+                className={`
+                  w-full h-10 justify-center text-center font-semibold text-sm
+                  border-virgilio-border rounded-lg
+                  transition-all duration-200 ease-out
+                  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-virgilio-purple focus-visible:ring-offset-2
+                  ${isSelected 
+                    ? 'bg-virgilio-purple text-white border-virgilio-purple shadow-md' 
+                    : 'bg-white text-virgilio-text hover:bg-virgilio-purple/10 hover:-translate-y-0.5 hover:shadow-sm hover:border-virgilio-purple/50'
                   }
-                }}
-                onMouseLeave={(e) => {
-                  if (!isSelected) {
-                    e.currentTarget.style.backgroundColor = 'transparent';
-                  }
-                }}
-                className="w-full justify-center text-center h-auto py-3 px-4"
+                `}
+                aria-label={`Select time slot ${format(parseISO(slot.start), 'h:mm a')}`}
+                aria-pressed={isSelected}
               >
-                <span className="text-base font-medium">
-                  {format(new Date(slot.start), 'h:mm a')}
-                </span>
+                {format(parseISO(slot.start), 'h:mm a')}
               </Button>
             );
           })}
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div>
+      <div className="mb-6 pb-4 border-b border-virgilio-border">
+        <h4 className="text-base font-semibold text-virgilio-text">
+          {format(selectedDate, 'EEEE, MMMM d')}
+        </h4>
+      </div>
+      
+      <ScrollArea className="h-[500px] pr-4">
+        <div className="space-y-6">
+          {renderSlots(morningSlots, 'Morning')}
+          {renderSlots(afternoonSlots, 'Afternoon')}
+          {renderSlots(eveningSlots, 'Evening')}
         </div>
       </ScrollArea>
     </div>

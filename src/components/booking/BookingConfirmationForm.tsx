@@ -6,14 +6,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Card, CardContent } from '@/components/ui/card';
 import { format } from 'date-fns';
-import { Calendar, Clock, Globe } from 'lucide-react';
+import { Calendar, Clock, Globe, ArrowLeft } from 'lucide-react';
 
 const formSchema = z.object({
-  candidate_name: z.string().min(2, 'Name must be at least 2 characters'),
-  candidate_email: z.string().email('Invalid email address'),
-  candidate_phone: z.string().optional(),
+  candidate_name: z.string().min(2, 'Name must be at least 2 characters').max(100),
+  candidate_email: z.string().email('Invalid email address').max(255),
+  candidate_phone: z.string().max(20).optional(),
   notes: z.string().max(500, 'Notes must be less than 500 characters').optional(),
 });
 
@@ -53,124 +53,153 @@ export function BookingConfirmationForm({
     }
   };
 
+  if (!selectedSlot) return null;
+
   return (
-    <Sheet open={!!selectedSlot} onOpenChange={(open) => !open && onCancel()}>
-      <SheetContent className="sm:max-w-[540px] overflow-y-auto">
-        <SheetHeader>
-          <SheetTitle>Confirm Your Interview</SheetTitle>
-          <SheetDescription>
-            Please provide your contact information to complete the booking.
-          </SheetDescription>
-        </SheetHeader>
+    <div className="space-y-6 animate-fade-in">
+      {/* Back button */}
+      <Button
+        variant="ghost"
+        onClick={onCancel}
+        className="text-virgilio-muted hover:text-virgilio-text gap-2 -ml-2"
+        aria-label="Go back to time selection"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        <span className="text-sm font-medium">Change time</span>
+      </Button>
 
-        {selectedSlot && (
-          <div className="my-6 p-4 bg-accent/50 rounded-lg space-y-2">
-            <div className="flex items-center gap-2 text-sm">
-              <Calendar className="w-4 h-4 text-text-secondary" />
-              <span className="font-medium">
-                {format(new Date(selectedSlot.start), 'EEEE, MMMM d, yyyy')}
-              </span>
-            </div>
-            <div className="flex items-center gap-2 text-sm">
-              <Clock className="w-4 h-4 text-text-secondary" />
-              <span>
-                {format(new Date(selectedSlot.start), 'h:mm a')} - {format(new Date(selectedSlot.end), 'h:mm a')}
-              </span>
-            </div>
-            <div className="flex items-center gap-2 text-sm">
-              <Globe className="w-4 h-4 text-text-secondary" />
-              <span className="text-text-secondary">{candidateTimezone}</span>
-            </div>
+      {/* Selected slot summary */}
+      <Card className="shadow-calendly border-virgilio-border">
+        <CardContent className="p-5 space-y-3">
+          <div className="flex items-center gap-2 text-sm">
+            <Calendar className="w-4 h-4 text-virgilio-purple" />
+            <span className="font-semibold text-virgilio-text">
+              {format(new Date(selectedSlot.start), 'EEEE, MMMM d, yyyy')}
+            </span>
           </div>
-        )}
+          <div className="flex items-center gap-2 text-sm">
+            <Clock className="w-4 h-4 text-virgilio-purple" />
+            <span className="text-virgilio-text">
+              {format(new Date(selectedSlot.start), 'h:mm a')} - {format(new Date(selectedSlot.end), 'h:mm a')}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 text-sm">
+            <Globe className="w-4 h-4 text-virgilio-purple" />
+            <span className="text-virgilio-muted">{candidateTimezone.replace(/_/g, ' ')}</span>
+          </div>
+        </CardContent>
+      </Card>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="candidate_name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Your Name *</FormLabel>
-                  <FormControl>
-                    <Input placeholder="John Doe" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+      {/* Form */}
+      <Card className="shadow-calendly border-virgilio-border">
+        <CardContent className="p-6">
+          <h3 className="text-h4-mobile font-poppins font-bold text-virgilio-text mb-6">
+            Enter Details<span className="text-virgilio-purple">.</span>
+          </h3>
 
-            <FormField
-              control={form.control}
-              name="candidate_email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email *</FormLabel>
-                  <FormControl>
-                    <Input type="email" placeholder="john@example.com" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-5">
+              <FormField
+                control={form.control}
+                name="candidate_name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm font-semibold text-virgilio-text">
+                      Name *
+                    </FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="John Doe" 
+                        {...field}
+                        className="h-11 border-virgilio-border focus:border-virgilio-purple focus:ring-virgilio-purple rounded-lg"
+                      />
+                    </FormControl>
+                    <FormMessage className="text-virgilio-error text-xs" />
+                  </FormItem>
+                )}
+              />
 
-            <FormField
-              control={form.control}
-              name="candidate_phone"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Phone (optional)</FormLabel>
-                  <FormControl>
-                    <Input type="tel" placeholder="+1 (555) 123-4567" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+              <FormField
+                control={form.control}
+                name="candidate_email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm font-semibold text-virgilio-text">
+                      Email *
+                    </FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="email" 
+                        placeholder="john@example.com" 
+                        {...field}
+                        className="h-11 border-virgilio-border focus:border-virgilio-purple focus:ring-virgilio-purple rounded-lg"
+                      />
+                    </FormControl>
+                    <FormMessage className="text-virgilio-error text-xs" />
+                  </FormItem>
+                )}
+              />
 
-            <FormField
-              control={form.control}
-              name="notes"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Notes for interviewer (optional)</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Any additional information you'd like to share..."
-                      className="resize-none"
-                      rows={4}
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                  <p className="text-xs text-text-secondary">
-                    {field.value?.length || 0}/500 characters
-                  </p>
-                </FormItem>
-              )}
-            />
+              <FormField
+                control={form.control}
+                name="candidate_phone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm font-medium text-virgilio-muted">
+                      Phone (optional)
+                    </FormLabel>
+                    <FormControl>
+                      <Input 
+                        type="tel" 
+                        placeholder="+1 (555) 123-4567" 
+                        {...field}
+                        className="h-11 border-virgilio-border focus:border-virgilio-purple focus:ring-virgilio-purple rounded-lg"
+                      />
+                    </FormControl>
+                    <FormMessage className="text-virgilio-error text-xs" />
+                  </FormItem>
+                )}
+              />
 
-            <div className="flex gap-2 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={onCancel}
-                disabled={isSubmitting}
-                className="flex-1"
-              >
-                Change Time
-              </Button>
+              <FormField
+                control={form.control}
+                name="notes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm font-medium text-virgilio-muted">
+                      Additional notes (optional)
+                    </FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Anything you'd like to share..."
+                        className="resize-none border-virgilio-border focus:border-virgilio-purple focus:ring-virgilio-purple rounded-lg min-h-[100px]"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage className="text-virgilio-error text-xs" />
+                    <p className="text-xs text-virgilio-muted">
+                      {field.value?.length || 0}/500
+                    </p>
+                  </FormItem>
+                )}
+              />
+
+              {/* Privacy consent */}
+              <p className="text-xs text-virgilio-muted leading-relaxed pt-2">
+                By scheduling, you agree to our terms and privacy policy. We'll send you email reminders about this meeting.
+              </p>
+
               <Button
                 type="submit"
                 disabled={isSubmitting}
-                className="flex-1"
+                className="w-full h-12 bg-virgilio-purple hover:bg-virgilio-purple/90 text-white font-semibold rounded-lg shadow-md transition-all duration-200 focus-visible:ring-2 focus-visible:ring-virgilio-purple focus-visible:ring-offset-2"
               >
-                {isSubmitting ? 'Confirming...' : 'Confirm Booking'}
+                {isSubmitting ? 'Scheduling...' : 'Schedule Event'}
               </Button>
-            </div>
-          </form>
-        </Form>
-      </SheetContent>
-    </Sheet>
+            </form>
+          </Form>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
