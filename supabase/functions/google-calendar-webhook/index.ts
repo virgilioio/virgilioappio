@@ -61,7 +61,7 @@ serve(async (req) => {
     // Fetch all bookings for this user with google_event_id
     const { data: bookings, error: bookingsError } = await supabase
       .from('scheduled_bookings')
-      .select('id, google_event_id, interviewer_id, interviewer_confirmation_status')
+      .select('id, google_event_id, interviewer_id, interviewer_confirmation_status, candidate_email, candidate_confirmation_status')
       .eq('interviewer_id', calIdentity.user_id)
       .eq('status', 'confirmed')
       .not('google_event_id', 'is', null);
@@ -159,18 +159,50 @@ serve(async (req) => {
           newStatus = 'pending';
         }
 
-        // Only update if status changed
+        // Check if we need to update interviewer status
+        let needsUpdate = false;
+        const updateData: any = {};
+
         if (newStatus !== booking.interviewer_confirmation_status) {
-          console.log(`[google-calendar-webhook] Updating booking ${booking.id}: ${booking.interviewer_confirmation_status} -> ${newStatus}`);
-
-          const updateData: any = {
-            interviewer_confirmation_status: newStatus,
-          };
-
+          console.log(`[google-calendar-webhook] Updating interviewer status for booking ${booking.id}: ${booking.interviewer_confirmation_status} -> ${newStatus}`);
+          updateData.interviewer_confirmation_status = newStatus;
           if (newStatus === 'confirmed') {
             updateData.interviewer_confirmed_at = new Date().toISOString();
           }
+          needsUpdate = true;
+        }
 
+        // Also check candidate's response
+        if (booking.candidate_email) {
+          const candidateAttendee = eventData.attendees?.find(
+            (a: any) => a.email.toLowerCase() === booking.candidate_email.toLowerCase()
+          );
+
+          if (candidateAttendee) {
+            let candidateStatus = booking.candidate_confirmation_status;
+            const candidateResponseStatus = candidateAttendee.responseStatus;
+
+            if (candidateResponseStatus === 'accepted') {
+              candidateStatus = 'confirmed';
+            } else if (candidateResponseStatus === 'declined') {
+              candidateStatus = 'declined';
+            } else if (candidateResponseStatus === 'tentative' || candidateResponseStatus === 'needsAction') {
+              candidateStatus = 'pending';
+            }
+
+            if (candidateStatus !== booking.candidate_confirmation_status) {
+              console.log(`[google-calendar-webhook] Updating candidate status for booking ${booking.id}: ${booking.candidate_confirmation_status} -> ${candidateStatus}`);
+              updateData.candidate_confirmation_status = candidateStatus;
+              if (candidateStatus === 'confirmed') {
+                updateData.candidate_confirmed_at = new Date().toISOString();
+              }
+              needsUpdate = true;
+            }
+          }
+        }
+
+        // Perform update if needed
+        if (needsUpdate) {
           await supabase
             .from('scheduled_bookings')
             .update(updateData)

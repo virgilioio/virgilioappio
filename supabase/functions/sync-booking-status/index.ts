@@ -28,7 +28,7 @@ serve(async (req) => {
     // Fetch booking
     const { data: booking, error: bookingError } = await supabase
       .from('scheduled_bookings')
-      .select('*')
+      .select('id, google_event_id, interviewer_id, interviewer_confirmation_status, candidate_email, candidate_confirmation_status')
       .eq('id', booking_id)
       .single();
 
@@ -103,21 +103,50 @@ serve(async (req) => {
       throw new Error('Interviewer not found in event attendees');
     }
 
-    // Map status
-    let newStatus = 'pending';
+    // Map interviewer status
+    let interviewerStatus = 'pending';
     if (interviewerAttendee.responseStatus === 'accepted') {
-      newStatus = 'confirmed';
+      interviewerStatus = 'confirmed';
     } else if (interviewerAttendee.responseStatus === 'declined') {
-      newStatus = 'declined';
+      interviewerStatus = 'declined';
+    } else if (interviewerAttendee.responseStatus === 'tentative' || interviewerAttendee.responseStatus === 'needsAction') {
+      interviewerStatus = 'pending';
     }
 
-    // Update booking
+    // Prepare update data
     const updateData: any = {
-      interviewer_confirmation_status: newStatus,
+      interviewer_confirmation_status: interviewerStatus,
     };
 
-    if (newStatus === 'confirmed') {
+    if (interviewerStatus === 'confirmed') {
       updateData.interviewer_confirmed_at = new Date().toISOString();
+    }
+
+    // Also check candidate's response
+    if (booking.candidate_email) {
+      const candidateAttendee = eventData.attendees?.find(
+        (a: any) => a.email.toLowerCase() === booking.candidate_email.toLowerCase()
+      );
+
+      if (candidateAttendee) {
+        let candidateStatus = 'pending';
+        const candidateResponseStatus = candidateAttendee.responseStatus;
+
+        if (candidateResponseStatus === 'accepted') {
+          candidateStatus = 'confirmed';
+        } else if (candidateResponseStatus === 'declined') {
+          candidateStatus = 'declined';
+        } else if (candidateResponseStatus === 'tentative' || candidateResponseStatus === 'needsAction') {
+          candidateStatus = 'pending';
+        }
+
+        updateData.candidate_confirmation_status = candidateStatus;
+        if (candidateStatus === 'confirmed') {
+          updateData.candidate_confirmed_at = new Date().toISOString();
+        }
+
+        console.log('[sync-booking-status] Candidate status:', candidateStatus);
+      }
     }
 
     await supabase
@@ -125,13 +154,13 @@ serve(async (req) => {
       .update(updateData)
       .eq('id', booking_id);
 
-    console.log('[sync-booking-status] Status updated to:', newStatus);
+    console.log('[sync-booking-status] Interviewer status updated to:', interviewerStatus);
 
     return new Response(
       JSON.stringify({
         success: true,
-        status: newStatus,
-        response_status: interviewerAttendee.responseStatus,
+        interviewer_status: interviewerStatus,
+        candidate_status: updateData.candidate_confirmation_status || booking.candidate_confirmation_status,
       }),
       {
         status: 200,
