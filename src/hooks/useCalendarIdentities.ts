@@ -95,8 +95,8 @@ export function useCalendarIdentities() {
       if (error) throw error;
 
       // Store PKCE values for the callback
-      localStorage.setItem('oauth_code_verifier', data.code_verifier);
-      localStorage.setItem('oauth_state', data.state);
+      localStorage.setItem(`mail_oauth:${data.state}:code_verifier`, data.code_verifier);
+      localStorage.setItem(`mail_oauth:${data.state}:provider`, 'gmail');
 
       // Redirect to Google OAuth
       window.location.href = data.auth_url;
