@@ -540,7 +540,7 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                     {activeTab === 'job' && (
                       <Card className="bg-surface-primary border-border">
                         <CardHeader>
-                          <CardTitle className="text-lg">Job Application</CardTitle>
+                          <CardTitle>Job Application</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-2">
                           {planStages.length ? (
@@ -638,7 +638,7 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                     {activeTab === 'application' && (
                       <Card className="bg-surface-primary border-border">
                         <CardHeader>
-                          <CardTitle className="text-lg">Application Details</CardTitle>
+                          <CardTitle>Application Details</CardTitle>
                         </CardHeader>
                         <CardContent>
                           <CandidateApplicationResponses 
@@ -653,7 +653,7 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                     {activeTab === 'resume' && (
                       <Card className="bg-surface-primary border-border">
                         <CardHeader>
-                          <CardTitle className="text-lg">Resume</CardTitle>
+                          <CardTitle>Resume</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
                           {jobCandidateId ? (
@@ -698,7 +698,7 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                         <AccordionItem value="contact" className="border-0">
                           <Card className="bg-surface-primary border-border">
                             <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                              <CardTitle className="text-lg">Contact Information</CardTitle>
+                              <CardTitle>Contact Information</CardTitle>
                             </AccordionTrigger>
                             <AccordionContent>
                               <CardContent className="space-y-4 pt-0">
@@ -783,7 +783,7 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                           ) : (
                             <Card className="bg-surface-primary border-border">
                               <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                                <CardTitle className="text-lg">URLs</CardTitle>
+                                <CardTitle>URLs</CardTitle>
                               </AccordionTrigger>
                               <AccordionContent>
                                 <CardContent className="pt-0">
@@ -801,7 +801,7 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                           ) : (
                             <Card className="bg-surface-primary border-border">
                               <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                                <CardTitle className="text-lg">Attachments</CardTitle>
+                                <CardTitle>Attachments</CardTitle>
                               </AccordionTrigger>
                               <AccordionContent>
                                 <CardContent className="pt-0">
@@ -817,7 +817,7 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                           <Card className="bg-surface-primary border-border">
                             <AccordionTrigger className="px-6 py-4 hover:no-underline">
                               <div className="flex items-center justify-between flex-1 pr-4">
-                                <CardTitle className="text-lg">Skills</CardTitle>
+                                <CardTitle>Skills</CardTitle>
                                 <div className="text-xs text-text-tertiary">
                                   Added {new Date((jobCandidate?.created_at || candidate.created_at) as string).toLocaleDateString()}
                                 </div>
@@ -863,7 +863,7 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                           <Card className="bg-surface-primary border-border">
                             <AccordionTrigger className="px-6 py-4 hover:no-underline">
                               <div className="flex items-center justify-between w-full pr-4">
-                                <CardTitle className="text-lg">Profile Summary</CardTitle>
+                                <CardTitle>Profile Summary</CardTitle>
                                 <Sparkles className="h-4 w-4 text-purple-500 flex-shrink-0" />
                               </div>
                             </AccordionTrigger>
@@ -932,10 +932,10 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
 
                      {/* Feed Tab */}
                      {rightActiveTab === 'feed' && (
-                       <Card className="bg-surface-primary border-border">
-                         <CardHeader>
-                           <CardTitle className="text-lg">Activity Feed</CardTitle>
-                         </CardHeader>
+                        <Card className="bg-surface-primary border-border">
+                          <CardHeader>
+                            <CardTitle>Activity Feed</CardTitle>
+                          </CardHeader>
                          <CardContent className="p-0">
                            <ScrollArea className="h-[500px]">
                              <div className="p-6">
@@ -955,10 +955,10 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                          {organizationId && candidateId ? (
                            <CandidateComments candidateId={candidateId} jobId={jobId} organizationId={organizationId} />
                          ) : (
-                           <Card className="bg-surface-primary border-border">
-                             <CardHeader>
-                               <CardTitle className="text-lg">Notes</CardTitle>
-                             </CardHeader>
+                            <Card className="bg-surface-primary border-border">
+                              <CardHeader>
+                                <CardTitle>Notes</CardTitle>
+                              </CardHeader>
                              <CardContent>
                                <div className="text-sm text-text-secondary">No candidate data available.</div>
                              </CardContent>
@@ -969,10 +969,10 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
 
                       {/* Emails Tab */}
                       {rightActiveTab === 'emails' && (
-                        <Card className="bg-surface-primary border-border">
-                          <CardHeader>
-                            <CardTitle className="text-lg">Email History</CardTitle>
-                          </CardHeader>
+                         <Card className="bg-surface-primary border-border">
+                           <CardHeader>
+                             <CardTitle>Email History</CardTitle>
+                           </CardHeader>
                           <CardContent className="p-0">
                             <ScrollArea className="h-[500px]">
                               <div className="p-6">
@@ -987,10 +987,10 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
                       )}
 
                       {/* Job Information */}
-                      <Card className="bg-surface-primary border-border">
-                        <CardHeader>
-                          <CardTitle className="text-lg">Job Information</CardTitle>
-                        </CardHeader>
+                       <Card className="bg-surface-primary border-border">
+                         <CardHeader>
+                           <CardTitle>Job Information</CardTitle>
+                         </CardHeader>
                         <CardContent>
                           <div className="text-sm text-text-primary">{job?.title || '—'}</div>
                         </CardContent>

@@ -109,7 +109,7 @@ export function CandidateAttachments({ candidateId }: CandidateAttachmentsProps)
     return (
       <Card className="bg-surface-primary border-border">
         <AccordionTrigger className="px-6 py-4 hover:no-underline">
-          <CardTitle className="text-lg">Attachments</CardTitle>
+          <CardTitle>Attachments</CardTitle>
         </AccordionTrigger>
         <AccordionContent>
           <CardContent className="space-y-sm pt-0">
@@ -125,7 +125,7 @@ export function CandidateAttachments({ candidateId }: CandidateAttachmentsProps)
     <>
       <Card className="bg-surface-primary border-border">
         <AccordionTrigger className="px-6 py-4 hover:no-underline">
-          <CardTitle className="text-lg">Attachments</CardTitle>
+          <CardTitle>Attachments</CardTitle>
         </AccordionTrigger>
         <AccordionContent>
           <CardContent className="space-y-sm pt-0">

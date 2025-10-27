@@ -22,11 +22,14 @@ export function MetricCard({
 }: MetricCardProps) {
   const card = (
     <Card 
-      className="transition-all hover:shadow-lg border" 
-      style={backgroundColor ? { backgroundColor, borderColor: '#0d0d09' } : { borderColor: '#0d0d09' }}
+      className="transition-all duration-200 ease-out hover:shadow-lg hover:-translate-y-0.5 hover:border-virgilio-purple/30 border-virgilio-border" 
+      style={backgroundColor ? { background: backgroundColor } : undefined}
     >
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-        <CardTitle className="text-sm font-semibold text-foreground/80">
+        <CardTitle 
+          className="text-sm font-poppins font-semibold text-virgilio-text"
+          withPeriod={false}
+        >
           {title}
         </CardTitle>
         {icon && (
@@ -39,7 +42,7 @@ export function MetricCard({
         )}
       </CardHeader>
       <CardContent className="pt-1">
-        <div className="text-3xl font-bold tracking-tight">{value}</div>
+        <div className="text-3xl font-bold tracking-tight text-virgilio-text">{value}</div>
       </CardContent>
     </Card>
   )

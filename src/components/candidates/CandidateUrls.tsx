@@ -75,7 +75,7 @@ export function CandidateUrls({ candidateId }: CandidateUrlsProps) {
     return (
       <Card className="bg-surface-primary border-border">
         <AccordionTrigger className="px-6 py-4 hover:no-underline">
-          <CardTitle className="text-lg">URLs</CardTitle>
+          <CardTitle>URLs</CardTitle>
         </AccordionTrigger>
         <AccordionContent>
           <CardContent className="space-y-sm pt-0">
@@ -91,7 +91,7 @@ export function CandidateUrls({ candidateId }: CandidateUrlsProps) {
     <Card className="bg-surface-primary border-border">
       <AccordionTrigger className="px-6 py-4 hover:no-underline">
         <div className="flex items-center justify-between flex-1 pr-4">
-          <CardTitle className="text-lg">URLs</CardTitle>
+          <CardTitle>URLs</CardTitle>
           {canManageCandidates && (
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild onClick={(e) => e.stopPropagation()}>

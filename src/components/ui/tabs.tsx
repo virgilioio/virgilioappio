@@ -12,7 +12,8 @@ const TabsList = React.forwardRef<
   <TabsPrimitive.List
     ref={ref}
     className={cn(
-      "inline-flex h-10 items-center justify-center rounded-brand bg-surface-secondary/50 p-1 text-text-secondary shadow-[var(--shadow-xs)] border border-border/20",
+      "inline-flex h-auto items-center justify-center rounded-xl p-1.5 text-text-secondary shadow-[var(--shadow-xs)] border border-virgilio-border/20",
+      "bg-[#fffcf9] dark:bg-surface-secondary/50",
       className
     )}
     {...props}
@@ -27,7 +28,12 @@ const TabsTrigger = React.forwardRef<
   <TabsPrimitive.Trigger
     ref={ref}
     className={cn(
-      "inline-flex items-center justify-center whitespace-nowrap rounded-brand px-3 py-2 text-sm font-medium ring-offset-background transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-surface-primary/60 hover:text-text-primary data-[state=active]:bg-surface-primary data-[state=active]:text-text-primary data-[state=active]:shadow-[var(--shadow-button)] data-[state=active]:border data-[state=active]:border-border/30 min-h-[40px] md:min-h-0",
+      "inline-flex items-center justify-center whitespace-nowrap rounded-lg px-4 py-2.5 text-sm font-poppins font-medium tracking-tight ring-offset-background transition-all duration-200 ease-out",
+      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-virgilio-purple focus-visible:ring-offset-2",
+      "disabled:pointer-events-none disabled:opacity-50",
+      "text-virgilio-muted hover:bg-virgilio-purple/5 hover:text-virgilio-text hover:-translate-y-0.5",
+      "data-[state=active]:bg-[#d7c5fb] data-[state=active]:text-[#0d0d09] data-[state=active]:font-semibold data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-virgilio-border/30",
+      "min-h-[40px] md:min-h-0",
       className
     )}
     {...props}

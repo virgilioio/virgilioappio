@@ -38,16 +38,23 @@ CardHeader.displayName = "CardHeader"
 
 const CardTitle = React.forwardRef<
   HTMLParagraphElement,
-  React.HTMLAttributes<HTMLHeadingElement>
->(({ className, ...props }, ref) => (
+  React.HTMLAttributes<HTMLHeadingElement> & {
+    withPeriod?: boolean
+  }
+>(({ className, withPeriod = true, children, ...props }, ref) => (
   <h3
     ref={ref}
     className={cn(
-      "text-lg font-poppins font-medium tracking-tight leading-tight text-text-primary",
+      "text-lg font-poppins font-semibold tracking-tight leading-tight text-virgilio-text",
       className
     )}
     {...props}
-  />
+  >
+    {children}
+    {withPeriod && typeof children === 'string' && (
+      <span className="text-[#d7c5fb]">.</span>
+    )}
+  </h3>
 ))
 CardTitle.displayName = "CardTitle"
 

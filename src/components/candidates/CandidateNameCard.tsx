@@ -47,17 +47,21 @@ export function CandidateNameCard({
         )}
 
         {/* Tabs */}
-        <div className="w-full rounded-xl p-1" style={{ backgroundColor: '#fffcf9' }}>
+        <div className="w-full rounded-xl p-1.5 bg-[#fffcf9] border border-virgilio-border/20">
           <div className="inline-flex h-auto items-center justify-start rounded-xl bg-transparent p-0 text-muted-foreground w-full">
             {tabs.map(({ value, label, Icon }) => (
               <button
                 key={value}
                 onClick={() => onTabChange(value)}
                 className={cn(
-                  'inline-flex items-center justify-center whitespace-nowrap rounded-lg px-4 py-2 text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-muted/50',
-                  activeTab === value && 'text-purple-900'
+                  'inline-flex items-center justify-center whitespace-nowrap rounded-lg px-4 py-2.5 text-sm font-poppins font-medium tracking-tight',
+                  'transition-all duration-200 ease-out',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-virgilio-purple focus-visible:ring-offset-2',
+                  'disabled:pointer-events-none disabled:opacity-50',
+                  activeTab === value
+                    ? 'bg-[#d7c5fb] text-[#0d0d09] font-semibold shadow-sm border border-virgilio-border/30'
+                    : 'text-virgilio-muted hover:bg-virgilio-purple/5 hover:-translate-y-0.5'
                 )}
-                style={activeTab === value ? { backgroundColor: '#d7c5fb' } : undefined}
               >
                 {Icon ? <Icon className="h-4 w-4 mr-2" /> : null}
                 {label}
