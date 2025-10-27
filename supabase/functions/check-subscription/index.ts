@@ -73,6 +73,34 @@ serve(async (req) => {
       .maybeSingle();
     if (subErr) throw new Error(`Failed loading tenant_subscriptions: ${subErr.message}`);
 
+    // Runtime trial expiration check (fallback before cron runs)
+    const now = new Date();
+    const trialExpired = tenantSubRow?.trial_ends_at && 
+      new Date(tenantSubRow.trial_ends_at as string) < now &&
+      !tenantSubRow.stripe_subscription_id &&
+      (tenantSubRow as any).billing_status === 'trialing';
+
+    if (trialExpired) {
+      log("Trial expired - locking tenant", { 
+        tenantId, 
+        trialEndsAt: tenantSubRow.trial_ends_at 
+      });
+      
+      // Lock the trial immediately
+      await supabase
+        .from('tenant_subscriptions')
+        .update({ 
+          billing_status: 'locked',
+          updated_at: new Date().toISOString()
+        })
+        .eq('tenant_id', tenantId);
+      
+      // Update in-memory row for current response
+      if (tenantSubRow) {
+        (tenantSubRow as any).billing_status = 'locked';
+      }
+    }
+
     const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
 
     // Get or resolve customer id
@@ -83,14 +111,15 @@ serve(async (req) => {
     }
 
     if (!customerId) {
-      // No Stripe customer – honor active DB trial if present
-      const now = new Date();
-      const dbTrialActive = tenantSubRow?.trial_end ? new Date(tenantSubRow.trial_end as string) > now : false;
-      const effectiveSubscribed = dbTrialActive;
-      const effectiveTier = dbTrialActive ? "Trial" : null;
+      // No Stripe customer – use billing_status as source of truth
+      const billingStatus = (tenantSubRow as any)?.billing_status || 'locked';
+      const isTrialing = billingStatus === 'trialing';
+      const isActive = billingStatus === 'active';
+      const effectiveSubscribed = isActive || isTrialing;
+      const effectiveTier = isActive ? "Trial" : isTrialing ? "Trial" : null;
       const effectiveInterval = null;
-      const effectiveTrialEnd = tenantSubRow?.trial_end ?? null;
-      const effectiveSubEnd = dbTrialActive ? (tenantSubRow?.trial_end as string) : null;
+      const effectiveTrialEnd = tenantSubRow?.trial_ends_at ?? tenantSubRow?.trial_end ?? null;
+      const effectiveSubEnd = isTrialing ? (tenantSubRow?.trial_ends_at as string) : null;
       const seatQty = (tenantSubRow as any)?.seat_quantity ?? null;
 
       // Update per-user subscribers table
@@ -130,6 +159,7 @@ serve(async (req) => {
           trial_end: effectiveTrialEnd,
           subscription_end: effectiveSubEnd,
           seat_quantity: seatQty,
+          billing_status: billingStatus,
         }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -169,13 +199,15 @@ serve(async (req) => {
       }
     }
 
-    // Determine effective subscription taking DB trial into account if no active Stripe sub
-    const dbTrialActive = tenantSubRow?.trial_end ? new Date(tenantSubRow.trial_end as string) > new Date() : false;
-    let effectiveSubscribed = hasActive || dbTrialActive;
-    let effectiveTier = hasActive ? tier : dbTrialActive ? "Trial" : null;
+    // Use billing_status as source of truth
+    const billingStatus = (tenantSubRow as any)?.billing_status || 'locked';
+    const isTrialing = billingStatus === 'trialing';
+    const isActive = billingStatus === 'active';
+    let effectiveSubscribed = hasActive || isActive || isTrialing;
+    let effectiveTier = hasActive ? tier : isActive ? "Trial" : isTrialing ? "Trial" : null;
     let effectiveInterval = hasActive ? interval : null;
-    let effectiveTrialEnd = hasActive ? trialEnd : tenantSubRow?.trial_end ?? null;
-    let effectiveSubEnd = hasActive ? subEnd : dbTrialActive ? (tenantSubRow?.trial_end as string) : null;
+    let effectiveTrialEnd = hasActive ? trialEnd : tenantSubRow?.trial_ends_at ?? tenantSubRow?.trial_end ?? null;
+    let effectiveSubEnd = hasActive ? subEnd : (isTrialing || isActive) ? (tenantSubRow?.trial_ends_at as string) : null;
 
     // Update tenant_subscriptions
     await supabase
@@ -216,6 +248,7 @@ serve(async (req) => {
         trial_end: effectiveTrialEnd,
         subscription_end: effectiveSubEnd,
         seat_quantity: quantity,
+        billing_status: billingStatus,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
     );

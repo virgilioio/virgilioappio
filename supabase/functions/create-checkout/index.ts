@@ -82,11 +82,22 @@ serve(async (req) => {
     if (subErr) throw new Error(`Failed loading tenant_subscriptions: ${subErr.message}`);
 
     if (!tenantSubRow) {
+      const trialStart = new Date();
+      const trialEnd = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+      
       const { error: insertSubErr } = await supabase
         .from("tenant_subscriptions")
-        .insert({ tenant_id: tenantId, subscribed: false, seat_quantity: 0 });
+        .insert({ 
+          tenant_id: tenantId, 
+          subscribed: false, 
+          seat_quantity: 0,
+          billing_status: 'trialing',
+          trial_started_at: trialStart.toISOString(),
+          trial_ends_at: trialEnd.toISOString(),
+          trial_source: 'checkout_fallback'
+        });
       if (insertSubErr) throw new Error(`Failed creating tenant_subscriptions row: ${insertSubErr.message}`);
-      log("Created tenant_subscriptions row", { tenantId });
+      log("Created tenant_subscriptions row with trial", { tenantId, trialEndsAt: trialEnd.toISOString() });
     }
 
     // Compute current billable seats

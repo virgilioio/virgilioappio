@@ -48,7 +48,7 @@ serve(async (req) => {
 
     const body = (await req.json().catch(() => ({}))) as ProvisionBody;
     const workspaceName = (body.workspaceName || "").trim();
-    const trialDays = typeof body.trialDays === "number" && body.trialDays > 0 ? body.trialDays : 30;
+    const trialDays = 14; // Fixed 14-day trial
     if (!workspaceName) throw new Error("workspaceName is required");
 
     // Idempotency: if user already has an active membership, return early
@@ -118,8 +118,9 @@ serve(async (req) => {
     });
     if (memberErr) throw new Error(`Failed to add member: ${memberErr.message}`);
 
-    // Start free trial (no card)
-    const trialEnd = new Date(Date.now() + trialDays * 24 * 60 * 60 * 1000).toISOString();
+    // Start 14-day trial with new billing_status fields
+    const trialStart = new Date();
+    const trialEnd = new Date(Date.now() + trialDays * 24 * 60 * 60 * 1000);
     const { error: upsertErr } = await supabase.from("tenant_subscriptions").upsert(
       {
         tenant_id: tenantId,
@@ -127,15 +128,28 @@ serve(async (req) => {
         subscription_tier: null,
         billing_interval: null,
         seat_quantity: 1,
-        trial_end: trialEnd,
+        billing_status: 'trialing',
+        trial_started_at: trialStart.toISOString(),
+        trial_ends_at: trialEnd.toISOString(),
+        trial_source: 'self_signup',
+        trial_end: trialEnd.toISOString(), // Keep for backward compat
         subscription_end: null,
+        last_seat_count: 1,
         updated_at: new Date().toISOString(),
       },
       { onConflict: "tenant_id" }
     );
     if (upsertErr) throw new Error(`Failed to set trial: ${upsertErr.message}`);
 
-    log("Provisioning complete", { tenantId, workspaceId, trialEnd, authProvider, signupSource: "self_serve" });
+    log("Provisioning complete", { 
+      tenantId, 
+      workspaceId, 
+      trialEndsAt: trialEnd.toISOString(),
+      trialDays: 14,
+      billingStatus: 'trialing',
+      authProvider, 
+      signupSource: "self_serve" 
+    });
 
     return new Response(
       JSON.stringify({ status: "ok", tenantId, workspaceId, trialEnd }),
