@@ -377,6 +377,77 @@ export type Database = {
           },
         ]
       }
+      booking_configurations: {
+        Row: {
+          available_days: number[] | null
+          buffer_time_minutes: number | null
+          created_at: string | null
+          description: string | null
+          display_name: string
+          duration_minutes: number
+          end_time: string
+          id: string
+          is_active: boolean | null
+          max_days_ahead: number | null
+          meeting_location: string | null
+          min_notice_hours: number | null
+          organization_id: string
+          short_code: string
+          start_time: string
+          timezone: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          available_days?: number[] | null
+          buffer_time_minutes?: number | null
+          created_at?: string | null
+          description?: string | null
+          display_name: string
+          duration_minutes?: number
+          end_time?: string
+          id?: string
+          is_active?: boolean | null
+          max_days_ahead?: number | null
+          meeting_location?: string | null
+          min_notice_hours?: number | null
+          organization_id: string
+          short_code: string
+          start_time?: string
+          timezone?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          available_days?: number[] | null
+          buffer_time_minutes?: number | null
+          created_at?: string | null
+          description?: string | null
+          display_name?: string
+          duration_minutes?: number
+          end_time?: string
+          id?: string
+          is_active?: boolean | null
+          max_days_ahead?: number | null
+          meeting_location?: string | null
+          min_notice_hours?: number | null
+          organization_id?: string
+          short_code?: string
+          start_time?: string
+          timezone?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_configurations_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       calendar_identities: {
         Row: {
           access_token: string

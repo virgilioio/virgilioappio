@@ -12,6 +12,7 @@ import { ProfileForm } from './ProfileForm'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { EmailAccountsSection } from './EmailAccountsSection'
 import { CalendarIntegrationSection } from './CalendarIntegrationSection'
+import { BookingLinkSection } from './BookingLinkSection'
 
 interface ProfileFormData {
   first_name: string
@@ -145,6 +146,10 @@ export function ProfileTab() {
       <Separator className="my-8" />
       
       <CalendarIntegrationSection />
+      
+      <Separator className="my-8" />
+
+      <BookingLinkSection />
       
       <Separator className="my-8" />
       

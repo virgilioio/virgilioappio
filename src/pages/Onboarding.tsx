@@ -99,6 +99,42 @@ export default function Onboarding() {
       setProvisioningStatus('finalizing')
       
       await refreshOrgContext()
+
+      // Step 4: Create booking configuration
+      try {
+        // Fetch profile to get first_name and last_name
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('first_name, last_name')
+          .eq('user_id', user?.id)
+          .single()
+
+        if (profile?.first_name && profile?.last_name && workspaceId) {
+          console.log('[Onboarding] Creating booking configuration...')
+          const { data: bookingData, error: bookingErr } = await supabase.functions.invoke(
+            'create-booking-config',
+            {
+              body: {
+                first_name: profile.first_name,
+                last_name: profile.last_name,
+                organization_id: workspaceId,
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+              }
+            }
+          )
+
+          if (bookingErr) {
+            console.warn('[Onboarding] Failed to create booking config:', bookingErr)
+            // Non-fatal - continue onboarding
+          } else {
+            console.log('[Onboarding] Booking config created:', bookingData)
+            sessionStorage.setItem('virgilio_booking_link_created', 'true')
+          }
+        }
+      } catch (err) {
+        console.warn('[Onboarding] Booking config creation error:', err)
+        // Non-fatal - continue
+      }
       
       // Set session flag to trigger welcome flow in Dashboard
       sessionStorage.setItem('virgilio_show_welcome', 'phase1')

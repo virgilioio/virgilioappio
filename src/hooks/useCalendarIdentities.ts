@@ -119,13 +119,34 @@ export function useCalendarIdentities() {
       }
 
       // Listen for success/error from the popup
-      const onMessage = (e: MessageEvent) => {
+      const onMessage = async (e: MessageEvent) => {
         if (e.origin !== window.location.origin) return;
         
         if (e.data?.type === 'mail-oauth-success') {
           window.removeEventListener('message', onMessage);
           toast.success(`Calendar connected: ${e.data.payload.email}`);
           queryClient.invalidateQueries({ queryKey: ['calendar-identities'] });
+
+          // Check if booking config exists and is inactive
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            const { data: bookingConfig } = await supabase
+              .from('booking_configurations')
+              .select('id, is_active')
+              .eq('user_id', user.id)
+              .eq('is_active', false)
+              .maybeSingle();
+
+            if (bookingConfig) {
+              // Activate booking config
+              await supabase
+                .from('booking_configurations')
+                .update({ is_active: true })
+                .eq('id', bookingConfig.id);
+
+              toast.success('Your booking link is now active! Share it with candidates.');
+            }
+          }
         }
         
         if (e.data?.type === 'mail-oauth-error') {

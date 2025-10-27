@@ -41,6 +41,7 @@ import Privacy from './pages/Privacy'
 import Terms from './pages/Terms'
 import AuthCallback from './pages/AuthCallback'
 import MailOAuthCallback from './pages/MailOAuthCallback'
+import AccountSetup from './pages/AccountSetup'
 import { SaaSCustomerDetail } from './pages/settings/saas-customers/SaaSCustomerDetail'
 const queryClient = new QueryClient()
 
@@ -60,6 +61,7 @@ function AppContent() {
         <Route path="/accept-invite/:token" element={<AcceptInvite />} />
         <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
+        <Route path="/account-setup" element={<RequireAuth><AccountSetup /></RequireAuth>} />
         <Route path="/mail/oauth/callback" element={<RequireAuth><MailOAuthCallback /></RequireAuth>} />
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/terms" element={<Terms />} />

@@ -45,6 +45,18 @@ export default function AuthCallback() {
           if (window.location.hash) {
             window.history.replaceState(null, '', '/auth/callback')
           }
+
+          // Check if user has completed profile setup
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('first_name, last_name')
+            .eq('user_id', session.user.id)
+            .maybeSingle()
+
+          if (!profile?.first_name || !profile?.last_name) {
+            navigate('/account-setup', { replace: true })
+            return
+          }
           
           navigate('/dashboard', { replace: true })
           return
