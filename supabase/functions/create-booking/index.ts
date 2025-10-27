@@ -16,22 +16,22 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-  const {
-    booking_config_id,
-    candidate_name,
-    candidate_email,
-    candidate_phone,
-    candidate_timezone,
-    scheduled_start,
-    scheduled_end,
-    notes,
-    // Internal booking context (optional)
-    job_id,
-    candidate_id,
-    job_candidate_association_id,
-    job_hiring_stage_id,
-    booked_by_user_id,
-  } = await req.json();
+    const {
+      booking_config_id,
+      candidate_name,
+      candidate_email,
+      candidate_phone,
+      candidate_timezone,
+      scheduled_start,
+      scheduled_end,
+      notes,
+      // Internal booking context (optional)
+      job_id,
+      candidate_id,
+      job_candidate_association_id,
+      job_hiring_stage_id,
+      booked_by_user_id,
+    } = await req.json();
 
     console.log('[create-booking] Creating booking for:', candidate_email);
 
