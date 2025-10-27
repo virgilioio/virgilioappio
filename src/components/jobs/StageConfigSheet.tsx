@@ -75,10 +75,10 @@ export function StageConfigSheet({ open, onOpenChange, jhsId, jobId }: StageConf
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-full sm:max-w-3xl overflow-y-auto">
         <SheetHeader>
-          <SheetTitle>
-            Configure Stage: {config.customStageName || config.stageName}
+          <SheetTitle className="text-h4-mobile font-poppins font-bold text-virgilio-text tracking-page-title">
+            Configure Stage: {config.customStageName || config.stageName}<span className="text-purple-period">.</span>
           </SheetTitle>
-          <SheetDescription>
+          <SheetDescription className="text-virgilio-muted">
             Customize this stage's behavior for this specific job
           </SheetDescription>
         </SheetHeader>

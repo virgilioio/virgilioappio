@@ -13,9 +13,9 @@ const Card = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "rounded-brand bg-surface-primary text-card-foreground transition-all duration-200 ease-out max-w-none border border-border",
-      hover && "hover:-translate-y-0.5 hover:shadow-[var(--shadow-sm)]",
-      interactive && "cursor-pointer hover:-translate-y-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background focus-visible:shadow-[var(--shadow-md)]",
+      "rounded-lg bg-surface-primary text-card-foreground transition-all duration-200 ease-out max-w-none border border-virgilio-border shadow-calendly",
+      hover && "hover:-translate-y-0.5 hover:shadow-[var(--shadow-sm)] hover:border-virgilio-purple/30",
+      interactive && "cursor-pointer hover:-translate-y-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-virgilio-purple focus-visible:ring-offset-2 ring-offset-background focus-visible:shadow-[var(--shadow-md)]",
       className
     )}
     {...(interactive ? { tabIndex: 0 } : {})}

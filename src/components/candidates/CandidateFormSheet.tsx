@@ -519,8 +519,8 @@ export function CandidateFormSheet({
     <Sheet open={isOpen} onOpenChange={handleClose}>
       <SheetContent className="sm:max-w-[540px] overflow-y-auto">
         <SheetHeader className="pb-6">
-          <SheetTitle className="text-xl font-semibold text-text-primary">
-            {candidate ? 'Edit Candidate' : 'Add New Candidate'}
+          <SheetTitle className="text-h4-mobile font-poppins font-bold text-virgilio-text tracking-page-title">
+            {candidate ? 'Edit Candidate' : 'Add New Candidate'}<span className="text-purple-period">.</span>
           </SheetTitle>
         </SheetHeader>
 
@@ -530,8 +530,8 @@ export function CandidateFormSheet({
 
             {/* Resume Upload */}
             <div className="space-y-4">
-              <h3 className="text-lg font-medium text-text-primary border-b border-border pb-2">
-                Resume
+              <h3 className="text-base font-poppins font-bold text-virgilio-text tracking-page-title pb-2 border-b border-virgilio-border">
+                Resume<span className="text-purple-period">.</span>
               </h3>
               <EnhancedResumeDropzone
                 onUpload={candidate ? uploadFileForCandidate.bind(null, candidate.id) : undefined}
@@ -578,8 +578,8 @@ export function CandidateFormSheet({
 
             {/* Basic Information */}
             <div className="space-y-4">
-              <h3 className="text-lg font-medium text-text-primary border-b border-border pb-2">
-                Basic Information
+              <h3 className="text-base font-poppins font-bold text-virgilio-text tracking-page-title pb-2 border-b border-virgilio-border">
+                Basic Information<span className="text-purple-period">.</span>
               </h3>
               
               <FormField 

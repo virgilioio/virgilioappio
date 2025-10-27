@@ -1,6 +1,6 @@
 
 import { cn } from "@/lib/utils";
-import { StyledPageTitle } from "@/components/ui/styled-page-title";
+import { PageTitle } from "@/components/ui/page-title";
 import { Card, CardHeader } from "@/components/ui/card";
 
 interface MetricCardProps {
@@ -32,11 +32,11 @@ export function PageHeader({
     )}>
        <div className="flex items-start justify-between gap-6">
         <div className="min-w-0 flex-1">
-          <StyledPageTitle>
+          <PageTitle>
             {title}
-          </StyledPageTitle>
+          </PageTitle>
           {subtitle && (
-            <p className="text-sm text-text-secondary mt-xs">
+            <p className="text-sm text-virgilio-muted mt-xs leading-relaxed">
               {subtitle}
             </p>
           )}

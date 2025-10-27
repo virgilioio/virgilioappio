@@ -176,7 +176,9 @@ export function JobFormSheet({ isOpen, onClose, onSubmit, job, isLoading }: JobF
     <Sheet open={isOpen} onOpenChange={onClose}>
       <SheetContent className="w-[600px] sm:w-[800px] overflow-y-auto">
         <SheetHeader>
-          <SheetTitle>{job ? 'Edit Job' : 'Create New Job'}</SheetTitle>
+          <SheetTitle className="text-h4-mobile font-poppins font-bold text-virgilio-text tracking-page-title">
+            {job ? 'Edit Job' : 'Create New Job'}<span className="text-purple-period">.</span>
+          </SheetTitle>
         </SheetHeader>
         
         <form onSubmit={handleSubmit} className="space-y-6 mt-6">

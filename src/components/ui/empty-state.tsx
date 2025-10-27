@@ -66,30 +66,30 @@ export function EmptyState({
   }
 
   return (
-    <div className={`text-center py-8 ${className}`}>
-      <div className="mb-4">
+    <div className={`text-center py-12 px-4 ${className}`}>
+      <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-virgilio-purple/10 mx-auto">
         {!imageLoading && customImageUrl ? (
           <img 
             src={customImageUrl}
             alt={`${title} illustration`}
-            className="h-[76px] w-[76px] sm:h-[100px] sm:w-[100px] mx-auto"
+            className="h-full w-full rounded-full object-cover"
             onError={handleImageError}
           />
         ) : (
-          <FallbackIcon className="h-[76px] w-[76px] sm:h-[100px] sm:w-[100px] text-muted-foreground mx-auto" />
+          <FallbackIcon className="h-8 w-8 text-virgilio-purple" />
         )}
       </div>
       
-      <h3 className="text-[1.38rem] font-semibold mb-2 tracking-[-0.06em]">
-        <span>{title}</span><span className="text-[#d7c5fb]">.</span>
+      <h3 className="text-lg font-poppins font-bold text-virgilio-text mb-2 tracking-page-title">
+        {title}<span className="text-purple-period">.</span>
       </h3>
       
-      <p className="text-muted-foreground mb-4">
+      <p className="text-sm text-virgilio-muted mb-6 max-w-md mx-auto leading-relaxed">
         {description}
       </p>
       
       {action && (
-        <Button onClick={action.onClick} className="gap-2">
+        <Button onClick={action.onClick} variant="default">
           {action.label}
         </Button>
       )}

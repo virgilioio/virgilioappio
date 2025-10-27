@@ -50,6 +50,14 @@
     
     /* Page title period color */
     --purple-period: 267 84% 87%; /* #d7c5fb */
+    
+    /* Virgilio brand colors for UI consistency */
+    --virgilio-purple: 267 89% 60%; /* #6F3FF5 */
+    --virgilio-text: 217 90% 8%; /* #0F1222 */
+    --virgilio-muted: 220 13% 38%; /* #5A6072 */
+    --virgilio-border: 225 14% 92%; /* #E7E8EE */
+    --virgilio-success: 159 61% 40%; /* #12B886 */
+    --virgilio-error: 4 90% 58%; /* #FA5252 */
 
     /* Pastel colors for skills */
     --pastel-blue: 219 92% 95%;
@@ -265,6 +273,14 @@
     
     /* Page title period color - Dark mode */
     --purple-period: 267 84% 87%; /* #d7c5fb - same color works in dark mode */
+    
+    /* Virgilio brand colors for UI consistency - Dark mode */
+    --virgilio-purple: 267 89% 60%; /* #6F3FF5 */
+    --virgilio-text: 0 0% 95%; /* Light text for dark mode */
+    --virgilio-muted: 220 13% 65%; /* Lighter muted for dark mode */
+    --virgilio-border: 215 20% 30%; /* Darker border for dark mode */
+    --virgilio-success: 159 61% 40%; /* #12B886 */
+    --virgilio-error: 4 90% 58%; /* #FA5252 */
   }
 }
 

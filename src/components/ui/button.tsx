@@ -7,13 +7,13 @@ import { Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-1 whitespace-nowrap rounded-brand font-medium ring-offset-background transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 disabled:cursor-not-allowed [&_svg]:pointer-events-none [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-1 whitespace-nowrap rounded-lg font-medium ring-offset-background transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-virgilio-purple focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 disabled:cursor-not-allowed [&_svg]:pointer-events-none [&_svg]:shrink-0",
   {
     variants: {
       variant: {
         default: "bg-accent text-accent-foreground shadow-[var(--shadow-button)] hover:-translate-y-0.5 hover:bg-accent/90 hover:shadow-[var(--shadow-md)] active:translate-y-0 active:scale-95 active:shadow-[var(--shadow-xs)]",
         destructive: "bg-destructive text-destructive-foreground shadow-[var(--shadow-button)] hover:bg-destructive/90 hover:-translate-y-0.5 hover:shadow-[var(--shadow-md)] active:scale-95 active:shadow-[var(--shadow-xs)]",
-        outline: "border border-input bg-background shadow-[var(--shadow-xs)] hover:bg-accent hover:text-accent-foreground hover:-translate-y-0.5 hover:shadow-[var(--shadow-button)] active:scale-95",
+        outline: "border border-virgilio-border bg-background shadow-[var(--shadow-xs)] hover:bg-virgilio-purple/5 hover:border-virgilio-purple/50 hover:text-accent-foreground hover:-translate-y-0.5 hover:shadow-[var(--shadow-button)] active:scale-95",
         secondary: "bg-secondary text-secondary-foreground shadow-[var(--shadow-button)] hover:bg-secondary/80 hover:-translate-y-0.5 hover:shadow-[var(--shadow-md)] active:scale-95 active:shadow-[var(--shadow-xs)]",
         ghost: "hover:bg-accent hover:text-accent-foreground hover:scale-105 active:scale-95",
         link: "text-primary underline-offset-4 hover:underline hover:scale-105 active:scale-95",
