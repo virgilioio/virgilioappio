@@ -98,8 +98,35 @@ export function useCalendarIdentities() {
       localStorage.setItem(`mail_oauth:${data.state}:code_verifier`, data.code_verifier);
       localStorage.setItem(`mail_oauth:${data.state}:provider`, 'gmail');
 
-      // Redirect to Google OAuth
-      window.location.href = data.auth_url;
+      // Open OAuth in popup window
+      const popup = window.open(
+        data.auth_url,
+        'google-calendar-oauth',
+        'width=520,height=640,scrollbars=yes'
+      );
+
+      if (!popup) {
+        toast.error('Please allow popups for this site');
+        return;
+      }
+
+      // Listen for success/error from the popup
+      const onMessage = (e: MessageEvent) => {
+        if (e.origin !== window.location.origin) return;
+        
+        if (e.data?.type === 'mail-oauth-success') {
+          window.removeEventListener('message', onMessage);
+          toast.success(`Calendar connected: ${e.data.payload.email}`);
+          queryClient.invalidateQueries({ queryKey: ['calendar-identities'] });
+        }
+        
+        if (e.data?.type === 'mail-oauth-error') {
+          window.removeEventListener('message', onMessage);
+          toast.error(e.data.error || 'Failed to connect calendar');
+        }
+      };
+      
+      window.addEventListener('message', onMessage);
     } catch (error: any) {
       toast.error(`Failed to start OAuth: ${error.message}`);
     }
