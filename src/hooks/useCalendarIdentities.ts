@@ -86,9 +86,23 @@ export function useCalendarIdentities() {
     },
   });
 
-  const connectGoogleCalendar = () => {
-    const supabaseUrl = "https://etrxjxstjfcozdjumfsj.supabase.co";
-    window.location.href = `${supabaseUrl}/functions/v1/mail-oauth-start`;
+  const connectGoogleCalendar = async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('mail-oauth-start', {
+        body: { provider: 'gmail' }
+      });
+
+      if (error) throw error;
+
+      // Store PKCE values for the callback
+      localStorage.setItem('oauth_code_verifier', data.code_verifier);
+      localStorage.setItem('oauth_state', data.state);
+
+      // Redirect to Google OAuth
+      window.location.href = data.auth_url;
+    } catch (error: any) {
+      toast.error(`Failed to start OAuth: ${error.message}`);
+    }
   };
 
   return {
