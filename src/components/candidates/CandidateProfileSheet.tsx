@@ -119,6 +119,7 @@ const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefin
 const [scheduleOpen, setScheduleOpen] = useState(false)
 const [scheduleStageId, setScheduleStageId] = useState<string | null>(null)
 const [scheduleStageName, setScheduleStageName] = useState<string>('')
+const [oldBookingId, setOldBookingId] = useState<string | null>(null)
   // Resume helpers
   const resumeAttachment = attachments.find((a) => a.is_resume)
   const replaceResumeInputRef = useRef<HTMLInputElement>(null)
@@ -603,9 +604,10 @@ const [scheduleStageName, setScheduleStageName] = useState<string>('')
             <StageBookingsList 
               jhsId={opt.jhsId}
               candidateId={candidateId}
-              onReschedule={(jhsId) => {
+              onReschedule={(jhsId, bookingId) => {
                 setScheduleStageId(jhsId);
                 setScheduleStageName(opt.stage.stage_name);
+                setOldBookingId(bookingId);
                 setScheduleOpen(true);
               }}
             />
@@ -1071,7 +1073,10 @@ const [scheduleStageName, setScheduleStageName] = useState<string>('')
           {scheduleStageId && candidateId && (
             <ScheduleInterviewSheet
               open={scheduleOpen}
-              onOpenChange={setScheduleOpen}
+              onOpenChange={(open) => {
+                setScheduleOpen(open);
+                if (!open) setOldBookingId(null);
+              }}
               candidateId={candidateId}
               candidateName={candidate?.candidate_name || ''}
               candidateEmail={candidate?.email || ''}
@@ -1082,6 +1087,7 @@ const [scheduleStageName, setScheduleStageName] = useState<string>('')
               jhsId={scheduleStageId}
               stageName={scheduleStageName}
               associationId={associationId!}
+              oldBookingId={oldBookingId}
             />
           )}
 

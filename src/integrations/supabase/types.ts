@@ -2447,6 +2447,7 @@ export type Database = {
           booking_config_id: string
           cancellation_reason: string | null
           cancelled_at: string | null
+          cancelled_by: string | null
           candidate_confirmation_status: string | null
           candidate_confirmed_at: string | null
           candidate_email: string
@@ -2480,6 +2481,7 @@ export type Database = {
           booking_config_id: string
           cancellation_reason?: string | null
           cancelled_at?: string | null
+          cancelled_by?: string | null
           candidate_confirmation_status?: string | null
           candidate_confirmed_at?: string | null
           candidate_email: string
@@ -2513,6 +2515,7 @@ export type Database = {
           booking_config_id?: string
           cancellation_reason?: string | null
           cancelled_at?: string | null
+          cancelled_by?: string | null
           candidate_confirmation_status?: string | null
           candidate_confirmed_at?: string | null
           candidate_email?: string

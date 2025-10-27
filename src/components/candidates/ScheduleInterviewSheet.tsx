@@ -206,6 +206,7 @@ interface ScheduleInterviewSheetProps {
   jhsId: string; // job_hiring_stage_id
   stageName: string;
   associationId: string; // job_candidate_association_id
+  oldBookingId?: string | null; // booking to cancel after reschedule
 }
 
 interface StageInterviewer {
@@ -240,6 +241,7 @@ export function ScheduleInterviewSheet({
   jhsId,
   stageName,
   associationId,
+  oldBookingId,
 }: ScheduleInterviewSheetProps) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -395,11 +397,36 @@ export function ScheduleInterviewSheet({
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       toast({
         title: 'Interview Scheduled',
         description: `Interview scheduled with ${selectedInterviewer?.profiles?.first_name || 'interviewer'} for ${stageName}.`,
       });
+      
+      // If this was a reschedule, cancel the old booking now
+      if (oldBookingId && selectedSlot) {
+        try {
+          const { error } = await supabase.functions.invoke('cancel-booking', {
+            body: { 
+              booking_id: oldBookingId, 
+              reason: `Rescheduled to ${format(selectedSlot.start, 'MMM d, yyyy h:mm a')}` 
+            },
+          });
+          
+          if (error) throw error;
+          toast({
+            title: 'Previous Interview Cancelled',
+            description: 'The old interview time has been cancelled.',
+          });
+        } catch (error: any) {
+          console.error('Failed to cancel old booking:', error);
+          toast({
+            variant: 'destructive',
+            title: 'Warning',
+            description: 'New interview scheduled, but failed to cancel previous one. Please cancel it manually.',
+          });
+        }
+      }
       
       // Invalidate relevant queries
       queryClient.invalidateQueries({ queryKey: ['scheduled-bookings'] });

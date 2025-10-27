@@ -21,7 +21,7 @@ import { toast } from 'sonner';
 interface StageBookingsListProps {
   jhsId: string;
   candidateId: string;
-  onReschedule?: (jhsId: string) => void;
+  onReschedule?: (jhsId: string, oldBookingId: string) => void;
 }
 
 export function StageBookingsList({ jhsId, candidateId, onReschedule }: StageBookingsListProps) {
@@ -65,16 +65,9 @@ export function StageBookingsList({ jhsId, candidateId, onReschedule }: StageBoo
     },
   });
 
-  const handleReschedule = async (bookingId: string) => {
-    try {
-      await cancelBookingMutation.mutateAsync({ 
-        bookingId, 
-        reason: 'Rescheduled by recruiter' 
-      });
-      onReschedule?.(jhsId);
-    } catch (error) {
-      // Error is handled by mutation's onError
-    }
+  const handleReschedule = (bookingId: string) => {
+    // Open the sheet immediately - cancellation will happen after new booking succeeds
+    onReschedule?.(jhsId, bookingId);
   };
 
   const handleCancel = (bookingId: string) => {
