@@ -11,6 +11,7 @@ export interface ICSEventData {
   attendeeName: string;
   status: 'CONFIRMED' | 'CANCELLED' | 'TENTATIVE';
   method: 'REQUEST' | 'CANCEL' | 'PUBLISH';
+  sequence?: number; // Optional sequence number for updates/cancellations
 }
 
 export function generateICS(event: ICSEventData): string {
@@ -44,7 +45,7 @@ export function generateICS(event: ICSEventData): string {
     `ORGANIZER;CN=${escapeText(event.organizerName)}:mailto:${event.organizerEmail}`,
     `ATTENDEE;CN=${escapeText(event.attendeeName)};RSVP=TRUE:mailto:${event.attendeeEmail}`,
     `STATUS:${event.status}`,
-    'SEQUENCE:0',
+    `SEQUENCE:${event.sequence ?? 0}`,
     'END:VEVENT',
     'END:VCALENDAR',
   ].join('\r\n');

@@ -1,0 +1,308 @@
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0';
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      {
+        global: {
+          headers: { Authorization: req.headers.get('Authorization')! },
+        },
+      }
+    );
+
+    const { booking_id, reason } = await req.json();
+
+    if (!booking_id) {
+      return new Response(JSON.stringify({ error: 'booking_id is required' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    console.log('[cancel-booking] Cancelling booking:', booking_id);
+
+    // Get current user
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Fetch booking details
+    const { data: booking, error: fetchError } = await supabase
+      .from('scheduled_bookings')
+      .select(`
+        *,
+        interviewer_profile:profiles!scheduled_bookings_interviewer_id_fkey(
+          first_name,
+          last_name,
+          email
+        )
+      `)
+      .eq('id', booking_id)
+      .single();
+
+    if (fetchError || !booking) {
+      return new Response(JSON.stringify({ error: 'Booking not found' }), {
+        status: 404,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (booking.status === 'cancelled') {
+      return new Response(JSON.stringify({ error: 'Booking is already cancelled' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Get job title and stage name for email context
+    let jobTitle = 'Position';
+    let stageName = 'Interview';
+
+    if (booking.job_id && booking.job_hiring_stage_id) {
+      const { data: stageData } = await supabase
+        .from('job_hiring_stages')
+        .select('stage_name, job:jobs(title)')
+        .eq('id', booking.job_hiring_stage_id)
+        .single();
+
+      if (stageData) {
+        jobTitle = stageData.job?.title || jobTitle;
+        stageName = stageData.stage_name || stageName;
+      }
+    }
+
+    const interviewTitle = `${stageName} - ${jobTitle}`;
+
+    // Delete Google Calendar event if exists
+    if (booking.google_event_id) {
+      console.log('[cancel-booking] Deleting Google Calendar event:', booking.google_event_id);
+
+      const { data: calIdentity } = await supabase
+        .from('calendar_identities')
+        .select('*')
+        .eq('user_id', booking.interviewer_id)
+        .eq('is_active', true)
+        .single();
+
+      if (calIdentity) {
+        let accessToken = calIdentity.access_token;
+
+        // Check if token is expired and refresh if needed
+        const now = new Date();
+        const expiresAt = new Date(calIdentity.token_expires_at);
+
+        if (expiresAt <= now) {
+          console.log('[cancel-booking] Refreshing expired access token...');
+
+          const { data: decryptedToken } = await supabase.rpc('decrypt_refresh_token', {
+            encrypted_token: calIdentity.encrypted_refresh_token,
+          });
+
+          if (decryptedToken) {
+            const clientId = Deno.env.get('GOOGLE_CLIENT_ID')!;
+            const clientSecret = Deno.env.get('GOOGLE_CLIENT_SECRET')!;
+
+            const tokenRefreshResponse = await fetch('https://oauth2.googleapis.com/token', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+              body: new URLSearchParams({
+                client_id: clientId,
+                client_secret: clientSecret,
+                refresh_token: decryptedToken,
+                grant_type: 'refresh_token',
+              }),
+            });
+
+            if (tokenRefreshResponse.ok) {
+              const refreshData = await tokenRefreshResponse.json();
+              accessToken = refreshData.access_token;
+
+              await supabase
+                .from('calendar_identities')
+                .update({
+                  access_token: accessToken,
+                  token_expires_at: new Date(Date.now() + refreshData.expires_in * 1000).toISOString(),
+                })
+                .eq('id', calIdentity.id);
+            }
+          }
+        }
+
+        // Delete the event from Google Calendar
+        try {
+          const deleteResponse = await fetch(
+            `https://www.googleapis.com/calendar/v3/calendars/primary/events/${booking.google_event_id}`,
+            {
+              method: 'DELETE',
+              headers: { Authorization: `Bearer ${accessToken}` },
+            }
+          );
+
+          if (deleteResponse.ok || deleteResponse.status === 404) {
+            console.log('[cancel-booking] Google Calendar event deleted successfully');
+          } else {
+            console.error('[cancel-booking] Failed to delete Google Calendar event:', deleteResponse.status);
+          }
+        } catch (error) {
+          console.error('[cancel-booking] Error deleting Google Calendar event:', error);
+        }
+      }
+    }
+
+    // Update booking status to cancelled
+    const { error: updateError } = await supabase
+      .from('scheduled_bookings')
+      .update({
+        status: 'cancelled',
+        cancelled_at: new Date().toISOString(),
+        cancelled_by: user.id,
+        cancellation_reason: reason || null,
+      })
+      .eq('id', booking_id);
+
+    if (updateError) throw updateError;
+
+    console.log('[cancel-booking] Booking status updated to cancelled');
+
+    // Generate cancellation ICS file
+    const formatDateForICS = (date: Date): string => {
+      return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+    };
+
+    const escapeICSText = (text: string): string => {
+      return text.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n');
+    };
+
+    const icsContent = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//Virgilio//Interview Scheduler//EN',
+      'CALSCALE:GREGORIAN',
+      'METHOD:CANCEL',
+      'BEGIN:VEVENT',
+      `UID:${booking.ics_uid}`,
+      `DTSTAMP:${formatDateForICS(new Date())}`,
+      `DTSTART:${formatDateForICS(new Date(booking.scheduled_start))}`,
+      `DTEND:${formatDateForICS(new Date(booking.scheduled_end))}`,
+      `SUMMARY:${escapeICSText('CANCELLED: ' + interviewTitle)}`,
+      `DESCRIPTION:${escapeICSText('This interview has been cancelled.' + (reason ? '\n\nReason: ' + reason : ''))}`,
+      `ORGANIZER;CN=${escapeICSText(booking.interviewer_profile?.first_name + ' ' + booking.interviewer_profile?.last_name)}:mailto:${booking.interviewer_profile?.email}`,
+      `ATTENDEE;CN=${escapeICSText(booking.candidate_name)};RSVP=TRUE:mailto:${booking.candidate_email}`,
+      'STATUS:CANCELLED',
+      'SEQUENCE:1',
+      'END:VEVENT',
+      'END:VCALENDAR',
+    ].join('\r\n');
+
+    const icsBase64 = btoa(icsContent);
+
+    // Send cancellation email to candidate
+    await supabase.functions.invoke('send-user-email', {
+      body: {
+        to: [booking.candidate_email],
+        subject: `Interview Cancelled: ${interviewTitle}`,
+        html: `
+          <h2>Interview Cancelled</h2>
+          <p>Hello ${booking.candidate_name},</p>
+          <p>Your scheduled interview has been cancelled:</p>
+          <ul>
+            <li><strong>Interview:</strong> ${interviewTitle}</li>
+            <li><strong>Originally Scheduled:</strong> ${new Date(booking.scheduled_start).toLocaleString()}</li>
+            ${reason ? `<li><strong>Reason:</strong> ${reason}</li>` : ''}
+          </ul>
+          <p>The cancellation has been added to your calendar. If you have any questions, please contact us.</p>
+          <p>Best regards,<br/>The Recruiting Team</p>
+        `,
+        attachments: [{
+          filename: 'cancellation.ics',
+          content: icsBase64,
+          encoding: 'base64',
+          contentType: 'text/calendar',
+        }],
+      },
+    });
+
+    // Send cancellation email to interviewer
+    await supabase.functions.invoke('send-user-email', {
+      body: {
+        to: [booking.interviewer_profile?.email],
+        subject: `Interview Cancelled: ${interviewTitle}`,
+        html: `
+          <h2>Interview Cancelled</h2>
+          <p>Hello ${booking.interviewer_profile?.first_name},</p>
+          <p>An interview has been cancelled:</p>
+          <ul>
+            <li><strong>Candidate:</strong> ${booking.candidate_name} (${booking.candidate_email})</li>
+            <li><strong>Interview:</strong> ${interviewTitle}</li>
+            <li><strong>Originally Scheduled:</strong> ${new Date(booking.scheduled_start).toLocaleString()}</li>
+            ${reason ? `<li><strong>Reason:</strong> ${reason}</li>` : ''}
+          </ul>
+          <p>The cancellation has been added to your calendar.</p>
+          <p>Best regards,<br/>The Recruiting Team</p>
+        `,
+        attachments: [{
+          filename: 'cancellation.ics',
+          content: icsBase64,
+          encoding: 'base64',
+          contentType: 'text/calendar',
+        }],
+      },
+    });
+
+    // Log activity
+    if (booking.candidate_id && booking.job_id) {
+      await supabase.from('activities').insert({
+        user_id: user.id,
+        organization_id: booking.organization_id,
+        activity_type: 'interview_cancelled',
+        title: 'Interview Cancelled',
+        description: `Cancelled ${stageName} interview${reason ? ': ' + reason : ''}`,
+        entity_type: 'candidate',
+        entity_id: booking.candidate_id,
+        metadata: {
+          job_id: booking.job_id,
+          booking_id: booking.id,
+          interviewer_id: booking.interviewer_id,
+          scheduled_start: booking.scheduled_start,
+          cancelled_by: user.id,
+          reason: reason || null,
+        },
+      });
+    }
+
+    console.log('[cancel-booking] Cancellation complete');
+
+    return new Response(JSON.stringify({ 
+      success: true,
+      message: 'Interview cancelled successfully',
+    }), {
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+
+  } catch (error) {
+    console.error('[cancel-booking] Error:', error);
+    return new Response(JSON.stringify({ 
+      error: error.message || 'Internal server error',
+    }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+});
