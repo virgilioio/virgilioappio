@@ -137,9 +137,23 @@ serve(async (req) => {
         display_name: `${first_name} ${last_name}`,
         timezone,
         is_active: isActive,
+        
+        // NEW: Use weekly_schedule instead of old fields
+        weekly_schedule: {
+          monday: { enabled: true, start: '09:00', end: '17:00' },
+          tuesday: { enabled: true, start: '09:00', end: '17:00' },
+          wednesday: { enabled: true, start: '09:00', end: '17:00' },
+          thursday: { enabled: true, start: '09:00', end: '17:00' },
+          friday: { enabled: true, start: '09:00', end: '17:00' },
+          saturday: { enabled: false, start: '09:00', end: '17:00' },
+          sunday: { enabled: false, start: '09:00', end: '17:00' },
+        },
+        
+        // Keep old fields for backward compatibility (set from weekly_schedule)
         available_days: [1, 2, 3, 4, 5],
         start_time: '09:00',
         end_time: '17:00',
+        
         duration_minutes: 30,
         buffer_time_minutes: 15,
         min_notice_hours: 24,

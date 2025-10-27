@@ -397,6 +397,7 @@ export type Database = {
           timezone: string
           updated_at: string | null
           user_id: string
+          weekly_schedule: Json | null
         }
         Insert: {
           available_days?: number[] | null
@@ -417,6 +418,7 @@ export type Database = {
           timezone?: string
           updated_at?: string | null
           user_id: string
+          weekly_schedule?: Json | null
         }
         Update: {
           available_days?: number[] | null
@@ -437,6 +439,7 @@ export type Database = {
           timezone?: string
           updated_at?: string | null
           user_id?: string
+          weekly_schedule?: Json | null
         }
         Relationships: [
           {

@@ -5,6 +5,16 @@ import { useOrgContext } from '@/contexts/OrgContext';
 import { useUserProfile } from './useUserProfile';
 import { toast } from 'sonner';
 
+export interface WeeklySchedule {
+  monday: { enabled: boolean; start: string; end: string };
+  tuesday: { enabled: boolean; start: string; end: string };
+  wednesday: { enabled: boolean; start: string; end: string };
+  thursday: { enabled: boolean; start: string; end: string };
+  friday: { enabled: boolean; start: string; end: string };
+  saturday: { enabled: boolean; start: string; end: string };
+  sunday: { enabled: boolean; start: string; end: string };
+}
+
 export interface BookingConfig {
   id: string;
   user_id: string;
@@ -13,9 +23,15 @@ export interface BookingConfig {
   display_name: string;
   description: string | null;
   is_active: boolean;
-  available_days: number[];
-  start_time: string;
-  end_time: string;
+  
+  // NEW: Weekly schedule
+  weekly_schedule: WeeklySchedule;
+  
+  // OLD: Keep for backward compatibility (deprecated)
+  available_days?: number[];
+  start_time?: string;
+  end_time?: string;
+  
   timezone: string;
   duration_minutes: number;
   buffer_time_minutes: number;
@@ -25,6 +41,63 @@ export interface BookingConfig {
   created_at: string;
   updated_at: string;
 }
+
+// Helper to get default weekly schedule
+export const getDefaultWeeklySchedule = (): WeeklySchedule => ({
+  monday: { enabled: true, start: '09:00', end: '17:00' },
+  tuesday: { enabled: true, start: '09:00', end: '17:00' },
+  wednesday: { enabled: true, start: '09:00', end: '17:00' },
+  thursday: { enabled: true, start: '09:00', end: '17:00' },
+  friday: { enabled: true, start: '09:00', end: '17:00' },
+  saturday: { enabled: false, start: '09:00', end: '17:00' },
+  sunday: { enabled: false, start: '09:00', end: '17:00' },
+});
+
+// Preset schedules
+export const SCHEDULE_PRESETS = {
+  standardBusiness: {
+    name: 'Standard Business Hours',
+    description: 'Monday-Friday, 9am-5pm',
+    schedule: getDefaultWeeklySchedule(),
+  },
+  morningPerson: {
+    name: 'Morning Person',
+    description: 'Monday-Friday, 7am-1pm',
+    schedule: {
+      ...getDefaultWeeklySchedule(),
+      monday: { enabled: true, start: '07:00', end: '13:00' },
+      tuesday: { enabled: true, start: '07:00', end: '13:00' },
+      wednesday: { enabled: true, start: '07:00', end: '13:00' },
+      thursday: { enabled: true, start: '07:00', end: '13:00' },
+      friday: { enabled: true, start: '07:00', end: '13:00' },
+    },
+  },
+  afternoonOnly: {
+    name: 'Afternoon Only',
+    description: 'Monday-Friday, 1pm-6pm',
+    schedule: {
+      ...getDefaultWeeklySchedule(),
+      monday: { enabled: true, start: '13:00', end: '18:00' },
+      tuesday: { enabled: true, start: '13:00', end: '18:00' },
+      wednesday: { enabled: true, start: '13:00', end: '18:00' },
+      thursday: { enabled: true, start: '13:00', end: '18:00' },
+      friday: { enabled: true, start: '13:00', end: '18:00' },
+    },
+  },
+  weekendsToo: {
+    name: 'Weekends Too',
+    description: 'Monday-Sunday, 9am-5pm',
+    schedule: {
+      monday: { enabled: true, start: '09:00', end: '17:00' },
+      tuesday: { enabled: true, start: '09:00', end: '17:00' },
+      wednesday: { enabled: true, start: '09:00', end: '17:00' },
+      thursday: { enabled: true, start: '09:00', end: '17:00' },
+      friday: { enabled: true, start: '09:00', end: '17:00' },
+      saturday: { enabled: true, start: '09:00', end: '17:00' },
+      sunday: { enabled: true, start: '09:00', end: '17:00' },
+    },
+  },
+};
 
 export function useBookingConfig() {
   const { user } = useAuth();
@@ -44,22 +117,47 @@ export function useBookingConfig() {
       if (error && error.code !== 'PGRST116') {
         throw error;
       }
-      return data as BookingConfig | null;
+      return data ? (data as unknown as BookingConfig) : null;
     },
     enabled: !!user,
   });
 
   const updateMutation = useMutation({
     mutationFn: async (updates: Partial<BookingConfig>) => {
+      // If weekly_schedule is being updated, sync old fields for backward compatibility
+      if (updates.weekly_schedule) {
+        const enabledDays: number[] = [];
+        let earliestStart = '23:59';
+        let latestEnd = '00:00';
+        
+        Object.entries(updates.weekly_schedule).forEach(([day, config]) => {
+          if (config.enabled) {
+            // Map day names to numbers (0=Sunday, 1=Monday, etc.)
+            const dayMap: Record<string, number> = {
+              sunday: 0, monday: 1, tuesday: 2, wednesday: 3,
+              thursday: 4, friday: 5, saturday: 6
+            };
+            enabledDays.push(dayMap[day]);
+            
+            if (config.start < earliestStart) earliestStart = config.start;
+            if (config.end > latestEnd) latestEnd = config.end;
+          }
+        });
+        
+        updates.available_days = enabledDays;
+        updates.start_time = earliestStart;
+        updates.end_time = latestEnd;
+      }
+      
       const { data, error } = await supabase
         .from('booking_configurations')
-        .update(updates)
+        .update(updates as any)
         .eq('user_id', user?.id)
         .select()
         .single();
       
       if (error) throw error;
-      return data as BookingConfig;
+      return data as unknown as BookingConfig;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['booking-config'] });
