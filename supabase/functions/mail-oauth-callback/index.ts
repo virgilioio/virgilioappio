@@ -221,6 +221,35 @@ const handler = async (req: Request): Promise<Response> => {
       // Don't throw - mail identity is already stored successfully
     } else {
       console.log('Successfully stored calendar identity for user:', user.id);
+      
+      // Automatically setup calendar watch for push notifications
+      try {
+        console.log('[mail-oauth-callback] Setting up calendar watch...');
+        
+        const watchResponse = await fetch(
+          `${supabaseUrl}/functions/v1/setup-calendar-watch`,
+          {
+            method: 'POST',
+            headers: {
+              'Authorization': authHeader,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              calendar_identity_id: calendarResult.data.id,
+            }),
+          }
+        );
+
+        if (watchResponse.ok) {
+          const watchData = await watchResponse.json();
+          console.log('[mail-oauth-callback] Calendar watch setup successful:', watchData);
+        } else {
+          console.error('[mail-oauth-callback] Failed to setup calendar watch');
+        }
+      } catch (watchError) {
+        console.error('[mail-oauth-callback] Error setting up calendar watch:', watchError);
+        // Don't fail the whole flow if watch setup fails
+      }
     }
 
     return new Response(

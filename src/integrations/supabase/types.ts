@@ -461,6 +461,7 @@ export type Database = {
           id: string
           is_active: boolean | null
           last_sync_at: string | null
+          last_webhook_renewal: string | null
           organization_id: string
           provider: string
           sync_error_message: string | null
@@ -468,6 +469,9 @@ export type Database = {
           token_expires_at: string
           updated_at: string | null
           user_id: string
+          webhook_channel_id: string | null
+          webhook_expiration: string | null
+          webhook_resource_id: string | null
         }
         Insert: {
           access_token: string
@@ -478,6 +482,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           last_sync_at?: string | null
+          last_webhook_renewal?: string | null
           organization_id: string
           provider: string
           sync_error_message?: string | null
@@ -485,6 +490,9 @@ export type Database = {
           token_expires_at: string
           updated_at?: string | null
           user_id: string
+          webhook_channel_id?: string | null
+          webhook_expiration?: string | null
+          webhook_resource_id?: string | null
         }
         Update: {
           access_token?: string
@@ -495,6 +503,7 @@ export type Database = {
           id?: string
           is_active?: boolean | null
           last_sync_at?: string | null
+          last_webhook_renewal?: string | null
           organization_id?: string
           provider?: string
           sync_error_message?: string | null
@@ -502,6 +511,9 @@ export type Database = {
           token_expires_at?: string
           updated_at?: string | null
           user_id?: string
+          webhook_channel_id?: string | null
+          webhook_expiration?: string | null
+          webhook_resource_id?: string | null
         }
         Relationships: [
           {

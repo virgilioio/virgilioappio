@@ -21,6 +21,9 @@ verify_jwt = true
 [functions.get-booking-availability]
 verify_jwt = false
 
+[functions.google-calendar-webhook]
+verify_jwt = false
+
 [functions.mail-oauth-callback]
 verify_jwt = true
 
@@ -42,8 +45,14 @@ verify_jwt = true
 [functions.set-current-organization]
 verify_jwt = true
 
+[functions.setup-calendar-watch]
+verify_jwt = true
+
 [functions.stripe-webhook]
 verify_jwt = false
+
+[functions.sync-booking-status]
+verify_jwt = true
 
 [functions.upload-invoice-document]
 verify_jwt = true

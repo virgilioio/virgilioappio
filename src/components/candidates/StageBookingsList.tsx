@@ -1,5 +1,5 @@
 import { format } from 'date-fns';
-import { Calendar, CalendarIcon, Eye, MoreVertical, XCircle } from 'lucide-react';
+import { Calendar, CalendarIcon, Eye, MoreVertical, XCircle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -14,6 +14,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useStageBookings } from '@/hooks/useStageBookings';
 import { GoogleMeetLogo } from '@/components/icons/GoogleMeetLogo';
 import { ConfirmationBadge } from './ConfirmationBadge';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface StageBookingsListProps {
   jhsId: string;
@@ -22,6 +25,25 @@ interface StageBookingsListProps {
 
 export function StageBookingsList({ jhsId, candidateId }: StageBookingsListProps) {
   const { data: bookings, isLoading } = useStageBookings(jhsId, candidateId);
+  const queryClient = useQueryClient();
+
+  const refreshStatusMutation = useMutation({
+    mutationFn: async (bookingId: string) => {
+      const { data, error } = await supabase.functions.invoke('sync-booking-status', {
+        body: { booking_id: bookingId },
+      });
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['stage-bookings'] });
+      toast.success(`Status updated: ${data.status}`);
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to refresh status: ${error.message}`);
+    },
+  });
   
   if (isLoading) return <Skeleton className="h-20" />;
   if (!bookings || bookings.length === 0) return null;
@@ -101,6 +123,14 @@ export function StageBookingsList({ jhsId, candidateId }: StageBookingsListProps
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
+                  <DropdownMenuItem 
+                    onClick={() => refreshStatusMutation.mutate(booking.id)}
+                    disabled={refreshStatusMutation.isPending}
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Refresh Status
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem>
                     <Eye className="h-4 w-4 mr-2" />
                     View Details
