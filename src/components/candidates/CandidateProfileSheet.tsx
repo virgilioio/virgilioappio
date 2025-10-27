@@ -614,7 +614,7 @@ const [oldBookingId, setOldBookingId] = useState<string | null>(null)
           )}
 
           {/* Schedule Interview Button */}
-          {(opt.stage.stage_type === 'screening' || opt.stage.stage_type === 'interview') && (
+          {isCurrent && (opt.stage.stage_type === 'screening' || opt.stage.stage_type === 'interview') && (
             <div className="mt-3">
               <Button
                 variant="outline"
@@ -635,8 +635,9 @@ const [oldBookingId, setOldBookingId] = useState<string | null>(null)
           {!isCurrent && (
             <div className="mt-3">
               <Button
-                variant="secondary"
+                variant="outline"
                 size="sm"
+                className="gap-2"
                 disabled={movingStageId === opt.jhsId}
                 onClick={async () => {
                   try {
@@ -657,7 +658,7 @@ const [oldBookingId, setOldBookingId] = useState<string | null>(null)
                   }
                 }}
               >
-                <MoveRight className="h-4 w-4 mr-2" />
+                <MoveRight className="h-4 w-4" />
                 Move to this stage
               </Button>
             </div>
