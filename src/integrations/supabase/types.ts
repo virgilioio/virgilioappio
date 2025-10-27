@@ -3064,13 +3064,16 @@ export type Database = {
       tenant_subscriptions: {
         Row: {
           billing_interval: string | null
+          billing_status: string | null
           cancel_at_period_end: boolean | null
           created_at: string
           current_period_end: string | null
+          current_period_end_at: string | null
           current_period_start: string | null
           dunning_failed_payment_attempts: number | null
           id: string
           last_payment_failed_at: string | null
+          last_seat_count: number | null
           seat_quantity: number
           stripe_customer_id: string | null
           stripe_subscription_id: string | null
@@ -3080,17 +3083,23 @@ export type Database = {
           subscription_tier: string | null
           tenant_id: string
           trial_end: string | null
+          trial_ends_at: string | null
+          trial_source: string | null
+          trial_started_at: string | null
           updated_at: string
         }
         Insert: {
           billing_interval?: string | null
+          billing_status?: string | null
           cancel_at_period_end?: boolean | null
           created_at?: string
           current_period_end?: string | null
+          current_period_end_at?: string | null
           current_period_start?: string | null
           dunning_failed_payment_attempts?: number | null
           id?: string
           last_payment_failed_at?: string | null
+          last_seat_count?: number | null
           seat_quantity?: number
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
@@ -3100,17 +3109,23 @@ export type Database = {
           subscription_tier?: string | null
           tenant_id: string
           trial_end?: string | null
+          trial_ends_at?: string | null
+          trial_source?: string | null
+          trial_started_at?: string | null
           updated_at?: string
         }
         Update: {
           billing_interval?: string | null
+          billing_status?: string | null
           cancel_at_period_end?: boolean | null
           created_at?: string
           current_period_end?: string | null
+          current_period_end_at?: string | null
           current_period_start?: string | null
           dunning_failed_payment_attempts?: number | null
           id?: string
           last_payment_failed_at?: string | null
+          last_seat_count?: number | null
           seat_quantity?: number
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
@@ -3120,6 +3135,9 @@ export type Database = {
           subscription_tier?: string | null
           tenant_id?: string
           trial_end?: string | null
+          trial_ends_at?: string | null
+          trial_source?: string | null
+          trial_started_at?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -3398,6 +3416,7 @@ export type Database = {
         Args: { table_name: string; term_name: string }
         Returns: undefined
       }
+      is_trial_expired: { Args: { tenant_id_param: string }; Returns: boolean }
       is_user_assigned_to_job: {
         Args: { job_id_param: string; user_id_param?: string }
         Returns: boolean
