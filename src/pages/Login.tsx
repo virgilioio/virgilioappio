@@ -99,7 +99,6 @@ export default function Login() {
                     placeholder="Enter your email"
                     required
                     disabled={isSubmitting}
-                    className="h-12 text-base"
                   />
                 </div>
 
@@ -115,7 +114,6 @@ export default function Login() {
                     placeholder="Enter your password"
                     required
                     disabled={isSubmitting}
-                    className="h-12 text-base"
                   />
                   <div className="flex justify-between">
                     <Link 

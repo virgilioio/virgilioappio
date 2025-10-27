@@ -110,7 +110,6 @@ export default function SignUp() {
                     placeholder="Enter your email"
                     required
                     disabled={isSubmitting}
-                    className="h-12 text-base"
                   />
                 </div>
 
@@ -126,7 +125,6 @@ export default function SignUp() {
                     placeholder="Create a password"
                     required
                     disabled={isSubmitting}
-                    className="h-12 text-base"
                   />
                 </div>
 
@@ -142,7 +140,6 @@ export default function SignUp() {
                     placeholder="Confirm your password"
                     required
                     disabled={isSubmitting}
-                    className="h-12 text-base"
                   />
                   <div className="flex justify-start">
                     <Link 

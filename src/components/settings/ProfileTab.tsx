@@ -96,11 +96,11 @@ export function ProfileTab() {
       {/* Profile Information Card */}
       <Card>
         <CardHeader className="pb-sm">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <User className="h-4 w-4" />
-            Profile Information
+          <CardTitle className="flex items-center gap-2 text-lg font-poppins font-bold text-virgilio-text tracking-page-title">
+            <User className="h-4 w-4 text-virgilio-purple" />
+            Profile Information<span className="text-purple-period">.</span>
           </CardTitle>
-          <CardDescription className="text-xs">
+          <CardDescription className="text-xs text-virgilio-muted">
             Manage your personal information and preferences
           </CardDescription>
         </CardHeader>
@@ -166,11 +166,11 @@ export function ProfileTab() {
       {/* Account Information Card */}
       <Card>
         <CardHeader className="pb-sm">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Shield className="h-4 w-4" />
-            Account Information
+          <CardTitle className="flex items-center gap-2 text-lg font-poppins font-bold text-virgilio-text tracking-page-title">
+            <Shield className="h-4 w-4 text-virgilio-purple" />
+            Account Information<span className="text-purple-period">.</span>
           </CardTitle>
-          <CardDescription className="text-xs">
+          <CardDescription className="text-xs text-virgilio-muted">
             View your account details and permissions
           </CardDescription>
         </CardHeader>

@@ -142,10 +142,10 @@ export function SettingsSidebar({ currentTab, onTabChange, className }: Settings
                       variant="ghost"
                       className={cn(
                         "w-full justify-between h-10 px-3 py-2",
-                        "text-sm font-medium transition-colors",
+                        "text-sm font-medium transition-all",
                         isOpen
                           ? "bg-muted text-foreground" 
-                          : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted hover:-translate-y-0.5"
                       )}
                       onClick={() => handleItemClick(item.id)}
                     >
@@ -170,10 +170,10 @@ export function SettingsSidebar({ currentTab, onTabChange, className }: Settings
                           variant={isActive ? "default" : "ghost"}
                           className={cn(
                             "w-full justify-start h-9 px-3 py-2",
-                            "text-sm font-medium transition-colors",
+                            "text-sm font-medium transition-all",
                             isActive 
-                              ? "bg-primary text-primary-foreground shadow-sm" 
-                              : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                              ? "bg-virgilio-purple text-white shadow-sm" 
+                              : "text-muted-foreground hover:text-foreground hover:bg-muted hover:-translate-y-0.5"
                           )}
                           onClick={() => onTabChange(subItem.id)}
                         >
@@ -195,10 +195,10 @@ export function SettingsSidebar({ currentTab, onTabChange, className }: Settings
                 variant={isActive ? "default" : "ghost"}
                 className={cn(
                   "w-full justify-start h-10 px-3 py-2",
-                  "text-sm font-medium transition-colors",
+                  "text-sm font-medium transition-all",
                   isActive 
-                    ? "bg-primary text-primary-foreground shadow-sm" 
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                    ? "bg-virgilio-purple text-white shadow-sm" 
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted hover:-translate-y-0.5"
                 )}
                 onClick={() => handleItemClick(item.id)}
               >

@@ -317,12 +317,12 @@ const [orgFormData, setOrgFormData] = useState<OrganizationFormData>({
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Building className="h-4 w-4" />
-                Organization Settings
-                {!isEditMode && <Lock className="h-3 w-3 text-muted-foreground" />}
+              <CardTitle className="flex items-center gap-2 text-lg font-poppins font-bold text-virgilio-text tracking-page-title">
+                <Building className="h-4 w-4 text-virgilio-purple" />
+                Organization Settings<span className="text-purple-period">.</span>
+                {!isEditMode && <Lock className="h-3 w-3 text-virgilio-muted ml-1" />}
               </CardTitle>
-              <CardDescription className="text-xs">
+              <CardDescription className="text-xs text-virgilio-muted">
                 {isEditMode 
                   ? 'Make changes to your organization details and preferences'
                   : 'View your organization details and preferences'
@@ -379,11 +379,11 @@ const [orgFormData, setOrgFormData] = useState<OrganizationFormData>({
       <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2 text-lg">
-              <AlertTriangle className="h-4 w-4 text-warning" />
-              Unsaved Changes
+            <AlertDialogTitle className="flex items-center gap-2 text-lg font-poppins font-bold text-virgilio-text tracking-page-title">
+              <AlertTriangle className="h-4 w-4 text-virgilio-error" />
+              Unsaved Changes<span className="text-purple-period">.</span>
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-xs">
+            <AlertDialogDescription className="text-xs text-virgilio-muted">
               You have unsaved changes to your organization settings. Are you sure you want to exit edit mode? 
               Your changes will be lost.
             </AlertDialogDescription>

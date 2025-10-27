@@ -194,24 +194,24 @@ export function JobWizard({ isOpen, onClose }: JobWizardProps) {
                   >
                     <div
                       className={cn(
-                        "w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium",
+                        "w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium transition-all",
                         isCompleted
-                          ? "bg-primary text-primary-foreground"
+                          ? "bg-virgilio-purple text-white"
                           : isActive
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-muted text-muted-foreground"
+                          ? "bg-virgilio-purple text-white"
+                          : "bg-virgilio-border text-text-secondary"
                       )}
                     >
                       {isCompleted ? <Check className="w-4 h-4" /> : step.id}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className={cn(
-                        "text-sm font-medium",
-                        isActive ? "text-text-primary" : "text-text-secondary"
+                        "text-sm font-poppins font-medium transition-colors",
+                        isActive ? "text-virgilio-text" : "text-text-secondary"
                       )}>
-                        {step.title}
+                        {step.title}{isActive && <span className="text-purple-period">.</span>}
                       </p>
-                      <p className="text-xs text-text-secondary mt-1">
+                      <p className="text-xs text-virgilio-muted mt-1">
                         {step.description}
                       </p>
                     </div>

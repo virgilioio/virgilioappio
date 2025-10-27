@@ -479,9 +479,9 @@ export function AIJobAssistant() {
       <Dialog open={showModal} onOpenChange={setShowModal}>
         <DialogContent className="mx-2 sm:mx-4 w-[calc(100vw-1rem)] sm:w-[calc(100vw-2rem)] max-w-7xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Sparkles className="h-5 w-5 text-primary" />
-              AI Job Assistant
+            <DialogTitle className="text-h4-mobile font-poppins font-bold text-virgilio-text tracking-page-title">
+              <Sparkles className="h-5 w-5 inline-block mr-2 text-virgilio-purple" />
+              AI Job Assistant<span className="text-purple-period">.</span>
             </DialogTitle>
           </DialogHeader>
           

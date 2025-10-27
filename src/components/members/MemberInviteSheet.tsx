@@ -145,8 +145,10 @@ export function MemberInviteSheet({
       <Sheet open={isOpen} onOpenChange={onClose}>
         <SheetContent className="sm:max-w-[540px]">
           <SheetHeader>
-            <SheetTitle>Invitation Sent!</SheetTitle>
-            <SheetDescription>
+            <SheetTitle className="text-h4-mobile font-poppins font-bold text-virgilio-text tracking-page-title">
+              Invitation Sent<span className="text-purple-period">.</span>
+            </SheetTitle>
+            <SheetDescription className="text-virgilio-muted">
               The invitation has been sent via email. You can also copy the link below to share directly.
             </SheetDescription>
           </SheetHeader>
@@ -204,8 +206,10 @@ export function MemberInviteSheet({
     <Sheet open={isOpen} onOpenChange={onClose}>
       <SheetContent className="sm:max-w-[540px]">
         <SheetHeader>
-          <SheetTitle>Invite New User</SheetTitle>
-          <SheetDescription>
+          <SheetTitle className="text-h4-mobile font-poppins font-bold text-virgilio-text tracking-page-title">
+            Invite New User<span className="text-purple-period">.</span>
+          </SheetTitle>
+          <SheetDescription className="text-virgilio-muted">
             Send an invitation to join your organization. The invited user will be added to your current organization context.
           </SheetDescription>
         </SheetHeader>
