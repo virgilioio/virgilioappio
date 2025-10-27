@@ -11,6 +11,7 @@ import { useStartupDiagnostics } from './hooks/useStartupDiagnostics'
 import { Layout } from './components/layout/Layout'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { log } from './lib/logger'
+import { BillingGuard } from './components/auth/BillingGuard'
 import Dashboard from './pages/Dashboard'
 import Jobs from './pages/Jobs'
 import Pipeline from './pages/Pipeline'
@@ -74,11 +75,19 @@ function AppContent() {
         <Route element={<RequireAuth><Layout /></RequireAuth>}>
           <Route path="/" element={<Dashboard />} />
           <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/jobs" element={<Jobs />} />
+          <Route path="/jobs" element={
+            <BillingGuard requireActive={false}>
+              <Jobs />
+            </BillingGuard>
+          } />
           <Route path="/pipeline" element={<Pipeline />} />
           <Route path="/jobs/:id" element={<JobDetail />} />
           <Route path="/jobs/:jobId/candidates/:candidateId" element={<CandidateProfile />} />
-          <Route path="/candidates" element={<Candidates />} />
+          <Route path="/candidates" element={
+            <BillingGuard requireActive={false}>
+              <Candidates />
+            </BillingGuard>
+          } />
           <Route path="/candidates/:candidateId" element={<IndependentCandidateProfile />} />
           <Route path="/members" element={<Members />} />
           <Route path="/organizations" element={<Navigate to="/settings?tab=organizations" replace />} />

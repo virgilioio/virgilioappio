@@ -17,6 +17,8 @@ export function Layout() {
   useEffect(() => {
     const params = new URLSearchParams(location.search)
     const billing = params.get('billing')
+    const sessionId = params.get('session_id')
+    const canceled = params.get('canceled')
 
     const runRefresh = async () => {
       try {
@@ -24,23 +26,36 @@ export function Layout() {
           supabase.functions.invoke('check-subscription'),
           supabase.functions.invoke('update-seat-quantity'),
         ])
+        queryClient.invalidateQueries({ queryKey: ['billing-status'] })
         queryClient.invalidateQueries({ queryKey: ['tenant-subscription'] })
       } catch (e) {
         console.warn('[Layout] post-billing refresh failed', e)
       }
     }
 
-    if (billing === 'success') {
-      toast({ title: 'Billing updated', description: 'Your subscription was updated successfully.' })
+    if (billing === 'success' && sessionId) {
+      toast({ 
+        title: 'Subscription activated', 
+        description: 'Welcome to Virgilio! Your subscription is now active.',
+        variant: 'default'
+      })
       runRefresh()
-      // Clean the query param to prevent repeated toasts
+      
+      // Clean query params
       const next = new URLSearchParams(location.search)
       next.delete('billing')
+      next.delete('session_id')
       navigate({ pathname: location.pathname, search: next.toString() }, { replace: true })
-    } else if (billing === 'cancel') {
-      toast({ title: 'Checkout canceled', description: 'You canceled the billing process.', variant: 'destructive' })
+    } else if (canceled === 'true') {
+      toast({ 
+        title: 'Checkout canceled', 
+        description: 'You can subscribe anytime from Settings.',
+        variant: 'default'
+      })
+      
+      // Clean query params
       const next = new URLSearchParams(location.search)
-      next.delete('billing')
+      next.delete('canceled')
       navigate({ pathname: location.pathname, search: next.toString() }, { replace: true })
     }
   }, [location.pathname, location.search, navigate, toast, queryClient])

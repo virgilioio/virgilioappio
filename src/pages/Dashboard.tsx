@@ -3,8 +3,7 @@ import { useState, useEffect } from 'react'
 import { WelcomeHeader } from '@/components/dashboard/WelcomeHeader'
 import { MyInterviews } from '@/components/dashboard/MyInterviews'
 import { JobsOverview } from '@/components/dashboard/JobsOverview'
-
-
+import { TrialCountdownBanner } from '@/components/dashboard/TrialCountdownBanner'
 import { AIJobAssistant } from '@/components/dashboard/AIJobAssistant'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -64,8 +63,8 @@ export default function Dashboard() {
         <div className="space-y-6">
             <WelcomeHeader profile={profile} isLoading={isLoading} />
 
-            {/* Trial banner */}
-            <TrialBanner />
+            {/* Trial countdown banner */}
+            <TrialCountdownBanner />
             
             {/* AI Job Assistant - Top Section */}
             {permissions.isPlatformAdmin && (
@@ -92,7 +91,3 @@ export default function Dashboard() {
   )
 }
 
-function TrialBanner() {
-  // Subscription functionality removed
-  return null
-}
