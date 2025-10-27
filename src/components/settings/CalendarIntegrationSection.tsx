@@ -89,7 +89,7 @@ export function CalendarIntegrationSection() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => testConnection(identity.id)}
+                        onClick={() => testConnection(user!.id)}
                         disabled={isTesting}
                       >
                         {isTesting ? "Testing..." : "Test Connection"}
