@@ -603,6 +603,11 @@ const [scheduleStageName, setScheduleStageName] = useState<string>('')
             <StageBookingsList 
               jhsId={opt.jhsId}
               candidateId={candidateId}
+              onReschedule={(jhsId) => {
+                setScheduleStageId(jhsId);
+                setScheduleStageName(opt.stage.stage_name);
+                setScheduleOpen(true);
+              }}
             />
           )}
 

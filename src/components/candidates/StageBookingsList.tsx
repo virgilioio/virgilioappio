@@ -21,9 +21,10 @@ import { toast } from 'sonner';
 interface StageBookingsListProps {
   jhsId: string;
   candidateId: string;
+  onReschedule?: (jhsId: string) => void;
 }
 
-export function StageBookingsList({ jhsId, candidateId }: StageBookingsListProps) {
+export function StageBookingsList({ jhsId, candidateId, onReschedule }: StageBookingsListProps) {
   const { data: bookings, isLoading } = useStageBookings(jhsId, candidateId);
   const queryClient = useQueryClient();
 
@@ -44,6 +45,43 @@ export function StageBookingsList({ jhsId, candidateId }: StageBookingsListProps
       toast.error(`Failed to refresh status: ${error.message}`);
     },
   });
+
+  const cancelBookingMutation = useMutation({
+    mutationFn: async ({ bookingId, reason }: { bookingId: string; reason?: string }) => {
+      const { data, error } = await supabase.functions.invoke('cancel-booking', {
+        body: { booking_id: bookingId, reason },
+      });
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['stage-bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['activity-feed'] });
+      toast.success('Interview cancelled successfully');
+    },
+    onError: (error: Error) => {
+      toast.error(`Failed to cancel: ${error.message}`);
+    },
+  });
+
+  const handleReschedule = async (bookingId: string) => {
+    try {
+      await cancelBookingMutation.mutateAsync({ 
+        bookingId, 
+        reason: 'Rescheduled by recruiter' 
+      });
+      onReschedule?.(jhsId);
+    } catch (error) {
+      // Error is handled by mutation's onError
+    }
+  };
+
+  const handleCancel = (bookingId: string) => {
+    if (confirm('Are you sure you want to cancel this interview? Both parties will be notified via email with a cancellation notice.')) {
+      cancelBookingMutation.mutate({ bookingId });
+    }
+  };
   
   if (isLoading) return <Skeleton className="h-20" />;
   if (!bookings || bookings.length === 0) return null;
@@ -135,12 +173,15 @@ export function StageBookingsList({ jhsId, candidateId }: StageBookingsListProps
                     <Eye className="h-4 w-4 mr-2" />
                     View Details
                   </DropdownMenuItem>
-                  <DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleReschedule(booking.id)}>
                     <Calendar className="h-4 w-4 mr-2" />
                     Reschedule
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem className="text-destructive">
+                  <DropdownMenuItem 
+                    className="text-destructive"
+                    onClick={() => handleCancel(booking.id)}
+                  >
                     <XCircle className="h-4 w-4 mr-2" />
                     Cancel Interview
                   </DropdownMenuItem>

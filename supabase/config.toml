@@ -1,5 +1,8 @@
 project_id = "etrxjxstjfcozdjumfsj"
 
+[functions.cancel-booking]
+verify_jwt = true
+
 [functions.check-calendar-availability]
 verify_jwt = true
 
