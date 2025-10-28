@@ -9,12 +9,15 @@ import { useBillingStatus } from '@/hooks/useBillingStatus'
 import { useOpenBillingPortal, useCreateCheckout } from '@/hooks/useBillingPortal'
 import { useAuth } from '@/contexts/AuthContext'
 import { format } from 'date-fns'
+import { useStripePricing } from '@/hooks/useStripePricing'
+import { formatPrice, calculateYearlySavings } from '@/utils/pricing'
 
 export function Billing() {
   const { organizationId, userType } = useAuth()
   const { data: billing, isLoading } = useBillingStatus()
   const openPortal = useOpenBillingPortal()
   const createCheckout = useCreateCheckout()
+  const { data: pricing, isLoading: isPricingLoading } = useStripePricing()
 
   if (isLoading) {
     return (
@@ -261,15 +264,29 @@ export function Billing() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <div className="text-sm text-muted-foreground mb-2">Price per Recruiter</div>
-              <div className="font-semibold text-lg">$10/month or $99/year</div>
-              <div className="text-xs text-muted-foreground mt-1">
-                Save 17% with annual billing
-              </div>
+              {isPricingLoading ? (
+                <Skeleton className="h-6 w-48" />
+              ) : (
+                <>
+                  <div className="font-semibold text-lg">
+                    {formatPrice(pricing?.monthly?.amount || 1000)}/month or {formatPrice(pricing?.yearly?.amount || 9900)}/year
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Save {pricing?.monthly && pricing?.yearly 
+                      ? calculateYearlySavings(pricing.monthly.amount, pricing.yearly.amount)
+                      : 17}% with annual billing
+                  </div>
+                </>
+              )}
             </div>
 
             <div>
               <div className="text-sm text-muted-foreground mb-2">Trial Period</div>
-              <div className="font-semibold text-lg">14 days free</div>
+              {isPricingLoading ? (
+                <Skeleton className="h-6 w-24" />
+              ) : (
+                <div className="font-semibold text-lg">{pricing?.trialDays || 14} days free</div>
+              )}
               <div className="text-xs text-muted-foreground mt-1">
                 No credit card required
               </div>

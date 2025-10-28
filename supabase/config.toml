@@ -24,6 +24,9 @@ verify_jwt = true
 [functions.get-booking-availability]
 verify_jwt = false
 
+[functions.get-stripe-prices]
+verify_jwt = true
+
 [functions.google-calendar-webhook]
 verify_jwt = false
 
