@@ -54,7 +54,7 @@ export function SettingsSidebar({ currentTab, onTabChange, className }: Settings
       id: 'billing', 
       label: 'Billing', 
       icon: Receipt, 
-      show: permissions.canViewBilling 
+      show: userType === 'workspace_owner' && !!organizationId
     },
     { 
       id: 'workspace', 

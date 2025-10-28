@@ -16,6 +16,7 @@ import { PlatformTab } from '@/components/settings/PlatformTab'
 import { CustomerManagementTab } from '@/pages/settings/customer-management/CustomerManagementTab'
 import { SaaSSubscription } from '@/pages/settings/saas-customers/SaaSSubscription'
 import { SaaSCustomersList } from '@/pages/settings/saas-customers/SaaSCustomersList'
+import { Billing } from '@/pages/settings/Billing'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useAuth } from '@/contexts/AuthContext'
 import { AppContainer } from '@/components/layout/AppContainer'
@@ -119,7 +120,12 @@ export default function Settings() {
                   </TabsContent>
                 )}
                 
-                {/* Billing tab removed */}
+                {/* Billing Tab - Show for workspace owners */}
+                {userType === 'workspace_owner' && organizationId && (
+                  <TabsContent value="billing">
+                    <Billing />
+                  </TabsContent>
+                )}
                 
                 {canManageMembers && (
                   <TabsContent value="members">
