@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { toast } from '@/hooks/use-toast'
 import { withAuthRetry, extractErrorMessage } from '@/lib/authUtils'
 import { log } from '@/lib/logger'
+import { getOrganizationTree } from '@/lib/organizationHelpers'
 
 export interface IndependentCandidate {
   id: string
@@ -63,11 +64,15 @@ export function useIndependentCandidates() {
     try {
       log.debug('Fetching independent candidates for organization:', organizationId)
       
+      // Get all org IDs in the hierarchy (includes parent, current, and children)
+      const orgIds = await getOrganizationTree(organizationId)
+      log.debug('Fetching candidates from org tree:', orgIds)
+      
       const { data, error: fetchError } = await withAuthRetry(async () =>
         await supabase
           .from('candidates')
           .select('*')
-          .eq('organization_id', organizationId)
+          .in('organization_id', orgIds)
           .order('created_at', { ascending: false })
       )
 
@@ -295,37 +300,53 @@ export function useIndependentCandidates() {
     }
   }, [user, organizationId])
 
-  // Add real-time subscription for candidates
+  // Add real-time subscription for candidates across organization hierarchy
   useEffect(() => {
     if (!user?.id || !organizationId) return
 
     console.log('🔄 Setting up real-time subscriptions for candidates')
     
-    // Create unique channel name to avoid subscription conflicts
-    const channelId = Math.random().toString(36).substr(2, 9)
+    let channel: any
     
-    const channel = supabase
-      .channel(`candidates-changes-${channelId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'candidates',
-          filter: `organization_id=eq.${organizationId}`
-        },
-        (payload) => {
-          console.log('📡 Real-time candidate change detected:', payload)
-          getCandidates() // Refresh the list
-        }
-      )
-      .subscribe((status) => {
+    const setupSubscription = async () => {
+      // Get all org IDs in the hierarchy
+      const orgIds = await getOrganizationTree(organizationId)
+      console.log('📡 Setting up subscriptions for org tree:', orgIds)
+      
+      // Create unique channel name to avoid subscription conflicts
+      const channelId = Math.random().toString(36).substr(2, 9)
+      
+      channel = supabase.channel(`candidates-changes-${channelId}`)
+      
+      // Add a listener for each org ID in the hierarchy
+      orgIds.forEach(orgId => {
+        channel.on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'candidates',
+            filter: `organization_id=eq.${orgId}`
+          },
+          (payload) => {
+            console.log('📡 Real-time candidate change detected:', payload)
+            getCandidates() // Refresh the list
+          }
+        )
+      })
+      
+      channel.subscribe((status) => {
         console.log('📡 Candidates subscription status:', status)
       })
+    }
+
+    setupSubscription()
 
     return () => {
-      console.log('🔄 Cleaning up candidates subscription')
-      supabase.removeChannel(channel)
+      if (channel) {
+        console.log('🔄 Cleaning up candidates subscription')
+        supabase.removeChannel(channel)
+      }
     }
   }, [user?.id, organizationId])
 
