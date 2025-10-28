@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
+import { useOrgContext } from '@/contexts/OrgContext'
 import { toast } from '@/hooks/use-toast'
 import { withAuthRetry, extractErrorMessage } from '@/lib/authUtils'
 import { log } from '@/lib/logger'
@@ -43,9 +44,10 @@ export function useMembers() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const { user } = useAuth()
+  const { organizationId } = useOrgContext()
 
   const getMembers = async () => {
-    if (!user) return
+    if (!user || !organizationId) return
 
     setIsLoading(true)
     setError(null)
@@ -56,6 +58,7 @@ export function useMembers() {
       const { data: membersData, error: membersError } = await supabase
         .from('members')
         .select('*')
+        .eq('organization_id', organizationId)
         .order('created_at', { ascending: false })
 
       if (membersError) {
@@ -465,10 +468,10 @@ export function useMembers() {
   }
 
   useEffect(() => {
-    if (user) {
+    if (user && organizationId) {
       getMembers()
     }
-  }, [user])
+  }, [user, organizationId])
 
   return {
     members,
