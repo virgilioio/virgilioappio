@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { ReadOnlyOverlay } from '@/components/ui/read-only-overlay'
 import { StageConfigSheet } from './StageConfigSheet'
+import { Skeleton } from '@/components/ui/skeleton'
 interface JobStage {
   id: string
   stage_name: string
@@ -43,6 +44,7 @@ export function HiringPlanTab({ jobId, readOnly = false }: HiringPlanTabProps) {
   const [availableStages, setAvailableStages] = useState<JobStage[]>([])
   const [activeId, setActiveId] = useState<string | null>(null)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+  const [isInitialized, setIsInitialized] = useState(false)
   const { isSavingPlan, loadHiringPlan, loadHiringPlanInstances, saveHiringPlan } = useJobHiringPlan()
 
   // Map of stage_id -> { jhsId, position, customStageName } for current persisted plan
@@ -89,47 +91,60 @@ export function HiringPlanTab({ jobId, readOnly = false }: HiringPlanTabProps) {
     })
   }
 
-  // Initialize with default stages sorted by priority
+  // Combined initialization effect - prevents race conditions
   useEffect(() => {
-    if (stages.length > 0) {
-      const defaultStages = sortStagesByPriority(stages.filter(stage => stage.is_default))
-      setSelectedStages(defaultStages)
-      setAvailableStages(stages.filter(stage => !stage.is_default))
-    }
-  }, [stages])
+    if (!jobId || !stages.length || isLoading) return
+    
+    // Reset state when jobId changes
+    setIsInitialized(false)
+    setSelectedStages([])
+    setAvailableStages([])
+    setInstancesMap(new Map())
+    
+    const initializeHiringPlan = async () => {
+      try {
+        // First, try to load existing hiring plan
+        const planStages = await loadHiringPlan(jobId)
+        
+        if (planStages.length > 0) {
+          // Job has a custom plan - use it
+          const defaultStages = planStages.filter(s => s.is_default)
+          const customStages = planStages.filter(s => !s.is_default)
+          const defaultNormalStages = defaultStages.filter(s => !isLastPriorityStage(s))
+          const defaultLastStages = defaultStages.filter(s => isLastPriorityStage(s))
 
-  useEffect(() => {
-    if (!jobId) return
-    ;(async () => {
-      const planStages = await loadHiringPlan(jobId as string)
-      if (planStages.length > 0) {
-        // Re-enforce priority rules on load: ensure "last" default stages are at the end
-        const defaultStages = planStages.filter(s => s.is_default)
-        const customStages = planStages.filter(s => !s.is_default)
-        const defaultNormalStages = defaultStages.filter(s => !isLastPriorityStage(s))
-        const defaultLastStages = defaultStages.filter(s => isLastPriorityStage(s))
+          const ordered = [
+            ...sortStagesByPriority([...defaultNormalStages]),
+            ...customStages,
+            ...sortStagesByPriority([...defaultLastStages])
+          ]
 
-        const ordered = [
-          ...sortStagesByPriority([...defaultNormalStages]),
-          ...customStages,
-          ...sortStagesByPriority([...defaultLastStages])
-        ]
-
-        const selectedIds = new Set(ordered.map(s => s.id))
-        setSelectedStages(ordered)
-        setAvailableStages(prev => prev.filter(s => !selectedIds.has(s.id)))
+          const selectedIds = new Set(ordered.map(s => s.id))
+          setSelectedStages(ordered)
+          setAvailableStages(stages.filter(s => !selectedIds.has(s.id)))
+        } else {
+          // No custom plan - use defaults
+          const defaultStages = sortStagesByPriority(stages.filter(stage => stage.is_default))
+          setSelectedStages(defaultStages)
+          setAvailableStages(stages.filter(stage => !stage.is_default))
+        }
+        
+        // Load instances map
+        const opts = await loadHiringPlanInstances(jobId)
+        const map = new Map<string, { jhsId: string; position: number; customStageName?: string | null }>()
+        ;(opts || []).forEach(o => map.set(o.stage.id, { jhsId: o.jhsId, position: o.position, customStageName: o.customStageName }))
+        setInstancesMap(map)
+        
+        setIsInitialized(true)
         setHasUnsavedChanges(false)
-      } else {
-        setHasUnsavedChanges(false)
+      } catch (error) {
+        console.error('Error initializing hiring plan:', error)
+        setIsInitialized(true) // Still mark as initialized to prevent infinite loading
       }
-
-      // Also load current persisted instances (stage_id -> jhsId, position, customStageName)
-      const opts = await loadHiringPlanInstances(jobId as string)
-      const map = new Map<string, { jhsId: string; position: number; customStageName?: string | null }>()
-      ;(opts || []).forEach(o => map.set(o.stage.id, { jhsId: o.jhsId, position: o.position, customStageName: o.customStageName }))
-      setInstancesMap(map)
-    })()
-  }, [jobId, loadHiringPlan, loadHiringPlanInstances])
+    }
+    
+    initializeHiringPlan()
+  }, [jobId, stages, isLoading, loadHiringPlan, loadHiringPlanInstances])
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(event.active.id as string)
@@ -283,8 +298,15 @@ export function HiringPlanTab({ jobId, readOnly = false }: HiringPlanTabProps) {
     setConfigSheetOpen(true)
   }
 
-  if (isLoading) {
-    return <div>Loading stages...</div>
+  if (isLoading || !isInitialized) {
+    return (
+      <div className="space-y-4">
+        <Skeleton className="h-8 w-full" />
+        <Skeleton className="h-20 w-full" />
+        <Skeleton className="h-20 w-full" />
+        <Skeleton className="h-20 w-full" />
+      </div>
+    )
   }
 
   return (
