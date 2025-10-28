@@ -3519,6 +3519,10 @@ export type Database = {
         Args: { flag_name_param: string; is_active_param: boolean }
         Returns: boolean
       }
+      user_has_org_hierarchy_access: {
+        Args: { target_org_id: string }
+        Returns: boolean
+      }
       validate_invite_token: {
         Args: { token_input: string }
         Returns: {
