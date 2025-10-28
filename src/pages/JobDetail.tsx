@@ -359,8 +359,7 @@ export default function JobDetail() {
           *,
           organization:organizations(
             id,
-            name,
-            country
+            name
           )
         `)
         .eq('id', id)

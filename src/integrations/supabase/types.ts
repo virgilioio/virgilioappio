@@ -3301,6 +3301,14 @@ export type Database = {
         Args: { encrypted_token: string }
         Returns: string
       }
+      diagnose_user_auth: {
+        Args: { target_user_id?: string }
+        Returns: {
+          check_name: string
+          details: Json
+          status: string
+        }[]
+      }
       duplicate_job_posting: {
         Args: {
           new_description?: string
