@@ -159,12 +159,6 @@ export default function Settings() {
                     <JobSettingsManager />
                   </TabsContent>
                 )}
-
-                {isWorkspaceOwnerOfSaaSOrg() && (
-                  <TabsContent value="subscription">
-                    <SaaSSubscription />
-                  </TabsContent>
-                )}
               </div>
             </div>
           </Tabs>

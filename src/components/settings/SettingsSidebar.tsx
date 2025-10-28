@@ -82,16 +82,6 @@ export function SettingsSidebar({ currentTab, onTabChange, className }: Settings
     },
   ]
 
-  // Add subscription item conditionally
-  if (isWorkspaceOwnerOfSaaSOrg()) {
-    navItems.push({ 
-      id: 'subscription', 
-      label: 'Subscription', 
-      icon: CreditCard, 
-      show: true
-    })
-  }
-
   const filteredNavItems = navItems.filter(item => item.show)
   
 
