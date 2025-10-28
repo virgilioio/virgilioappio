@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
 import type { Job } from '@/hooks/useJobs'
+import { getOrganizationTree } from '@/lib/organizationHelpers'
 
 export interface JobOption {
   id: string
@@ -41,8 +42,8 @@ export function useJobsForCandidateAssignment() {
       if (userType === 'platform_admin') {
         // Platform admins see all jobs (no additional filter)
       } else if (userType === 'workspace_owner') {
-        // Workspace owners see all jobs in all their organizations
-        // This would need tenant-based filtering if multi-tenant
+        // Workspace owners see jobs across their entire org hierarchy
+        // (tenant org + all child workspaces)
         const { data: memberOrgs } = await supabase
           .from('members')
           .select('organization_id')
@@ -50,8 +51,21 @@ export function useJobsForCandidateAssignment() {
           .eq('user_status', 'active')
 
         if (memberOrgs && memberOrgs.length > 0) {
-          const orgIds = memberOrgs.map(m => m.organization_id)
-          query = query.in('organization_id', orgIds)
+          // Get full org tree for each membership
+          // This includes parent, children, and siblings
+          const allOrgIds = new Set<string>()
+          
+          for (const member of memberOrgs) {
+            const treeIds = await getOrganizationTree(member.organization_id)
+            treeIds.forEach(id => allOrgIds.add(id))
+          }
+          
+          if (allOrgIds.size > 0) {
+            query = query.in('organization_id', Array.from(allOrgIds))
+          } else {
+            setJobs([])
+            return
+          }
         } else {
           setJobs([])
           return
