@@ -3392,6 +3392,7 @@ export type Database = {
         Args: { tenant_id_param: string }
         Returns: number
       }
+      get_tenant_id_for_user: { Args: { p_user_id: string }; Returns: string }
       get_user_email: { Args: never; Returns: string }
       get_user_member_data: {
         Args: never

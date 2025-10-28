@@ -38,40 +38,22 @@ serve(async (req) => {
     const interval = body?.interval === "year" ? "year" : "month";
     const explicitTenantId = body?.tenantId as string | undefined;
 
-    // Resolve tenant id: prefer explicit, else RPC, else fallback to Virgilio or first tenant
+    // Resolve tenant id: prefer explicit, else use new RPC with explicit user_id
     let tenantId: string | null = explicitTenantId ?? null;
     if (!tenantId) {
-      const { data: rpcTenantId, error: tenantErr } = await supabase.rpc("get_user_tenant_id");
-      if (tenantErr) log("get_user_tenant_id error (continuing to fallback)", tenantErr);
+      const { data: rpcTenantId, error: tenantErr } = await supabase.rpc("get_tenant_id_for_user", {
+        p_user_id: user.id
+      });
+      if (tenantErr) {
+        log("get_tenant_id_for_user error", tenantErr);
+        throw new Error(`Failed to determine tenant for user: ${tenantErr.message}`);
+      }
       tenantId = (rpcTenantId as string | null) ?? null;
     }
     if (!tenantId) {
-      // Try exact (case-insensitive) match to "Virgilio"
-      const { data: vir, error: virErr } = await supabase
-        .from("organizations")
-        .select("id,name,org_kind")
-        .ilike("name", "virgilio")
-        .maybeSingle();
-      if (virErr) log("Virgilio lookup error", virErr);
-      if (vir?.id) {
-        tenantId = vir.id;
-        log("Falling back to tenant by name 'Virgilio'", { tenantId });
-      } else {
-        // Fallback to first tenant org_kind='tenant'
-        const { data: anyTenant, error: anyErr } = await supabase
-          .from("organizations")
-          .select("id,name,org_kind")
-          .eq("org_kind", "tenant")
-          .limit(1)
-          .maybeSingle();
-        if (anyErr) log("Fallback tenant lookup error", anyErr);
-        if (anyTenant?.id) {
-          tenantId = anyTenant.id;
-          log("Falling back to first available tenant", { tenantId });
-        }
-      }
+      throw new Error("Could not determine tenant for user. Please ensure you have an active organization membership.");
     }
-    if (!tenantId) throw new Error("No tenant_id resolved; ensure a tenant organization exists");
+    log("Resolved tenant", { tenantId, userId: user.id });
 
     // Ensure tenant_subscriptions row exists
     const { data: tenantSubRow, error: subErr } = await supabase
