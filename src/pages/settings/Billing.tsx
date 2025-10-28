@@ -85,9 +85,10 @@ export function Billing() {
             </span>
             <Button
               size="sm"
+              variant="virgilio"
               onClick={() => createCheckout.mutate({ interval: 'month' })}
               disabled={createCheckout.isPending}
-              className="ml-4 bg-virgilio-purple hover:bg-virgilio-purple/90"
+              className="ml-4"
             >
               {createCheckout.isPending ? 'Loading...' : 'Subscribe Now'}
             </Button>
@@ -149,9 +150,10 @@ export function Billing() {
             </span>
             <Button
               size="sm"
+              variant="virgilio"
               onClick={() => createCheckout.mutate({ interval: 'month' })}
               disabled={createCheckout.isPending}
-              className="ml-4 bg-virgilio-purple hover:bg-virgilio-purple/90"
+              className="ml-4"
             >
               {createCheckout.isPending ? 'Loading...' : 'Reactivate'}
             </Button>
@@ -226,9 +228,9 @@ export function Billing() {
           <div className="flex gap-3 pt-4 border-t">
             {(isTrialing || isLocked || isCanceled) && (
               <Button
+                variant="virgilio"
                 onClick={() => createCheckout.mutate({ interval: 'month' })}
                 disabled={createCheckout.isPending}
-                className="bg-virgilio-purple hover:bg-virgilio-purple/90"
               >
                 <CreditCard className="mr-2 h-4 w-4" />
                 {createCheckout.isPending ? 'Loading...' : isTrialing ? 'Start Subscription' : 'Subscribe'}
