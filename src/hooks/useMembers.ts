@@ -227,6 +227,14 @@ export function useMembers() {
         log.warn('update-seat-quantity error (non-fatal):', error)
       } else {
         log.debug('update-seat-quantity success:', data)
+        
+        // Show success toast with seat count update
+        if (data?.seatQuantity !== undefined) {
+          toast({
+            title: 'Billing updated',
+            description: `Your seat count has been updated to ${data.seatQuantity} ${data.seatQuantity === 1 ? 'seat' : 'seats'}.`,
+          })
+        }
       }
     } catch (e) {
       log.warn('update-seat-quantity failed (ignored):', e)
@@ -413,6 +421,11 @@ export function useMembers() {
 
     try {
       log.debug('Deactivating member:', id)
+      
+      // Get member role before deactivating to show in toast
+      const member = members.find(m => m.id === id)
+      const isBillableRole = member?.member_role === 'admin' || member?.member_role === 'recruiter'
+      
       const { error: updateError } = await supabase
         .from('members')
         .update({ user_status: 'inactive' })
@@ -424,13 +437,17 @@ export function useMembers() {
       }
 
       log.debug('Deactivated member:', id)
-      toast({
-        title: 'Success',
-        description: 'Member deactivated successfully'
-      })
-
+      
       await getMembers()
       await syncSeatsAfterChange()
+      
+      // Don't show duplicate toast - syncSeatsAfterChange will show the billing update
+      if (!isBillableRole) {
+        toast({
+          title: 'Success',
+          description: 'Member deactivated successfully'
+        })
+      }
     } catch (err) {
       const errorMessage = extractErrorMessage(err)
       log.error('Member deactivation error:', err)

@@ -3,13 +3,14 @@ import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
 
 export interface BillingStatus {
-  billing_status: 'trialing' | 'active' | 'past_due' | 'canceled' | 'locked'
+  billing_status: 'trialing' | 'active' | 'past_due' | 'canceled' | 'locked' | 'grace_period'
   trial_ends_at: string | null
   trial_started_at: string | null
   subscription_end: string | null
   seat_quantity: number
   days_until_trial_end: number | null
   hours_until_trial_end: number | null
+  days_until_lockout: number | null
   billing_interval: 'month' | 'year' | null
   stripe_subscription_id: string | null
   subscribed: boolean
@@ -58,7 +59,7 @@ export function useBillingStatus() {
 
       if (!data) return null
 
-      // Compute time until trial end
+      // Compute time until trial end and lockout
       const now = new Date()
       const trialEnd = data.trial_ends_at ? new Date(data.trial_ends_at) : null
       
@@ -69,6 +70,14 @@ export function useBillingStatus() {
       const hoursUntilTrialEnd = trialEnd
         ? Math.max(0, Math.ceil((trialEnd.getTime() - now.getTime()) / (1000 * 60 * 60)))
         : null
+      
+      // Calculate days until lockout (trial end + 7 days grace period)
+      let daysUntilLockout: number | null = null
+      if (data.billing_status === 'grace_period' && trialEnd) {
+        const lockoutDate = new Date(trialEnd)
+        lockoutDate.setDate(lockoutDate.getDate() + 7)
+        daysUntilLockout = Math.max(0, Math.ceil((lockoutDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)))
+      }
 
       return {
         billing_status: (data.billing_status || 'locked') as BillingStatus['billing_status'],
@@ -81,6 +90,7 @@ export function useBillingStatus() {
         subscribed: data.subscribed,
         days_until_trial_end: daysUntilTrialEnd,
         hours_until_trial_end: hoursUntilTrialEnd,
+        days_until_lockout: daysUntilLockout,
       }
     },
     enabled: !!organizationId,

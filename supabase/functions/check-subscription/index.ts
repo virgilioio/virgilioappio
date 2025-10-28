@@ -73,31 +73,55 @@ serve(async (req) => {
       .maybeSingle();
     if (subErr) throw new Error(`Failed loading tenant_subscriptions: ${subErr.message}`);
 
-    // Runtime trial expiration check (fallback before cron runs)
+    // Runtime trial expiration check with 7-day grace period
     const now = new Date();
-    const trialExpired = tenantSubRow?.trial_ends_at && 
-      new Date(tenantSubRow.trial_ends_at as string) < now &&
-      !tenantSubRow.stripe_subscription_id &&
-      (tenantSubRow as any).billing_status === 'trialing';
-
-    if (trialExpired) {
-      log("Trial expired - locking tenant", { 
-        tenantId, 
-        trialEndsAt: tenantSubRow.trial_ends_at 
-      });
+    const GRACE_PERIOD_DAYS = 7;
+    
+    if (tenantSubRow?.trial_ends_at && !tenantSubRow.stripe_subscription_id) {
+      const trialEndsAt = new Date(tenantSubRow.trial_ends_at as string);
+      const graceEndsAt = new Date(trialEndsAt);
+      graceEndsAt.setDate(graceEndsAt.getDate() + GRACE_PERIOD_DAYS);
       
-      // Lock the trial immediately
-      await supabase
-        .from('tenant_subscriptions')
-        .update({ 
-          billing_status: 'locked',
-          updated_at: new Date().toISOString()
-        })
-        .eq('tenant_id', tenantId);
+      const currentStatus = (tenantSubRow as any).billing_status;
       
-      // Update in-memory row for current response
-      if (tenantSubRow) {
-        (tenantSubRow as any).billing_status = 'locked';
+      // Trial has ended but still in grace period
+      if (trialEndsAt < now && graceEndsAt > now && currentStatus === 'trialing') {
+        log("Trial expired - entering grace period", { 
+          tenantId, 
+          trialEndsAt,
+          graceEndsAt 
+        });
+        
+        await supabase
+          .from('tenant_subscriptions')
+          .update({ 
+            billing_status: 'grace_period',
+            updated_at: new Date().toISOString()
+          })
+          .eq('tenant_id', tenantId);
+        
+        if (tenantSubRow) {
+          (tenantSubRow as any).billing_status = 'grace_period';
+        }
+      }
+      // Grace period has ended - lock access
+      else if (graceEndsAt <= now && (currentStatus === 'trialing' || currentStatus === 'grace_period')) {
+        log("Grace period expired - locking tenant", { 
+          tenantId, 
+          graceEndsAt 
+        });
+        
+        await supabase
+          .from('tenant_subscriptions')
+          .update({ 
+            billing_status: 'locked',
+            updated_at: new Date().toISOString()
+          })
+          .eq('tenant_id', tenantId);
+        
+        if (tenantSubRow) {
+          (tenantSubRow as any).billing_status = 'locked';
+        }
       }
     }
 

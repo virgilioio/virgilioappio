@@ -4,13 +4,18 @@ import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Skeleton, CardSkeleton } from '@/components/ui/skeleton'
 import { BillingTitle } from '@/components/ui/billing-title'
-import { AlertTriangle, CreditCard, Users, Calendar, ExternalLink, Check } from 'lucide-react'
+import { MetricCard } from '@/components/ui/metric-card'
+import { AlertTriangle, CreditCard, Users, Calendar, ExternalLink, Check, RefreshCw, TrendingUp, UserPlus, Briefcase, Mail, Clock } from 'lucide-react'
 import { useBillingStatus } from '@/hooks/useBillingStatus'
 import { useOpenBillingPortal, useCreateCheckout } from '@/hooks/useBillingPortal'
 import { useAuth } from '@/contexts/AuthContext'
 import { format } from 'date-fns'
 import { useStripePricing } from '@/hooks/useStripePricing'
-import { formatPrice, calculateYearlySavings } from '@/utils/pricing'
+import { formatPrice, calculateYearlySavings, formatInterval } from '@/utils/pricing'
+import { useInvoiceHistory } from '@/hooks/useInvoiceHistory'
+import { useSwitchBillingInterval } from '@/hooks/useSwitchBillingInterval'
+import { useBillingPeriodUsage } from '@/hooks/useBillingPeriodUsage'
+import { InvoiceHistoryTable } from '@/components/billing/InvoiceHistoryTable'
 
 export function Billing() {
   const { organizationId, userType } = useAuth()
@@ -18,6 +23,9 @@ export function Billing() {
   const openPortal = useOpenBillingPortal()
   const createCheckout = useCreateCheckout()
   const { data: pricing, isLoading: isPricingLoading } = useStripePricing()
+  const { data: invoices = [], isLoading: isInvoicesLoading } = useInvoiceHistory()
+  const switchInterval = useSwitchBillingInterval()
+  const { data: usage, isLoading: isUsageLoading } = useBillingPeriodUsage()
 
   if (isLoading) {
     return (
@@ -51,12 +59,14 @@ export function Billing() {
   const isLocked = billing.billing_status === 'locked'
   const isPastDue = billing.billing_status === 'past_due'
   const isCanceled = billing.billing_status === 'canceled'
+  const isGracePeriod = billing.billing_status === 'grace_period'
 
   const showTrialWarning = isTrialing && billing.days_until_trial_end !== null && billing.days_until_trial_end <= 3
 
   const getStatusBadge = () => {
     const variants: Record<string, { variant: any; label: string }> = {
       trialing: { variant: 'secondary', label: 'Free Trial' },
+      grace_period: { variant: 'warning', label: 'Grace Period' },
       active: { variant: 'success', label: 'Active' },
       past_due: { variant: 'warning', label: 'Past Due' },
       locked: { variant: 'destructive', label: 'Locked' },
@@ -65,6 +75,8 @@ export function Billing() {
     const config = variants[billing.billing_status] || variants.locked
     return <Badge variant={config.variant as any}>{config.label}</Badge>
   }
+  
+  const canSwitchInterval = isActive && billing.stripe_subscription_id
 
   return (
     <div className="space-y-6">
@@ -134,6 +146,28 @@ export function Billing() {
               className="ml-4"
             >
               {openPortal.isPending ? 'Opening...' : 'Update Payment'}
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Grace Period Banner */}
+      {isGracePeriod && (
+        <Alert variant="destructive">
+          <Clock className="h-4 w-4" />
+          <AlertTitle>Grace Period Active</AlertTitle>
+          <AlertDescription className="flex items-center justify-between">
+            <span>
+              Your trial has ended. You have {billing.days_until_lockout} {billing.days_until_lockout === 1 ? 'day' : 'days'} remaining before access is locked.
+            </span>
+            <Button
+              size="sm"
+              variant="destructive"
+              onClick={() => createCheckout.mutate({ interval: 'month' })}
+              disabled={createCheckout.isPending}
+              className="ml-4"
+            >
+              {createCheckout.isPending ? 'Loading...' : 'Subscribe Now'}
             </Button>
           </AlertDescription>
         </Alert>
@@ -229,7 +263,7 @@ export function Billing() {
 
           {/* Action Buttons */}
           <div className="flex gap-3 pt-4 border-t">
-            {(isTrialing || isLocked || isCanceled) && (
+            {(isTrialing || isGracePeriod || isLocked || isCanceled) && (
               <Button
                 variant="virgilio"
                 onClick={() => createCheckout.mutate({ interval: 'month' })}
@@ -240,6 +274,19 @@ export function Billing() {
               </Button>
             )}
 
+            {canSwitchInterval && (
+              <Button
+                variant="outline"
+                onClick={() => switchInterval.mutate({ 
+                  newInterval: billing.billing_interval === 'month' ? 'year' : 'month' 
+                })}
+                disabled={switchInterval.isPending}
+              >
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Switch to {billing.billing_interval === 'month' ? 'Annual' : 'Monthly'}
+              </Button>
+            )}
+
             {isActive && billing.stripe_subscription_id && (
               <Button
                 variant="outline"
@@ -247,7 +294,7 @@ export function Billing() {
                 disabled={openPortal.isPending}
               >
                 <ExternalLink className="mr-2 h-4 w-4" />
-                {openPortal.isPending ? 'Opening...' : 'Manage Billing in Stripe'}
+                {openPortal.isPending ? 'Opening...' : 'Manage in Stripe'}
               </Button>
             )}
           </div>
@@ -323,25 +370,43 @@ export function Billing() {
         </CardContent>
       </Card>
 
-      {/* Trial Started Info (only during trial) */}
-      {isTrialing && billing.trial_started_at && (
+      {/* Usage Analytics */}
+      {isActive && usage && (
         <Card>
-          <CardContent className="py-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Calendar className="h-5 w-5 text-muted-foreground" />
-              <div>
-                <div className="text-sm font-medium">Trial started</div>
-                <div className="text-xs text-muted-foreground">
-                  {format(new Date(billing.trial_started_at), 'MMMM d, yyyy')}
-                </div>
-              </div>
+          <CardHeader>
+            <CardTitle>Current Billing Period Usage</CardTitle>
+            <CardDescription>
+              {format(new Date(usage.periodStart), 'MMM d')} - {format(new Date(usage.periodEnd), 'MMM d, yyyy')}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <MetricCard title="Jobs Created" value={usage.jobsCreated} icon={<Briefcase />} />
+              <MetricCard title="Candidates Added" value={usage.candidatesAdded} icon={<UserPlus />} />
+              <MetricCard title="Active Members" value={usage.activeMembers} icon={<Users />} />
+              <MetricCard title="Billable Seats" value={usage.billableSeats} icon={<TrendingUp />} />
+              <MetricCard title="Emails Sent" value={usage.emailsSent} icon={<Mail />} />
             </div>
-            <div className="text-right">
-              <div className="text-sm font-medium">Source</div>
-              <div className="text-xs text-muted-foreground">
-                Direct signup
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Invoice History */}
+      {(isActive || isPastDue || isCanceled) && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Invoice History</CardTitle>
+            <CardDescription>View and download your past invoices</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isInvoicesLoading ? (
+              <div className="space-y-3">
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
               </div>
-            </div>
+            ) : (
+              <InvoiceHistoryTable invoices={invoices} />
+            )}
           </CardContent>
         </Card>
       )}

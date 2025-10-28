@@ -44,15 +44,16 @@ export function BillingGuard({
   }
 
   // Determine if user is blocked
+  // Allow access during grace_period, only block when locked
   const isBlocked = requireActive 
-    ? !['trialing', 'active'].includes(billing?.billing_status || '')
+    ? !['trialing', 'active', 'grace_period'].includes(billing?.billing_status || '')
     : billing?.billing_status === 'locked'
 
   if (isBlocked) {
     const statusMessages = {
       locked: {
-        title: 'Trial Expired - Upgrade Required',
-        description: 'Your 14-day free trial has ended. Subscribe to continue using Virgilio ATS.',
+        title: 'Access Locked - Subscription Required',
+        description: 'Your trial and grace period have ended. Subscribe to continue using Virgilio ATS.',
       },
       past_due: {
         title: 'Payment Past Due',

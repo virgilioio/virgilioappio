@@ -21,9 +21,12 @@ import { useForm } from "react-hook-form"
 import { useAuth } from "@/contexts/AuthContext"
 import { usePermissions } from "@/hooks/usePermissions"
 import { Member } from "@/hooks/useMembers"
-import { Check, Copy, ExternalLink } from "lucide-react"
+import { Check, Copy, ExternalLink, DollarSign, Info } from "lucide-react"
 import { copyToClipboard } from "@/utils/clipboard"
 import { useToast } from "@/hooks/use-toast"
+import { useSeatsPreview } from "@/hooks/useSeatsPreview"
+import { formatPrice } from "@/utils/pricing"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 
 interface MemberInviteSheetProps {
   isOpen: boolean
@@ -67,6 +70,7 @@ export function MemberInviteSheet({
   })
 
   const selectedRole = watch("role")
+  const seatsPreview = useSeatsPreview(selectedRole as any)
 
   useEffect(() => {
     if (!isOpen) {
@@ -278,6 +282,32 @@ export function MemberInviteSheet({
               {...register("role", { required: "Role is required" })}
             />
           </div>
+
+          {/* Billing Impact Alert */}
+          {selectedRole && seatsPreview.willIncreaseBilling && (
+            <Alert>
+              <DollarSign className="h-4 w-4" />
+              <AlertDescription>
+                <div className="font-medium mb-1">Billing Impact</div>
+                <div className="text-sm text-muted-foreground">
+                  Adding this member will increase your seat count from {seatsPreview.currentSeats} to {seatsPreview.newSeats} 
+                  (+{formatPrice(seatsPreview.monthlyCostIncrease)}/month or +{formatPrice(seatsPreview.yearlyCostIncrease)}/year)
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* Free Role Info */}
+          {selectedRole && seatsPreview.isFreeTier && (
+            <Alert>
+              <Info className="h-4 w-4" />
+              <AlertDescription>
+                <div className="text-sm">
+                  <span className="font-medium">Free role:</span> Hiring Managers and Interviewers don't affect billing
+                </div>
+              </AlertDescription>
+            </Alert>
+          )}
 
           {/* Organization Context Info */}
           <div className="p-3 bg-muted rounded-md">
