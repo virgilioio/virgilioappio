@@ -217,22 +217,48 @@ serve(async (req) => {
     const icsBase64 = btoa(icsContent);
 
     // Send cancellation email to candidate
+    // Import email template
+    const { createEmailTemplate, formatEmailList } = await import('../_shared/emailTemplate.ts');
+
+    const formattedDate = new Date(booking.scheduled_start).toLocaleString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      timeZone: booking.candidate_timezone,
+    });
+
+    const cancellationDetails = [
+      `<strong>Interview:</strong> ${interviewTitle}`,
+      `<strong>Originally Scheduled:</strong> ${formattedDate}`,
+    ];
+
+    if (reason) {
+      cancellationDetails.push(`<strong>Reason:</strong> ${reason}`);
+    }
+
+    const candidateContent = `
+      <p>We regret to inform you that your scheduled interview has been cancelled.</p>
+      <div class="divider"></div>
+      ${formatEmailList(cancellationDetails)}
+      <p style="margin-top: 24px;">A calendar cancellation has been sent to update your calendar. If you have any questions or would like to reschedule, please don't hesitate to contact us.</p>
+    `;
+
+    const candidateEmailHtml = createEmailTemplate({
+      recipientName: booking.candidate_name,
+      preheaderText: `Your interview scheduled for ${formattedDate} has been cancelled`,
+      title: 'Interview Cancelled',
+      content: candidateContent,
+      footerNote: 'We apologize for any inconvenience this may cause.'
+    });
+
     await supabase.functions.invoke('send-user-email', {
       body: {
         to: [booking.candidate_email],
         subject: `Interview Cancelled: ${interviewTitle}`,
-        html: `
-          <h2>Interview Cancelled</h2>
-          <p>Hello ${booking.candidate_name},</p>
-          <p>Your scheduled interview has been cancelled:</p>
-          <ul>
-            <li><strong>Interview:</strong> ${interviewTitle}</li>
-            <li><strong>Originally Scheduled:</strong> ${new Date(booking.scheduled_start).toLocaleString()}</li>
-            ${reason ? `<li><strong>Reason:</strong> ${reason}</li>` : ''}
-          </ul>
-          <p>The cancellation has been added to your calendar. If you have any questions, please contact us.</p>
-          <p>Best regards,<br/>The Recruiting Team</p>
-        `,
+        html: candidateEmailHtml,
         attachments: [{
           filename: 'cancellation.ics',
           content: icsBase64,
@@ -244,23 +270,35 @@ serve(async (req) => {
 
     // Send cancellation email to interviewer if available
     if (interviewerProfile?.email) {
+      const interviewerCancellationDetails = [
+        `<strong>Candidate:</strong> ${booking.candidate_name} (<a href="mailto:${booking.candidate_email}" style="color: #6366f1;">${booking.candidate_email}</a>)`,
+        `<strong>Interview:</strong> ${interviewTitle}`,
+        `<strong>Originally Scheduled:</strong> ${formattedDate}`,
+      ];
+
+      if (reason) {
+        interviewerCancellationDetails.push(`<strong>Reason:</strong> ${reason}`);
+      }
+
+      const interviewerContent = `
+        <p>An interview on your calendar has been cancelled.</p>
+        <div class="divider"></div>
+        ${formatEmailList(interviewerCancellationDetails)}
+        <p style="margin-top: 24px;">A calendar cancellation has been sent to update your calendar automatically.</p>
+      `;
+
+      const interviewerEmailHtml = createEmailTemplate({
+        recipientName: interviewerProfile.first_name,
+        preheaderText: `Interview with ${booking.candidate_name} has been cancelled`,
+        title: 'Interview Cancelled',
+        content: interviewerContent,
+      });
+
       await supabase.functions.invoke('send-user-email', {
         body: {
           to: [interviewerProfile.email],
           subject: `Interview Cancelled: ${interviewTitle}`,
-          html: `
-            <h2>Interview Cancelled</h2>
-            <p>Hello ${interviewerProfile.first_name},</p>
-            <p>An interview has been cancelled:</p>
-            <ul>
-              <li><strong>Candidate:</strong> ${booking.candidate_name} (${booking.candidate_email})</li>
-              <li><strong>Interview:</strong> ${interviewTitle}</li>
-              <li><strong>Originally Scheduled:</strong> ${new Date(booking.scheduled_start).toLocaleString()}</li>
-              ${reason ? `<li><strong>Reason:</strong> ${reason}</li>` : ''}
-            </ul>
-            <p>The cancellation has been added to your calendar.</p>
-            <p>Best regards,<br/>The Recruiting Team</p>
-          `,
+          html: interviewerEmailHtml,
           attachments: [{
             filename: 'cancellation.ics',
             content: icsBase64,

@@ -77,42 +77,35 @@ const handler = async (req: Request): Promise<Response> => {
     if (!resetUrl.includes(token) || !resetUrl.startsWith('https://app.virgilio.io')) {
       throw new Error('Invalid reset URL construction');
     }
+
+    // Import email template
+    const { createEmailTemplate } = await import('../_shared/emailTemplate.ts');
+    
+    const emailContent = `
+      <p>We received a request to reset the password for your Virgilio account.</p>
+      <p>Click the button below to create a new password. This link will expire in <strong>30 minutes</strong> for security reasons.</p>
+      <div class="divider"></div>
+      <p style="font-size: 14px; color: #6b7280; margin-top: 32px;">
+        If you didn't request a password reset, you can safely ignore this email. Your password will remain unchanged.
+      </p>
+    `;
+
+    const emailHtml = createEmailTemplate({
+      recipientName: email.split('@')[0], // Use email prefix as fallback
+      preheaderText: 'Reset your Virgilio password',
+      title: 'Reset Your Password',
+      content: emailContent,
+      ctaText: 'Reset Password',
+      ctaUrl: resetUrl,
+      footerNote: '🔒 This is a secure password reset link. For your security, this link will expire in 30 minutes and can only be used once.'
+    });
     
     // Send email with Resend
     const emailResponse = await resend.emails.send({
       from: emailFrom,
       to: [email],
       subject: "Reset your password",
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <div style="text-align: center; margin-bottom: 30px;">
-            <h1 style="color: #333; font-size: 24px; margin: 0;">Reset Your Password</h1>
-          </div>
-          
-          <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-            <p style="color: #666; font-size: 16px; line-height: 1.5; margin: 0;">
-              We received a request to reset your password. Click the button below to create a new password:
-            </p>
-          </div>
-          
-          <div style="text-align: center; margin: 30px 0;">
-            <a href="${resetUrl}" 
-               style="background: rgb(31, 116, 179); color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: 500; display: inline-block;">
-              Reset Password
-            </a>
-          </div>
-          
-          <div style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 30px;">
-            <p style="color: #888; font-size: 14px; line-height: 1.5;">
-              If you didn't request this password reset, please ignore this email. This link will expire in 30 minutes.
-            </p>
-            <p style="color: #888; font-size: 14px; line-height: 1.5;">
-              If the button doesn't work, copy and paste this link into your browser:<br>
-              <a href="${resetUrl}" style="color: rgb(31, 116, 179); word-break: break-all;">${resetUrl}</a>
-            </p>
-          </div>
-        </div>
-      `,
+      html: emailHtml,
     });
 
     if (emailResponse.error) {

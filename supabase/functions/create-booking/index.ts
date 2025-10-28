@@ -367,31 +367,47 @@ serve(async (req) => {
 
     // Send confirmation email to candidate
     try {
-      const candidateEmailBody = `
-        <h2>Your Interview is Confirmed!</h2>
-        <p>Hi ${candidate_name},</p>
-        <p>Your interview with <strong>${profile.first_name} ${profile.last_name}</strong> has been confirmed.</p>
-        
-        <h3>Meeting Details:</h3>
-        <ul>
-          <li><strong>Date:</strong> ${new Date(scheduled_start).toLocaleString('en-US', { 
-            weekday: 'long', 
-            year: 'numeric', 
-            month: 'long', 
-            day: 'numeric',
-            hour: 'numeric',
-            minute: '2-digit',
-            timeZone: candidate_timezone,
-          })}</li>
-          <li><strong>Duration:</strong> ${config.duration_minutes} minutes</li>
-          <li><strong>Location:</strong> ${googleMeetLink ? `<a href="${googleMeetLink}">Google Meet Link</a>` : config.meeting_location}</li>
-        </ul>
-        
-        <p>A calendar invite is attached to this email. Please add it to your calendar.</p>
-        ${notes ? `<p><strong>Your notes:</strong> ${notes}</p>` : ''}
-        <p>If you need to reschedule, please contact us directly.</p>
-        <p>Best regards,<br/>The Virgilio Team</p>
+      // Import email template
+      const { createEmailTemplate, formatEmailList } = await import('../_shared/emailTemplate.ts');
+
+      const formattedDate = new Date(scheduled_start).toLocaleString('en-US', { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        timeZone: candidate_timezone,
+      });
+
+      const meetingDetails = [
+        `<strong>Date & Time:</strong> ${formattedDate}`,
+        `<strong>Duration:</strong> ${config.duration_minutes} minutes`,
+        `<strong>Interviewer:</strong> ${profile.first_name} ${profile.last_name}`,
+      ];
+
+      if (googleMeetLink) {
+        meetingDetails.push(`<strong>Location:</strong> <a href="${googleMeetLink}" style="color: #6366f1;">Google Meet (Click to Join)</a>`);
+      } else if (config.meeting_location) {
+        meetingDetails.push(`<strong>Location:</strong> ${config.meeting_location}`);
+      }
+
+      let emailContent = `
+        <p>Your interview with <strong>${profile.first_name} ${profile.last_name}</strong> has been confirmed!</p>
+        <div class="divider"></div>
+        <p><strong>Interview Details:</strong></p>
+        ${formatEmailList(meetingDetails)}
+        ${notes ? `<p style="margin-top: 16px;"><strong>Your notes:</strong><br/>${notes}</p>` : ''}
+        <p style="margin-top: 24px;">A calendar invite is attached to this email. We recommend adding it to your calendar so you don't miss the interview.</p>
       `;
+
+      const candidateEmailBody = createEmailTemplate({
+        recipientName: candidate_name,
+        preheaderText: `Your interview is confirmed for ${formattedDate}`,
+        title: `Interview Confirmed: ${stageName}${jobTitle}`,
+        content: emailContent,
+        footerNote: 'If you need to reschedule, please contact us as soon as possible.'
+      });
 
       await supabase.functions.invoke('send-user-email', {
         body: {
@@ -414,37 +430,56 @@ serve(async (req) => {
 
     // Send notification email to interviewer
     try {
-      const interviewerEmailBody = `
-        <h2>New Interview Scheduled</h2>
-        <p>Hi ${profile.first_name},</p>
-        <p>A candidate has booked an interview with you:</p>
-        
-        <h3>Candidate Details:</h3>
-        <ul>
-          <li><strong>Name:</strong> ${candidate_name}</li>
-          <li><strong>Email:</strong> ${candidate_email}</li>
-          ${candidate_phone ? `<li><strong>Phone:</strong> ${candidate_phone}</li>` : ''}
-        </ul>
-        
-        <h3>Meeting Details:</h3>
-        <ul>
-          <li><strong>Date:</strong> ${new Date(scheduled_start).toLocaleString('en-US', { 
-            weekday: 'long', 
-            year: 'numeric', 
-            month: 'long', 
-            day: 'numeric',
-            hour: 'numeric',
-            minute: '2-digit',
-            timeZone: config.timezone,
-          })}</li>
-          <li><strong>Duration:</strong> ${config.duration_minutes} minutes</li>
-          <li><strong>Location:</strong> ${googleMeetLink ? `<a href="${googleMeetLink}">Google Meet Link</a>` : config.meeting_location}</li>
-        </ul>
-        
-        ${notes ? `<h3>Candidate Notes:</h3><p>${notes}</p>` : ''}
-        <p>The calendar invite is attached. ${googleEventId ? 'It has also been added to your Google Calendar.' : ''}</p>
-        <p>View details in your <a href="https://virgilio.tech/settings">Virgilio dashboard</a>.</p>
+      // Import email template (already imported above)
+      const formattedDateInterviewer = new Date(scheduled_start).toLocaleString('en-US', { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        timeZone: config.timezone,
+      });
+
+      const candidateDetails = [
+        `<strong>Name:</strong> ${candidate_name}`,
+        `<strong>Email:</strong> <a href="mailto:${candidate_email}" style="color: #6366f1;">${candidate_email}</a>`,
+      ];
+
+      if (candidate_phone) {
+        candidateDetails.push(`<strong>Phone:</strong> ${candidate_phone}`);
+      }
+
+      const interviewDetails = [
+        `<strong>Date & Time:</strong> ${formattedDateInterviewer}`,
+        `<strong>Duration:</strong> ${config.duration_minutes} minutes`,
+      ];
+
+      if (googleMeetLink) {
+        interviewDetails.push(`<strong>Location:</strong> <a href="${googleMeetLink}" style="color: #6366f1;">Google Meet (Click to Join)</a>`);
+      } else if (config.meeting_location) {
+        interviewDetails.push(`<strong>Location:</strong> ${config.meeting_location}`);
+      }
+
+      let interviewerContent = `
+        <p>A candidate has scheduled an interview with you!</p>
+        <div class="divider"></div>
+        <p><strong>Candidate Information:</strong></p>
+        ${formatEmailList(candidateDetails)}
+        <p style="margin-top: 24px;"><strong>Interview Details:</strong></p>
+        ${formatEmailList(interviewDetails)}
+        ${notes ? `<p style="margin-top: 24px;"><strong>Candidate Notes:</strong><br/>${notes}</p>` : ''}
+        <p style="margin-top: 24px;">The calendar invite is attached. ${googleEventId ? 'This interview has also been added to your Google Calendar.' : ''}</p>
       `;
+
+      const interviewerEmailBody = createEmailTemplate({
+        recipientName: profile.first_name,
+        preheaderText: `New interview scheduled with ${candidate_name}`,
+        title: `New Interview: ${stageName} with ${candidate_name}${jobTitle}`,
+        content: interviewerContent,
+        ctaText: 'View in Dashboard',
+        ctaUrl: 'https://app.virgilio.io/settings',
+      });
 
       await supabase.functions.invoke('send-user-email', {
         body: {
