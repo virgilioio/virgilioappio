@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.50.0";
 import Stripe from "https://esm.sh/stripe@14.21.0?target=deno";
-import { corsHeaders } from "../_shared/cors.ts";
+import { corsHeadersFor, handlePreflight } from "../_shared/cors.ts";
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
   apiVersion: '2023-10-16',
@@ -9,9 +9,8 @@ const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') || '', {
 
 serve(async (req) => {
   // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+  const preflightResponse = handlePreflight(req);
+  if (preflightResponse) return preflightResponse;
 
   try {
     // Verify JWT authentication
@@ -20,7 +19,7 @@ serve(async (req) => {
       console.error('Missing Authorization header');
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 401, headers: { ...corsHeadersFor(), 'Content-Type': 'application/json' } }
       );
     }
 
@@ -35,7 +34,7 @@ serve(async (req) => {
       console.error('Authentication failed:', authError);
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 401, headers: { ...corsHeadersFor(), 'Content-Type': 'application/json' } }
       );
     }
 
@@ -84,7 +83,7 @@ serve(async (req) => {
       JSON.stringify(response),
       { 
         headers: { 
-          ...corsHeaders, 
+          ...corsHeadersFor(), 
           'Content-Type': 'application/json',
           'Cache-Control': 'public, max-age=300' // Cache for 5 minutes
         } 
@@ -100,7 +99,7 @@ serve(async (req) => {
       }),
       { 
         status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        headers: { ...corsHeadersFor(), 'Content-Type': 'application/json' } 
       }
     );
   }
