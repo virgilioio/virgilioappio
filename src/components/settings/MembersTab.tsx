@@ -30,12 +30,12 @@ export function MembersTab() {
   const isPayingRole = (r: 'admin' | 'recruiter' | 'hiring_manager' | 'interviewer') =>
     r === 'admin' || r === 'recruiter'
 
-  const [tab, setTab] = useState<'members' | 'guests'>('members')
+  const [tab, setTab] = useState<'members' | 'collaborators'>('members')
 
   const paidMembers = members.filter(
     (m) => (isPayingRole(m.member_role) || m.user_type === 'workspace_owner') && (!parentOrgId || m.organization_id === parentOrgId)
   )
-  const guestMembers = members.filter((m) => m.member_role === 'hiring_manager' || m.member_role === 'interviewer')
+  const collaboratorMembers = members.filter((m) => m.member_role === 'hiring_manager' || m.member_role === 'interviewer')
 
   // Tenant subscription functionality removed
   const subscriptionData = null
@@ -109,13 +109,13 @@ export function MembersTab() {
     <div className="space-y-6">
       <PageHeader 
         title="Team Members" 
-        subtitle="Manage your team members and guests"
+        subtitle="Manage your team members and collaborators"
       />
       
-      <Tabs value={tab} onValueChange={(v) => setTab(v as 'members' | 'guests')} className="w-full">
+      <Tabs value={tab} onValueChange={(v) => setTab(v as 'members' | 'collaborators')} className="w-full">
         <TabsList>
           <TabsTrigger value="members">Members</TabsTrigger>
-          <TabsTrigger value="guests">Guests</TabsTrigger>
+          <TabsTrigger value="collaborators">Collaborators</TabsTrigger>
         </TabsList>
 
         <Card>
@@ -133,10 +133,10 @@ export function MembersTab() {
                 <div className="text-3xl font-semibold text-pastel-purple-foreground mt-1">{paidMembers.length}</div>
                 
               </div>
-              {/* Guests - Blue */}
+              {/* Collaborators - Blue */}
               <div className="rounded-brand border border-pastel-blue/50 bg-pastel-blue/40 p-4 shadow-[var(--shadow-xs)]">
-                <div className="text-sm text-pastel-blue-foreground/80">Guests</div>
-                <div className="text-3xl font-semibold text-pastel-blue-foreground mt-1">{guestMembers.length}</div>
+                <div className="text-sm text-pastel-blue-foreground/80">Collaborators</div>
+                <div className="text-3xl font-semibold text-pastel-blue-foreground mt-1">{collaboratorMembers.length}</div>
                 
               </div>
             </div>
@@ -154,9 +154,9 @@ export function MembersTab() {
             onAddNew={permissions.canCreateMembers ? handleCreateNew : undefined}
           />
         </TabsContent>
-        <TabsContent value="guests">
-          <MembersTable 
-            members={guestMembers}
+          <TabsContent value="collaborators">
+            <MembersTable
+              members={collaboratorMembers}
             isLoading={isLoading}
             onEdit={handleEdit}
             onDeactivate={handleDeactivate}
