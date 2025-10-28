@@ -228,7 +228,7 @@ Guidelines:
           { role: 'user', content: userPrompt }
         ],
         temperature: 0.2,
-        max_tokens: 1400,
+        max_tokens: 1200,
       }),
     });
 

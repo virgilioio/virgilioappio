@@ -78,39 +78,52 @@ export function EnhancedResumeDropzone({
         await onUpload(file)
       }
 
-      // Parse resume
-      let parsed: ParsedResumeData | undefined
-      if (candidateId && !parseOnly) {
-        // For existing candidates, use parseAndUpdateCandidate
-        parsed = await parseAndUpdateCandidate(file, candidateId)
-      } else {
-        // For new candidates or parse-only mode, just parse
-        parsed = await parseResume(file)
-      }
+      // ✨ PARALLEL EXECUTION: Start both operations simultaneously
+      const parsingPromise = (async () => {
+        if (candidateId && !parseOnly) {
+          return await parseAndUpdateCandidate(file, candidateId)
+        } else {
+          return await parseResume(file)
+        }
+      })()
+
+      const skillsPromise = autoGenerateSkills
+        ? (async () => {
+            // Wait for parsing to get profile summary
+            const parsedData = await parsingPromise
+            if (parsedData?.profileSummary) {
+              try {
+                return await generateSkills(
+                  parsedData.profileSummary,
+                  parsedData.name || candidateName || 'Candidate',
+                  { 
+                    context: 'candidate', 
+                    desiredCount: 20, 
+                    minCount: 12 
+                  }
+                )
+              } catch (error) {
+                console.error('Skills generation failed:', error)
+                return null
+              }
+            }
+            return null
+          })()
+        : null
+
+      // Wait for both to complete (parsing finishes first, then skills)
+      const [parsed, skillsResult] = await Promise.all([
+        parsingPromise,
+        skillsPromise
+      ])
 
       if (parsed) {
         // Call onParsed callback
         onParsed?.(parsed)
 
-        // Generate skills if enabled and we have profile summary
-        if (autoGenerateSkills && parsed.profileSummary) {
-          try {
-            const result = await generateSkills(
-              parsed.profileSummary, 
-              parsed.name || candidateName || 'Candidate', 
-              { 
-                context: 'candidate', 
-                desiredCount: 20, 
-                minCount: 12 
-              }
-            )
-            if (result?.skills) {
-              const skillNames = result.skills.map(s => s.name).filter(Boolean)
-              onSkillsGenerated?.(skillNames)
-            }
-          } catch (error) {
-            console.error('Skills generation failed:', error)
-          }
+        if (skillsResult?.skills) {
+          const skillNames = skillsResult.skills.map(s => s.name).filter(Boolean)
+          onSkillsGenerated?.(skillNames)
         }
 
         const message = autoGenerateSkills 

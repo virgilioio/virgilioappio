@@ -48,56 +48,44 @@ Return ONLY valid JSON with these exact fields:
 - name: the candidate's full name if confidently found; otherwise omit.
 - email: a primary contact email if present.
 - phone: a primary phone in international format if possible.
-- profileSummary: MUST be a professionally formatted candidate profile in Spanish, following EXACTLY the instructions below. The value must be a single string containing the full formatted profile (with line breaks).
+- profileSummary: A concise professional profile in Spanish (max 150 words).
+  Include: years of experience, key areas of expertise, notable achievements.
+  Format: Use bold for headings, italics for emphasis. Keep it brief and professional.
 
-Instructions for profileSummary (must follow EXACTLY):
-You are an expert CV writer. Based on the resume provided, create a professionally formatted candidate profile in Spanish, following exactly this structure and style:
+Structure for profileSummary:
+**Nombre Completo**
 
-Full name (Title case, bold)
+*Professional headline (short, separated by vertical bars)*
 
-Professional headline (bold, short, separated by vertical bars)
+**Ubicación:** País, Estado, Ciudad (if available)
 
-Location (País, Estado, Ciudad, in bold after “Ubicación:”) - If available
+---
 
+**RESUMEN PROFESIONAL**
+Brief 2-3 paragraph summary highlighting experience, expertise, and achievements (max 150 words total).
 
+---
 
+**EXPERIENCIA PROFESIONAL**
+Company — *Position* | Dates
+- 2-3 key bullet points with quantifiable achievements
 
+---
 
+**EDUCACIÓN**
+Institution, Degree, Years
 
+---
 
+**COMPETENCIAS CLAVE**
+- 3-5 core skills
 
-
-Then create these sections in order:
-
-Profile Summary – A 2–3 paragraph summary (max 180 words) describing years of experience, regions worked (LATAM, NAM, EMEA if applicable), areas of expertise, tools mastered, sales methodologies applied, and professional strengths. The tone should be results-oriented, highlighting quantifiable achievements when possible.
-
-Experiencia Profesional – Reverse chronological list of roles, each with:
-
-Company name — Position title | Start month/year – End month/year
-
-3-4 bullet points starting with action verbs, summarizing main achievements and responsibilities, with specific metrics where possible.
-
-Educación – Institution name, degree, and years attended.
-
-Competencias Clave – 5–6 bullet points with core skills relevant to the role, written in concise form.
-
-Important style rules:
-- Use “—” (em dash) between company and role.
-- Use italics for role title.
-- Use bold for dates and institution names.
-- Keep a professional, concise tone.
-- All section titles in bold and uppercase.
-- Separate sections with a line break (“---”).
-- Do not include any extra commentary, notes, or introductions. Only the formatted profile.
-
-Example:
-(Provide the Fernanda López Ávila example here in full)
-
-Now, using the resume provided, produce the final formatted profile exactly in this style and layout.
+Style: Use bold for section titles, italics for roles, keep concise.
+Do not include extra commentary. Only the formatted profile.
 
 Return ONLY JSON. Do not include markdown fences or commentary.`;
 
-  const user = `Follow the instructions precisely to produce a robust, complete formatted profile in Spanish in the \"profileSummary\" field.\n\nFilename: ${fileName || 'unknown.pdf'}\nResume text:\n${text.slice(0, 20000)}`;
+  const user = `Follow the instructions precisely to produce a robust, complete formatted profile in Spanish in the \"profileSummary\" field.\n\nFilename: ${fileName || 'unknown.pdf'}\nResume text:\n${text.slice(0, 12000)}`;
 
   const resp = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
@@ -106,13 +94,13 @@ Return ONLY JSON. Do not include markdown fences or commentary.`;
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'gpt-4o',
+      model: 'gpt-4o-mini',
       messages: [
         { role: 'system', content: system },
         { role: 'user', content: user },
       ],
       temperature: 0.2,
-      max_tokens: 1400,
+      max_tokens: 1000,
     }),
   });
 
