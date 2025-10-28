@@ -1,7 +1,6 @@
 import { useState, useMemo } from 'react';
 import { AuthGate } from '@/components/auth/AuthGate';
 import { PermissionGate } from '@/components/auth/PermissionGate';
-import { GuestRestriction } from '@/components/auth/GuestRestriction';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Section } from '@/components/layout/Section';
 import { PipelineMetricCard } from '@/components/pipeline/PipelineMetricCard';
@@ -70,15 +69,7 @@ export default function Pipeline() {
 
   return (
     <AuthGate>
-      <PermissionGate
-        permission="canViewJobs"
-        fallback={
-          <GuestRestriction
-            action="view pipeline"
-            suggestion="Contact your administrator to request access."
-          />
-        }
-      >
+      <PermissionGate permission="canViewJobs">
         <div>
           <Section variant="default" banded container className="animate-fade-in">
             <PageHeader title="Pipeline" subtitle="Aggregate hiring pipeline across all jobs" />

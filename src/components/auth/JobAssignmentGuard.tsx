@@ -29,7 +29,7 @@ export function JobAssignmentGuard({ children }: JobAssignmentGuardProps) {
       navigate('/jobs', { replace: true })
     }
 
-    // For guests without organization context, redirect to jobs list
+    // For users without organization context, redirect to jobs list
     if (!permissions.hasOrganizationContext && !permissions.isPlatformAdmin) {
       navigate('/jobs', { replace: true })
     }

@@ -28,7 +28,7 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 export default function Settings() {
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
-  const { canViewBilling, canManageMembers, canViewOrganizations, isPlatformAdmin, isGuest } = usePermissions()
+  const { canViewBilling, canManageMembers, canViewOrganizations, isPlatformAdmin, isWorkspaceOwner } = usePermissions()
   const { organizationId, userType } = useAuth()
   const defaultTab = searchParams.get('tab') || 'profile'
   const [currentTab, setCurrentTab] = useState(defaultTab)

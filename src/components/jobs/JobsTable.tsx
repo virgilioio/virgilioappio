@@ -63,7 +63,7 @@ export function JobsTable({
 
 
   const getAllOrganizationMembers = () => {
-    // Get all active members and guests from the organization
+    // Get all active members from the organization
     const activeMembers = members.filter(member => 
       member.user_status === 'active' && 
       member.user_id &&

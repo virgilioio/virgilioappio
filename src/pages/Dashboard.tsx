@@ -55,7 +55,7 @@ export default function Dashboard() {
   const hasBillingContent = permissions.isPlatformAdmin
   const hasJobContent = permissions.canViewJobs || permissions.canCreateJobs
   const hasQuickAccess = permissions.canCreateJobs || permissions.canManageMembers
-  const canManageOrganization = (permissions.canManageOrganization || permissions.isWorkspaceOwner || permissions.isPlatformAdmin) && !permissions.isGuest
+  const canManageOrganization = (permissions.canManageOrganization || permissions.isWorkspaceOwner || permissions.isPlatformAdmin)
   
   return (
     <div>

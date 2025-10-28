@@ -57,7 +57,6 @@ export interface PermissionsState {
   isRecruiter: boolean
   isHiringManager: boolean
   isInterviewer: boolean
-  isGuest: boolean
   hasOrganizationContext: boolean
 }
 
@@ -134,7 +133,6 @@ export function usePermissions(): PermissionsState {
     isRecruiter,
     isHiringManager,
     isInterviewer,
-    isGuest: false, // Guest type removed from MVP
     hasOrganizationContext,
   }
 }

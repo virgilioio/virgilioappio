@@ -133,7 +133,7 @@ export async function resolveOrgContextWithRetry(
         return {
           organizationId: null,
           role: null,
-          userType: 'guest',
+          userType: 'member',
         };
       }
 

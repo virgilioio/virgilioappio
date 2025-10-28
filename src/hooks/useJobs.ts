@@ -98,7 +98,6 @@ export function useJobs() {
 
     const memberRole = memberData?.member_role
     const isRecruiter = memberRole === 'recruiter'
-    const isGuest = userType === 'guest'
 
     let query = supabase
       .from('jobs')
@@ -121,8 +120,8 @@ export function useJobs() {
 
     let filteredJobs = jobsData || []
 
-    // Apply role-based filtering for guest and recruiter users
-    if (isGuest || isRecruiter) {
+    // Apply role-based filtering for recruiter users
+    if (isRecruiter) {
       // Get job assignments for this user (already optimized with indexes)
       const { data: jobAssignments } = await supabase
         .from('job_assignments')
@@ -132,19 +131,13 @@ export function useJobs() {
       const assignedJobIds = new Set(jobAssignments?.map(assignment => assignment.job_id) || [])
 
       filteredJobs = filteredJobs.filter((job: any) => {
-        if (isGuest) {
-          // Guests can only see explicitly assigned jobs
-          return assignedJobIds.has(job.id)
-        } else if (isRecruiter) {
-          // Recruiters see jobs they're assigned to OR in their hiring team
-          const isAssigned = assignedJobIds.has(job.id)
-          const isInHiringTeam = Array.isArray(job.hiring_team) && 
-            job.hiring_team.some((member: any) => 
-              member?.user_id === user.id || member?.id === user.id || member === user.id
-            )
-          return isAssigned || isInHiringTeam
-        }
-        return true
+        // Recruiters see jobs they're assigned to OR in their hiring team
+        const isAssigned = assignedJobIds.has(job.id)
+        const isInHiringTeam = Array.isArray(job.hiring_team) && 
+          job.hiring_team.some((member: any) => 
+            member?.user_id === user.id || member?.id === user.id || member === user.id
+          )
+        return isAssigned || isInHiringTeam
       })
     }
 

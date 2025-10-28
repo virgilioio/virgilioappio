@@ -79,7 +79,7 @@ export function useJobsForCandidateAssignment() {
           return
         }
       } else {
-        // Other roles or guests - no jobs
+        // Other roles - no jobs
         setJobs([])
         return
       }

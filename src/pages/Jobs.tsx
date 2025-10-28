@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { AuthGate } from '@/components/auth/AuthGate'
 import { PermissionGate } from '@/components/auth/PermissionGate'
-import { GuestRestriction } from '@/components/auth/GuestRestriction'
 import { JobsTable } from '@/components/jobs/JobsTable'
 import { JobFormSheet } from '@/components/jobs/JobFormSheet'
 import { JobWizard } from '@/components/jobs/JobWizard'
@@ -65,15 +64,7 @@ export default function Jobs() {
 
   return (
     <AuthGate>
-      <PermissionGate 
-        permission="canViewJobs"
-        fallback={
-          <GuestRestriction 
-            action="view jobs" 
-            suggestion="Contact your administrator to request access to job listings."
-          />
-        }
-      >
+      <PermissionGate permission="canViewJobs">
         <div>
           <Section variant="default" banded container className="animate-fade-in">
             <PageHeader title="Jobs" subtitle="Manage job postings and track hiring progress" />
