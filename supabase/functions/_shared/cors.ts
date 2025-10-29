@@ -27,6 +27,11 @@ export function isAllowedOrigin(origin?: string): { allowed: boolean; host?: str
       return { allowed: true, host };
     }
     
+    // Check if hostname ends with .lovableproject.com (for preview domains)
+    if (host.endsWith('.lovableproject.com')) {
+      return { allowed: true, host };
+    }
+    
     return { allowed: false, host };
   } catch {
     return { allowed: false };
