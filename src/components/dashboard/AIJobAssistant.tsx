@@ -396,127 +396,106 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
 
   return (
     <>
-      <div className="relative">
-        <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 via-cyan-500/20 to-pink-500/20 rounded-lg blur-sm" />
-        <Card className="relative bg-white border-2 border-transparent bg-clip-padding before:absolute before:inset-0 before:-m-[2px] before:rounded-lg before:bg-gradient-to-r before:from-purple-500 before:via-cyan-500 before:to-pink-500 before:-z-10 before:animate-pulse">
-          <CardHeader 
-            className="cursor-pointer"
-            onClick={() => setIsCollapsed(!isCollapsed)}
-          >
-            <CardTitle className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-primary" />
-                Virgil AI
-                <Badge variant="secondary" className="text-xs bg-gradient-to-r from-purple-100 to-cyan-100 text-purple-700 border-purple-200">
-                  Beta
-                </Badge>
-              </div>
-              {isCollapsed ? (
-                <ChevronDown className="h-5 w-5 text-muted-foreground" />
-              ) : (
-                <ChevronUp className="h-5 w-5 text-muted-foreground" />
-              )}
-            </CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Describe the talent you need and let AI generate a complete job specification
-            </p>
-          </CardHeader>
-          
-          <div 
-            className={`transition-all duration-300 ease-in-out overflow-hidden ${
-              isCollapsed ? 'max-h-0 opacity-0' : 'max-h-[1000px] opacity-100'
-            }`}
-          >
-            <CardContent className="space-y-6">
-              <div className="relative">
-                <div 
-                  className={`absolute inset-0 rounded-md transition-all duration-500 ai-border-gradient ${
-                    isFocused || prompt.length > 0 
-                      ? 'opacity-100 ai-border-active' 
-                      : 'opacity-60'
-                  }`}
-                  style={{
-                    padding: '2px',
-                    borderRadius: '6px',
-                  }}
-                >
-                  <div className="w-full h-full bg-white rounded-md"></div>
-                </div>
-                <Textarea
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  onFocus={() => setIsFocused(true)}
-                  onBlur={() => setIsFocused(false)}
-                  placeholder="Describe the role you're looking to fill... (e.g., 'I need a senior sales rep for our fintech startup to build outbound pipeline in Mexico City and drive 30% revenue growth')"
-                  className={`relative min-h-[100px] resize-none bg-transparent border-0 focus:ring-0 focus:outline-none transition-all duration-300 ${
-                    isFocused || prompt.length > 0 
-                      ? 'shadow-lg shadow-purple-500/20' 
-                      : ''
-                  }`}
-                  style={{
-                    zIndex: 10,
-                    position: 'relative'
-                  }}
-                />
-                <div className="absolute bottom-2 right-2 text-xs text-muted-foreground z-20">
-                  {wordCount} words
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <div className="flex flex-wrap gap-4">
-                  {currentValidation.map((item) => (
-                    <div key={item.id} className="flex items-center gap-2 text-sm">
-                      {item.checked ? (
-                        <CheckCircle2 className="h-4 w-4 text-green-500" />
-                      ) : (
-                        <Circle className="h-4 w-4 text-muted-foreground" />
-                      )}
-                      <span className={item.checked ? 'text-green-700 dark:text-green-400' : 'text-muted-foreground'}>
-                        {item.label}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-                {!canGenerate && (
-                  <p className="text-xs text-muted-foreground">
-                    Write at least 10 words to continue
-                  </p>
-                )}
-              </div>
-
-              <div className="flex justify-end">
-                <Button
-                  onClick={handleGenerate}
-                  disabled={!canGenerate || isGenerating}
-                  className="px-6 py-2 text-white hover:opacity-90 transition-opacity"
-                  style={{ backgroundColor: '#7e3eff' }}
-                >
-                  {isGenerating ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Generating Job Details...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="h-4 w-4 mr-2" />
-                      Generate Job Details
-                    </>
-                  )}
-                </Button>
-              </div>
-            </CardContent>
+      {/* Main Prompt Card - ChatGPT Style */}
+      <Card className="shadow-calendly border-virgilio-border bg-white">
+        <CardContent className="p-8 space-y-6">
+          <div className="relative">
+            <Textarea
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              onFocus={() => setIsFocused(true)}
+              onBlur={() => setIsFocused(false)}
+              placeholder="Describe the role you're looking to fill... (e.g., 'I need a senior sales rep for our fintech startup in Mexico City')"
+              className={`min-h-[120px] resize-none transition-all duration-200 border-virgilio-border focus:border-virgilio-purple focus:ring-2 focus:ring-virgilio-purple/20 ${
+                isFocused ? 'shadow-md' : ''
+              }`}
+            />
+            <div className="absolute bottom-3 right-3 text-xs text-virgilio-muted">
+              {wordCount} words
+            </div>
           </div>
-        </Card>
-      </div>
+
+          <div className="flex flex-wrap gap-3">
+            {currentValidation.map((item) => (
+              <div 
+                key={item.id} 
+                className={`flex items-center gap-2 text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                  item.checked 
+                    ? 'bg-green-50 border-green-200 text-green-700' 
+                    : 'bg-gray-50 border-gray-200 text-gray-500'
+                }`}
+              >
+                {item.checked ? (
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                ) : (
+                  <Circle className="h-3.5 w-3.5" />
+                )}
+                <span>{item.label}</span>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex justify-center pt-2">
+            <Button
+              onClick={handleGenerate}
+              disabled={!canGenerate || isGenerating}
+              size="lg"
+              className="px-8 py-6 text-base bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl transition-all"
+            >
+              {isGenerating ? (
+                <>
+                  <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                  Generating Job Details...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-5 w-5 mr-2" />
+                  Generate Job Spec
+                </>
+              )}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       <Dialog open={showModal} onOpenChange={setShowModal}>
-        <DialogContent className="mx-2 sm:mx-4 w-[calc(100vw-1rem)] sm:w-[calc(100vw-2rem)] max-w-7xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-h4-mobile font-poppins font-bold text-virgilio-text tracking-page-title">
-              <Sparkles className="h-5 w-5 inline-block mr-2 text-virgilio-purple" />
-              AI Job Assistant<span className="text-purple-period">.</span>
-            </DialogTitle>
+        <DialogContent className="mx-2 sm:mx-4 w-[calc(100vw-1rem)] sm:w-[calc(100vw-2rem)] max-w-4xl max-h-[90vh] overflow-y-auto shadow-calendly border-virgilio-border">
+          <DialogHeader className="space-y-4 border-b border-virgilio-border pb-6">
+            <div className="flex items-center gap-3">
+              <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-purple-500 to-cyan-500 flex items-center justify-center shadow-md">
+                <Sparkles className="h-6 w-6 text-white" />
+              </div>
+              <div className="flex-1">
+                <DialogTitle className="text-h4-mobile font-poppins font-bold text-virgilio-text tracking-page-title">
+                  AI Job Assistant<span className="text-virgilio-purple">.</span>
+                </DialogTitle>
+                <p className="text-sm text-virgilio-muted mt-1">
+                  Step {currentStep === 'prompt' ? '1' : currentStep === 'specs' ? '2' : '3'} of 3
+                </p>
+              </div>
+            </div>
+            
+            {/* Progress Dots */}
+            <div className="flex items-center justify-center gap-2">
+              {['prompt', 'specs', 'decision'].map((step, index) => {
+                const stepIndex = ['prompt', 'specs', 'decision'].indexOf(currentStep)
+                const isActive = currentStep === step
+                const isCompleted = index < stepIndex
+                
+                return (
+                  <div 
+                    key={step}
+                    className={`h-2 rounded-full transition-all duration-300 ${
+                      isActive 
+                        ? "bg-gradient-to-r from-purple-600 to-cyan-600 w-8" 
+                        : isCompleted
+                        ? "bg-virgilio-purple w-2"
+                        : "bg-gray-300 w-2"
+                    }`}
+                  />
+                )
+              })}
+            </div>
           </DialogHeader>
           
           {editableJobSpec && (
@@ -577,9 +556,10 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
                     <Button
                       onClick={handleContinue}
                       disabled={!canContinue()}
-                      className="px-6 py-2 text-white hover:opacity-90 transition-opacity"
-                      style={{ backgroundColor: '#7e3eff' }}
+                      size="lg"
+                      className="px-8 py-3 bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl transition-all"
                     >
+                      <Sparkles className="h-5 w-5 mr-2" />
                       {getContinueButtonText()}
                     </Button>
                   </div>
@@ -773,10 +753,20 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
                     <Button
                       onClick={handleContinue}
                       disabled={!canContinue()}
-                      className="px-6 py-2 text-white hover:opacity-90 transition-opacity"
-                      style={{ backgroundColor: '#7e3eff' }}
+                      size="lg"
+                      className="px-8 py-3 bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl transition-all"
                     >
-                      {getContinueButtonText()}
+                      {isCreatingJob ? (
+                        <>
+                          <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                          Saving Draft...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="h-5 w-5 mr-2" />
+                          {getContinueButtonText()}
+                        </>
+                      )}
                     </Button>
                   </div>
                  </TabsContent>
@@ -799,17 +789,17 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
                       <Button
                         onClick={handleCreateJob}
                         disabled={isCreatingJob}
-                        className="px-8 py-3 text-white hover:opacity-90 transition-opacity"
-                        style={{ backgroundColor: '#7e3eff' }}
+                        size="lg"
+                        className="px-8 py-3 bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl transition-all"
                       >
                         {isCreatingJob ? (
                           <>
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            <Loader2 className="h-5 w-5 mr-2 animate-spin" />
                             Creating Job...
                           </>
                         ) : (
                           <>
-                            <Target className="h-4 w-4 mr-2" />
+                            <Target className="h-5 w-5 mr-2" />
                             Create Job
                           </>
                         )}

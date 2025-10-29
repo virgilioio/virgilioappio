@@ -25,24 +25,27 @@ export default function Find() {
           }}
         />
         
-        <main className="flex-1">
-          <Section container className="py-6 sm:py-8 lg:py-12 animate-fade-in">
-            {mode === 'new' && (
-              <div className="space-y-6">
-                {/* Page Header */}
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="h-6 w-6 text-accent-foreground" />
-                    <h1 className="text-h3-mobile sm:text-h3-desktop font-poppins font-bold text-foreground tracking-page-title">
-                      Find Talent<span className="text-purple-period">.</span>
-                    </h1>
+        <main className="flex-1 bg-white">
+          {mode === 'new' && (
+            <div className="min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center px-4 py-12">
+              {/* Centered Container */}
+              <div className="w-full max-w-3xl mx-auto space-y-8">
+                {/* Header - Centered */}
+                <div className="text-center space-y-3">
+                  <div className="inline-flex items-center justify-center gap-2 mb-2">
+                    <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-purple-500 to-cyan-500 flex items-center justify-center shadow-lg">
+                      <Sparkles className="h-6 w-6 text-white" />
+                    </div>
                   </div>
-                  <p className="text-base text-muted-foreground max-w-3xl">
-                    Use AI to generate complete job specifications and discover matching candidates from your talent pool.
+                  <h1 className="text-h2-mobile md:text-h2-desktop font-poppins font-bold text-virgilio-text tracking-page-title">
+                    Find Talent<span className="text-virgilio-purple">.</span>
+                  </h1>
+                  <p className="text-base text-virgilio-muted max-w-2xl mx-auto">
+                    Describe the talent you need and let AI generate a complete job specification with matching candidates.
                   </p>
                 </div>
 
-                {/* AI Job Assistant */}
+                {/* AI Prompt Card - Centered */}
                 <AIJobAssistant 
                   onProjectCreated={(projectId) => {
                     setSelectedProjectId(projectId)
@@ -50,12 +53,14 @@ export default function Find() {
                   }}
                 />
               </div>
-            )}
-            
-            {mode === 'project' && selectedProjectId && (
+            </div>
+          )}
+          
+          {mode === 'project' && selectedProjectId && (
+            <Section container className="py-6 sm:py-8 lg:py-12 animate-fade-in">
               <SourcingProjectView projectId={selectedProjectId} />
-            )}
-          </Section>
+            </Section>
+          )}
         </main>
       </div>
     </SidebarProvider>
