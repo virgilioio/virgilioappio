@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Loader2, Sparkles, CheckCircle2, Circle, Briefcase, DollarSign, MapPin, Target, ChevronDown, ChevronUp, TrendingUp, Clock, Users, Award, Building2, Edit2, BarChart3, AlertTriangle, PieChart, RefreshCw } from 'lucide-react'
+import { Loader2, Sparkles, CheckCircle2, Circle, Briefcase, DollarSign, MapPin, Target, ChevronDown, ChevronUp, TrendingUp, Clock, Users, Award, Building2, Edit2, BarChart3, AlertTriangle, PieChart, RefreshCw, ArrowUp, Mic, Plus } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { useToast } from '@/hooks/use-toast'
 import { validateJobPrompt, getValidationStats, type ValidationItem } from '@/utils/jobPromptValidation'
@@ -95,6 +95,7 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
   const [isRefreshingMatches, setIsRefreshingMatches] = useState(false)
   const [marketInsights, setMarketInsights] = useState<any>(null)
   const [createdJobId, setCreatedJobId] = useState<string | null>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
   const { toast } = useToast()
   const { createJob } = useJobs()
   const navigate = useNavigate()
@@ -123,6 +124,26 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
 
     fetchOrganizationName()
   }, [organizationId])
+
+  const handlePromptChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setPrompt(e.target.value)
+    
+    // Auto-expand textarea
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto'
+      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`
+    }
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Submit on Enter (without Shift)
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      if (canGenerate && !isGenerating) {
+        handleGenerate()
+      }
+    }
+  }
 
   const handleGenerate = async () => {
     if (!canGenerate) return
@@ -397,25 +418,75 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
   return (
     <>
       {/* Main Prompt Card - ChatGPT Style */}
-      <Card className="shadow-calendly border-virgilio-border bg-white">
-        <CardContent className="p-8 space-y-6">
-          <div className="relative">
-            <Textarea
+      <div className="space-y-6">
+        {/* ChatGPT-style Input */}
+        <div className="relative max-w-3xl mx-auto">
+          <div className={`relative flex items-end gap-2 px-4 py-3 rounded-[28px] border transition-all ${
+            isFocused 
+              ? 'border-gray-300 shadow-md' 
+              : 'border-gray-200 shadow-sm'
+          } bg-white`}>
+            
+            {/* Left: Attach Icon */}
+            <button 
+              type="button"
+              className="flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors pb-1"
+            >
+              <Plus className="h-5 w-5" />
+            </button>
+            
+            {/* Middle: Textarea (auto-expanding) */}
+            <textarea
+              ref={textareaRef}
               value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
+              onChange={handlePromptChange}
               onFocus={() => setIsFocused(true)}
               onBlur={() => setIsFocused(false)}
-              placeholder="Describe the role you're looking to fill... (e.g., 'I need a senior sales rep for our fintech startup in Mexico City')"
-              className={`min-h-[120px] resize-none transition-all duration-200 border-virgilio-border focus:border-virgilio-purple focus:ring-2 focus:ring-virgilio-purple/20 ${
-                isFocused ? 'shadow-md' : ''
-              }`}
+              onKeyDown={handleKeyDown}
+              placeholder="Describe the role you're looking to fill..."
+              rows={1}
+              className="flex-1 resize-none bg-transparent border-none outline-none text-virgilio-text placeholder:text-gray-400 max-h-[200px] overflow-y-auto py-1"
+              style={{ 
+                minHeight: '24px',
+                scrollbarWidth: 'thin'
+              }}
             />
-            <div className="absolute bottom-3 right-3 text-xs text-virgilio-muted">
-              {wordCount} words
+            
+            {/* Right: Microphone + Send */}
+            <div className="flex items-center gap-2 flex-shrink-0 pb-1">
+              <button 
+                type="button"
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <Mic className="h-5 w-5" />
+              </button>
+              
+              {/* Send Button - only show when text exists */}
+              {prompt.trim().length > 0 && (
+                <button
+                  onClick={handleGenerate}
+                  disabled={!canGenerate || isGenerating}
+                  className="flex items-center justify-center h-8 w-8 rounded-full bg-virgilio-text hover:bg-black disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                >
+                  {isGenerating ? (
+                    <Loader2 className="h-4 w-4 text-white animate-spin" />
+                  ) : (
+                    <ArrowUp className="h-4 w-4 text-white" />
+                  )}
+                </button>
+              )}
             </div>
           </div>
+          
+          {/* Word Count (subtle, bottom-right) */}
+          <div className="absolute -bottom-6 right-2 text-xs text-gray-400">
+            {wordCount} words
+          </div>
+        </div>
 
-          <div className="flex flex-wrap gap-3">
+        {/* Validation Pills - Centered below input */}
+        <div className="flex justify-center mt-10">
+          <div className="flex flex-wrap gap-3 justify-center">
             {currentValidation.map((item) => (
               <div 
                 key={item.id} 
@@ -434,29 +505,8 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
               </div>
             ))}
           </div>
-
-          <div className="flex justify-center pt-2">
-            <Button
-              onClick={handleGenerate}
-              disabled={!canGenerate || isGenerating}
-              size="lg"
-              className="px-8 py-6 text-base bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl transition-all"
-            >
-              {isGenerating ? (
-                <>
-                  <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                  Generating Job Details...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="h-5 w-5 mr-2" />
-                  Generate Job Spec
-                </>
-              )}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       <Dialog open={showModal} onOpenChange={setShowModal}>
         <DialogContent className="mx-2 sm:mx-4 w-[calc(100vw-1rem)] sm:w-[calc(100vw-2rem)] max-w-4xl max-h-[90vh] overflow-y-auto shadow-calendly border-virgilio-border">

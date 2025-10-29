@@ -1,10 +1,10 @@
 import { useState } from 'react'
-import { Sparkles } from 'lucide-react'
 import { SidebarProvider } from '@/components/ui/sidebar'
 import { AIJobAssistant } from '@/components/dashboard/AIJobAssistant'
 import { Section } from '@/components/layout/Section'
 import { SourcingSidebar } from '@/components/sourcing/SourcingSidebar'
 import { SourcingProjectView } from '@/components/sourcing/SourcingProjectView'
+import gioAvatar from '@/assets/gio-avatar.png'
 
 export default function Find() {
   const [mode, setMode] = useState<'new' | 'project'>('new')
@@ -32,10 +32,12 @@ export default function Find() {
               <div className="w-full max-w-3xl mx-auto space-y-8">
                 {/* Header - Centered */}
                 <div className="text-center space-y-3">
-                  <div className="inline-flex items-center justify-center gap-2 mb-2">
-                    <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-purple-500 to-cyan-500 flex items-center justify-center shadow-lg">
-                      <Sparkles className="h-6 w-6 text-white" />
-                    </div>
+                  <div className="inline-flex items-center justify-center mb-4">
+                    <img 
+                      src={gioAvatar} 
+                      alt="Gio AI Assistant"
+                      className="h-16 w-16 rounded-full shadow-lg"
+                    />
                   </div>
                   <h1 className="text-h2-mobile md:text-h2-desktop font-poppins font-bold text-virgilio-text tracking-page-title">
                     Find Talent<span className="text-virgilio-purple">.</span>
