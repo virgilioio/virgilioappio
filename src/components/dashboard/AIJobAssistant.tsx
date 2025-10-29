@@ -73,7 +73,11 @@ interface MarketSalaryData {
   sample_size: number
 }
 
-export function AIJobAssistant() {
+interface AIJobAssistantProps {
+  onProjectCreated?: (projectId: string) => void
+}
+
+export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
   const [prompt, setPrompt] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
   const [jobSpec, setJobSpec] = useState<JobSpec | null>(null)
@@ -183,6 +187,36 @@ export function AIJobAssistant() {
       const newJob = await createJob(jobData)
       
       setCreatedJobId(newJob.id)
+      
+      // Create sourcing project automatically
+      try {
+        const { data: project, error: projectError } = await supabase.functions.invoke('create-sourcing-project', {
+          body: {
+            name: `${selectedTitle} - ${editableJobSpec.location}`,
+            description: prompt,
+            job_id: newJob.id,
+            search_criteria: {
+              skills: editableSkills,
+              location: editableJobSpec.location,
+              salary_min: editableJobSpec.salary_range.min,
+              salary_max: editableJobSpec.salary_range.max,
+              currency: editableJobSpec.salary_range.currency
+            }
+          }
+        })
+        
+        if (projectError) {
+          console.error('❌ Failed to create sourcing project:', projectError)
+        } else {
+          console.log('✅ Sourcing project created:', project.id)
+          
+          if (onProjectCreated) {
+            onProjectCreated(project.id)
+          }
+        }
+      } catch (err) {
+        console.error('❌ Exception creating sourcing project:', err)
+      }
       
       // Navigate to decision
       setCurrentStep('decision')
