@@ -18,9 +18,16 @@ const supabase = createClient(
 // CoreSignal integration removed
 
 interface JobMatchingRequest {
-  job_id: string;
+  job_id?: string;
+  sourcing_project_id?: string;
   limit?: number;
   count_only?: boolean;
+  filters?: {
+    match_tier?: ('excellent' | 'good' | 'fair')[];
+    location?: string;
+    min_experience?: number;
+    max_experience?: number;
+  };
 }
 
 interface MatchedCandidate {
@@ -136,38 +143,104 @@ serve(async (req) => {
   }
 
   try {
-    const { job_id, limit = 50, count_only = false }: JobMatchingRequest = await req.json();
+    const { 
+      job_id, 
+      sourcing_project_id, 
+      limit = 50, 
+      count_only = false,
+      filters 
+    }: JobMatchingRequest = await req.json();
 
-    console.log(`🎯 Finding matching candidates for job: ${job_id}${count_only ? ' (count only)' : ''}`);
+    let jobSkills: string[] = [];
+    let job: any = null;
+    let organization_id: string | null = null;
 
-    // Get job details
-    const { data: job, error: jobError } = await supabase
-      .from('jobs')
-      .select('id, title, skills, standardized_skills, location, salary_min, salary_max, currency')
-      .eq('id', job_id)
-      .single();
+    // Option 1: Load from sourcing project
+    if (sourcing_project_id) {
+      console.log(`🎯 Finding candidates for sourcing project: ${sourcing_project_id}${count_only ? ' (count only)' : ''}`);
+      
+      const { data: project, error: projectError } = await supabase
+        .from('sourcing_projects')
+        .select('*, jobs(*)')
+        .eq('id', sourcing_project_id)
+        .single();
+        
+      if (projectError || !project) {
+        throw new Error(`Sourcing project not found: ${projectError?.message || 'Unknown error'}`);
+      }
+      
+      // Extract criteria from project
+      const criteria = project.search_criteria as any;
+      jobSkills = criteria.skills || [];
+      organization_id = project.organization_id;
+      
+      // If project is linked to a job, use job details for additional context
+      if (project.job_id && project.jobs) {
+        job = project.jobs;
+        console.log(`📋 Linked job: ${job.title}`);
+      } else {
+        // Create a mock job object for standalone projects
+        job = {
+          id: sourcing_project_id,
+          title: project.name,
+          skills: jobSkills,
+          standardized_skills: jobSkills,
+          location: criteria.location,
+          salary_min: criteria.salary_min,
+          salary_max: criteria.salary_max,
+          currency: criteria.currency
+        };
+      }
+      
+      // Update project's last_search_at timestamp
+      await supabase
+        .from('sourcing_projects')
+        .update({ last_search_at: new Date().toISOString() })
+        .eq('id', sourcing_project_id);
+    }
+    // Option 2: Load from job (existing behavior)
+    else if (job_id) {
+      console.log(`🎯 Finding matching candidates for job: ${job_id}${count_only ? ' (count only)' : ''}`);
+      
+      const { data: jobData, error: jobError } = await supabase
+        .from('jobs')
+        .select('id, title, skills, standardized_skills, location, salary_min, salary_max, currency, organization_id')
+        .eq('id', job_id)
+        .single();
 
-    if (jobError || !job) {
-      throw new Error(`Job not found: ${jobError?.message || 'Unknown error'}`);
+      if (jobError || !jobData) {
+        throw new Error(`Job not found: ${jobError?.message || 'Unknown error'}`);
+      }
+      
+      job = jobData;
+      jobSkills = job.standardized_skills || job.skills || [];
+      organization_id = job.organization_id;
+    } else {
+      throw new Error('Either job_id or sourcing_project_id must be provided');
     }
 
-    const jobSkills = job.standardized_skills || job.skills || [];
-    console.log(`📋 Job skills: ${jobSkills.join(', ')}`);
+    console.log(`📋 Search criteria: ${jobSkills.join(', ')}`);
 
-    // Get existing candidate associations for this job to exclude them
-    const { data: existingAssociations, error: associationsError } = await supabase
-      .from('job_candidate_associations')
-      .select('candidate_id')
-      .eq('job_id', job_id);
+    // Get existing candidate associations to exclude them
+    // Only if we have a job_id (sourcing projects may not be linked to jobs yet)
+    let existingCandidateIds = new Set<string>();
 
-    if (associationsError) {
-      console.warn('Error fetching existing associations:', associationsError);
+    if (job_id || (sourcing_project_id && job?.id && job_id !== sourcing_project_id)) {
+      const targetJobId = job_id || job.id;
+      const { data: existingAssociations, error: associationsError } = await supabase
+        .from('job_candidate_associations')
+        .select('candidate_id')
+        .eq('job_id', targetJobId);
+
+      if (associationsError) {
+        console.warn('Error fetching existing associations:', associationsError);
+      }
+
+      existingCandidateIds = new Set(
+        existingAssociations?.map(assoc => assoc.candidate_id) || []
+      );
+      console.log(`🚫 Excluding ${existingCandidateIds.size} already associated candidates`);
     }
-
-    const existingCandidateIds = new Set(
-      existingAssociations?.map(assoc => assoc.candidate_id) || []
-    );
-    console.log(`🚫 Excluding ${existingCandidateIds.size} already associated candidates`);
 
     // Get local candidates (independent candidates table) - increased limit for filtering
     const candidateFields = count_only ? 'id, standardized_skills, skills, profile_summary' : `
@@ -256,8 +329,43 @@ serve(async (req) => {
 
     // CoreSignal integration removed - only using local candidates
 
-    // Perform comparative analysis
-    const analyzedCandidates = performComparativeAnalysis(matchedCandidates);
+    // Apply additional filters if provided
+    let filteredCandidates = matchedCandidates;
+
+    if (filters) {
+      if (filters.match_tier && filters.match_tier.length > 0) {
+        filteredCandidates = filteredCandidates.filter(c => 
+          filters.match_tier!.includes(c.match_tier)
+        );
+        console.log(`🔍 Filtered by match tier: ${filteredCandidates.length} remaining`);
+      }
+      
+      if (filters.location) {
+        const locationLower = filters.location.toLowerCase();
+        filteredCandidates = filteredCandidates.filter(c => 
+          c.location_country?.toLowerCase().includes(locationLower) ||
+          c.location_city?.toLowerCase().includes(locationLower)
+        );
+        console.log(`🔍 Filtered by location "${filters.location}": ${filteredCandidates.length} remaining`);
+      }
+      
+      if (filters.min_experience !== undefined) {
+        filteredCandidates = filteredCandidates.filter(c => 
+          (c.years_experience || 0) >= filters.min_experience!
+        );
+        console.log(`🔍 Filtered by min experience ${filters.min_experience}y: ${filteredCandidates.length} remaining`);
+      }
+      
+      if (filters.max_experience !== undefined) {
+        filteredCandidates = filteredCandidates.filter(c => 
+          (c.years_experience || 0) <= filters.max_experience!
+        );
+        console.log(`🔍 Filtered by max experience ${filters.max_experience}y: ${filteredCandidates.length} remaining`);
+      }
+    }
+
+    // Perform comparative analysis on filtered results
+    const analyzedCandidates = performComparativeAnalysis(filteredCandidates);
     
     // Sort by enhanced scoring (confidence-weighted score)
     analyzedCandidates.sort((a, b) => {
