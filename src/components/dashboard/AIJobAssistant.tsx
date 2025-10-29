@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Loader2, Sparkles, CheckCircle2, Circle, Briefcase, DollarSign, MapPin, Target, ChevronDown, ChevronUp, TrendingUp, Clock, Users, Award, Building2, Edit2, BarChart3, AlertTriangle, PieChart, RefreshCw, ArrowUp, Mic, Plus } from 'lucide-react'
+import { Loader2, Sparkles, CheckCircle2, Circle, Briefcase, DollarSign, MapPin, Target, ChevronDown, ChevronUp, TrendingUp, Clock, Users, Award, Building2, Edit2, BarChart3, AlertTriangle, PieChart, RefreshCw, ArrowUp } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { useToast } from '@/hooks/use-toast'
 import { validateJobPrompt, getValidationStats, type ValidationItem } from '@/utils/jobPromptValidation'
@@ -421,21 +421,13 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
       <div className="space-y-6">
         {/* ChatGPT-style Input */}
         <div className="relative max-w-3xl mx-auto">
-          <div className={`relative flex items-end gap-2 px-4 py-3 rounded-[28px] border transition-all ${
+          <div className={`relative flex items-end gap-2 px-5 py-3 rounded-[28px] border transition-all ${
             isFocused 
               ? 'border-gray-300 shadow-md' 
               : 'border-gray-200 shadow-sm'
           } bg-white`}>
             
-            {/* Left: Attach Icon */}
-            <button 
-              type="button"
-              className="flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors pb-1"
-            >
-              <Plus className="h-5 w-5" />
-            </button>
-            
-            {/* Middle: Textarea (auto-expanding) */}
+            {/* Textarea (auto-expanding) */}
             <textarea
               ref={textareaRef}
               value={prompt}
@@ -452,16 +444,8 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
               }}
             />
             
-            {/* Right: Microphone + Send */}
+            {/* Send Button - only show when text exists */}
             <div className="flex items-center gap-2 flex-shrink-0 pb-1">
-              <button 
-                type="button"
-                className="text-gray-400 hover:text-gray-600 transition-colors"
-              >
-                <Mic className="h-5 w-5" />
-              </button>
-              
-              {/* Send Button - only show when text exists */}
               {prompt.trim().length > 0 && (
                 <button
                   onClick={handleGenerate}
