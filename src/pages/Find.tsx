@@ -40,7 +40,7 @@ export default function Find() {
                     />
                   </div>
                   <h1 className="text-h2-mobile md:text-h2-desktop font-poppins font-bold text-virgilio-text tracking-page-title">
-                    Find Talent<span className="text-virgilio-purple">.</span>
+                    Find your people<span className="text-virgilio-purple">.</span>
                   </h1>
                   <p className="text-base text-virgilio-muted max-w-2xl mx-auto">
                     Describe the talent you need and let AI generate a complete job specification with matching candidates.
