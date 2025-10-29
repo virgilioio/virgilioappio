@@ -4,12 +4,9 @@ import { WelcomeHeader } from '@/components/dashboard/WelcomeHeader'
 import { MyInterviews } from '@/components/dashboard/MyInterviews'
 import { JobsOverview } from '@/components/dashboard/JobsOverview'
 import { TrialCountdownBanner } from '@/components/dashboard/TrialCountdownBanner'
-import { AIJobAssistant } from '@/components/dashboard/AIJobAssistant'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { usePermissions } from '@/hooks/usePermissions'
-import { PermissionGate } from '@/components/auth/PermissionGate'
 import { Section } from '@/components/layout/Section'
-import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useOrgContext } from '@/contexts/OrgContext'
 import { WorkspaceProvisioningLoader } from '@/components/onboarding/WorkspaceProvisioningLoader'
 
@@ -65,11 +62,6 @@ export default function Dashboard() {
 
             {/* Trial countdown banner */}
             <TrialCountdownBanner />
-            
-            {/* AI Job Assistant - Top Section */}
-            {permissions.isPlatformAdmin && (
-              <AIJobAssistant />
-            )}
             
             {/* 50/50 layout with Jobs Overview and My Interviews */}
             <div className="grid gap-6 lg:grid-cols-2">

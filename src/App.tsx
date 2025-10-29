@@ -13,6 +13,7 @@ import { ErrorBoundary } from './components/ErrorBoundary'
 import { log } from './lib/logger'
 import { BillingGuard } from './components/auth/BillingGuard'
 import Dashboard from './pages/Dashboard'
+import Find from './pages/Find'
 import Jobs from './pages/Jobs'
 import Pipeline from './pages/Pipeline'
 import JobDetail from './pages/JobDetail'
@@ -75,6 +76,11 @@ function AppContent() {
         <Route element={<RequireAuth><Layout /></RequireAuth>}>
           <Route path="/" element={<Dashboard />} />
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/find" element={
+            <BillingGuard requireActive={false}>
+              <Find />
+            </BillingGuard>
+          } />
           <Route path="/jobs" element={
             <BillingGuard requireActive={false}>
               <Jobs />

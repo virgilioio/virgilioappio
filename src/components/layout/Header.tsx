@@ -25,6 +25,7 @@ import {
   User,
   Users,
   TrendingUp,
+  Sparkles,
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -125,6 +126,12 @@ export function Header() {
       icon: Home,
       label: 'Home',
       show: true,
+    },
+    {
+      href: '/find',
+      icon: Sparkles,
+      label: 'Find',
+      show: isPlatformAdmin,
     },
     {
       href: '/jobs',
