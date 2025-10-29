@@ -2589,6 +2589,69 @@ export type Database = {
           },
         ]
       }
+      sourcing_projects: {
+        Row: {
+          created_at: string | null
+          created_by: string
+          description: string | null
+          enabled_sources: Json
+          id: string
+          job_id: string | null
+          last_search_at: string | null
+          name: string
+          organization_id: string
+          search_criteria: Json
+          status: string
+          total_candidates: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by: string
+          description?: string | null
+          enabled_sources?: Json
+          id?: string
+          job_id?: string | null
+          last_search_at?: string | null
+          name: string
+          organization_id: string
+          search_criteria?: Json
+          status?: string
+          total_candidates?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string
+          description?: string | null
+          enabled_sources?: Json
+          id?: string
+          job_id?: string | null
+          last_search_at?: string | null
+          name?: string
+          organization_id?: string
+          search_criteria?: Json
+          status?: string
+          total_candidates?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sourcing_projects_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sourcing_projects_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stage_automation_emails: {
         Row: {
           body: string
