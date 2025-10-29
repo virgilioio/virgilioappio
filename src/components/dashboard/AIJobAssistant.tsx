@@ -533,141 +533,70 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
           </SheetHeader>
           
           {editableJobSpec && (
-            <div className="px-6 pb-6">
-              {/* Step 1: Prompt */}
-              {currentStep === 'prompt' && (
-                <div className="space-y-4 pt-6">
-                  <div className="p-4 bg-muted rounded-lg">
-                    <h4 className="font-medium mb-2">Original Prompt</h4>
-                    <p className="text-sm text-muted-foreground">{prompt}</p>
-                  </div>
-                  
-                  <SheetFooter className="pt-4">
-                    <Button
-                      onClick={handleContinue}
-                      disabled={!canContinue()}
-                      size="lg"
-                      className="px-8 py-3 bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl transition-all"
-                    >
-                      <Sparkles className="h-5 w-5 mr-2" />
-                      {getContinueButtonText()}
-                    </Button>
-                  </SheetFooter>
-                </div>
-              )}
-
-              {/* Step 2: Specs */}
-              {currentStep === 'specs' && (
-                <div className="space-y-6 pt-6">
-                  {/* Job Title */}
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-sm font-medium">Job Title</Label>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={() => handleEditField('title')}
-                      >
-                        <Edit2 className="h-4 w-4" />
-                      </Button>
+            <>
+              {/* Scrollable Content Area */}
+              <div className="px-6 pb-32">
+                {/* Step 1: Prompt */}
+                {currentStep === 'prompt' && (
+                  <div className="space-y-4 pt-6">
+                    <div className="p-4 bg-muted rounded-lg">
+                      <h4 className="font-medium mb-2 text-text-secondary">Original Prompt</h4>
+                      <p className="text-sm text-text-tertiary">{prompt}</p>
                     </div>
-                    {isEditing.title ? (
+                  </div>
+                )}
+
+                {/* Step 2: Specs */}
+                {currentStep === 'specs' && (
+                  <div className="space-y-6 pt-6">
+                    {/* Job Title */}
+                    <div className="space-y-2">
+                      <Label>Job Title</Label>
                       <Input
                         value={selectedTitle}
                         onChange={(e) => setSelectedTitle(e.target.value)}
-                        onBlur={() => handleEditField('title')}
-                        autoFocus
                       />
-                    ) : (
-                      <div className="p-2 bg-muted rounded cursor-pointer" onClick={() => handleEditField('title')}>
-                        {selectedTitle}
-                      </div>
-                    )}
-                    
-                    {editableJobSpec.alt_titles.length > 0 && (
-                      <div>
-                        <Label className="text-xs text-muted-foreground">Suggested Alternatives</Label>
-                        <div className="flex flex-wrap gap-2 mt-1">
-                          {editableJobSpec.alt_titles.map((title, index) => (
-                            <Button
-                              key={index}
-                              variant={selectedTitle === title ? "default" : "outline"}
-                              size="sm"
-                              onClick={() => setSelectedTitle(title)}
-                            >
-                              {title}
-                            </Button>
-                          ))}
+                      
+                      {editableJobSpec.alt_titles.length > 0 && (
+                        <div className="space-y-2">
+                          <Label className="text-xs text-text-tertiary">Suggested Alternatives</Label>
+                          <div className="flex flex-wrap gap-2">
+                            {editableJobSpec.alt_titles.map((title, index) => (
+                              <Button
+                                key={index}
+                                variant={selectedTitle === title ? "default" : "outline"}
+                                size="sm"
+                                onClick={() => setSelectedTitle(title)}
+                              >
+                                {title}
+                              </Button>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Department */}
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-sm font-medium">Department</Label>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={() => handleEditField('department')}
-                      >
-                        <Edit2 className="h-4 w-4" />
-                      </Button>
+                      )}
                     </div>
-                    {isEditing.department ? (
+
+                    {/* Department */}
+                    <div className="space-y-2">
+                      <Label>Department</Label>
                       <Input
                         value={editableJobSpec.department}
                         onChange={(e) => handleFieldUpdate('department', e.target.value)}
-                        onBlur={() => handleEditField('department')}
-                        autoFocus
                       />
-                    ) : (
-                      <div className="p-2 bg-muted rounded cursor-pointer" onClick={() => handleEditField('department')}>
-                        {editableJobSpec.department}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Location */}
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-sm font-medium">Location</Label>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={() => handleEditField('location')}
-                      >
-                        <Edit2 className="h-4 w-4" />
-                      </Button>
                     </div>
-                    {isEditing.location ? (
+
+                    {/* Location */}
+                    <div className="space-y-2">
+                      <Label>Location</Label>
                       <Input
                         value={editableJobSpec.location}
                         onChange={(e) => handleFieldUpdate('location', e.target.value)}
-                        onBlur={() => handleEditField('location')}
-                        autoFocus
                       />
-                    ) : (
-                      <div className="p-2 bg-muted rounded cursor-pointer" onClick={() => handleEditField('location')}>
-                        {editableJobSpec.location}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Salary Range */}
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-sm font-medium">Salary Range</Label>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={() => handleEditField('salary')}
-                      >
-                        <Edit2 className="h-4 w-4" />
-                      </Button>
                     </div>
-                    {isEditing.salary ? (
+
+                    {/* Salary Range */}
+                    <div className="space-y-2">
+                      <Label>Salary Range</Label>
                       <div className="grid grid-cols-3 gap-2">
                         <Input
                           type="number"
@@ -687,116 +616,111 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
                           onChange={(e) => handleFieldUpdate('salary_range.currency', e.target.value)}
                         />
                       </div>
-                    ) : (
-                      <div className="p-2 bg-muted rounded cursor-pointer" onClick={() => handleEditField('salary')}>
-                        {editableJobSpec.salary_range.currency} {editableJobSpec.salary_range.min?.toLocaleString()} - {editableJobSpec.salary_range.max?.toLocaleString()} ({editableJobSpec.salary_range.period})
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Skills */}
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium">Skills</Label>
-                    <SkillsEditor
-                      skills={editableSkills}
-                      onSkillsChange={setEditableSkills}
-                      location={editableJobSpec.location}
-                      salaryMin={editableJobSpec.salary_range.min}
-                      salaryMax={editableJobSpec.salary_range.max}
-                      currency={editableJobSpec.salary_range.currency}
-                    />
-                  </div>
-
-                  {/* Job Description - Full Width */}
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-sm font-medium">Job Description</Label>
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        onClick={() => handleEditField('description')}
-                      >
-                        <Edit2 className="h-4 w-4" />
-                      </Button>
+                      <p className="text-xs text-text-tertiary">
+                        Period: {editableJobSpec.salary_range.period}
+                      </p>
                     </div>
-                    {isEditing.description ? (
+
+                    {/* Skills */}
+                    <div className="space-y-2">
+                      <Label>Skills</Label>
+                      <SkillsEditor
+                        skills={editableSkills}
+                        onSkillsChange={setEditableSkills}
+                        location={editableJobSpec.location}
+                        salaryMin={editableJobSpec.salary_range.min}
+                        salaryMax={editableJobSpec.salary_range.max}
+                        currency={editableJobSpec.salary_range.currency}
+                      />
+                    </div>
+
+                    {/* Job Description */}
+                    <div className="space-y-2">
+                      <Label>Job Description</Label>
                       <Textarea
                         value={editableJobSpec.job_description}
                         onChange={(e) => handleFieldUpdate('job_description', e.target.value)}
-                        onBlur={() => handleEditField('description')}
                         className="min-h-[300px]"
-                        autoFocus
                       />
-                    ) : (
-                      <SafeHtml 
-                        content={editableJobSpec.job_description}
-                        className="p-4 bg-muted rounded-lg text-sm min-h-[300px] cursor-pointer" 
-                        onClick={() => handleEditField('description')}
-                      />
-                    )}
-                  </div>
-                  
-                  <SheetFooter className="pt-4">
-                    <Button
-                      onClick={handleContinue}
-                      disabled={!canContinue()}
-                      size="lg"
-                      className="px-8 py-3 bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl transition-all"
-                    >
-                      {isCreatingJob ? (
-                        <>
-                          <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                          Saving Draft...
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles className="h-5 w-5 mr-2" />
-                          {getContinueButtonText()}
-                        </>
-                      )}
-                    </Button>
-                  </SheetFooter>
-                </div>
-              )}
-
-              {/* Step 3: Decision/Review */}
-              {currentStep === 'decision' && (
-                <div className="space-y-4 pt-6">
-                  <h4 className="text-lg font-semibold">Ready to Create Job?</h4>
-                  <div className="p-4 bg-muted rounded-lg">
-                    <h5 className="font-medium mb-2">Job Summary</h5>
-                    <div className="space-y-2 text-sm">
-                      <div><strong>Title:</strong> {selectedTitle}</div>
-                      <div><strong>Department:</strong> {editableJobSpec.department}</div>
-                      <div><strong>Location:</strong> {editableJobSpec.location}</div>
-                      <div><strong>Skills:</strong> {editableSkills.join(', ')}</div>
-                      <div><strong>Salary:</strong> {editableJobSpec.salary_range.currency} {editableJobSpec.salary_range.min?.toLocaleString()} - {editableJobSpec.salary_range.max?.toLocaleString()}</div>
                     </div>
                   </div>
-                  
-                  <SheetFooter className="pt-4">
-                    <Button
-                      onClick={handleCreateJob}
-                      disabled={isCreatingJob}
-                      size="lg"
-                      className="px-8 py-3 bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700 text-white shadow-lg hover:shadow-xl transition-all"
-                    >
-                      {isCreatingJob ? (
-                        <>
-                          <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                          Creating Job...
-                        </>
-                      ) : (
-                        <>
-                          <Target className="h-5 w-5 mr-2" />
-                          Create Job
-                        </>
-                      )}
-                    </Button>
-                  </SheetFooter>
-                </div>
-              )}
-            </div>
+                )}
+
+                {/* Step 3: Decision/Review */}
+                {currentStep === 'decision' && (
+                  <div className="space-y-4 pt-6">
+                    <h4 className="text-lg font-semibold text-text-primary">Ready to Create Job?</h4>
+                    <div className="p-4 bg-muted rounded-lg">
+                      <h5 className="font-medium mb-3 text-text-secondary">Job Summary</h5>
+                      <div className="space-y-2 text-sm text-text-secondary">
+                        <div><strong>Title:</strong> {selectedTitle}</div>
+                        <div><strong>Department:</strong> {editableJobSpec.department}</div>
+                        <div><strong>Location:</strong> {editableJobSpec.location}</div>
+                        <div><strong>Skills:</strong> {editableSkills.join(', ')}</div>
+                        <div><strong>Salary:</strong> {editableJobSpec.salary_range.currency} {editableJobSpec.salary_range.min?.toLocaleString()} - {editableJobSpec.salary_range.max?.toLocaleString()}</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Sticky Footer */}
+              <div className="p-6 border-t border-virgilio-border flex justify-end gap-2 sticky bottom-0 bg-background z-10">
+                {currentStep === 'prompt' && (
+                  <Button
+                    onClick={handleContinue}
+                    disabled={!canContinue()}
+                    size="lg"
+                    className="bg-virgilio-purple hover:bg-virgilio-purple/90"
+                  >
+                    <Sparkles className="h-5 w-5 mr-2" />
+                    {getContinueButtonText()}
+                  </Button>
+                )}
+                
+                {currentStep === 'specs' && (
+                  <Button
+                    onClick={handleContinue}
+                    disabled={!canContinue()}
+                    size="lg"
+                    className="bg-virgilio-purple hover:bg-virgilio-purple/90"
+                  >
+                    {isCreatingJob ? (
+                      <>
+                        <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                        Saving Draft...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="h-5 w-5 mr-2" />
+                        {getContinueButtonText()}
+                      </>
+                    )}
+                  </Button>
+                )}
+                
+                {currentStep === 'decision' && (
+                  <Button
+                    onClick={handleCreateJob}
+                    disabled={isCreatingJob}
+                    size="lg"
+                    className="bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700"
+                  >
+                    {isCreatingJob ? (
+                      <>
+                        <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                        Creating Job...
+                      </>
+                    ) : (
+                      <>
+                        <Target className="h-5 w-5 mr-2" />
+                        Create Job
+                      </>
+                    )}
+                  </Button>
+                )}
+              </div>
+            </>
           )}
         </SheetContent>
       </Sheet>
