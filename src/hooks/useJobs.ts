@@ -84,20 +84,8 @@ export function useJobs() {
     // Build the main query with all JOINs to eliminate N+1 queries
     let baseQuery = `
       *,
-      organizations!inner(id, name),
-      job_assignments(user_id)
+      organizations!inner(id, name)
     `
-
-    // Get user's current member role once
-    const { data: memberData } = await supabase
-      .from('members')
-      .select('member_role, organization_id')
-      .eq('user_id', user.id)
-      .eq('organization_id', organizationId || '')
-      .single()
-
-    const memberRole = memberData?.member_role
-    const isRecruiter = memberRole === 'recruiter'
 
     let query = supabase
       .from('jobs')
@@ -118,28 +106,8 @@ export function useJobs() {
 
     console.log('Fetched jobs with optimized query:', jobsData?.length)
 
-    let filteredJobs = jobsData || []
-
-    // Apply role-based filtering for recruiter users
-    if (isRecruiter) {
-      // Get job assignments for this user (already optimized with indexes)
-      const { data: jobAssignments } = await supabase
-        .from('job_assignments')
-        .select('job_id')
-        .eq('user_id', user.id)
-
-      const assignedJobIds = new Set(jobAssignments?.map(assignment => assignment.job_id) || [])
-
-      filteredJobs = filteredJobs.filter((job: any) => {
-        // Recruiters see jobs they're assigned to OR in their hiring team
-        const isAssigned = assignedJobIds.has(job.id)
-        const isInHiringTeam = Array.isArray(job.hiring_team) && 
-          job.hiring_team.some((member: any) => 
-            member?.user_id === user.id || member?.id === user.id || member === user.id
-          )
-        return isAssigned || isInHiringTeam
-      })
-    }
+    // RLS policies handle all access control - no client-side filtering needed
+    const filteredJobs = jobsData || []
 
     // Transform data to include basic hiring team information
     return filteredJobs.map((job: any) => {
