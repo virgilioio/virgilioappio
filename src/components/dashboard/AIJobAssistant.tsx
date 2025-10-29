@@ -493,7 +493,7 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
       </div>
 
       <Sheet open={showModal} onOpenChange={setShowModal}>
-        <SheetContent side="right" className="w-full sm:w-[600px] lg:w-[800px] overflow-y-auto p-0">
+        <SheetContent side="right" className="w-full sm:w-[1050px] lg:w-[1400px] overflow-y-auto p-0">
           <SheetHeader className="space-y-4 border-b border-virgilio-border pb-6 px-6 pt-6 sticky top-0 bg-background z-10">
             <div className="flex items-center gap-3">
               <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-purple-500 to-cyan-500 flex items-center justify-center shadow-md">
