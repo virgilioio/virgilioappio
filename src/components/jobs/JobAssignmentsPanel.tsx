@@ -17,7 +17,7 @@ interface JobAssignmentsPanelProps {
 export function JobAssignmentsPanel({ jobId, jobTitle }: JobAssignmentsPanelProps) {
   const [selectedUserId, setSelectedUserId] = useState('')
   const { assignments, assignUserToJob, removeUserFromJob, isLoading: assignmentsLoading } = useJobAssignments(jobId)
-  const { members, isLoading: membersLoading } = useMembers()
+  const { members, isLoading: membersLoading } = useMembers(true)
   const permissions = usePermissions()
 
   // Security check - only users who can manage job assignments can access

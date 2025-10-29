@@ -5,6 +5,7 @@ import { useOrgContext } from '@/contexts/OrgContext'
 import { toast } from '@/hooks/use-toast'
 import { withAuthRetry, extractErrorMessage } from '@/lib/authUtils'
 import { log } from '@/lib/logger'
+import { getOrganizationTree } from '@/lib/organizationHelpers'
 
 export interface Member {
   id: string
@@ -39,7 +40,7 @@ export interface UpdateMemberData {
   organization_id?: string
 }
 
-export function useMembers() {
+export function useMembers(includeHierarchy: boolean = false) {
   const [members, setMembers] = useState<Member[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -55,10 +56,18 @@ export function useMembers() {
     try {
       log.debug('Fetching members for user:', user.id)
       
+      // Get organization IDs to query
+      let orgIdsToQuery = [organizationId]
+      if (includeHierarchy) {
+        log.debug('Fetching organization hierarchy for:', organizationId)
+        orgIdsToQuery = await getOrganizationTree(organizationId)
+        log.debug('Organization hierarchy IDs:', orgIdsToQuery)
+      }
+      
       const { data: membersData, error: membersError } = await supabase
         .from('members')
         .select('*')
-        .eq('organization_id', organizationId)
+        .in('organization_id', orgIdsToQuery)
         .order('created_at', { ascending: false })
 
       if (membersError) {
