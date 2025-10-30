@@ -57,11 +57,12 @@ export function SourcingSidebar({
           )}
           <Button 
             size="sm" 
-            variant="ghost" 
-            className="h-7 w-7 p-0"
+            variant="outline" 
+            className="h-8 w-8 p-0 hover:bg-accent hover:scale-110 transition-transform ml-auto"
             onClick={toggleSidebar}
+            aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
-            {isCollapsed ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+            {isCollapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
           </Button>
         </div>
         
