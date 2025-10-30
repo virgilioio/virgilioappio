@@ -536,10 +536,35 @@ export function CandidateFormSheet({
               <EnhancedResumeDropzone
                 onUpload={candidate ? uploadFileForCandidate.bind(null, candidate.id) : undefined}
                 onParsed={(parsed: ParsedResumeData) => {
+                  console.log('[CandidateFormSheet] onParsed received:', parsed);
+                  
                   // Apply parsed data to form
                   if (parsed.name) form.setValue('candidate_name', parsed.name)
                   if (parsed.email) form.setValue('email', parsed.email)
                   if (parsed.phone) form.setValue('phone', parsed.phone)
+                  
+                  // Add LinkedIn URL
+                  if (parsed.linkedinUrl) {
+                    console.log('[CandidateFormSheet] Setting linkedin_url:', parsed.linkedinUrl);
+                    form.setValue('linkedin_url', parsed.linkedinUrl)
+                  }
+                  
+                  // Add Location parsing
+                  if (parsed.location) {
+                    console.log('[CandidateFormSheet] Parsing location:', parsed.location);
+                    const parts = parsed.location.split(',').map(s => s.trim())
+                    console.log('[CandidateFormSheet] Location parts:', parts);
+                    
+                    if (parts.length === 3) {
+                      form.setValue('location_city', parts[0])
+                      form.setValue('location_state', parts[1])
+                      form.setValue('location_country', parts[2])
+                    } else if (parts.length === 2) {
+                      form.setValue('location_city', parts[0])
+                      form.setValue('location_country', parts[1])
+                    }
+                  }
+                  
                   if (parsed.profileSummary) {
                     const html = sanitizeHtmlForEditor(
                       parsed.profileSummary.includes('<')
