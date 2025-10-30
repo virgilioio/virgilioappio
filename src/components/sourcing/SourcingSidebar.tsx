@@ -48,7 +48,7 @@ export function SourcingSidebar({
   return (
     <Sidebar 
       collapsible="icon"
-      className={`border-r border-border transition-all duration-300 ${isCollapsed ? 'w-14' : 'w-64'}`}
+      className={`border-r border-border transition-all duration-300 top-12 sm:top-14 h-[calc(100vh-3rem)] sm:h-[calc(100vh-3.5rem)] ${isCollapsed ? 'w-14' : 'w-64'}`}
     >
       <SidebarHeader className="border-b border-border p-4">
         {!isCollapsed && (
