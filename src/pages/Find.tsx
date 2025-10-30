@@ -25,14 +25,9 @@ export default function Find() {
           }}
         />
         
-        <div className="flex-1 flex flex-col">
-          {/* Header with toggle - always visible */}
-          <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-            <div className="flex h-14 items-center px-4 gap-4">
-              <SidebarTrigger />
-              <h1 className="text-lg font-semibold">Find Talent</h1>
-            </div>
-          </header>
+        <div className="flex-1 flex flex-col relative">
+          {/* Floating toggle button */}
+          <SidebarTrigger className="absolute top-4 left-4 z-50" />
           
           <main className="flex-1 bg-white">
           {mode === 'new' && (
