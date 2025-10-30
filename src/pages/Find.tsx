@@ -12,7 +12,7 @@ export default function Find() {
 
   return (
     <SidebarProvider defaultOpen={true}>
-      <div className="min-h-screen flex w-full">
+      <div className="min-h-screen flex w-full pt-12 sm:pt-14">
         <SourcingSidebar 
           selectedProjectId={selectedProjectId}
           onSelectProject={(id) => {
