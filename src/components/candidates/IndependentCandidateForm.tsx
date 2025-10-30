@@ -169,6 +169,21 @@ export function IndependentCandidateForm({
                 if (parsed.name) setValue('candidate_name', parsed.name)
                 if (parsed.email) setValue('email', parsed.email)
                 if (parsed.phone) setValue('phone', parsed.phone)
+                if (parsed.linkedinUrl) setValue('linkedin_url', parsed.linkedinUrl)
+                
+                // Parse location string into separate fields
+                if (parsed.location) {
+                  const parts = parsed.location.split(',').map(s => s.trim())
+                  if (parts.length === 3) {
+                    setValue('location_city', parts[0])
+                    setValue('location_state', parts[1])
+                    setValue('location_country', parts[2])
+                  } else if (parts.length === 2) {
+                    setValue('location_city', parts[0])
+                    setValue('location_country', parts[1])
+                  }
+                }
+                
                 if (parsed.profileSummary && parsed.profileSummary.trim().length > 0) {
                   const html = markdownToHtml(parsed.profileSummary)
                   const sanitized = sanitizeHtmlForEditor(html)

@@ -14,6 +14,8 @@ export interface ParsedResumeData {
   name?: string
   email?: string
   phone?: string
+  linkedinUrl?: string
+  location?: string
   profileSummary?: string
 }
 
