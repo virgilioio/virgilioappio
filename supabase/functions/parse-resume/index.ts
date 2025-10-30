@@ -36,9 +36,36 @@ function extractPhone(text: string): string | undefined {
 }
 
 function extractLinkedIn(text: string): string | undefined {
-  const linkedInRegex = /(?:https?:\/\/)?(?:www\.)?linkedin\.com\/in\/[a-zA-Z0-9_-]+\/?/gi;
-  const match = text.match(linkedInRegex);
-  return match ? match[0] : undefined;
+  // Try multiple patterns for better LinkedIn URL detection
+  const patterns = [
+    /(?:https?:\/\/)?(?:www\.)?linkedin\.com\/in\/[a-zA-Z0-9_-]+\/?/gi,
+    /(?:https?:\/\/)?(?:[a-z]{2,3}\.)?linkedin\.com\/in\/[a-zA-Z0-9_-]+/gi,
+    /linkedin\.com\/pub\/[a-zA-Z0-9_-]+/gi,
+  ];
+  
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (match) return match[0];
+  }
+  
+  return undefined;
+}
+
+function extractLocation(text: string): string | undefined {
+  // Look for common location patterns in the resume text
+  const patterns = [
+    // "Location: City, State, Country" or similar
+    /(?:^|\n)(?:Location|Ubicación|Address|Dirección):\s*([A-Z][^,\n]+(?:,\s*[A-Z][^,\n]+){1,2})/i,
+    // In contact section
+    /(?:City|Ciudad|Location):\s*([A-Z][a-zA-Z\s]+(?:,\s*[A-Z][a-zA-Z\s]+){0,2})/i,
+  ];
+  
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (match && match[1]) return match[1].trim();
+  }
+  
+  return undefined;
 }
 
 async function aiExtract(text: string, fileName?: string): Promise<ParseResult> {
@@ -53,11 +80,14 @@ async function aiExtract(text: string, fileName?: string): Promise<ParseResult> 
   const system = `You are an expert ATS resume parser.
 Return ONLY valid JSON with these exact fields:
 {name: string|optional, email: string|optional, phone: string|optional, linkedinUrl: string|optional, location: string|optional, profileSummary: string|optional}
+
+CRITICAL: Extract ALL available fields. Do not omit fields even if confidence is medium.
+
 - name: the candidate's full name if confidently found; otherwise omit.
 - email: a primary contact email if present.
 - phone: a primary phone in international format if possible.
-- linkedinUrl: Full LinkedIn profile URL if present (e.g., https://linkedin.com/in/username).
-- location: Current location formatted as "City, State/Province, Country" (e.g., "Mexico City, CDMX, Mexico").
+- linkedinUrl: IMPORTANT - Full LinkedIn profile URL if present anywhere in the resume (e.g., https://linkedin.com/in/username). Check headers, contact sections, and links carefully.
+- location: IMPORTANT - Current location formatted as "City, State/Province, Country" (e.g., "Mexico City, CDMX, Mexico" or "San Francisco, CA, United States"). Extract from any location field in the resume.
 - profileSummary: A concise professional profile in Spanish (max 150 words).
   Include: years of experience, key areas of expertise, notable achievements.
   Format: Use bold for headings, italics for emphasis. Keep it brief and professional.
@@ -93,6 +123,7 @@ Institution, Degree, Years
 Style: Use bold for section titles, italics for roles, keep concise.
 Do not include extra commentary. Only the formatted profile.
 
+REMEMBER: Always include linkedinUrl and location if found anywhere in the resume text.
 Return ONLY JSON. Do not include markdown fences or commentary.`;
 
   const user = `Follow the instructions precisely to produce a robust, complete formatted profile in Spanish in the \"profileSummary\" field.\n\nFilename: ${fileName || 'unknown.pdf'}\nResume text:\n${text.slice(0, 12000)}`;
@@ -110,7 +141,7 @@ Return ONLY JSON. Do not include markdown fences or commentary.`;
         { role: 'user', content: user },
       ],
       temperature: 0.2,
-      max_tokens: 1000,
+      max_tokens: 1500,
     }),
   });
 
@@ -126,9 +157,12 @@ Return ONLY JSON. Do not include markdown fences or commentary.`;
   const data = await resp.json();
   const content: string = data.choices?.[0]?.message?.content ?? '';
 
+  console.log('OpenAI raw response:', content);
+
   let parsed: ParseResult = {};
   try {
     parsed = JSON.parse(content);
+    console.log('Parsed result:', JSON.stringify(parsed, null, 2));
   } catch {
     const jsonMatch = content.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
     if (jsonMatch) {
@@ -140,10 +174,11 @@ Return ONLY JSON. Do not include markdown fences or commentary.`;
     }
   }
 
-  // Ensure email/phone/linkedinUrl if missing, using regex
+  // Ensure email/phone/linkedinUrl/location if missing, using regex
   if (!parsed.email) parsed.email = extractEmail(text);
   if (!parsed.phone) parsed.phone = extractPhone(text);
   if (!parsed.linkedinUrl) parsed.linkedinUrl = extractLinkedIn(text);
+  if (!parsed.location) parsed.location = extractLocation(text);
 
   // Minimal cleanup
   if (parsed.name) parsed.name = parsed.name.trim();
