@@ -151,7 +151,7 @@ export function IndependentCandidateForm({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>
@@ -159,7 +159,8 @@ export function IndependentCandidateForm({
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
+        <div className="flex-1 overflow-y-auto pr-2">
+          <form id="candidate-form" onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
 
           <div className="space-y-4">
             <h3 className="text-sm font-semibold text-foreground">Resume</h3>
@@ -480,15 +481,17 @@ export function IndependentCandidateForm({
             </Select>
           </div>
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={handleClose}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? 'Saving...' : (initialData ? 'Update Candidate' : 'Add Candidate')}
-            </Button>
-          </DialogFooter>
-        </form>
+          </form>
+        </div>
+
+        <DialogFooter className="border-t pt-4 mt-4 bg-background">
+          <Button type="button" variant="outline" onClick={handleClose}>
+            Cancel
+          </Button>
+          <Button type="submit" form="candidate-form" disabled={isLoading}>
+            {isLoading ? 'Saving...' : (initialData ? 'Update Candidate' : 'Add Candidate')}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )
