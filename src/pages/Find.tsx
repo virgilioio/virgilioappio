@@ -27,7 +27,7 @@ export default function Find() {
         
         <main className="flex-1 bg-white">
           {mode === 'new' && (
-            <div className="min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center px-4 py-12">
+            <div className="min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center px-4 py-12 animate-fade-in">
               {/* Centered Container */}
               <div className="w-full max-w-3xl mx-auto space-y-8">
                 {/* Header - Centered */}
