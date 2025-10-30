@@ -88,45 +88,58 @@ CRITICAL: Extract ALL available fields. Do not omit fields even if confidence is
 - phone: a primary phone in international format if possible.
 - linkedinUrl: IMPORTANT - Full LinkedIn profile URL if present anywhere in the resume (e.g., https://linkedin.com/in/username). Check headers, contact sections, and links carefully.
 - location: IMPORTANT - Current location formatted as "City, State/Province, Country" (e.g., "Mexico City, CDMX, Mexico" or "San Francisco, CA, United States"). Extract from any location field in the resume.
-- profileSummary: A concise professional profile in Spanish (max 150 words).
-  Include: years of experience, key areas of expertise, notable achievements.
-  Format: Use bold for headings, italics for emphasis. Keep it brief and professional.
+- profileSummary: A comprehensive, detailed professional profile in Spanish (aim for 200-300 words).
+  Use rich markdown formatting: **bold** for headings/key skills, *italic* for emphasis, bullet lists for achievements.
+  Structure with clear sections: opening statement, experience highlights, key competencies, notable achievements.
+  Include quantifiable achievements where possible and unique value propositions.
 
-Structure for profileSummary:
+Detailed Structure for profileSummary (200-300 words):
 **Nombre Completo**
 
-*Professional headline (short, separated by vertical bars)*
+*Professional headline with key expertise areas (short, separated by vertical bars)*
 
 **Ubicación:** País, Estado, Ciudad (if available)
 
 ---
 
 **RESUMEN PROFESIONAL**
-Brief 2-3 paragraph summary highlighting experience, expertise, and achievements (max 150 words total).
+Comprehensive 2-3 paragraph summary covering:
+- Career overview with years of experience
+- Core areas of expertise and specializations
+- Notable achievements with quantifiable impact
+- Unique value propositions and strengths
+Aim for depth and detail (150-200 words for this section).
 
 ---
 
 **EXPERIENCIA PROFESIONAL**
-Company — *Position* | Dates
-- 2-3 key bullet points with quantifiable achievements
+Most recent/relevant positions (2-3):
+**Company Name** — *Position Title* | Dates
+- Key achievement with quantifiable results
+- Major responsibility or project
+- Impact or contribution to organization
 
 ---
 
 **EDUCACIÓN**
-Institution, Degree, Years
+Institution, Degree/Certification, Years
+Include relevant certifications
 
 ---
 
 **COMPETENCIAS CLAVE**
-- 3-5 core skills
+- Technical skills
+- Domain expertise
+- Soft skills
+- Specialized knowledge areas
 
-Style: Use bold for section titles, italics for roles, keep concise.
-Do not include extra commentary. Only the formatted profile.
+Style: Use **bold** for section titles and key roles, *italics* for emphasis, keep professional but detailed.
+Do not include extra commentary. Only the formatted profile in Spanish with markdown.
 
 REMEMBER: Always include linkedinUrl and location if found anywhere in the resume text.
 Return ONLY JSON. Do not include markdown fences or commentary.`;
 
-  const user = `Follow the instructions precisely to produce a robust, complete formatted profile in Spanish in the \"profileSummary\" field.\n\nFilename: ${fileName || 'unknown.pdf'}\nResume text:\n${text.slice(0, 12000)}`;
+  const user = `Follow the instructions precisely to produce a robust, comprehensive formatted profile in Spanish (200-300 words) with rich markdown formatting in the \"profileSummary\" field.\n\nFilename: ${fileName || 'unknown.pdf'}\nResume text:\n${text.slice(0, 12000)}`;
 
   const resp = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
@@ -141,7 +154,7 @@ Return ONLY JSON. Do not include markdown fences or commentary.`;
         { role: 'user', content: user },
       ],
       temperature: 0.2,
-      max_tokens: 1500,
+      max_tokens: 2500,
     }),
   });
 

@@ -9,7 +9,7 @@ import { PermissionGate } from '@/components/auth/PermissionGate'
 import { IndependentCandidateTable } from '@/components/candidates/IndependentCandidateTable'
 import { CandidateFormSheet } from '@/components/candidates/CandidateFormSheet'
 import { CandidateMergeDialog } from '@/components/candidates/CandidateMergeDialog'
-import { BulkUploadDialog } from '@/components/candidates/BulkUploadDialog'
+import { MinimizableBulkUploadDialog } from '@/components/candidates/MinimizableBulkUploadDialog'
 import { useIndependentCandidates, CreateIndependentCandidateData } from '@/hooks/useIndependentCandidates'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useCandidateSync } from '@/hooks/useCandidateSync'
@@ -209,7 +209,7 @@ export default function Candidates() {
           )}
 
           {/* Bulk Upload Dialog */}
-          <BulkUploadDialog
+          <MinimizableBulkUploadDialog
             isOpen={isBulkUploadOpen}
             onClose={() => setIsBulkUploadOpen(false)}
             onComplete={() => {
