@@ -118,7 +118,7 @@ export function CandidateMergeDialog({
         <AlertDialogFooter>
           <Button variant="outline" onClick={onCancel}>Cancel</Button>
           <Button onClick={onConfirm}>
-            Merge and Add to Job
+            Merge
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>

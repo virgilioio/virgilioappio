@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -10,28 +11,54 @@ import { Plus, Briefcase, Users, Building2 } from 'lucide-react'
 import { usePermissions } from '@/hooks/usePermissions'
 import { JobWizard } from '@/components/jobs/JobWizard'
 import { CandidateFormSheet } from '@/components/candidates/CandidateFormSheet'
+import { CandidateMergeDialog } from '@/components/candidates/CandidateMergeDialog'
 import { OrganizationFormSheet } from '@/components/organizations/OrganizationFormSheet'
 import { useOrganizations, type CreateOrganizationData } from '@/hooks/useOrganizations'
-import { useIndependentCandidates, CreateIndependentCandidateData } from '@/hooks/useIndependentCandidates'
+import { useIndependentCandidates, CreateIndependentCandidateData, IndependentCandidate } from '@/hooks/useIndependentCandidates'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from '@/hooks/use-toast'
 
 export function GlobalCreateButton() {
+  const navigate = useNavigate()
   const { canCreateJobs, canCreateCandidates, isPlatformAdmin } = usePermissions()
   const [jobWizardOpen, setJobWizardOpen] = useState(false)
   const [candidateSheetOpen, setCandidateSheetOpen] = useState(false)
   const [organizationFormOpen, setOrganizationFormOpen] = useState(false)
+  const [showMergeDialog, setShowMergeDialog] = useState(false)
+  const [duplicateInfo, setDuplicateInfo] = useState<{
+    existing: any
+    incoming: any
+    merged: any
+    assignedJobId?: string
+    assignedStageId?: string
+  } | null>(null)
   const { createOrganization, isLoading: isCreatingOrg } = useOrganizations()
-  const { addCandidate, isLoading: isCreatingCandidate } = useIndependentCandidates()
+  const { addCandidate, updateCandidate, isLoading: isCreatingCandidate } = useIndependentCandidates()
 
   // Handle candidate submission with job assignment logic
   const handleCandidateSubmit = async (candidateData: CreateIndependentCandidateData & { assignedJobId?: string; assignedStageId?: string }) => {
     try {
       // Create the candidate first
-      const newCandidate = await addCandidate(candidateData)
+      const result = await addCandidate(candidateData)
+      
+      // Check if duplicate was detected
+      if (result && 'isDuplicate' in result) {
+        // Show merge dialog
+        setDuplicateInfo({
+          existing: result.existingCandidate,
+          incoming: result.incomingData,
+          merged: result.mergedData,
+          assignedJobId: candidateData.assignedJobId,
+          assignedStageId: candidateData.assignedStageId
+        })
+        setShowMergeDialog(true)
+        return
+      }
+      
+      const newCandidate = result as IndependentCandidate
       
       // If job is assigned, create the job-candidate association
-      if (candidateData.assignedJobId && newCandidate) {
+      if (candidateData.assignedJobId && newCandidate && newCandidate.id) {
         // Check if association already exists
         const { data: existingAssoc } = await supabase
           .from('job_candidate_associations')
@@ -77,12 +104,82 @@ export function GlobalCreateButton() {
           title: 'Success',
           description: 'Candidate created successfully!'
         })
+        // Navigate to candidates page to see the new candidate
+        navigate('/candidates')
       }
       
       setCandidateSheetOpen(false)
     } catch (error) {
       console.error('Error creating candidate:', error)
       // Error handling is done in the hook
+    }
+  }
+
+  // Handle merge confirmation
+  const handleMergeConfirm = async () => {
+    if (!duplicateInfo) return
+    
+    try {
+      // Update the existing candidate with merged data
+      await updateCandidate(duplicateInfo.existing.id, duplicateInfo.merged)
+      
+      // If job assignment was requested, create the association
+      if (duplicateInfo.assignedJobId) {
+        // Check if association already exists
+        const { data: existingAssoc } = await supabase
+          .from('job_candidate_associations')
+          .select('id')
+          .eq('job_id', duplicateInfo.assignedJobId)
+          .eq('candidate_id', duplicateInfo.existing.id)
+          .maybeSingle()
+        
+        if (!existingAssoc) {
+          const { error: associationError } = await supabase
+            .from('job_candidate_associations')
+            .insert({
+              job_id: duplicateInfo.assignedJobId,
+              candidate_id: duplicateInfo.existing.id,
+              current_stage_id: duplicateInfo.assignedStageId || null,
+              status: 'active',
+              added_by: (await supabase.auth.getUser()).data.user?.id
+            })
+
+          if (associationError) {
+            console.error('Error creating job association:', associationError)
+            toast({
+              title: 'Warning',
+              description: 'Candidate merged but could not be assigned to job.',
+              variant: 'destructive'
+            })
+          } else {
+            toast({
+              title: 'Success',
+              description: 'Candidate merged and assigned to job successfully!'
+            })
+          }
+        } else {
+          toast({
+            title: 'Success',
+            description: 'Candidate merged successfully!'
+          })
+        }
+      } else {
+        toast({
+          title: 'Success',
+          description: 'Candidate merged successfully!'
+        })
+      }
+      
+      setShowMergeDialog(false)
+      setCandidateSheetOpen(false)
+      navigate('/candidates')
+    } catch (error) {
+      console.error('Error merging candidate:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to merge candidate',
+        variant: 'destructive'
+      })
     }
   }
 
@@ -202,6 +299,21 @@ export function GlobalCreateButton() {
             setOrganizationFormOpen(false)
           }}
           isLoading={isCreatingOrg}
+        />
+      )}
+
+      {/* Merge Dialog */}
+      {duplicateInfo && (
+        <CandidateMergeDialog
+          isOpen={showMergeDialog}
+          onConfirm={handleMergeConfirm}
+          onCancel={() => {
+            setShowMergeDialog(false)
+            setDuplicateInfo(null)
+          }}
+          existingCandidate={duplicateInfo.existing}
+          newCandidate={duplicateInfo.incoming}
+          mergedCandidate={duplicateInfo.merged}
         />
       )}
     </>

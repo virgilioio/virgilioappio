@@ -49,6 +49,53 @@ export interface CreateIndependentCandidateData {
   organization_id?: string | null
 }
 
+export interface DuplicateResult {
+  isDuplicate: true
+  existingCandidate: IndependentCandidate
+  incomingData: CreateIndependentCandidateData
+  mergedData: any
+}
+
+// Smart merge helper - prioritizes more complete information
+const smartMerge = (existing: any, incoming: any): any => {
+  const merged = { ...existing }
+  
+  Object.keys(incoming).forEach(key => {
+    const existingValue = existing[key]
+    const incomingValue = incoming[key]
+    
+    // Skip undefined or null incoming values
+    if (incomingValue === undefined || incomingValue === null) return
+    
+    // If existing is null/empty, use incoming
+    if (!existingValue || existingValue === '') {
+      merged[key] = incomingValue
+    } 
+    // For arrays (like skills), merge and deduplicate
+    else if (Array.isArray(incomingValue) && Array.isArray(existingValue)) {
+      merged[key] = [...new Set([...existingValue, ...incomingValue])]
+    }
+    // For strings, prefer the longer value (more detail)
+    else if (typeof incomingValue === 'string' && typeof existingValue === 'string') {
+      if (incomingValue.length > existingValue.length) {
+        merged[key] = incomingValue
+      }
+    }
+    // For numbers, prefer the incoming value if it's greater
+    else if (typeof incomingValue === 'number' && typeof existingValue === 'number') {
+      if (incomingValue > existingValue) {
+        merged[key] = incomingValue
+      }
+    }
+    // For any other case, prefer incoming value if existing is falsy
+    else if (!existingValue) {
+      merged[key] = incomingValue
+    }
+  })
+  
+  return merged
+}
+
 export function useIndependentCandidates() {
   const [candidates, setCandidates] = useState<IndependentCandidate[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -102,7 +149,7 @@ export function useIndependentCandidates() {
     }
   }
 
-  const addCandidate = async (candidateData: CreateIndependentCandidateData) => {
+  const addCandidate = async (candidateData: CreateIndependentCandidateData): Promise<IndependentCandidate | DuplicateResult | null> => {
     if (!user || !organizationId) throw new Error('User not authenticated or no organization context')
 
     setIsLoading(true)
@@ -111,29 +158,35 @@ export function useIndependentCandidates() {
     try {
       log.debug('Adding independent candidate:', candidateData)
       
-      // Check for duplicates within the same organization
+      // Check for duplicates within the same organization - fetch full record
       if (candidateData.email || candidateData.candidate_name) {
         const duplicateQuery = candidateData.email 
-          ? async () => await supabase.from('candidates').select('id', { count: 'exact', head: true })
+          ? async () => await supabase.from('candidates').select('*')
               .eq('email', candidateData.email!)
               .eq('organization_id', organizationId)
-          : async () => await supabase.from('candidates').select('id', { count: 'exact', head: true })
+              .limit(1)
+          : async () => await supabase.from('candidates').select('*')
               .eq('candidate_name', candidateData.candidate_name)
               .eq('organization_id', organizationId)
               .is('email', null)
+              .limit(1)
         
         const result = await withAuthRetry(duplicateQuery)
-        const count = (result as any).count
 
         if (result.error) {
           log.error('Error checking for duplicates:', result.error)
-        } else if (count && count > 0) {
-          toast({
-            title: 'Duplicate Candidate',
-            description: `A candidate with this ${candidateData.email ? 'email' : 'name'} already exists.`,
-            variant: 'destructive'
-          })
-          return null
+        } else if (result.data && result.data.length > 0) {
+          // Found duplicate - return duplicate info for UI to handle
+          const existingCandidate = result.data[0] as IndependentCandidate
+          const mergedData = smartMerge(existingCandidate, candidateData)
+          
+          log.debug('Duplicate candidate found, returning for merge:', existingCandidate.id)
+          return {
+            isDuplicate: true,
+            existingCandidate,
+            incomingData: candidateData,
+            mergedData
+          }
         }
       }
 
@@ -176,7 +229,11 @@ export function useIndependentCandidates() {
       })
 
       await getCandidates() // Refresh the list
-      return newCandidate
+      // Type cast to fix auto_generated_skills type mismatch
+      return {
+        ...newCandidate,
+        auto_generated_skills: (newCandidate.auto_generated_skills as any) || null
+      } as IndependentCandidate
     } catch (err) {
       const errorMessage = extractErrorMessage(err)
       log.error('Independent candidate creation error:', err)

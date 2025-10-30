@@ -8,14 +8,22 @@ import { AuthGate } from '@/components/auth/AuthGate'
 import { PermissionGate } from '@/components/auth/PermissionGate'
 import { IndependentCandidateTable } from '@/components/candidates/IndependentCandidateTable'
 import { CandidateFormSheet } from '@/components/candidates/CandidateFormSheet'
+import { CandidateMergeDialog } from '@/components/candidates/CandidateMergeDialog'
 import { useIndependentCandidates, CreateIndependentCandidateData } from '@/hooks/useIndependentCandidates'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useCandidateSync } from '@/hooks/useCandidateSync'
+import { toast } from '@/hooks/use-toast'
 
 export default function Candidates() {
   const { canViewCandidates } = usePermissions()
   const [selectedCandidate, setSelectedCandidate] = useState(null)
   const [isFormOpen, setIsFormOpen] = useState(false)
+  const [showMergeDialog, setShowMergeDialog] = useState(false)
+  const [duplicateInfo, setDuplicateInfo] = useState<{
+    existing: any
+    incoming: any
+    merged: any
+  } | null>(null)
   
   const {
     candidates,
@@ -59,17 +67,52 @@ export default function Candidates() {
         // For editing, ignore job assignment fields
         const { assignedJobId, assignedStageId, ...updateData } = candidateData
         result = await updateCandidate(selectedCandidate.id, updateData)
+        handleFormClose()
       } else {
         // For new candidates, just create without job assignment (no job context on candidates page)
         const { assignedJobId, assignedStageId, ...createData } = candidateData
         result = await addCandidate(createData)
+        
+        // Check if duplicate was detected
+        if (result && 'isDuplicate' in result) {
+          setDuplicateInfo({
+            existing: result.existingCandidate,
+            incoming: result.incomingData,
+            merged: result.mergedData
+          })
+          setShowMergeDialog(true)
+          return null // Don't close the form yet
+        }
+        
+        handleFormClose()
       }
-      handleFormClose()
       return result // Return the result so CandidateFormSheet can access the candidate ID
     } catch (error) {
       // Error is handled in the hook
       console.error('Error submitting candidate:', error)
       throw error // Re-throw so CandidateFormSheet knows there was an error
+    }
+  }
+
+  const handleMergeConfirm = async () => {
+    if (!duplicateInfo) return
+    
+    try {
+      await updateCandidate(duplicateInfo.existing.id, duplicateInfo.merged)
+      setShowMergeDialog(false)
+      setDuplicateInfo(null)
+      handleFormClose()
+      toast({
+        title: 'Success',
+        description: 'Candidate merged successfully!'
+      })
+    } catch (error) {
+      console.error('Error merging candidate:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to merge candidate',
+        variant: 'destructive'
+      })
     }
   }
 
@@ -136,6 +179,21 @@ export default function Candidates() {
             jobId="" // Independent candidates don't have a job ID
             isLoading={isLoading}
           />
+
+          {/* Merge Dialog */}
+          {duplicateInfo && (
+            <CandidateMergeDialog
+              isOpen={showMergeDialog}
+              onConfirm={handleMergeConfirm}
+              onCancel={() => {
+                setShowMergeDialog(false)
+                setDuplicateInfo(null)
+              }}
+              existingCandidate={duplicateInfo.existing}
+              newCandidate={duplicateInfo.incoming}
+              mergedCandidate={duplicateInfo.merged}
+            />
+          )}
         </div>
       </PermissionGate>
     </AuthGate>
