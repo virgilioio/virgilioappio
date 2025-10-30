@@ -34,6 +34,9 @@ export function BulkUploadSummary({
         <h3 className="text-2xl font-bold font-poppins text-virgilio-text">
           Upload Complete<span className="text-virgilio-purple">.</span>
         </h3>
+        <p className="text-sm text-muted-foreground mt-2">
+          {summary.created + summary.merged} resume{summary.created + summary.merged !== 1 ? 's' : ''} saved and available in candidate profiles
+        </p>
       </div>
 
       {/* Stats cards */}

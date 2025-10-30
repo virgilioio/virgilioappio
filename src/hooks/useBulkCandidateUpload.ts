@@ -4,6 +4,8 @@ import { useIndependentCandidates } from './useIndependentCandidates'
 import { useSkillsGeneration } from './useSkillsGeneration'
 import { usePipelineActions } from './usePipelineActions'
 import { toast } from './use-toast'
+import { supabase } from '@/lib/supabaseClient'
+import { useAuth } from '@/contexts/AuthContext'
 
 export interface BulkUploadOptions {
   autoGenerateSkills: boolean
@@ -13,7 +15,7 @@ export interface BulkUploadOptions {
 
 export interface FileProcessingResult {
   file: File
-  status: 'pending' | 'parsing' | 'creating' | 'success' | 'duplicate' | 'error'
+  status: 'pending' | 'parsing' | 'creating' | 'uploading' | 'success' | 'duplicate' | 'error'
   candidate?: any
   error?: string
   progress: number
@@ -34,6 +36,7 @@ export function useBulkCandidateUpload() {
   const { addCandidate, updateCandidate } = useIndependentCandidates()
   const { generateSkills } = useSkillsGeneration()
   const { createAssociationAndMove } = usePipelineActions()
+  const { user } = useAuth()
 
   const updateFileStatus = (
     fileIndex: number,
@@ -53,6 +56,38 @@ export function useBulkCandidateUpload() {
       }
       return newResults
     })
+  }
+
+  const uploadResumeFile = async (candidateId: string, file: File) => {
+    // Generate unique storage path
+    const ext = file.name.split('.').pop()
+    const storagePath = `${candidateId}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+    
+    // Upload to storage
+    const { error: storageError } = await supabase.storage
+      .from('candidate-attachments')
+      .upload(storagePath, file)
+    
+    if (storageError) throw storageError
+    
+    // Create database record
+    const { error: dbError } = await supabase
+      .from('candidate_attachments')
+      .insert({
+        candidate_id: candidateId,
+        file_name: file.name,
+        file_url: storagePath,
+        file_size_bytes: file.size,
+        file_type: file.type,
+        uploaded_by: user?.id,
+        is_resume: true,
+      })
+    
+    if (dbError) {
+      // Cleanup storage if DB insert fails
+      await supabase.storage.from('candidate-attachments').remove([storagePath])
+      throw dbError
+    }
   }
 
   const processFile = async (
@@ -109,8 +144,25 @@ export function useBulkCandidateUpload() {
       if (result && 'isDuplicate' in result) {
         // Auto-merge duplicates in bulk mode
         await updateCandidate(result.existingCandidate.id, result.mergedData)
+        
+        // Upload resume file for duplicate candidate too
+        updateFileStatus(fileIndex, 'uploading', 85)
+        try {
+          await uploadResumeFile(result.existingCandidate.id, file)
+        } catch (uploadError) {
+          console.warn('Resume upload failed for merged candidate:', uploadError)
+        }
+        
         updateFileStatus(fileIndex, 'duplicate', 100, result.existingCandidate)
       } else if (result && 'id' in result) {
+        // Upload resume file for new candidate
+        updateFileStatus(fileIndex, 'uploading', 85)
+        try {
+          await uploadResumeFile(result.id, file)
+        } catch (uploadError) {
+          console.warn('Resume upload failed, but candidate was created:', uploadError)
+        }
+        
         updateFileStatus(fileIndex, 'success', 100, result)
 
         // 6. Assign to job if specified

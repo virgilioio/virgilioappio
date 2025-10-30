@@ -1,4 +1,4 @@
-import { CheckCircle2, XCircle, AlertCircle, Loader2, Clock } from 'lucide-react'
+import { CheckCircle2, XCircle, AlertCircle, Loader2, Clock, Upload } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Card } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
@@ -22,6 +22,8 @@ export function BulkUploadProgressList({
         return <XCircle className="h-5 w-5 text-red-600" />
       case 'duplicate':
         return <AlertCircle className="h-5 w-5 text-amber-600" />
+      case 'uploading':
+        return <Upload className="h-5 w-5 animate-pulse text-virgilio-purple" />
       case 'parsing':
       case 'creating':
         return <Loader2 className="h-5 w-5 animate-spin text-virgilio-purple" />
@@ -38,6 +40,8 @@ export function BulkUploadProgressList({
         return 'Merged with existing candidate'
       case 'error':
         return result.error || 'Unknown error'
+      case 'uploading':
+        return 'Saving resume file...'
       case 'parsing':
         return 'Extracting information...'
       case 'creating':
