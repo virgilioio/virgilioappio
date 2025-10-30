@@ -9,7 +9,8 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { CheckCircle2, Mail, Phone, MapPin, Briefcase, DollarSign } from 'lucide-react'
+import { Card, CardContent } from '@/components/ui/card'
+import { CheckCircle2, Mail, Phone, MapPin, Briefcase, DollarSign, AlertCircle, ArrowRight } from 'lucide-react'
 
 interface CandidateMergeDialogProps {
   isOpen: boolean
@@ -28,97 +29,208 @@ export function CandidateMergeDialog({
   newCandidate,
   mergedCandidate
 }: CandidateMergeDialogProps) {
-  const renderField = (label: string, existing: any, incoming: any, merged: any, icon: React.ReactNode) => {
-    const isUpdated = merged !== existing && merged === incoming
-    
+  const renderComparisonField = (
+    label: string,
+    icon: React.ReactNode,
+    existingValue: any,
+    mergedValue: any
+  ) => {
+    const isUpdated = mergedValue && mergedValue !== existingValue && String(mergedValue).trim() !== String(existingValue || '').trim()
+    const hasValue = (val: any) => val && String(val).trim() !== ''
+
     return (
-      <div className="grid grid-cols-3 gap-4 py-3 border-b border-border">
-        <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+      <div className="mb-6">
+        <div className="flex items-center gap-2 mb-3 text-virgilio-muted font-poppins font-semibold text-sm">
           {icon}
           {label}
         </div>
-        <div className="text-sm">
-          {existing || <span className="text-muted-foreground italic">Empty</span>}
-        </div>
-        <div className="text-sm font-medium flex items-center gap-2">
-          {merged || <span className="text-muted-foreground italic">Empty</span>}
-          {isUpdated && <CheckCircle2 className="h-4 w-4 text-green-500" />}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Existing Value */}
+          <Card className="border-virgilio-border">
+            <CardContent className="p-4">
+              {hasValue(existingValue) ? (
+                <p className="text-virgilio-text font-medium">{existingValue}</p>
+              ) : (
+                <p className="text-virgilio-muted italic text-sm">Empty</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Merged Value */}
+          <Card className={isUpdated ? "border-2 border-virgilio-purple/30 bg-virgilio-purple/5" : "border-virgilio-border"}>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between gap-2">
+                {hasValue(mergedValue) ? (
+                  <p className="text-virgilio-text font-semibold">{mergedValue}</p>
+                ) : (
+                  <p className="text-virgilio-muted italic text-sm">Empty</p>
+                )}
+                {isUpdated && (
+                  <CheckCircle2 className="h-4 w-4 text-virgilio-success shrink-0" />
+                )}
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     )
   }
 
+  const existingLocation = [existingCandidate.location_city, existingCandidate.location_country].filter(Boolean).join(', ')
+  const mergedLocation = [mergedCandidate.location_city, mergedCandidate.location_country].filter(Boolean).join(', ')
+  
+  const existingSalary = existingCandidate.salary_amount 
+    ? `${existingCandidate.salary_currency} ${existingCandidate.salary_amount}` 
+    : ''
+  const mergedSalary = mergedCandidate.salary_amount 
+    ? `${mergedCandidate.salary_currency} ${mergedCandidate.salary_amount}` 
+    : ''
+
+  const newSkillsCount = mergedCandidate.skills?.filter(
+    (skill: string) => !existingCandidate.skills?.includes(skill)
+  ).length || 0
+
   return (
     <AlertDialog open={isOpen}>
-      <AlertDialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+      <AlertDialogContent className="max-w-5xl max-h-[85vh] overflow-hidden animate-fade-in">
         <AlertDialogHeader>
-          <AlertDialogTitle className="flex items-center gap-2">
-            <CheckCircle2 className="h-5 w-5 text-yellow-500" />
-            Duplicate Candidate Detected
+          <AlertDialogTitle className="flex items-center gap-2 text-h3-mobile md:text-h3-desktop font-poppins font-bold text-virgilio-text">
+            <AlertCircle className="text-virgilio-purple h-6 w-6" />
+            Duplicate Candidate Detected<span className="text-virgilio-purple">.</span>
           </AlertDialogTitle>
-          <AlertDialogDescription>
-            A candidate with the same name and email already exists. We'll merge the information and keep the most complete data.
+          <AlertDialogDescription className="text-virgilio-muted text-base">
+            A matching candidate already exists in your database. Review the comparison below and merge to keep the most complete information.
           </AlertDialogDescription>
         </AlertDialogHeader>
 
-        <div className="space-y-4">
-          <div className="grid grid-cols-3 gap-4 py-2 bg-muted/50 rounded-lg px-4">
-            <div className="text-xs font-semibold text-muted-foreground uppercase">Field</div>
-            <div className="text-xs font-semibold text-muted-foreground uppercase">Existing</div>
-            <div className="text-xs font-semibold text-muted-foreground uppercase">After Merge</div>
+        <div className="overflow-y-auto max-h-[calc(85vh-200px)] pr-2 space-y-6">
+          {/* Column Headers */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pb-2">
+            <div className="flex items-center gap-2 px-4 py-3 bg-white/50 rounded-lg border border-virgilio-border">
+              <h3 className="font-poppins font-semibold text-virgilio-text text-sm">Existing Candidate</h3>
+            </div>
+            <div className="flex items-center gap-3 px-4 py-3 bg-virgilio-purple/5 rounded-lg border-2 border-virgilio-purple/20">
+              <ArrowRight className="h-4 w-4 text-virgilio-purple hidden md:block" />
+              <h3 className="font-poppins font-semibold text-virgilio-text text-sm">After Merge</h3>
+            </div>
           </div>
 
-          {renderField('Email', existingCandidate.email, newCandidate.email, mergedCandidate.email, <Mail className="h-4 w-4" />)}
-          {renderField('Phone', existingCandidate.phone, newCandidate.phone, mergedCandidate.phone, <Phone className="h-4 w-4" />)}
-          {renderField('Location', 
-            [existingCandidate.location_city, existingCandidate.location_country].filter(Boolean).join(', '),
-            [newCandidate.location_city, newCandidate.location_country].filter(Boolean).join(', '),
-            [mergedCandidate.location_city, mergedCandidate.location_country].filter(Boolean).join(', '),
-            <MapPin className="h-4 w-4" />
-          )}
-          {renderField('Current Role', existingCandidate.role_current, newCandidate.role_current, mergedCandidate.role_current, <Briefcase className="h-4 w-4" />)}
-          {renderField('Salary', 
-            existingCandidate.salary_amount ? `${existingCandidate.salary_currency} ${existingCandidate.salary_amount}` : null,
-            newCandidate.salary_amount ? `${newCandidate.salary_currency} ${newCandidate.salary_amount}` : null,
-            mergedCandidate.salary_amount ? `${mergedCandidate.salary_currency} ${mergedCandidate.salary_amount}` : null,
-            <DollarSign className="h-4 w-4" />
-          )}
+          {/* Contact Information */}
+          <div>
+            <h4 className="font-poppins font-bold text-virgilio-text mb-4 text-base">Contact Information</h4>
+            {renderComparisonField(
+              'Email',
+              <Mail className="h-4 w-4" />,
+              existingCandidate.email,
+              mergedCandidate.email
+            )}
+            {renderComparisonField(
+              'Phone',
+              <Phone className="h-4 w-4" />,
+              existingCandidate.phone,
+              mergedCandidate.phone
+            )}
+          </div>
 
-          {/* Skills comparison */}
-          <div className="space-y-2 pt-4">
-            <div className="text-sm font-medium">Skills</div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <div className="text-xs text-muted-foreground mb-2">Existing ({existingCandidate.skills?.length || 0})</div>
-                <div className="flex flex-wrap gap-1">
-                  {existingCandidate.skills?.map((skill: string) => (
-                    <Badge key={skill} variant="secondary" className="text-xs">{skill}</Badge>
-                  )) || <span className="text-sm text-muted-foreground italic">None</span>}
-                </div>
-              </div>
-              <div>
-                <div className="text-xs text-muted-foreground mb-2">After Merge ({mergedCandidate.skills?.length || 0})</div>
-                <div className="flex flex-wrap gap-1">
-                  {mergedCandidate.skills?.map((skill: string) => (
-                    <Badge 
-                      key={skill} 
-                      variant={existingCandidate.skills?.includes(skill) ? "secondary" : "default"}
-                      className="text-xs"
-                    >
-                      {skill}
-                      {!existingCandidate.skills?.includes(skill) && <CheckCircle2 className="ml-1 h-3 w-3" />}
-                    </Badge>
-                  )) || <span className="text-sm text-muted-foreground italic">None</span>}
-                </div>
-              </div>
+          {/* Location & Professional Details */}
+          <div>
+            <h4 className="font-poppins font-bold text-virgilio-text mb-4 text-base">Professional Details</h4>
+            {renderComparisonField(
+              'Location',
+              <MapPin className="h-4 w-4" />,
+              existingLocation,
+              mergedLocation
+            )}
+            {renderComparisonField(
+              'Current Role',
+              <Briefcase className="h-4 w-4" />,
+              existingCandidate.role_current,
+              mergedCandidate.role_current
+            )}
+            {renderComparisonField(
+              'Salary',
+              <DollarSign className="h-4 w-4" />,
+              existingSalary,
+              mergedSalary
+            )}
+          </div>
+
+          {/* Skills Comparison */}
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <h4 className="font-poppins font-bold text-virgilio-text text-base">Skills</h4>
+              {newSkillsCount > 0 && (
+                <Badge className="bg-virgilio-purple text-white text-xs">
+                  +{newSkillsCount} new
+                </Badge>
+              )}
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Existing Skills */}
+              <Card className="border-virgilio-border">
+                <CardContent className="p-4">
+                  <div className="text-xs text-virgilio-muted mb-3 font-medium">
+                    {existingCandidate.skills?.length || 0} skills
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {existingCandidate.skills && existingCandidate.skills.length > 0 ? (
+                      existingCandidate.skills.map((skill: string) => (
+                        <Badge key={skill} variant="secondary" className="text-xs">
+                          {skill}
+                        </Badge>
+                      ))
+                    ) : (
+                      <p className="text-virgilio-muted italic text-sm">No skills listed</p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Merged Skills */}
+              <Card className={newSkillsCount > 0 ? "border-2 border-virgilio-purple/30 bg-virgilio-purple/5" : "border-virgilio-border"}>
+                <CardContent className="p-4">
+                  <div className="text-xs text-virgilio-muted mb-3 font-medium">
+                    {mergedCandidate.skills?.length || 0} skills
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {mergedCandidate.skills && mergedCandidate.skills.length > 0 ? (
+                      mergedCandidate.skills.map((skill: string) => {
+                        const isNew = !existingCandidate.skills?.includes(skill)
+                        return (
+                          <Badge
+                            key={skill}
+                            className={isNew ? "bg-virgilio-purple text-white text-xs" : "text-xs"}
+                            variant={isNew ? "default" : "secondary"}
+                          >
+                            {skill}
+                            {isNew && <span className="ml-1 text-[10px] opacity-80">NEW</span>}
+                          </Badge>
+                        )
+                      })
+                    ) : (
+                      <p className="text-virgilio-muted italic text-sm">No skills listed</p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           </div>
         </div>
 
-        <AlertDialogFooter>
-          <Button variant="outline" onClick={onCancel}>Cancel</Button>
-          <Button onClick={onConfirm}>
-            Merge
+        <AlertDialogFooter className="gap-3">
+          <Button 
+            variant="outline" 
+            onClick={onCancel}
+            className="border-virgilio-border text-virgilio-text hover:bg-virgilio-purple/5"
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={onConfirm}
+            className="bg-virgilio-purple hover:bg-virgilio-purple/90 text-white font-poppins font-semibold shadow-calendly"
+          >
+            Merge Candidate
+            <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         </AlertDialogFooter>
       </AlertDialogContent>
