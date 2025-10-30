@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Eye, Plus, CheckCircle2, Loader2, MapPin, Linkedin, ChevronLeft, ChevronRight } from 'lucide-react'
+import emptyStateAvatar from '@/assets/empty-state-avatar.png'
 import {
   Table,
   TableBody,
@@ -158,7 +159,13 @@ export function SourcingCandidateTable({
       <Card className="shadow-calendly">
         <CardContent className="p-12 text-center">
           <div className="space-y-4">
-            <div className="text-6xl">🔍</div>
+            <div className="flex justify-center">
+              <img 
+                src={emptyStateAvatar} 
+                alt="No candidates found"
+                className="h-24 w-24 rounded-full"
+              />
+            </div>
             <h3 className="text-lg font-semibold">No candidates found</h3>
             <p className="text-sm text-muted-foreground">
               Try adjusting your search criteria or filters
