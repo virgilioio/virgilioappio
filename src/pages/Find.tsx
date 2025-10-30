@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
+import { SidebarProvider } from '@/components/ui/sidebar'
 import { AIJobAssistant } from '@/components/dashboard/AIJobAssistant'
 import { Section } from '@/components/layout/Section'
 import { SourcingSidebar } from '@/components/sourcing/SourcingSidebar'
@@ -25,11 +25,7 @@ export default function Find() {
           }}
         />
         
-        <div className="flex-1 flex flex-col relative">
-          {/* Floating toggle button */}
-          <SidebarTrigger className="absolute top-4 left-4 z-50" />
-          
-          <main className="flex-1 bg-white">
+        <main className="flex-1 bg-white">
           {mode === 'new' && (
             <div className="min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center px-4 py-12">
               {/* Centered Container */}
@@ -67,8 +63,7 @@ export default function Find() {
               <SourcingProjectView projectId={selectedProjectId} />
             </Section>
           )}
-          </main>
-        </div>
+        </main>
       </div>
     </SidebarProvider>
   )

@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Plus, FileSearch, Clock } from 'lucide-react'
+import { Plus, FileSearch, Clock, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import {
   Sidebar,
@@ -10,6 +10,7 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarInput,
+  SidebarTrigger,
   useSidebar
 } from '@/components/ui/sidebar'
 import { Button } from '@/components/ui/button'
@@ -30,7 +31,7 @@ export function SourcingSidebar({
 }: SourcingSidebarProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<'active' | 'archived' | 'all'>('active')
-  const { state } = useSidebar()
+  const { state, toggleSidebar } = useSidebar()
   const isCollapsed = state === 'collapsed'
   
   const { data: projects, isLoading, error } = useSourcingProjects()
@@ -50,9 +51,23 @@ export function SourcingSidebar({
       className={`border-r border-border transition-all duration-300 ${isCollapsed ? 'w-14' : 'w-64'}`}
     >
       <SidebarHeader className="border-b border-border p-4">
+        <div className="flex items-center justify-between mb-3">
+          {!isCollapsed && (
+            <h2 className="text-sm font-semibold text-foreground">Sourcing Projects</h2>
+          )}
+          <Button 
+            size="sm" 
+            variant="outline" 
+            className="h-8 w-8 p-0 hover:bg-accent hover:scale-110 transition-transform ml-auto"
+            onClick={toggleSidebar}
+            aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            {isCollapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
+          </Button>
+        </div>
+        
         {!isCollapsed && (
           <>
-            <h2 className="text-sm font-semibold text-foreground mb-3">Sourcing Projects</h2>
             {/* Search Input */}
             <SidebarInput 
               placeholder="Search projects..." 
