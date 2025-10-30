@@ -16,6 +16,8 @@ type ParseResult = {
   name?: string;
   email?: string;
   phone?: string;
+  linkedinUrl?: string;
+  location?: string;
   profileSummary?: string;
 };
 
@@ -33,6 +35,12 @@ function extractPhone(text: string): string | undefined {
   return matches.sort((a, b) => b.replace(/\D/g, '').length - a.replace(/\D/g, '').length)[0];
 }
 
+function extractLinkedIn(text: string): string | undefined {
+  const linkedInRegex = /(?:https?:\/\/)?(?:www\.)?linkedin\.com\/in\/[a-zA-Z0-9_-]+\/?/gi;
+  const match = text.match(linkedInRegex);
+  return match ? match[0] : undefined;
+}
+
 async function aiExtract(text: string, fileName?: string): Promise<ParseResult> {
   if (!OPENAI_API_KEY) {
     // Without an API key, return basic regex-based fields only
@@ -44,10 +52,12 @@ async function aiExtract(text: string, fileName?: string): Promise<ParseResult> 
 
   const system = `You are an expert ATS resume parser.
 Return ONLY valid JSON with these exact fields:
-{name: string|optional, email: string|optional, phone: string|optional, profileSummary: string|optional}
+{name: string|optional, email: string|optional, phone: string|optional, linkedinUrl: string|optional, location: string|optional, profileSummary: string|optional}
 - name: the candidate's full name if confidently found; otherwise omit.
 - email: a primary contact email if present.
 - phone: a primary phone in international format if possible.
+- linkedinUrl: Full LinkedIn profile URL if present (e.g., https://linkedin.com/in/username).
+- location: Current location formatted as "City, State/Province, Country" (e.g., "Mexico City, CDMX, Mexico").
 - profileSummary: A concise professional profile in Spanish (max 150 words).
   Include: years of experience, key areas of expertise, notable achievements.
   Format: Use bold for headings, italics for emphasis. Keep it brief and professional.
@@ -130,12 +140,15 @@ Return ONLY JSON. Do not include markdown fences or commentary.`;
     }
   }
 
-  // Ensure email/phone if missing, using regex
+  // Ensure email/phone/linkedinUrl if missing, using regex
   if (!parsed.email) parsed.email = extractEmail(text);
   if (!parsed.phone) parsed.phone = extractPhone(text);
+  if (!parsed.linkedinUrl) parsed.linkedinUrl = extractLinkedIn(text);
 
   // Minimal cleanup
   if (parsed.name) parsed.name = parsed.name.trim();
+  if (parsed.linkedinUrl) parsed.linkedinUrl = parsed.linkedinUrl.trim();
+  if (parsed.location) parsed.location = parsed.location.trim();
   if (parsed.profileSummary) parsed.profileSummary = parsed.profileSummary.trim();
 
   return parsed;

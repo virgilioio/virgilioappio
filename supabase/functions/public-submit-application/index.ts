@@ -210,6 +210,7 @@ serve(async (req) => {
         email: candidateEmail,
         phone: body.phone?.slice(0, 80) || null,
         linkedin_url: body.linkedin_url?.slice(0, 512) || null,
+        location: body.location?.slice(0, 255) || null,
         profile_summary: body.profile_summary || null,
         skills: body.skills ? [body.skills] : null,
         source: "public_posting",

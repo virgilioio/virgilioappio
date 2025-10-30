@@ -10,6 +10,8 @@ export type ParsedResume = {
   name?: string;
   email?: string;
   phone?: string;
+  linkedinUrl?: string;
+  location?: string;
   profileSummary?: string;
 };
 
@@ -100,7 +102,7 @@ export function useResumeParsing() {
       // Update only missing candidate fields
       const { data: existing, error: fetchErr } = await supabase
         .from('candidates')
-        .select('id, candidate_name, contact_emails, contact_phones, profile_summary')
+        .select('id, candidate_name, contact_emails, contact_phones, profile_summary, linkedin_url, location')
         .eq('id', candidateId)
         .maybeSingle();
 
@@ -124,6 +126,12 @@ export function useResumeParsing() {
         }
         if (parsed.phone) {
           update.contact_phones = uniquePush<string>(existing.contact_phones, parsed.phone);
+        }
+        if (parsed.linkedinUrl && !existing.linkedin_url) {
+          update.linkedin_url = parsed.linkedinUrl;
+        }
+        if (parsed.location && !existing.location) {
+          update.location = parsed.location;
         }
       } else {
         // If we can't fetch, skip updating
