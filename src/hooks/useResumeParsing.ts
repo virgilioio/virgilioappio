@@ -118,6 +118,7 @@ export function useResumeParsing() {
       }
 
       const parsed = (data || {}) as ParsedResume;
+      console.log('[Resume Parsing] Parsed data from edge function:', parsed);
 
       // Update only missing candidate fields
       const { data: existing, error: fetchErr } = await supabase
@@ -152,6 +153,14 @@ export function useResumeParsing() {
         }
         if (parsed.location && (!existing.location_city || !existing.location_state || !existing.location_country)) {
           const locationParts = parseLocationString(parsed.location);
+          console.log('[Resume Parsing] Location string:', parsed.location);
+          console.log('[Resume Parsing] Parsed location parts:', locationParts);
+          console.log('[Resume Parsing] Existing location:', { 
+            city: existing.location_city, 
+            state: existing.location_state, 
+            country: existing.location_country 
+          });
+          
           if (locationParts.city && !existing.location_city) {
             update.location_city = locationParts.city;
           }
@@ -167,8 +176,11 @@ export function useResumeParsing() {
         console.warn('Candidate not found or not accessible; skipping updates.');
       }
 
+      console.log('[Resume Parsing] Update object to be sent:', update);
+
       if (Object.keys(update).length > 0) {
         const { error: upErr } = await supabase.from('candidates').update(update).eq('id', candidateId);
+        console.log('[Resume Parsing] Database update result:', { success: !upErr, error: upErr });
         if (upErr) {
           console.error('Failed to update candidate with parsed data:', upErr);
           toast.error('Parsed the resume but failed to update the candidate record.');
