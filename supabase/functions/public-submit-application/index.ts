@@ -205,16 +205,23 @@ serve(async (req) => {
 
     // If not found, create a new global candidate
     if (!globalCandidateId) {
-      const candidateData: any = {
-        candidate_name: candidateName,
-        email: candidateEmail,
-        phone: body.phone?.slice(0, 80) || null,
-        linkedin_url: body.linkedin_url?.slice(0, 512) || null,
-        location: body.location?.slice(0, 255) || null,
-        profile_summary: body.profile_summary || null,
-        skills: body.skills ? [body.skills] : null,
-        source: "public_posting",
-      };
+        const candidateData: any = {
+          candidate_name: candidateName,
+          email: candidateEmail,
+          phone: body.phone?.slice(0, 80) || null,
+          linkedin_url: body.linkedin_url?.slice(0, 512) || null,
+          profile_summary: body.profile_summary || null,
+          skills: body.skills ? [body.skills] : null,
+          source: "public_posting",
+        };
+
+        // Parse location if provided
+        if (body.location) {
+          const locationParts = parseLocationString(body.location);
+          if (locationParts.city) candidateData.location_city = locationParts.city;
+          if (locationParts.state) candidateData.location_state = locationParts.state;
+          if (locationParts.country) candidateData.location_country = locationParts.country;
+        }
 
       // Include generated skills if provided
       if (body.generatedSkills && body.generatedSkills.length > 0) {

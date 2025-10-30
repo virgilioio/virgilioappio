@@ -22,6 +22,26 @@ function uniquePush<T>(arr: T[] | null | undefined, value: T | null | undefined)
   return base;
 }
 
+function parseLocationString(location: string): { city?: string; state?: string; country?: string } {
+  if (!location) return {};
+  
+  const parts = location.split(',').map(p => p.trim()).filter(p => p.length > 0);
+  
+  if (parts.length === 1) {
+    return { country: parts[0] };
+  } else if (parts.length === 2) {
+    return { city: parts[0], country: parts[1] };
+  } else if (parts.length >= 3) {
+    return {
+      city: parts[parts.length - 3],
+      state: parts[parts.length - 2],
+      country: parts[parts.length - 1]
+    };
+  }
+  
+  return {};
+}
+
 export function useResumeParsing() {
   const [isParsing, setIsParsing] = useState(false);
 
@@ -102,7 +122,7 @@ export function useResumeParsing() {
       // Update only missing candidate fields
       const { data: existing, error: fetchErr } = await supabase
         .from('candidates')
-        .select('id, candidate_name, contact_emails, contact_phones, profile_summary, linkedin_url, location')
+        .select('id, candidate_name, contact_emails, contact_phones, profile_summary, linkedin_url, location_city, location_state, location_country')
         .eq('id', candidateId)
         .maybeSingle();
 
@@ -130,8 +150,17 @@ export function useResumeParsing() {
         if (parsed.linkedinUrl && !existing.linkedin_url) {
           update.linkedin_url = parsed.linkedinUrl;
         }
-        if (parsed.location && !existing.location) {
-          update.location = parsed.location;
+        if (parsed.location && (!existing.location_city || !existing.location_state || !existing.location_country)) {
+          const locationParts = parseLocationString(parsed.location);
+          if (locationParts.city && !existing.location_city) {
+            update.location_city = locationParts.city;
+          }
+          if (locationParts.state && !existing.location_state) {
+            update.location_state = locationParts.state;
+          }
+          if (locationParts.country && !existing.location_country) {
+            update.location_country = locationParts.country;
+          }
         }
       } else {
         // If we can't fetch, skip updating
