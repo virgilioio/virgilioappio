@@ -53,6 +53,26 @@ interface SubmitApplicationResponse {
   error?: string;
 }
 
+function parseLocationString(location: string): { city?: string; state?: string; country?: string } {
+  if (!location) return {};
+  
+  const parts = location.split(',').map(p => p.trim()).filter(p => p.length > 0);
+  
+  if (parts.length === 1) {
+    return { country: parts[0] };
+  } else if (parts.length === 2) {
+    return { city: parts[0], country: parts[1] };
+  } else if (parts.length >= 3) {
+    return {
+      city: parts[parts.length - 3],
+      state: parts[parts.length - 2],
+      country: parts[parts.length - 1]
+    };
+  }
+  
+  return {};
+}
+
 serve(async (req) => {
   const preflightResponse = handleSecureCorsPreFlight(req, corsHeaders);
   if (preflightResponse) return preflightResponse;
