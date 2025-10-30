@@ -51,20 +51,9 @@ export function SourcingSidebar({
       className={`border-r border-border transition-all duration-300 ${isCollapsed ? 'w-14' : 'w-64'}`}
     >
       <SidebarHeader className="border-b border-border p-4">
-        <div className="flex items-center justify-between mb-3">
-          {!isCollapsed && (
-            <h2 className="text-sm font-semibold text-foreground">Sourcing Projects</h2>
-          )}
-          <Button 
-            size="sm" 
-            variant="outline" 
-            className="h-8 w-8 p-0 hover:bg-accent hover:scale-110 transition-transform ml-auto"
-            onClick={toggleSidebar}
-            aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          >
-            {isCollapsed ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
-          </Button>
-        </div>
+        {!isCollapsed && (
+          <h2 className="text-sm font-semibold text-foreground mb-3">Sourcing Projects</h2>
+        )}
         
         {!isCollapsed && (
           <>
@@ -75,6 +64,17 @@ export function SourcingSidebar({
               onChange={(e) => setSearchQuery(e.target.value)}
               className="mb-2"
             />
+            
+            {/* New Search Button */}
+            <Button 
+              variant="default" 
+              size="sm" 
+              className="w-full justify-start mb-2"
+              onClick={onNewSearch}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              New Search
+            </Button>
             
             {/* Status Filter Toggle */}
             <div className="flex gap-1">
@@ -170,19 +170,30 @@ export function SourcingSidebar({
         )}
       </SidebarContent>
       
-      {!isCollapsed && (
-        <SidebarFooter className="border-t border-border p-2">
+      <SidebarFooter className="border-t border-border p-2">
+        {!isCollapsed ? (
           <Button 
-            variant="outline" 
             size="sm" 
+            variant="outline" 
             className="w-full justify-start"
-            onClick={onNewSearch}
+            onClick={toggleSidebar}
+            aria-label="Collapse sidebar"
           >
-            <Plus className="h-4 w-4 mr-2" />
-            New Search
+            <PanelLeftClose className="h-4 w-4 mr-2" />
+            Collapse
           </Button>
-        </SidebarFooter>
-      )}
+        ) : (
+          <Button 
+            size="sm" 
+            variant="outline" 
+            className="w-full h-8 p-0"
+            onClick={toggleSidebar}
+            aria-label="Expand sidebar"
+          >
+            <PanelLeftOpen className="h-4 w-4" />
+          </Button>
+        )}
+      </SidebarFooter>
     </Sidebar>
   )
 }
