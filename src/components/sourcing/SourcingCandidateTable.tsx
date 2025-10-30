@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Eye, Plus, CheckCircle2, Loader2, MapPin, Linkedin, ChevronLeft, ChevronRight } from 'lucide-react'
 import emptyStateAvatar from '@/assets/empty-state-avatar.png'
+import UniversalCandidateProfileSheet from '@/components/candidates/UniversalCandidateProfileSheet'
 import {
   Table,
   TableBody,
@@ -50,6 +51,8 @@ export function SourcingCandidateTable({
   const { toast } = useToast()
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
+  const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null)
+  const [sheetOpen, setSheetOpen] = useState(false)
   
   // Sortable table with default sort by match_score DESC
   const { sortedData, sortConfig, requestSort } = useSortableTable(
@@ -242,7 +245,10 @@ export function SourcingCandidateTable({
                   <TableRow 
                     key={candidate.id}
                     className="cursor-pointer hover:bg-muted/50"
-                    onClick={() => navigate(`/candidates/${candidate.id}`)}
+                    onClick={() => {
+                      setSelectedCandidateId(candidate.id)
+                      setSheetOpen(true)
+                    }}
                   >
                     <TableCell>
                       <div className="flex items-center gap-3">
@@ -322,7 +328,11 @@ export function SourcingCandidateTable({
                         <Button 
                           size="sm" 
                           variant="outline"
-                          onClick={() => navigate(`/candidates/${candidate.id}`)}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setSelectedCandidateId(candidate.id)
+                            setSheetOpen(true)
+                          }}
                         >
                           <Eye className="h-3 w-3" />
                         </Button>
@@ -401,7 +411,10 @@ export function SourcingCandidateTable({
             <Card 
               key={candidate.id} 
               className="shadow-calendly cursor-pointer hover:shadow-lg transition-shadow"
-              onClick={() => navigate(`/candidates/${candidate.id}`)}
+              onClick={() => {
+                setSelectedCandidateId(candidate.id)
+                setSheetOpen(true)
+              }}
             >
               <CardContent className="p-4 space-y-3">
                 <div className="flex items-start gap-3">
@@ -454,7 +467,11 @@ export function SourcingCandidateTable({
                     size="sm" 
                     variant="outline"
                     className="flex-1"
-                    onClick={() => navigate(`/candidates/${candidate.id}`)}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setSelectedCandidateId(candidate.id)
+                      setSheetOpen(true)
+                    }}
                   >
                     <Eye className="h-3 w-3 mr-1" />
                     View
@@ -517,6 +534,15 @@ export function SourcingCandidateTable({
           </div>
         )}
       </div>
+
+      {/* Universal Candidate Profile Sheet */}
+      <UniversalCandidateProfileSheet
+        open={sheetOpen}
+        onOpenChange={setSheetOpen}
+        candidateId={selectedCandidateId}
+        jobId={jobId}
+        context="sourcing"
+      />
     </div>
   )
 }

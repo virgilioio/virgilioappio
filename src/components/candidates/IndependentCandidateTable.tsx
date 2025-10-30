@@ -16,6 +16,7 @@ import { IndependentCandidate } from '@/hooks/useIndependentCandidates'
 import BulkAddToJobPipelineDialog from '@/components/candidates/BulkAddToJobPipelineDialog'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from '@/hooks/use-toast'
+import UniversalCandidateProfileSheet from '@/components/candidates/UniversalCandidateProfileSheet'
 
 interface IndependentCandidateTableProps {
   candidates: IndependentCandidate[]
@@ -50,9 +51,15 @@ export function IndependentCandidateTable({
   // Job association counts
   const [jobCounts, setJobCounts] = useState<Record<string, number>>({})
 
+  // Sheet state
+  const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null)
+  const [sheetOpen, setSheetOpen] = useState(false)
 
   const handleViewProfile = (candidateId: string) => {
-    navigate(`/candidates/${candidateId}`)
+    if (!selectionMode) {
+      setSelectedCandidateId(candidateId)
+      setSheetOpen(true)
+    }
   }
 
   const handleDelete = (candidateId: string) => {
@@ -554,13 +561,45 @@ const getPageNumbers = () => {
                       <span className="hidden sm:inline">Next</span>
                       <ChevronRight className="h-4 w-4" />
                     </button>
-                  </div>
+                   </div>
                 </div>
               </div>
             )}
           </>
         )}
       </CardContent>
+
+      {/* Universal Candidate Profile Sheet */}
+      <UniversalCandidateProfileSheet
+        open={sheetOpen}
+        onOpenChange={setSheetOpen}
+        candidateId={selectedCandidateId}
+        context="independent"
+        hasPrev={(() => {
+          if (!selectedCandidateId) return false
+          const currentIndex = filteredCandidates.findIndex(c => c.id === selectedCandidateId)
+          return currentIndex > 0
+        })()}
+        hasNext={(() => {
+          if (!selectedCandidateId) return false
+          const currentIndex = filteredCandidates.findIndex(c => c.id === selectedCandidateId)
+          return currentIndex >= 0 && currentIndex < filteredCandidates.length - 1
+        })()}
+        onNavigatePrev={() => {
+          if (!selectedCandidateId) return
+          const currentIndex = filteredCandidates.findIndex(c => c.id === selectedCandidateId)
+          if (currentIndex > 0) {
+            setSelectedCandidateId(filteredCandidates[currentIndex - 1].id)
+          }
+        }}
+        onNavigateNext={() => {
+          if (!selectedCandidateId) return
+          const currentIndex = filteredCandidates.findIndex(c => c.id === selectedCandidateId)
+          if (currentIndex >= 0 && currentIndex < filteredCandidates.length - 1) {
+            setSelectedCandidateId(filteredCandidates[currentIndex + 1].id)
+          }
+        }}
+      />
     </Card>
   )
 }
