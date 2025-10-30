@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { SidebarProvider } from '@/components/ui/sidebar'
+import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
 import { AIJobAssistant } from '@/components/dashboard/AIJobAssistant'
 import { Section } from '@/components/layout/Section'
 import { SourcingSidebar } from '@/components/sourcing/SourcingSidebar'
@@ -25,7 +25,16 @@ export default function Find() {
           }}
         />
         
-        <main className="flex-1 bg-white">
+        <div className="flex-1 flex flex-col">
+          {/* Header with toggle - always visible */}
+          <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+            <div className="flex h-14 items-center px-4 gap-4">
+              <SidebarTrigger />
+              <h1 className="text-lg font-semibold">Find Talent</h1>
+            </div>
+          </header>
+          
+          <main className="flex-1 bg-white">
           {mode === 'new' && (
             <div className="min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center px-4 py-12">
               {/* Centered Container */}
@@ -63,7 +72,8 @@ export default function Find() {
               <SourcingProjectView projectId={selectedProjectId} />
             </Section>
           )}
-        </main>
+          </main>
+        </div>
       </div>
     </SidebarProvider>
   )
