@@ -525,16 +525,17 @@ export function CandidateFormSheet({
 
   return (
     <Sheet open={isOpen} onOpenChange={handleClose}>
-      <SheetContent className="sm:max-w-[540px] overflow-y-auto">
+      <SheetContent className="sm:max-w-[540px] flex flex-col">
         <SheetHeader className="pb-6">
           <SheetTitle className="text-h4-mobile font-poppins font-bold text-virgilio-text tracking-page-title">
             {candidate ? 'Edit Candidate' : 'Add New Candidate'}<span className="text-purple-period">.</span>
           </SheetTitle>
         </SheetHeader>
 
-        <div className="space-y-6">
-          {/* Candidate Form */}
-          <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="flex-1 overflow-y-auto pr-2">
+          <div className="space-y-6">
+            {/* Candidate Form */}
+            <form id="candidate-form" onSubmit={handleSubmit} className="space-y-6">
 
             {/* Resume Upload */}
             <div className="space-y-4">
@@ -927,19 +928,22 @@ export function CandidateFormSheet({
               </div>
             )}
 
-            <div className="flex justify-end gap-3 pt-6 border-t">
-              <Button type="button" variant="outline" onClick={handleClose}>
-                Cancel
-              </Button>
-              <Button 
-                type="submit" 
-                disabled={isLoading || (!candidate && !jobId && !selectedJobId && !organizationId)}
-                title={(!candidate && !jobId && !selectedJobId && !organizationId) ? 'Select a job or organization first' : ''}
-              >
-                {isLoading ? 'Saving...' : (candidate ? 'Update Candidate' : 'Add Candidate')}
-              </Button>
-            </div>
           </form>
+          </div>
+        </div>
+
+        <div className="border-t pt-4 mt-4 bg-background flex justify-end gap-3">
+          <Button type="button" variant="outline" onClick={handleClose}>
+            Cancel
+          </Button>
+          <Button 
+            type="submit"
+            form="candidate-form"
+            disabled={isLoading || (!candidate && !jobId && !selectedJobId && !organizationId)}
+            title={(!candidate && !jobId && !selectedJobId && !organizationId) ? 'Select a job or organization first' : ''}
+          >
+            {isLoading ? 'Saving...' : (candidate ? 'Update Candidate' : 'Add Candidate')}
+          </Button>
         </div>
       </SheetContent>
       

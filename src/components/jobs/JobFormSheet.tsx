@@ -174,14 +174,15 @@ export function JobFormSheet({ isOpen, onClose, onSubmit, job, isLoading }: JobF
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent className="w-[600px] sm:w-[800px] overflow-y-auto">
+      <SheetContent className="w-[600px] sm:w-[800px] flex flex-col">
         <SheetHeader>
           <SheetTitle className="text-h4-mobile font-poppins font-bold text-virgilio-text tracking-page-title">
             {job ? 'Edit Job' : 'Create New Job'}<span className="text-purple-period">.</span>
           </SheetTitle>
         </SheetHeader>
         
-        <form onSubmit={handleSubmit} className="space-y-6 mt-6">
+        <div className="flex-1 overflow-y-auto pr-2">
+          <form id="job-form" onSubmit={handleSubmit} className="space-y-6 mt-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="md:col-span-2">
               <Label htmlFor="title">Job Title *</Label>
@@ -437,19 +438,22 @@ export function JobFormSheet({ isOpen, onClose, onSubmit, job, isLoading }: JobF
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 pt-6 border-t">
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button 
-              type="submit" 
-              disabled={isLoading || !formData.organization_id}
-              title={!formData.organization_id ? 'Organization selection required' : ''}
-            >
-              {isLoading ? 'Saving...' : (job ? 'Update Job' : 'Create Job')}
-            </Button>
-          </div>
-        </form>
+          </form>
+        </div>
+
+        <div className="border-t pt-4 mt-4 bg-background flex justify-end gap-3">
+          <Button type="button" variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button 
+            type="submit"
+            form="job-form"
+            disabled={isLoading || !formData.organization_id}
+            title={!formData.organization_id ? 'Organization selection required' : ''}
+          >
+            {isLoading ? 'Saving...' : (job ? 'Update Job' : 'Create Job')}
+          </Button>
+        </div>
       </SheetContent>
     </Sheet>
   )

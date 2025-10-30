@@ -58,12 +58,13 @@ export function AutomationFormSheet({
   
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-6xl overflow-y-auto">
+      <SheetContent className="w-full sm:max-w-6xl flex flex-col">
         <SheetHeader>
           <SheetTitle>Create Email Automation</SheetTitle>
         </SheetHeader>
         
-        <div className="space-y-6 py-6">
+        <div className="flex-1 overflow-y-auto pr-2">
+          <div className="space-y-6 py-6">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Automation Type</Label>
@@ -99,9 +100,10 @@ export function AutomationFormSheet({
             jobId={jobId}
             isSingleEmail={automationType === 'single_email'}
           />
+          </div>
         </div>
         
-        <div className="flex justify-end gap-2 pt-4 border-t">
+        <div className="border-t pt-4 mt-4 bg-background flex justify-end gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>

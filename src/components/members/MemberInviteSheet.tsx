@@ -208,7 +208,7 @@ export function MemberInviteSheet({
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent className="sm:max-w-[540px]">
+      <SheetContent className="sm:max-w-[540px] flex flex-col">
         <SheetHeader>
           <SheetTitle className="text-h4-mobile font-poppins font-bold text-virgilio-text tracking-page-title">
             Invite New User<span className="text-purple-period">.</span>
@@ -218,7 +218,8 @@ export function MemberInviteSheet({
           </SheetDescription>
         </SheetHeader>
         
-        <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-6 py-6">
+        <div className="flex-1 overflow-y-auto pr-2">
+          <form id="invite-form" onSubmit={handleSubmit(onFormSubmit)} className="space-y-6 py-6">
           {/* Email Field */}
           <div className="space-y-2">
             <Label htmlFor="email">Email Address</Label>
@@ -316,16 +317,17 @@ export function MemberInviteSheet({
               User will be invited to your current organization
             </div>
           </div>
-        </form>
+          </form>
+        </div>
 
-        <SheetFooter>
+        <SheetFooter className="border-t pt-4 mt-4 bg-background">
           <Button type="button" variant="outline" onClick={onClose}>
             Cancel
           </Button>
           <Button 
-            type="submit" 
+            type="submit"
+            form="invite-form"
             disabled={isLoading || !selectedRole}
-            onClick={handleSubmit(onFormSubmit)}
           >
             {isLoading ? 'Sending...' : 'Send Invitation'}
           </Button>
