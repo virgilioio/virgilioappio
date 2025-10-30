@@ -76,7 +76,17 @@ export function useResumeParsing() {
         return;
       }
 
-      return (data || {}) as ParsedResume;
+      console.log('[useResumeParsing] Raw data from edge function:', data);
+      const parsed = (data || {}) as ParsedResume;
+      console.log('[useResumeParsing] Returning parsed data:', {
+        name: parsed.name,
+        email: parsed.email,
+        phone: parsed.phone,
+        linkedinUrl: parsed.linkedinUrl,
+        location: parsed.location,
+        profileSummary: parsed.profileSummary ? '(exists)' : '(missing)'
+      });
+      return parsed;
     } catch (err) {
       console.error('parseResume error:', err);
       toast.error('Resume parsing failed.');

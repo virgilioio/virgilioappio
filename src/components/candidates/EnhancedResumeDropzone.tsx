@@ -119,9 +119,20 @@ export function EnhancedResumeDropzone({
         skillsPromise
       ])
 
+      console.log('[EnhancedResumeDropzone] Parsed data received:', {
+        name: parsed?.name,
+        email: parsed?.email,
+        phone: parsed?.phone,
+        linkedinUrl: parsed?.linkedinUrl,
+        location: parsed?.location,
+        profileSummary: parsed?.profileSummary ? '(exists)' : '(missing)'
+      });
+
       if (parsed) {
+        console.log('[EnhancedResumeDropzone] Calling onParsed callback with data');
         // Call onParsed callback
         onParsed?.(parsed)
+        console.log('[EnhancedResumeDropzone] onParsed callback invoked');
 
         if (skillsResult?.skills) {
           const skillNames = skillsResult.skills.map(s => s.name).filter(Boolean)

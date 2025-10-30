@@ -165,23 +165,55 @@ export function IndependentCandidateForm({
             <h3 className="text-sm font-semibold text-foreground">Resume</h3>
             <EnhancedResumeDropzone
               onParsed={(parsed: ParsedResumeData) => {
+                console.log('[IndependentCandidateForm] ===== onParsed CALLBACK INVOKED =====');
+                console.log('[IndependentCandidateForm] Received parsed data:', {
+                  name: parsed.name,
+                  email: parsed.email,
+                  phone: parsed.phone,
+                  linkedinUrl: parsed.linkedinUrl,
+                  location: parsed.location,
+                  profileSummary: parsed.profileSummary ? '(exists)' : '(missing)'
+                });
+                
                 // Apply parsed data to form
                 if (parsed.name) setValue('candidate_name', parsed.name)
                 if (parsed.email) setValue('email', parsed.email)
                 if (parsed.phone) setValue('phone', parsed.phone)
-                if (parsed.linkedinUrl) setValue('linkedin_url', parsed.linkedinUrl)
+                
+                if (parsed.linkedinUrl) {
+                  console.log('[IndependentCandidateForm] Setting linkedin_url:', parsed.linkedinUrl);
+                  setValue('linkedin_url', parsed.linkedinUrl)
+                } else {
+                  console.log('[IndependentCandidateForm] WARNING: No linkedinUrl in parsed data');
+                }
                 
                 // Parse location string into separate fields
                 if (parsed.location) {
+                  console.log('[IndependentCandidateForm] Parsing location:', parsed.location);
                   const parts = parsed.location.split(',').map(s => s.trim())
+                  console.log('[IndependentCandidateForm] Split into parts:', parts);
+                  
                   if (parts.length === 3) {
+                    console.log('[IndependentCandidateForm] Setting location fields:', {
+                      city: parts[0],
+                      state: parts[1],
+                      country: parts[2]
+                    });
                     setValue('location_city', parts[0])
                     setValue('location_state', parts[1])
                     setValue('location_country', parts[2])
                   } else if (parts.length === 2) {
+                    console.log('[IndependentCandidateForm] Setting location fields (2 parts):', {
+                      city: parts[0],
+                      country: parts[1]
+                    });
                     setValue('location_city', parts[0])
                     setValue('location_country', parts[1])
+                  } else {
+                    console.log('[IndependentCandidateForm] WARNING: Unexpected location format, parts:', parts);
                   }
+                } else {
+                  console.log('[IndependentCandidateForm] WARNING: No location in parsed data');
                 }
                 
                 if (parsed.profileSummary && parsed.profileSummary.trim().length > 0) {
