@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
+import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { Badge } from '@/components/ui/badge'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet'
 import { Input } from '@/components/ui/input'
@@ -10,6 +11,7 @@ import { Label } from '@/components/ui/label'
 import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Loader2, Sparkles, CheckCircle2, Circle, Briefcase, DollarSign, MapPin, Target, ChevronDown, ChevronUp, TrendingUp, Clock, Users, Award, Building2, Edit2, BarChart3, AlertTriangle, PieChart, RefreshCw, ArrowUp } from 'lucide-react'
+import gioAvatar from '@/assets/gio-avatar.png'
 import { supabase } from '@/lib/supabaseClient'
 import { useToast } from '@/hooks/use-toast'
 import { validateJobPrompt, getValidationStats, type ValidationItem } from '@/utils/jobPromptValidation'
@@ -496,9 +498,11 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
         <SheetContent side="right" className="w-full sm:w-[1050px] lg:w-[1400px] overflow-y-auto p-0">
           <SheetHeader className="space-y-4 border-b border-virgilio-border pb-6 px-6 pt-6 sticky top-0 bg-background z-10">
             <div className="flex items-center gap-3">
-              <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-purple-500 to-cyan-500 flex items-center justify-center shadow-md">
-                <Sparkles className="h-6 w-6 text-white" />
-              </div>
+              <img 
+                src={gioAvatar} 
+                alt="Gio AI Assistant"
+                className="h-12 w-12 rounded-full shadow-lg"
+              />
               <div className="flex-1">
                 <SheetTitle className="text-h4-mobile font-poppins font-bold text-virgilio-text tracking-page-title">
                   AI Job Assistant<span className="text-virgilio-purple">.</span>
@@ -637,10 +641,10 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
                     {/* Job Description */}
                     <div className="space-y-2">
                       <Label>Job Description</Label>
-                      <Textarea
+                      <RichTextEditor
                         value={editableJobSpec.job_description}
-                        onChange={(e) => handleFieldUpdate('job_description', e.target.value)}
-                        className="min-h-[300px]"
+                        onChange={(value) => handleFieldUpdate('job_description', value)}
+                        placeholder="Job description will appear here..."
                       />
                     </div>
                   </div>
@@ -683,7 +687,7 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
                     onClick={handleContinue}
                     disabled={!canContinue()}
                     size="lg"
-                    className="bg-virgilio-purple hover:bg-virgilio-purple/90"
+                    className="bg-virgilio-purple hover:bg-virgilio-purple/90 text-white"
                   >
                     {isCreatingJob ? (
                       <>
