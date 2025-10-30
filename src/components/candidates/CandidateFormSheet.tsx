@@ -290,7 +290,8 @@ export function CandidateFormSheet({
   const validateLinkedInUrl = (url: string) => {
     if (!url) return true // Allow empty URLs
     
-    const linkedinRegex = /^https?:\/\/.*linkedin\.com/
+    // Accept linkedin.com URLs with or without protocol
+    const linkedinRegex = /^(https?:\/\/)?(www\.)?linkedin\.com/i
     return linkedinRegex.test(url) || 'Please enter a valid LinkedIn URL'
   }
 
@@ -436,10 +437,17 @@ export function CandidateFormSheet({
       }
     }
     
+    // Normalize LinkedIn URL - add https:// if missing
+    let normalizedLinkedInUrl = data.linkedin_url?.trim() || ''
+    if (normalizedLinkedInUrl && !normalizedLinkedInUrl.match(/^https?:\/\//i)) {
+      normalizedLinkedInUrl = `https://${normalizedLinkedInUrl}`
+    }
+    
     const submitData = {
       ...data,
       email: data.email?.trim() ? data.email.trim() : null,
       phone: data.phone?.trim() ? data.phone.trim() : null,
+      linkedin_url: normalizedLinkedInUrl || null,
       salary_amount: data.salary_amount ? Number(data.salary_amount) : null,
       profile_summary: sanitizeHtmlForEditor(profileSummary),
       notes: notes,
@@ -543,10 +551,14 @@ export function CandidateFormSheet({
                   if (parsed.email) form.setValue('email', parsed.email)
                   if (parsed.phone) form.setValue('phone', parsed.phone)
                   
-                  // Add LinkedIn URL
+                  // Add LinkedIn URL (with normalization)
                   if (parsed.linkedinUrl) {
-                    console.log('[CandidateFormSheet] Setting linkedin_url:', parsed.linkedinUrl);
-                    form.setValue('linkedin_url', parsed.linkedinUrl)
+                    let normalizedUrl = parsed.linkedinUrl.trim()
+                    if (!normalizedUrl.match(/^https?:\/\//i)) {
+                      normalizedUrl = `https://${normalizedUrl}`
+                    }
+                    console.log('[CandidateFormSheet] Setting linkedin_url:', normalizedUrl);
+                    form.setValue('linkedin_url', normalizedUrl)
                   }
                   
                   // Add Location parsing
