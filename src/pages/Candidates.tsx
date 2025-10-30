@@ -1,6 +1,6 @@
 
 import { useState } from 'react'
-import { RefreshCw } from 'lucide-react'
+import { RefreshCw, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Section } from '@/components/layout/Section'
@@ -9,6 +9,7 @@ import { PermissionGate } from '@/components/auth/PermissionGate'
 import { IndependentCandidateTable } from '@/components/candidates/IndependentCandidateTable'
 import { CandidateFormSheet } from '@/components/candidates/CandidateFormSheet'
 import { CandidateMergeDialog } from '@/components/candidates/CandidateMergeDialog'
+import { BulkUploadDialog } from '@/components/candidates/BulkUploadDialog'
 import { useIndependentCandidates, CreateIndependentCandidateData } from '@/hooks/useIndependentCandidates'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useCandidateSync } from '@/hooks/useCandidateSync'
@@ -18,6 +19,7 @@ export default function Candidates() {
   const { canViewCandidates } = usePermissions()
   const [selectedCandidate, setSelectedCandidate] = useState(null)
   const [isFormOpen, setIsFormOpen] = useState(false)
+  const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false)
   const [showMergeDialog, setShowMergeDialog] = useState(false)
   const [duplicateInfo, setDuplicateInfo] = useState<{
     existing: any
@@ -147,16 +149,27 @@ export default function Candidates() {
               title="All Candidates"
               subtitle="Manage all candidates in your talent database. Use sync to import existing job candidates."
             >
-              <Button
-                onClick={handleSync}
-                disabled={isSyncing}
-                variant="outline"
-                size="sm"
-                className="gap-2"
-              >
-                <RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
-                {isSyncing ? 'Syncing...' : 'Sync Job Candidates'}
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  onClick={handleSync}
+                  disabled={isSyncing}
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                >
+                  <RefreshCw className={`h-4 w-4 ${isSyncing ? 'animate-spin' : ''}`} />
+                  {isSyncing ? 'Syncing...' : 'Sync Job Candidates'}
+                </Button>
+                <Button
+                  onClick={() => setIsBulkUploadOpen(true)}
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                >
+                  <Upload className="h-4 w-4" />
+                  Bulk Upload
+                </Button>
+              </div>
             </PageHeader>
           </Section>
 
@@ -194,6 +207,16 @@ export default function Candidates() {
               mergedCandidate={duplicateInfo.merged}
             />
           )}
+
+          {/* Bulk Upload Dialog */}
+          <BulkUploadDialog
+            isOpen={isBulkUploadOpen}
+            onClose={() => setIsBulkUploadOpen(false)}
+            onComplete={() => {
+              setIsBulkUploadOpen(false)
+              getCandidates()
+            }}
+          />
         </div>
       </PermissionGate>
     </AuthGate>
