@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { formatDistanceToNow } from 'date-fns'
 import { 
   Edit2, MoreHorizontal, RefreshCw, Archive, Trash2, 
-  MapPin, DollarSign 
+  MapPin, DollarSign, Target, Award 
 } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -136,7 +136,10 @@ export function SourcingProjectHeader({
             <div className="flex flex-wrap items-center gap-4 text-sm">
               {project.search_criteria.skills && project.search_criteria.skills.length > 0 && (
                 <div className="flex items-center gap-2">
-                  <span className="text-muted-foreground">🎯 Skills:</span>
+                  <div className="flex items-center gap-1.5">
+                    <Target className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-muted-foreground font-medium">Skills:</span>
+                  </div>
                   <div className="flex flex-wrap gap-1">
                     {project.search_criteria.skills.slice(0, 3).map(skill => (
                       <Badge key={skill} variant="secondary" className="text-xs">
@@ -172,15 +175,18 @@ export function SourcingProjectHeader({
 
           {/* Match Breakdown - Inline Badges */}
           <div className="flex flex-wrap items-center gap-3">
-            <span className="text-sm font-medium text-muted-foreground">Matches:</span>
+            <div className="flex items-center gap-1.5">
+              <Award className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm font-medium text-muted-foreground">Matches:</span>
+            </div>
             <Badge className="bg-green-500/20 text-green-700 border-green-500/30 hover:bg-green-500/30">
-              ⭐ {breakdown.excellent} Excellent
+              {breakdown.excellent} Excellent
             </Badge>
             <Badge className="bg-blue-500/20 text-blue-700 border-blue-500/30 hover:bg-blue-500/30">
-              ⭐ {breakdown.good} Good
+              {breakdown.good} Good
             </Badge>
             <Badge className="bg-yellow-500/20 text-yellow-700 border-yellow-500/30 hover:bg-yellow-500/30">
-              ⭐ {breakdown.fair} Fair
+              {breakdown.fair} Fair
             </Badge>
             <Badge variant="secondary">
               {breakdown.minimal} Minimal
