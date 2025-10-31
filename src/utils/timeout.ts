@@ -28,6 +28,19 @@ export async function withTimeout<T>(
 }
 
 /**
+ * Wraps a fetch request with a timeout
+ * @param promise The promise to wrap
+ * @param timeoutMs Timeout in milliseconds
+ */
+export async function withFetchTimeout<T>(
+  promiseOrFn: Promise<T> | (() => Promise<T>),
+  timeoutMs: number
+): Promise<T> {
+  const promise = typeof promiseOrFn === 'function' ? promiseOrFn() : promiseOrFn;
+  return withTimeout(promise, timeoutMs);
+}
+
+/**
  * Retries a function with exponential backoff
  * @param fn The function to retry
  * @param maxRetries Maximum number of retries

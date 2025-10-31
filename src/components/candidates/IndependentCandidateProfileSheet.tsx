@@ -246,14 +246,29 @@ export function IndependentCandidateProfileSheet({
                                 <Edit className="h-4 w-4 mr-2" />
                                 Edit
                               </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => generateCandidatePdf({ candidate })}
-                              >
-                                <Download className="h-4 w-4 mr-2" />
-                                Download
-                              </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={async () => {
+                    try {
+                      await generateCandidatePdf({ candidate })
+                      toast({ 
+                        title: 'Success', 
+                        description: 'Profile PDF downloaded successfully' 
+                      })
+                    } catch (error) {
+                      console.error('PDF generation failed:', error)
+                      toast({ 
+                        title: 'Error', 
+                        description: 'Failed to generate PDF. Please try again.', 
+                        variant: 'destructive' 
+                      })
+                    }
+                  }}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Download
+                </Button>
                             </div>
 
                             <Separator orientation="vertical" className="h-6" />

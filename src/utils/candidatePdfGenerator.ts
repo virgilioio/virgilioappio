@@ -2,6 +2,7 @@ import { jsPDF } from 'jspdf'
 import { Candidate } from '@/hooks/useCandidates'
 import { getSkillColor, PastelColor } from '@/utils/skillColors'
 import { supabase } from '@/lib/supabaseClient'
+import { withFetchTimeout } from '@/utils/timeout'
 
 // Skill color mapping for PDF (HSL values converted to RGB)
 const skillColorMap: Record<PastelColor, { bg: [number, number, number], text: [number, number, number] }> = {
@@ -190,57 +191,80 @@ interface GeneratePdfOptions {
 }
 
 export const generateCandidatePdf = async ({ candidate, job, organization }: GeneratePdfOptions) => {
-  const pdf = new jsPDF()
-  const pageWidth = pdf.internal.pageSize.width
-  const margin = 36 // 0.5 inch margins (72 points per inch * 0.5 = 36 points) - standard spacing
-  const contentWidth = pageWidth - (margin * 2)
-  let yPosition = margin
-
-  // Load custom fonts using TTF format for jsPDF compatibility
-  const loadCustomFonts = async () => {
-    try {
-      // Use CDN TTF fonts that work with jsPDF
-      const poppinsBoldResponse = await fetch('https://fonts.gstatic.com/s/poppins/v20/pxiByp8kv8JHgFVrLGT9Z1xlFd2JQEk.ttf')
-      const poppinsBoldBuffer = await poppinsBoldResponse.arrayBuffer()
-      const poppinsBoldBase64 = btoa(String.fromCharCode(...new Uint8Array(poppinsBoldBuffer)))
-      
-      const latoRegularResponse = await fetch('https://fonts.gstatic.com/s/lato/v24/S6uNw4ZXOJXAKKYAKSwPRhE.ttf')
-      const latoRegularBuffer = await latoRegularResponse.arrayBuffer()
-      const latoRegularBase64 = btoa(String.fromCharCode(...new Uint8Array(latoRegularBuffer)))
-      
-      // Add fonts to jsPDF
-      pdf.addFileToVFS('Poppins-Bold.ttf', poppinsBoldBase64)
-      pdf.addFont('Poppins-Bold.ttf', 'Poppins', 'bold')
-      
-      pdf.addFileToVFS('Lato-Regular.ttf', latoRegularBase64)
-      pdf.addFont('Lato-Regular.ttf', 'Lato', 'normal')
-      
-      return true
-    } catch (error) {
-      console.warn('Failed to load custom fonts, using fallbacks:', error)
-      return false
-    }
-  }
-
-  const fontsLoaded = await loadCustomFonts()
-
-  // Fetch current active logo from platform assets
-  let logoUrl = '/virgilio-logo.png' // Default fallback
   try {
-    const { data, error } = await supabase
-      .from('platform_assets')
-      .select('file_url')
-      .eq('asset_type', 'logo')
-      .eq('is_active', true)
-      .single()
+    console.log('[PDF] Starting PDF generation for:', candidate.candidate_name)
+    
+    const pdf = new jsPDF()
+    const pageWidth = pdf.internal.pageSize.width
+    const margin = 36 // 0.5 inch margins (72 points per inch * 0.5 = 36 points) - standard spacing
+    const contentWidth = pageWidth - (margin * 2)
+    let yPosition = margin
 
-    if (data && !error) {
-      logoUrl = data.file_url
+    // Load custom fonts using TTF format for jsPDF compatibility
+    const loadCustomFonts = async () => {
+      try {
+        console.log('[PDF] Loading custom fonts...')
+        // Use CDN TTF fonts that work with jsPDF
+        const poppinsBoldResponse = await withFetchTimeout(
+          fetch('https://fonts.gstatic.com/s/poppins/v20/pxiByp8kv8JHgFVrLGT9Z1xlFd2JQEk.ttf'),
+          5000
+        )
+        const poppinsBoldBuffer = await poppinsBoldResponse.arrayBuffer()
+        const poppinsBoldBase64 = btoa(String.fromCharCode(...new Uint8Array(poppinsBoldBuffer)))
+        
+        const latoRegularResponse = await withFetchTimeout(
+          fetch('https://fonts.gstatic.com/s/lato/v24/S6uNw4ZXOJXAKKYAKSwPRhE.ttf'),
+          5000
+        )
+        const latoRegularBuffer = await latoRegularResponse.arrayBuffer()
+        const latoRegularBase64 = btoa(String.fromCharCode(...new Uint8Array(latoRegularBuffer)))
+        
+        // Add fonts to jsPDF
+        pdf.addFileToVFS('Poppins-Bold.ttf', poppinsBoldBase64)
+        pdf.addFont('Poppins-Bold.ttf', 'Poppins', 'bold')
+        
+        pdf.addFileToVFS('Lato-Regular.ttf', latoRegularBase64)
+        pdf.addFont('Lato-Regular.ttf', 'Lato', 'normal')
+        
+        console.log('[PDF] Custom fonts loaded successfully')
+        return true
+      } catch (error) {
+        console.warn('[PDF] Failed to load custom fonts, using fallbacks:', error)
+        return false
+      }
     }
-  } catch (error) {
-    console.log('Using default logo - no custom logo found')
-    // Keep default logo if no custom one is found
-  }
+
+    const fontsLoaded = await loadCustomFonts()
+
+    // Fetch current active logo from platform assets with timeout
+    let logoUrl = '/virgilio-logo.png' // Default fallback
+    try {
+      console.log('[PDF] Fetching organization logo...')
+      
+      // Add 3-second timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Logo fetch timeout')), 3000)
+      )
+      
+      const logoPromise = supabase
+        .from('platform_assets')
+        .select('file_url')
+        .eq('asset_type', 'logo')
+        .eq('is_active', true)
+        .single()
+      
+      const { data, error } = await Promise.race([logoPromise, timeoutPromise]) as any
+
+      if (data && !error && data.file_url) {
+        console.log('[PDF] Custom logo found:', data.file_url)
+        logoUrl = data.file_url
+      } else {
+        console.log('[PDF] No custom logo found, using default')
+      }
+    } catch (error) {
+      console.warn('[PDF] Failed to fetch logo, using default:', error)
+      // Keep default logo
+    }
 
   // Typography helper functions with specified font sizes
   const setH1Style = () => {
@@ -301,23 +325,47 @@ export const generateCandidatePdf = async ({ candidate, job, organization }: Gen
     return false
   }
 
-  // Add logo at the top left using canvas approach
+  // Add logo at the top left - non-blocking
+  let logoAdded = false
   try {
+    console.log('[PDF] Loading logo image:', logoUrl)
+    
     // Create image element and load logo
     const logoImg = new Image()
     logoImg.crossOrigin = 'anonymous'
     
     const imageLoaded = new Promise<HTMLImageElement>((resolve, reject) => {
-      logoImg.onload = () => resolve(logoImg)
-      logoImg.onerror = () => reject(new Error('Failed to load logo'))
-      logoImg.src = logoUrl.startsWith('http') ? logoUrl : window.location.origin + logoUrl
+      const timeout = setTimeout(() => {
+        reject(new Error('Logo loading timed out after 5 seconds'))
+      }, 5000)
+      
+      logoImg.onload = () => {
+        clearTimeout(timeout)
+        resolve(logoImg)
+      }
+      logoImg.onerror = (e) => {
+        clearTimeout(timeout)
+        reject(new Error(`Failed to load logo: ${e}`))
+      }
+      
+      // Handle both absolute and relative URLs
+      const imageSrc = logoUrl.startsWith('http') 
+        ? logoUrl 
+        : `${window.location.origin}${logoUrl.startsWith('/') ? '' : '/'}${logoUrl}`
+      
+      console.log('[PDF] Attempting to load logo from:', imageSrc)
+      logoImg.src = imageSrc
     })
     
     const loadedImage = await imageLoaded
     
     // Create canvas to convert image to base64
     const canvas = document.createElement('canvas')
-    const ctx = canvas.getContext('2d')!
+    const ctx = canvas.getContext('2d')
+    
+    if (!ctx) {
+      throw new Error('Failed to get canvas context')
+    }
     
     // Set canvas size to match image
     canvas.width = loadedImage.naturalWidth
@@ -335,8 +383,11 @@ export const generateCandidatePdf = async ({ candidate, job, organization }: Gen
     pdf.addImage(base64Logo, 'PNG', margin, yPosition, logoWidth, logoHeight)
     yPosition += logoHeight + 8
     
+    logoAdded = true
+    console.log('[PDF] Logo successfully added to PDF')
+    
   } catch (error) {
-    console.error('Failed to load logo:', error)
+    console.warn('[PDF] Failed to load logo, using text fallback:', error)
     // Fallback to text if logo fails to load
     setH3Style()
     pdf.text('VIRGILIO', margin, yPosition)
@@ -469,5 +520,12 @@ export const generateCandidatePdf = async ({ candidate, job, organization }: Gen
 
   // Save the PDF
   const fileName = `${candidate.candidate_name?.replace(/\s+/g, '_') || 'candidate'}_profile.pdf`
+  console.log('[PDF] Saving PDF as:', fileName)
   pdf.save(fileName)
+  console.log('[PDF] PDF generation completed successfully')
+  
+  } catch (error) {
+    console.error('[PDF] Failed to generate PDF:', error)
+    throw error // Re-throw to allow caller to handle
+  }
 }

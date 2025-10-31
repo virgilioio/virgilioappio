@@ -448,7 +448,22 @@ const [oldBookingId, setOldBookingId] = useState<string | null>(null)
                                 <Button
                                   variant="outline"
                                   size="sm"
-                                  onClick={() => generateCandidatePdf({ candidate, job })}
+                                  onClick={async () => {
+                                    try {
+                                      await generateCandidatePdf({ candidate, job })
+                                      toast({ 
+                                        title: 'Success', 
+                                        description: 'Profile PDF downloaded successfully' 
+                                      })
+                                    } catch (error) {
+                                      console.error('PDF generation failed:', error)
+                                      toast({ 
+                                        title: 'Error', 
+                                        description: 'Failed to generate PDF. Please try again.', 
+                                        variant: 'destructive' 
+                                      })
+                                    }
+                                  }}
                                 >
                                   <Download className="h-4 w-4 mr-2" />
                                   Download
