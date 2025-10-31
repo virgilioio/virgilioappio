@@ -895,38 +895,6 @@ export function CandidateFormSheet({
               />
             </div>
 
-            {/* Internal Notes */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium text-text-primary border-b border-border pb-2">
-                Internal Notes
-              </h3>
-              <FormField 
-                label="Private notes about this candidate"
-                htmlFor="notes"
-                helpText="These notes are internal and will not be visible to the candidate"
-              >
-                <textarea
-                  id="notes"
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Add internal notes about this candidate..."
-                  className="w-full min-h-[100px] p-3 border border-border rounded-md resize-y"
-                />
-              </FormField>
-            </div>
-
-            {candidate && (
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium text-text-primary border-b border-border pb-2">
-                  Comments
-                </h3>
-                <CandidateComments 
-                  candidateId={candidate.id} 
-                  jobId={jobId}
-                  organizationId={organizationId || ''}
-                />
-              </div>
-            )}
 
           </form>
           </div>
