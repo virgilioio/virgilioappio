@@ -312,8 +312,8 @@ export function CandidateFormSheet({
       // Editing existing candidate: upload immediately
       try {
         setIsUploadingResume(true)
-        for (const f of fileArray) {
-          await uploadFileForCandidate(candidate.id, f)
+        for (const [index, f] of fileArray.entries()) {
+          await uploadFileForCandidate(candidate.id, f, index === 0)
         }
         toast({ title: 'Resume uploaded', description: 'Attachment added to candidate.' })
       } catch (e) {
@@ -323,7 +323,7 @@ export function CandidateFormSheet({
       }
     } else {
       // New candidate: queue files to upload after creation
-      setPendingFiles((prev) => [...prev, ...fileArray])
+      fileArray.forEach(addPendingFile)
 
       // Use enhanced dropzone for parsing when creating new candidates
       const first = fileArray[0]
@@ -333,11 +333,19 @@ export function CandidateFormSheet({
     }
   }
 
+  const addPendingFile = (file: File) => {
+    setPendingFiles((prev) => {
+      const alreadyQueued = prev.some((f) => f.name === file.name && f.size === file.size)
+      if (alreadyQueued) return prev
+      return [...prev, file]
+    })
+  }
+
   const removePendingFile = (name: string, size: number) => {
     setPendingFiles((prev) => prev.filter((f) => !(f.name === name && f.size === size)))
   }
 
-  const uploadFileForCandidate = async (jobCandidateId: string, file: File) => {
+  const uploadFileForCandidate = async (jobCandidateId: string, file: File, markAsResume: boolean = false) => {
     if (!user) throw new Error('Not authenticated')
     try {
       const ext = file.name.split('.').pop()
@@ -346,6 +354,16 @@ export function CandidateFormSheet({
         .from('candidate-attachments')
         .upload(storagePath, file)
       if (storageError) throw storageError
+
+      if (markAsResume) {
+        const { error: clearResumeFlagError } = await supabase
+          .from('candidate_attachments')
+          .update({ is_resume: false })
+          .eq('candidate_id', jobCandidateId)
+          .eq('is_resume', true)
+
+        if (clearResumeFlagError) throw clearResumeFlagError
+      }
 
       const { error: dbError } = await supabase
         .from('candidate_attachments')
@@ -356,6 +374,7 @@ export function CandidateFormSheet({
           file_size_bytes: file.size,
           file_type: file.type,
           uploaded_by: user.id,
+          is_resume: markAsResume,
         })
       if (dbError) {
         await supabase.storage.from('candidate-attachments').remove([storagePath])
@@ -380,9 +399,9 @@ export function CandidateFormSheet({
           setIsUploadingResume(true)
           console.log('📎 Uploading pending files:', pendingFiles.length)
           
-          for (const f of pendingFiles) {
+          for (const [index, f] of pendingFiles.entries()) {
             console.log('📎 Uploading file:', f.name)
-            await uploadFileForCandidate(candidateId, f)
+            await uploadFileForCandidate(candidateId, f, index === 0)
           }
           
           toast({ title: 'Resume uploaded', description: 'Attachment added to candidate.' })
@@ -543,7 +562,7 @@ export function CandidateFormSheet({
                 Resume<span className="text-purple-period">.</span>
               </h3>
               <EnhancedResumeDropzone
-                onUpload={candidate ? uploadFileForCandidate.bind(null, candidate.id) : undefined}
+                onUpload={candidate ? (file) => uploadFileForCandidate(candidate.id, file, true) : undefined}
                 onParsed={(parsed: ParsedResumeData) => {
                   console.log('[CandidateFormSheet] onParsed received:', parsed);
                   
@@ -598,6 +617,11 @@ export function CandidateFormSheet({
                 autoGenerateSkills={true}
                 showUpload={!!candidate} // Only upload for existing candidates
                 parseOnly={!candidate} // For new candidates, just parse
+                onFileCaptured={(file) => {
+                  if (!candidate) {
+                    addPendingFile(file)
+                  }
+                }}
               />
 
               {!candidate && pendingFiles.length > 0 && (
