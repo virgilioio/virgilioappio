@@ -5,6 +5,7 @@ import { toast } from '@/hooks/use-toast'
 import { withAuthRetry, extractErrorMessage } from '@/lib/authUtils'
 import { log } from '@/lib/logger'
 import { getOrganizationTree } from '@/lib/organizationHelpers'
+import { checkForDuplicateCandidate, createCandidate, DuplicateCheckResult } from '@/lib/candidateHelpers'
 
 export interface IndependentCandidate {
   id: string
@@ -54,46 +55,6 @@ export interface DuplicateResult {
   existingCandidate: IndependentCandidate
   incomingData: CreateIndependentCandidateData
   mergedData: any
-}
-
-// Smart merge helper - prioritizes more complete information
-const smartMerge = (existing: any, incoming: any): any => {
-  const merged = { ...existing }
-  
-  Object.keys(incoming).forEach(key => {
-    const existingValue = existing[key]
-    const incomingValue = incoming[key]
-    
-    // Skip undefined or null incoming values
-    if (incomingValue === undefined || incomingValue === null) return
-    
-    // If existing is null/empty, use incoming
-    if (!existingValue || existingValue === '') {
-      merged[key] = incomingValue
-    } 
-    // For arrays (like skills), merge and deduplicate
-    else if (Array.isArray(incomingValue) && Array.isArray(existingValue)) {
-      merged[key] = [...new Set([...existingValue, ...incomingValue])]
-    }
-    // For strings, prefer the longer value (more detail)
-    else if (typeof incomingValue === 'string' && typeof existingValue === 'string') {
-      if (incomingValue.length > existingValue.length) {
-        merged[key] = incomingValue
-      }
-    }
-    // For numbers, prefer the incoming value if it's greater
-    else if (typeof incomingValue === 'number' && typeof existingValue === 'number') {
-      if (incomingValue > existingValue) {
-        merged[key] = incomingValue
-      }
-    }
-    // For any other case, prefer incoming value if existing is falsy
-    else if (!existingValue) {
-      merged[key] = incomingValue
-    }
-  })
-  
-  return merged
 }
 
 export function useIndependentCandidates() {
@@ -158,78 +119,35 @@ export function useIndependentCandidates() {
     try {
       log.debug('Adding independent candidate:', candidateData)
       
-      // Check for duplicates within the same organization - fetch full record
-      if (candidateData.email || candidateData.candidate_name) {
-        const duplicateQuery = candidateData.email 
-          ? async () => await supabase.from('candidates').select('*')
-              .eq('email', candidateData.email!)
-              .eq('organization_id', organizationId)
-              .limit(1)
-          : async () => await supabase.from('candidates').select('*')
-              .eq('candidate_name', candidateData.candidate_name)
-              .eq('organization_id', organizationId)
-              .is('email', null)
-              .limit(1)
-        
-        const result = await withAuthRetry(duplicateQuery)
-
-        if (result.error) {
-          log.error('Error checking for duplicates:', result.error)
-        } else if (result.data && result.data.length > 0) {
-          // Found duplicate - return duplicate info for UI to handle
-          const existingCandidate = result.data[0] as IndependentCandidate
-          const mergedData = smartMerge(existingCandidate, candidateData)
-          
-          log.debug('Duplicate candidate found, returning for merge:', existingCandidate.id)
-          return {
-            isDuplicate: true,
-            existingCandidate,
-            incomingData: candidateData,
-            mergedData
-          }
+      // Check for duplicates using shared helper
+      const duplicateCheck = await checkForDuplicateCandidate(candidateData, organizationId)
+      
+      if (duplicateCheck) {
+        // Found duplicate - return for UI to handle
+        return {
+          isDuplicate: true,
+          existingCandidate: duplicateCheck.existingCandidate as IndependentCandidate,
+          incomingData: candidateData,
+          mergedData: duplicateCheck.mergedData
         }
       }
 
-      // Explicitly map only valid database fields to prevent schema errors
-      const { data: newCandidate, error: createError } = await withAuthRetry(async () =>
-        await supabase
-          .from('candidates')
-          .insert([{
-            candidate_name: candidateData.candidate_name,
-            email: candidateData.email,
-            phone: candidateData.phone,
-            location_country: candidateData.location_country,
-            location_state: candidateData.location_state,
-            location_city: candidateData.location_city,
-            salary_amount: candidateData.salary_amount,
-            salary_currency: candidateData.salary_currency,
-            salary_period: candidateData.salary_period,
-            profile_summary: candidateData.profile_summary,
-            linkedin_url: candidateData.linkedin_url,
-            resume_url: candidateData.resume_url,
-            skills: candidateData.skills,
-            status: candidateData.status || 'available',
-            source: candidateData.source || 'direct',
-            created_by: user.id,
-            organization_id: organizationId,
-          }])
-          .select()
-          .single()
-      )
+      // Create candidate using shared helper
+      const newCandidate = await createCandidate({
+        ...candidateData,
+        candidate_name: candidateData.candidate_name,
+        organization_id: organizationId,
+        created_by: user.id,
+        status: candidateData.status || 'available',
+        source: candidateData.source || 'direct'
+      })
 
-      if (createError) {
-        log.error('Error adding independent candidate:', createError)
-        throw createError
-      }
-
-      log.debug('Added independent candidate:', newCandidate)
       toast({
         title: 'Success',
         description: 'Candidate added successfully'
       })
 
-      await getCandidates() // Refresh the list
-      // Type cast to fix auto_generated_skills type mismatch
+      await getCandidates()
       return {
         ...newCandidate,
         auto_generated_skills: (newCandidate.auto_generated_skills as any) || null

@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { withAuthRetry, extractErrorMessage } from '@/lib/authUtils'
 import { toast } from '@/hooks/use-toast'
 import { log } from '@/lib/logger'
+import { checkForDuplicateCandidate, createCandidate, createJobAssociation, mergeCandidate, smartMerge, DuplicateCheckResult } from '@/lib/candidateHelpers'
 
 export interface Candidate {
   id: string
@@ -55,44 +56,12 @@ export interface CreateCandidateData {
   job_id?: string | null
 }
 
-/**
- * Smart merge two candidate records, keeping the most complete information
- * Prefers non-null, non-empty values from new data over existing data
- */
-function smartMerge(existing: any, incoming: any): any {
-  const merged = { ...existing }
-  
-  // Field priority rules
-  const fields = [
-    'email', 'phone', 'location_country', 'location_state', 'location_city',
-    'salary_amount', 'salary_currency', 'salary_period', 
-    'profile_summary', 'linkedin_url', 'resume_url',
-    'years_experience', 'role_current', 'company_current', 'bio'
-  ]
-  
-  fields.forEach(field => {
-    const incomingValue = incoming[field]
-    const existingValue = existing[field]
-    
-    // Use incoming if it's more complete
-    if (incomingValue !== null && incomingValue !== undefined && incomingValue !== '') {
-      // For strings, prefer longer values
-      if (typeof incomingValue === 'string' && typeof existingValue === 'string') {
-        merged[field] = incomingValue.length > existingValue.length ? incomingValue : existingValue
-      } else {
-        // For other types, prefer non-null incoming
-        merged[field] = incomingValue
-      }
-    }
-  })
-  
-  // Merge skills arrays (combine and deduplicate)
-  if (incoming.skills && Array.isArray(incoming.skills)) {
-    const existingSkills = existing.skills || []
-    merged.skills = [...new Set([...existingSkills, ...incoming.skills])]
-  }
-  
-  return merged
+// Duplicate result interface for backward compatibility with UI
+export interface DuplicateResult {
+  isDuplicate: true
+  existingCandidate: Candidate
+  incomingData: CreateCandidateData
+  mergedData: any
 }
 
 export function useCandidates(jobId: string) {
@@ -250,161 +219,95 @@ export function useCandidates(jobId: string) {
     return !candidate.first_viewed_by[user.id]
   }
 
-  const addCandidate = async (candidateData: CreateCandidateData) => {
+  const addCandidate = async (candidateData: CreateCandidateData): Promise<Candidate | DuplicateResult | any> => {
     if (!user || !jobId) throw new Error('User not authenticated or job ID missing')
 
     setIsLoading(true)
     setError(null)
 
     try {
-      console.log('Adding candidate to job:', jobId, candidateData)
+      log.debug('Adding candidate to job:', jobId, candidateData)
       
-      // First, verify the user has access to this job by trying to fetch it
-      const { data: jobData, error: jobError } = await supabase
-        .from('jobs')
-        .select('id, organization_id, title')
-        .eq('id', jobId)
-        .single()
+      // Fetch job data to get organization_id
+      const { data: jobData, error: jobError } = await withAuthRetry(async () =>
+        await supabase
+          .from('jobs')
+          .select('id, organization_id, title')
+          .eq('id', jobId)
+          .single()
+      )
 
-      if (jobError) {
+      if (jobError || !jobData) {
         log.error('Error verifying job access:', jobError)
         throw new Error('Unable to verify job access. You may not have permission to add candidates to this job.')
       }
 
-      if (!jobData) {
-        throw new Error('Job not found or you do not have access to this job.')
-      }
-
       log.debug('Job verification successful:', jobData)
 
-      // Step 1: Check if candidate already exists in global candidates table
-      let globalCandidateId: string | null = null
-      let existingCandidateData: any = null
+      // Check for duplicates using shared helper
+      const duplicateCheck = await checkForDuplicateCandidate(candidateData, jobData.organization_id)
+      
+      if (duplicateCheck) {
+        // Candidate exists - perform smart merge using shared helper
+        await mergeCandidate(duplicateCheck.existingCandidate.id, candidateData)
+        
+        // Create the job association
+        await createJobAssociation(
+          jobId,
+          duplicateCheck.existingCandidate.id,
+          candidateData.notes,
+          candidateData.assignedStageId,
+          'active',
+          user.id
+        )
 
-      if (candidateData.candidate_name) {
-        // Primary check: by email + name (matches DB unique constraint)
-        if (candidateData.email) {
-          const { data: existingCandidate } = await supabase
-            .from('candidates')
-            .select('*')  // Get full record for merge comparison
-            .eq('candidate_name', candidateData.candidate_name)
-            .eq('email', candidateData.email)
-            .maybeSingle()
-          
-          if (existingCandidate) {
-            globalCandidateId = existingCandidate.id
-            existingCandidateData = existingCandidate
-          }
-        } else {
-          // Fallback check: by name + location
-          let q = supabase
-            .from('candidates')
-            .select('*')
-            .eq('candidate_name', candidateData.candidate_name)
-          
-          if (candidateData.location_country === null || candidateData.location_country === undefined) {
-            q = q.is('location_country', null)
-          } else {
-            q = q.eq('location_country', candidateData.location_country)
-          }
-          
-          if (candidateData.location_city === null || candidateData.location_city === undefined) {
-            q = q.is('location_city', null)
-          } else {
-            q = q.eq('location_city', candidateData.location_city)
-          }
-          
-          const { data: existingCandidate } = await q.maybeSingle()
-          
-          if (existingCandidate) {
-            globalCandidateId = existingCandidate.id
-            existingCandidateData = existingCandidate
-          }
+        toast({
+          title: 'Success',
+          description: 'Candidate merged and added to job',
+        })
+
+        await getCandidates()
+        
+        return {
+          id: duplicateCheck.existingCandidate.id,
+          wasMerged: true,
+          existingData: duplicateCheck.existingCandidate,
+          mergedData: duplicateCheck.mergedData
         }
       }
 
-      // Step 2: If not exists, create in global candidates table
-      if (!globalCandidateId) {
-        // Remove association-specific fields that don't belong in candidates table
-        const { notes, assignedJobId, assignedStageId, job_id, ...globalCandidateData } = candidateData
-        const { data: newGlobalCandidate, error: globalError } = await supabase
-          .from('candidates')
-          .insert([{
-            ...globalCandidateData,
-            status: 'available',
-            source: 'job_application',
-            created_by: user.id,
-          }])
-          .select('*')  // Return full record
-          .single()
+      // No duplicate - create new candidate using shared helper
+      const newCandidate = await createCandidate({
+        ...candidateData,
+        candidate_name: candidateData.candidate_name,
+        organization_id: jobData.organization_id,
+        created_by: user.id,
+        status: 'available',
+        source: 'job_application'
+      })
 
-        if (!globalError && newGlobalCandidate) {
-          globalCandidateId = newGlobalCandidate.id
-          log.debug('Created global candidate:', globalCandidateId)
-        } else {
-          log.error('Error creating global candidate:', globalError)
-          throw globalError || new Error('Failed to create global candidate')
-        }
-      } else {
-        // Candidate exists - perform smart merge
-        const mergedData = smartMerge(existingCandidateData, candidateData)
-        
-        const { notes, assignedJobId, assignedStageId, job_id, ...updateFields } = mergedData
-        
-        if (Object.keys(updateFields).length > 0) {
-          const { error: updateError } = await supabase
-            .from('candidates')
-            .update(updateFields)
-            .eq('id', globalCandidateId)
-          
-          if (updateError) {
-            log.error('Error updating candidate during merge:', updateError)
-          } else {
-            log.debug('Merged candidate data:', { candidateId: globalCandidateId, fieldsUpdated: Object.keys(updateFields) })
-          }
-        }
-      }
+      // Create the job association using shared helper
+      await createJobAssociation(
+        jobId,
+        newCandidate.id,
+        candidateData.notes,
+        candidateData.assignedStageId,
+        'active',
+        user.id
+      )
 
-      // Step 3: Create association between job and global candidate
-      const { data: newAssociation, error: assocError } = await supabase
-        .from('job_candidate_associations')
-        .insert([{
-          job_id: jobId,
-          candidate_id: globalCandidateId,
-          current_stage_id: candidateData.assignedStageId || null,
-          status: 'active',
-          notes: candidateData.notes,
-          added_by: user.id,
-        }])
-        .select()
-        .single()
-
-      if (assocError) {
-        log.error('Error creating association:', assocError)
-        
-        // Provide more specific error messages based on the error type
-        if (assocError.message.includes('row-level security')) {
-          throw new Error('You do not have permission to add candidates to this job. Please contact your administrator.')
-        } else if (assocError.message.includes('foreign key')) {
-          throw new Error('Invalid job reference. Please refresh the page and try again.')
-        } else {
-          throw assocError
-        }
-      }
-
-      log.debug('Added candidate association:', newAssociation)
       toast({
         title: 'Success',
         description: 'Candidate added. You can attach a resume from the candidate panel.',
       })
 
-      await getCandidates() // Refresh the list
+      await getCandidates()
       
       return {
-        id: globalCandidateId,
-        wasMerged: !!existingCandidateData,
-        existingData: existingCandidateData,
-        mergedData: existingCandidateData ? smartMerge(existingCandidateData, candidateData) : null
+        id: newCandidate.id,
+        wasMerged: false,
+        existingData: null,
+        mergedData: null
       }
     } catch (err) {
       const errorMessage = extractErrorMessage(err)
