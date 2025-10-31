@@ -6,6 +6,9 @@ verify_jwt = true
 [functions.check-calendar-availability]
 verify_jwt = true
 
+[functions.collect-coresignal-profile]
+verify_jwt = true
+
 [functions.convert-document-to-pdf]
 verify_jwt = false
 
@@ -44,6 +47,9 @@ verify_jwt = false
 
 [functions.public-submit-application]
 verify_jwt = false
+
+[functions.search-coresignal-candidates]
+verify_jwt = true
 
 [functions.send-user-email]
 verify_jwt = true
