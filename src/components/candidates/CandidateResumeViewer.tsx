@@ -31,9 +31,13 @@ export function CandidateResumeViewer({ candidateId, jobCandidateId, fallbackRes
   const [error, setError] = useState<string | null>(null)
   const [iframeError, setIframeError] = useState(false)
 
-  const resumeAttachment = useMemo(() => attachments.find(a => a.is_resume), [attachments])
+  const resumeAttachment = useMemo(() => {
+    if (!attachments.length) return undefined
+    const flagged = attachments.find(a => a.is_resume)
+    return flagged ?? attachments[0]
+  }, [attachments])
 
-  const effectiveUrl = resumeAttachment ? resumeAttachment.file_url : (fallbackResumeUrl || null)
+  const effectiveUrl = resumeAttachment?.file_url ?? fallbackResumeUrl ?? null
   const fileType = resumeAttachment?.file_type || undefined
   const convertedPdfUrl = resumeAttachment?.converted_pdf_url || null
   const conversionStatus = resumeAttachment?.conversion_status || 'pending'

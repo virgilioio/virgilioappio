@@ -34,9 +34,10 @@ interface EnhancedResumeDropzoneProps {
   className?: string
   showUpload?: boolean // Whether to actually upload files
   parseOnly?: boolean // Only parse, don't upload
+  onFileCaptured?: (file: File) => void // Capture the raw file even when not uploading immediately
 }
 
-export function EnhancedResumeDropzone({ 
+export function EnhancedResumeDropzone({
   onUpload,
   onParsed,
   onSkillsGenerated,
@@ -48,7 +49,8 @@ export function EnhancedResumeDropzone({
   autoGenerateSkills = false,
   className = '',
   showUpload = true,
-  parseOnly = false
+  parseOnly = false,
+  onFileCaptured
 }: EnhancedResumeDropzoneProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [dragOver, setDragOver] = useState(false)
@@ -74,7 +76,10 @@ export function EnhancedResumeDropzone({
 
     try {
       setIsProcessing(true)
-      
+
+      // Surface the raw file to parent components when requested
+      onFileCaptured?.(file)
+
       // Upload file if needed (for existing candidates)
       if (showUpload && onUpload && !parseOnly) {
         await onUpload(file)
