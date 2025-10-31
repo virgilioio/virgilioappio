@@ -31,6 +31,15 @@ BEGIN
           SELECT id FROM public.get_org_hierarchy(m.organization_id)
         )
         OR EXISTS (
+          SELECT 1
+          FROM public.organizations member_org
+          JOIN public.organizations target_org
+            ON target_org.parent_organization_id = member_org.parent_organization_id
+          WHERE member_org.id = m.organization_id
+            AND target_org.id = target_org_id
+            AND member_org.parent_organization_id IS NOT NULL
+        )
+        OR EXISTS (
           WITH RECURSIVE membership_lineage AS (
             SELECT o.id, o.parent_organization_id
             FROM public.organizations o
@@ -103,6 +112,15 @@ BEGIN
         )
         OR _organization_id IN (
           SELECT id FROM public.get_org_hierarchy(m.organization_id)
+        )
+        OR EXISTS (
+          SELECT 1
+          FROM public.organizations member_org
+          JOIN public.organizations target_org
+            ON target_org.parent_organization_id = member_org.parent_organization_id
+          WHERE member_org.id = m.organization_id
+            AND target_org.id = _organization_id
+            AND member_org.parent_organization_id IS NOT NULL
         )
         OR EXISTS (
           WITH RECURSIVE membership_lineage AS (
