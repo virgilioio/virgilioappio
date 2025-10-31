@@ -5,7 +5,8 @@ import { useCandidateResolver } from '@/hooks/useCandidateResolver'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { RotateCcw, ExternalLink, Download } from 'lucide-react'
+import { RotateCcw, ExternalLink, Download, FileText } from 'lucide-react'
+import { toast } from 'sonner'
 
 interface CandidateResumeViewerProps {
   candidateId?: string
@@ -27,6 +28,8 @@ export function CandidateResumeViewer({ candidateId, jobCandidateId, fallbackRes
   const [fileName, setFileName] = useState<string>('resume')
   const [isLoading, setIsLoading] = useState(true)
   const [isRetrying, setIsRetrying] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [iframeError, setIframeError] = useState(false)
 
   const resumeAttachment = useMemo(() => attachments.find(a => a.is_resume), [attachments])
 
@@ -62,8 +65,17 @@ export function CandidateResumeViewer({ candidateId, jobCandidateId, fallbackRes
   useEffect(() => {
     let isMounted = true
     setIsLoading(true)
+    setError(null)
+    setIframeError(false)
 
     const createUrl = async () => {
+      console.log('🔍 CandidateResumeViewer - Creating URL:', {
+        effectiveUrl,
+        convertedPdfUrl,
+        conversionStatus,
+        isPdf
+      })
+
       if (!effectiveUrl) {
         setSignedUrl(null)
         setIsLoading(false)
@@ -73,6 +85,7 @@ export function CandidateResumeViewer({ candidateId, jobCandidateId, fallbackRes
       try {
         // If we have a converted PDF and it's ready, use that
         if (convertedPdfUrl && conversionStatus === 'completed') {
+          console.log('✅ Using converted PDF:', convertedPdfUrl)
           setSignedUrl(convertedPdfUrl)
           setPreviewUrl(convertedPdfUrl)
           setFileName(resumeAttachment?.file_name?.replace(/\.[^/.]+$/, '') + '.pdf' || 'resume.pdf')
@@ -83,38 +96,44 @@ export function CandidateResumeViewer({ candidateId, jobCandidateId, fallbackRes
         // For PDF files or when no conversion is needed
         const isStoragePath = !/^https?:\/\//i.test(effectiveUrl)
         if (isStoragePath) {
+          console.log('📡 Creating signed URL for storage path:', effectiveUrl)
           const { data, error } = await supabase.storage
             .from('candidate-attachments')
             .createSignedUrl(effectiveUrl, 3600)
           
           if (!isMounted) return
+          
           if (error || !data?.signedUrl) {
-            setSignedUrl(null)
+            console.error('❌ Error creating signed URL:', error)
+            setError(`Failed to load resume: ${error?.message || 'Unknown error'}`)
+            
+            // Try to construct direct URL as fallback
+            const publicUrl = supabase.storage.from('candidate-attachments').getPublicUrl(effectiveUrl).data.publicUrl
+            console.log('🔄 Trying direct URL as fallback:', publicUrl)
+            setSignedUrl(publicUrl)
+            setPreviewUrl(publicUrl)
+            setFileName(resumeAttachment?.file_name || 'resume')
             setIsLoading(false)
             return
           }
-          setSignedUrl(data.signedUrl)
-          setFileName(resumeAttachment?.file_name || 'resume')
           
-          // For PDFs, set the preview URL too
-          if (isPdf) {
-            setPreviewUrl(data.signedUrl)
-          }
+          console.log('✅ Signed URL created successfully')
+          setSignedUrl(data.signedUrl)
+          setPreviewUrl(data.signedUrl)
+          setFileName(resumeAttachment?.file_name || 'resume')
         } else {
+          console.log('✅ Using direct URL:', effectiveUrl)
           if (!isMounted) return
           setSignedUrl(effectiveUrl)
+          setPreviewUrl(effectiveUrl)
           setFileName('resume')
-          
-          // For PDFs, set the preview URL too
-          if (isPdf) {
-            setPreviewUrl(effectiveUrl)
-          }
         }
 
         setIsLoading(false)
       } catch (error) {
-        console.error('Error creating URL:', error)
+        console.error('❌ Error creating URL:', error)
         if (isMounted) {
+          setError('An unexpected error occurred while loading the resume')
           setSignedUrl(null)
           setIsLoading(false)
         }
@@ -222,14 +241,29 @@ export function CandidateResumeViewer({ candidateId, jobCandidateId, fallbackRes
           )}
 
           {/* Document content */}
-          {isPdf && previewUrl ? (
-            <iframe
-              src={previewUrl}
-              title="Resume preview"
-              className="w-full"
-              style={{ height: `${height}vh` }}
-            />
-          ) : isImage && signedUrl ? (
+      {isPdf && previewUrl && !iframeError ? (
+        <iframe
+          src={previewUrl}
+          title="Resume preview"
+          className="w-full"
+          style={{ height: `${height}vh` }}
+          onError={(e) => {
+            console.error('❌ Iframe failed to load PDF:', e)
+            setIframeError(true)
+            setError('Failed to load PDF preview. The file may be corrupt or the storage bucket may have CORS restrictions.')
+          }}
+        />
+      ) : isPdf && iframeError ? (
+        <div className="flex flex-col items-center justify-center p-8 text-center border-2 border-dashed border-border rounded-lg" style={{ height: `${height}vh` }}>
+          <FileText className="h-12 w-12 text-muted-foreground mb-4" />
+          <p className="text-sm text-muted-foreground mb-2">
+            Direct preview unavailable
+          </p>
+          <p className="text-xs text-muted-foreground">
+            Use the buttons below to view or download the PDF
+          </p>
+        </div>
+      ) : isImage && signedUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={signedUrl}
@@ -267,11 +301,29 @@ export function CandidateResumeViewer({ candidateId, jobCandidateId, fallbackRes
           )}
         </div>
 
+        {/* Error Message */}
+        {error && (
+          <div className="bg-destructive/10 border border-destructive/20 rounded-md p-3 mb-3 text-sm text-destructive">
+            <strong>Error:</strong> {error}
+          </div>
+        )}
+
         {/* Action buttons */}
         <div className="flex gap-2">
           <Button
             variant="outline"
-            onClick={() => window.open(previewUrl || signedUrl || '', '_blank')}
+            onClick={() => {
+              const url = previewUrl || signedUrl
+              if (!url) {
+                toast.error('No resume URL available')
+                return
+              }
+              console.log('🔗 Opening URL in new tab:', url)
+              const newWindow = window.open(url, '_blank')
+              if (!newWindow) {
+                toast.error('Popup blocked. Please allow popups for this site.')
+              }
+            }}
             disabled={!previewUrl && !signedUrl}
             className="flex items-center gap-2"
           >
@@ -280,14 +332,44 @@ export function CandidateResumeViewer({ candidateId, jobCandidateId, fallbackRes
           </Button>
           <Button
             variant="secondary"
-            onClick={() => {
-              if (!signedUrl) return
-              const link = document.createElement('a')
-              link.href = signedUrl
-              link.download = fileName
-              document.body.appendChild(link)
-              link.click()
-              document.body.removeChild(link)
+            onClick={async () => {
+              const url = signedUrl
+              if (!url) {
+                toast.error('No resume URL available')
+                return
+              }
+              
+              try {
+                console.log('⬇️ Downloading from URL:', url)
+                
+                // Try fetch + blob approach for better reliability
+                const response = await fetch(url)
+                if (!response.ok) throw new Error('Download failed')
+                
+                const blob = await response.blob()
+                const blobUrl = window.URL.createObjectURL(blob)
+                
+                const link = document.createElement('a')
+                link.href = blobUrl
+                link.download = fileName
+                document.body.appendChild(link)
+                link.click()
+                document.body.removeChild(link)
+                
+                window.URL.revokeObjectURL(blobUrl)
+                toast.success('Resume downloaded successfully')
+              } catch (err) {
+                console.error('❌ Download error:', err)
+                
+                // Fallback to simple link download
+                const link = document.createElement('a')
+                link.href = url
+                link.download = fileName
+                link.target = '_blank'
+                document.body.appendChild(link)
+                link.click()
+                document.body.removeChild(link)
+              }
             }}
             disabled={!signedUrl}
             className="flex items-center gap-2"
@@ -298,18 +380,52 @@ export function CandidateResumeViewer({ candidateId, jobCandidateId, fallbackRes
           {convertedPdfUrl && conversionStatus === 'completed' && needsConversion && (
             <Button
               variant="secondary"
-              onClick={() => {
-                const link = document.createElement('a')
-                link.href = convertedPdfUrl
-                link.download = fileName.replace(/\.[^/.]+$/, '') + '.pdf'
-                document.body.appendChild(link)
-                link.click()
-                document.body.removeChild(link)
+              onClick={async () => {
+                try {
+                  const response = await fetch(convertedPdfUrl)
+                  if (!response.ok) throw new Error('Download failed')
+                  
+                  const blob = await response.blob()
+                  const blobUrl = window.URL.createObjectURL(blob)
+                  
+                  const link = document.createElement('a')
+                  link.href = blobUrl
+                  link.download = fileName.replace(/\.[^/.]+$/, '') + '.pdf'
+                  document.body.appendChild(link)
+                  link.click()
+                  document.body.removeChild(link)
+                  
+                  window.URL.revokeObjectURL(blobUrl)
+                  toast.success('PDF downloaded successfully')
+                } catch (err) {
+                  console.error('❌ Download error:', err)
+                  const link = document.createElement('a')
+                  link.href = convertedPdfUrl
+                  link.download = fileName.replace(/\.[^/.]+$/, '') + '.pdf'
+                  link.target = '_blank'
+                  document.body.appendChild(link)
+                  link.click()
+                  document.body.removeChild(link)
+                }
               }}
               className="flex items-center gap-2"
             >
               <Download className="h-4 w-4" />
               Download PDF
+            </Button>
+          )}
+          {error && (
+            <Button
+              variant="outline"
+              onClick={() => {
+                setError(null)
+                setIframeError(false)
+                refetch()
+              }}
+              className="flex items-center gap-2"
+            >
+              <RotateCcw className="h-4 w-4" />
+              Retry
             </Button>
           )}
         </div>
