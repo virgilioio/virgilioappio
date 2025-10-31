@@ -13,6 +13,7 @@ export function GlobalBulkUploadWidget() {
   const { isUploadActive, isMinimized, files, options, closeUpload, setMinimized } = useBulkUploadContext()
   const { uploadCandidates, isProcessing, fileResults, progress } = useBulkCandidateUpload()
   const [step, setStep] = useState<"processing" | "summary">("processing")
+  const [hasManuallyInteracted, setHasManuallyInteracted] = useState(false)
   const navigate = useNavigate()
 
   // Start upload when context is activated
@@ -22,15 +23,15 @@ export function GlobalBulkUploadWidget() {
     }
   }, [isUploadActive, files, options])
 
-  // Auto-minimize 2 seconds after processing starts
+  // Auto-minimize 2 seconds after processing starts (only if user hasn't manually interacted)
   useEffect(() => {
-    if (step === "processing" && isProcessing && !isMinimized) {
+    if (step === "processing" && isProcessing && !isMinimized && !hasManuallyInteracted) {
       const timer = setTimeout(() => {
         setMinimized(true)
       }, 2000)
       return () => clearTimeout(timer)
     }
-  }, [step, isProcessing, isMinimized, setMinimized])
+  }, [step, isProcessing, isMinimized, hasManuallyInteracted, setMinimized])
 
   // Auto-advance to summary when processing completes
   useEffect(() => {
@@ -45,10 +46,11 @@ export function GlobalBulkUploadWidget() {
     }
   }, [isProcessing, fileResults, step, setMinimized])
 
-  // Reset step when upload becomes active
+  // Reset step and interaction flag when upload becomes active
   useEffect(() => {
     if (isUploadActive) {
       setStep("processing")
+      setHasManuallyInteracted(false)
     }
   }, [isUploadActive])
 
@@ -83,7 +85,10 @@ export function GlobalBulkUploadWidget() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setMinimized(false)}
+                onClick={() => {
+                  setMinimized(false)
+                  setHasManuallyInteracted(true)
+                }}
                 className="h-6 w-6 p-0"
               >
                 <Maximize2 className="h-3 w-3" />
@@ -123,7 +128,10 @@ export function GlobalBulkUploadWidget() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setMinimized(true)}
+              onClick={() => {
+                setMinimized(true)
+                setHasManuallyInteracted(true)
+              }}
               className="h-8 w-8 p-0"
             >
               <Minimize2 className="h-4 w-4" />
