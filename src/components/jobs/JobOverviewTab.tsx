@@ -92,7 +92,7 @@ export function JobOverviewTab({ job, onEdit, onArchive }: JobOverviewTabProps) 
       {/* Header - Outside Cards */}
       <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
-          <h1 className="text-h1-mobile md:text-h1-desktop font-poppins font-bold text-virgilio-text mb-3">
+          <h1 className="text-2xl font-poppins font-semibold text-virgilio-text mb-3">
             {job.title}<span className="text-virgilio-purple">.</span>
           </h1>
           <div className="flex items-center gap-3 flex-wrap text-sm">
