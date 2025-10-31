@@ -59,10 +59,12 @@ async function processDocumentConversion(supabase: any, attachmentId: string, fi
   try {
     console.log('Starting background conversion for:', attachmentId);
 
+    const storagePath = extractStoragePath(fileUrl);
+
     // Download the original file
     const { data: fileData, error: downloadError } = await supabase.storage
       .from('candidate-attachments')
-      .download(fileUrl.split('/').pop());
+      .download(storagePath);
 
     if (downloadError) {
       console.error('Download error:', downloadError);
@@ -81,8 +83,11 @@ async function processDocumentConversion(supabase: any, attachmentId: string, fi
     }
 
     // Generate unique filename for converted PDF
-    const originalFilename = fileUrl.split('/').pop()?.split('.')[0] || 'document';
-    const convertedFilename = `${originalFilename}_converted_${Date.now()}.pdf`;
+    const originalFilename = storagePath.split('/').pop()?.split('.')[0] || 'document';
+    const directoryPath = storagePath.includes('/')
+      ? `${storagePath.substring(0, storagePath.lastIndexOf('/') + 1)}`
+      : '';
+    const convertedFilename = `${directoryPath}${originalFilename}_converted_${Date.now()}.pdf`;
     
     // Upload converted PDF to storage
     const { data: uploadData, error: uploadError } = await supabase.storage
@@ -98,16 +103,11 @@ async function processDocumentConversion(supabase: any, attachmentId: string, fi
       return;
     }
 
-    // Get public URL for the converted PDF
-    const { data: { publicUrl } } = supabase.storage
-      .from('candidate-attachments')
-      .getPublicUrl(convertedFilename);
-
     // Update attachment record with converted PDF info
     await supabase
       .from('candidate_attachments')
       .update({
-        converted_pdf_url: publicUrl,
+        converted_pdf_url: convertedFilename,
         conversion_status: 'completed',
         converted_at: new Date().toISOString(),
         conversion_error: null
@@ -120,6 +120,33 @@ async function processDocumentConversion(supabase: any, attachmentId: string, fi
     console.error('Conversion failed:', error);
     await updateConversionStatus(supabase, attachmentId, 'failed', getErrorMessage(error));
   }
+}
+
+function extractStoragePath(fileUrl: string): string {
+  if (!/^https?:\/\//i.test(fileUrl)) {
+    return fileUrl;
+  }
+
+  try {
+    const url = new URL(fileUrl);
+    const match = url.pathname.match(/candidate-attachments\/(.*)$/);
+    if (match && match[1]) {
+      return match[1].split('?')[0];
+    }
+  } catch (error) {
+    console.error('Failed to parse storage path from URL:', error);
+  }
+
+  // Fallback to attempting to slice after the bucket name
+  const parts = fileUrl.split('/');
+  const bucketIndex = parts.findIndex((part) => part === 'candidate-attachments');
+  if (bucketIndex >= 0 && bucketIndex < parts.length - 1) {
+    return parts.slice(bucketIndex + 1).join('/').split('?')[0];
+  }
+
+  // Default to final segment
+  const fallback = parts.pop() || fileUrl;
+  return fallback.split('?')[0];
 }
 
 async function updateConversionStatus(supabase: any, attachmentId: string, status: string, error?: string) {

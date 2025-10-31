@@ -86,53 +86,76 @@ export function CandidateResumeViewer({ candidateId, jobCandidateId, fallbackRes
         return
       }
 
+      const resolveStorageUrl = async (path: string) => {
+        console.log('📡 Creating signed URL for storage path:', path)
+        const { data, error } = await supabase.storage
+          .from('candidate-attachments')
+          .createSignedUrl(path, 3600)
+
+        if (!isMounted) return null
+
+        if (error || !data?.signedUrl) {
+          console.error('❌ Error creating signed URL:', error)
+
+          const { data: publicData } = supabase.storage
+            .from('candidate-attachments')
+            .getPublicUrl(path)
+
+          if (publicData?.publicUrl) {
+            console.log('🔄 Using public URL fallback for storage path:', publicData.publicUrl)
+            return publicData.publicUrl
+          }
+
+          setError(`Failed to load resume: ${error?.message || 'Unknown error'}`)
+          return null
+        }
+
+        console.log('✅ Signed URL created successfully')
+        return data.signedUrl
+      }
+
+      const resolveUrl = async (url: string) => {
+        const isStoragePath = !/^https?:\/\//i.test(url)
+        if (!isStoragePath) {
+          console.log('✅ Using direct URL:', url)
+          return url
+        }
+
+        return resolveStorageUrl(url)
+      }
+
       try {
-        // If we have a converted PDF and it's ready, use that
         if (convertedPdfUrl && conversionStatus === 'completed') {
-          console.log('✅ Using converted PDF:', convertedPdfUrl)
-          setSignedUrl(convertedPdfUrl)
-          setPreviewUrl(convertedPdfUrl)
+          const resolved = await resolveUrl(convertedPdfUrl)
+          if (!isMounted) return
+
+          if (!resolved) {
+            setSignedUrl(null)
+            setPreviewUrl(null)
+            setIsLoading(false)
+            return
+          }
+
+          setSignedUrl(resolved)
+          setPreviewUrl(resolved)
           setFileName(resumeAttachment?.file_name?.replace(/\.[^/.]+$/, '') + '.pdf' || 'resume.pdf')
           setIsLoading(false)
           return
         }
 
-        // For PDF files or when no conversion is needed
-        const isStoragePath = !/^https?:\/\//i.test(effectiveUrl)
-        if (isStoragePath) {
-          console.log('📡 Creating signed URL for storage path:', effectiveUrl)
-          const { data, error } = await supabase.storage
-            .from('candidate-attachments')
-            .createSignedUrl(effectiveUrl, 3600)
-          
-          if (!isMounted) return
-          
-          if (error || !data?.signedUrl) {
-            console.error('❌ Error creating signed URL:', error)
-            setError(`Failed to load resume: ${error?.message || 'Unknown error'}`)
-            
-            // Try to construct direct URL as fallback
-            const publicUrl = supabase.storage.from('candidate-attachments').getPublicUrl(effectiveUrl).data.publicUrl
-            console.log('🔄 Trying direct URL as fallback:', publicUrl)
-            setSignedUrl(publicUrl)
-            setPreviewUrl(publicUrl)
-            setFileName(resumeAttachment?.file_name || 'resume')
-            setIsLoading(false)
-            return
-          }
-          
-          console.log('✅ Signed URL created successfully')
-          setSignedUrl(data.signedUrl)
-          setPreviewUrl(data.signedUrl)
-          setFileName(resumeAttachment?.file_name || 'resume')
-        } else {
-          console.log('✅ Using direct URL:', effectiveUrl)
-          if (!isMounted) return
-          setSignedUrl(effectiveUrl)
-          setPreviewUrl(effectiveUrl)
-          setFileName('resume')
+        const resolved = await resolveUrl(effectiveUrl)
+        if (!isMounted) return
+
+        if (!resolved) {
+          setSignedUrl(null)
+          setPreviewUrl(null)
+          setIsLoading(false)
+          return
         }
 
+        setSignedUrl(resolved)
+        setPreviewUrl(resolved)
+        setFileName(resumeAttachment?.file_name || 'resume')
         setIsLoading(false)
       } catch (error) {
         console.error('❌ Error creating URL:', error)
