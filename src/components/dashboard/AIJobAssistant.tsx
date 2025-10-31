@@ -19,6 +19,7 @@ import { SkillsEditor } from './SkillsEditor'
 import { useJobs } from '@/hooks/useJobs'
 import { useAuth } from '@/contexts/AuthContext'
 import { SafeHtml } from '@/components/ui/safe-html'
+import { useCoresignalCreditWarnings } from '@/hooks/useCoresignalCreditWarnings'
 
 interface JobSpec {
   job_title: string
@@ -102,6 +103,7 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
   const { createJob } = useJobs()
   const navigate = useNavigate()
   const { user, organizationId } = useAuth()
+  const { isSearchDisabled } = useCoresignalCreditWarnings()
 
   const currentValidation = validateJobPrompt(prompt)
   const validItemsCount = currentValidation.filter(item => item.checked).length
@@ -150,13 +152,29 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
   const handleGenerate = async () => {
     if (!canGenerate) return
 
+    if (isSearchDisabled) {
+      toast({
+        title: 'Search credits exhausted',
+        description: 'You have used all your search credits for this month. Credits will reset on the 1st of next month.',
+        variant: 'destructive',
+        duration: 8000
+      })
+      return
+    }
+
     setIsGenerating(true)
     try {
       const { data, error } = await supabase.functions.invoke('generate-job-spec', {
         body: { prompt }
       })
 
-      if (error) throw error
+      if (error) {
+        // Handle credit exhaustion error specifically
+        if (error.message?.includes('CREDITS_EXHAUSTED')) {
+          throw new Error('Monthly search credit limit reached. Credits will reset on the 1st of next month.')
+        }
+        throw error
+      }
 
       if (data?.jobSpec) {
         setJobSpec(data.jobSpec)
@@ -451,7 +469,8 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
               {prompt.trim().length > 0 && (
                 <button
                   onClick={handleGenerate}
-                  disabled={!canGenerate || isGenerating}
+                  disabled={!canGenerate || isGenerating || isSearchDisabled}
+                  title={isSearchDisabled ? 'Monthly search credit limit reached' : canGenerate ? 'Generate job specification' : 'Enter at least 10 words'}
                   className="flex items-center justify-center h-8 w-8 rounded-full bg-virgilio-text hover:bg-black disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
                 >
                   {isGenerating ? (

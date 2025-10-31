@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Eye, Plus, CheckCircle2, Loader2, MapPin, Linkedin, ChevronLeft, ChevronRight, Download } from 'lucide-react'
+import { useCoresignalCreditWarnings } from '@/hooks/useCoresignalCreditWarnings'
 import emptyStateAvatar from '@/assets/empty-state-avatar.png'
 import UniversalCandidateProfileSheet from '@/components/candidates/UniversalCandidateProfileSheet'
 import {
@@ -58,6 +59,7 @@ export function SourcingCandidateTable({
   const itemsPerPage = 10
   const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
+  const { isCollectDisabled } = useCoresignalCreditWarnings()
   
   // Sortable table with default sort by match_score DESC
   const { sortedData, sortConfig, requestSort } = useSortableTable(
@@ -99,6 +101,16 @@ export function SourcingCandidateTable({
       return
     }
 
+    if (isCollectDisabled) {
+      toast({
+        title: 'Monthly collect limit reached',
+        description: 'You have exhausted your collect credits for this month. Credits will reset on the 1st of next month.',
+        variant: 'destructive',
+        duration: 8000
+      })
+      return
+    }
+
     setCollectingProfiles(prev => new Set(prev).add(coresignalId))
 
     try {
@@ -109,7 +121,13 @@ export function SourcingCandidateTable({
         }
       })
 
-      if (error) throw error
+      if (error) {
+        // Handle credit exhaustion error specifically
+        if (error.message?.includes('CREDITS_EXHAUSTED')) {
+          throw new Error('Monthly collect credit limit reached. Credits will reset on the 1st of next month.')
+        }
+        throw error
+      }
 
       toast({
         title: 'Profile collected',
@@ -407,14 +425,15 @@ export function SourcingCandidateTable({
                               e.stopPropagation()
                               handleCollectProfile(candidate.coresignal_id!)
                             }}
-                            disabled={isCollecting}
+                            disabled={isCollecting || isCollectDisabled}
+                            title={isCollectDisabled ? 'Monthly collect credit limit reached' : 'Collect full profile (uses 1 credit)'}
                           >
                             {isCollecting ? (
                               <Loader2 className="h-3 w-3 mr-1 animate-spin" />
                             ) : (
                               <Download className="h-3 w-3 mr-1" />
                             )}
-                            Collect (1 credit)
+                            {isCollectDisabled ? 'Credits exhausted' : 'Collect (1 credit)'}
                           </Button>
                         ) : (
                           <>

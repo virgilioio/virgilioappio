@@ -4,11 +4,15 @@ import { AIJobAssistant } from '@/components/dashboard/AIJobAssistant'
 import { Section } from '@/components/layout/Section'
 import { SourcingSidebar } from '@/components/sourcing/SourcingSidebar'
 import { SourcingProjectView } from '@/components/sourcing/SourcingProjectView'
+import { useCoresignalCreditWarnings } from '@/hooks/useCoresignalCreditWarnings'
 import gioAvatar from '@/assets/gio-avatar.png'
 
 export default function Find() {
   const [mode, setMode] = useState<'new' | 'project'>('new')
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null)
+  
+  // Initialize credit warnings
+  useCoresignalCreditWarnings()
 
   return (
     <SidebarProvider defaultOpen={true}>

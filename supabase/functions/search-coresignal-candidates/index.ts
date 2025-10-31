@@ -59,12 +59,17 @@ function buildCoresignalFilterQuery(criteria: SearchCriteria): any {
   return query;
 }
 
-// Check credit availability
+// Check credit availability with enhanced error details
 async function checkCreditAvailability(
   organizationId: string, 
   type: 'search' | 'collect'
-): Promise<{ available: boolean; remaining: number; usage: any }> {
+): Promise<{ available: boolean; remaining: number; usage: any; nextReset: string }> {
   const currentMonth = new Date().toISOString().slice(0, 7) + '-01';
+  
+  // Calculate next reset date (first day of next month)
+  const nextMonth = new Date(currentMonth);
+  nextMonth.setMonth(nextMonth.getMonth() + 1);
+  const nextReset = nextMonth.toISOString().slice(0, 10);
   
   // Get or create usage record for current month
   let { data: usage, error } = await supabase
@@ -99,7 +104,8 @@ async function checkCreditAvailability(
   return {
     available: used < limit,
     remaining: limit - used,
-    usage
+    usage,
+    nextReset
   };
 }
 
@@ -198,20 +204,26 @@ serve(async (req) => {
       }
     }
 
-    // Check credit availability
+    // Check credit availability BEFORE making API call
     const creditCheck = await checkCreditAvailability(orgId, 'search');
     
     if (!creditCheck.available) {
+      console.warn('❌ Monthly search credit limit reached');
       return new Response(JSON.stringify({
         error: 'Monthly credit limit reached',
         error_code: 'CREDITS_EXHAUSTED',
         credits_remaining: 0,
-        next_reset: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1).toISOString()
+        credits_limit: creditCheck.usage.search_credits_limit,
+        credits_used: creditCheck.usage.search_credits_used,
+        next_reset: creditCheck.nextReset
       }), {
         status: 429,
         headers: { 'Content-Type': 'application/json', ...cors },
       });
     }
+
+    console.log(`💳 Credits available: ${creditCheck.remaining} search credits remaining`);
+
 
     // Build CoreSignal query
     const queryParams = buildCoresignalFilterQuery(criteria);
