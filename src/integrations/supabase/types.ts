@@ -904,6 +904,11 @@ export type Database = {
           company_current: string | null
           contact_emails: string[] | null
           contact_phones: string[] | null
+          coresignal_collected_at: string | null
+          coresignal_connections_count: number | null
+          coresignal_headline: string | null
+          coresignal_profile_id: string | null
+          coresignal_search_score: number | null
           created_at: string
           created_by: string | null
           email: string | null
@@ -940,6 +945,11 @@ export type Database = {
           company_current?: string | null
           contact_emails?: string[] | null
           contact_phones?: string[] | null
+          coresignal_collected_at?: string | null
+          coresignal_connections_count?: number | null
+          coresignal_headline?: string | null
+          coresignal_profile_id?: string | null
+          coresignal_search_score?: number | null
           created_at?: string
           created_by?: string | null
           email?: string | null
@@ -976,6 +986,11 @@ export type Database = {
           company_current?: string | null
           contact_emails?: string[] | null
           contact_phones?: string[] | null
+          coresignal_collected_at?: string | null
+          coresignal_connections_count?: number | null
+          coresignal_headline?: string | null
+          coresignal_profile_id?: string | null
+          coresignal_search_score?: number | null
           created_at?: string
           created_by?: string | null
           email?: string | null
@@ -1052,6 +1067,56 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "contract_templates_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      coresignal_usage: {
+        Row: {
+          collect_credits_limit: number
+          collect_credits_used: number
+          created_at: string | null
+          id: string
+          last_collect_at: string | null
+          last_search_at: string | null
+          month: string
+          organization_id: string
+          search_credits_limit: number
+          search_credits_used: number
+          updated_at: string | null
+        }
+        Insert: {
+          collect_credits_limit?: number
+          collect_credits_used?: number
+          created_at?: string | null
+          id?: string
+          last_collect_at?: string | null
+          last_search_at?: string | null
+          month: string
+          organization_id: string
+          search_credits_limit?: number
+          search_credits_used?: number
+          updated_at?: string | null
+        }
+        Update: {
+          collect_credits_limit?: number
+          collect_credits_used?: number
+          created_at?: string | null
+          id?: string
+          last_collect_at?: string | null
+          last_search_at?: string | null
+          month?: string
+          organization_id?: string
+          search_credits_limit?: number
+          search_credits_used?: number
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coresignal_usage_organization_id_fkey"
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
@@ -2591,6 +2656,10 @@ export type Database = {
       }
       sourcing_projects: {
         Row: {
+          coresignal_cache_expires_at: string | null
+          coresignal_candidate_count: number | null
+          coresignal_last_searched_at: string | null
+          coresignal_search_id: string | null
           created_at: string | null
           created_by: string
           description: string | null
@@ -2606,6 +2675,10 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          coresignal_cache_expires_at?: string | null
+          coresignal_candidate_count?: number | null
+          coresignal_last_searched_at?: string | null
+          coresignal_search_id?: string | null
           created_at?: string | null
           created_by: string
           description?: string | null
@@ -2621,6 +2694,10 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          coresignal_cache_expires_at?: string | null
+          coresignal_candidate_count?: number | null
+          coresignal_last_searched_at?: string | null
+          coresignal_search_id?: string | null
           created_at?: string | null
           created_by?: string
           description?: string | null
