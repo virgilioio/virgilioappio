@@ -3586,6 +3586,7 @@ export type Database = {
         Args: { target_org_id: string }
         Returns: boolean
       }
+      user_is_workspace_owner: { Args: { org_id: string }; Returns: boolean }
       validate_invite_token: {
         Args: { token_input: string }
         Returns: {
