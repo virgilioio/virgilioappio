@@ -79,6 +79,7 @@ serve(async (req) => {
         name: workspaceName, 
         org_kind: "tenant", 
         status: "active", 
+        owner_id: user.id,
         signup_source: "self_serve",
         tenant_type: "saas",
         organization_type: "client"
