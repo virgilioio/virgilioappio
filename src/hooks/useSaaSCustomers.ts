@@ -24,7 +24,8 @@ export function useSaaSCustomers() {
   return useQuery({
     queryKey: ['saas-customers'],
     queryFn: async (): Promise<SaaSCustomer[]> => {
-      const { data: organizations, error } = await supabase
+      // Only fetch parent tenants (organizations without a parent)
+      const { data: tenants, error } = await supabase
         .from('organizations')
         .select(`
           id,
@@ -43,40 +44,50 @@ export function useSaaSCustomers() {
         .eq('tenant_type', 'saas')
         .eq('organization_type', 'client')
         .eq('signup_source', 'self_serve')
+        .is('parent_organization_id', null) // Only parent tenants
         .order('created_at', { ascending: false })
 
       if (error) {
-        console.error('Error fetching SaaS customers:', error)
+        console.error('Error fetching SaaS tenants:', error)
         throw error
       }
 
-      // Get usage data for each organization
+      // Get usage data for each tenant (aggregated across all child workspaces)
       const customersWithUsage = await Promise.all(
-        (organizations || []).map(async (org) => {
+        (tenants || []).map(async (tenant) => {
           try {
-            // Get job IDs for this organization
-            const { data: orgJobs } = await supabase
+            // Get all child workspace IDs for this tenant
+            const { data: childWorkspaces } = await supabase
+              .from('organizations')
+              .select('id')
+              .eq('parent_organization_id', tenant.id)
+            
+            // Include the tenant itself plus all child workspaces
+            const orgIds = [tenant.id, ...(childWorkspaces?.map(w => w.id) || [])]
+
+            // Get all job IDs across all organizations in this tenant
+            const { data: allJobs } = await supabase
               .from('jobs')
               .select('id')
-              .eq('organization_id', org.id)
+              .in('organization_id', orgIds)
             
-            const jobIds = orgJobs?.map(j => j.id) || []
+            const jobIds = allJobs?.map(j => j.id) || []
 
-            // Get usage metrics in parallel
+            // Get aggregated usage metrics in parallel
             const [
               { count: jobsCount },
               recentAssociationsQuery,
               { count: membersCount },
               lastActivity
             ] = await Promise.all([
-              // Jobs created in last 30 days
+              // Jobs created in last 30 days across all workspaces
               supabase
                 .from('jobs')
                 .select('*', { count: 'exact', head: true })
-                .eq('organization_id', org.id)
+                .in('organization_id', orgIds)
                 .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()),
               
-              // Candidates added via associations in last 30 days
+              // Candidates added via associations in last 30 days across all workspaces
               jobIds.length > 0
                 ? supabase
                     .from('job_candidate_associations')
@@ -85,18 +96,18 @@ export function useSaaSCustomers() {
                     .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
                 : Promise.resolve({ data: [] }),
               
-              // Active members count
+              // Active members count across all workspaces
               supabase
                 .from('members')
                 .select('*', { count: 'exact', head: true })
-                .eq('organization_id', org.id)
+                .in('organization_id', orgIds)
                 .eq('user_status', 'active'),
               
-              // Last activity timestamp
+              // Last activity timestamp across all workspaces
               supabase
                 .from('members')
                 .select('updated_at')
-                .eq('organization_id', org.id)
+                .in('organization_id', orgIds)
                 .order('updated_at', { ascending: false })
                 .limit(1)
                 .maybeSingle()
@@ -108,16 +119,16 @@ export function useSaaSCustomers() {
             ).size
 
             return {
-              ...org,
+              ...tenant,
               jobs_created_30d: jobsCount || 0,
               candidates_added_30d: candidatesCount,
               members_active_count: membersCount || 0,
               last_active_at: lastActivity?.data?.updated_at || null
             }
           } catch (error) {
-            console.error('Error fetching usage data for organization:', org.id, error)
+            console.error('Error fetching usage data for tenant:', tenant.id, error)
             return {
-              ...org,
+              ...tenant,
               jobs_created_30d: 0,
               candidates_added_30d: 0,
               members_active_count: 0,
