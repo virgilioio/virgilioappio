@@ -30,6 +30,34 @@ BEGIN
         OR target_org_id IN (
           SELECT id FROM public.get_org_hierarchy(m.organization_id)
         )
+        OR EXISTS (
+          WITH RECURSIVE membership_lineage AS (
+            SELECT o.id, o.parent_organization_id
+            FROM public.organizations o
+            WHERE o.id = m.organization_id
+
+            UNION ALL
+
+            SELECT parent.id, parent.parent_organization_id
+            FROM public.organizations parent
+            JOIN membership_lineage child ON child.parent_organization_id = parent.id
+          ),
+          target_lineage AS (
+            SELECT o.id, o.parent_organization_id
+            FROM public.organizations o
+            WHERE o.id = target_org_id
+
+            UNION ALL
+
+            SELECT parent.id, parent.parent_organization_id
+            FROM public.organizations parent
+            JOIN target_lineage child ON child.parent_organization_id = parent.id
+          )
+          SELECT 1
+          FROM membership_lineage ml
+          JOIN target_lineage tl ON tl.id = ml.id
+          LIMIT 1
+        )
       )
   );
 END;
@@ -75,6 +103,34 @@ BEGIN
         )
         OR _organization_id IN (
           SELECT id FROM public.get_org_hierarchy(m.organization_id)
+        )
+        OR EXISTS (
+          WITH RECURSIVE membership_lineage AS (
+            SELECT o.id, o.parent_organization_id
+            FROM public.organizations o
+            WHERE o.id = m.organization_id
+
+            UNION ALL
+
+            SELECT parent.id, parent.parent_organization_id
+            FROM public.organizations parent
+            JOIN membership_lineage child ON child.parent_organization_id = parent.id
+          ),
+          target_lineage AS (
+            SELECT o.id, o.parent_organization_id
+            FROM public.organizations o
+            WHERE o.id = _organization_id
+
+            UNION ALL
+
+            SELECT parent.id, parent.parent_organization_id
+            FROM public.organizations parent
+            JOIN target_lineage child ON child.parent_organization_id = parent.id
+          )
+          SELECT 1
+          FROM membership_lineage ml
+          JOIN target_lineage tl ON tl.id = ml.id
+          LIMIT 1
         )
       )
       AND (
