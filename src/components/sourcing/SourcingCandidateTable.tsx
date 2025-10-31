@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Eye, Plus, CheckCircle2, Loader2, MapPin, Linkedin, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Eye, Plus, CheckCircle2, Loader2, MapPin, Linkedin, ChevronLeft, ChevronRight, Download } from 'lucide-react'
 import emptyStateAvatar from '@/assets/empty-state-avatar.png'
 import UniversalCandidateProfileSheet from '@/components/candidates/UniversalCandidateProfileSheet'
 import {
@@ -34,6 +34,11 @@ interface MatchedCandidate {
   match_tier: 'excellent' | 'good' | 'fair' | 'minimal'
   skills?: string[]
   years_experience?: number
+  source: 'local' | 'coresignal'
+  coresignal_id?: string
+  coresignal_score?: number
+  headline?: string
+  candidate_id?: string | null
 }
 
 interface SourcingCandidateTableProps {
@@ -63,6 +68,7 @@ export function SourcingCandidateTable({
   // Track which candidates are already in pipeline
   const [addedCandidates, setAddedCandidates] = useState<Set<string>>(new Set())
   const [loadingCandidates, setLoadingCandidates] = useState<Set<string>>(new Set())
+  const [collectingProfiles, setCollectingProfiles] = useState<Set<string>>(new Set())
 
   // Check existing pipeline candidates
   useEffect(() => {
@@ -82,6 +88,50 @@ export function SourcingCandidateTable({
 
     checkExisting()
   }, [jobId, candidates])
+
+  const handleCollectProfile = async (coresignalId: string) => {
+    if (!jobId) {
+      toast({
+        title: 'No job linked',
+        description: 'Cannot collect profile without a job context.',
+        variant: 'destructive'
+      })
+      return
+    }
+
+    setCollectingProfiles(prev => new Set(prev).add(coresignalId))
+
+    try {
+      const { data, error } = await supabase.functions.invoke('collect-coresignal-profile', {
+        body: {
+          coresignal_id: coresignalId,
+          job_id: jobId
+        }
+      })
+
+      if (error) throw error
+
+      toast({
+        title: 'Profile collected',
+        description: 'Full candidate profile has been added to your pipeline.'
+      })
+
+      // Refresh candidates list to show updated data
+      window.location.reload()
+    } catch (error: any) {
+      toast({
+        title: 'Failed to collect profile',
+        description: error.message,
+        variant: 'destructive'
+      })
+    } finally {
+      setCollectingProfiles(prev => {
+        const next = new Set(prev)
+        next.delete(coresignalId)
+        return next
+      })
+    }
+  }
 
   const handleAddToPipeline = async (candidate: MatchedCandidate, e: React.MouseEvent) => {
     e.stopPropagation()
@@ -187,7 +237,8 @@ export function SourcingCandidateTable({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[250px]">
+                <TableHead className="w-[80px]">Source</TableHead>
+                <TableHead className="w-[220px]">
                   <SortableHeader 
                     sortKey="candidate_name" 
                     currentSort={sortConfig} 
@@ -196,13 +247,13 @@ export function SourcingCandidateTable({
                     Name
                   </SortableHeader>
                 </TableHead>
-                <TableHead className="w-[120px]">
+                <TableHead className="w-[140px]">
                   <SortableHeader 
                     sortKey="match_score" 
                     currentSort={sortConfig} 
                     onSort={requestSort}
                   >
-                    Match
+                    Score
                   </SortableHeader>
                 </TableHead>
                 <TableHead className="w-[200px]">
@@ -233,23 +284,31 @@ export function SourcingCandidateTable({
                     Experience
                   </SortableHeader>
                 </TableHead>
-                <TableHead className="text-right w-[180px]">Actions</TableHead>
+                <TableHead className="text-right w-[200px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {paginatedData.map(candidate => {
                 const isAdded = addedCandidates.has(candidate.id)
                 const isLoading = loadingCandidates.has(candidate.id)
+                const isCollecting = candidate.coresignal_id ? collectingProfiles.has(candidate.coresignal_id) : false
 
                 return (
                   <TableRow 
-                    key={candidate.id}
+                    key={candidate.coresignal_id || candidate.id}
                     className="cursor-pointer hover:bg-muted/50"
                     onClick={() => {
-                      setSelectedCandidateId(candidate.id)
-                      setSheetOpen(true)
+                      if (candidate.candidate_id || candidate.source === 'local') {
+                        setSelectedCandidateId(candidate.id)
+                        setSheetOpen(true)
+                      }
                     }}
                   >
+                    <TableCell>
+                      <Badge variant={candidate.source === 'local' ? 'default' : 'secondary'} className="text-xs">
+                        {candidate.source === 'local' ? 'Local' : 'CoreSignal'}
+                      </Badge>
+                    </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <Avatar className="h-8 w-8">
@@ -274,9 +333,18 @@ export function SourcingCandidateTable({
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge className={cn("text-xs font-semibold", getMatchBadgeColor(candidate.match_tier))}>
-                        {candidate.match_score}%
-                      </Badge>
+                      <div className="flex flex-col gap-1">
+                        {candidate.match_score > 0 && (
+                          <Badge className={cn("text-xs font-semibold", getMatchBadgeColor(candidate.match_tier))}>
+                            Match: {candidate.match_score}%
+                          </Badge>
+                        )}
+                        {candidate.coresignal_score && (
+                          <Badge variant="outline" className="text-xs">
+                            CS: {candidate.coresignal_score.toFixed(1)}
+                          </Badge>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <div className="text-sm">
@@ -299,24 +367,30 @@ export function SourcingCandidateTable({
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="flex flex-wrap gap-1">
-                        {candidate.skills && candidate.skills.length > 0 ? (
-                          <>
-                            {candidate.skills.slice(0, 3).map(skill => (
-                              <Badge key={skill} variant="secondary" className="text-xs">
-                                {skill}
-                              </Badge>
-                            ))}
-                            {candidate.skills.length > 3 && (
-                              <Badge variant="secondary" className="text-xs">
-                                +{candidate.skills.length - 3}
-                              </Badge>
-                            )}
-                          </>
-                        ) : (
-                          <span className="text-sm text-muted-foreground">-</span>
-                        )}
-                      </div>
+                      {candidate.source === 'coresignal' && candidate.headline ? (
+                        <div className="text-xs text-muted-foreground truncate max-w-[200px]" title={candidate.headline}>
+                          {candidate.headline}
+                        </div>
+                      ) : (
+                        <div className="flex flex-wrap gap-1">
+                          {candidate.skills && candidate.skills.length > 0 ? (
+                            <>
+                              {candidate.skills.slice(0, 3).map(skill => (
+                                <Badge key={skill} variant="secondary" className="text-xs">
+                                  {skill}
+                                </Badge>
+                              ))}
+                              {candidate.skills.length > 3 && (
+                                <Badge variant="secondary" className="text-xs">
+                                  +{candidate.skills.length - 3}
+                                </Badge>
+                              )}
+                            </>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">-</span>
+                          )}
+                        </div>
+                      )}
                     </TableCell>
                     <TableCell>
                       <span className="text-sm">
@@ -325,41 +399,63 @@ export function SourcingCandidateTable({
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setSelectedCandidateId(candidate.id)
-                            setSheetOpen(true)
-                          }}
-                        >
-                          <Eye className="h-3 w-3" />
-                        </Button>
-                        
-                        {isAdded ? (
+                        {candidate.source === 'coresignal' && !candidate.candidate_id ? (
                           <Button 
                             size="sm" 
-                            variant="secondary"
-                            disabled
+                            variant="outline"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              handleCollectProfile(candidate.coresignal_id!)
+                            }}
+                            disabled={isCollecting}
                           >
-                            <CheckCircle2 className="h-3 w-3 mr-1" />
-                            Added
-                          </Button>
-                        ) : (
-                          <Button 
-                            size="sm" 
-                            variant="default"
-                            onClick={(e) => handleAddToPipeline(candidate, e)}
-                            disabled={isLoading || !jobId}
-                          >
-                            {isLoading ? (
+                            {isCollecting ? (
                               <Loader2 className="h-3 w-3 mr-1 animate-spin" />
                             ) : (
-                              <Plus className="h-3 w-3 mr-1" />
+                              <Download className="h-3 w-3 mr-1" />
                             )}
-                            Add
+                            Collect (1 credit)
                           </Button>
+                        ) : (
+                          <>
+                            <Button 
+                              size="sm" 
+                              variant="outline"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setSelectedCandidateId(candidate.id)
+                                setSheetOpen(true)
+                              }}
+                              disabled={!candidate.candidate_id && candidate.source !== 'local'}
+                            >
+                              <Eye className="h-3 w-3" />
+                            </Button>
+                            
+                            {isAdded ? (
+                              <Button 
+                                size="sm" 
+                                variant="secondary"
+                                disabled
+                              >
+                                <CheckCircle2 className="h-3 w-3 mr-1" />
+                                Added
+                              </Button>
+                            ) : (
+                              <Button 
+                                size="sm" 
+                                variant="default"
+                                onClick={(e) => handleAddToPipeline(candidate, e)}
+                                disabled={isLoading || !jobId || (!candidate.candidate_id && candidate.source !== 'local')}
+                              >
+                                {isLoading ? (
+                                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                                ) : (
+                                  <Plus className="h-3 w-3 mr-1" />
+                                )}
+                                Add
+                              </Button>
+                            )}
+                          </>
                         )}
                       </div>
                     </TableCell>

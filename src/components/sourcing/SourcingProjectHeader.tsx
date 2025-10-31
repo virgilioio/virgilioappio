@@ -2,8 +2,9 @@ import { useState } from 'react'
 import { formatDistanceToNow } from 'date-fns'
 import { 
   Edit2, MoreHorizontal, RefreshCw, Archive, Trash2, 
-  MapPin, DollarSign, Target, Award 
+  MapPin, DollarSign, Target, Award, Coins 
 } from 'lucide-react'
+import { useCoresignalUsage } from '@/hooks/useCoresignalUsage'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -27,6 +28,10 @@ interface SourcingProjectHeaderProps {
     good: number
     fair: number
     minimal: number
+    localCandidates?: number
+    coreSignalCandidates?: number
+    creditsUsed?: number
+    collectCreditsUsed?: number
   }
   filters: SourcingProjectFilters
   onFiltersChange: (filters: SourcingProjectFilters) => void
@@ -48,6 +53,7 @@ export function SourcingProjectHeader({
 }: SourcingProjectHeaderProps) {
   const [isEditingName, setIsEditingName] = useState(false)
   const [editedName, setEditedName] = useState(project.name)
+  const { data: usage } = useCoresignalUsage()
 
   const handleSaveName = () => {
     if (editedName.trim()) {
@@ -193,6 +199,35 @@ export function SourcingProjectHeader({
             </Badge>
           </div>
 
+          {/* Source Breakdown */}
+          {(breakdown.localCandidates !== undefined || breakdown.coreSignalCandidates !== undefined) && (
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-1.5">
+                <span className="text-sm font-medium text-muted-foreground">Sources:</span>
+              </div>
+              {breakdown.localCandidates !== undefined && (
+                <Badge variant="default" className="text-xs">
+                  {breakdown.localCandidates} Local
+                </Badge>
+              )}
+              {breakdown.coreSignalCandidates !== undefined && breakdown.coreSignalCandidates > 0 && (
+                <Badge variant="secondary" className="text-xs">
+                  {breakdown.coreSignalCandidates} CoreSignal
+                </Badge>
+              )}
+            </div>
+          )}
+
+          {/* Credit Usage Indicator */}
+          {usage && (breakdown.creditsUsed !== undefined || breakdown.collectCreditsUsed !== undefined) && (
+            <div className="flex items-center gap-2 text-sm">
+              <Coins className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="text-muted-foreground">
+                Credits: {usage.search_credits_used}/{usage.search_credits_limit} search, {usage.collect_credits_used}/{usage.collect_credits_limit} collect
+              </span>
+            </div>
+          )}
+
           {/* Filters Row */}
           <div className="space-y-3 pt-3 border-t border-border">
             <div className="flex items-center justify-between">
@@ -211,7 +246,28 @@ export function SourcingProjectHeader({
               </Button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              {/* Source Filter */}
+              <div>
+                <Label className="text-xs text-muted-foreground mb-2 block">Source</Label>
+                <div className="flex flex-wrap gap-2">
+                  {(['all', 'local', 'coresignal'] as const).map(source => (
+                    <label key={source} className="flex items-center gap-1 cursor-pointer">
+                      <Checkbox 
+                        checked={!filters.source || filters.source === source}
+                        onCheckedChange={(checked) => {
+                          onFiltersChange({
+                            ...filters,
+                            source: checked ? source : 'all'
+                          })
+                        }}
+                      />
+                      <span className="text-xs capitalize">{source}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
               {/* Match Tier */}
               <div>
                 <Label className="text-xs text-muted-foreground mb-2 block">Match Tier</Label>

@@ -42,4 +42,5 @@ export interface SourcingProjectFilters {
   location?: string
   minExperience?: number
   maxExperience?: number
+  source?: 'local' | 'coresignal' | 'all'
 }
