@@ -1,4 +1,3 @@
-
 import { AuthGate } from '@/components/auth/AuthGate'
 import { OrgGate } from '@/components/auth/OrgGate'
 import { Header } from './Header'
@@ -7,6 +6,8 @@ import { useEffect } from 'react'
 import { useToast } from '@/components/ui/use-toast'
 import { useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
+import { BulkUploadProvider } from '@/contexts/BulkUploadContext'
+import { GlobalBulkUploadWidget } from '@/components/candidates/GlobalBulkUploadWidget'
 
 export function Layout() {
   const location = useLocation()
@@ -63,12 +64,15 @@ export function Layout() {
   return (
     <AuthGate>
       <OrgGate>
-        <div className="bg-background">
-          <Header />
-          <main className="pt-12 sm:pt-14 min-h-[calc(100vh-6rem)] sm:min-h-[calc(100vh-7rem)]">
-            <Outlet />
-          </main>
-        </div>
+        <BulkUploadProvider>
+          <div className="bg-background">
+            <Header />
+            <main className="pt-12 sm:pt-14 min-h-[calc(100vh-6rem)] sm:min-h-[calc(100vh-7rem)]">
+              <Outlet />
+            </main>
+          </div>
+          <GlobalBulkUploadWidget />
+        </BulkUploadProvider>
       </OrgGate>
     </AuthGate>
   )
