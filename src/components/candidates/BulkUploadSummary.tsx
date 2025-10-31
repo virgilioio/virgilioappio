@@ -76,7 +76,7 @@ export function BulkUploadSummary({
       {/* Actions */}
       <div className="flex gap-3 justify-end">
         <Button variant="outline" onClick={onClose}>
-          Close
+          Start New Upload
         </Button>
         <Button
           onClick={onViewCandidates}

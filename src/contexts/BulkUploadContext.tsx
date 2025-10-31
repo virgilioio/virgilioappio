@@ -20,10 +20,18 @@ export function BulkUploadProvider({ children }: { children: ReactNode }) {
   const [options, setOptions] = useState<BulkUploadOptions | null>(null)
 
   const startUpload = (newFiles: File[], uploadOptions: BulkUploadOptions) => {
-    setFiles(newFiles)
-    setOptions(uploadOptions)
-    setIsUploadActive(true)
-    setIsMinimized(false)
+    // Force a reset by briefly setting isUploadActive to false
+    setIsUploadActive(false)
+    setFiles([])
+    setOptions(null)
+    
+    // Then set the new upload data
+    setTimeout(() => {
+      setFiles(newFiles)
+      setOptions(uploadOptions)
+      setIsUploadActive(true)
+      setIsMinimized(false)
+    }, 0)
   }
 
   const closeUpload = () => {

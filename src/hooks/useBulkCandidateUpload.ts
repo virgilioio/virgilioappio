@@ -38,6 +38,11 @@ export function useBulkCandidateUpload() {
   const { createAssociationAndMove } = usePipelineActions()
   const { user } = useAuth()
 
+  const resetUploadState = () => {
+    setFileResults([])
+    setIsProcessing(false)
+  }
+
   const updateFileStatus = (
     fileIndex: number,
     status: FileProcessingResult['status'],
@@ -244,6 +249,7 @@ export function useBulkCandidateUpload() {
     isProcessing,
     fileResults,
     progress: calculateOverallProgress(fileResults),
-    summary: calculateSummary(fileResults)
+    summary: calculateSummary(fileResults),
+    resetUploadState
   }
 }

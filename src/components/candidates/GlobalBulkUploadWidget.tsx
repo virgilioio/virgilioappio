@@ -11,17 +11,18 @@ import { useNavigate } from "react-router-dom"
 
 export function GlobalBulkUploadWidget() {
   const { isUploadActive, isMinimized, files, options, closeUpload, setMinimized } = useBulkUploadContext()
-  const { uploadCandidates, isProcessing, fileResults, progress } = useBulkCandidateUpload()
+  const { uploadCandidates, isProcessing, fileResults, progress, resetUploadState } = useBulkCandidateUpload()
   const [step, setStep] = useState<"processing" | "summary">("processing")
   const [hasManuallyInteracted, setHasManuallyInteracted] = useState(false)
   const navigate = useNavigate()
 
   // Start upload when context is activated
   useEffect(() => {
-    if (isUploadActive && files.length > 0 && options && step === "processing" && fileResults.length === 0) {
+    if (isUploadActive && files.length > 0 && options && step === "processing") {
+      resetUploadState()
       uploadCandidates(files, options)
     }
-  }, [isUploadActive, files, options])
+  }, [isUploadActive, files, options, step, resetUploadState, uploadCandidates])
 
   // Auto-minimize 2 seconds after processing starts (only if user hasn't manually interacted)
   useEffect(() => {
