@@ -1,17 +1,22 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, ExternalLink, Users, Briefcase, Activity, Calendar, AlertTriangle } from 'lucide-react'
+import { ArrowLeft, Briefcase, Users, Activity, Calendar, AlertTriangle, Mail, Phone } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useSaaSCustomer } from '@/hooks/useSaaSCustomer'
-import { PageHeader } from '@/components/layout/PageHeader'
 import { SuspendOrganizationDialog } from '@/components/settings/SuspendOrganizationDialog'
 import { ExtendTrialDialog } from '@/components/settings/ExtendTrialDialog'
 import { useSuspendOrganization, useRestoreOrganization, useExtendTrial } from '@/hooks/useSaaSAdminActions'
-import { format } from 'date-fns'
+import { format, formatDistanceToNow } from 'date-fns'
+import { MetricCard } from '@/components/ui/metric-card'
+import { CustomerHealthBadge, HealthStatus } from '@/components/saas/CustomerHealthBadge'
+import { QuickActionsPanel } from '@/components/saas/QuickActionsPanel'
+import { ActivityTimeline } from '@/components/saas/ActivityTimeline'
+import { MembersList } from '@/components/saas/MembersList'
+import { BillingOverview } from '@/components/saas/BillingOverview'
 
 export function SaaSCustomerDetail() {
   const { id } = useParams<{ id: string }>()
@@ -53,20 +58,83 @@ export function SaaSCustomerDetail() {
     }
   }
 
+  // Calculate customer health status
+  const customerHealth: HealthStatus = useMemo(() => {
+    if (customer.status === 'suspended') return 'inactive'
+    
+    const daysSinceActive = customer.last_active_at 
+      ? (Date.now() - new Date(customer.last_active_at).getTime()) / (1000 * 60 * 60 * 24)
+      : 999
+    
+    const hasUsage = customer.jobs_created_30d > 0 || customer.candidates_added_30d > 0
+    
+    if (daysSinceActive > 30) return 'churn-risk'
+    if (daysSinceActive > 14 || !hasUsage) return 'at-risk'
+    return 'healthy'
+  }, [customer])
+
+  // Mock activity data (would come from actual activity tracking)
+  const recentActivities = useMemo(() => {
+    const activities = []
+    
+    if (customer.jobs_created_30d > 0) {
+      activities.push({
+        id: '1',
+        type: 'job_created' as const,
+        description: `Created ${customer.jobs_created_30d} job${customer.jobs_created_30d > 1 ? 's' : ''} in the last 30 days`,
+        timestamp: customer.updated_at,
+      })
+    }
+    
+    if (customer.candidates_added_30d > 0) {
+      activities.push({
+        id: '2',
+        type: 'candidate_added' as const,
+        description: `Added ${customer.candidates_added_30d} candidate${customer.candidates_added_30d > 1 ? 's' : ''} in the last 30 days`,
+        timestamp: customer.updated_at,
+      })
+    }
+    
+    return activities
+  }, [customer])
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center gap-3 mb-6">
+    <div className="px-4 md:px-6 lg:px-8 py-8 md:py-12 space-y-8">
+      {/* Header */}
+      <div className="flex items-center gap-4 mb-2">
         <Button 
           variant="ghost" 
           size="sm" 
           onClick={() => navigate('/settings/platform/saas-customers')}
+          className="hover:bg-virgilio-purple/10"
         >
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <PageHeader 
-          title={customer.name}
-          subtitle="SaaS customer details and management"
-        />
+        <div className="flex-1">
+          <h1 className="text-h1-mobile md:text-h1-desktop font-poppins font-bold text-virgilio-text">
+            {customer.name}<span className="text-virgilio-purple">.</span>
+          </h1>
+          <div className="flex items-center gap-3 mt-2 text-sm text-virgilio-muted">
+            {customer.last_active_at && (
+              <span>
+                Last active {formatDistanceToNow(new Date(customer.last_active_at), { addSuffix: true })}
+              </span>
+            )}
+            <span>·</span>
+            <span>Active since {format(new Date(customer.created_at), 'MMM yyyy')}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Status Badges */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <CustomerHealthBadge health={customerHealth} />
+        <Badge variant={getPlanVariant(customer.plan_type)} className="px-3 py-1">
+          {customer.plan_type || 'No Plan'}
+        </Badge>
+        <Badge variant={getStatusVariant(customer.status)} className="px-3 py-1">
+          {customer.status}
+        </Badge>
       </div>
 
       {/* Suspension Banner */}
@@ -87,248 +155,121 @@ export function SaaSCustomerDetail() {
         </Alert>
       )}
 
-      {/* Summary Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Customer Overview</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            <div>
-              <div className="text-sm text-muted-foreground">Organization</div>
-              <div className="font-medium">{customer.name}</div>
-            </div>
-            
-            <div>
-              <div className="text-sm text-muted-foreground">Plan</div>
-              <Badge variant={getPlanVariant(customer.plan_type)}>
-                {customer.plan_type || 'No Plan'}
-              </Badge>
-            </div>
-            
-            <div>
-              <div className="text-sm text-muted-foreground">Status</div>
-              <Badge variant={getStatusVariant(customer.status)}>
-                {customer.status}
-              </Badge>
-            </div>
-            
-            <div>
-              <div className="text-sm text-muted-foreground">Renewal</div>
-              <div className="font-medium">
-                {customer.renewal_date ? (
-                  format(new Date(customer.renewal_date), 'MMM d, yyyy')
-                ) : (
-                  'Not set'
-                )}
-              </div>
-            </div>
-            
-            <div>
-              <div className="text-sm text-muted-foreground">Owner</div>
-              <div className="font-medium">
-                {customer.owner_details ? (
-                  `${customer.owner_details.first_name || ''} ${customer.owner_details.last_name || ''}`.trim() ||
-                  customer.owner_details.email
-                ) : (
-                  'Not assigned'
-                )}
-              </div>
-            </div>
-            
-            <div>
-              <div className="text-sm text-muted-foreground">Billing ID</div>
-              <div className="font-medium">
-                {customer.billing_id ? (
-                  <span className="font-mono text-xs">{customer.billing_id}</span>
-                ) : (
-                  'Not set'
-                )}
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Quick Stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <MetricCard
+          title="Jobs Created"
+          value={customer.jobs_created_30d}
+          icon={<Briefcase />}
+          tooltip="Jobs created in the last 30 days"
+        />
+        <MetricCard
+          title="Candidates Added"
+          value={customer.candidates_added_30d}
+          icon={<Users />}
+          tooltip="Candidates added in the last 30 days"
+        />
+        <MetricCard
+          title="Active Members"
+          value={customer.members_active_count}
+          icon={<Activity />}
+          tooltip="Currently active team members"
+        />
+        <MetricCard
+          title="Last Active"
+          value={
+            customer.last_active_at
+              ? formatDistanceToNow(new Date(customer.last_active_at), { addSuffix: true }).replace('ago', '').trim()
+              : 'Never'
+          }
+          icon={<Calendar />}
+          tooltip="Last account activity"
+        />
+      </div>
 
       {/* Tabs */}
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList>
+        <TabsList className="border-b border-virgilio-border bg-transparent w-full justify-start">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="members">Members</TabsTrigger>
           <TabsTrigger value="billing">Billing</TabsTrigger>
-          <TabsTrigger value="settings">Settings</TabsTrigger>
+          <TabsTrigger value="activity">Activity</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="overview" className="space-y-6">
-          {/* Usage Stats */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Usage Snapshot (Last 30 Days)</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-primary/10 rounded-lg">
-                    <Briefcase className="h-4 w-4 text-primary" />
-                  </div>
+        <TabsContent value="overview" className="space-y-6 mt-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Quick Actions */}
+            <QuickActionsPanel
+              customer={customer}
+              onExtendTrial={() => setExtendTrialDialogOpen(true)}
+              onChangePlan={() => {/* TODO: implement */}}
+              onSuspend={() => setSuspendDialogOpen(true)}
+              onRestore={() => restoreMutation.mutate({ orgId: customer.id })}
+            />
+
+            {/* Owner Contact Card */}
+            {customer.owner_details && (
+              <Card className="shadow-calendly border-virgilio-border">
+                <CardHeader>
+                  <CardTitle className="text-h4-mobile md:text-h4-desktop font-poppins font-bold text-virgilio-text">
+                    Owner Contact<span className="text-virgilio-purple">.</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
                   <div>
-                    <div className="text-2xl font-bold">{customer.jobs_created_30d}</div>
-                    <div className="text-sm text-muted-foreground">Jobs Created</div>
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-primary/10 rounded-lg">
-                    <Users className="h-4 w-4 text-primary" />
-                  </div>
-                  <div>
-                    <div className="text-2xl font-bold">{customer.candidates_added_30d}</div>
-                    <div className="text-sm text-muted-foreground">Candidates Added</div>
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-primary/10 rounded-lg">
-                    <Activity className="h-4 w-4 text-primary" />
-                  </div>
-                  <div>
-                    <div className="text-2xl font-bold">{customer.members_active_count}</div>
-                    <div className="text-sm text-muted-foreground">Active Members</div>
-                  </div>
-                </div>
-                
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-primary/10 rounded-lg">
-                    <Calendar className="h-4 w-4 text-primary" />
-                  </div>
-                  <div>
-                    <div className="text-2xl font-bold">
-                      {customer.last_active_at ? (
-                        format(new Date(customer.last_active_at), 'MMM d')
-                      ) : (
-                        'Never'
-                      )}
+                    <div className="text-sm text-virgilio-muted mb-1">Name</div>
+                    <div className="font-medium text-virgilio-text">
+                      {`${customer.owner_details.first_name || ''} ${customer.owner_details.last_name || ''}`.trim() || 'Not provided'}
                     </div>
-                    <div className="text-sm text-muted-foreground">Last Active</div>
                   </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+                  
+                  {customer.owner_details.email && (
+                    <div>
+                      <div className="text-sm text-virgilio-muted mb-1 flex items-center gap-1.5">
+                        <Mail className="h-3.5 w-3.5" />
+                        Email
+                      </div>
+                      <a 
+                        href={`mailto:${customer.owner_details.email}`}
+                        className="text-virgilio-purple hover:underline font-medium"
+                      >
+                        {customer.owner_details.email}
+                      </a>
+                    </div>
+                  )}
 
-          {/* Recent Activity Placeholder */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent Activity</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-8 text-muted-foreground">
-                Activity tracking will be implemented in the next phase
-              </div>
-            </CardContent>
-          </Card>
+                  <div className="pt-4 border-t border-virgilio-border">
+                    <div className="text-sm text-virgilio-muted mb-1">Account Details</div>
+                    <div className="text-sm space-y-1">
+                      <div className="flex justify-between">
+                        <span className="text-virgilio-muted">Type:</span>
+                        <span className="font-medium text-virgilio-text capitalize">{customer.organization_type}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-virgilio-muted">Signup:</span>
+                        <span className="font-medium text-virgilio-text capitalize">{customer.signup_source.replace('_', ' ')}</span>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
+          {/* Activity Timeline */}
+          <ActivityTimeline activities={recentActivities} />
         </TabsContent>
 
-        <TabsContent value="members" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Team Members</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-8 text-muted-foreground">
-                Member management will be implemented in the next phase
-              </div>
-            </CardContent>
-          </Card>
+        <TabsContent value="members" className="space-y-6 mt-6">
+          <MembersList organizationId={customer.id} />
         </TabsContent>
 
-        <TabsContent value="billing" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Billing Information</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <div className="text-sm text-muted-foreground">Current Plan</div>
-                  <Badge variant={getPlanVariant(customer.plan_type)} className="mt-1">
-                    {customer.plan_type || 'No Plan'}
-                  </Badge>
-                </div>
-                
-                <div>
-                  <div className="text-sm text-muted-foreground">Status</div>
-                  <Badge variant={getStatusVariant(customer.status)} className="mt-1">
-                    {customer.status}
-                  </Badge>
-                </div>
-                
-                <div>
-                  <div className="text-sm text-muted-foreground">Next Renewal</div>
-                  <div className="font-medium">
-                    {customer.renewal_date ? (
-                      format(new Date(customer.renewal_date), 'MMMM d, yyyy')
-                    ) : (
-                      'Not set'
-                    )}
-                  </div>
-                </div>
-                
-                <div>
-                  <div className="text-sm text-muted-foreground">Billing ID</div>
-                  <div className="font-mono text-sm">
-                    {customer.billing_id || 'Not set'}
-                  </div>
-                </div>
-              </div>
-              
-              {customer.billing_id && (
-                <div className="pt-4">
-                  <Button variant="outline" className="gap-2">
-                    <ExternalLink className="h-4 w-4" />
-                    Open Stripe Portal
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+        <TabsContent value="billing" className="space-y-6 mt-6">
+          <BillingOverview customer={customer} />
         </TabsContent>
 
-        <TabsContent value="settings" className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Account Settings</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Button variant="outline">Change Plan</Button>
-                <Button variant="outline">Assign New Owner</Button>
-                <Button 
-                  variant="outline"
-                  onClick={() => setExtendTrialDialogOpen(true)}
-                >
-                  Extend Trial Period
-                </Button>
-                {customer.status === 'suspended' ? (
-                  <Button 
-                    variant="default"
-                    onClick={() => restoreMutation.mutate({ orgId: customer.id })}
-                    disabled={restoreMutation.isPending}
-                  >
-                    {restoreMutation.isPending ? 'Restoring...' : 'Restore Account'}
-                  </Button>
-                ) : (
-                  <Button 
-                    variant="destructive"
-                    onClick={() => setSuspendDialogOpen(true)}
-                    disabled={suspendMutation.isPending}
-                  >
-                    Suspend Account
-                  </Button>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+        <TabsContent value="activity" className="space-y-6 mt-6">
+          <ActivityTimeline activities={recentActivities} />
         </TabsContent>
       </Tabs>
 
