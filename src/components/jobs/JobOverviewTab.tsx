@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { SafeHtml } from '@/components/ui/safe-html'
-import { Edit, Building, Briefcase, MapPin, DollarSign, Users, Calendar, UserCheck, User, Archive } from 'lucide-react'
+import { MetricCard } from '@/components/ui/metric-card'
+import { Edit, Building, Briefcase, MapPin, DollarSign, Users, Calendar, UserCheck, User, Archive, Clock, FileText } from 'lucide-react'
 import { PermissionGate } from '@/components/auth/PermissionGate'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useQuery } from '@tanstack/react-query'
@@ -82,176 +83,162 @@ export function JobOverviewTab({ job, onEdit, onArchive }: JobOverviewTabProps) 
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-3 mb-2 flex-wrap">
-                <h1 className="text-2xl font-poppins font-semibold text-text-primary">{job.title}</h1>
-                <Badge variant={getStatusBadgeVariant(job.status)} className="shrink-0">
-                  {job.status}
-                </Badge>
-              </div>
-              <div className="flex items-center gap-4 text-text-secondary mb-4 flex-wrap">
-                <div className="flex items-center gap-2">
-                  <Building className="h-5 w-5" />
-                  <span className="text-md">{job.organization_name || 'Organization'}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Briefcase className="h-5 w-5" />
-                  <span className="text-md">{job.level}</span>
-                </div>
-              </div>
+      {/* Header */}
+      <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-h1-mobile md:text-h1-desktop font-poppins font-bold tracking-page-title text-virgilio-text mb-2">
+            {job.title}<span className="text-virgilio-purple">.</span>
+          </h1>
+          <div className="flex items-center gap-3 flex-wrap">
+            <Badge variant={getStatusBadgeVariant(job.status)}>{job.status}</Badge>
+            <span className="text-sm text-virgilio-muted">·</span>
+            <div className="flex items-center gap-2 text-virgilio-muted">
+              <Building className="h-4 w-4" />
+              <span>{job.organization_name || 'Organization'}</span>
             </div>
-            
-            {permissions.canEditJobs && (
-              <div className="flex items-center gap-2">
-                <Button variant="outline" onClick={onEdit} className="gap-2">
-                  <Edit className="h-5 w-5" />
-                  Edit Job
-                </Button>
-                {job.status !== 'archived' && (
-                  <Button variant="outline" onClick={onArchive} className="gap-2">
-                    <Archive className="h-5 w-5" />
-                    Archive Job
-                  </Button>
-                )}
-              </div>
+            <span className="text-sm text-virgilio-muted">·</span>
+            <div className="flex items-center gap-2 text-virgilio-muted">
+              <Briefcase className="h-4 w-4" />
+              <span>{job.level}</span>
+            </div>
+          </div>
+        </div>
+        
+        {permissions.canEditJobs && (
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={onEdit} className="gap-2">
+              <Edit className="h-4 w-4" />
+              Edit Job
+            </Button>
+            {job.status !== 'archived' && (
+              <Button variant="outline" onClick={onArchive} className="gap-2">
+                <Archive className="h-4 w-4" />
+                Archive Job
+              </Button>
             )}
           </div>
+        )}
+      </div>
+
+      {/* Quick Stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <MetricCard
+          title="Department"
+          value={job.department || 'Not specified'}
+          icon={<Building />}
+          backgroundColor="linear-gradient(135deg, hsl(var(--virgilio-purple)) 0%, hsl(var(--virgilio-purple-dark)) 100%)"
+          iconColor="#ffffff"
+        />
+        
+        <MetricCard
+          title="Location"
+          value={job.location || 'Not specified'}
+          icon={<MapPin />}
+          backgroundColor="linear-gradient(135deg, #f093fb 0%, #f5576c 100%)"
+          iconColor="#ffffff"
+        />
+        
+        <MetricCard
+          title="Salary Range"
+          value={formatSalary(job.salary_min, job.salary_max, job.currency)}
+          icon={<DollarSign />}
+          backgroundColor="linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)"
+          iconColor="#ffffff"
+        />
+        
+        <MetricCard
+          title="Hiring Team"
+          value={job.hiring_team && job.hiring_team.length > 0
+            ? `${job.hiring_team.length} member${job.hiring_team.length > 1 ? 's' : ''}`
+            : 'No team assigned'
+          }
+          icon={<Users />}
+          backgroundColor="linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)"
+          iconColor="#ffffff"
+        />
+      </div>
+
+      {/* Required Skills */}
+      {(() => {
+        const aiSkills = Array.isArray((job as any)?.auto_generated_skills)
+          ? ((job as any).auto_generated_skills as any[]).map((s) => typeof s === 'string' ? s : s?.name).filter(Boolean)
+          : []
+        const skills = job.skills && job.skills.length > 0 ? job.skills : aiSkills
+        
+        return skills && skills.length > 0 ? (
+          <Card className="shadow-calendly border-virgilio-border">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-virgilio-text">
+                <Briefcase className="h-5 w-5 text-virgilio-purple" />
+                Required Skills<span className="text-virgilio-purple">.</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-2">
+                {skills.map((skill, idx) => (
+                  <Badge 
+                    key={`${skill}-${idx}`} 
+                    variant={getSkillColor(skill)} 
+                    className="text-sm px-3 py-1"
+                  >
+                    {skill}
+                  </Badge>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        ) : null
+      })()}
+
+      {/* Job Description */}
+      {job.description && (
+        <Card className="shadow-calendly border-virgilio-border">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-virgilio-text">
+              <FileText className="h-5 w-5 text-virgilio-purple" />
+              Job Description<span className="text-virgilio-purple">.</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <SafeHtml
+              content={job.description}
+              className="prose prose-sm max-w-none text-virgilio-text
+                [&_ul]:list-disc [&_ul]:pl-6 [&_ul]:my-3
+                [&_ol]:list-decimal [&_ol]:pl-6 [&_ol]:my-3
+                [&_p]:my-3 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0
+                [&_h1]:text-2xl [&_h1]:font-bold [&_h1]:mb-4
+                [&_h2]:text-xl [&_h2]:font-semibold [&_h2]:mb-3
+                [&_h3]:text-lg [&_h3]:font-semibold [&_h3]:mb-2
+                [&_strong]:font-semibold [&_strong]:text-virgilio-text
+                [&_a]:text-virgilio-purple [&_a]:underline hover:[&_a]:text-virgilio-purple/80"
+            />
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Timeline */}
+      <Card className="shadow-calendly border-virgilio-border">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-virgilio-text">
+            <Clock className="h-5 w-5 text-virgilio-purple" />
+            Timeline<span className="text-virgilio-purple">.</span>
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          {/* Job Details Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <div className="flex items-start gap-3">
-              <Building className="h-5 w-5 text-text-secondary mt-0.5 shrink-0" />
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-text-secondary mb-1">Department</p>
-                <p className="text-md text-text-primary break-words">
-                  {job.department || 'Not specified'}
-                </p>
-              </div>
+          <div className="flex flex-wrap items-center gap-3 text-sm text-virgilio-muted">
+            <div className="flex items-center gap-2">
+              <User className="h-4 w-4" />
+              <span>Created by <strong className="text-virgilio-text">{formatCreatorName()}</strong></span>
             </div>
-
-            <div className="flex items-start gap-3">
-              <MapPin className="h-5 w-5 text-text-secondary mt-0.5 shrink-0" />
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-text-secondary mb-1">Location</p>
-                <p className="text-md text-text-primary break-words">
-                  {job.location || 'Not specified'}
-                </p>
-              </div>
+            <span>·</span>
+            <div className="flex items-center gap-2">
+              <Calendar className="h-4 w-4" />
+              <span>{new Date(job.created_at).toLocaleDateString()}</span>
             </div>
-
-            <div className="flex items-start gap-3">
-              <DollarSign className="h-5 w-5 text-text-secondary mt-0.5 shrink-0" />
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-text-secondary mb-1">Salary Range</p>
-                <p className="text-md text-text-primary break-words">
-                  {formatSalary(job.salary_min, job.salary_max, job.currency)}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-3">
-              <Users className="h-5 w-5 text-text-secondary mt-0.5 shrink-0" />
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-text-secondary mb-1">Hiring Team</p>
-                <p className="text-md text-text-primary">
-                  {job.hiring_team && job.hiring_team.length > 0
-                    ? `${job.hiring_team.length} member(s)`
-                    : 'No team assigned'
-                  }
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Required Skills */}
-          {(() => {
-            const aiSkills = Array.isArray((job as any)?.auto_generated_skills)
-              ? ((job as any).auto_generated_skills as any[]).map((s) => typeof s === 'string' ? s : s?.name).filter(Boolean)
-              : []
-            const skills = job.skills && job.skills.length > 0 ? job.skills : aiSkills
-            
-            // Debug logging for skills visibility
-            console.log('Job skills data:', {
-              skills: job.skills,
-              auto_generated_skills: (job as any)?.auto_generated_skills,
-              aiSkills,
-              finalSkills: skills
-            })
-            
-            return skills && skills.length > 0 ? (
-              <div className="mb-8">
-                <h3 className="text-lg font-poppins font-semibold text-text-primary mb-4 flex items-center gap-2">
-                  <Briefcase className="h-5 w-5 text-accent" />
-                  Required Skills
-                </h3>
-                <div className="flex flex-wrap gap-2">
-                  {skills.map((skill, idx) => (
-                    <Badge key={`${skill}-${idx}`} variant={getSkillColor(skill)} className="text-sm">{skill}</Badge>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              // Show placeholder when no skills are found
-              <div className="mb-8">
-                <h3 className="text-lg font-poppins font-semibold text-text-primary mb-4 flex items-center gap-2">
-                  <Briefcase className="h-5 w-5 text-accent" />
-                  Required Skills
-                </h3>
-                <div className="text-sm text-text-secondary">
-                  No skills specified for this position
-                </div>
-              </div>
-            )
-          })()}
-
-          {/* Job Description */}
-          {job.description && (
-            <div className="mb-8">
-              <h3 className="text-lg font-poppins font-semibold text-text-primary mb-4 flex items-center gap-2">
-                <Briefcase className="h-5 w-5 text-accent" />
-                Job Description
-              </h3>
-              <SafeHtml
-                content={job.description}
-                className="text-md leading-relaxed text-text-primary bg-surface-secondary p-4 rounded-brand prose prose-sm max-w-none [&_ul]:list-disc [&_ul]:pl-6 [&_ol]:list-decimal [&_ol]:pl-6 [&_p]:my-2 [&_p:first-child]:mt-0 [&_p:last-child]:mb-0"
-              />
-            </div>
-          )}
-
-          {/* Timeline Information */}
-          <div className="mt-8 pt-6 border-t border-border">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              <div className="flex items-start gap-3">
-                <User className="h-5 w-5 text-text-secondary mt-0.5 shrink-0" />
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-text-secondary mb-1">Created By</p>
-                  <p className="text-md text-text-primary">
-                    {formatCreatorName()}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <Calendar className="h-5 w-5 text-text-secondary mt-0.5 shrink-0" />
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-text-secondary mb-1">Created</p>
-                  <p className="text-md text-text-primary">
-                    {new Date(job.created_at).toLocaleDateString()}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <UserCheck className="h-5 w-5 text-text-secondary mt-0.5 shrink-0" />
-                <div className="min-w-0">
-                  <p className="text-sm font-medium text-text-secondary mb-1">Last Updated</p>
-                  <p className="text-md text-text-primary">
-                    {new Date(job.updated_at).toLocaleDateString()}
-                  </p>
-                </div>
-              </div>
+            <span>·</span>
+            <div className="flex items-center gap-2">
+              <UserCheck className="h-4 w-4" />
+              <span>Updated {new Date(job.updated_at).toLocaleDateString()}</span>
             </div>
           </div>
         </CardContent>
