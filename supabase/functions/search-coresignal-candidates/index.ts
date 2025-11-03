@@ -1,7 +1,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0';
-import { corsHeadersFor, handlePreflight } from "../_shared/mod.ts";
+import { corsHeadersFor, handlePreflight } from "../_shared/cors.ts";
 
 const CORESIGNAL_API_KEY = Deno.env.get('CORESIGNAL_API_KEY');
 const CORESIGNAL_API_URL = 'https://api.coresignal.com/v2/employee_base/search/filter/preview';
