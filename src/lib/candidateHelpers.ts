@@ -160,6 +160,12 @@ export async function createCandidate(candidateData: CandidateData) {
 
   if (createError) {
     log.error('Error creating candidate:', createError)
+    
+    // Provide more helpful error messages for RLS violations
+    if (createError.code === '42501') {
+      throw new Error('Permission denied: You do not have the required permissions to create candidates in this organization. Please verify you are an active recruiter or admin.')
+    }
+    
     throw createError
   }
 

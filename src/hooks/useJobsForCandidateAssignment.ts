@@ -79,15 +79,9 @@ export function useJobsForCandidateAssignment() {
           return
         }
       } else if (memberRole === 'recruiter') {
-        // Recruiters only see jobs they're assigned to
-        const { data: assignments } = await supabase
-          .from('job_assignments')
-          .select('job_id')
-          .eq('user_id', user.id)
-
-        if (assignments && assignments.length > 0) {
-          const jobIds = assignments.map(a => a.job_id)
-          query = query.in('id', jobIds)
+        // Recruiters see all jobs in their organization
+        if (organizationId) {
+          query = query.eq('organization_id', organizationId)
         } else {
           setJobs([])
           return
