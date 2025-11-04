@@ -250,21 +250,7 @@ export function useCandidates(jobId: string) {
         throw new Error('Job is not associated with an organization. Please contact support.')
       }
       
-      // Verify user has access to this organization
-      const { data: memberCheck } = await supabase
-        .from('members')
-        .select('user_id, user_status, user_type')
-        .eq('user_id', user.id)
-        .eq('organization_id', jobData.organization_id)
-        .eq('user_status', 'active')
-        .single()
-      
-      if (!memberCheck) {
-        log.error('User is not a member of job organization:', { userId: user.id, orgId: jobData.organization_id })
-        throw new Error('You do not have permission to add candidates to this job. Please contact your administrator.')
-      }
-      
-      log.debug('User membership verified:', memberCheck)
+      log.debug('Job organization verified:', jobData.organization_id)
 
       // Check for duplicates using shared helper
       const duplicateCheck = await checkForDuplicateCandidate(candidateData, jobData.organization_id)
