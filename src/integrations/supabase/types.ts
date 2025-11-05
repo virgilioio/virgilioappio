@@ -3501,7 +3501,6 @@ export type Database = {
         }[]
       }
       get_member_role: { Args: never; Returns: string }
-      get_member_role_safe: { Args: never; Returns: string }
       get_org_hierarchy: {
         Args: { root_org_id: string }
         Returns: {
@@ -3559,7 +3558,6 @@ export type Database = {
       get_user_organization_id: { Args: never; Returns: string }
       get_user_tenant_id: { Args: never; Returns: string }
       get_user_type: { Args: never; Returns: string }
-      get_user_type_safe: { Args: never; Returns: string }
       get_user_type_secure: { Args: never; Returns: string }
       increment_term_usage: {
         Args: { table_name: string; term_name: string }
@@ -3643,18 +3641,7 @@ export type Database = {
           synced_count: number
         }[]
       }
-      test_get_user_organization_id: {
-        Args: never
-        Returns: {
-          expected_org_id: string
-          members_table_org_id: string
-          returned_org_id: string
-          test_case: string
-          test_result: string
-          user_email: string
-          user_type: string
-        }[]
-      }
+      test_get_user_organization_id: { Args: never; Returns: string }
       update_feature_flag: {
         Args: { flag_name_param: string; is_active_param: boolean }
         Returns: boolean
