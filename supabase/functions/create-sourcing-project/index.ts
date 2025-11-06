@@ -15,6 +15,7 @@ interface CreateSourcingProjectRequest {
   search_criteria: {
     skills: string[];
     location?: string;
+    title_keywords?: string[];
     salary_min?: number;
     salary_max?: number;
     currency?: string;
