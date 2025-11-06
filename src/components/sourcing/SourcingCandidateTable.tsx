@@ -58,6 +58,8 @@ export function SourcingCandidateTable({
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
   const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null)
+  const [selectedCoresignalId, setSelectedCoresignalId] = useState<string | null>(null)
+  const [selectedCoresignalData, setSelectedCoresignalData] = useState<any>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
   const { isCollectDisabled } = useCoresignalCreditWarnings()
   
@@ -317,7 +319,24 @@ export function SourcingCandidateTable({
                     className="cursor-pointer hover:bg-muted/50"
                     onClick={() => {
                       if (candidate.candidate_id || candidate.source === 'local') {
+                        // Full profile available
                         setSelectedCandidateId(candidate.id)
+                        setSelectedCoresignalId(null)
+                        setSelectedCoresignalData(null)
+                        setSheetOpen(true)
+                      } else if (candidate.source === 'coresignal' && candidate.coresignal_id) {
+                        // CoreSignal preview
+                        setSelectedCandidateId(null)
+                        setSelectedCoresignalId(candidate.coresignal_id)
+                        setSelectedCoresignalData({
+                          candidate_name: candidate.candidate_name,
+                          headline: candidate.headline,
+                          location: candidate.location_city ? `${candidate.location_city}, ${candidate.location_country}` : candidate.location_country,
+                          current_company: candidate.current_company,
+                          current_role: candidate.current_role,
+                          linkedin_url: candidate.linkedin_url,
+                          coresignal_score: candidate.coresignal_score
+                        })
                         setSheetOpen(true)
                       }
                     }}
@@ -527,8 +546,27 @@ export function SourcingCandidateTable({
               key={candidate.id} 
               className="shadow-calendly cursor-pointer hover:shadow-lg transition-shadow"
               onClick={() => {
-                setSelectedCandidateId(candidate.id)
-                setSheetOpen(true)
+                if (candidate.candidate_id || candidate.source === 'local') {
+                  // Full profile available
+                  setSelectedCandidateId(candidate.id)
+                  setSelectedCoresignalId(null)
+                  setSelectedCoresignalData(null)
+                  setSheetOpen(true)
+                } else if (candidate.source === 'coresignal' && candidate.coresignal_id) {
+                  // CoreSignal preview
+                  setSelectedCandidateId(null)
+                  setSelectedCoresignalId(candidate.coresignal_id)
+                  setSelectedCoresignalData({
+                    candidate_name: candidate.candidate_name,
+                    headline: candidate.headline,
+                    location: candidate.location_city ? `${candidate.location_city}, ${candidate.location_country}` : candidate.location_country,
+                    current_company: candidate.current_company,
+                    current_role: candidate.current_role,
+                    linkedin_url: candidate.linkedin_url,
+                    coresignal_score: candidate.coresignal_score
+                  })
+                  setSheetOpen(true)
+                }
               }}
             >
               <CardContent className="p-4 space-y-3">
@@ -655,6 +693,8 @@ export function SourcingCandidateTable({
         open={sheetOpen}
         onOpenChange={setSheetOpen}
         candidateId={selectedCandidateId}
+        coresignalId={selectedCoresignalId}
+        coresignalData={selectedCoresignalData}
         jobId={jobId}
         context="sourcing"
       />
