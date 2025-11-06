@@ -70,14 +70,14 @@ interface CoreSignalCandidate {
 function buildCoresignalFilterQuery(criteria: SearchCriteria): any {
   const query: any = {};
   
-  // Skills: Join with spaces (CoreSignal handles matching internally)
+  // Skills: Use OR logic as per CoreSignal documentation
   if (criteria.skills && criteria.skills.length > 0) {
-    query.skill = criteria.skills.join(' ');
+    query.skill = criteria.skills.map(skill => `(${skill})`).join(' OR ');
   }
   
-  // Title Keywords: Use experience_title field
+  // Title Keywords: Use OR logic for experience_title field
   if (criteria.title_keywords && criteria.title_keywords.length > 0) {
-    query.experience_title = criteria.title_keywords.join(' ');
+    query.experience_title = criteria.title_keywords.map(title => `(${title})`).join(' OR ');
   }
   
   // Location: Handle regional keywords and specific locations
