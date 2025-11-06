@@ -22,6 +22,35 @@ serve(async (req) => {
 
     console.log('Generating job spec for prompt:', prompt);
     console.log('First 100 chars of prompt:', prompt.substring(0, 100));
+    
+    // Simple language detection based on common words
+    function detectPromptLanguage(text: string): string {
+      const lowerText = text.toLowerCase();
+      
+      // Spanish indicators
+      const spanishWords = ['necesito', 'busco', 'quiero', 'estoy', 'para', 'con', 'que', 'una', 'uno'];
+      // Portuguese indicators  
+      const portugueseWords = ['preciso', 'procuro', 'estou', 'para', 'com', 'que', 'uma', 'um'];
+      // French indicators
+      const frenchWords = ['besoin', 'cherche', 'veux', 'pour', 'avec', 'que', 'une', 'un'];
+      // English indicators
+      const englishWords = ['need', 'looking', 'want', 'for', 'with', 'that', 'who', 'help'];
+      
+      const spanishCount = spanishWords.filter(word => lowerText.includes(word)).length;
+      const portugueseCount = portugueseWords.filter(word => lowerText.includes(word)).length;
+      const frenchCount = frenchWords.filter(word => lowerText.includes(word)).length;
+      const englishCount = englishWords.filter(word => lowerText.includes(word)).length;
+      
+      const maxCount = Math.max(spanishCount, portugueseCount, frenchCount, englishCount);
+      
+      if (spanishCount === maxCount && spanishCount > 0) return 'Spanish';
+      if (portugueseCount === maxCount && portugueseCount > 0) return 'Portuguese';
+      if (frenchCount === maxCount && frenchCount > 0) return 'French';
+      return 'English'; // Default
+    }
+    
+    const detectedLanguage = detectPromptLanguage(prompt);
+    console.log('Detected prompt language:', detectedLanguage);
 
     // First, get market salary data to enhance AI recommendations
     let marketSalaryData = null;
@@ -86,21 +115,19 @@ Use this market data to provide SPECIFIC salary recommendations instead of gener
 A client has described their hiring need. Your task is to analyze this input and return a structured response that Virgilio's system can use to generate a high-quality job record.
 
 🌐 **PRIMARY INSTRUCTION - LANGUAGE DETECTION (CRITICAL):**
-1. FIRST: Read the user's prompt and detect what language it is written in
-2. The prompt language determines the response language for job_title, alt_titles, job_description, department, and recommendations
-3. IGNORE the language of examples in these instructions - they are just examples
-4. Language mapping:
-   - English prompt → English response
-   - Spanish prompt → Spanish response  
-   - Portuguese prompt → Portuguese response
-   - French prompt → French response
-   - Any other language → English fallback
+**IMPORTANT: The user's prompt is written in ${detectedLanguage}. You MUST respond in ${detectedLanguage}.**
+
+EXPLICIT RULES:
+1. ALL text fields MUST be in ${detectedLanguage}: job_title, alt_titles, job_description, department, recommendations
+2. DO NOT use the job location to determine language - a job in Mexico can be described in English
+3. DO NOT infer language from geographical context
+4. The prompt language is ${detectedLanguage} - use ONLY this language for your response
 5. Skills MUST ALWAYS be in English regardless of prompt language
 
-**Example of correct behavior:**
-- User prompt: "I need a software engineer" → Response in English
-- User prompt: "Necesito un ingeniero de software" → Response in Spanish
-- User prompt: "Preciso de um engenheiro de software" → Response in Portuguese
+**Critical Examples:**
+- Prompt: "I need a software engineer in Barcelona, Spain" → Response in ENGLISH
+- Prompt: "Necesito un ingeniero en San Francisco, USA" → Response in SPANISH
+- Location does NOT determine language - prompt language does
 
 Now that language detection is clear, here are your other capabilities:
 
@@ -181,7 +208,11 @@ The job_description should be structured HTML like:
 <h3>Requirements</h3>
 <ul><li>...</li></ul>
 
-**REMINDER: Return all text fields (job_title, alt_titles, job_description, department, recommendations) in the SAME LANGUAGE as the user's prompt. Skills must be in English.**
+**FINAL REMINDER BEFORE GENERATING:**
+- Prompt language detected: ${detectedLanguage}
+- You MUST respond in: ${detectedLanguage}
+- Job location: IRRELEVANT to response language
+- Skills: Always English
 
 Return ONLY valid JSON in this format:
 
