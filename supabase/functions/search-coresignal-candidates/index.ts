@@ -80,25 +80,35 @@ function buildCoresignalFilterQuery(criteria: SearchCriteria): any {
     query.experience_title = criteria.title_keywords.map(title => `(${title})`).join(' OR ');
   }
   
-  // Location: Handle regional keywords and specific locations
+  // Location: Parse intelligently to use both 'location' and 'country' fields
   if (criteria.location) {
-    // Strip "Remote -" prefix and normalize
-    let location = criteria.location.replace(/^Remote\s*-\s*/i, '').trim();
-    const locationUpper = location.toUpperCase();
+    let locationStr = criteria.location.replace(/^Remote\s*-\s*/i, '').trim();
     
-    // Check if location contains a regional keyword
-    const regionMatch = Object.keys(REGION_COUNTRY_MAPPING).find(region => 
-      locationUpper.includes(region)
-    );
+    // Parse location string intelligently
+    const parts = locationStr.split(',').map(p => p.trim());
     
-    if (regionMatch) {
-      // Use first country from region (CoreSignal doesn't support OR for countries)
-      const countries = REGION_COUNTRY_MAPPING[regionMatch];
-      query.country = countries[0];
-      console.log(`🌎 Using ${countries[0]} as primary country for ${regionMatch}`);
-    } else {
-      // Use location as-is for specific countries/cities
-      query.country = location;
+    if (parts.length >= 2) {
+      // Multi-part location like "San Francisco, California" or "Mexico City, Mexico"
+      query.location = parts.slice(0, -1).join(', ');  // City/State (all but last)
+      query.country = parts[parts.length - 1];  // Country (last part)
+      
+      console.log(`🌍 Parsed location: city/state="${query.location}", country="${query.country}"`);
+    } else if (parts.length === 1) {
+      // Single value - could be country, state, or city
+      // Check if it's a known regional keyword
+      const regionMatch = Object.keys(REGION_COUNTRY_MAPPING).find(region => 
+        locationStr.toUpperCase().includes(region)
+      );
+      
+      if (regionMatch) {
+        // Regional keyword like "LATAM" or "Europe" - use first country from region
+        query.country = REGION_COUNTRY_MAPPING[regionMatch][0];
+        console.log(`🌎 Region detected: "${regionMatch}" → country="${query.country}"`);
+      } else {
+        // Single location value - use as city/state for broader matching
+        query.location = locationStr;
+        console.log(`📍 Single location value: location="${locationStr}"`);
+      }
     }
   }
   
