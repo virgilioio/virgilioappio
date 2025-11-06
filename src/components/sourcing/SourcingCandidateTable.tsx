@@ -69,6 +69,75 @@ export function SourcingCandidateTable({
     { key: 'match_score', direction: 'desc' }
   )
 
+  // Track current candidate index for navigation
+  const currentIndex = selectedCoresignalId 
+    ? sortedData.findIndex(c => c.coresignal_id === selectedCoresignalId)
+    : sortedData.findIndex(c => c.id === selectedCandidateId)
+  
+  const hasPrev = currentIndex > 0
+  const hasNext = currentIndex >= 0 && currentIndex < sortedData.length - 1
+
+  // Navigation handlers
+  const handleNavigatePrev = () => {
+    if (currentIndex > 0) {
+      const prevCandidate = sortedData[currentIndex - 1]
+      
+      if (prevCandidate.candidate_id || prevCandidate.source === 'local') {
+        setSelectedCandidateId(prevCandidate.id)
+        setSelectedCoresignalId(null)
+        setSelectedCoresignalData(null)
+      } else if (prevCandidate.source === 'coresignal' && prevCandidate.coresignal_id) {
+        setSelectedCandidateId(null)
+        setSelectedCoresignalId(prevCandidate.coresignal_id)
+        setSelectedCoresignalData({
+          candidate_name: prevCandidate.candidate_name,
+          headline: prevCandidate.headline,
+          location: prevCandidate.location_city ? `${prevCandidate.location_city}, ${prevCandidate.location_country}` : prevCandidate.location_country,
+          current_company: prevCandidate.current_company,
+          current_role: prevCandidate.current_role,
+          linkedin_url: prevCandidate.linkedin_url,
+          coresignal_score: prevCandidate.coresignal_score
+        })
+      }
+      
+      // Update pagination if needed
+      const prevPage = Math.floor((currentIndex - 1) / itemsPerPage) + 1
+      if (prevPage !== currentPage) {
+        setCurrentPage(prevPage)
+      }
+    }
+  }
+
+  const handleNavigateNext = () => {
+    if (currentIndex < sortedData.length - 1) {
+      const nextCandidate = sortedData[currentIndex + 1]
+      
+      if (nextCandidate.candidate_id || nextCandidate.source === 'local') {
+        setSelectedCandidateId(nextCandidate.id)
+        setSelectedCoresignalId(null)
+        setSelectedCoresignalData(null)
+      } else if (nextCandidate.source === 'coresignal' && nextCandidate.coresignal_id) {
+        setSelectedCandidateId(null)
+        setSelectedCoresignalId(nextCandidate.coresignal_id)
+        setSelectedCoresignalData({
+          candidate_name: nextCandidate.candidate_name,
+          headline: nextCandidate.headline,
+          location: nextCandidate.location_city ? `${nextCandidate.location_city}, ${nextCandidate.location_country}` : nextCandidate.location_country,
+          current_company: nextCandidate.current_company,
+          current_role: nextCandidate.current_role,
+          linkedin_url: nextCandidate.linkedin_url,
+          coresignal_score: nextCandidate.coresignal_score
+        })
+      }
+      
+      // Update pagination if needed
+      const nextPage = Math.floor((currentIndex + 1) / itemsPerPage) + 1
+      if (nextPage !== currentPage) {
+        setCurrentPage(nextPage)
+      }
+    }
+  }
+
   // Track which candidates are already in pipeline
   const [addedCandidates, setAddedCandidates] = useState<Set<string>>(new Set())
   const [loadingCandidates, setLoadingCandidates] = useState<Set<string>>(new Set())
@@ -697,6 +766,10 @@ export function SourcingCandidateTable({
         coresignalData={selectedCoresignalData}
         jobId={jobId}
         context="sourcing"
+        hasPrev={hasPrev}
+        hasNext={hasNext}
+        onNavigatePrev={handleNavigatePrev}
+        onNavigateNext={handleNavigateNext}
       />
     </div>
   )
