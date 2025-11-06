@@ -85,15 +85,15 @@ export function SourcingFiltersPanel({
   }
 
   return (
-    <div className="w-80 border-r border-virgilio-border/50 bg-surface-primary overflow-y-auto">
+    <div className="w-80 h-full border-r border-virgilio-border/50 bg-surface-primary flex flex-col">
       {/* Header */}
-      <div className="p-6 pb-4 bg-gradient-to-b from-virgilio-purple/5 to-transparent border-b border-virgilio-border/30 sticky top-0 bg-surface-primary z-10">
+      <div className="p-6 pb-4 bg-gradient-to-b from-virgilio-purple/5 to-transparent border-b border-virgilio-border/30 bg-surface-primary flex-shrink-0">
         <h2 className="text-lg font-semibold text-virgilio-text">
           Search & Filters<span className="text-virgilio-purple">.</span>
         </h2>
       </div>
 
-      <div className="p-6 space-y-6">
+      <div className="p-6 space-y-6 overflow-y-auto flex-1">
         {/* Search Criteria Section */}
         <div className="space-y-4 p-4 rounded-xl bg-gradient-to-b from-virgilio-purple/5 to-transparent border border-virgilio-border/30 shadow-sm">
           <div className="flex items-center justify-between">

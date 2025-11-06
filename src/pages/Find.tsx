@@ -63,9 +63,7 @@ export default function Find() {
           )}
           
           {mode === 'project' && selectedProjectId && (
-            <Section container className="py-6 sm:py-8 lg:py-12 animate-fade-in">
-              <SourcingProjectView projectId={selectedProjectId} />
-            </Section>
+            <SourcingProjectView projectId={selectedProjectId} />
           )}
         </main>
       </div>
