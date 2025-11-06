@@ -236,13 +236,17 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
             name: `${selectedTitle} - ${editableJobSpec.location}`,
             description: prompt,
             job_id: newJob.id,
-            search_criteria: {
-              skills: editableSkills,
-              location: editableJobSpec.location,
-              salary_min: editableJobSpec.salary_range.min,
-              salary_max: editableJobSpec.salary_range.max,
-              currency: editableJobSpec.salary_range.currency
-            }
+        search_criteria: {
+          skills: editableSkills,
+          locations: [editableJobSpec.location],
+          title_keywords: [
+            selectedTitle,
+            ...(editableJobSpec.alt_titles || [])
+          ],
+          salary_min: editableJobSpec.salary_range.min,
+          salary_max: editableJobSpec.salary_range.max,
+          currency: editableJobSpec.salary_range.currency
+        }
           }
         })
         
