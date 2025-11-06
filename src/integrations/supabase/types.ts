@@ -3416,6 +3416,10 @@ export type Database = {
         }
         Returns: Json
       }
+      check_org_hierarchy_role_access: {
+        Args: { _organization_id: string; _required_role: string }
+        Returns: boolean
+      }
       check_org_member_access: {
         Args: {
           _organization_id: string
