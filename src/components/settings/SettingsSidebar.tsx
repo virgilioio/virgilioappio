@@ -115,9 +115,16 @@ export function SettingsSidebar({ currentTab, onTabChange, className }: Settings
   }
 
   return (
-    <Card className={cn("w-64 h-fit", className)}>
-      <CardContent className="p-4">
-        <div className="space-y-1">
+    <Card className={cn("w-64 h-fit shadow-calendly border-virgilio-border/50 rounded-xl", className)}>
+      {/* Header */}
+      <div className="p-6 pb-4 bg-gradient-to-b from-virgilio-purple/5 to-transparent border-b border-virgilio-border/30">
+        <h2 className="text-lg font-semibold text-virgilio-text">
+          Settings<span className="text-virgilio-purple">.</span>
+        </h2>
+      </div>
+
+      <CardContent className="p-6">
+        <div className="space-y-1.5">
           {filteredNavItems.map((item) => {
             const Icon = item.icon
             
@@ -131,11 +138,11 @@ export function SettingsSidebar({ currentTab, onTabChange, className }: Settings
                     <Button
                       variant="ghost"
                       className={cn(
-                        "w-full justify-between h-10 px-3 py-2",
-                        "text-sm font-medium transition-all",
+                        "w-full justify-between h-11 px-4 py-2 rounded-lg",
+                        "text-sm font-medium transition-all duration-200",
                         isOpen
-                          ? "bg-muted text-foreground" 
-                          : "text-muted-foreground hover:text-foreground hover:bg-muted hover:-translate-y-0.5"
+                          ? "bg-virgilio-purple/10 text-virgilio-text shadow-sm" 
+                          : "text-virgilio-muted hover:text-virgilio-text hover:bg-muted hover:shadow-sm hover:-translate-y-0.5"
                       )}
                       onClick={() => handleItemClick(item.id)}
                     >
@@ -144,12 +151,12 @@ export function SettingsSidebar({ currentTab, onTabChange, className }: Settings
                         <span className="truncate">{item.label}</span>
                       </div>
                       <ChevronDown className={cn(
-                        "h-4 w-4 transition-transform",
+                        "h-4 w-4 transition-transform duration-200",
                         isOpen && "rotate-180"
                       )} />
                     </Button>
                   </CollapsibleTrigger>
-                  <CollapsibleContent className="space-y-1 ml-6 mt-1">
+                  <CollapsibleContent className="space-y-1 mt-1 pl-6 border-l-2 border-virgilio-border/20 ml-3">
                     {item.submenu.filter(subItem => subItem.show).map((subItem) => {
                       const SubIcon = subItem.icon
                       const isActive = currentTab === subItem.id
@@ -157,13 +164,13 @@ export function SettingsSidebar({ currentTab, onTabChange, className }: Settings
                       return (
                         <Button
                           key={subItem.id}
-                          variant={isActive ? "default" : "ghost"}
+                          variant="ghost"
                           className={cn(
-                            "w-full justify-start h-9 px-3 py-2",
-                            "text-sm font-medium transition-all",
+                            "w-full justify-start h-9 px-3 py-2 rounded-lg",
+                            "text-sm font-medium transition-all duration-200",
                             isActive 
-                              ? "bg-virgilio-purple text-white shadow-sm" 
-                              : "text-muted-foreground hover:text-foreground hover:bg-muted hover:-translate-y-0.5"
+                              ? "bg-gradient-to-r from-virgilio-purple to-virgilio-purple/90 text-white shadow-sm font-semibold" 
+                              : "text-virgilio-muted hover:text-virgilio-text hover:bg-muted hover:shadow-sm hover:-translate-y-0.5"
                           )}
                           onClick={() => onTabChange(subItem.id)}
                         >
@@ -182,13 +189,13 @@ export function SettingsSidebar({ currentTab, onTabChange, className }: Settings
             return (
               <Button
                 key={item.id}
-                variant={isActive ? "default" : "ghost"}
+                variant="ghost"
                 className={cn(
-                  "w-full justify-start h-10 px-3 py-2",
-                  "text-sm font-medium transition-all",
+                  "w-full justify-start h-11 px-4 py-2 rounded-lg",
+                  "text-sm font-medium transition-all duration-200",
                   isActive 
-                    ? "bg-virgilio-purple text-white shadow-sm" 
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted hover:-translate-y-0.5"
+                    ? "bg-gradient-to-r from-virgilio-purple to-virgilio-purple/90 text-white shadow-sm font-semibold" 
+                    : "text-virgilio-muted hover:text-virgilio-text hover:bg-muted hover:shadow-sm hover:-translate-y-0.5"
                 )}
                 onClick={() => handleItemClick(item.id)}
               >
