@@ -4,9 +4,8 @@ import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { MultiSelect } from '@/components/ui/multi-select'
 import { SourcingProjectFilters, SourcingProject, SearchCriteria } from '@/types/sourcing'
-import { COUNTRIES } from '@/constants/countries'
+import { LocationSelector } from '@/components/sourcing/LocationSelector'
 import { X, Plus, Loader2, RefreshCw } from 'lucide-react'
 import { Separator } from '@/components/ui/separator'
 import {
@@ -204,16 +203,12 @@ export function SourcingFiltersPanel({
               )}
             </div>
 
-            {/* Locations - Country Selector */}
+            {/* Locations */}
             <div className="space-y-2">
               <Label className="text-xs font-medium text-muted-foreground">Search Locations</Label>
-              <MultiSelect
-                options={COUNTRIES}
-                selectedValues={editableCriteria.locations || []}
-                onSelectionChange={(locations) => setEditableCriteria({ ...editableCriteria, locations })}
-                placeholder="Select countries..."
-                searchable
-                className="text-sm"
+              <LocationSelector
+                selectedLocations={editableCriteria.locations || []}
+                onLocationsChange={(locations) => setEditableCriteria({ ...editableCriteria, locations })}
               />
             </div>
 
@@ -325,10 +320,19 @@ export function SourcingFiltersPanel({
                 <span className="text-xs text-muted-foreground">Locations:</span>
                 <div className="flex flex-wrap gap-1">
                   {project.search_criteria.locations.map(loc => {
-                    const country = COUNTRIES.find(c => c.value === loc)
+                    // Parse location value to display format
+                    const parts = loc.split(',')
+                    let label = loc
+                    if (parts.length === 3) {
+                      label = `${parts[0]}, ${parts[1]}, ${parts[2]}` // City, State, Country
+                    } else if (parts.length === 2) {
+                      label = `${parts[0]}, ${parts[1]}` // State, Country
+                    } else {
+                      label = parts[0] // Just country code
+                    }
                     return (
                       <Badge key={loc} variant="outline" className="text-xs">
-                        {country?.label || loc}
+                        {label}
                       </Badge>
                     )
                   })}

@@ -66,6 +66,25 @@ interface CoreSignalCandidate {
   _score: number;
 }
 
+// Helper to parse location strings from hierarchical format
+// Formats: "City,State,Country" or "State,Country" or "Country"
+function parseLocation(locationValue: string): { city?: string; state?: string; countryCode?: string } {
+  const parts = locationValue.split(',').map(p => p.trim())
+  
+  if (parts.length === 3) {
+    // City, State, Country Code
+    return { city: parts[0], state: parts[1], countryCode: parts[2] }
+  } else if (parts.length === 2) {
+    // State, Country Code
+    return { state: parts[0], countryCode: parts[1] }
+  } else if (parts.length === 1) {
+    // Country code only
+    return { countryCode: parts[0] }
+  }
+  
+  return {}
+}
+
 // Map country codes to full country names for CoreSignal API
 const COUNTRY_CODE_TO_NAME: Record<string, string> = {
   'US': 'United States', 'CA': 'Canada', 'GB': 'United Kingdom', 'DE': 'Germany',
@@ -100,13 +119,43 @@ function buildCoresignalFilterQuery(criteria: SearchCriteria): any {
     query.experience_title = criteria.title_keywords.map(title => `(${title})`).join(' OR ');
   }
   
-  // Location: Convert country codes to full names and send to CoreSignal
+  // Location: Parse hierarchical format and send to CoreSignal
   if (criteria.locations && criteria.locations.length > 0) {
-    const countryNames = convertCountryCodesToNames(criteria.locations);
-    query.country = countryNames.map(c => `(${c})`).join(' OR ');
-    console.log(`🌍 Country filter: ${query.country}`);
+    const cityLocations: string[] = []
+    const stateLocations: string[] = []
+    const countries: string[] = []
+    
+    for (const locationValue of criteria.locations) {
+      const parsed = parseLocation(locationValue)
+      
+      if (parsed.city) {
+        // City level: use "City, State" format for CoreSignal location field
+        cityLocations.push(parsed.state ? `${parsed.city}, ${parsed.state}` : parsed.city)
+      } else if (parsed.state) {
+        // State/Province level: use state code for location field
+        stateLocations.push(parsed.state)
+      }
+      
+      // Add country if available
+      if (parsed.countryCode && COUNTRY_CODE_TO_NAME[parsed.countryCode]) {
+        countries.push(COUNTRY_CODE_TO_NAME[parsed.countryCode])
+      }
+    }
+    
+    // Combine city and state locations for the "location" parameter
+    const allLocations = [...cityLocations, ...stateLocations]
+    if (allLocations.length > 0) {
+      query.location = allLocations.map(loc => `(${loc})`).join(' OR ')
+      console.log(`📍 Location filter: ${query.location}`)
+    }
+    
+    // Send countries separately if we have them
+    if (countries.length > 0) {
+      query.country = countries.map(c => `(${c})`).join(' OR ')
+      console.log(`🌍 Country filter: ${query.country}`)
+    }
   } else {
-    console.log(`🌍 No location filter (global search)`);
+    console.log(`🌍 No location filter (global search)`)
   }
   
   // Active experience only
