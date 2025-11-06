@@ -277,7 +277,15 @@ serve(async (req) => {
     // Build CoreSignal query
     const queryParams = buildCoresignalFilterQuery(criteria);
     
-    console.log('📡 Calling CoreSignal API with query:', queryParams);
+    console.log('📡 CoreSignal API Request Details:', {
+      url: `${CORESIGNAL_API_URL}?page=1`,
+      method: 'POST',
+      query: JSON.stringify(queryParams, null, 2),
+      headers: {
+        apikey: CORESIGNAL_API_KEY ? '***SET***' : '***MISSING***',
+        'Content-Type': 'application/json'
+      }
+    });
 
     // Call CoreSignal API
     const coresignalResponse = await fetch(`${CORESIGNAL_API_URL}?page=1`, {
@@ -297,9 +305,16 @@ serve(async (req) => {
 
     const coresignalData = await coresignalResponse.json();
     
-    console.log('✅ CoreSignal API response:', {
-      total: coresignalData.total || 0,
-      returned: coresignalData.results?.length || 0
+    console.log('📡 CoreSignal API Full Response:', {
+      status: coresignalResponse.status,
+      statusText: coresignalResponse.statusText,
+      headers: Object.fromEntries(coresignalResponse.headers.entries()),
+      dataPreview: {
+        total: coresignalData.total || 0,
+        returned: coresignalData.results?.length || 0,
+        firstResult: coresignalData.results?.[0] || null
+      },
+      fullData: JSON.stringify(coresignalData, null, 2)
     });
 
     // Parse preview results
