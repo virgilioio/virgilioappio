@@ -171,8 +171,10 @@ serve(async (req) => {
       criteria: providedCriteria,
       limit = 50, 
       count_only = false,
-      filters 
+      filters: requestFilters
     }: JobMatchingRequest = await req.json();
+
+    let filters = requestFilters;
 
     let jobSkills: string[] = [];
     let job: any = null;

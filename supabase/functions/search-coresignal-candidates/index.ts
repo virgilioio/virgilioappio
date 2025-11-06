@@ -81,12 +81,15 @@ function buildCoresignalFilterQuery(criteria: SearchCriteria): any {
   }
   
   // Location: Parse intelligently to use both 'location' and 'country' fields
-  if (criteria.locations && criteria.locations.length > 0) {
+  // Support both singular 'location' and array 'locations' formats
+  const locationList = criteria.locations || (criteria.location ? [criteria.location] : []);
+  
+  if (locationList.length > 0) {
     // For multiple locations, parse each and combine with OR
     const locationParts: string[] = [];
     const countryParts: string[] = [];
     
-    criteria.locations.forEach(loc => {
+    locationList.forEach(loc => {
       let locationStr = loc.replace(/^Remote\s*-\s*/i, '').trim();
       const parts = locationStr.split(',').map(p => p.trim());
       
