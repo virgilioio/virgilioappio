@@ -38,8 +38,6 @@ interface SourcingProjectHeaderProps {
   onArchive: () => void
   onDelete: () => void
   onNameUpdate: (name: string) => void
-  onUpdateSearchCriteria: (criteria: SearchCriteria) => Promise<void>
-  isRefreshing?: boolean
 }
 
 export function SourcingProjectHeader({
@@ -48,14 +46,10 @@ export function SourcingProjectHeader({
   onRefresh,
   onArchive,
   onDelete,
-  onNameUpdate,
-  onUpdateSearchCriteria,
-  isRefreshing = false
+  onNameUpdate
 }: SourcingProjectHeaderProps) {
   const [isEditingName, setIsEditingName] = useState(false)
   const [editedName, setEditedName] = useState(project.name)
-  const [isEditingCriteria, setIsEditingCriteria] = useState(false)
-  const [editableCriteria, setEditableCriteria] = useState<SearchCriteria>(project.search_criteria)
   const { data: usage } = useCoresignalUsage()
 
   const handleSaveName = () => {
@@ -63,19 +57,6 @@ export function SourcingProjectHeader({
       onNameUpdate(editedName)
       setIsEditingName(false)
     }
-  }
-
-  const handleSaveAndRefresh = async () => {
-    if (editableCriteria.skills.length === 0) {
-      return
-    }
-    await onUpdateSearchCriteria(editableCriteria)
-    setIsEditingCriteria(false)
-  }
-
-  const handleCancelEdit = () => {
-    setEditableCriteria(project.search_criteria)
-    setIsEditingCriteria(false)
   }
 
   return (
@@ -150,186 +131,59 @@ export function SourcingProjectHeader({
         </DropdownMenu>
       </div>
 
-      {/* Editable Search Criteria */}
-      <Card className="shadow-calendly">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base font-medium">Search Criteria</CardTitle>
-            {!isEditingCriteria ? (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => {
-                  setEditableCriteria(project.search_criteria)
-                  setIsEditingCriteria(true)
-                }}
-              >
-                <Edit2 className="h-3 w-3 mr-1" /> Edit Criteria
-              </Button>
-            ) : (
-              <div className="flex gap-2">
-                <Button variant="ghost" size="sm" onClick={handleCancelEdit}>
-                  Cancel
-                </Button>
-                <Button 
-                  size="sm" 
-                  onClick={handleSaveAndRefresh} 
-                  disabled={isRefreshing || editableCriteria.skills.length === 0}
-                >
-                  {isRefreshing ? (
-                    <>
-                      <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                      Refreshing...
-                    </>
-                  ) : (
-                    <>
-                      <RefreshCw className="h-3 w-3 mr-1" />
-                      Save & Refresh Search
-                    </>
-                  )}
-                </Button>
-              </div>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {isEditingCriteria ? (
-            <EditableSearchCriteria
-              criteria={editableCriteria}
-              onChange={setEditableCriteria}
-            />
-          ) : (
-            <>
-              {/* Search Criteria Summary - Single Line */}
-              {project.search_criteria && (
-                <div className="flex flex-wrap items-center gap-4 text-sm">
-                  {project.search_criteria.skills && project.search_criteria.skills.length > 0 && (
-                    <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-1.5">
-                        <Target className="h-3.5 w-3.5 text-muted-foreground" />
-                        <span className="text-muted-foreground font-medium">Skills:</span>
-                      </div>
-                      <div className="flex flex-wrap gap-1">
-                        {project.search_criteria.skills.slice(0, 3).map(skill => (
-                          <Badge key={skill} variant="secondary" className="text-xs">
-                            {skill}
-                          </Badge>
-                        ))}
-                        {project.search_criteria.skills.length > 3 && (
-                          <Badge variant="secondary" className="text-xs">
-                            +{project.search_criteria.skills.length - 3}
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                  
-                  {project.search_criteria.locations && project.search_criteria.locations.length > 0 && (
-                    <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-1.5">
-                        <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
-                        <span className="text-muted-foreground font-medium">Locations:</span>
-                      </div>
-                      <div className="flex flex-wrap gap-1">
-                        {project.search_criteria.locations.slice(0, 2).map(location => (
-                          <Badge key={location} variant="outline" className="text-xs">
-                            {location}
-                          </Badge>
-                        ))}
-                        {project.search_criteria.locations.length > 2 && (
-                          <Badge variant="outline" className="text-xs">
-                            +{project.search_criteria.locations.length - 2}
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                  
-                  {project.search_criteria.salary_min && project.search_criteria.salary_max && (
-                    <div className="flex items-center gap-1">
-                      <DollarSign className="h-3 w-3 text-muted-foreground" />
-                      <span className="text-muted-foreground">
-                        {project.search_criteria.currency} {project.search_criteria.salary_min.toLocaleString()} - {project.search_criteria.salary_max.toLocaleString()}
-                      </span>
-                    </div>
-                  )}
-                  
-                  {project.search_criteria.title_keywords && project.search_criteria.title_keywords.length > 0 && (
-                    <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-1.5">
-                        <Target className="h-3.5 w-3.5 text-muted-foreground" />
-                        <span className="text-muted-foreground font-medium">Titles:</span>
-                      </div>
-                      <div className="flex flex-wrap gap-1">
-                        {project.search_criteria.title_keywords.slice(0, 2).map(title => (
-                          <Badge key={title} variant="outline" className="text-xs">
-                            {title}
-                          </Badge>
-                        ))}
-                        {project.search_criteria.title_keywords.length > 2 && (
-                          <Badge variant="outline" className="text-xs">
-                            +{project.search_criteria.title_keywords.length - 2}
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
+      {/* Match Breakdown & Stats */}
+      <div className="flex flex-wrap items-center gap-4">
+        {/* Match Quality */}
+        <div className="flex items-center gap-2">
+          <Award className="h-4 w-4 text-muted-foreground" />
+          <span className="text-sm font-medium text-muted-foreground">Matches:</span>
+          <Badge className="bg-green-500/20 text-green-700 border-green-500/30 hover:bg-green-500/30">
+            {breakdown.excellent} Excellent
+          </Badge>
+          <Badge className="bg-blue-500/20 text-blue-700 border-blue-500/30 hover:bg-blue-500/30">
+            {breakdown.good} Good
+          </Badge>
+          <Badge className="bg-yellow-500/20 text-yellow-700 border-yellow-500/30 hover:bg-yellow-500/30">
+            {breakdown.fair} Fair
+          </Badge>
+          <Badge variant="secondary">
+            {breakdown.minimal} Minimal
+          </Badge>
+        </div>
+
+        {/* Source Breakdown */}
+        {(breakdown.localCandidates !== undefined || breakdown.coreSignalCandidates !== undefined) && (
+          <>
+            <span className="text-muted-foreground">•</span>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-muted-foreground">Sources:</span>
+              {breakdown.localCandidates !== undefined && (
+                <Badge variant="default" className="text-xs">
+                  {breakdown.localCandidates} Local
+                </Badge>
               )}
-
-              {/* Match Breakdown - Inline Badges */}
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="flex items-center gap-1.5">
-                  <Award className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium text-muted-foreground">Matches:</span>
-                </div>
-                <Badge className="bg-green-500/20 text-green-700 border-green-500/30 hover:bg-green-500/30">
-                  {breakdown.excellent} Excellent
+              {breakdown.coreSignalCandidates !== undefined && breakdown.coreSignalCandidates > 0 && (
+                <Badge variant="secondary" className="text-xs">
+                  {breakdown.coreSignalCandidates} CoreSignal
                 </Badge>
-                <Badge className="bg-blue-500/20 text-blue-700 border-blue-500/30 hover:bg-blue-500/30">
-                  {breakdown.good} Good
-                </Badge>
-                <Badge className="bg-yellow-500/20 text-yellow-700 border-yellow-500/30 hover:bg-yellow-500/30">
-                  {breakdown.fair} Fair
-                </Badge>
-                <Badge variant="secondary">
-                  {breakdown.minimal} Minimal
-                </Badge>
-              </div>
-
-              {/* Source Breakdown */}
-              {(breakdown.localCandidates !== undefined || breakdown.coreSignalCandidates !== undefined) && (
-                <div className="flex flex-wrap items-center gap-3">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-sm font-medium text-muted-foreground">Sources:</span>
-                  </div>
-                  {breakdown.localCandidates !== undefined && (
-                    <Badge variant="default" className="text-xs">
-                      {breakdown.localCandidates} Local
-                    </Badge>
-                  )}
-                  {breakdown.coreSignalCandidates !== undefined && breakdown.coreSignalCandidates > 0 && (
-                    <Badge variant="secondary" className="text-xs">
-                      {breakdown.coreSignalCandidates} CoreSignal
-                    </Badge>
-                  )}
-                </div>
               )}
+            </div>
+          </>
+        )}
 
-              {/* Credit Usage Indicator */}
-              {usage && (breakdown.creditsUsed !== undefined || breakdown.collectCreditsUsed !== undefined) && (
-                <div className="flex items-center gap-2 text-sm">
-                  <Coins className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span className="text-muted-foreground">
-                    Credits: {usage.search_credits_used}/{usage.search_credits_limit} search, {usage.collect_credits_used}/{usage.collect_credits_limit} collect
-                  </span>
-                </div>
-              )}
-
-            </>
-          )}
-        </CardContent>
-      </Card>
+        {/* Credit Usage */}
+        {usage && (breakdown.creditsUsed !== undefined || breakdown.collectCreditsUsed !== undefined) && (
+          <>
+            <span className="text-muted-foreground">•</span>
+            <div className="flex items-center gap-2">
+              <Coins className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">
+                {usage.search_credits_used}/{usage.search_credits_limit} search, {usage.collect_credits_used}/{usage.collect_credits_limit} collect
+              </span>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   )
 }

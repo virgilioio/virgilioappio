@@ -191,6 +191,9 @@ export function SourcingProjectView({ projectId }: SourcingProjectViewProps) {
       <SourcingFiltersPanel 
         filters={filters}
         onFiltersChange={setFilters}
+        project={project}
+        onUpdateSearchCriteria={handleUpdateSearchCriteria}
+        isRefreshing={isRefreshing}
       />
       
       <div className="flex-1 overflow-y-auto">
@@ -202,8 +205,6 @@ export function SourcingProjectView({ projectId }: SourcingProjectViewProps) {
             onArchive={handleArchive}
             onDelete={handleDelete}
             onNameUpdate={handleSaveName}
-            onUpdateSearchCriteria={handleUpdateSearchCriteria}
-            isRefreshing={isRefreshing}
           />
           <SourcingCandidateTable 
             candidates={filteredCandidates}
