@@ -363,11 +363,10 @@ serve(async (req) => {
         console.log('🔍 Searching CoreSignal for additional candidates...');
         
         // Build search criteria from job or provided criteria
-        const criteria = providedCriteria || (sourcing_project_id ? (job as any).search_criteria : null);
         const searchCriteria: any = providedCriteria || {
           skills: jobSkills,
-          location: job.location || (criteria?.locations?.[0]) || (criteria?.location),
-          title_keywords: criteria?.title_keywords || job.title_keywords,
+          location: job.location,
+          title_keywords: job.title_keywords,
           salary_min: job.salary_min,
           salary_max: job.salary_max
         };
