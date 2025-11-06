@@ -3529,6 +3529,7 @@ export type Database = {
           stages: Json
         }[]
       }
+      get_platform_tenant_id: { Args: never; Returns: string }
       get_stage_deletion_impact: {
         Args: { stage_id_param: string }
         Returns: {
