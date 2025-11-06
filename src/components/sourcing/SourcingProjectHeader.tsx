@@ -228,10 +228,24 @@ export function SourcingProjectHeader({
                     </div>
                   )}
                   
-                  {project.search_criteria.location && (
-                    <div className="flex items-center gap-1">
-                      <MapPin className="h-3 w-3 text-muted-foreground" />
-                      <span className="text-muted-foreground">{project.search_criteria.location}</span>
+                  {project.search_criteria.locations && project.search_criteria.locations.length > 0 && (
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5">
+                        <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className="text-muted-foreground font-medium">Locations:</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {project.search_criteria.locations.slice(0, 2).map(location => (
+                          <Badge key={location} variant="outline" className="text-xs">
+                            {location}
+                          </Badge>
+                        ))}
+                        {project.search_criteria.locations.length > 2 && (
+                          <Badge variant="outline" className="text-xs">
+                            +{project.search_criteria.locations.length - 2}
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                   )}
                   

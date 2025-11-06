@@ -81,34 +81,41 @@ function buildCoresignalFilterQuery(criteria: SearchCriteria): any {
   }
   
   // Location: Parse intelligently to use both 'location' and 'country' fields
-  if (criteria.location) {
-    let locationStr = criteria.location.replace(/^Remote\s*-\s*/i, '').trim();
+  if (criteria.locations && criteria.locations.length > 0) {
+    // For multiple locations, parse each and combine with OR
+    const locationParts: string[] = [];
+    const countryParts: string[] = [];
     
-    // Parse location string intelligently
-    const parts = locationStr.split(',').map(p => p.trim());
-    
-    if (parts.length >= 2) {
-      // Multi-part location like "San Francisco, California" or "Mexico City, Mexico"
-      query.location = parts.slice(0, -1).join(', ');  // City/State (all but last)
-      query.country = parts[parts.length - 1];  // Country (last part)
+    criteria.locations.forEach(loc => {
+      let locationStr = loc.replace(/^Remote\s*-\s*/i, '').trim();
+      const parts = locationStr.split(',').map(p => p.trim());
       
-      console.log(`🌍 Parsed location: city/state="${query.location}", country="${query.country}"`);
-    } else if (parts.length === 1) {
-      // Single value - could be country, state, or city
-      // Check if it's a known regional keyword
-      const regionMatch = Object.keys(REGION_COUNTRY_MAPPING).find(region => 
-        locationStr.toUpperCase().includes(region)
-      );
-      
-      if (regionMatch) {
-        // Regional keyword like "LATAM" or "Europe" - use first country from region
-        query.country = REGION_COUNTRY_MAPPING[regionMatch][0];
-        console.log(`🌎 Region detected: "${regionMatch}" → country="${query.country}"`);
-      } else {
-        // Single location value - use as city/state for broader matching
-        query.location = locationStr;
-        console.log(`📍 Single location value: location="${locationStr}"`);
+      if (parts.length >= 2) {
+        // Multi-part location like "San Francisco, California"
+        locationParts.push(parts.slice(0, -1).join(', '));
+        countryParts.push(parts[parts.length - 1]);
+      } else if (parts.length === 1) {
+        // Check if it's a regional keyword
+        const regionMatch = Object.keys(REGION_COUNTRY_MAPPING).find(region => 
+          locationStr.toUpperCase().includes(region)
+        );
+        
+        if (regionMatch) {
+          countryParts.push(REGION_COUNTRY_MAPPING[regionMatch][0]);
+        } else {
+          locationParts.push(locationStr);
+        }
       }
+    });
+    
+    // Combine with OR operator
+    if (locationParts.length > 0) {
+      query.location = locationParts.map(l => `(${l})`).join(' OR ');
+      console.log(`🌍 Combined locations: ${query.location}`);
+    }
+    if (countryParts.length > 0) {
+      query.country = countryParts.map(c => `(${c})`).join(' OR ');
+      console.log(`🌎 Combined countries: ${query.country}`);
     }
   }
   

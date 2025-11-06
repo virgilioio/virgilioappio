@@ -24,6 +24,7 @@ export function EditableSearchCriteria({
 }: EditableSearchCriteriaProps) {
   const [newSkill, setNewSkill] = useState('')
   const [newTitleKeyword, setNewTitleKeyword] = useState('')
+  const [newLocation, setNewLocation] = useState('')
 
   const handleAddSkill = () => {
     if (newSkill.trim() && !criteria.skills.includes(newSkill.trim())) {
@@ -59,6 +60,26 @@ export function EditableSearchCriteria({
     onChange({
       ...criteria,
       title_keywords: (criteria.title_keywords || []).filter(k => k !== keyword)
+    })
+  }
+
+  const handleAddLocation = () => {
+    if (newLocation.trim()) {
+      const currentLocations = criteria.locations || []
+      if (!currentLocations.includes(newLocation.trim())) {
+        onChange({
+          ...criteria,
+          locations: [...currentLocations, newLocation.trim()]
+        })
+        setNewLocation('')
+      }
+    }
+  }
+
+  const handleRemoveLocation = (location: string) => {
+    onChange({
+      ...criteria,
+      locations: (criteria.locations || []).filter(l => l !== location)
     })
   }
 
@@ -137,17 +158,42 @@ export function EditableSearchCriteria({
         )}
       </div>
 
-      {/* Location */}
+      {/* Locations */}
       <div className="space-y-2">
-        <Label className="text-sm font-medium">Location</Label>
-        <Input
-          placeholder='e.g., "Remote - LATAM", "Mexico City", "United States"'
-          value={criteria.location || ''}
-          onChange={(e) => onChange({ ...criteria, location: e.target.value })}
-        />
-        <p className="text-xs text-muted-foreground">
-          Tip: Use "LATAM", "EMEA", "APAC", or "NA" for regional searches
-        </p>
+        <Label className="text-sm font-medium">Locations</Label>
+        <p className="text-xs text-muted-foreground">Add specific locations, cities, states, or regions</p>
+        <div className="flex gap-2">
+          <Input
+            placeholder='e.g., "San Francisco, California", "LATAM", "Mexico City"'
+            value={newLocation}
+            onChange={(e) => setNewLocation(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                handleAddLocation()
+              }
+            }}
+            className="flex-1"
+          />
+          <Button size="sm" onClick={handleAddLocation}>
+            <Plus className="h-4 w-4" />
+          </Button>
+        </div>
+        {criteria.locations && criteria.locations.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {criteria.locations.map(location => (
+              <Badge key={location} variant="outline" className="gap-1">
+                {location}
+                <button
+                  onClick={() => handleRemoveLocation(location)}
+                  className="ml-1 hover:bg-destructive/10 rounded-sm"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Salary Range */}

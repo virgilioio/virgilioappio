@@ -24,7 +24,7 @@ export interface SourcingProject {
 
 export interface SearchCriteria {
   skills: string[]
-  location?: string
+  locations?: string[]
   title_keywords?: string[]
   salary_min?: number
   salary_max?: number
