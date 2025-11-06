@@ -20,6 +20,7 @@ const supabase = createClient(
 interface JobMatchingRequest {
   job_id?: string;
   sourcing_project_id?: string;
+  criteria?: SearchCriteria;
   limit?: number;
   count_only?: boolean;
   filters?: {
@@ -27,6 +28,19 @@ interface JobMatchingRequest {
     location?: string;
     min_experience?: number;
     max_experience?: number;
+  };
+}
+
+interface SearchCriteria {
+  skills: string[];
+  location?: string;
+  title_keywords?: string[];
+  salary_min?: number;
+  salary_max?: number;
+  currency?: string;
+  experience_years?: {
+    min?: number;
+    max?: number;
   };
 }
 
@@ -153,7 +167,8 @@ serve(async (req) => {
   try {
     const { 
       job_id, 
-      sourcing_project_id, 
+      sourcing_project_id,
+      criteria: providedCriteria,
       limit = 50, 
       count_only = false,
       filters 
@@ -177,8 +192,8 @@ serve(async (req) => {
         throw new Error(`Sourcing project not found: ${projectError?.message || 'Unknown error'}`);
       }
       
-      // Extract criteria from project
-      const criteria = project.search_criteria as any;
+      // Extract criteria from project (use provided criteria if available for refresh)
+      const criteria = providedCriteria || (project.search_criteria as any);
       jobSkills = criteria.skills || [];
       organization_id = project.organization_id;
       
@@ -343,10 +358,11 @@ serve(async (req) => {
       try {
         console.log('🔍 Searching CoreSignal for additional candidates...');
         
-        // Build search criteria from job
-        const searchCriteria: any = {
+        // Build search criteria from job or provided criteria
+        const searchCriteria: any = providedCriteria || {
           skills: jobSkills,
           location: job.location,
+          title_keywords: job.title_keywords,
           salary_min: job.salary_min,
           salary_max: job.salary_max
         };

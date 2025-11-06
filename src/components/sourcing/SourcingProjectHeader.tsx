@@ -2,10 +2,10 @@ import { useState } from 'react'
 import { formatDistanceToNow } from 'date-fns'
 import { 
   Edit2, MoreHorizontal, RefreshCw, Archive, Trash2, 
-  MapPin, DollarSign, Target, Award, Coins 
+  MapPin, DollarSign, Target, Award, Coins, Loader2 
 } from 'lucide-react'
 import { useCoresignalUsage } from '@/hooks/useCoresignalUsage'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -18,7 +18,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { SourcingProject, SourcingProjectFilters } from '@/types/sourcing'
+import { SourcingProject, SourcingProjectFilters, SearchCriteria } from '@/types/sourcing'
+import { EditableSearchCriteria } from './EditableSearchCriteria'
 import { cn } from '@/lib/utils'
 
 interface SourcingProjectHeaderProps {
@@ -39,6 +40,8 @@ interface SourcingProjectHeaderProps {
   onArchive: () => void
   onDelete: () => void
   onNameUpdate: (name: string) => void
+  onUpdateSearchCriteria: (criteria: SearchCriteria) => Promise<void>
+  isRefreshing?: boolean
 }
 
 export function SourcingProjectHeader({
@@ -49,10 +52,14 @@ export function SourcingProjectHeader({
   onRefresh,
   onArchive,
   onDelete,
-  onNameUpdate
+  onNameUpdate,
+  onUpdateSearchCriteria,
+  isRefreshing = false
 }: SourcingProjectHeaderProps) {
   const [isEditingName, setIsEditingName] = useState(false)
   const [editedName, setEditedName] = useState(project.name)
+  const [isEditingCriteria, setIsEditingCriteria] = useState(false)
+  const [editableCriteria, setEditableCriteria] = useState<SearchCriteria>(project.search_criteria)
   const { data: usage } = useCoresignalUsage()
 
   const handleSaveName = () => {
@@ -60,6 +67,19 @@ export function SourcingProjectHeader({
       onNameUpdate(editedName)
       setIsEditingName(false)
     }
+  }
+
+  const handleSaveAndRefresh = async () => {
+    if (editableCriteria.skills.length === 0) {
+      return
+    }
+    await onUpdateSearchCriteria(editableCriteria)
+    setIsEditingCriteria(false)
+  }
+
+  const handleCancelEdit = () => {
+    setEditableCriteria(project.search_criteria)
+    setIsEditingCriteria(false)
   }
 
   return (
@@ -134,199 +154,269 @@ export function SourcingProjectHeader({
         </DropdownMenu>
       </div>
 
-      {/* Compact Search Criteria, Match Breakdown & Filters */}
+      {/* Editable Search Criteria */}
       <Card className="shadow-calendly">
-        <CardContent className="p-6 space-y-4">
-          {/* Search Criteria Summary - Single Line */}
-          {project.search_criteria && (
-            <div className="flex flex-wrap items-center gap-4 text-sm">
-              {project.search_criteria.skills && project.search_criteria.skills.length > 0 && (
-                <div className="flex items-center gap-2">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base font-medium">Search Criteria</CardTitle>
+            {!isEditingCriteria ? (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => {
+                  setEditableCriteria(project.search_criteria)
+                  setIsEditingCriteria(true)
+                }}
+              >
+                <Edit2 className="h-3 w-3 mr-1" /> Edit Criteria
+              </Button>
+            ) : (
+              <div className="flex gap-2">
+                <Button variant="ghost" size="sm" onClick={handleCancelEdit}>
+                  Cancel
+                </Button>
+                <Button 
+                  size="sm" 
+                  onClick={handleSaveAndRefresh} 
+                  disabled={isRefreshing || editableCriteria.skills.length === 0}
+                >
+                  {isRefreshing ? (
+                    <>
+                      <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                      Refreshing...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="h-3 w-3 mr-1" />
+                      Save & Refresh Search
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {isEditingCriteria ? (
+            <EditableSearchCriteria
+              criteria={editableCriteria}
+              onChange={setEditableCriteria}
+            />
+          ) : (
+            <>
+              {/* Search Criteria Summary - Single Line */}
+              {project.search_criteria && (
+                <div className="flex flex-wrap items-center gap-4 text-sm">
+                  {project.search_criteria.skills && project.search_criteria.skills.length > 0 && (
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5">
+                        <Target className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className="text-muted-foreground font-medium">Skills:</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {project.search_criteria.skills.slice(0, 3).map(skill => (
+                          <Badge key={skill} variant="secondary" className="text-xs">
+                            {skill}
+                          </Badge>
+                        ))}
+                        {project.search_criteria.skills.length > 3 && (
+                          <Badge variant="secondary" className="text-xs">
+                            +{project.search_criteria.skills.length - 3}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {project.search_criteria.location && (
+                    <div className="flex items-center gap-1">
+                      <MapPin className="h-3 w-3 text-muted-foreground" />
+                      <span className="text-muted-foreground">{project.search_criteria.location}</span>
+                    </div>
+                  )}
+                  
+                  {project.search_criteria.salary_min && project.search_criteria.salary_max && (
+                    <div className="flex items-center gap-1">
+                      <DollarSign className="h-3 w-3 text-muted-foreground" />
+                      <span className="text-muted-foreground">
+                        {project.search_criteria.currency} {project.search_criteria.salary_min.toLocaleString()} - {project.search_criteria.salary_max.toLocaleString()}
+                      </span>
+                    </div>
+                  )}
+                  
+                  {project.search_criteria.title_keywords && project.search_criteria.title_keywords.length > 0 && (
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1.5">
+                        <Target className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className="text-muted-foreground font-medium">Titles:</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {project.search_criteria.title_keywords.slice(0, 2).map(title => (
+                          <Badge key={title} variant="outline" className="text-xs">
+                            {title}
+                          </Badge>
+                        ))}
+                        {project.search_criteria.title_keywords.length > 2 && (
+                          <Badge variant="outline" className="text-xs">
+                            +{project.search_criteria.title_keywords.length - 2}
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Match Breakdown - Inline Badges */}
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-1.5">
+                  <Award className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium text-muted-foreground">Matches:</span>
+                </div>
+                <Badge className="bg-green-500/20 text-green-700 border-green-500/30 hover:bg-green-500/30">
+                  {breakdown.excellent} Excellent
+                </Badge>
+                <Badge className="bg-blue-500/20 text-blue-700 border-blue-500/30 hover:bg-blue-500/30">
+                  {breakdown.good} Good
+                </Badge>
+                <Badge className="bg-yellow-500/20 text-yellow-700 border-yellow-500/30 hover:bg-yellow-500/30">
+                  {breakdown.fair} Fair
+                </Badge>
+                <Badge variant="secondary">
+                  {breakdown.minimal} Minimal
+                </Badge>
+              </div>
+
+              {/* Source Breakdown */}
+              {(breakdown.localCandidates !== undefined || breakdown.coreSignalCandidates !== undefined) && (
+                <div className="flex flex-wrap items-center gap-3">
                   <div className="flex items-center gap-1.5">
-                    <Target className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span className="text-muted-foreground font-medium">Skills:</span>
+                    <span className="text-sm font-medium text-muted-foreground">Sources:</span>
                   </div>
-                  <div className="flex flex-wrap gap-1">
-                    {project.search_criteria.skills.slice(0, 3).map(skill => (
-                      <Badge key={skill} variant="secondary" className="text-xs">
-                        {skill}
-                      </Badge>
-                    ))}
-                    {project.search_criteria.skills.length > 3 && (
-                      <Badge variant="secondary" className="text-xs">
-                        +{project.search_criteria.skills.length - 3}
-                      </Badge>
-                    )}
-                  </div>
+                  {breakdown.localCandidates !== undefined && (
+                    <Badge variant="default" className="text-xs">
+                      {breakdown.localCandidates} Local
+                    </Badge>
+                  )}
+                  {breakdown.coreSignalCandidates !== undefined && breakdown.coreSignalCandidates > 0 && (
+                    <Badge variant="secondary" className="text-xs">
+                      {breakdown.coreSignalCandidates} CoreSignal
+                    </Badge>
+                  )}
                 </div>
               )}
-              
-              {project.search_criteria.location && (
-                <div className="flex items-center gap-1">
-                  <MapPin className="h-3 w-3 text-muted-foreground" />
-                  <span className="text-muted-foreground">{project.search_criteria.location}</span>
-                </div>
-              )}
-              
-              {project.search_criteria.salary_min && project.search_criteria.salary_max && (
-                <div className="flex items-center gap-1">
-                  <DollarSign className="h-3 w-3 text-muted-foreground" />
+
+              {/* Credit Usage Indicator */}
+              {usage && (breakdown.creditsUsed !== undefined || breakdown.collectCreditsUsed !== undefined) && (
+                <div className="flex items-center gap-2 text-sm">
+                  <Coins className="h-3.5 w-3.5 text-muted-foreground" />
                   <span className="text-muted-foreground">
-                    {project.search_criteria.currency} {project.search_criteria.salary_min.toLocaleString()} - {project.search_criteria.salary_max.toLocaleString()}
+                    Credits: {usage.search_credits_used}/{usage.search_credits_limit} search, {usage.collect_credits_used}/{usage.collect_credits_limit} collect
                   </span>
                 </div>
               )}
-            </div>
-          )}
 
-          {/* Match Breakdown - Inline Badges */}
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-1.5">
-              <Award className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-medium text-muted-foreground">Matches:</span>
-            </div>
-            <Badge className="bg-green-500/20 text-green-700 border-green-500/30 hover:bg-green-500/30">
-              {breakdown.excellent} Excellent
-            </Badge>
-            <Badge className="bg-blue-500/20 text-blue-700 border-blue-500/30 hover:bg-blue-500/30">
-              {breakdown.good} Good
-            </Badge>
-            <Badge className="bg-yellow-500/20 text-yellow-700 border-yellow-500/30 hover:bg-yellow-500/30">
-              {breakdown.fair} Fair
-            </Badge>
-            <Badge variant="secondary">
-              {breakdown.minimal} Minimal
-            </Badge>
-          </div>
+              {/* Filters Row */}
+              <div className="space-y-3 pt-3 border-t border-border">
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm font-medium">Filters</Label>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => onFiltersChange({
+                      matchTiers: [],
+                      location: '',
+                      minExperience: 0,
+                      maxExperience: 30
+                    })}
+                  >
+                    Reset
+                  </Button>
+                </div>
 
-          {/* Source Breakdown */}
-          {(breakdown.localCandidates !== undefined || breakdown.coreSignalCandidates !== undefined) && (
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="flex items-center gap-1.5">
-                <span className="text-sm font-medium text-muted-foreground">Sources:</span>
-              </div>
-              {breakdown.localCandidates !== undefined && (
-                <Badge variant="default" className="text-xs">
-                  {breakdown.localCandidates} Local
-                </Badge>
-              )}
-              {breakdown.coreSignalCandidates !== undefined && breakdown.coreSignalCandidates > 0 && (
-                <Badge variant="secondary" className="text-xs">
-                  {breakdown.coreSignalCandidates} CoreSignal
-                </Badge>
-              )}
-            </div>
-          )}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  {/* Source Filter */}
+                  <div>
+                    <Label className="text-xs text-muted-foreground mb-2 block">Source</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {(['all', 'local', 'coresignal'] as const).map(source => (
+                        <label key={source} className="flex items-center gap-1 cursor-pointer">
+                          <Checkbox 
+                            checked={!filters.source || filters.source === source}
+                            onCheckedChange={(checked) => {
+                              onFiltersChange({
+                                ...filters,
+                                source: checked ? source : 'all'
+                              })
+                            }}
+                          />
+                          <span className="text-xs capitalize">{source}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
 
-          {/* Credit Usage Indicator */}
-          {usage && (breakdown.creditsUsed !== undefined || breakdown.collectCreditsUsed !== undefined) && (
-            <div className="flex items-center gap-2 text-sm">
-              <Coins className="h-3.5 w-3.5 text-muted-foreground" />
-              <span className="text-muted-foreground">
-                Credits: {usage.search_credits_used}/{usage.search_credits_limit} search, {usage.collect_credits_used}/{usage.collect_credits_limit} collect
-              </span>
-            </div>
-          )}
+                  {/* Match Tier */}
+                  <div>
+                    <Label className="text-xs text-muted-foreground mb-2 block">Match Tier</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {(['excellent', 'good', 'fair', 'minimal'] as const).map(tier => (
+                        <label key={tier} className="flex items-center gap-1 cursor-pointer">
+                          <Checkbox 
+                            checked={filters.matchTiers?.includes(tier)}
+                            onCheckedChange={(checked) => {
+                              onFiltersChange({
+                                ...filters,
+                                matchTiers: checked 
+                                  ? [...(filters.matchTiers || []), tier]
+                                  : (filters.matchTiers || []).filter(t => t !== tier)
+                              })
+                            }}
+                          />
+                          <span className="text-xs capitalize">{tier}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
 
-          {/* Filters Row */}
-          <div className="space-y-3 pt-3 border-t border-border">
-            <div className="flex items-center justify-between">
-              <Label className="text-sm font-medium">Filters</Label>
-              <Button 
-                variant="ghost" 
-                size="sm"
-                onClick={() => onFiltersChange({
-                  matchTiers: [],
-                  location: '',
-                  minExperience: 0,
-                  maxExperience: 30
-                })}
-              >
-                Reset
-              </Button>
-            </div>
+                  {/* Location */}
+                  <div>
+                    <Label className="text-xs text-muted-foreground mb-2 block">Location</Label>
+                    <Input 
+                      placeholder="Filter by location..."
+                      value={filters.location || ''}
+                      onChange={(e) => onFiltersChange({ ...filters, location: e.target.value })}
+                      className="h-9 text-sm"
+                    />
+                  </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              {/* Source Filter */}
-              <div>
-                <Label className="text-xs text-muted-foreground mb-2 block">Source</Label>
-                <div className="flex flex-wrap gap-2">
-                  {(['all', 'local', 'coresignal'] as const).map(source => (
-                    <label key={source} className="flex items-center gap-1 cursor-pointer">
-                      <Checkbox 
-                        checked={!filters.source || filters.source === source}
-                        onCheckedChange={(checked) => {
-                          onFiltersChange({
-                            ...filters,
-                            source: checked ? source : 'all'
-                          })
-                        }}
+                  {/* Experience Range */}
+                  <div>
+                    <Label className="text-xs text-muted-foreground mb-2 block">Experience (years)</Label>
+                    <div className="flex items-center gap-2">
+                      <Input 
+                        type="number"
+                        value={filters.minExperience || 0}
+                        onChange={(e) => onFiltersChange({ ...filters, minExperience: parseInt(e.target.value) || 0 })}
+                        className="h-9 text-sm w-20"
+                        min={0}
+                        max={30}
                       />
-                      <span className="text-xs capitalize">{source}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              {/* Match Tier */}
-              <div>
-                <Label className="text-xs text-muted-foreground mb-2 block">Match Tier</Label>
-                <div className="flex flex-wrap gap-2">
-                  {(['excellent', 'good', 'fair', 'minimal'] as const).map(tier => (
-                    <label key={tier} className="flex items-center gap-1 cursor-pointer">
-                      <Checkbox 
-                        checked={filters.matchTiers?.includes(tier)}
-                        onCheckedChange={(checked) => {
-                          onFiltersChange({
-                            ...filters,
-                            matchTiers: checked 
-                              ? [...(filters.matchTiers || []), tier]
-                              : (filters.matchTiers || []).filter(t => t !== tier)
-                          })
-                        }}
+                      <span className="text-xs text-muted-foreground">to</span>
+                      <Input 
+                        type="number"
+                        value={filters.maxExperience || 30}
+                        onChange={(e) => onFiltersChange({ ...filters, maxExperience: parseInt(e.target.value) || 30 })}
+                        className="h-9 text-sm w-20"
+                        min={0}
+                        max={30}
                       />
-                      <span className="text-xs capitalize">{tier}</span>
-                    </label>
-                  ))}
+                    </div>
+                  </div>
                 </div>
               </div>
-
-              {/* Location */}
-              <div>
-                <Label className="text-xs text-muted-foreground mb-2 block">Location</Label>
-                <Input 
-                  placeholder="Filter by location..."
-                  value={filters.location || ''}
-                  onChange={(e) => onFiltersChange({ ...filters, location: e.target.value })}
-                  className="h-9 text-sm"
-                />
-              </div>
-
-              {/* Experience Range */}
-              <div>
-                <Label className="text-xs text-muted-foreground mb-2 block">Experience (years)</Label>
-                <div className="flex items-center gap-2">
-                  <Input 
-                    type="number"
-                    value={filters.minExperience || 0}
-                    onChange={(e) => onFiltersChange({ ...filters, minExperience: parseInt(e.target.value) || 0 })}
-                    className="h-9 text-sm w-20"
-                    min={0}
-                    max={30}
-                  />
-                  <span className="text-xs text-muted-foreground">to</span>
-                  <Input 
-                    type="number"
-                    value={filters.maxExperience || 30}
-                    onChange={(e) => onFiltersChange({ ...filters, maxExperience: parseInt(e.target.value) || 30 })}
-                    className="h-9 text-sm w-20"
-                    min={0}
-                    max={30}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
+            </>
+          )}
         </CardContent>
       </Card>
     </div>

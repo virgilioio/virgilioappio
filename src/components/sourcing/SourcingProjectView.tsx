@@ -6,7 +6,7 @@ import { useJobMatchingCandidates } from '@/hooks/useJobMatchingCandidates'
 import { SourcingProjectHeader } from './SourcingProjectHeader'
 import { SourcingCandidateTable } from './SourcingCandidateTable'
 import { supabase } from '@/lib/supabaseClient'
-import type { SourcingProjectFilters } from '@/types/sourcing'
+import type { SourcingProjectFilters, SearchCriteria } from '@/types/sourcing'
 
 interface SourcingProjectViewProps {
   projectId: string
@@ -14,11 +14,11 @@ interface SourcingProjectViewProps {
 
 export function SourcingProjectView({ projectId }: SourcingProjectViewProps) {
   const { toast } = useToast()
-  const { data: project, isLoading: projectLoading } = useSourcingProject(projectId)
+  const { data: project, isLoading: projectLoading, refetch: refetchProject } = useSourcingProject(projectId)
   const { 
     candidates, 
     isLoading: candidatesLoading, 
-    refetch 
+    refetch: refetchCandidates 
   } = useJobMatchingCandidates({
     jobId: project?.job_id || '',
     enabled: !!project?.job_id
@@ -30,6 +30,7 @@ export function SourcingProjectView({ projectId }: SourcingProjectViewProps) {
     minExperience: 0,
     maxExperience: 30
   })
+  const [isRefreshing, setIsRefreshing] = useState(false)
   
   // Apply filters locally
   const filteredCandidates = useMemo(() => {
@@ -116,6 +117,54 @@ export function SourcingProjectView({ projectId }: SourcingProjectViewProps) {
       toast({ title: 'Project deleted' })
     }
   }
+
+  const handleUpdateSearchCriteria = async (newCriteria: SearchCriteria) => {
+    if (!project) return
+    
+    setIsRefreshing(true)
+    
+    try {
+      // 1. Update sourcing_project record with new search_criteria
+      const { error: updateError } = await supabase
+        .from('sourcing_projects')
+        .update({ 
+          search_criteria: newCriteria as any,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', projectId)
+      
+      if (updateError) throw updateError
+      
+      // 2. Call get-job-matching-candidates with new criteria
+      const { data, error } = await supabase.functions.invoke('get-job-matching-candidates', {
+        body: {
+          sourcing_project_id: projectId,
+          criteria: newCriteria,
+          limit: 100
+        }
+      })
+      
+      if (error) throw error
+      
+      // 3. Refresh the UI
+      await refetchProject()
+      await refetchCandidates()
+      
+      toast({
+        title: 'Search Updated',
+        description: `Found ${data?.total_count || 0} candidates with updated criteria.`
+      })
+    } catch (error: any) {
+      console.error('Error updating search criteria:', error)
+      toast({
+        title: 'Failed to Update Search',
+        description: error.message,
+        variant: 'destructive'
+      })
+    } finally {
+      setIsRefreshing(false)
+    }
+  }
   
   if (projectLoading) {
     return <div className="flex items-center justify-center h-96">
@@ -136,10 +185,12 @@ export function SourcingProjectView({ projectId }: SourcingProjectViewProps) {
         breakdown={breakdown}
         filters={filters}
         onFiltersChange={setFilters}
-        onRefresh={refetch}
+        onRefresh={refetchCandidates}
         onArchive={handleArchive}
         onDelete={handleDelete}
         onNameUpdate={handleSaveName}
+        onUpdateSearchCriteria={handleUpdateSearchCriteria}
+        isRefreshing={isRefreshing}
       />
       
       <SourcingCandidateTable
