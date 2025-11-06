@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Plus, FileSearch, Clock, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
+import { Plus, FileSearch, Clock, PanelLeftClose, PanelLeftOpen, Search } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import {
   Sidebar,
@@ -48,11 +48,11 @@ export function SourcingSidebar({
   return (
     <Sidebar 
       collapsible="icon"
-      className={`shadow-calendly border-r border-virgilio-border transition-all duration-300 top-12 sm:top-14 h-[calc(100vh-3rem)] sm:h-[calc(100vh-3.5rem)] bg-white ${isCollapsed ? 'w-14' : 'w-64'}`}
+      className={`shadow-calendly border-r border-virgilio-border/50 transition-all duration-300 top-12 sm:top-14 h-[calc(100vh-3rem)] sm:h-[calc(100vh-3.5rem)] bg-white ${isCollapsed ? 'w-14' : 'w-64'}`}
     >
-      <SidebarHeader className="border-b border-virgilio-border p-6">
+      <SidebarHeader className="border-b border-virgilio-border/50 p-6 bg-gradient-to-b from-virgilio-purple/5 to-transparent">
         {!isCollapsed && (
-          <h2 className="text-h4-mobile font-poppins font-bold text-virgilio-text mb-4">
+          <h2 className="text-h4-mobile font-poppins font-bold text-virgilio-text mb-5">
             Sourcing Projects<span className="text-virgilio-purple">.</span>
           </h2>
         )}
@@ -60,62 +60,60 @@ export function SourcingSidebar({
         {!isCollapsed && (
           <>
             {/* Search Input */}
-            <SidebarInput 
-              placeholder="Search projects..." 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="mb-2"
-            />
+            <div className="relative mb-3">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-virgilio-muted" />
+              <input
+                type="text"
+                placeholder="Search projects..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full h-10 pl-10 pr-4 rounded-lg border border-virgilio-border bg-white text-sm text-virgilio-text placeholder:text-virgilio-muted focus:outline-none focus:ring-2 focus:ring-virgilio-purple/30 focus:border-virgilio-purple transition-all duration-200"
+              />
+            </div>
             
             {/* New Search Button */}
             <Button 
               variant="default" 
               size="default" 
-              className="w-full justify-center bg-virgilio-purple hover:bg-virgilio-purple/90 text-white font-semibold shadow-button mb-3 rounded-lg transition-all duration-200 hover:-translate-y-0.5"
+              className="w-full justify-center bg-virgilio-purple hover:bg-virgilio-purple/90 text-white font-semibold shadow-button mb-4 rounded-lg transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0"
               onClick={onNewSearch}
             >
               <Plus className="h-4 w-4 mr-2" />
               New Search
             </Button>
             
-            {/* Status Filter Toggle */}
-            <div className="flex gap-2">
-              <Button 
-                size="sm" 
-                variant={statusFilter === 'active' ? 'secondary' : 'outline'}
+            {/* Status Filter Pills */}
+            <div className="flex gap-1.5 p-1 bg-virgilio-purple/5 rounded-lg">
+              <button 
                 onClick={() => setStatusFilter('active')}
-                className={`flex-1 text-sm font-medium h-8 rounded-lg transition-all duration-200 ${
+                className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-200 ${
                   statusFilter === 'active' 
-                    ? 'bg-virgilio-purple/10 text-virgilio-purple border-virgilio-purple/30' 
-                    : 'border-virgilio-border text-virgilio-muted hover:border-virgilio-purple/50 hover:bg-virgilio-purple/5'
+                    ? 'bg-white text-virgilio-purple shadow-sm' 
+                    : 'text-virgilio-muted hover:text-virgilio-text'
                 }`}
               >
                 Active
-              </Button>
-              <Button 
-                size="sm" 
-                variant={statusFilter === 'archived' ? 'secondary' : 'outline'}
+              </button>
+              <button 
                 onClick={() => setStatusFilter('archived')}
-                className={`flex-1 text-sm font-medium h-8 rounded-lg transition-all duration-200 ${
+                className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-200 ${
                   statusFilter === 'archived' 
-                    ? 'bg-virgilio-purple/10 text-virgilio-purple border-virgilio-purple/30' 
-                    : 'border-virgilio-border text-virgilio-muted hover:border-virgilio-purple/50 hover:bg-virgilio-purple/5'
+                    ? 'bg-white text-virgilio-purple shadow-sm' 
+                    : 'text-virgilio-muted hover:text-virgilio-text'
                 }`}
               >
                 Archived
-              </Button>
-              <Button 
-                size="sm" 
-                variant={statusFilter === 'all' ? 'secondary' : 'outline'}
+              </button>
+              <button 
                 onClick={() => setStatusFilter('all')}
-                className={`flex-1 text-sm font-medium h-8 rounded-lg transition-all duration-200 ${
+                className={`flex-1 px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-200 ${
                   statusFilter === 'all' 
-                    ? 'bg-virgilio-purple/10 text-virgilio-purple border-virgilio-purple/30' 
-                    : 'border-virgilio-border text-virgilio-muted hover:border-virgilio-purple/50 hover:bg-virgilio-purple/5'
+                    ? 'bg-white text-virgilio-purple shadow-sm' 
+                    : 'text-virgilio-muted hover:text-virgilio-text'
                 }`}
               >
                 All
-              </Button>
+              </button>
             </div>
           </>
         )}
@@ -125,90 +123,97 @@ export function SourcingSidebar({
         {!isCollapsed && (
           <>
             {isLoading && (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {[1, 2, 3].map(i => (
-                  <Skeleton key={i} className="h-16 w-full" />
+                  <Skeleton key={i} className="h-20 w-full rounded-lg shadow-calendly" />
                 ))}
               </div>
             )}
             
             {error && (
-              <div className="p-4 text-sm text-destructive">
+              <div className="p-4 text-sm text-destructive bg-destructive/10 rounded-lg">
                 Failed to load projects
               </div>
             )}
             
             {!isLoading && !error && filteredProjects.length === 0 && (
-              <div className="p-4 text-center">
-                <FileSearch className="h-12 w-12 mx-auto text-muted-foreground mb-2" />
-                <p className="text-sm text-muted-foreground">
+              <div className="p-6 text-center bg-virgilio-purple/5 rounded-lg">
+                <FileSearch className="h-16 w-16 mx-auto text-virgilio-muted mb-3" />
+                <p className="text-sm font-medium text-virgilio-text">
                   {searchQuery ? 'No matching projects' : 'No projects yet'}
                 </p>
-                <p className="text-xs text-muted-foreground mt-1">
+                <p className="text-xs text-virgilio-muted mt-1.5">
                   Start by creating a search!
                 </p>
               </div>
             )}
             
             {!isLoading && filteredProjects.length > 0 && (
-              <SidebarMenu>
+              <div className="space-y-2">
                 {filteredProjects.map(project => (
-                  <SidebarMenuItem key={project.id}>
-                    <SidebarMenuButton
-                      onClick={() => onSelectProject(project.id)}
-                      isActive={selectedProjectId === project.id}
-                      className={`w-full h-auto py-3 px-4 rounded-lg transition-all duration-200 ${
-                        selectedProjectId === project.id
-                          ? 'bg-virgilio-purple text-white shadow-sm'
-                          : 'hover:bg-virgilio-purple/5 hover:border-virgilio-purple/30'
-                      }`}
-                    >
-                      <div className="flex flex-col items-start w-full gap-1">
-                        <div className="flex items-center justify-between w-full">
-                          <span className="font-medium text-sm truncate max-w-[180px]">
-                            {project.name}
-                          </span>
-                          {project.total_candidates > 0 && (
-                            <Badge variant="secondary" className="text-xs h-5">
-                              {project.total_candidates}
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <Clock className="h-3 w-3" />
-                          <span>{formatDistanceToNow(new Date(project.updated_at))} ago</span>
-                        </div>
+                  <button
+                    key={project.id}
+                    onClick={() => onSelectProject(project.id)}
+                    className={`w-full p-4 rounded-lg border transition-all duration-200 text-left ${
+                      selectedProjectId === project.id
+                        ? 'bg-gradient-to-br from-virgilio-purple to-virgilio-purple/90 text-white border-virgilio-purple shadow-calendly scale-[1.02]'
+                        : 'bg-white border-virgilio-border/50 hover:border-virgilio-purple/30 hover:shadow-calendly hover:-translate-y-0.5 active:translate-y-0'
+                    }`}
+                  >
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center justify-between">
+                        <span className="font-semibold text-sm truncate max-w-[160px]">
+                          {project.name}
+                        </span>
+                        {project.total_candidates > 0 && (
+                          <Badge 
+                            variant="secondary" 
+                            className={`text-xs h-5 px-2 ${
+                              selectedProjectId === project.id 
+                                ? 'bg-white/20 text-white border-white/30' 
+                                : 'bg-virgilio-purple/10 text-virgilio-purple border-virgilio-purple/20'
+                            }`}
+                          >
+                            {project.total_candidates}
+                          </Badge>
+                        )}
                       </div>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
+                      <div className={`flex items-center gap-1.5 text-xs ${
+                        selectedProjectId === project.id ? 'text-white/80' : 'text-virgilio-muted'
+                      }`}>
+                        <Clock className="h-3 w-3" />
+                        <span>{formatDistanceToNow(new Date(project.updated_at))} ago</span>
+                      </div>
+                    </div>
+                  </button>
                 ))}
-              </SidebarMenu>
+              </div>
             )}
           </>
         )}
       </SidebarContent>
       
-      <SidebarFooter className="border-t border-virgilio-border p-4 bg-white">
+      <SidebarFooter className="border-t border-virgilio-border/50 p-4 bg-white">
         {!isCollapsed ? (
           <Button 
             size="default" 
             variant="outline" 
-            className="w-full justify-center border-virgilio-border text-virgilio-text font-medium hover:bg-virgilio-purple/5 hover:border-virgilio-purple/50 rounded-lg transition-all duration-200"
+            className="w-full justify-center border-virgilio-border text-virgilio-text font-medium hover:bg-virgilio-purple/5 hover:border-virgilio-purple/50 rounded-lg transition-all duration-200 hover:shadow-sm"
             onClick={toggleSidebar}
             aria-label="Collapse sidebar"
           >
-            <PanelLeftClose className="h-4 w-4 mr-2" />
+            <PanelLeftClose className="h-4 w-4 mr-2 transition-transform duration-200" />
             Collapse
           </Button>
         ) : (
           <Button 
             size="default" 
             variant="outline" 
-            className="w-full h-10 p-0 border-virgilio-border text-virgilio-text hover:bg-virgilio-purple/5 hover:border-virgilio-purple/50 rounded-lg transition-all duration-200"
+            className="w-full h-10 p-0 border-virgilio-border text-virgilio-text hover:bg-virgilio-purple/5 hover:border-virgilio-purple/50 rounded-lg transition-all duration-200 hover:shadow-sm"
             onClick={toggleSidebar}
             aria-label="Expand sidebar"
           >
-            <PanelLeftOpen className="h-4 w-4" />
+            <PanelLeftOpen className="h-4 w-4 transition-transform duration-200" />
           </Button>
         )}
       </SidebarFooter>
