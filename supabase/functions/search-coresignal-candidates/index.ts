@@ -283,7 +283,7 @@ serve(async (req) => {
     const coresignalResponse = await fetch(`${CORESIGNAL_API_URL}?page=1`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${CORESIGNAL_API_KEY}`,
+        'apikey': CORESIGNAL_API_KEY,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(queryParams),
