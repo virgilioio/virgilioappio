@@ -4,7 +4,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0';
 import { corsHeadersFor, handlePreflight } from "../_shared/cors.ts";
 
 const CORESIGNAL_API_KEY = Deno.env.get('CORESIGNAL_API_KEY');
-const CORESIGNAL_API_URL = 'https://api.coresignal.com/cdapi/v2/employee_base/search/filter';
+const CORESIGNAL_API_URL = 'https://api.coresignal.com/cdapi/v2/employee_base/search/filter/preview';
 
 // Regional country mappings for CoreSignal location queries
 const REGION_COUNTRY_MAPPING: Record<string, string[]> = {
@@ -305,31 +305,33 @@ serve(async (req) => {
 
     const coresignalData = await coresignalResponse.json();
     
+    // Get total count from header
+    const totalCount = parseInt(coresignalResponse.headers.get('x-total-results') || '0', 10);
+    
+    // Search Preview returns a direct array, not wrapped in 'results'
+    const resultsArray = Array.isArray(coresignalData) ? coresignalData : [];
+    
     console.log('📡 CoreSignal API Full Response:', {
       status: coresignalResponse.status,
       statusText: coresignalResponse.statusText,
-      headers: Object.fromEntries(coresignalResponse.headers.entries()),
-      dataPreview: {
-        total: coresignalData.total || 0,
-        returned: coresignalData.results?.length || 0,
-        firstResult: coresignalData.results?.[0] || null
-      },
-      fullData: JSON.stringify(coresignalData, null, 2)
+      totalFromHeader: totalCount,
+      returnedCount: resultsArray.length,
+      firstCandidate: resultsArray[0] || null
     });
 
-    // Parse preview results
-    const candidates: CoreSignalCandidate[] = (coresignalData.results || []).map((result: any) => ({
-      coresignal_id: result.id,
-      full_name: result.full_name || 'Unknown',
-      headline: result.headline || '',
-      location: result.location || '',
-      country: result.country || '',
-      profile_url: result.profile_url || result.linkedin_url || '',
-      current_company: result.current_company?.name || result.current_experience?.company,
-      current_title: result.current_experience?.title || result.current_position,
-      experience_count: result.experience?.length || 0,
-      _score: result._score || 0
-    })).slice(0, limit);
+    // Parse preview results - map fields from Search Preview API
+    const candidates: CoreSignalCandidate[] = resultsArray.slice(0, limit).map((candidate: any) => ({
+      coresignal_id: candidate.id?.toString() || '',
+      full_name: candidate.full_name || 'Unknown',
+      headline: candidate.headline || '',
+      location: candidate.location || '',
+      country: candidate.country || '',
+      profile_url: candidate.profile_url || '',
+      current_company: candidate.company_name || null,
+      current_title: candidate.title || null,
+      experience_count: candidate.experience_count || 0,
+      _score: candidate._score || 0
+    }));
 
     // Increment credit usage
     await incrementCreditUsage(orgId, 'search');
@@ -341,7 +343,7 @@ serve(async (req) => {
       await supabase
         .from('sourcing_projects')
         .update({
-          coresignal_candidate_count: coresignalData.total || 0,
+          coresignal_candidate_count: totalCount,
           coresignal_last_searched_at: new Date().toISOString(),
           coresignal_cache_expires_at: cacheExpiry.toISOString()
         })
@@ -350,13 +352,13 @@ serve(async (req) => {
 
     const response = {
       candidates,
-      total_count: coresignalData.total || 0,
+      total_count: totalCount,
       credits_used: 1,
       credits_remaining: creditCheck.remaining - 1,
       cached: false
     };
 
-    console.log(`✅ CoreSignal search complete: ${candidates.length} candidates (1 credit used, ${creditCheck.remaining - 1} remaining)`);
+    console.log(`✅ CoreSignal search complete: ${candidates.length} candidates returned from ${totalCount} total matches (1 credit used, ${creditCheck.remaining - 1} remaining)`);
 
     return new Response(JSON.stringify(response), {
       status: 200,
