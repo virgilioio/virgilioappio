@@ -21,6 +21,7 @@ serve(async (req) => {
     const { prompt } = await req.json();
 
     console.log('Generating job spec for prompt:', prompt);
+    console.log('First 100 chars of prompt:', prompt.substring(0, 100));
 
     // First, get market salary data to enhance AI recommendations
     let marketSalaryData = null;
@@ -84,6 +85,25 @@ Use this market data to provide SPECIFIC salary recommendations instead of gener
 
 A client has described their hiring need. Your task is to analyze this input and return a structured response that Virgilio's system can use to generate a high-quality job record.
 
+🌐 **PRIMARY INSTRUCTION - LANGUAGE DETECTION (CRITICAL):**
+1. FIRST: Read the user's prompt and detect what language it is written in
+2. The prompt language determines the response language for job_title, alt_titles, job_description, department, and recommendations
+3. IGNORE the language of examples in these instructions - they are just examples
+4. Language mapping:
+   - English prompt → English response
+   - Spanish prompt → Spanish response  
+   - Portuguese prompt → Portuguese response
+   - French prompt → French response
+   - Any other language → English fallback
+5. Skills MUST ALWAYS be in English regardless of prompt language
+
+**Example of correct behavior:**
+- User prompt: "I need a software engineer" → Response in English
+- User prompt: "Necesito un ingeniero de software" → Response in Spanish
+- User prompt: "Preciso de um engenheiro de software" → Response in Portuguese
+
+Now that language detection is clear, here are your other capabilities:
+
 CRITICAL GEOGRAPHICAL INTELLIGENCE:
 🌍 REGIONAL MAPPING & INFERENCE:
 - LATAM/Latin America: Mexico, Guatemala, Belize, El Salvador, Honduras, Nicaragua, Costa Rica, Panama, Colombia, Venezuela, Guyana, Suriname, French Guiana, Brazil, Ecuador, Peru, Bolivia, Paraguay, Chile, Argentina, Uruguay
@@ -106,15 +126,6 @@ CRITICAL GEOGRAPHICAL INTELLIGENCE:
 - Consider timezone alignment for customer-facing roles
 - For technical roles, location can be more flexible unless client-facing
 
-IMPORTANT LANGUAGE INSTRUCTIONS:
-- Detect the language of the prompt text itself
-- Respond in the SAME language as the prompt for job_description, job_title, alt_titles, department, and recommendations
-- If the prompt is in English, respond in English
-- If the prompt is in Spanish, respond in Spanish
-- If the prompt is in Portuguese, respond in Portuguese
-- If the prompt is in French, respond in French
-- For any other language, respond in English as fallback
-
 CRITICAL SKILL STANDARDIZATION:
 - ALL skills must be in English regardless of input language
 - Interpret vague terms intelligently to generate specific, standardized skill tags
@@ -134,8 +145,8 @@ ROLE INTERPRETATION INTELLIGENCE:
 - Generate 2-3 alternative titles that represent different seniority levels or specializations
 
 ENHANCED ANALYSIS REQUIREMENTS:
-- Understand the context of the role in the user's language
-- Infer the most likely job title, department, and seniority level appropriate to their region/language
+- Understand the context of the role
+- Infer the most likely job title, department, and seniority level appropriate to their region
 - Use GEOGRAPHICAL INTELLIGENCE to determine optimal location based on business function and target market
 - Use market salary data when available to provide specific recommendations
 - Generate 5-8 relevant English skill tags that match the role requirements
@@ -151,15 +162,15 @@ SALARY INTELLIGENCE WITH MARKET DATA:
 
 ${salaryInsights}
 
-🧱 The job_description field MUST follow this structure in the user's language:
+🧱 The job_description field MUST follow this structure in the detected prompt language:
 
-1. **About the Role** (or equivalent in user's language)
+1. **About the Role** (or equivalent in the detected language)
    - A short paragraph that explains what the job is and how it contributes to the company's goals
 
-2. **Key Responsibilities** (or equivalent in user's language)
+2. **Key Responsibilities** (or equivalent in the detected language)
    - Bullet list of 4–6 core responsibilities and daily activities
 
-3. **Requirements** (or equivalent in user's language)
+3. **Requirements** (or equivalent in the detected language)
    - Bullet list of 4–6 skills, qualifications, or experience expectations
 
 The job_description should be structured HTML like:
@@ -170,14 +181,16 @@ The job_description should be structured HTML like:
 <h3>Requirements</h3>
 <ul><li>...</li></ul>
 
+**REMINDER: Return all text fields (job_title, alt_titles, job_description, department, recommendations) in the SAME LANGUAGE as the user's prompt. Skills must be in English.**
+
 Return ONLY valid JSON in this format:
 
 {
-  "job_title": "Primary suggested job title in user's language",
+  "job_title": "Primary suggested job title in detected prompt language",
   "alt_titles": ["Alternative title 1", "Alternative title 2", "Alternative title 3"],
-  "job_description": "Structured HTML with headings and bullet points in user's language",
+  "job_description": "Structured HTML with headings and bullet points in detected prompt language",
   "level": "L1 | L2 | L3",
-  "department": "Department name in user's language",
+  "department": "Department name in detected prompt language",
   "location": "City, Country (if inferred or provided)",
   "salary_range": {
     "min": integer,
@@ -187,10 +200,10 @@ Return ONLY valid JSON in this format:
   },
   "skills": ["Skill 1 in English", "Skill 2 in English", "Skill 3 in English", "Skill 4 in English", "Skill 5 in English"],
   "recommendations": [
-    "Insight about role commonness in user's language",
-    "Hiring difficulty assessment in user's language", 
-    "SPECIFIC market compensation insight using actual data when available in user's language",
-    "Time-to-hire implication in user's language"
+    "Insight about role commonness in detected prompt language",
+    "Hiring difficulty assessment in detected prompt language", 
+    "SPECIFIC market compensation insight using actual data when available in detected prompt language",
+    "Time-to-hire implication in detected prompt language"
   ]
 }`
           },
