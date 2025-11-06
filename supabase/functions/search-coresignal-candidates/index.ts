@@ -4,7 +4,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0';
 import { corsHeadersFor, handlePreflight } from "../_shared/cors.ts";
 
 const CORESIGNAL_API_KEY = Deno.env.get('CORESIGNAL_API_KEY');
-const CORESIGNAL_API_URL = 'https://api.coresignal.com/v2/employee_base/search/filter/preview';
+const CORESIGNAL_API_URL = 'https://api.coresignal.com/cdapi/v2/employee_base/search/filter';
 
 // Regional country mappings for CoreSignal location queries
 const REGION_COUNTRY_MAPPING: Record<string, string[]> = {
@@ -39,6 +39,7 @@ const supabase = createClient(
 
 interface SearchCriteria {
   skills: string[];
+  title_keywords?: string[];
   location?: string;
   salary_min?: number;
   salary_max?: number;
@@ -69,9 +70,14 @@ interface CoreSignalCandidate {
 function buildCoresignalFilterQuery(criteria: SearchCriteria): any {
   const query: any = {};
   
-  // Skills: Use OR logic with wildcards for broader matching
+  // Skills: Join with spaces (CoreSignal handles matching internally)
   if (criteria.skills && criteria.skills.length > 0) {
-    query.skill = criteria.skills.map(s => `*${s}*`).join(' OR ');
+    query.skill = criteria.skills.join(' ');
+  }
+  
+  // Title Keywords: Use experience_title field
+  if (criteria.title_keywords && criteria.title_keywords.length > 0) {
+    query.experience_title = criteria.title_keywords.join(' ');
   }
   
   // Location: Handle regional keywords and specific locations
@@ -86,13 +92,13 @@ function buildCoresignalFilterQuery(criteria: SearchCriteria): any {
     );
     
     if (regionMatch) {
-      // Expand region to country list with OR logic
+      // Use first country from region (CoreSignal doesn't support OR for countries)
       const countries = REGION_COUNTRY_MAPPING[regionMatch];
-      query.country = countries.join(' OR ');
-      console.log(`🌎 Expanded ${regionMatch} to ${countries.length} countries`);
+      query.country = countries[0];
+      console.log(`🌎 Using ${countries[0]} as primary country for ${regionMatch}`);
     } else {
       // Use location as-is for specific countries/cities
-      query.country = `*${location}*`;
+      query.country = location;
     }
   }
   
