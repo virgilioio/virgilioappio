@@ -40,7 +40,7 @@ const supabase = createClient(
 interface SearchCriteria {
   skills: string[];
   title_keywords?: string[];
-  location?: string;
+  locations?: string[];
   salary_min?: number;
   salary_max?: number;
   experience_years?: { min?: number; max?: number };
@@ -66,37 +66,25 @@ interface CoreSignalCandidate {
   _score: number;
 }
 
-// Build CoreSignal Filter API query from criteria
-// Normalize location to handle ambiguous inputs
-function normalizeLocation(location: string | undefined): string[] | undefined {
-  if (!location || location.trim() === '' || location.toLowerCase().includes('global')) {
-    return undefined; // Empty/global = no location filter (global search)
-  }
-  
-  const normalized = location.trim().toUpperCase();
-  
-  // Handle regional shortcuts - expand to country lists
-  const regionMap: Record<string, string[]> = {
-    'LATAM': ['Mexico', 'Brazil', 'Argentina', 'Chile', 'Colombia', 'Peru', 'Venezuela', 'Ecuador', 'Guatemala', 'Costa Rica', 'Panama', 'Uruguay', 'Bolivia', 'Paraguay', 'Honduras', 'El Salvador', 'Nicaragua', 'Puerto Rico', 'Dominican Republic'],
-    'LATIN AMERICA': ['Mexico', 'Brazil', 'Argentina', 'Chile', 'Colombia', 'Peru', 'Venezuela', 'Ecuador', 'Guatemala', 'Costa Rica', 'Panama', 'Uruguay', 'Bolivia', 'Paraguay', 'Honduras', 'El Salvador', 'Nicaragua', 'Puerto Rico', 'Dominican Republic'],
-    'EUROPE': ['United Kingdom', 'Germany', 'France', 'Spain', 'Italy', 'Netherlands', 'Belgium', 'Sweden', 'Norway', 'Denmark', 'Finland', 'Poland', 'Portugal', 'Greece', 'Austria', 'Switzerland', 'Ireland'],
-    'EUR': ['United Kingdom', 'Germany', 'France', 'Spain', 'Italy', 'Netherlands', 'Belgium', 'Sweden', 'Norway', 'Denmark', 'Finland', 'Poland', 'Portugal', 'Greece', 'Austria', 'Switzerland', 'Ireland'],
-    'ASIA': ['India', 'China', 'Japan', 'Singapore', 'South Korea', 'Thailand', 'Vietnam', 'Philippines', 'Indonesia', 'Malaysia'],
-    'APAC': ['India', 'China', 'Japan', 'Singapore', 'Australia', 'New Zealand', 'South Korea', 'Thailand', 'Vietnam', 'Philippines', 'Indonesia', 'Malaysia'],
-    'NORTH AMERICA': ['United States', 'Canada', 'Mexico'],
-    'NA': ['United States', 'Canada', 'Mexico']
-  };
-  
-  // Check if the location matches a region
-  for (const [region, countries] of Object.entries(regionMap)) {
-    if (normalized.includes(region)) {
-      console.log(`🌍 Expanding region "${location}" to ${countries.length} countries`);
-      return countries;
-    }
-  }
-  
-  // Return as single location
-  return [location];
+// Map country codes to full country names for CoreSignal API
+const COUNTRY_CODE_TO_NAME: Record<string, string> = {
+  'US': 'United States', 'CA': 'Canada', 'GB': 'United Kingdom', 'DE': 'Germany',
+  'FR': 'France', 'ES': 'Spain', 'IT': 'Italy', 'NL': 'Netherlands', 'BE': 'Belgium',
+  'SE': 'Sweden', 'NO': 'Norway', 'DK': 'Denmark', 'FI': 'Finland', 'PL': 'Poland',
+  'PT': 'Portugal', 'GR': 'Greece', 'AT': 'Austria', 'CH': 'Switzerland', 'IE': 'Ireland',
+  'MX': 'Mexico', 'BR': 'Brazil', 'AR': 'Argentina', 'CL': 'Chile', 'CO': 'Colombia',
+  'PE': 'Peru', 'VE': 'Venezuela', 'EC': 'Ecuador', 'GT': 'Guatemala', 'CR': 'Costa Rica',
+  'PA': 'Panama', 'UY': 'Uruguay', 'BO': 'Bolivia', 'PY': 'Paraguay', 'HN': 'Honduras',
+  'SV': 'El Salvador', 'NI': 'Nicaragua', 'DO': 'Dominican Republic', 'IN': 'India',
+  'CN': 'China', 'JP': 'Japan', 'SG': 'Singapore', 'AU': 'Australia', 'NZ': 'New Zealand',
+  'KR': 'South Korea', 'TH': 'Thailand', 'VN': 'Vietnam', 'PH': 'Philippines',
+  'ID': 'Indonesia', 'MY': 'Malaysia', 'AE': 'United Arab Emirates', 'SA': 'Saudi Arabia',
+  'EG': 'Egypt', 'ZA': 'South Africa', 'KE': 'Kenya', 'NG': 'Nigeria'
+};
+
+// Convert country codes to country names
+function convertCountryCodesToNames(codes: string[]): string[] {
+  return codes.map(code => COUNTRY_CODE_TO_NAME[code] || code);
 }
 
 function buildCoresignalFilterQuery(criteria: SearchCriteria): any {
@@ -112,55 +100,11 @@ function buildCoresignalFilterQuery(criteria: SearchCriteria): any {
     query.experience_title = criteria.title_keywords.map(title => `(${title})`).join(' OR ');
   }
   
-  // Location: Parse intelligently to use both 'location' and 'country' fields
-  // Support both singular 'location' and array 'locations' formats with normalization
-  const rawLocationList = criteria.locations || (criteria.location ? [criteria.location] : []);
-  
-  // Normalize each location (handles regional expansion, empty/global filtering)
-  const normalizedLocations: string[] = [];
-  for (const loc of rawLocationList) {
-    const normalized = normalizeLocation(loc);
-    if (normalized) {
-      normalizedLocations.push(...normalized);
-    }
-  }
-  
-  if (normalizedLocations.length > 0) {
-    // For multiple locations, parse each and combine with OR
-    const locationParts: string[] = [];
-    const countryParts: string[] = [];
-    
-    normalizedLocations.forEach(loc => {
-      let locationStr = loc.replace(/^Remote\s*-\s*/i, '').trim();
-      const parts = locationStr.split(',').map(p => p.trim());
-      
-      if (parts.length >= 2) {
-        // Multi-part location like "San Francisco, California"
-        locationParts.push(parts.slice(0, -1).join(', '));
-        countryParts.push(parts[parts.length - 1]);
-      } else if (parts.length === 1) {
-        // Check if it's a regional keyword
-        const regionMatch = Object.keys(REGION_COUNTRY_MAPPING).find(region => 
-          locationStr.toUpperCase().includes(region)
-        );
-        
-        if (regionMatch) {
-          countryParts.push(REGION_COUNTRY_MAPPING[regionMatch][0]);
-        } else {
-          locationParts.push(locationStr);
-        }
-      }
-    });
-    
-    // Combine with OR operator
-    if (locationParts.length > 0) {
-      query.location = locationParts.map(l => `(${l})`).join(' OR ');
-      console.log(`🌍 Combined locations: ${query.location}`);
-    }
-    if (countryParts.length > 0) {
-      query.country = countryParts.map(c => `(${c})`).join(' OR ');
-      console.log(`🌎 Combined countries: ${query.country}`);
-    }
+  // Location: Convert country codes to full names and send to CoreSignal
+  if (criteria.locations && criteria.locations.length > 0) {
+    const countryNames = convertCountryCodesToNames(criteria.locations);
+    query.country = countryNames.map(c => `(${c})`).join(' OR ');
+    console.log(`🌍 Country filter: ${query.country}`);
   } else {
     console.log(`🌍 No location filter (global search)`);
   }

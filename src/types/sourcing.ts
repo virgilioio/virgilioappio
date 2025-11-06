@@ -40,7 +40,6 @@ export type EnabledSource = 'internal' | 'coresignal' | 'linkedin' | 'seekout'
 
 export interface SourcingProjectFilters {
   matchTiers?: ('excellent' | 'good' | 'fair' | 'minimal')[]
-  location?: string[]
   minExperience?: number
   maxExperience?: number
   source?: 'local' | 'coresignal' | 'all'

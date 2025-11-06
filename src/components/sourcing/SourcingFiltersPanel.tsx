@@ -8,7 +8,6 @@ import { MultiSelect } from '@/components/ui/multi-select'
 import { SourcingProjectFilters, SourcingProject, SearchCriteria } from '@/types/sourcing'
 import { COUNTRIES } from '@/constants/countries'
 import { X, Plus, Loader2, RefreshCw } from 'lucide-react'
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { Separator } from '@/components/ui/separator'
 import {
   Select,
@@ -37,11 +36,6 @@ export function SourcingFiltersPanel({
   const [editableCriteria, setEditableCriteria] = useState<SearchCriteria>(project.search_criteria)
   const [newSkill, setNewSkill] = useState('')
   const [newTitleKeyword, setNewTitleKeyword] = useState('')
-  const [newLocation, setNewLocation] = useState('')
-
-  const selectedCountries = COUNTRIES.filter(country => 
-    filters.location?.includes(country.value)
-  )
 
   const handleSaveAndRefresh = async () => {
     if (editableCriteria.skills.length === 0) return
@@ -88,26 +82,6 @@ export function SourcingFiltersPanel({
     setEditableCriteria({
       ...editableCriteria,
       title_keywords: (editableCriteria.title_keywords || []).filter(k => k !== keyword)
-    })
-  }
-
-  const handleAddLocation = () => {
-    if (newLocation.trim()) {
-      const currentLocations = editableCriteria.locations || []
-      if (!currentLocations.includes(newLocation.trim())) {
-        setEditableCriteria({
-          ...editableCriteria,
-          locations: [...currentLocations, newLocation.trim()]
-        })
-        setNewLocation('')
-      }
-    }
-  }
-
-  const handleRemoveLocation = (location: string) => {
-    setEditableCriteria({
-      ...editableCriteria,
-      locations: (editableCriteria.locations || []).filter(l => l !== location)
     })
   }
 
@@ -230,42 +204,17 @@ export function SourcingFiltersPanel({
               )}
             </div>
 
-            {/* Search Locations */}
+            {/* Locations - Country Selector */}
             <div className="space-y-2">
               <Label className="text-xs font-medium text-muted-foreground">Search Locations</Label>
-              <p className="text-xs text-muted-foreground">Cities, regions, or countries</p>
-              <div className="flex gap-2">
-                <Input
-                  placeholder="e.g., San Francisco"
-                  value={newLocation}
-                  onChange={(e) => setNewLocation(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault()
-                      handleAddLocation()
-                    }
-                  }}
-                  className="h-8 text-sm flex-1"
-                />
-                <Button size="sm" onClick={handleAddLocation} className="h-8 w-8 p-0">
-                  <Plus className="h-3 w-3" />
-                </Button>
-              </div>
-              {editableCriteria.locations && editableCriteria.locations.length > 0 && (
-                <div className="flex flex-wrap gap-1.5">
-                  {editableCriteria.locations.map(location => (
-                    <Badge key={location} variant="outline" className="text-xs pr-1">
-                      {location}
-                      <button
-                        onClick={() => handleRemoveLocation(location)}
-                        className="ml-1 hover:bg-muted-foreground/20 rounded-sm p-0.5"
-                      >
-                        <X className="h-2.5 w-2.5" />
-                      </button>
-                    </Badge>
-                  ))}
-                </div>
-              )}
+              <MultiSelect
+                options={COUNTRIES}
+                selectedValues={editableCriteria.locations || []}
+                onSelectionChange={(locations) => setEditableCriteria({ ...editableCriteria, locations })}
+                placeholder="Select countries..."
+                searchable
+                className="text-sm"
+              />
             </div>
 
             {/* Salary Range */}
@@ -375,9 +324,14 @@ export function SourcingFiltersPanel({
               <div className="space-y-1">
                 <span className="text-xs text-muted-foreground">Locations:</span>
                 <div className="flex flex-wrap gap-1">
-                  {project.search_criteria.locations.map(loc => (
-                    <Badge key={loc} variant="outline" className="text-xs">{loc}</Badge>
-                  ))}
+                  {project.search_criteria.locations.map(loc => {
+                    const country = COUNTRIES.find(c => c.value === loc)
+                    return (
+                      <Badge key={loc} variant="outline" className="text-xs">
+                        {country?.label || loc}
+                      </Badge>
+                    )
+                  })}
                 </div>
               </div>
             )}
@@ -396,7 +350,6 @@ export function SourcingFiltersPanel({
             size="sm"
             onClick={() => onFiltersChange({
               matchTiers: [],
-              location: [],
               minExperience: 0,
               maxExperience: 30,
               source: 'all'
@@ -450,45 +403,6 @@ export function SourcingFiltersPanel({
             </label>
           ))}
         </div>
-      </div>
-
-      {/* Location Filter */}
-      <div className="space-y-2">
-        <Label className="text-xs font-medium text-muted-foreground">Location</Label>
-        <MultiSelect
-          options={COUNTRIES}
-          selectedValues={filters.location || []}
-          onSelectionChange={(values) => onFiltersChange({ ...filters, location: values })}
-          placeholder="Select countries..."
-          searchable
-          maxDisplay={0}
-        />
-        
-        {/* Selected Countries Badges */}
-        {selectedCountries.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 mt-2">
-            {selectedCountries.map(country => (
-              <Badge 
-                key={country.value} 
-                variant="secondary"
-                className="text-xs pr-1 pl-2 py-0.5"
-              >
-                {country.label}
-                <button
-                  onClick={() => {
-                    onFiltersChange({
-                      ...filters,
-                      location: (filters.location || []).filter(c => c !== country.value)
-                    })
-                  }}
-                  className="ml-1 hover:bg-muted-foreground/20 rounded-sm p-0.5"
-                >
-                  <X className="h-2.5 w-2.5" />
-                </button>
-              </Badge>
-            ))}
-          </div>
-        )}
       </div>
 
       {/* Experience Range */}

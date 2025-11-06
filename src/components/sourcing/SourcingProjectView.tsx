@@ -28,7 +28,6 @@ export function SourcingProjectView({ projectId }: SourcingProjectViewProps) {
   
   const [filters, setFilters] = useState<SourcingProjectFilters>({
     matchTiers: [],
-    location: [],
     minExperience: 0,
     maxExperience: 30,
     source: 'all'
@@ -43,13 +42,6 @@ export function SourcingProjectView({ projectId }: SourcingProjectViewProps) {
       // Match tier filter
       if (filters.matchTiers && filters.matchTiers.length > 0) {
         if (!filters.matchTiers.includes(candidate.match_tier as any)) {
-          return false
-        }
-      }
-      
-      // Location filter - now checks country codes
-      if (filters.location && filters.location.length > 0) {
-        if (!candidate.location_country || !filters.location.includes(candidate.location_country)) {
           return false
         }
       }
