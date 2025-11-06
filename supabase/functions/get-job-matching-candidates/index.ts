@@ -179,6 +179,7 @@ serve(async (req) => {
     let jobSkills: string[] = [];
     let job: any = null;
     let organization_id: string | null = null;
+    let criteria: any = null;
 
     // Option 1: Load from sourcing project
     if (sourcing_project_id) {
@@ -195,7 +196,7 @@ serve(async (req) => {
       }
       
       // Extract criteria from project (use provided criteria if available for refresh)
-      const criteria = providedCriteria || (project.search_criteria as any);
+      criteria = providedCriteria || (project.search_criteria as any);
       jobSkills = criteria.skills || [];
       organization_id = project.organization_id;
       
@@ -246,6 +247,15 @@ serve(async (req) => {
       job = jobData;
       jobSkills = job.standardized_skills || job.skills || [];
       organization_id = job.organization_id;
+      
+      // Set criteria for job_id path
+      criteria = providedCriteria || {
+        skills: jobSkills,
+        location: job.location,
+        salary_min: job.salary_min,
+        salary_max: job.salary_max,
+        currency: job.currency
+      };
     } else {
       throw new Error('Either job_id or sourcing_project_id must be provided');
     }
