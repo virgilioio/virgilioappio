@@ -10,9 +10,10 @@ import { Button } from '@/components/ui/button'
 import { Check, ChevronsUpDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { CreateJobData } from '@/hooks/useJobs'
-import { useOrganizations } from '@/hooks/useOrganizations'
+import { useChildOrganizationsForJobCreation } from '@/hooks/useChildOrganizationsForJobCreation'
 import { useAuth } from '@/contexts/AuthContext'
 import { CURRENCIES } from '@/constants/currencies'
+import { usePermissions } from '@/hooks/usePermissions'
 
 interface JobInfoStepProps {
   jobData: Partial<CreateJobData>
@@ -23,16 +24,20 @@ type JobStatus = 'draft' | 'open' | 'closed' | 'archived'
 
 export function JobInfoStep({ jobData, onUpdate }: JobInfoStepProps) {
   const [currencyOpen, setCurrencyOpen] = React.useState(false)
-  const { organizations } = useOrganizations()
+  const { data: childOrgs = [], isLoading: isLoadingOrgs } = useChildOrganizationsForJobCreation()
   const { userType, organizationId } = useAuth()
+  const permissions = usePermissions()
 
-  // Transform and sort organizations for SearchableSelect
+  // Transform child orgs for SearchableSelect
   const organizationOptions: SearchableSelectOption[] = React.useMemo(() => 
-    organizations
+    childOrgs
       .map(org => ({ value: org.id, label: org.name }))
       .sort((a, b) => a.label.localeCompare(b.label)),
-    [organizations]
+    [childOrgs]
   )
+  
+  // Show org selector for platform admins, workspace owners, and recruiters
+  const canSelectOrganization = permissions.isPlatformAdmin || permissions.isWorkspaceOwner || permissions.isRecruiter
 
   React.useEffect(() => {
     // Set default organization for non-platform-admin users
@@ -79,18 +84,21 @@ export function JobInfoStep({ jobData, onUpdate }: JobInfoStepProps) {
           </Select>
         </div>
 
-        {/* Organization */}
-        <div className="space-y-2">
-          <Label htmlFor="organization">Organization *</Label>
-          <SearchableSelect
-            options={organizationOptions}
-            value={jobData.organization_id || ''}
-            onValueChange={(value) => handleInputChange('organization_id', value)}
-            placeholder="Select organization..."
-            searchPlaceholder="Search organizations..."
-            emptyMessage="No organizations found."
-          />
-        </div>
+        {/* Organization - Only show for users who can select org */}
+        {canSelectOrganization && (
+          <div className="space-y-2">
+            <Label htmlFor="organization">Organization *</Label>
+            <SearchableSelect
+              options={organizationOptions}
+              value={jobData.organization_id || ''}
+              onValueChange={(value) => handleInputChange('organization_id', value)}
+              placeholder={isLoadingOrgs ? "Loading organizations..." : "Select organization..."}
+              searchPlaceholder="Search organizations..."
+              emptyMessage="No organizations found."
+              disabled={isLoadingOrgs}
+            />
+          </div>
+        )}
 
         {/* Department */}
         <div className="space-y-2">

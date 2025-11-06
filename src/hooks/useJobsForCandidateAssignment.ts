@@ -79,19 +79,9 @@ export function useJobsForCandidateAssignment() {
           return
         }
       } else if (memberRole === 'recruiter') {
-        // Recruiters only see jobs they're assigned to
-        const { data: assignments } = await supabase
-          .from('job_assignments')
-          .select('job_id')
-          .eq('user_id', user.id)
-
-        if (assignments && assignments.length > 0) {
-          const jobIds = assignments.map(a => a.job_id)
-          query = query.in('id', jobIds)
-        } else {
-          setJobs([])
-          return
-        }
+        // Recruiters see jobs in their org hierarchy (parent + children) OR jobs they're assigned to
+        // RLS policies handle the hierarchy access, no filtering needed here
+        // This allows recruiters to assign candidates to ANY job in their org tree
       } else {
         // Other roles - no jobs
         setJobs([])
