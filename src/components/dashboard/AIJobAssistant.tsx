@@ -164,19 +164,8 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
 
     setIsGenerating(true)
     try {
-      // Detect user's browser language
-      const browserLang = navigator.language.toLowerCase()
-      let detectedLanguage = 'en' // default to English
-      
-      if (browserLang.startsWith('es')) detectedLanguage = 'es'
-      else if (browserLang.startsWith('pt')) detectedLanguage = 'pt'
-      else if (browserLang.startsWith('fr')) detectedLanguage = 'fr'
-      
       const { data, error } = await supabase.functions.invoke('generate-job-spec', {
-        body: { 
-          prompt,
-          language: detectedLanguage
-        }
+        body: { prompt }
       })
 
       if (error) {

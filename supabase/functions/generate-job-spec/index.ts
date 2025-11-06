@@ -10,16 +10,6 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 );
 
-function getLanguageName(code: string): string {
-  const langMap: Record<string, string> = {
-    'en': 'English',
-    'es': 'Spanish',
-    'pt': 'Portuguese',
-    'fr': 'French'
-  }
-  return langMap[code] || 'English'
-}
-
 serve(async (req) => {
   const pre = handlePreflight(req);
   if (pre) return pre;
@@ -28,7 +18,7 @@ serve(async (req) => {
   const cors = corsHeadersFor(origin);
 
   try {
-    const { prompt, language = 'en' } = await req.json();
+    const { prompt } = await req.json();
 
     console.log('Generating job spec for prompt:', prompt);
 
@@ -117,9 +107,13 @@ CRITICAL GEOGRAPHICAL INTELLIGENCE:
 - For technical roles, location can be more flexible unless client-facing
 
 IMPORTANT LANGUAGE INSTRUCTIONS:
-- User's language: ${language.toUpperCase()}
-- Respond in ${getLanguageName(language)} for job_description, job_title, alt_titles, department, and recommendations
-- ALL content must be in ${getLanguageName(language)} except skills which must be in English
+- Detect the language of the prompt text itself
+- Respond in the SAME language as the prompt for job_description, job_title, alt_titles, department, and recommendations
+- If the prompt is in English, respond in English
+- If the prompt is in Spanish, respond in Spanish
+- If the prompt is in Portuguese, respond in Portuguese
+- If the prompt is in French, respond in French
+- For any other language, respond in English as fallback
 
 CRITICAL SKILL STANDARDIZATION:
 - ALL skills must be in English regardless of input language
