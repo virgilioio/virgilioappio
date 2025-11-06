@@ -197,6 +197,9 @@ serve(async (req) => {
       jobSkills = criteria.skills || [];
       organization_id = project.organization_id;
       
+      // Extract location correctly - handle both array and scalar formats
+      const locationValue = criteria.locations?.[0] || criteria.location || undefined;
+      
       // If project is linked to a job, use job details for additional context
       if (project.job_id && project.jobs) {
         job = project.jobs;
@@ -208,7 +211,8 @@ serve(async (req) => {
           title: project.name,
           skills: jobSkills,
           standardized_skills: jobSkills,
-          location: criteria.location,
+          location: locationValue,
+          title_keywords: criteria.title_keywords,
           salary_min: criteria.salary_min,
           salary_max: criteria.salary_max,
           currency: criteria.currency
@@ -359,10 +363,11 @@ serve(async (req) => {
         console.log('🔍 Searching CoreSignal for additional candidates...');
         
         // Build search criteria from job or provided criteria
+        const criteria = providedCriteria || (sourcing_project_id ? (job as any).search_criteria : null);
         const searchCriteria: any = providedCriteria || {
           skills: jobSkills,
-          location: job.location,
-          title_keywords: job.title_keywords,
+          location: job.location || (criteria?.locations?.[0]) || (criteria?.location),
+          title_keywords: criteria?.title_keywords || job.title_keywords,
           salary_min: job.salary_min,
           salary_max: job.salary_max
         };
@@ -439,6 +444,12 @@ serve(async (req) => {
     // Merge local and CoreSignal candidates
     const allCandidates = [...matchedCandidates, ...coresignalCandidates];
 
+    // Automatically apply location filter from search criteria if available
+    if (!filters && job.location) {
+      filters = { location: job.location };
+      console.log(`🗺️ Auto-applying location filter from search criteria: ${job.location}`);
+    }
+
     // Apply additional filters if provided
     let filteredCandidates = allCandidates;
 
@@ -451,12 +462,19 @@ serve(async (req) => {
       }
       
       if (filters.location) {
-        const locationLower = filters.location.toLowerCase();
-        filteredCandidates = filteredCandidates.filter(c => 
-          c.location_country?.toLowerCase().includes(locationLower) ||
-          c.location_city?.toLowerCase().includes(locationLower)
-        );
-        console.log(`🔍 Filtered by location "${filters.location}": ${filteredCandidates.length} remaining`);
+        const locationLower = filters.location.toLowerCase().trim();
+        const beforeFilterCount = filteredCandidates.length;
+        filteredCandidates = filteredCandidates.filter(c => {
+          const country = (c.location_country || '').toLowerCase();
+          const city = (c.location_city || '').toLowerCase();
+          
+          // Check if location matches country or city (bidirectional)
+          return country.includes(locationLower) || 
+                 locationLower.includes(country) ||
+                 city.includes(locationLower) ||
+                 locationLower.includes(city);
+        });
+        console.log(`🗺️ Location filter "${filters.location}": ${filteredCandidates.length} candidates remaining (from ${beforeFilterCount})`);
       }
       
       if (filters.min_experience !== undefined) {
