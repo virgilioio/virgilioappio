@@ -461,10 +461,17 @@ serve(async (req) => {
     // Merge local and CoreSignal candidates
     const allCandidates = [...matchedCandidates, ...coresignalCandidates];
 
-    // Automatically apply location filter from search criteria if available
-    if (!filters && job.location) {
+    // Automatically apply location filter from job ONLY if:
+    // 1. No explicit filters provided
+    // 2. Search criteria exists with a location (not explicitly removed)
+    // 3. Job has a location
+    const hasLocationInCriteria = criteria?.location || (criteria?.locations && criteria.locations.length > 0);
+    
+    if (!filters && job.location && hasLocationInCriteria) {
       filters = { location: job.location };
-      console.log(`🗺️ Auto-applying location filter from search criteria: ${job.location}`);
+      console.log(`🗺️ Auto-applying location filter from job: ${job.location}`);
+    } else if (!filters && !hasLocationInCriteria) {
+      console.log(`🌍 Global search - no location filter applied`);
     }
 
     // Apply additional filters if provided
