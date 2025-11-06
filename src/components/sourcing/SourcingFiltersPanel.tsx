@@ -212,48 +212,6 @@ export function SourcingFiltersPanel({
               />
             </div>
 
-            {/* Salary Range */}
-            <div className="space-y-2">
-              <Label className="text-xs font-medium text-muted-foreground">Salary Range</Label>
-              <div className="flex gap-2">
-                <Input
-                  type="number"
-                  placeholder="Min"
-                  value={editableCriteria.salary_min || ''}
-                  onChange={(e) => setEditableCriteria({ 
-                    ...editableCriteria, 
-                    salary_min: e.target.value ? parseInt(e.target.value) : undefined 
-                  })}
-                  className="h-8 text-sm flex-1"
-                />
-                <Input
-                  type="number"
-                  placeholder="Max"
-                  value={editableCriteria.salary_max || ''}
-                  onChange={(e) => setEditableCriteria({ 
-                    ...editableCriteria, 
-                    salary_max: e.target.value ? parseInt(e.target.value) : undefined 
-                  })}
-                  className="h-8 text-sm flex-1"
-                />
-              </div>
-              <Select
-                value={editableCriteria.currency || 'USD'}
-                onValueChange={(value) => setEditableCriteria({ ...editableCriteria, currency: value })}
-              >
-                <SelectTrigger className="h-8 text-sm">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="USD">USD</SelectItem>
-                  <SelectItem value="EUR">EUR</SelectItem>
-                  <SelectItem value="MXN">MXN</SelectItem>
-                  <SelectItem value="GBP">GBP</SelectItem>
-                  <SelectItem value="CAD">CAD</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
             {/* Experience Range */}
             <div className="space-y-2">
               <Label className="text-xs font-medium text-muted-foreground">Experience Years</Label>

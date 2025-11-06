@@ -35,9 +35,6 @@ interface SearchCriteria {
   skills: string[];
   location?: string;
   title_keywords?: string[];
-  salary_min?: number;
-  salary_max?: number;
-  currency?: string;
   experience_years?: {
     min?: number;
     max?: number;
@@ -428,27 +425,28 @@ serve(async (req) => {
             
             // Add to results with higher threshold for quality
             if (candidateScore.total_score >= 40) {
-              coresignalCandidates.push({
-                id: csCandidate.coresignal_id,
-                candidate_name: csCandidate.full_name,
-                skills: jobSkills,
-                standardized_skills: jobSkills,
-                location_country: csCandidate.country,
-                location_city: csCandidate.location,
-                linkedin_url: csCandidate.profile_url,
-                match_score: candidateScore.total_score,
-                match_tier: getMatchTier(candidateScore.total_score),
-                profile_summary: csCandidate.headline,
-                source: 'coresignal',
-                current_company: csCandidate.current_company,
-                current_role: csCandidate.current_title,
-                score_breakdown: candidateScore,
-                competitive_advantage: [],
-                coresignal_id: csCandidate.coresignal_id,
-                coresignal_score: csCandidate._score,
-                headline: csCandidate.headline,
-                candidate_id: null // Not collected yet
-              });
+            coresignalCandidates.push({
+              id: csCandidate.coresignal_id,
+              candidate_name: csCandidate.full_name,
+              skills: jobSkills,
+              standardized_skills: jobSkills,
+              location_country: csCandidate.country,
+              location_city: csCandidate.location,
+              linkedin_url: csCandidate.profile_url,
+              match_score: candidateScore.total_score,
+              match_tier: getMatchTier(candidateScore.total_score),
+              profile_summary: csCandidate.headline,
+              source: 'coresignal',
+              years_experience: csCandidate.experience_count || 0, // Map CoreSignal experience_count to years_experience
+              current_company: csCandidate.current_company,
+              current_role: csCandidate.current_title,
+              score_breakdown: candidateScore,
+              competitive_advantage: [],
+              coresignal_id: csCandidate.coresignal_id,
+              coresignal_score: csCandidate._score,
+              headline: csCandidate.headline,
+              candidate_id: null // Not collected yet
+            });
             }
           }
           

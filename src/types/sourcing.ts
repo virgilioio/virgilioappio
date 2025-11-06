@@ -26,9 +26,6 @@ export interface SearchCriteria {
   skills: string[]
   locations?: string[] // Array of location values: "city,state,country" or "state,country" or "country"
   title_keywords?: string[]
-  salary_min?: number
-  salary_max?: number
-  currency?: string
   experience_years?: {
     min?: number
     max?: number

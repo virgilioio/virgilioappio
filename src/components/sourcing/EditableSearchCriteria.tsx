@@ -196,46 +196,6 @@ export function EditableSearchCriteria({
         )}
       </div>
 
-      {/* Salary Range */}
-      <div className="space-y-2">
-        <Label className="text-sm font-medium">Salary Range (Optional)</Label>
-        <div className="grid grid-cols-3 gap-2">
-          <Input
-            type="number"
-            placeholder="Min"
-            value={criteria.salary_min || ''}
-            onChange={(e) => onChange({ 
-              ...criteria, 
-              salary_min: e.target.value ? parseInt(e.target.value) : undefined 
-            })}
-          />
-          <Input
-            type="number"
-            placeholder="Max"
-            value={criteria.salary_max || ''}
-            onChange={(e) => onChange({ 
-              ...criteria, 
-              salary_max: e.target.value ? parseInt(e.target.value) : undefined 
-            })}
-          />
-          <Select
-            value={criteria.currency || 'USD'}
-            onValueChange={(value) => onChange({ ...criteria, currency: value })}
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="USD">USD</SelectItem>
-              <SelectItem value="EUR">EUR</SelectItem>
-              <SelectItem value="MXN">MXN</SelectItem>
-              <SelectItem value="GBP">GBP</SelectItem>
-              <SelectItem value="CAD">CAD</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
-
       {/* Experience Range */}
       <div className="space-y-2">
         <Label className="text-sm font-medium">Experience Years (Optional)</Label>
