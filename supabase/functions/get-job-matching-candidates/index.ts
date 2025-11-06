@@ -15,7 +15,7 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 );
 
-// CoreSignal integration removed
+// CoreSignal integration enabled - searches external candidates when credits available
 
 interface JobMatchingRequest {
   job_id?: string;
@@ -44,13 +44,18 @@ interface MatchedCandidate {
   match_score: number;
   match_tier: 'excellent' | 'good' | 'fair' | 'minimal';
   profile_summary?: string;
-  source: 'local';
+  source: 'local' | 'coresignal';
   years_experience?: number;
   enriched_at?: string;
   current_company?: string;
   current_role?: string;
   score_breakdown?: CandidateScore;
   competitive_advantage?: string[];
+  // CoreSignal-specific fields
+  coresignal_id?: string;
+  coresignal_score?: number;
+  headline?: string;
+  candidate_id?: string | null; // Null if not collected yet
 }
 
 interface JobMatchingResult {
@@ -58,7 +63,10 @@ interface JobMatchingResult {
   total_count: number;
   breakdown: {
     localCandidates: number;
+    coreSignalCandidates: number;
     averageMatch: number;
+    creditsUsed?: number;
+    collectCreditsUsed?: number;
   };
 }
 
@@ -327,10 +335,96 @@ serve(async (req) => {
       console.log(`📊 Filtered out ${excludedCount} already associated candidates`);
     }
 
-    // CoreSignal integration removed - only using local candidates
+    // CoreSignal integration - search for additional candidates
+    let coresignalCandidates: MatchedCandidate[] = [];
+    let creditsUsed = 0;
+    
+    if (!count_only && organization_id && jobSkills.length > 0) {
+      try {
+        console.log('🔍 Searching CoreSignal for additional candidates...');
+        
+        // Build search criteria from job
+        const searchCriteria: any = {
+          skills: jobSkills,
+          location: job.location,
+          salary_min: job.salary_min,
+          salary_max: job.salary_max
+        };
+
+        // Call search-coresignal-candidates edge function
+        const { data: coresignalResponse, error: coresignalError } = await supabase.functions.invoke(
+          'search-coresignal-candidates',
+          {
+            body: {
+              project_id: sourcing_project_id,
+              criteria: searchCriteria,
+              limit: 50,
+              organization_id
+            }
+          }
+        );
+
+        if (coresignalError) {
+          // Log error but don't fail the entire request
+          console.warn('⚠️ CoreSignal search error:', coresignalError);
+          
+          // Check if it's a credit exhaustion error
+          if (coresignalError.message?.includes('credit limit')) {
+            console.log('💳 CoreSignal credits exhausted - using local candidates only');
+          }
+        } else if (coresignalResponse?.candidates) {
+          console.log(`✅ Found ${coresignalResponse.candidates.length} CoreSignal candidates`);
+          creditsUsed = coresignalResponse.credits_used || 0;
+          
+          // Map CoreSignal candidates to MatchedCandidate format
+          for (const csCandidate of coresignalResponse.candidates) {
+            // Calculate match score using enhanced scoring
+            const candidateForScoring = {
+              skills: jobSkills, // CoreSignal candidates are pre-filtered by skills
+              profile_summary: csCandidate.headline || ''
+            };
+            
+            const candidateScore = calculateEnhancedCandidateScore(candidateForScoring, jobSkills, job);
+            
+            // Add to results with higher threshold for quality
+            if (candidateScore.total_score >= 40) {
+              coresignalCandidates.push({
+                id: csCandidate.coresignal_id,
+                candidate_name: csCandidate.full_name,
+                skills: jobSkills,
+                standardized_skills: jobSkills,
+                location_country: csCandidate.country,
+                location_city: csCandidate.location,
+                linkedin_url: csCandidate.profile_url,
+                match_score: candidateScore.total_score,
+                match_tier: getMatchTier(candidateScore.total_score),
+                profile_summary: csCandidate.headline,
+                source: 'coresignal',
+                current_company: csCandidate.current_company,
+                current_role: csCandidate.current_title,
+                score_breakdown: candidateScore,
+                competitive_advantage: [],
+                coresignal_id: csCandidate.coresignal_id,
+                coresignal_score: csCandidate._score,
+                headline: csCandidate.headline,
+                candidate_id: null // Not collected yet
+              });
+            }
+          }
+          
+          console.log(`📊 Added ${coresignalCandidates.length} quality CoreSignal matches`);
+        }
+      } catch (error) {
+        console.error('❌ Unexpected error calling CoreSignal:', error);
+        // Continue with local candidates only
+      }
+    }
+
+    // Merge local and CoreSignal candidates
+    const allCandidates = [...matchedCandidates, ...coresignalCandidates];
 
     // Apply additional filters if provided
-    let filteredCandidates = matchedCandidates;
+    let filteredCandidates = allCandidates;
 
     if (filters) {
       if (filters.match_tier && filters.match_tier.length > 0) {
@@ -379,17 +473,22 @@ serve(async (req) => {
 
     const result: JobMatchingResult = {
       candidates: limitedCandidates,
-      total_count: matchedCandidates.length,
+      total_count: allCandidates.length,
       breakdown: {
         localCandidates: matchedCandidates.length,
-        averageMatch: matchedCandidates.length > 0 
-          ? matchedCandidates.reduce((sum, c) => sum + c.match_score, 0) / matchedCandidates.length 
+        coreSignalCandidates: coresignalCandidates.length,
+        averageMatch: allCandidates.length > 0 
+          ? allCandidates.reduce((sum, c) => sum + c.match_score, 0) / allCandidates.length 
           : 0,
+        creditsUsed: creditsUsed
       }
     };
 
-    console.log(`✅ Enhanced matching complete: ${limitedCandidates.length} candidates (avg: ${result.breakdown.averageMatch.toFixed(1)}%)`);
+    console.log(`✅ Enhanced matching complete: ${limitedCandidates.length} candidates from ${result.breakdown.localCandidates} local + ${result.breakdown.coreSignalCandidates} CoreSignal (avg: ${result.breakdown.averageMatch.toFixed(1)}%)`);
     console.log(`📊 Quality metrics: ${limitedCandidates.filter(c => c.match_tier === 'excellent').length} excellent, ${limitedCandidates.filter(c => c.match_tier === 'good').length} good matches`);
+    if (creditsUsed > 0) {
+      console.log(`💳 CoreSignal credits used: ${creditsUsed}`);
+    }
 
     return new Response(JSON.stringify(result), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
