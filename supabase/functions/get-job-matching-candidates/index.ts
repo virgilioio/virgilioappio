@@ -205,6 +205,8 @@ serve(async (req) => {
       // If project is linked to a job, use job details for additional context
       if (project.job_id && project.jobs) {
         job = project.jobs;
+        // Merge in title_keywords from criteria since jobs table doesn't have this field
+        job.title_keywords = criteria.title_keywords;
         console.log(`📋 Linked job: ${job.title}`);
       } else {
         // Create a mock job object for standalone projects
@@ -368,7 +370,7 @@ serve(async (req) => {
         const searchCriteria: any = providedCriteria || {
           skills: jobSkills,
           location: job.location,
-          title_keywords: job.title_keywords,
+          title_keywords: job.title_keywords || criteria.title_keywords,
           salary_min: job.salary_min,
           salary_max: job.salary_max
         };
