@@ -238,12 +238,38 @@ serve(async (req) => {
           console.log('✅ Using cached CoreSignal results');
           cached = true;
           
-          // Return cached count (actual candidates stored separately)
+          // Fetch cached candidates from database
+          const { data: cachedCandidates, error: cacheError } = await supabase
+            .from('coresignal_preview_candidates')
+            .select('*')
+            .eq('sourcing_project_id', project_id);
+          
+          if (cacheError) {
+            console.warn('⚠️ Failed to fetch cached candidates:', cacheError);
+          }
+          
+          // Map to expected format
+          const candidates = (cachedCandidates || []).map(c => ({
+            coresignal_id: c.coresignal_id,
+            full_name: c.full_name,
+            headline: c.headline,
+            location: c.location,
+            country: c.country,
+            profile_url: c.profile_url,
+            current_company: c.current_company,
+            current_title: c.current_title,
+            experience_count: c.experience_count,
+            _score: c.coresignal_score
+          }));
+          
+          // Get current credits for response
+          const creditCheck = await checkCreditAvailability(orgId, 'search');
+          
           return new Response(JSON.stringify({
-            candidates: [], // Candidates fetched separately
-            total_count: project.coresignal_candidate_count || 0,
+            candidates: candidates,
+            total_count: project.coresignal_candidate_count || candidates.length,
             credits_used: 0,
-            credits_remaining: 0,
+            credits_remaining: creditCheck.remaining,
             cached: true
           }), {
             status: 200,
@@ -332,6 +358,41 @@ serve(async (req) => {
       experience_count: candidate.experience_count || 0,
       _score: candidate._score || 0
     }));
+
+    // Store candidates in database for caching
+    if (project_id && candidates.length > 0) {
+      // Delete old cached candidates for this project
+      await supabase
+        .from('coresignal_preview_candidates')
+        .delete()
+        .eq('sourcing_project_id', project_id);
+      
+      // Insert new candidates
+      const candidateRecords = candidates.map(c => ({
+        sourcing_project_id: project_id,
+        coresignal_id: c.coresignal_id,
+        full_name: c.full_name,
+        headline: c.headline,
+        location: c.location,
+        country: c.country,
+        profile_url: c.profile_url,
+        current_company: c.current_company,
+        current_title: c.current_title,
+        experience_count: c.experience_count,
+        match_score: null,
+        coresignal_score: c._score
+      }));
+      
+      const { error: insertError } = await supabase
+        .from('coresignal_preview_candidates')
+        .insert(candidateRecords);
+      
+      if (insertError) {
+        console.warn('⚠️ Failed to cache CoreSignal candidates:', insertError);
+      } else {
+        console.log(`✅ Cached ${candidateRecords.length} CoreSignal preview candidates`);
+      }
+    }
 
     // Increment credit usage
     await incrementCreditUsage(orgId, 'search');

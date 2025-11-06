@@ -1074,6 +1074,65 @@ export type Database = {
           },
         ]
       }
+      coresignal_preview_candidates: {
+        Row: {
+          coresignal_id: string
+          coresignal_score: number | null
+          country: string | null
+          created_at: string | null
+          current_company: string | null
+          current_title: string | null
+          experience_count: number | null
+          full_name: string
+          headline: string | null
+          id: string
+          location: string | null
+          match_score: number | null
+          profile_url: string | null
+          sourcing_project_id: string
+        }
+        Insert: {
+          coresignal_id: string
+          coresignal_score?: number | null
+          country?: string | null
+          created_at?: string | null
+          current_company?: string | null
+          current_title?: string | null
+          experience_count?: number | null
+          full_name: string
+          headline?: string | null
+          id?: string
+          location?: string | null
+          match_score?: number | null
+          profile_url?: string | null
+          sourcing_project_id: string
+        }
+        Update: {
+          coresignal_id?: string
+          coresignal_score?: number | null
+          country?: string | null
+          created_at?: string | null
+          current_company?: string | null
+          current_title?: string | null
+          experience_count?: number | null
+          full_name?: string
+          headline?: string | null
+          id?: string
+          location?: string | null
+          match_score?: number | null
+          profile_url?: string | null
+          sourcing_project_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coresignal_preview_candidates_sourcing_project_id_fkey"
+            columns: ["sourcing_project_id"]
+            isOneToOne: false
+            referencedRelation: "sourcing_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       coresignal_usage: {
         Row: {
           collect_credits_limit: number
