@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { Loader2 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { useSourcingProject } from '@/hooks/useSourcingProject'
-import { useJobMatchingCandidates } from '@/hooks/useJobMatchingCandidates'
+import { useSourcingProjectCandidates } from '@/hooks/useSourcingProjectCandidates'
 import { SourcingProjectHeader } from './SourcingProjectHeader'
 import { SourcingCandidateTable } from './SourcingCandidateTable'
 import { supabase } from '@/lib/supabaseClient'
@@ -19,9 +19,9 @@ export function SourcingProjectView({ projectId }: SourcingProjectViewProps) {
     candidates, 
     isLoading: candidatesLoading, 
     refetch: refetchCandidates 
-  } = useJobMatchingCandidates({
-    jobId: project?.job_id || '',
-    enabled: !!project?.job_id
+  } = useSourcingProjectCandidates({
+    projectId,
+    enabled: !!projectId
   })
   
   const [filters, setFilters] = useState<SourcingProjectFilters>({
@@ -135,24 +135,15 @@ export function SourcingProjectView({ projectId }: SourcingProjectViewProps) {
       
       if (updateError) throw updateError
       
-      // 2. Call get-job-matching-candidates with new criteria
-      const { data, error } = await supabase.functions.invoke('get-job-matching-candidates', {
-        body: {
-          sourcing_project_id: projectId,
-          criteria: newCriteria,
-          limit: 100
-        }
-      })
-      
-      if (error) throw error
-      
-      // 3. Refresh the UI
+      // 2. Refresh the project data
       await refetchProject()
+      
+      // 3. Refetch candidates with new criteria (the hook will use updated project data)
       await refetchCandidates()
       
       toast({
         title: 'Search Updated',
-        description: `Found ${data?.total_count || 0} candidates with updated criteria.`
+        description: 'Candidates refreshed with updated criteria.'
       })
     } catch (error: any) {
       console.error('Error updating search criteria:', error)
