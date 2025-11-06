@@ -40,6 +40,13 @@ interface MatchedCandidate {
   coresignal_score?: number
   headline?: string
   candidate_id?: string | null
+  industry?: string
+  connections_count?: number
+  follower_count?: number
+  company_url?: string
+  company_website?: string
+  company_industry?: string
+  experience_location?: string
 }
 
 interface SourcingCandidateTableProps {
@@ -96,7 +103,14 @@ export function SourcingCandidateTable({
           current_company: prevCandidate.current_company,
           current_role: prevCandidate.current_role,
           linkedin_url: prevCandidate.linkedin_url,
-          coresignal_score: prevCandidate.coresignal_score
+          coresignal_score: prevCandidate.coresignal_score,
+          industry: prevCandidate.industry,
+          connections_count: prevCandidate.connections_count,
+          follower_count: prevCandidate.follower_count,
+          company_url: prevCandidate.company_url,
+          company_website: prevCandidate.company_website,
+          company_industry: prevCandidate.company_industry,
+          experience_location: prevCandidate.experience_location
         })
       }
       
@@ -126,7 +140,14 @@ export function SourcingCandidateTable({
           current_company: nextCandidate.current_company,
           current_role: nextCandidate.current_role,
           linkedin_url: nextCandidate.linkedin_url,
-          coresignal_score: nextCandidate.coresignal_score
+          coresignal_score: nextCandidate.coresignal_score,
+          industry: nextCandidate.industry,
+          connections_count: nextCandidate.connections_count,
+          follower_count: nextCandidate.follower_count,
+          company_url: nextCandidate.company_url,
+          company_website: nextCandidate.company_website,
+          company_industry: nextCandidate.company_industry,
+          experience_location: nextCandidate.experience_location
         })
       }
       
@@ -404,7 +425,14 @@ export function SourcingCandidateTable({
                           current_company: candidate.current_company,
                           current_role: candidate.current_role,
                           linkedin_url: candidate.linkedin_url,
-                          coresignal_score: candidate.coresignal_score
+                          coresignal_score: candidate.coresignal_score,
+                          industry: candidate.industry,
+                          connections_count: candidate.connections_count,
+                          follower_count: candidate.follower_count,
+                          company_url: candidate.company_url,
+                          company_website: candidate.company_website,
+                          company_industry: candidate.company_industry,
+                          experience_location: candidate.experience_location
                         })
                         setSheetOpen(true)
                       }
@@ -632,7 +660,14 @@ export function SourcingCandidateTable({
                     current_company: candidate.current_company,
                     current_role: candidate.current_role,
                     linkedin_url: candidate.linkedin_url,
-                    coresignal_score: candidate.coresignal_score
+                    coresignal_score: candidate.coresignal_score,
+                    industry: candidate.industry,
+                    connections_count: candidate.connections_count,
+                    follower_count: candidate.follower_count,
+                    company_url: candidate.company_url,
+                    company_website: candidate.company_website,
+                    company_industry: candidate.company_industry,
+                    experience_location: candidate.experience_location
                   })
                   setSheetOpen(true)
                 }

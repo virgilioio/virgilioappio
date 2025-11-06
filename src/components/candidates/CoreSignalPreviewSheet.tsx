@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
-import { Sparkles, ExternalLink, AlertCircle, ChevronLeft, ChevronRight, Mail, Phone, Lock, Briefcase, GraduationCap, Wrench, MapPin } from 'lucide-react'
+import { Sparkles, ExternalLink, AlertCircle, ChevronLeft, ChevronRight, Mail, Phone, Lock, Briefcase, GraduationCap, Wrench, MapPin, Users, UserPlus, Building2, Globe } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from '@/hooks/use-toast'
 import { useCoresignalCreditWarnings } from '@/hooks/useCoresignalCreditWarnings'
@@ -25,6 +25,13 @@ interface CoreSignalPreviewSheetProps {
     current_role?: string
     linkedin_url?: string
     coresignal_score?: number
+    industry?: string
+    connections_count?: number
+    follower_count?: number
+    company_url?: string
+    company_website?: string
+    company_industry?: string
+    experience_location?: string
   }
   jobId?: string | null
   hasPrev?: boolean
@@ -249,7 +256,51 @@ export function CoreSignalPreviewSheet({
                 )}
 
                 {/* Accordion Sections */}
-                <Accordion type="multiple" defaultValue={['contact', 'summary', 'experience']} className="space-y-4">
+                <Accordion type="multiple" defaultValue={['contact', 'summary', 'experience', 'professional']} className="space-y-4">
+                  {/* Professional Details */}
+                  {(coresignalData?.industry || coresignalData?.connections_count !== undefined || coresignalData?.follower_count !== undefined) && (
+                    <AccordionItem value="professional" className="border-0">
+                      <Card className="bg-surface-primary border-border">
+                        <AccordionTrigger className="px-6 py-4 hover:no-underline">
+                          <CardTitle>Professional Details</CardTitle>
+                        </AccordionTrigger>
+                        <AccordionContent>
+                          <CardContent className="space-y-4 pt-0">
+                            {coresignalData?.industry && (
+                              <div className="flex items-start gap-2">
+                                <Briefcase className="h-4 w-4 text-text-secondary mt-0.5 flex-shrink-0" />
+                                <div className="flex flex-col">
+                                  <span className="text-xs text-text-tertiary">Industry</span>
+                                  <span className="text-sm">{coresignalData.industry}</span>
+                                </div>
+                              </div>
+                            )}
+                            
+                            {coresignalData?.connections_count !== undefined && (
+                              <div className="flex items-start gap-2">
+                                <Users className="h-4 w-4 text-text-secondary mt-0.5 flex-shrink-0" />
+                                <div className="flex flex-col">
+                                  <span className="text-xs text-text-tertiary">LinkedIn Connections</span>
+                                  <span className="text-sm">{coresignalData.connections_count.toLocaleString()}</span>
+                                </div>
+                              </div>
+                            )}
+                            
+                            {coresignalData?.follower_count !== undefined && (
+                              <div className="flex items-start gap-2">
+                                <UserPlus className="h-4 w-4 text-text-secondary mt-0.5 flex-shrink-0" />
+                                <div className="flex flex-col">
+                                  <span className="text-xs text-text-tertiary">LinkedIn Followers</span>
+                                  <span className="text-sm">{coresignalData.follower_count.toLocaleString()}</span>
+                                </div>
+                              </div>
+                            )}
+                          </CardContent>
+                        </AccordionContent>
+                      </Card>
+                    </AccordionItem>
+                  )}
+
                   {/* Contact Information */}
                   <AccordionItem value="contact" className="border-0">
                     <Card className="bg-surface-primary border-border">
@@ -337,9 +388,33 @@ export function CoreSignalPreviewSheet({
                                 {coresignalData.current_role || 'Current Position'}
                               </div>
                               {coresignalData.current_company && (
-                                <div className="text-sm text-text-secondary mt-1">
+                                <div className="text-sm text-text-secondary mt-1 flex items-center gap-2">
+                                  <Building2 className="h-3.5 w-3.5" />
                                   {coresignalData.current_company}
                                 </div>
+                              )}
+                              {coresignalData?.experience_location && (
+                                <div className="text-sm text-text-tertiary mt-1 flex items-center gap-2">
+                                  <MapPin className="h-3.5 w-3.5" />
+                                  {coresignalData.experience_location}
+                                </div>
+                              )}
+                              {coresignalData?.company_industry && (
+                                <div className="text-sm text-text-tertiary mt-1 flex items-center gap-2">
+                                  <Briefcase className="h-3.5 w-3.5" />
+                                  {coresignalData.company_industry}
+                                </div>
+                              )}
+                              {(coresignalData?.company_url || coresignalData?.company_website) && (
+                                <a
+                                  href={coresignalData.company_url || coresignalData.company_website}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-sm text-blue-600 hover:text-blue-700 hover:underline mt-1 flex items-center gap-2"
+                                >
+                                  <Globe className="h-3.5 w-3.5" />
+                                  Company Website
+                                </a>
                               )}
                               <Badge variant="secondary" className="mt-2 text-xs">
                                 Current

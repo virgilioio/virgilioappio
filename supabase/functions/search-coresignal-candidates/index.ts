@@ -419,7 +419,14 @@ serve(async (req) => {
       current_company: candidate.company_name || null,
       current_title: candidate.title || null,
       experience_count: candidate.experience_count || 0,
-      _score: candidate._score || 0
+      _score: candidate._score || 0,
+      industry: candidate.industry || null,
+      connections_count: candidate.connections_count || null,
+      follower_count: candidate.follower_count || null,
+      company_url: candidate.company_url || null,
+      company_website: candidate.company_website || null,
+      company_industry: candidate.company_industry || null,
+      experience_location: candidate.experience_location || null
     }));
 
     // Store candidates in database for caching
@@ -443,7 +450,14 @@ serve(async (req) => {
         current_title: c.current_title,
         experience_count: c.experience_count,
         match_score: null,
-        coresignal_score: c._score
+        coresignal_score: c._score,
+        industry: c.industry,
+        connections_count: c.connections_count,
+        follower_count: c.follower_count,
+        company_url: c.company_url,
+        company_website: c.company_website,
+        company_industry: c.company_industry,
+        experience_location: c.experience_location
       }));
       
       const { error: insertError } = await supabase

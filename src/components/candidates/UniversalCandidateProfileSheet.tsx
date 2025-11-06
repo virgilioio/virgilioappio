@@ -22,6 +22,13 @@ interface UniversalCandidateProfileSheetProps {
     current_role?: string
     linkedin_url?: string
     coresignal_score?: number
+    industry?: string
+    connections_count?: number
+    follower_count?: number
+    company_url?: string
+    company_website?: string
+    company_industry?: string
+    experience_location?: string
   }
 }
 

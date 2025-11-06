@@ -29,6 +29,13 @@ export interface MatchedCandidate {
   coresignal_score?: number
   headline?: string
   candidate_id?: string | null
+  industry?: string
+  connections_count?: number
+  follower_count?: number
+  company_url?: string
+  company_website?: string
+  company_industry?: string
+  experience_location?: string
 }
 
 export interface SourcingProjectMatchingResult {

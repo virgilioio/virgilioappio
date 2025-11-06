@@ -1076,6 +1076,10 @@ export type Database = {
       }
       coresignal_preview_candidates: {
         Row: {
+          company_industry: string | null
+          company_url: string | null
+          company_website: string | null
+          connections_count: number | null
           coresignal_id: string
           coresignal_score: number | null
           country: string | null
@@ -1083,15 +1087,22 @@ export type Database = {
           current_company: string | null
           current_title: string | null
           experience_count: number | null
+          experience_location: string | null
+          follower_count: number | null
           full_name: string
           headline: string | null
           id: string
+          industry: string | null
           location: string | null
           match_score: number | null
           profile_url: string | null
           sourcing_project_id: string
         }
         Insert: {
+          company_industry?: string | null
+          company_url?: string | null
+          company_website?: string | null
+          connections_count?: number | null
           coresignal_id: string
           coresignal_score?: number | null
           country?: string | null
@@ -1099,15 +1110,22 @@ export type Database = {
           current_company?: string | null
           current_title?: string | null
           experience_count?: number | null
+          experience_location?: string | null
+          follower_count?: number | null
           full_name: string
           headline?: string | null
           id?: string
+          industry?: string | null
           location?: string | null
           match_score?: number | null
           profile_url?: string | null
           sourcing_project_id: string
         }
         Update: {
+          company_industry?: string | null
+          company_url?: string | null
+          company_website?: string | null
+          connections_count?: number | null
           coresignal_id?: string
           coresignal_score?: number | null
           country?: string | null
@@ -1115,9 +1133,12 @@ export type Database = {
           current_company?: string | null
           current_title?: string | null
           experience_count?: number | null
+          experience_location?: string | null
+          follower_count?: number | null
           full_name?: string
           headline?: string | null
           id?: string
+          industry?: string | null
           location?: string | null
           match_score?: number | null
           profile_url?: string | null
