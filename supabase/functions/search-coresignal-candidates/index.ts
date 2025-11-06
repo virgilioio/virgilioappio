@@ -6,6 +6,32 @@ import { corsHeadersFor, handlePreflight } from "../_shared/cors.ts";
 const CORESIGNAL_API_KEY = Deno.env.get('CORESIGNAL_API_KEY');
 const CORESIGNAL_API_URL = 'https://api.coresignal.com/v2/employee_base/search/filter/preview';
 
+// Regional country mappings for CoreSignal location queries
+const REGION_COUNTRY_MAPPING: Record<string, string[]> = {
+  'LATAM': [
+    'Mexico', 'Colombia', 'Argentina', 'Brazil', 'Chile',
+    'Peru', 'Ecuador', 'Venezuela', 'Uruguay', 'Paraguay',
+    'Bolivia', 'Costa Rica', 'Panama', 'Guatemala', 'El Salvador',
+    'Honduras', 'Nicaragua', 'Dominican Republic', 'Puerto Rico'
+  ],
+  'EMEA': [
+    'United Kingdom', 'Germany', 'France', 'Spain', 'Italy',
+    'Netherlands', 'Poland', 'Romania', 'Belgium', 'Sweden',
+    'UAE', 'Saudi Arabia', 'Egypt', 'South Africa', 'Kenya'
+  ],
+  'APAC': [
+    'India', 'China', 'Japan', 'Singapore', 'Australia',
+    'South Korea', 'Indonesia', 'Thailand', 'Vietnam', 'Philippines',
+    'Malaysia', 'New Zealand', 'Taiwan', 'Hong Kong'
+  ],
+  'NORTH AMERICA': [
+    'United States', 'Canada'
+  ],
+  'NA': [
+    'United States', 'Canada'
+  ]
+};
+
 const supabase = createClient(
   Deno.env.get('SUPABASE_URL') ?? '',
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
@@ -48,9 +74,26 @@ function buildCoresignalFilterQuery(criteria: SearchCriteria): any {
     query.skill = criteria.skills.map(s => `*${s}*`).join(' OR ');
   }
   
-  // Location: Fuzzy match on country
+  // Location: Handle regional keywords and specific locations
   if (criteria.location) {
-    query.country = `*${criteria.location}*`;
+    // Strip "Remote -" prefix and normalize
+    let location = criteria.location.replace(/^Remote\s*-\s*/i, '').trim();
+    const locationUpper = location.toUpperCase();
+    
+    // Check if location contains a regional keyword
+    const regionMatch = Object.keys(REGION_COUNTRY_MAPPING).find(region => 
+      locationUpper.includes(region)
+    );
+    
+    if (regionMatch) {
+      // Expand region to country list with OR logic
+      const countries = REGION_COUNTRY_MAPPING[regionMatch];
+      query.country = countries.join(' OR ');
+      console.log(`🌎 Expanded ${regionMatch} to ${countries.length} countries`);
+    } else {
+      // Use location as-is for specific countries/cities
+      query.country = `*${location}*`;
+    }
   }
   
   // Active experience only
