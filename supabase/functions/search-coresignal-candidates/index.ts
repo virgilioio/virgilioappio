@@ -365,72 +365,181 @@ serve(async (req) => {
 
     console.log(`💳 Credits available: ${creditCheck.remaining} search credits remaining`);
 
-
-    // Build CoreSignal query
-    const queryParams = buildCoresignalFilterQuery(criteria);
+    // Handle multiple locations with sequential searches
+    let allCandidates: CoreSignalCandidate[] = [];
+    let totalCount = 0;
+    let creditsUsedInSearch = 0;
+    const MAX_LOCATIONS = 3; // Limit to 3 locations to control costs
     
-    console.log('📡 CoreSignal API Request Details:', {
-      url: `${CORESIGNAL_API_URL}?page=1`,
-      method: 'POST',
-      query: JSON.stringify(queryParams, null, 2),
-      headers: {
-        apikey: CORESIGNAL_API_KEY ? '***SET***' : '***MISSING***',
-        'Content-Type': 'application/json'
+    // Check if we have multiple locations
+    const hasMultipleLocations = criteria.locations && criteria.locations.length > 1;
+    
+    if (hasMultipleLocations) {
+      const locationsToSearch = criteria.locations.slice(0, MAX_LOCATIONS);
+      console.log(`🔍 Multiple locations detected (${criteria.locations.length}), making ${locationsToSearch.length} sequential searches...`);
+      
+      const seenIds = new Set<string>();
+      
+      // Make sequential searches for each location
+      for (let i = 0; i < locationsToSearch.length; i++) {
+        const location = locationsToSearch[i];
+        console.log(`📍 Search ${i + 1}/${locationsToSearch.length}: ${location}`);
+        
+        // Check if we still have credits
+        const currentCreditCheck = await checkCreditAvailability(orgId, 'search');
+        if (!currentCreditCheck.available) {
+          console.warn(`❌ Credits exhausted after ${i} searches`);
+          break;
+        }
+        
+        // Build query for single location
+        const singleLocationCriteria = { ...criteria, locations: [location] };
+        const queryParams = buildCoresignalFilterQuery(singleLocationCriteria);
+        
+        console.log(`📡 CoreSignal API Request ${i + 1}:`, {
+          url: `${CORESIGNAL_API_URL}?page=1`,
+          location: location,
+          query: JSON.stringify(queryParams, null, 2)
+        });
+        
+        // Call CoreSignal API
+        const coresignalResponse = await fetch(`${CORESIGNAL_API_URL}?page=1`, {
+          method: 'POST',
+          headers: {
+            'apikey': CORESIGNAL_API_KEY,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(queryParams),
+        });
+
+        if (!coresignalResponse.ok) {
+          const errorText = await coresignalResponse.text();
+          console.error(`❌ CoreSignal API error for location ${location}:`, errorText);
+          continue; // Skip this location and try next
+        }
+
+        const coresignalData = await coresignalResponse.json();
+        const locationTotalCount = parseInt(coresignalResponse.headers.get('x-total-results') || '0', 10);
+        const resultsArray = Array.isArray(coresignalData) ? coresignalData : [];
+        
+        console.log(`✅ Location "${location}": ${resultsArray.length} candidates (${locationTotalCount} total matches)`);
+        
+        // Deduplicate by ID and add to results
+        let addedCount = 0;
+        for (const candidate of resultsArray) {
+          const candidateId = candidate.id?.toString() || candidate.profile_url;
+          if (!seenIds.has(candidateId)) {
+            seenIds.add(candidateId);
+            allCandidates.push({
+              coresignal_id: candidate.id?.toString() || '',
+              full_name: candidate.full_name || 'Unknown',
+              headline: candidate.headline || '',
+              location: candidate.location || '',
+              country: candidate.country || '',
+              profile_url: candidate.profile_url || '',
+              current_company: candidate.company_name || null,
+              current_title: candidate.title || null,
+              experience_count: candidate.experience_count || 0,
+              _score: candidate._score || 0,
+              industry: candidate.industry || null,
+              connections_count: candidate.connections_count || null,
+              follower_count: candidate.follower_count || null,
+              company_url: candidate.company_url || null,
+              company_website: candidate.company_website || null,
+              company_industry: candidate.company_industry || null,
+              experience_location: candidate.experience_location || null
+            });
+            addedCount++;
+          }
+        }
+        
+        console.log(`➕ Added ${addedCount} unique candidates from "${location}" (${resultsArray.length - addedCount} duplicates skipped)`);
+        
+        totalCount += locationTotalCount;
+        
+        // Increment credit for this search
+        await incrementCreditUsage(orgId, 'search');
+        creditsUsedInSearch++;
+        
+        // Limit total candidates to the requested limit
+        if (allCandidates.length >= limit) {
+          console.log(`🎯 Reached limit of ${limit} candidates, stopping search`);
+          allCandidates = allCandidates.slice(0, limit);
+          break;
+        }
       }
-    });
+      
+      console.log(`📊 Multi-location search complete: ${allCandidates.length} unique candidates from ${creditsUsedInSearch} searches (${totalCount} total matches across all locations)`);
+      
+    } else {
+      // Single location or no location - original logic
+      const queryParams = buildCoresignalFilterQuery(criteria);
+      
+      console.log('📡 CoreSignal API Request Details:', {
+        url: `${CORESIGNAL_API_URL}?page=1`,
+        method: 'POST',
+        query: JSON.stringify(queryParams, null, 2),
+        headers: {
+          apikey: CORESIGNAL_API_KEY ? '***SET***' : '***MISSING***',
+          'Content-Type': 'application/json'
+        }
+      });
 
-    // Call CoreSignal API
-    const coresignalResponse = await fetch(`${CORESIGNAL_API_URL}?page=1`, {
-      method: 'POST',
-      headers: {
-        'apikey': CORESIGNAL_API_KEY,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(queryParams),
-    });
+      // Call CoreSignal API
+      const coresignalResponse = await fetch(`${CORESIGNAL_API_URL}?page=1`, {
+        method: 'POST',
+        headers: {
+          'apikey': CORESIGNAL_API_KEY,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(queryParams),
+      });
 
-    if (!coresignalResponse.ok) {
-      const errorText = await coresignalResponse.text();
-      console.error('CoreSignal API error:', errorText);
-      throw new Error(`CoreSignal API error: ${coresignalResponse.status}`);
+      if (!coresignalResponse.ok) {
+        const errorText = await coresignalResponse.text();
+        console.error('CoreSignal API error:', errorText);
+        throw new Error(`CoreSignal API error: ${coresignalResponse.status}`);
+      }
+
+      const coresignalData = await coresignalResponse.json();
+      totalCount = parseInt(coresignalResponse.headers.get('x-total-results') || '0', 10);
+      const resultsArray = Array.isArray(coresignalData) ? coresignalData : [];
+      
+      console.log('📡 CoreSignal API Full Response:', {
+        status: coresignalResponse.status,
+        statusText: coresignalResponse.statusText,
+        totalFromHeader: totalCount,
+        returnedCount: resultsArray.length,
+        firstCandidate: resultsArray[0] || null
+      });
+
+      // Parse preview results
+      allCandidates = resultsArray.slice(0, limit).map((candidate: any) => ({
+        coresignal_id: candidate.id?.toString() || '',
+        full_name: candidate.full_name || 'Unknown',
+        headline: candidate.headline || '',
+        location: candidate.location || '',
+        country: candidate.country || '',
+        profile_url: candidate.profile_url || '',
+        current_company: candidate.company_name || null,
+        current_title: candidate.title || null,
+        experience_count: candidate.experience_count || 0,
+        _score: candidate._score || 0,
+        industry: candidate.industry || null,
+        connections_count: candidate.connections_count || null,
+        follower_count: candidate.follower_count || null,
+        company_url: candidate.company_url || null,
+        company_website: candidate.company_website || null,
+        company_industry: candidate.company_industry || null,
+        experience_location: candidate.experience_location || null
+      }));
+      
+      // Increment credit usage for single search
+      await incrementCreditUsage(orgId, 'search');
+      creditsUsedInSearch = 1;
     }
 
-    const coresignalData = await coresignalResponse.json();
-    
-    // Get total count from header
-    const totalCount = parseInt(coresignalResponse.headers.get('x-total-results') || '0', 10);
-    
-    // Search Preview returns a direct array, not wrapped in 'results'
-    const resultsArray = Array.isArray(coresignalData) ? coresignalData : [];
-    
-    console.log('📡 CoreSignal API Full Response:', {
-      status: coresignalResponse.status,
-      statusText: coresignalResponse.statusText,
-      totalFromHeader: totalCount,
-      returnedCount: resultsArray.length,
-      firstCandidate: resultsArray[0] || null
-    });
-
-    // Parse preview results - map fields from Search Preview API
-    const candidates: CoreSignalCandidate[] = resultsArray.slice(0, limit).map((candidate: any) => ({
-      coresignal_id: candidate.id?.toString() || '',
-      full_name: candidate.full_name || 'Unknown',
-      headline: candidate.headline || '',
-      location: candidate.location || '',
-      country: candidate.country || '',
-      profile_url: candidate.profile_url || '',
-      current_company: candidate.company_name || null,
-      current_title: candidate.title || null,
-      experience_count: candidate.experience_count || 0,
-      _score: candidate._score || 0,
-      industry: candidate.industry || null,
-      connections_count: candidate.connections_count || null,
-      follower_count: candidate.follower_count || null,
-      company_url: candidate.company_url || null,
-      company_website: candidate.company_website || null,
-      company_industry: candidate.company_industry || null,
-      experience_location: candidate.experience_location || null
-    }));
+    const candidates = allCandidates;
 
     // Store candidates in database for caching
     if (project_id && candidates.length > 0) {
@@ -474,8 +583,8 @@ serve(async (req) => {
       }
     }
 
-    // Increment credit usage
-    await incrementCreditUsage(orgId, 'search');
+    // Increment credit has been done in the loop above for multi-location
+    // or in the single location block
     
     // Update project cache metadata if project_id provided
     if (project_id) {
@@ -494,12 +603,12 @@ serve(async (req) => {
     const response = {
       candidates,
       total_count: totalCount,
-      credits_used: 1,
-      credits_remaining: creditCheck.remaining - 1,
+      credits_used: creditsUsedInSearch,
+      credits_remaining: creditCheck.remaining - creditsUsedInSearch,
       cached: false
     };
 
-    console.log(`✅ CoreSignal search complete: ${candidates.length} candidates returned from ${totalCount} total matches (1 credit used, ${creditCheck.remaining - 1} remaining)`);
+    console.log(`✅ CoreSignal search complete: ${candidates.length} candidates returned from ${totalCount} total matches (${creditsUsedInSearch} credit(s) used, ${creditCheck.remaining - creditsUsedInSearch} remaining)`);
 
     return new Response(JSON.stringify(response), {
       status: 200,
