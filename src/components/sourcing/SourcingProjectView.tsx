@@ -124,12 +124,15 @@ export function SourcingProjectView({ projectId }: SourcingProjectViewProps) {
     setIsRefreshing(true)
     
     try {
-      // 1. Update sourcing_project record with new search_criteria
+      // 1. Update sourcing_project record with new search_criteria and invalidate cache
       const { error: updateError } = await supabase
         .from('sourcing_projects')
         .update({ 
           search_criteria: newCriteria as any,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
+          // Invalidate CoreSignal cache to force fresh search
+          coresignal_cache_expires_at: null,
+          coresignal_candidate_count: 0
         })
         .eq('id', projectId)
       
