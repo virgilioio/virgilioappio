@@ -67,6 +67,38 @@ interface CoreSignalCandidate {
 }
 
 // Build CoreSignal Filter API query from criteria
+// Normalize location to handle ambiguous inputs
+function normalizeLocation(location: string | undefined): string[] | undefined {
+  if (!location || location.trim() === '' || location.toLowerCase().includes('global')) {
+    return undefined; // Empty/global = no location filter (global search)
+  }
+  
+  const normalized = location.trim().toUpperCase();
+  
+  // Handle regional shortcuts - expand to country lists
+  const regionMap: Record<string, string[]> = {
+    'LATAM': ['Mexico', 'Brazil', 'Argentina', 'Chile', 'Colombia', 'Peru', 'Venezuela', 'Ecuador', 'Guatemala', 'Costa Rica', 'Panama', 'Uruguay', 'Bolivia', 'Paraguay', 'Honduras', 'El Salvador', 'Nicaragua', 'Puerto Rico', 'Dominican Republic'],
+    'LATIN AMERICA': ['Mexico', 'Brazil', 'Argentina', 'Chile', 'Colombia', 'Peru', 'Venezuela', 'Ecuador', 'Guatemala', 'Costa Rica', 'Panama', 'Uruguay', 'Bolivia', 'Paraguay', 'Honduras', 'El Salvador', 'Nicaragua', 'Puerto Rico', 'Dominican Republic'],
+    'EUROPE': ['United Kingdom', 'Germany', 'France', 'Spain', 'Italy', 'Netherlands', 'Belgium', 'Sweden', 'Norway', 'Denmark', 'Finland', 'Poland', 'Portugal', 'Greece', 'Austria', 'Switzerland', 'Ireland'],
+    'EUR': ['United Kingdom', 'Germany', 'France', 'Spain', 'Italy', 'Netherlands', 'Belgium', 'Sweden', 'Norway', 'Denmark', 'Finland', 'Poland', 'Portugal', 'Greece', 'Austria', 'Switzerland', 'Ireland'],
+    'ASIA': ['India', 'China', 'Japan', 'Singapore', 'South Korea', 'Thailand', 'Vietnam', 'Philippines', 'Indonesia', 'Malaysia'],
+    'APAC': ['India', 'China', 'Japan', 'Singapore', 'Australia', 'New Zealand', 'South Korea', 'Thailand', 'Vietnam', 'Philippines', 'Indonesia', 'Malaysia'],
+    'NORTH AMERICA': ['United States', 'Canada', 'Mexico'],
+    'NA': ['United States', 'Canada', 'Mexico']
+  };
+  
+  // Check if the location matches a region
+  for (const [region, countries] of Object.entries(regionMap)) {
+    if (normalized.includes(region)) {
+      console.log(`🌍 Expanding region "${location}" to ${countries.length} countries`);
+      return countries;
+    }
+  }
+  
+  // Return as single location
+  return [location];
+}
+
 function buildCoresignalFilterQuery(criteria: SearchCriteria): any {
   const query: any = {};
   
@@ -81,15 +113,24 @@ function buildCoresignalFilterQuery(criteria: SearchCriteria): any {
   }
   
   // Location: Parse intelligently to use both 'location' and 'country' fields
-  // Support both singular 'location' and array 'locations' formats
-  const locationList = criteria.locations || (criteria.location ? [criteria.location] : []);
+  // Support both singular 'location' and array 'locations' formats with normalization
+  const rawLocationList = criteria.locations || (criteria.location ? [criteria.location] : []);
   
-  if (locationList.length > 0) {
+  // Normalize each location (handles regional expansion, empty/global filtering)
+  const normalizedLocations: string[] = [];
+  for (const loc of rawLocationList) {
+    const normalized = normalizeLocation(loc);
+    if (normalized) {
+      normalizedLocations.push(...normalized);
+    }
+  }
+  
+  if (normalizedLocations.length > 0) {
     // For multiple locations, parse each and combine with OR
     const locationParts: string[] = [];
     const countryParts: string[] = [];
     
-    locationList.forEach(loc => {
+    normalizedLocations.forEach(loc => {
       let locationStr = loc.replace(/^Remote\s*-\s*/i, '').trim();
       const parts = locationStr.split(',').map(p => p.trim());
       
@@ -120,6 +161,8 @@ function buildCoresignalFilterQuery(criteria: SearchCriteria): any {
       query.country = countryParts.map(c => `(${c})`).join(' OR ');
       console.log(`🌎 Combined countries: ${query.country}`);
     }
+  } else {
+    console.log(`🌍 No location filter (global search)`);
   }
   
   // Active experience only

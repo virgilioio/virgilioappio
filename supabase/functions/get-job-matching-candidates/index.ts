@@ -367,12 +367,18 @@ serve(async (req) => {
         console.log('🔍 Searching CoreSignal for additional candidates...');
         
         // Build search criteria from job or provided criteria
+        // For sourcing projects, prefer criteria.locations over job.location
+        const locationToUse = sourcing_project_id && criteria.locations?.[0] 
+          ? criteria.locations[0] 
+          : (criteria.location || job.location);
+        
         const searchCriteria: any = providedCriteria || {
           skills: jobSkills,
-          location: job.location,
+          location: locationToUse,
+          locations: criteria.locations,  // Pass full locations array for multi-location support
           title_keywords: job.title_keywords || criteria.title_keywords,
-          salary_min: job.salary_min,
-          salary_max: job.salary_max
+          salary_min: criteria.salary_min || job.salary_min,
+          salary_max: criteria.salary_max || job.salary_max
         };
 
         // Call search-coresignal-candidates edge function
