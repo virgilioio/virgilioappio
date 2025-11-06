@@ -129,10 +129,10 @@ function buildCoresignalFilterQuery(criteria: SearchCriteria): any {
       const parsed = parseLocation(locationValue)
       
       if (parsed.city) {
-        // City level: use "City, State" format for CoreSignal location field
-        cityLocations.push(parsed.state ? `${parsed.city}, ${parsed.state}` : parsed.city)
+        // City level: Send only city name for better CoreSignal matching
+        cityLocations.push(parsed.city)
       } else if (parsed.state) {
-        // State/Province level: use state code for location field
+        // State/Province level: Now uses full state names (e.g., "Jalisco" not "JAL")
         stateLocations.push(parsed.state)
       }
       
@@ -146,14 +146,24 @@ function buildCoresignalFilterQuery(criteria: SearchCriteria): any {
     const allLocations = [...cityLocations, ...stateLocations]
     if (allLocations.length > 0) {
       query.location = allLocations.map(loc => `(${loc})`).join(' OR ')
-      console.log(`📍 Location filter: ${query.location}`)
     }
     
     // Send countries separately if we have them
     if (countries.length > 0) {
       query.country = countries.map(c => `(${c})`).join(' OR ')
-      console.log(`🌍 Country filter: ${query.country}`)
     }
+    
+    // Enhanced logging for debugging
+    console.log('📍 Location Processing Details:', {
+      rawLocations: criteria.locations,
+      parsedCities: cityLocations,
+      parsedStates: stateLocations,
+      countries: countries,
+      finalQuery: {
+        location: query.location,
+        country: query.country
+      }
+    })
   } else {
     console.log(`🌍 No location filter (global search)`)
   }
