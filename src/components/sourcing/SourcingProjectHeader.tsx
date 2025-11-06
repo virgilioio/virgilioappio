@@ -34,8 +34,6 @@ interface SourcingProjectHeaderProps {
     creditsUsed?: number
     collectCreditsUsed?: number
   }
-  filters: SourcingProjectFilters
-  onFiltersChange: (filters: SourcingProjectFilters) => void
   onRefresh: () => void
   onArchive: () => void
   onDelete: () => void
@@ -47,8 +45,6 @@ interface SourcingProjectHeaderProps {
 export function SourcingProjectHeader({
   project,
   breakdown,
-  filters,
-  onFiltersChange,
   onRefresh,
   onArchive,
   onDelete,
@@ -330,105 +326,6 @@ export function SourcingProjectHeader({
                 </div>
               )}
 
-              {/* Filters Row */}
-              <div className="space-y-3 pt-3 border-t border-border">
-                <div className="flex items-center justify-between">
-                  <Label className="text-sm font-medium">Filters</Label>
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    onClick={() => onFiltersChange({
-                      matchTiers: [],
-                      location: '',
-                      minExperience: 0,
-                      maxExperience: 30
-                    })}
-                  >
-                    Reset
-                  </Button>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  {/* Source Filter */}
-                  <div>
-                    <Label className="text-xs text-muted-foreground mb-2 block">Source</Label>
-                    <div className="flex flex-wrap gap-2">
-                      {(['all', 'local', 'coresignal'] as const).map(source => (
-                        <label key={source} className="flex items-center gap-1 cursor-pointer">
-                          <Checkbox 
-                            checked={!filters.source || filters.source === source}
-                            onCheckedChange={(checked) => {
-                              onFiltersChange({
-                                ...filters,
-                                source: checked ? source : 'all'
-                              })
-                            }}
-                          />
-                          <span className="text-xs capitalize">{source}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Match Tier */}
-                  <div>
-                    <Label className="text-xs text-muted-foreground mb-2 block">Match Tier</Label>
-                    <div className="flex flex-wrap gap-2">
-                      {(['excellent', 'good', 'fair', 'minimal'] as const).map(tier => (
-                        <label key={tier} className="flex items-center gap-1 cursor-pointer">
-                          <Checkbox 
-                            checked={filters.matchTiers?.includes(tier)}
-                            onCheckedChange={(checked) => {
-                              onFiltersChange({
-                                ...filters,
-                                matchTiers: checked 
-                                  ? [...(filters.matchTiers || []), tier]
-                                  : (filters.matchTiers || []).filter(t => t !== tier)
-                              })
-                            }}
-                          />
-                          <span className="text-xs capitalize">{tier}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Location */}
-                  <div>
-                    <Label className="text-xs text-muted-foreground mb-2 block">Location</Label>
-                    <Input 
-                      placeholder="Filter by location..."
-                      value={filters.location || ''}
-                      onChange={(e) => onFiltersChange({ ...filters, location: e.target.value })}
-                      className="h-9 text-sm"
-                    />
-                  </div>
-
-                  {/* Experience Range */}
-                  <div>
-                    <Label className="text-xs text-muted-foreground mb-2 block">Experience (years)</Label>
-                    <div className="flex items-center gap-2">
-                      <Input 
-                        type="number"
-                        value={filters.minExperience || 0}
-                        onChange={(e) => onFiltersChange({ ...filters, minExperience: parseInt(e.target.value) || 0 })}
-                        className="h-9 text-sm w-20"
-                        min={0}
-                        max={30}
-                      />
-                      <span className="text-xs text-muted-foreground">to</span>
-                      <Input 
-                        type="number"
-                        value={filters.maxExperience || 30}
-                        onChange={(e) => onFiltersChange({ ...filters, maxExperience: parseInt(e.target.value) || 30 })}
-                        className="h-9 text-sm w-20"
-                        min={0}
-                        max={30}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
             </>
           )}
         </CardContent>

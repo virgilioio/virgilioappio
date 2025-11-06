@@ -1,19 +1,21 @@
 import { useState, useMemo } from 'react'
 import { Loader2 } from 'lucide-react'
-import { useToast } from '@/hooks/use-toast'
-import { useSourcingProject } from '@/hooks/useSourcingProject'
-import { useSourcingProjectCandidates } from '@/hooks/useSourcingProjectCandidates'
 import { SourcingProjectHeader } from './SourcingProjectHeader'
 import { SourcingCandidateTable } from './SourcingCandidateTable'
+import { SourcingFiltersPanel } from './SourcingFiltersPanel'
+import { useSourcingProject } from '@/hooks/useSourcingProject'
+import { useSourcingProjectCandidates } from '@/hooks/useSourcingProjectCandidates'
+import { SourcingProjectFilters, SearchCriteria } from '@/types/sourcing'
 import { supabase } from '@/lib/supabaseClient'
-import type { SourcingProjectFilters, SearchCriteria } from '@/types/sourcing'
+import { toast } from 'sonner'
+import { useQueryClient } from '@tanstack/react-query'
 
 interface SourcingProjectViewProps {
   projectId: string
 }
 
 export function SourcingProjectView({ projectId }: SourcingProjectViewProps) {
-  const { toast } = useToast()
+  const queryClient = useQueryClient()
   const { data: project, isLoading: projectLoading, refetch: refetchProject } = useSourcingProject(projectId)
   const { 
     candidates, 
@@ -26,26 +28,48 @@ export function SourcingProjectView({ projectId }: SourcingProjectViewProps) {
   
   const [filters, setFilters] = useState<SourcingProjectFilters>({
     matchTiers: [],
-    location: '',
+    location: [],
     minExperience: 0,
-    maxExperience: 30
+    maxExperience: 30,
+    source: 'all'
   })
   const [isRefreshing, setIsRefreshing] = useState(false)
   
   // Apply filters locally
   const filteredCandidates = useMemo(() => {
-    return candidates.filter(c => {
-      if (filters.matchTiers && filters.matchTiers.length > 0 && !filters.matchTiers.includes(c.match_tier)) {
-        return false
-      }
-      if (filters.location && !c.location_country?.toLowerCase().includes(filters.location.toLowerCase())) {
-        return false
-      }
-      if (c.years_experience !== undefined && filters.minExperience !== undefined && filters.maxExperience !== undefined) {
-        if (c.years_experience < filters.minExperience || c.years_experience > filters.maxExperience) {
+    if (!candidates) return []
+    
+    return candidates.filter(candidate => {
+      // Match tier filter
+      if (filters.matchTiers && filters.matchTiers.length > 0) {
+        if (!filters.matchTiers.includes(candidate.match_tier as any)) {
           return false
         }
       }
+      
+      // Location filter - now checks country codes
+      if (filters.location && filters.location.length > 0) {
+        if (!candidate.location_country || !filters.location.includes(candidate.location_country)) {
+          return false
+        }
+      }
+      
+      // Experience filter
+      const totalExp = candidate.experience_years || 0
+      if (totalExp < (filters.minExperience || 0) || totalExp > (filters.maxExperience || 30)) {
+        return false
+      }
+
+      // Source filter
+      if (filters.source && filters.source !== 'all') {
+        if (filters.source === 'local' && candidate.source !== 'local') {
+          return false
+        }
+        if (filters.source === 'coresignal' && candidate.source !== 'coresignal') {
+          return false
+        }
+      }
+      
       return true
     })
   }, [candidates, filters])
@@ -69,13 +93,10 @@ export function SourcingProjectView({ projectId }: SourcingProjectViewProps) {
       .eq('id', project.id)
     
     if (error) {
-      toast({
-        title: 'Failed to update name',
-        description: error.message,
-        variant: 'destructive'
-      })
+      toast.error('Failed to update name', { description: error.message })
     } else {
-      toast({ title: 'Project name updated' })
+      toast.success('Project name updated')
+      refetchProject()
     }
   }
   
@@ -89,13 +110,10 @@ export function SourcingProjectView({ projectId }: SourcingProjectViewProps) {
       .eq('id', project.id)
     
     if (error) {
-      toast({
-        title: 'Failed to update status',
-        description: error.message,
-        variant: 'destructive'
-      })
+      toast.error('Failed to update status', { description: error.message })
     } else {
-      toast({ title: `Project ${newStatus === 'archived' ? 'archived' : 'unarchived'}` })
+      toast.success(`Project ${newStatus === 'archived' ? 'archived' : 'unarchived'}`)
+      refetchProject()
     }
   }
   
@@ -108,13 +126,10 @@ export function SourcingProjectView({ projectId }: SourcingProjectViewProps) {
       .eq('id', project.id)
     
     if (error) {
-      toast({
-        title: 'Failed to delete project',
-        description: error.message,
-        variant: 'destructive'
-      })
+      toast.error('Failed to delete project', { description: error.message })
     } else {
-      toast({ title: 'Project deleted' })
+      toast.success('Project deleted')
+      queryClient.invalidateQueries({ queryKey: ['sourcing-projects'] })
     }
   }
 
@@ -144,20 +159,19 @@ export function SourcingProjectView({ projectId }: SourcingProjectViewProps) {
       // 3. Refetch candidates with new criteria (the hook will use updated project data)
       await refetchCandidates()
       
-      toast({
-        title: 'Search Updated',
-        description: 'Candidates refreshed with updated criteria.'
-      })
+      toast.success('Search Updated', { description: 'Candidates refreshed with updated criteria.' })
     } catch (error: any) {
       console.error('Error updating search criteria:', error)
-      toast({
-        title: 'Failed to Update Search',
-        description: error.message,
-        variant: 'destructive'
-      })
+      toast.error('Failed to Update Search', { description: error.message })
     } finally {
       setIsRefreshing(false)
     }
+  }
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true)
+    await refetchCandidates()
+    setIsRefreshing(false)
   }
   
   if (projectLoading) {
@@ -173,25 +187,31 @@ export function SourcingProjectView({ projectId }: SourcingProjectViewProps) {
   }
   
   return (
-    <div className="space-y-6 animate-fade-in">
-      <SourcingProjectHeader
-        project={project}
-        breakdown={breakdown}
+    <div className="flex h-screen overflow-hidden">
+      <SourcingFiltersPanel 
         filters={filters}
         onFiltersChange={setFilters}
-        onRefresh={refetchCandidates}
-        onArchive={handleArchive}
-        onDelete={handleDelete}
-        onNameUpdate={handleSaveName}
-        onUpdateSearchCriteria={handleUpdateSearchCriteria}
-        isRefreshing={isRefreshing}
       />
       
-      <SourcingCandidateTable
-        candidates={filteredCandidates}
-        isLoading={candidatesLoading}
-        jobId={project.job_id}
-      />
+      <div className="flex-1 overflow-y-auto">
+        <div className="container mx-auto p-4 space-y-6">
+          <SourcingProjectHeader 
+            project={project}
+            breakdown={breakdown}
+            onRefresh={handleRefresh}
+            onArchive={handleArchive}
+            onDelete={handleDelete}
+            onNameUpdate={handleSaveName}
+            onUpdateSearchCriteria={handleUpdateSearchCriteria}
+            isRefreshing={isRefreshing}
+          />
+          <SourcingCandidateTable 
+            candidates={filteredCandidates}
+            isLoading={candidatesLoading}
+            jobId={project.job_id}
+          />
+        </div>
+      </div>
     </div>
   )
 }

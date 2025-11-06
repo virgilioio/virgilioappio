@@ -19,6 +19,7 @@ export interface MatchedCandidate {
   profile_summary?: string | null
   source: 'local' | 'coresignal'
   years_experience?: number
+  experience_years?: number
   enriched_at?: string | null
   current_company?: string
   current_role?: string
