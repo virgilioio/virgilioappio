@@ -433,20 +433,20 @@ export function CandidateTable({
                          {!hideActions && (
                            <TableCell>
                              <div className="flex items-center justify-end gap-1">
-                               <PermissionGate permission="canManageCandidates">
-                                 <Button
-                                   variant="ghost"
-                                   size="sm"
-                                   onClick={(e) => {
-                                     e.preventDefault()
-                                     e.stopPropagation()
-                                     handleDelete(candidate.id)
-                                   }}
-                                   className="h-[36px] w-[36px] p-0 text-destructive hover:bg-destructive/10 hover:scale-110 transition-all duration-150"
-                                 >
-                                   <Trash2 className="h-4 w-4" />
-                                 </Button>
-                               </PermissionGate>
+                                <PermissionGate permission="canDeleteCandidates">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.preventDefault()
+                                      e.stopPropagation()
+                                      handleDelete(candidate.id)
+                                    }}
+                                    className="h-[36px] w-[36px] p-0 text-destructive hover:bg-destructive/10 hover:scale-110 transition-all duration-150"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </PermissionGate>
                              </div>
                            </TableCell>
                          )}
@@ -479,7 +479,7 @@ export function CandidateTable({
                                </div>
                              )}
                             </div>
-                            <PermissionGate permission="canManageCandidates">
+                            <PermissionGate permission="canDeleteCandidates">
                               <Button 
                                 variant="ghost" 
                                 size="sm" 

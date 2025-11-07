@@ -410,7 +410,7 @@ const getPageNumbers = () => {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center justify-end gap-1">
-                            <PermissionGate permission="canManageCandidates">
+                            <PermissionGate permission="canDeleteCandidates">
                               <Button
                                 variant="ghost"
                                 size="sm"
@@ -459,7 +459,7 @@ const getPageNumbers = () => {
                                 </a>
                               )}
                             </div>
-                            <PermissionGate permission="canManageCandidates">
+                            <PermissionGate permission="canDeleteCandidates">
                               <Button 
                                 variant="ghost" 
                                 size="sm" 
