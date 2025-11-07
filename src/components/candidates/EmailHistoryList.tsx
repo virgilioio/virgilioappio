@@ -28,22 +28,49 @@ export function EmailHistoryList({ candidateId, jobId }: EmailHistoryListProps) 
           <Mail className="h-6 w-6 text-text-secondary" />
         </div>
         <h3 className="text-sm font-medium text-text-primary mb-1">
-          No emails sent yet
+          No emails yet
         </h3>
         <p className="text-xs text-text-secondary max-w-sm">
-          Emails sent to this candidate will appear here. Use the "Send Email" button to start a conversation.
+          Email conversations with this candidate will appear here.
         </p>
       </div>
     );
   }
 
+  // Group emails by thread_id for conversation view
+  const threads = emails.reduce((acc, email) => {
+    const threadId = email.thread_id || email.id;
+    if (!acc[threadId]) {
+      acc[threadId] = [];
+    }
+    acc[threadId].push(email);
+    return acc;
+  }, {} as Record<string, typeof emails>);
+
+  // Sort threads by most recent activity
+  const sortedThreads = Object.entries(threads).sort(([, a], [, b]) => {
+    const aLatest = a.reduce((latest, email) => {
+      const date = new Date(email.received_at || email.sent_at || email.created_at);
+      return date > latest ? date : latest;
+    }, new Date(0));
+    const bLatest = b.reduce((latest, email) => {
+      const date = new Date(email.received_at || email.sent_at || email.created_at);
+      return date > latest ? date : latest;
+    }, new Date(0));
+    return bLatest.getTime() - aLatest.getTime();
+  });
+
   return (
     <div className="space-y-4">
       <div className="text-xs text-text-secondary mb-4">
-        {emails.length} {emails.length === 1 ? 'email' : 'emails'}
+        {emails.length} {emails.length === 1 ? 'email' : 'emails'} • {sortedThreads.length} {sortedThreads.length === 1 ? 'conversation' : 'conversations'}
       </div>
-      {emails.map((email) => (
-        <EmailHistoryCard key={email.id} email={email} />
+      {sortedThreads.map(([threadId, threadEmails]) => (
+        <div key={threadId} className="space-y-2">
+          {threadEmails.map((email) => (
+            <EmailHistoryCard key={email.id} email={email} />
+          ))}
+        </div>
       ))}
     </div>
   );

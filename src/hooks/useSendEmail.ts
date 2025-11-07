@@ -17,6 +17,7 @@ export interface SendEmailRequest {
   }>;
   candidate_id?: string;
   job_id?: string;
+  in_reply_to_message_id?: string;
 }
 
 export function useSendEmail() {

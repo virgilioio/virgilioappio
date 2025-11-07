@@ -23,6 +23,7 @@ const SendEmailSchema = z.object({
   })).optional(),
   candidate_id: z.string().uuid().optional(),
   job_id: z.string().uuid().optional(),
+  in_reply_to_message_id: z.string().optional(), // For threading replies
 });
 
 type SendEmailRequest = z.infer<typeof SendEmailSchema>;
@@ -67,7 +68,7 @@ async function refreshAccessToken(supabase: any, identity: any): Promise<string>
   return tokens.access_token;
 }
 
-function buildRFC822Email(request: SendEmailRequest): string {
+function buildRFC822Email(request: SendEmailRequest, threadId?: string, inReplyTo?: string, references?: string): string {
   const boundary = `boundary_${Date.now()}_${Math.random().toString(36).substring(7)}`;
   const lines: string[] = [];
 
@@ -77,6 +78,15 @@ function buildRFC822Email(request: SendEmailRequest): string {
   if (request.cc?.length) lines.push(`Cc: ${request.cc.join(', ')}`);
   if (request.bcc?.length) lines.push(`Bcc: ${request.bcc.join(', ')}`);
   lines.push(`Subject: ${request.subject}`);
+  
+  // Add threading headers for replies
+  if (inReplyTo) {
+    lines.push(`In-Reply-To: ${inReplyTo}`);
+  }
+  if (references) {
+    lines.push(`References: ${references}`);
+  }
+  
   lines.push(`MIME-Version: 1.0`);
   lines.push(`Content-Type: multipart/mixed; boundary="${boundary}"`);
   lines.push('');
@@ -341,6 +351,27 @@ const handler = async (req: Request): Promise<Response> => {
       .eq('user_id', user.id)
       .single();
 
+    // Handle reply threading
+    let threadId: string | undefined;
+    let inReplyTo: string | undefined;
+    let references: string | undefined;
+    
+    if (request.in_reply_to_message_id) {
+      const { data: originalEmail } = await supabase
+        .from('email_logs')
+        .select('thread_id, provider_message_id, headers')
+        .eq('id', request.in_reply_to_message_id)
+        .single();
+      
+      if (originalEmail) {
+        threadId = originalEmail.thread_id;
+        inReplyTo = originalEmail.provider_message_id;
+        references = originalEmail.headers?.references 
+          ? `${originalEmail.headers.references} ${originalEmail.provider_message_id}`
+          : originalEmail.provider_message_id;
+      }
+    }
+
     // Replace placeholders in subject and body
     const processedRequest = {
       ...request,
@@ -353,18 +384,23 @@ const handler = async (req: Request): Promise<Response> => {
         : undefined,
     };
 
-    // Build RFC822 email
-    const rfc822 = buildRFC822Email(processedRequest);
+    // Build RFC822 email with threading headers
+    const rfc822 = buildRFC822Email(processedRequest, threadId, inReplyTo, references);
     const encodedEmail = base64UrlEncode(rfc822);
 
     // Send via Gmail API
+    const sendBody: any = { raw: encodedEmail };
+    if (threadId) {
+      sendBody.threadId = threadId;
+    }
+    
     const gmailResponse = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ raw: encodedEmail }),
+      body: JSON.stringify(sendBody),
     });
 
     if (!gmailResponse.ok) {
@@ -401,6 +437,7 @@ const handler = async (req: Request): Promise<Response> => {
         user_id: user.id,
         organization_id: organizationId,
         mail_identity_id: identity.id,
+        direction: 'sent',
         from_address: processedRequest.from_email,
         to_addresses: processedRequest.to,
         cc_addresses: processedRequest.cc || [],
@@ -411,6 +448,7 @@ const handler = async (req: Request): Promise<Response> => {
         status: 'sent',
         provider_message_id: gmailData.id,
         thread_id: gmailData.threadId,
+        in_reply_to: inReplyTo || null,
         sent_at: new Date().toISOString(),
         candidate_id: processedRequest.candidate_id || null,
         job_id: processedRequest.job_id || null,

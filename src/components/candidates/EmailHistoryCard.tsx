@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 interface EmailHistoryCardProps {
   email: {
     id: string;
+    direction?: string;
     from_address: string;
     to_addresses: string[];
     cc_addresses?: string[] | null;
@@ -20,6 +21,8 @@ interface EmailHistoryCardProps {
     status: string;
     created_at: string;
     sent_at?: string | null;
+    received_at?: string | null;
+    is_read?: boolean;
     opened_at?: string | null;
     clicked_at?: string | null;
     replied_at?: string | null;
@@ -29,6 +32,8 @@ interface EmailHistoryCardProps {
 
 export function EmailHistoryCard({ email }: EmailHistoryCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const isSent = email.direction === 'sent';
+  const isReceived = email.direction === 'received';
 
   const formatTimestamp = (timestamp: string) => {
     const date = new Date(timestamp);
@@ -42,12 +47,22 @@ export function EmailHistoryCard({ email }: EmailHistoryCardProps) {
   };
 
   const getStatusBadge = () => {
+    if (isReceived && email.is_read === false) {
+      return (
+        <Badge variant="default" className="bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20">
+          <Mail className="h-3 w-3 mr-1" />
+          Unread
+        </Badge>
+      );
+    }
+    
     switch (email.status) {
       case 'sent':
+      case 'delivered':
         return (
           <Badge variant="default" className="bg-green-500/10 text-green-700 dark:text-green-400 border-green-500/20">
             <Check className="h-3 w-3 mr-1" />
-            Sent
+            {isSent ? 'Sent' : 'Delivered'}
           </Badge>
         );
       case 'failed':
@@ -74,13 +89,18 @@ export function EmailHistoryCard({ email }: EmailHistoryCardProps) {
   };
 
   const hasRecipients = email.cc_addresses?.length || email.bcc_addresses?.length;
+  const emailDate = email.received_at || email.sent_at || email.created_at;
 
   return (
     <Card 
-      className="relative border-l-4 transition-all"
+      className={cn(
+        "relative border-l-4 transition-all",
+        isSent && "bg-primary/5"
+      )}
       style={{
         borderLeftColor: 
-          email.status === 'sent' ? '#d2ffc2' :
+          isReceived ? '#c2d2ff' :
+          email.status === 'sent' || email.status === 'delivered' ? '#d2ffc2' :
           email.status === 'failed' ? '#ffc2c2' :
           email.status === 'pending' ? '#f5f5f5' :
           undefined
@@ -91,14 +111,26 @@ export function EmailHistoryCard({ email }: EmailHistoryCardProps) {
         <div className="flex items-start justify-between mb-3">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
+              {isReceived && (
+                <Badge variant="outline" className="text-xs">
+                  Received
+                </Badge>
+              )}
+              {isSent && (
+                <Badge variant="outline" className="text-xs bg-primary/10 border-primary/30">
+                  Sent
+                </Badge>
+              )}
               <Mail className="h-4 w-4 text-text-secondary flex-shrink-0" />
               <span className="text-sm font-medium text-text-primary truncate">
-                {email.from_address}
+                {isReceived ? `From: ${email.from_address}` : `To: ${email.to_addresses.join(', ')}`}
               </span>
             </div>
-            <div className="text-xs text-text-secondary">
-              To: {email.to_addresses.join(', ')}
-            </div>
+            {isReceived && (
+              <div className="text-xs text-text-secondary">
+                To: {email.to_addresses.join(', ')}
+              </div>
+            )}
             {hasRecipients && (
               <div className="text-xs text-text-secondary mt-0.5">
                 {email.cc_addresses?.length ? `CC: ${email.cc_addresses.join(', ')}` : ''}
@@ -108,7 +140,7 @@ export function EmailHistoryCard({ email }: EmailHistoryCardProps) {
           </div>
           <div className="flex flex-col items-end gap-1 ml-3">
             <span className="text-xs text-text-secondary whitespace-nowrap">
-              {formatTimestamp(email.created_at)}
+              {formatTimestamp(emailDate)}
             </span>
             {getStatusBadge()}
           </div>

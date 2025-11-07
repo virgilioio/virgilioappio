@@ -1214,15 +1214,21 @@ export type Database = {
           cc_addresses: string[] | null
           clicked_at: string | null
           created_at: string
+          direction: string
           error_message: string | null
           from_address: string
+          gmail_labels: string[] | null
           headers: Json | null
           id: string
+          in_reply_to: string | null
+          is_read: boolean | null
           job_id: string | null
           mail_identity_id: string | null
           opened_at: string | null
           organization_id: string
           provider_message_id: string | null
+          raw_message_data: Json | null
+          received_at: string | null
           replied_at: string | null
           sent_at: string | null
           status: string
@@ -1241,15 +1247,21 @@ export type Database = {
           cc_addresses?: string[] | null
           clicked_at?: string | null
           created_at?: string
+          direction: string
           error_message?: string | null
           from_address: string
+          gmail_labels?: string[] | null
           headers?: Json | null
           id?: string
+          in_reply_to?: string | null
+          is_read?: boolean | null
           job_id?: string | null
           mail_identity_id?: string | null
           opened_at?: string | null
           organization_id: string
           provider_message_id?: string | null
+          raw_message_data?: Json | null
+          received_at?: string | null
           replied_at?: string | null
           sent_at?: string | null
           status?: string
@@ -1268,15 +1280,21 @@ export type Database = {
           cc_addresses?: string[] | null
           clicked_at?: string | null
           created_at?: string
+          direction?: string
           error_message?: string | null
           from_address?: string
+          gmail_labels?: string[] | null
           headers?: Json | null
           id?: string
+          in_reply_to?: string | null
+          is_read?: boolean | null
           job_id?: string | null
           mail_identity_id?: string | null
           opened_at?: string | null
           organization_id?: string
           provider_message_id?: string | null
+          raw_message_data?: Json | null
+          received_at?: string | null
           replied_at?: string | null
           sent_at?: string | null
           status?: string
@@ -3368,6 +3386,7 @@ export type Database = {
           created_at: string
           display_name: string | null
           email_address: string
+          gmail_history_id: string | null
           id: string
           imap_host: string | null
           imap_password_encrypted: string | null
@@ -3394,6 +3413,7 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           email_address: string
+          gmail_history_id?: string | null
           id?: string
           imap_host?: string | null
           imap_password_encrypted?: string | null
@@ -3420,6 +3440,7 @@ export type Database = {
           created_at?: string
           display_name?: string | null
           email_address?: string
+          gmail_history_id?: string | null
           id?: string
           imap_host?: string | null
           imap_password_encrypted?: string | null
