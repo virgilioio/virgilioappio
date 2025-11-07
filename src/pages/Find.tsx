@@ -16,7 +16,7 @@ export default function Find() {
 
   return (
     <SidebarProvider defaultOpen={true}>
-      <div className="min-h-screen flex w-full">
+      <div className="min-h-screen flex w-full overflow-hidden">
         <SourcingSidebar 
           selectedProjectId={selectedProjectId}
           onSelectProject={(id) => {
@@ -29,7 +29,7 @@ export default function Find() {
           }}
         />
         
-        <main className="flex-1 bg-white">
+        <main className="flex-1 bg-white overflow-hidden">
           {mode === 'new' && (
             <div className="min-h-[calc(100vh-4rem)] flex flex-col items-center justify-center px-4 py-12 animate-fade-in">
               {/* Centered Container */}
