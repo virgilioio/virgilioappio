@@ -185,7 +185,8 @@ serve(async (req) => {
     const coresignalResponse = await fetch(`${CORESIGNAL_COLLECT_URL}/${coresignal_id}`, {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${CORESIGNAL_API_KEY}`,
+        'accept': 'application/json',
+        'apikey': CORESIGNAL_API_KEY,
       },
     });
 
