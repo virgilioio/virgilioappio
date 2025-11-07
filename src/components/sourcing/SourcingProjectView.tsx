@@ -188,21 +188,30 @@ export function SourcingProjectView({ projectId }: SourcingProjectViewProps) {
         isRefreshing={isRefreshing}
       />
       
-      <div className="flex-1 overflow-y-auto">
-        <div className="container mx-auto p-4 space-y-6">
-          <SourcingProjectHeader 
-            project={project}
-            breakdown={breakdown}
-            onRefresh={handleRefresh}
-            onArchive={handleArchive}
-            onDelete={handleDelete}
-            onNameUpdate={handleSaveName}
-          />
-          <SourcingCandidateTable 
-            candidates={filteredCandidates}
-            isLoading={candidatesLoading}
-            jobId={project.job_id}
-          />
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Fixed Header Section */}
+        <div className="flex-shrink-0 border-b bg-background">
+          <div className="container mx-auto p-4">
+            <SourcingProjectHeader 
+              project={project}
+              breakdown={breakdown}
+              onRefresh={handleRefresh}
+              onArchive={handleArchive}
+              onDelete={handleDelete}
+              onNameUpdate={handleSaveName}
+            />
+          </div>
+        </div>
+        
+        {/* Scrollable Candidate Table */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="container mx-auto p-4">
+            <SourcingCandidateTable 
+              candidates={filteredCandidates}
+              isLoading={candidatesLoading}
+              jobId={project.job_id}
+            />
+          </div>
         </div>
       </div>
     </div>
