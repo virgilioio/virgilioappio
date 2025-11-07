@@ -263,7 +263,7 @@ serve(async (req) => {
   const cors = corsHeadersFor(origin);
 
   try {
-    const { project_id, criteria, limit = 100, organization_id }: SearchRequest = await req.json();
+    const { project_id, criteria, limit = 200, organization_id }: SearchRequest = await req.json(); // Increased to get more candidates per search
 
     console.log('🔍 CoreSignal Search Request:', { project_id, criteria, limit });
 

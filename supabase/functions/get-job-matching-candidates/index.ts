@@ -166,7 +166,7 @@ serve(async (req) => {
       job_id, 
       sourcing_project_id,
       criteria: providedCriteria,
-      limit = 50, 
+      limit = 200, // Increased for sourcing projects 
       count_only = false,
       filters: requestFilters
     }: JobMatchingRequest = await req.json();
@@ -302,7 +302,7 @@ serve(async (req) => {
     const { data: localCandidates, error: localError } = await supabase
       .from('candidates')
       .select(candidateFields)
-      .limit(limit * 3); // Increased limit to account for filtering
+      .limit(1000); // Fetch all candidates for sourcing projects (up to 1000)
 
     if (localError) {
       console.warn('Error fetching local candidates:', localError);
@@ -325,8 +325,12 @@ serve(async (req) => {
         // Use enhanced scoring system
         const candidateScore = calculateEnhancedCandidateScore(candidate, jobSkills, job);
         
-        // Only include candidates with meaningful match scores (raised threshold for quality)
-        if (candidateScore.total_score >= 30 && candidateScore.confidence >= 40) {
+        // For sourcing projects, use lower thresholds to maximize curated results
+        const minScore = sourcing_project_id ? 20 : 30;
+        const minConfidence = sourcing_project_id ? 25 : 40;
+        
+        // Only include candidates with meaningful match scores
+        if (candidateScore.total_score >= minScore && candidateScore.confidence >= minConfidence) {
           if (count_only) {
             // For count-only requests, just track the match without full candidate data
             matchedCandidates.push({
@@ -423,8 +427,11 @@ serve(async (req) => {
             
             const candidateScore = calculateEnhancedCandidateScore(candidateForScoring, jobSkills, job);
             
-            // Add to results with higher threshold for quality
-            if (candidateScore.total_score >= 40) {
+            // CoreSignal candidates are pre-filtered by API, use lower threshold
+            const minCoreSignalScore = sourcing_project_id ? 25 : 40;
+            
+            // Add to results
+            if (candidateScore.total_score >= minCoreSignalScore) {
             coresignalCandidates.push({
               id: csCandidate.coresignal_id,
               candidate_name: csCandidate.full_name,
@@ -465,13 +472,16 @@ serve(async (req) => {
     // 1. No explicit filters provided
     // 2. Search criteria exists with a location (not explicitly removed)
     // 3. Job has a location
+    // 4. NOT a sourcing project (sourcing projects should show all matches)
     const hasLocationInCriteria = criteria?.location || (criteria?.locations && criteria.locations.length > 0);
     
-    if (!filters && job.location && hasLocationInCriteria) {
+    // For sourcing projects, don't auto-apply location filter (let users see all matches)
+    // For job matching, auto-apply location filter for relevance
+    if (!filters && job.location && hasLocationInCriteria && !sourcing_project_id) {
       filters = { location: job.location };
       console.log(`🗺️ Auto-applying location filter from job: ${job.location}`);
-    } else if (!filters && !hasLocationInCriteria) {
-      console.log(`🌍 Global search - no location filter applied`);
+    } else if (!filters || sourcing_project_id) {
+      console.log(`🌍 ${sourcing_project_id ? 'Sourcing' : 'Global'} search - no location filter applied`);
     }
 
     // Apply additional filters if provided
@@ -526,8 +536,11 @@ serve(async (req) => {
       return scoreB - scoreA;
     });
 
-    // Limit results
-    const limitedCandidates = analyzedCandidates.slice(0, limit);
+    // Limit results - for sourcing projects, return more candidates (up to 200)
+    // For job matching, keep it focused (up to 50)
+    const maxResults = sourcing_project_id ? 200 : 50;
+    const effectiveLimit = Math.min(limit, maxResults);
+    const limitedCandidates = analyzedCandidates.slice(0, effectiveLimit);
 
     const result: JobMatchingResult = {
       candidates: limitedCandidates,
