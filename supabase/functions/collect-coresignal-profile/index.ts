@@ -16,6 +16,7 @@ interface CollectRequest {
   project_id?: string;
   job_id?: string;
   organization_id?: string;
+  user_id?: string;
 }
 
 // Check credit availability with enhanced error details
@@ -94,9 +95,9 @@ serve(async (req) => {
   const cors = corsHeadersFor(origin);
 
   try {
-    const { coresignal_id, project_id, job_id, organization_id }: CollectRequest = await req.json();
+    const { coresignal_id, project_id, job_id, organization_id, user_id }: CollectRequest = await req.json();
 
-    console.log('📥 CoreSignal Collect Request:', { coresignal_id, project_id, job_id });
+    console.log('📥 CoreSignal Collect Request:', { coresignal_id, project_id, job_id, user_id });
 
     // Determine organization ID
     let orgId = organization_id;
@@ -203,6 +204,7 @@ serve(async (req) => {
     // Extract and structure the data
     const candidateData: any = {
       organization_id: orgId,
+      created_by: user_id || null,
       candidate_name: profile.full_name || 'Unknown',
       email: profile.emails?.[0] || null,
       phone: profile.phones?.[0] || null,

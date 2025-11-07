@@ -206,10 +206,13 @@ export function SourcingCandidateTable({
     setCollectingProfiles(prev => new Set(prev).add(coresignalId))
 
     try {
+      const { data: { user } } = await supabase.auth.getUser()
+
       const { data, error } = await supabase.functions.invoke('collect-coresignal-profile', {
         body: {
           coresignal_id: coresignalId,
-          job_id: jobId
+          job_id: jobId,
+          user_id: user?.id
         }
       })
 

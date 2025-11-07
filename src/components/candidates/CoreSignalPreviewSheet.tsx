@@ -107,10 +107,13 @@ export function CoreSignalPreviewSheet({
 
     setIsCollecting(true)
     try {
+      const { data: { user } } = await supabase.auth.getUser()
+
       const { data, error } = await supabase.functions.invoke('collect-coresignal-profile', {
         body: {
           coresignal_id: parseInt(coresignalId),
           job_id: jobId,
+          user_id: user?.id,
         }
       })
 
