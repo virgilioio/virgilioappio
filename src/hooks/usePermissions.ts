@@ -81,6 +81,8 @@ export function usePermissions(): PermissionsState {
 
   return {
     // Job permissions
+    // Note: Recruiters can view jobs, but RLS restricts them to only assigned jobs
+    // HMs and Interviewers are also restricted to assigned jobs via RLS
     canViewJobs: isPlatformAdmin || isWorkspaceOwner || isAdmin || isRecruiter || isHiringManager || isInterviewer,
     canCreateJobs: isPlatformAdmin || isWorkspaceOwner || isAdmin || isRecruiter,
     canEditJobs: isPlatformAdmin || isWorkspaceOwner || isAdmin || isRecruiter,
