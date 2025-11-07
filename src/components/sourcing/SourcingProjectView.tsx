@@ -179,7 +179,7 @@ export function SourcingProjectView({ projectId }: SourcingProjectViewProps) {
   }
   
   return (
-    <div className="flex h-screen overflow-hidden">
+    <div className="flex h-full overflow-hidden">
       <SourcingFiltersPanel 
         filters={filters}
         onFiltersChange={setFilters}
