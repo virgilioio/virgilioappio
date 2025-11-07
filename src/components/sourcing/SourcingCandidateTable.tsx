@@ -340,11 +340,12 @@ export function SourcingCandidateTable({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="h-full flex flex-col space-y-4">
       {/* Desktop Table View */}
-      <Card className="shadow-calendly hidden md:block">
-        <CardContent className="p-0">
-          <Table>
+      <Card className="shadow-calendly hidden md:block flex-1 flex flex-col overflow-hidden">
+        <CardContent className="p-0 flex-1 flex flex-col overflow-hidden">
+          <div className="flex-1 overflow-y-auto">
+            <Table>
             <TableHeader>
               <TableRow>
                 <TableHead className="w-[80px]">Source</TableHead>
@@ -599,10 +600,11 @@ export function SourcingCandidateTable({
               })}
             </TableBody>
           </Table>
+          </div>
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between px-6 py-4 border-t border-border">
+            <div className="flex items-center justify-between px-6 py-4 border-t border-border flex-shrink-0 bg-background">
               <div className="text-sm text-muted-foreground">
                 Showing {startIndex + 1} to {Math.min(startIndex + itemsPerPage, sortedData.length)} of {sortedData.length} candidates
               </div>
