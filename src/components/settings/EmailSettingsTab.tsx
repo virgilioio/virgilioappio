@@ -1,15 +1,17 @@
-import { Mail, Trash2, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Mail, Trash2, AlertCircle, CheckCircle2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { useMailIdentities } from '@/hooks/useMailIdentities';
+import { useSyncGmail } from '@/hooks/useSyncGmail';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatDistanceToNow } from 'date-fns';
 import { GoogleLogo } from '@/components/icons/GoogleLogo';
 
 export function EmailSettingsTab() {
   const { identities, isLoading, connectGmail, disconnectIdentity } = useMailIdentities();
+  const syncGmail = useSyncGmail();
 
   if (isLoading) {
     return (
@@ -73,6 +75,15 @@ export function EmailSettingsTab() {
                           {identity.sync_status}
                         </Badge>
                       )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => syncGmail.mutate(identity.id)}
+                        disabled={syncGmail.isPending}
+                      >
+                        <RefreshCw className={`h-4 w-4 mr-2 ${syncGmail.isPending ? 'animate-spin' : ''}`} />
+                        Sync Now
+                      </Button>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <Button 
