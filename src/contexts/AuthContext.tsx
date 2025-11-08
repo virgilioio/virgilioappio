@@ -85,9 +85,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         withRetry(async () => {
           return await supabase
             .from('organizations')
-            .select('id, name, organization_type, tenant_type')
+            .select('id, name, organization_type, tenant_type, parent_organization_id')
             .eq('status', 'active')
-            .or('organization_type.eq.platform,and(organization_type.eq.client,tenant_type.eq.saas)')
+            .or(`organization_type.eq.platform,and(organization_type.eq.client,tenant_type.eq.saas),and(organization_type.eq.client,tenant_type.eq.internal,parent_organization_id.eq.${VIRGILIO_ORG_ID})`)
             .order('organization_type', { ascending: false })
             .order('name', { ascending: true })
         }, 2, 500),
@@ -108,17 +108,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const switchOrganization = async (organizationId: string) => {
-    // Block organization switching for Virgilio staff
-    if (orgContext?.organizationId === VIRGILIO_ORG_ID) {
-      toast({
-        title: "Organization switching disabled",
-        description: "Virgilio staff cannot switch organizations.",
-        variant: "default",
-      });
-      log.info('🚫 Organization switch blocked for Virgilio staff');
-      return;
-    }
-
+    // Platform admins can now switch between platform and workspace contexts
     try {
       // Set organization in JWT metadata with timeout
       const setOrgPromise = supabase.functions.invoke('set-current-organization', {
