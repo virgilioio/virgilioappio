@@ -1254,7 +1254,7 @@ export type Database = {
           sent_at: string | null
           status: string
           subject: string
-          tenant_id: string | null
+          tenant_id: string
           thread_id: string | null
           to_addresses: string[]
           updated_at: string
@@ -1288,7 +1288,7 @@ export type Database = {
           sent_at?: string | null
           status?: string
           subject: string
-          tenant_id?: string | null
+          tenant_id: string
           thread_id?: string | null
           to_addresses: string[]
           updated_at?: string
@@ -1322,7 +1322,7 @@ export type Database = {
           sent_at?: string | null
           status?: string
           subject?: string
-          tenant_id?: string | null
+          tenant_id?: string
           thread_id?: string | null
           to_addresses?: string[]
           updated_at?: string
@@ -1871,7 +1871,7 @@ export type Database = {
           standardized_skills: string[] | null
           standardized_title: string | null
           status: Database["public"]["Enums"]["job_status"]
-          tenant_id: string | null
+          tenant_id: string
           title: string
           updated_at: string | null
         }
@@ -1896,7 +1896,7 @@ export type Database = {
           standardized_skills?: string[] | null
           standardized_title?: string | null
           status?: Database["public"]["Enums"]["job_status"]
-          tenant_id?: string | null
+          tenant_id: string
           title: string
           updated_at?: string | null
         }
@@ -1921,7 +1921,7 @@ export type Database = {
           standardized_skills?: string[] | null
           standardized_title?: string | null
           status?: Database["public"]["Enums"]["job_status"]
-          tenant_id?: string | null
+          tenant_id?: string
           title?: string
           updated_at?: string | null
         }
@@ -1999,7 +1999,7 @@ export type Database = {
           invited_email: string | null
           member_role: Database["public"]["Enums"]["member_role"]
           organization_id: string
-          tenant_id: string | null
+          tenant_id: string
           updated_at: string | null
           user_id: string | null
           user_status: string
@@ -2013,7 +2013,7 @@ export type Database = {
           invited_email?: string | null
           member_role: Database["public"]["Enums"]["member_role"]
           organization_id: string
-          tenant_id?: string | null
+          tenant_id: string
           updated_at?: string | null
           user_id?: string | null
           user_status?: string
@@ -2027,7 +2027,7 @@ export type Database = {
           invited_email?: string | null
           member_role?: Database["public"]["Enums"]["member_role"]
           organization_id?: string
-          tenant_id?: string | null
+          tenant_id?: string
           updated_at?: string | null
           user_id?: string | null
           user_status?: string
@@ -2263,7 +2263,7 @@ export type Database = {
           status: string
           suspended_at: string | null
           suspended_reason: string | null
-          tenant_id: string | null
+          tenant_id: string
           tenant_type: string | null
           trial_end_date: string | null
           updated_at: string
@@ -2289,7 +2289,7 @@ export type Database = {
           status?: string
           suspended_at?: string | null
           suspended_reason?: string | null
-          tenant_id?: string | null
+          tenant_id: string
           tenant_type?: string | null
           trial_end_date?: string | null
           updated_at?: string
@@ -2315,7 +2315,7 @@ export type Database = {
           status?: string
           suspended_at?: string | null
           suspended_reason?: string | null
-          tenant_id?: string | null
+          tenant_id?: string
           tenant_type?: string | null
           trial_end_date?: string | null
           updated_at?: string

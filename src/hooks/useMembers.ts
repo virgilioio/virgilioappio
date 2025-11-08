@@ -310,8 +310,16 @@ export function useMembers(includeHierarchy: boolean = false) {
         }
       }
       
+      // Get the tenant_id for this organization
+      const { data: org } = await supabase
+        .from('organizations')
+        .select('tenant_id')
+        .eq('id', data.organization_id)
+        .single()
+      
       const memberData = {
         organization_id: data.organization_id,
+        tenant_id: org?.tenant_id,
         member_role: data.member_role,
         user_status: data.user_id ? (data.user_status || 'active') : 'invited',
         user_id: data.user_id || null,
