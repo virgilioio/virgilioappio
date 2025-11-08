@@ -19,25 +19,22 @@ export interface MailIdentity {
 
 export function useMailIdentities() {
   const queryClient = useQueryClient();
-  const { organizationId, hasOrganizationContext } = useOrgContext();
 
   const { data: identities, isLoading } = useQuery({
-    queryKey: ['mail-identities', organizationId],
+    queryKey: ['mail-identities'],
     queryFn: async () => {
-      if (!hasOrganizationContext || !organizationId) {
-        return [];
-      }
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return [];
 
       const { data, error } = await supabase
         .from('user_mail_identities')
         .select('*')
-        .eq('organization_id', organizationId)
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
       return data as MailIdentity[];
     },
-    enabled: hasOrganizationContext && !!organizationId,
   });
 
   const connectGmail = useMutation({
