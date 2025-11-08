@@ -186,6 +186,7 @@ export type Database = {
           id: string
           metadata: Json | null
           organization_id: string | null
+          tenant_id: string | null
           title: string
           user_id: string
         }
@@ -198,6 +199,7 @@ export type Database = {
           id?: string
           metadata?: Json | null
           organization_id?: string | null
+          tenant_id?: string | null
           title: string
           user_id: string
         }
@@ -210,10 +212,19 @@ export type Database = {
           id?: string
           metadata?: Json | null
           organization_id?: string | null
+          tenant_id?: string | null
           title?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "activities_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       application_fields: {
         Row: {
@@ -935,6 +946,7 @@ export type Database = {
           source: string | null
           standardized_skills: string[] | null
           status: string | null
+          tenant_id: string | null
           updated_at: string
           years_experience: number | null
         }
@@ -976,6 +988,7 @@ export type Database = {
           source?: string | null
           standardized_skills?: string[] | null
           status?: string | null
+          tenant_id?: string | null
           updated_at?: string
           years_experience?: number | null
         }
@@ -1017,6 +1030,7 @@ export type Database = {
           source?: string | null
           standardized_skills?: string[] | null
           status?: string | null
+          tenant_id?: string | null
           updated_at?: string
           years_experience?: number | null
         }
@@ -1026,6 +1040,13 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "candidates_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -1233,6 +1254,7 @@ export type Database = {
           sent_at: string | null
           status: string
           subject: string
+          tenant_id: string | null
           thread_id: string | null
           to_addresses: string[]
           updated_at: string
@@ -1266,6 +1288,7 @@ export type Database = {
           sent_at?: string | null
           status?: string
           subject: string
+          tenant_id?: string | null
           thread_id?: string | null
           to_addresses: string[]
           updated_at?: string
@@ -1299,6 +1322,7 @@ export type Database = {
           sent_at?: string | null
           status?: string
           subject?: string
+          tenant_id?: string | null
           thread_id?: string | null
           to_addresses?: string[]
           updated_at?: string
@@ -1331,6 +1355,13 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_logs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -1840,6 +1871,7 @@ export type Database = {
           standardized_skills: string[] | null
           standardized_title: string | null
           status: Database["public"]["Enums"]["job_status"]
+          tenant_id: string | null
           title: string
           updated_at: string | null
         }
@@ -1864,6 +1896,7 @@ export type Database = {
           standardized_skills?: string[] | null
           standardized_title?: string | null
           status?: Database["public"]["Enums"]["job_status"]
+          tenant_id?: string | null
           title: string
           updated_at?: string | null
         }
@@ -1888,6 +1921,7 @@ export type Database = {
           standardized_skills?: string[] | null
           standardized_title?: string | null
           status?: Database["public"]["Enums"]["job_status"]
+          tenant_id?: string | null
           title?: string
           updated_at?: string | null
         }
@@ -1897,6 +1931,13 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -1958,6 +1999,7 @@ export type Database = {
           invited_email: string | null
           member_role: Database["public"]["Enums"]["member_role"]
           organization_id: string
+          tenant_id: string | null
           updated_at: string | null
           user_id: string | null
           user_status: string
@@ -1971,6 +2013,7 @@ export type Database = {
           invited_email?: string | null
           member_role: Database["public"]["Enums"]["member_role"]
           organization_id: string
+          tenant_id?: string | null
           updated_at?: string | null
           user_id?: string | null
           user_status?: string
@@ -1984,6 +2027,7 @@ export type Database = {
           invited_email?: string | null
           member_role?: Database["public"]["Enums"]["member_role"]
           organization_id?: string
+          tenant_id?: string | null
           updated_at?: string | null
           user_id?: string | null
           user_status?: string
@@ -2002,6 +2046,13 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "members_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -3380,6 +3431,87 @@ export type Database = {
         }
         Relationships: []
       }
+      tenants: {
+        Row: {
+          billing_address: string | null
+          billing_city: string | null
+          billing_contact_name: string | null
+          billing_country: string | null
+          billing_email: string | null
+          billing_phone: string | null
+          billing_postal_code: string | null
+          billing_state: string | null
+          created_at: string
+          id: string
+          metadata: Json | null
+          name: string
+          owner_id: string | null
+          settings: Json | null
+          signup_source: string | null
+          status: string
+          subscription_plan: string | null
+          subscription_renewal_date: string | null
+          subscription_status: string | null
+          suspended_at: string | null
+          suspended_reason: string | null
+          tenant_type: string
+          trial_end_date: string | null
+          updated_at: string
+        }
+        Insert: {
+          billing_address?: string | null
+          billing_city?: string | null
+          billing_contact_name?: string | null
+          billing_country?: string | null
+          billing_email?: string | null
+          billing_phone?: string | null
+          billing_postal_code?: string | null
+          billing_state?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          name: string
+          owner_id?: string | null
+          settings?: Json | null
+          signup_source?: string | null
+          status?: string
+          subscription_plan?: string | null
+          subscription_renewal_date?: string | null
+          subscription_status?: string | null
+          suspended_at?: string | null
+          suspended_reason?: string | null
+          tenant_type: string
+          trial_end_date?: string | null
+          updated_at?: string
+        }
+        Update: {
+          billing_address?: string | null
+          billing_city?: string | null
+          billing_contact_name?: string | null
+          billing_country?: string | null
+          billing_email?: string | null
+          billing_phone?: string | null
+          billing_postal_code?: string | null
+          billing_state?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json | null
+          name?: string
+          owner_id?: string | null
+          settings?: Json | null
+          signup_source?: string | null
+          status?: string
+          subscription_plan?: string | null
+          subscription_renewal_date?: string | null
+          subscription_status?: string | null
+          suspended_at?: string | null
+          suspended_reason?: string | null
+          tenant_type?: string
+          trial_end_date?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_mail_identities: {
         Row: {
           access_token: string | null
@@ -3669,6 +3801,7 @@ export type Database = {
         Args: { table_name: string; term_name: string }
         Returns: undefined
       }
+      is_platform_admin: { Args: never; Returns: boolean }
       is_trial_expired: { Args: { tenant_id_param: string }; Returns: boolean }
       is_user_assigned_to_job: {
         Args: { job_id_param: string; user_id_param?: string }
@@ -3754,6 +3887,10 @@ export type Database = {
       }
       user_has_org_hierarchy_access: {
         Args: { target_org_id: string }
+        Returns: boolean
+      }
+      user_has_tenant_access: {
+        Args: { check_tenant_id: string }
         Returns: boolean
       }
       user_is_workspace_owner: { Args: { org_id: string }; Returns: boolean }
