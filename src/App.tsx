@@ -74,35 +74,28 @@ function AppContent() {
 
         {/* Authenticated routes wrapped with RequireAuth and Layout */}
         <Route element={<RequireAuth><Layout /></RequireAuth>}>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/find" element={
-            <BillingGuard requireActive={false}>
-              <Find />
-            </BillingGuard>
-          } />
-          <Route path="/jobs" element={
-            <BillingGuard requireActive={false}>
-              <Jobs />
-            </BillingGuard>
-          } />
-          <Route path="/pipeline" element={<Pipeline />} />
-          <Route path="/jobs/:id" element={<JobDetail />} />
-          <Route path="/jobs/:jobId/candidates/:candidateId" element={<CandidateProfile />} />
-          <Route path="/candidates" element={
-            <BillingGuard requireActive={false}>
-              <Candidates />
-            </BillingGuard>
-          } />
-          <Route path="/candidates/:candidateId" element={<IndependentCandidateProfile />} />
-          <Route path="/members" element={<Members />} />
-          <Route path="/organizations" element={<Navigate to="/settings?tab=organizations" replace />} />
+          {/* Always accessible routes - users need access to manage billing */}
           <Route path="/billing" element={<Settings />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/settings/platform/saas-customers/:id" element={<SaaSCustomerDetail />} />
           <Route path="/account-setup" element={<AccountSetup />} />
           <Route path="/mail/oauth/callback" element={<MailOAuthCallback />} />
           <Route path="/onboarding" element={<Onboarding />} />
+          
+          {/* Protected routes - wrapped with BillingGuard */}
+          <Route element={<BillingGuard requireActive={false} />}>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/find" element={<Find />} />
+            <Route path="/jobs" element={<Jobs />} />
+            <Route path="/pipeline" element={<Pipeline />} />
+            <Route path="/jobs/:id" element={<JobDetail />} />
+            <Route path="/jobs/:jobId/candidates/:candidateId" element={<CandidateProfile />} />
+            <Route path="/candidates" element={<Candidates />} />
+            <Route path="/candidates/:candidateId" element={<IndependentCandidateProfile />} />
+            <Route path="/members" element={<Members />} />
+            <Route path="/organizations" element={<Navigate to="/settings?tab=organizations" replace />} />
+          </Route>
         </Route>
 
         {/* 404 catch-all - must be last */}

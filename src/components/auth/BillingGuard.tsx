@@ -1,4 +1,5 @@
 import { ReactNode } from 'react'
+import { Outlet } from 'react-router-dom'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { AlertTriangle, CreditCard, Mail } from 'lucide-react'
@@ -8,7 +9,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 
 interface BillingGuardProps {
-  children: ReactNode
+  children?: ReactNode
   requireActive?: boolean // If true, blocks for past_due/canceled too
   fallbackMessage?: string
 }
@@ -24,12 +25,12 @@ export function BillingGuard({
 
   // Platform admins never blocked
   if (userType === 'platform_admin') {
-    return <>{children}</>
+    return <>{children || <Outlet />}</>
   }
 
   // Hiring managers and interviewers never blocked (read-only roles)
   if (['hiring_manager', 'interviewer'].includes(memberRole || '')) {
-    return <>{children}</>
+    return <>{children || <Outlet />}</>
   }
 
   if (isLoading) {
@@ -115,5 +116,6 @@ export function BillingGuard({
     )
   }
 
-  return <>{children}</>
+  // Support both direct children and Outlet (for Route element usage)
+  return <>{children || <Outlet />}</>
 }
