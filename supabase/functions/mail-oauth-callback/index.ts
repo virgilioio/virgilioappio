@@ -149,7 +149,7 @@ const handler = async (req: Request): Promise<Response> => {
       refresh_token_encrypted: encryptedToken,
       token_expires_at: new Date(Date.now() + tokens.expires_in * 1000).toISOString(),
       is_active: true,
-      sync_status: 'healthy',
+      sync_status: 'active',
       last_sync_at: new Date().toISOString(),
     };
 
@@ -189,7 +189,7 @@ const handler = async (req: Request): Promise<Response> => {
       encrypted_refresh_token: encryptedToken,
       token_expires_at: new Date(Date.now() + tokens.expires_in * 1000).toISOString(),
       is_active: true,
-      sync_status: 'healthy',
+      sync_status: 'active',
       last_sync_at: new Date().toISOString(),
     };
 

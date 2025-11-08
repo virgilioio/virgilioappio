@@ -27,7 +27,7 @@ export function EmailAccountsSection() {
 
   const getSyncStatusBadge = (status: string) => {
     switch (status) {
-      case 'healthy':
+      case 'active':
         return <Badge variant="default" className="gap-1"><CheckCircle className="h-3 w-3" /> Connected</Badge>
       case 'error':
         return <Badge variant="destructive" className="gap-1"><XCircle className="h-3 w-3" /> Error</Badge>

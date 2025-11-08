@@ -64,7 +64,7 @@ export function EmailSettingsTab() {
                       </CardDescription>
                     </div>
                     <div className="flex items-center gap-2">
-                      {identity.sync_status === 'healthy' ? (
+                      {identity.sync_status === 'active' ? (
                         <Badge variant="outline" className="gap-1">
                           <CheckCircle2 className="h-3 w-3" />
                           Active

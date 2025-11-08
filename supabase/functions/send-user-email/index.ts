@@ -61,7 +61,7 @@ async function refreshAccessToken(supabase: any, identity: any): Promise<string>
     .update({
       access_token: tokens.access_token,
       token_expires_at: new Date(Date.now() + tokens.expires_in * 1000).toISOString(),
-      sync_status: 'healthy',
+      sync_status: 'active',
     })
     .eq('id', identity.id);
 
