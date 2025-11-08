@@ -43,7 +43,6 @@ export function useSaaSCustomers() {
         `)
         .eq('tenant_type', 'saas')
         .eq('organization_type', 'client')
-        .eq('signup_source', 'self_serve')
         .is('parent_organization_id', null) // Only parent tenants
         .order('created_at', { ascending: false })
 
