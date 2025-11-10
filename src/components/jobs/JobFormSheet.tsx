@@ -56,6 +56,9 @@ export function JobFormSheet({ isOpen, onClose, onSubmit, job, isLoading }: JobF
   const { members } = useMembers()
   const { userType, organizationId } = useAuth()
 
+  // Filter to only show child organizations (jobs must reference child orgs only)
+  const childOrganizations = organizations.filter(org => org.parent_organization_id !== null)
+
   useEffect(() => {
     if (job) {
       // Editing existing job - populate all fields from job data
@@ -81,11 +84,12 @@ export function JobFormSheet({ isOpen, onClose, onSubmit, job, isLoading }: JobF
         // Platform admins: don't auto-select, force them to choose
         defaultOrganizationId = ''
       } else if (organizationId) {
-        // Regular users: default to their organization
-        defaultOrganizationId = organizationId
-      } else if (organizations.length > 0) {
-        // Fallback: use first available organization
-        defaultOrganizationId = organizations[0].id
+        // Regular users: default to their organization (if it's a child org)
+        const isChildOrg = childOrganizations.some(org => org.id === organizationId)
+        defaultOrganizationId = isChildOrg ? organizationId : ''
+      } else if (childOrganizations.length > 0) {
+        // Fallback: use first available child organization
+        defaultOrganizationId = childOrganizations[0].id
       }
 
       setFormData(prev => ({
@@ -95,7 +99,7 @@ export function JobFormSheet({ isOpen, onClose, onSubmit, job, isLoading }: JobF
       setSelectedSkills([])
       setAutoSkills([])
     }
-  }, [job, organizations, userType, organizationId])
+  }, [job, childOrganizations, userType, organizationId])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -126,7 +130,7 @@ export function JobFormSheet({ isOpen, onClose, onSubmit, job, isLoading }: JobF
       await onSubmit(submitData)
       onClose()
       // Reset form
-      const defaultOrgId = userType === 'platform_admin' ? '' : (organizationId || organizations[0]?.id || '')
+      const defaultOrgId = userType === 'platform_admin' ? '' : (organizationId || childOrganizations[0]?.id || '')
       setFormData({
         title: '',
         description: '',
@@ -325,16 +329,29 @@ export function JobFormSheet({ isOpen, onClose, onSubmit, job, isLoading }: JobF
                   <SelectValue placeholder="Select organization" />
                 </SelectTrigger>
                 <SelectContent>
-                  {organizations.map(org => (
-                    <SelectItem key={org.id} value={org.id}>
-                      {org.name}
-                    </SelectItem>
-                  ))}
+                  {childOrganizations.length === 0 ? (
+                    <div className="p-2 text-sm text-muted-foreground">
+                      No child organizations available. Jobs must be assigned to child organizations.
+                    </div>
+                  ) : (
+                    childOrganizations.map(org => (
+                      <SelectItem key={org.id} value={org.id}>
+                        {org.name}
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
-              {userType === 'platform_admin' && !formData.organization_id && (
+              {!formData.organization_id && childOrganizations.length > 0 && (
                 <p className="text-sm text-muted-foreground mt-1">
-                  Platform admins must select an organization
+                  {userType === 'platform_admin' 
+                    ? 'Platform admins must select a child organization' 
+                    : 'Please select a child organization'}
+                </p>
+              )}
+              {childOrganizations.length === 0 && (
+                <p className="text-sm text-destructive mt-1">
+                  No child organizations available. Contact your administrator.
                 </p>
               )}
             </div>

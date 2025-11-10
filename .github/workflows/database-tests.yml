@@ -1,0 +1,56 @@
+name: Database Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'supabase/migrations/**'
+      - 'supabase/tests/**'
+      - '.github/workflows/database-tests.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'supabase/migrations/**'
+      - 'supabase/tests/**'
+      - '.github/workflows/database-tests.yml'
+
+jobs:
+  test:
+    name: Run Database Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+      
+      - name: Install Supabase CLI
+        run: npm install -g supabase
+      
+      - name: Start Supabase
+        run: supabase start
+      
+      - name: Run database migrations
+        run: supabase db reset --debug
+      
+      - name: Make test script executable
+        run: chmod +x scripts/run-db-tests.sh
+      
+      - name: Run pgTAP tests
+        run: ./scripts/run-db-tests.sh
+      
+      - name: Stop Supabase
+        if: always()
+        run: supabase stop
+      
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-results
+          path: /tmp/test_output.txt
+          retention-days: 7

@@ -19,6 +19,9 @@ export interface AuditLogParams {
 /**
  * Log an audit event from the client or edge function
  * 
+ * Note: Audit logs are now stored in the `audit.audit_logs` table,
+ * which is immutable (append-only). No updates or deletes allowed.
+ * 
  * @param params - Audit log parameters
  * @returns Audit log ID if successful
  */
