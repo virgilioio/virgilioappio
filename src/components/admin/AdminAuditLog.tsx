@@ -14,14 +14,14 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 
 interface AuditLogEntry {
   id: string
-  user_id: string | null
+  user_id: string
   action: string
-  table_name: string | null
-  record_id: string | null
+  table_name: string
+  record_id: string
   old_values: any
   new_values: any
   ip_address: unknown // inet type from PostgreSQL
-  user_agent: string | null
+  user_agent: string
   created_at: string
 }
 
