@@ -285,8 +285,8 @@ export function useMembers(includeHierarchy: boolean = false) {
           throw new Error('Failed to verify seat availability. Please try again.')
         }
 
-        if (seatCheck && Array.isArray(seatCheck) && seatCheck.length > 0) {
-          const limit = seatCheck[0]
+        if (seatCheck) {
+          const limit = seatCheck
           
           if (!limit.allowed) {
             // Different messages for trial vs paid
@@ -353,7 +353,7 @@ export function useMembers(includeHierarchy: boolean = false) {
       }
       
       // Get the tenant_id for this organization
-      const { data: org } = await supabase
+      const { data: orgData } = await supabase
         .from('organizations')
         .select('tenant_id')
         .eq('id', data.organization_id)
@@ -361,7 +361,7 @@ export function useMembers(includeHierarchy: boolean = false) {
       
       const memberData = {
         organization_id: data.organization_id,
-        tenant_id: org?.tenant_id,
+        tenant_id: orgData?.tenant_id,
         member_role: data.member_role,
         user_status: data.user_id ? (data.user_status || 'active') : 'invited',
         user_id: data.user_id || null,

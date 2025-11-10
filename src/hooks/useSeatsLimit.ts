@@ -26,11 +26,11 @@ export function useSeatsLimit(tenantId: string | undefined) {
         throw error
       }
 
-      if (!data || !Array.isArray(data) || data.length === 0) {
+      if (!data) {
         throw new Error('No seat limit data returned')
       }
 
-      return data[0]
+      return data
     },
     enabled: !!tenantId,
     staleTime: 30 * 1000, // 30 seconds
