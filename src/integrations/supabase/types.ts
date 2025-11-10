@@ -241,8 +241,8 @@ export type Database = {
           is_default: boolean
           is_required: boolean
           max_file_size_mb: number | null
-          organization_id: string | null
           placeholder_text: string | null
+          tenant_id: string | null
           updated_at: string
         }
         Insert: {
@@ -259,8 +259,8 @@ export type Database = {
           is_default?: boolean
           is_required?: boolean
           max_file_size_mb?: number | null
-          organization_id?: string | null
           placeholder_text?: string | null
+          tenant_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -277,16 +277,16 @@ export type Database = {
           is_default?: boolean
           is_required?: boolean
           max_file_size_mb?: number | null
-          organization_id?: string | null
           placeholder_text?: string | null
+          tenant_id?: string | null
           updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "application_fields_organization_id_fkey"
-            columns: ["organization_id"]
+            foreignKeyName: "application_fields_tenant_id_fkey"
+            columns: ["tenant_id"]
             isOneToOne: false
-            referencedRelation: "organizations"
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -1062,8 +1062,8 @@ export type Database = {
           description: string | null
           id: string
           name: string
-          organization_id: string | null
           source: string
+          tenant_id: string | null
           updated_at: string
         }
         Insert: {
@@ -1073,8 +1073,8 @@ export type Database = {
           description?: string | null
           id?: string
           name: string
-          organization_id?: string | null
           source?: string
+          tenant_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -1084,16 +1084,16 @@ export type Database = {
           description?: string | null
           id?: string
           name?: string
-          organization_id?: string | null
           source?: string
+          tenant_id?: string | null
           updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "contract_templates_organization_id_fkey"
-            columns: ["organization_id"]
+            foreignKeyName: "contract_templates_tenant_id_fkey"
+            columns: ["tenant_id"]
             isOneToOne: false
-            referencedRelation: "organizations"
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -1950,11 +1950,11 @@ export type Database = {
           id: string
           is_active: boolean
           is_default: boolean
-          organization_id: string | null
           stage_description: string | null
           stage_name: string
           stage_priority: number | null
           stage_type: Database["public"]["Enums"]["stage_type_enum"]
+          tenant_id: string | null
           updated_at: string
         }
         Insert: {
@@ -1963,11 +1963,11 @@ export type Database = {
           id?: string
           is_active?: boolean
           is_default?: boolean
-          organization_id?: string | null
           stage_description?: string | null
           stage_name: string
           stage_priority?: number | null
           stage_type: Database["public"]["Enums"]["stage_type_enum"]
+          tenant_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -1976,19 +1976,19 @@ export type Database = {
           id?: string
           is_active?: boolean
           is_default?: boolean
-          organization_id?: string | null
           stage_description?: string | null
           stage_name?: string
           stage_priority?: number | null
           stage_type?: Database["public"]["Enums"]["stage_type_enum"]
+          tenant_id?: string | null
           updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "job_stages_organization_id_fkey"
-            columns: ["organization_id"]
+            foreignKeyName: "job_stages_tenant_id_fkey"
+            columns: ["tenant_id"]
             isOneToOne: false
-            referencedRelation: "organizations"
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -2355,7 +2355,7 @@ export type Database = {
           description: string | null
           id: string
           name: string
-          organization_id: string | null
+          tenant_id: string | null
           updated_at: string
         }
         Insert: {
@@ -2365,7 +2365,7 @@ export type Database = {
           description?: string | null
           id?: string
           name: string
-          organization_id?: string | null
+          tenant_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -2375,15 +2375,15 @@ export type Database = {
           description?: string | null
           id?: string
           name?: string
-          organization_id?: string | null
+          tenant_id?: string | null
           updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "offer_templates_organization_id_fkey"
-            columns: ["organization_id"]
+            foreignKeyName: "offer_templates_tenant_id_fkey"
+            columns: ["tenant_id"]
             isOneToOne: false
-            referencedRelation: "organizations"
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
