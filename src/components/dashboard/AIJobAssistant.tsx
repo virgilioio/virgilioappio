@@ -20,6 +20,8 @@ import { useJobs } from '@/hooks/useJobs'
 import { useAuth } from '@/contexts/AuthContext'
 import { SafeHtml } from '@/components/ui/safe-html'
 import { useCoresignalCreditWarnings } from '@/hooks/useCoresignalCreditWarnings'
+import { useChildOrganizationsForJobCreation } from '@/hooks/useChildOrganizationsForJobCreation'
+import { SearchableSelect } from '@/components/ui/searchable-select'
 
 interface JobSpec {
   job_title: string
@@ -98,12 +100,14 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
   const [isRefreshingMatches, setIsRefreshingMatches] = useState(false)
   const [marketInsights, setMarketInsights] = useState<any>(null)
   const [createdJobId, setCreatedJobId] = useState<string | null>(null)
+  const [selectedOrgId, setSelectedOrgId] = useState<string>('')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const { toast } = useToast()
   const { createJob } = useJobs()
   const navigate = useNavigate()
-  const { user, organizationId } = useAuth()
+  const { user, organizationId, userType } = useAuth()
   const { isSearchDisabled } = useCoresignalCreditWarnings()
+  const { data: childOrgs, isLoading: isLoadingOrgs } = useChildOrganizationsForJobCreation()
 
   const currentValidation = validateJobPrompt(prompt)
   const validItemsCount = currentValidation.filter(item => item.checked).length
@@ -202,6 +206,16 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
   const handleSaveDraft = async () => {
     if (!editableJobSpec || createdJobId) return // Idempotent check
 
+    // Validate organization is selected
+    if (!selectedOrgId) {
+      toast({
+        title: 'Organization Required',
+        description: 'Please select a job folder (department) for this job.',
+        variant: 'destructive'
+      })
+      return
+    }
+
     setIsCreatingJob(true)
     try {
       // Map AI level format to database enum
@@ -222,7 +236,7 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
         currency: editableJobSpec.salary_range.currency,
         status: 'draft' as const,
         skills: editableSkills,
-        organization_id: organizationId
+        organization_id: selectedOrgId
       }
 
       const newJob = await createJob(jobData)
@@ -295,6 +309,16 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
       return
     }
 
+    // Validate organization is selected
+    if (!selectedOrgId) {
+      toast({
+        title: 'Organization Required',
+        description: 'Please select a job folder (department) for this job.',
+        variant: 'destructive'
+      })
+      return
+    }
+
     // Otherwise create new (fallback if user skipped sourcing somehow)
     setIsCreatingJob(true)
     try {
@@ -315,7 +339,7 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
         currency: editableJobSpec.salary_range.currency,
         status: 'draft' as const,
         skills: editableSkills,
-        organization_id: organizationId
+        organization_id: selectedOrgId
       }
 
       const newJob = await createJob(jobData)
@@ -433,7 +457,7 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
       case 'prompt':
         return jobSpec !== null
       case 'specs':
-        return editableJobSpec !== null && !isCreatingJob
+        return editableJobSpec !== null && !isCreatingJob && !!selectedOrgId
       default:
         return false
     }
@@ -576,6 +600,27 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
                 {/* Step 2: Specs */}
                 {currentStep === 'specs' && (
                   <div className="space-y-6 pt-6">
+                    {/* Organization Selector */}
+                    <div className="space-y-2">
+                      <Label>Job Folder (Department) *</Label>
+                      <SearchableSelect
+                        options={(childOrgs || []).map(org => ({
+                          value: org.id,
+                          label: org.name
+                        }))}
+                        value={selectedOrgId}
+                        onValueChange={setSelectedOrgId}
+                        placeholder={isLoadingOrgs ? "Loading organizations..." : "Select a job folder..."}
+                        disabled={isLoadingOrgs}
+                        searchPlaceholder="Search folders..."
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        {userType === 'platform_admin' 
+                          ? 'Select which client organization this job belongs to'
+                          : 'Select which department/folder this job belongs to'}
+                      </p>
+                    </div>
+
                     {/* Job Title */}
                     <div className="space-y-2">
                       <Label>Job Title</Label>
