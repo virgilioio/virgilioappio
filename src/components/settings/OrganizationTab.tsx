@@ -51,33 +51,41 @@ export function OrganizationTab() {
       return null
     }
     
+    // Filter to only parent tenants (org_kind = 'tenant')
+    const parentTenants = organizations.filter(org => org.org_kind === 'tenant')
+    
+    if (parentTenants.length === 0) {
+      console.warn('OrganizationTab getUserOrganization - no parent tenants found')
+      return null
+    }
+    
     // For both workspace owners and platform admins, prioritize organizations they own
     if ((userType === 'workspace_owner' || userType === 'platform_admin') && user) {
-      console.log('OrganizationTab getUserOrganization - checking for owned organizations for user:', user.id, 'userType:', userType)
+      console.log('OrganizationTab getUserOrganization - checking for owned parent tenants for user:', user.id, 'userType:', userType)
       
-      const ownedOrganization = organizations.find(org => org.owner_id === user.id)
-      if (ownedOrganization) {
-        console.log('OrganizationTab getUserOrganization - found owned organization:', ownedOrganization.name, 'id:', ownedOrganization.id)
-        return ownedOrganization
+      const ownedTenant = parentTenants.find(org => org.owner_id === user.id)
+      if (ownedTenant) {
+        console.log('OrganizationTab getUserOrganization - found owned parent tenant:', ownedTenant.name, 'id:', ownedTenant.id)
+        return ownedTenant
       }
       
-      console.log('OrganizationTab getUserOrganization - no owned organization found for user:', user.id)
+      console.log('OrganizationTab getUserOrganization - no owned parent tenant found for user:', user.id)
       
-      // For workspace owners without owned organizations, this might indicate a data issue
+      // For workspace owners without owned parent tenants, this might indicate a data issue
       if (userType === 'workspace_owner') {
-        console.warn('OrganizationTab getUserOrganization - workspace owner has no owned organization, this may indicate a data issue')
+        console.warn('OrganizationTab getUserOrganization - workspace owner has no owned parent tenant, this may indicate a data issue')
       }
       
-      // For platform admins, fallback to first organization if no owned organization found
+      // For platform admins, fallback to first parent tenant if no owned organization found
       if (userType === 'platform_admin') {
-        console.log('OrganizationTab getUserOrganization - platform admin fallback to first available organization')
-        return organizations[0]
+        console.log('OrganizationTab getUserOrganization - platform admin fallback to first available parent tenant')
+        return parentTenants[0]
       }
     }
     
-    // For other user types or fallback case, use first organization
-    console.log('OrganizationTab getUserOrganization - using first available organization for userType:', userType)
-    return organizations[0]
+    // For other user types or fallback case, use first parent tenant
+    console.log('OrganizationTab getUserOrganization - using first available parent tenant for userType:', userType)
+    return parentTenants[0]
   }
   
   const userOrganization = getUserOrganization()
