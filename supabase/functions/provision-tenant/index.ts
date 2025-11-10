@@ -90,29 +90,10 @@ serve(async (req) => {
     const tenantId = tenantOrg.id as string;
     log("Created tenant", { tenantId });
 
-    // Create first workspace under tenant
-    const { data: wsOrg, error: wsErr } = await supabase
-      .from("organizations")
-      .insert({ 
-        name: workspaceName, 
-        org_kind: "client", 
-        parent_organization_id: tenantId, 
-        status: "active", 
-        owner_id: user.id,
-        signup_source: "self_serve",
-        tenant_type: "saas",
-        organization_type: "client"
-      })
-      .select("id")
-      .single();
-    if (wsErr) throw new Error(`Failed to create workspace org: ${wsErr.message}`);
-    const workspaceId = wsOrg.id as string;
-    log("Created workspace", { workspaceId });
-
-    // Add user as workspace_owner/admin
+    // Add user as workspace_owner/admin of parent tenant
     const { error: memberErr } = await supabase.from("members").insert({
       user_id: user.id,
-      organization_id: workspaceId,
+      organization_id: tenantId,
       tenant_id: tenantId,
       user_type: "workspace_owner",
       member_role: "admin",
@@ -145,7 +126,6 @@ serve(async (req) => {
 
     log("Provisioning complete", { 
       tenantId, 
-      workspaceId, 
       trialEndsAt: trialEnd.toISOString(),
       trialDays: 14,
       billingStatus: 'trialing',
@@ -154,7 +134,7 @@ serve(async (req) => {
     });
 
     return new Response(
-      JSON.stringify({ status: "ok", tenantId, workspaceId, trialEnd }),
+      JSON.stringify({ status: "ok", tenantId, trialEnd }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
     );
   } catch (e) {
