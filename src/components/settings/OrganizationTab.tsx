@@ -12,6 +12,7 @@ import { VerifiedDomainsManager } from './VerifiedDomainsManager'
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/hooks/use-toast'
 import { useIsVirgilioAdmin } from '@/hooks/useIsVirgilioAdmin'
+import { supabase } from '@/lib/supabaseClient'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -42,10 +43,51 @@ export function OrganizationTab() {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   
+  // Separate data fetch for platform admins to get the Virgilio organization
+  const [platformAdminOrg, setPlatformAdminOrg] = useState<any>(null)
+  const [platformAdminOrgLoading, setPlatformAdminOrgLoading] = useState(false)
   
-  console.log('OrganizationTab render - organizations:', organizations, 'isLoading:', isLoading, 'error:', error, 'userType:', userType)
+  useEffect(() => {
+    async function fetchPlatformAdminOrg() {
+      if (userType !== 'platform_admin') return
+      
+      setPlatformAdminOrgLoading(true)
+      try {
+        const { data, error } = await supabase
+          .from('organizations')
+          .select('*')
+          .eq('name', 'Virgilio')
+          .eq('organization_type', 'platform')
+          .eq('tenant_type', 'saas')
+          .eq('org_kind', 'tenant')
+          .single()
+        
+        if (error) {
+          console.error('Error fetching platform admin organization:', error)
+        } else {
+          console.log('OrganizationTab - fetched Virgilio platform org:', data)
+          setPlatformAdminOrg(data)
+        }
+      } catch (err) {
+        console.error('Error in fetchPlatformAdminOrg:', err)
+      } finally {
+        setPlatformAdminOrgLoading(false)
+      }
+    }
+    
+    fetchPlatformAdminOrg()
+  }, [userType])
+  
+  console.log('OrganizationTab render - organizations:', organizations, 'isLoading:', isLoading, 'error:', error, 'userType:', userType, 'platformAdminOrg:', platformAdminOrg)
   
   const getUserOrganization = () => {
+    // For platform admins, use the separately-fetched Virgilio organization
+    if (userType === 'platform_admin') {
+      console.log('OrganizationTab getUserOrganization - platform admin using Virgilio org:', platformAdminOrg?.name)
+      return platformAdminOrg
+    }
+    
+    // For other user types, use the useOrganizations hook data
     if (!organizations || organizations.length === 0) {
       console.log('OrganizationTab getUserOrganization - no organizations available')
       return null
@@ -59,9 +101,9 @@ export function OrganizationTab() {
       return null
     }
     
-    // For both workspace owners and platform admins, prioritize organizations they own
-    if ((userType === 'workspace_owner' || userType === 'platform_admin') && user) {
-      console.log('OrganizationTab getUserOrganization - checking for owned parent tenants for user:', user.id, 'userType:', userType)
+    // For workspace owners, prioritize organizations they own
+    if (userType === 'workspace_owner' && user) {
+      console.log('OrganizationTab getUserOrganization - checking for owned parent tenants for user:', user.id)
       
       const ownedTenant = parentTenants.find(org => org.owner_id === user.id)
       if (ownedTenant) {
@@ -69,21 +111,10 @@ export function OrganizationTab() {
         return ownedTenant
       }
       
-      console.log('OrganizationTab getUserOrganization - no owned parent tenant found for user:', user.id)
-      
-      // For workspace owners without owned parent tenants, this might indicate a data issue
-      if (userType === 'workspace_owner') {
-        console.warn('OrganizationTab getUserOrganization - workspace owner has no owned parent tenant, this may indicate a data issue')
-      }
-      
-      // For platform admins, fallback to first parent tenant if no owned organization found
-      if (userType === 'platform_admin') {
-        console.log('OrganizationTab getUserOrganization - platform admin fallback to first available parent tenant')
-        return parentTenants[0]
-      }
+      console.warn('OrganizationTab getUserOrganization - workspace owner has no owned parent tenant, this may indicate a data issue')
     }
     
-    // For other user types or fallback case, use first parent tenant
+    // Fallback to first parent tenant
     console.log('OrganizationTab getUserOrganization - using first available parent tenant for userType:', userType)
     return parentTenants[0]
   }
@@ -221,7 +252,8 @@ const [orgFormData, setOrgFormData] = useState<OrganizationFormData>({
     )
   }
 
-  if (isLoading) {
+  // Show loading state when either useOrganizations is loading OR platform admin org is loading
+  if (isLoading || (userType === 'platform_admin' && platformAdminOrgLoading)) {
     console.log('OrganizationTab - rendering loading state')
     return (
       <div className="space-y-6">
