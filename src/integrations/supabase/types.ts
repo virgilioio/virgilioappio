@@ -922,6 +922,7 @@ export type Database = {
           coresignal_search_score: number | null
           created_at: string
           created_by: string | null
+          deleted_at: string | null
           email: string | null
           enriched_at: string | null
           enrichment_status: string | null
@@ -964,6 +965,7 @@ export type Database = {
           coresignal_search_score?: number | null
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
           email?: string | null
           enriched_at?: string | null
           enrichment_status?: string | null
@@ -1006,6 +1008,7 @@ export type Database = {
           coresignal_search_score?: number | null
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
           email?: string | null
           enriched_at?: string | null
           enrichment_status?: string | null
@@ -1461,6 +1464,7 @@ export type Database = {
         Row: {
           assigned_by: string | null
           created_at: string
+          deleted_at: string | null
           id: string
           job_id: string
           organization_id: string
@@ -1470,6 +1474,7 @@ export type Database = {
         Insert: {
           assigned_by?: string | null
           created_at?: string
+          deleted_at?: string | null
           id?: string
           job_id: string
           organization_id: string
@@ -1479,6 +1484,7 @@ export type Database = {
         Update: {
           assigned_by?: string | null
           created_at?: string
+          deleted_at?: string | null
           id?: string
           job_id?: string
           organization_id?: string
@@ -1735,6 +1741,7 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string | null
+          deleted_at: string | null
           description: string | null
           details: Json
           id: string
@@ -1747,6 +1754,7 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
           description?: string | null
           details?: Json
           id?: string
@@ -1759,6 +1767,7 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string | null
+          deleted_at?: string | null
           description?: string | null
           details?: Json
           id?: string
@@ -1902,6 +1911,7 @@ export type Database = {
           created_at: string | null
           created_by: string | null
           currency: string | null
+          deleted_at: string | null
           department: string | null
           description: string | null
           hiring_team: Json | null
@@ -1927,6 +1937,7 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           currency?: string | null
+          deleted_at?: string | null
           department?: string | null
           description?: string | null
           hiring_team?: Json | null
@@ -1952,6 +1963,7 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           currency?: string | null
+          deleted_at?: string | null
           department?: string | null
           description?: string | null
           hiring_team?: Json | null
@@ -3684,6 +3696,10 @@ export type Database = {
         Args: { p_changes: Json; p_organization_id: string }
         Returns: Json
       }
+      admin_restore_record: {
+        Args: { record_id: string; table_name: string }
+        Returns: Json
+      }
       audit_platform_admin_access: {
         Args: never
         Returns: {
@@ -3876,6 +3892,7 @@ export type Database = {
         Args: { table_name: string; term_name: string }
         Returns: undefined
       }
+      is_child_organization: { Args: { org_id: string }; Returns: boolean }
       is_platform_admin: { Args: never; Returns: boolean }
       is_trial_expired: { Args: { tenant_id_param: string }; Returns: boolean }
       is_user_assigned_to_job: {
@@ -3945,6 +3962,10 @@ export type Database = {
       soft_delete_job_stage: {
         Args: { stage_id_param: string }
         Returns: undefined
+      }
+      soft_delete_record: {
+        Args: { record_id: string; table_name: string }
+        Returns: Json
       }
       sync_all_postings_field_order: { Args: never; Returns: undefined }
       sync_job_candidates_to_independent: {
