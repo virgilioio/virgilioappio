@@ -113,6 +113,7 @@ serve(async (req) => {
     const { error: memberErr } = await supabase.from("members").insert({
       user_id: user.id,
       organization_id: workspaceId,
+      tenant_id: tenantId,
       user_type: "workspace_owner",
       member_role: "admin",
       user_status: "active",
