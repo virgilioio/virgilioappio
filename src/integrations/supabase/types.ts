@@ -3671,6 +3671,19 @@ export type Database = {
         Args: { asset_type_param: string; new_asset_id: string }
         Returns: undefined
       }
+      admin_delete_candidate: {
+        Args: { p_candidate_id: string }
+        Returns: Json
+      }
+      admin_delete_job: { Args: { p_job_id: string }; Returns: Json }
+      admin_manage_member: {
+        Args: { p_changes: Json; p_member_id: string }
+        Returns: Json
+      }
+      admin_manage_organization: {
+        Args: { p_changes: Json; p_organization_id: string }
+        Returns: Json
+      }
       audit_platform_admin_access: {
         Args: never
         Returns: {

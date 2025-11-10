@@ -303,22 +303,52 @@ export function useOrganizations() {
     setError(null)
 
     try {
-      log.debug('Soft deleting organization:', id)
-      const { error: deleteError } = await supabase
-        .from('organizations')
-        .update({ status: 'inactive' })
-        .eq('id', id)
+      log.debug('Deleting organization:', id)
+      
+      // Platform admins must use the admin-operations edge function
+      // This ensures all admin actions are audited
+      if (userType === 'platform_admin') {
+        log.debug('Platform admin deleting organization via edge function:', id)
+        const { data, error: edgeFunctionError } = await supabase.functions.invoke('admin-operations', {
+          body: { 
+            action: 'manage-organization',
+            organization_id: id,
+            changes: { _delete: true }
+          }
+        })
 
-      if (deleteError) {
-        log.error('Error deleting organization:', deleteError)
-        throw deleteError
+        if (edgeFunctionError) {
+          log.error('Error calling admin-operations edge function:', edgeFunctionError)
+          throw edgeFunctionError
+        }
+
+        if (!data?.success) {
+          throw new Error(data?.error || 'Failed to delete organization')
+        }
+
+        log.debug('Organization deleted via admin edge function:', data)
+        toast({
+          title: 'Success',
+          description: data.message || 'Organization deactivated successfully'
+        })
+      } else {
+        // Workspace owners can soft delete directly via RLS (status = inactive)
+        const { error: deleteError } = await supabase
+          .from('organizations')
+          .update({ status: 'inactive' })
+          .eq('id', id)
+
+        if (deleteError) {
+          log.error('Error deleting organization:', deleteError)
+          throw deleteError
+        }
+
+        log.debug('Soft deleted organization:', id)
+        toast({
+          title: 'Success',
+          description: 'Organization deactivated successfully'
+        })
       }
-
-      log.debug('Soft deleted organization:', id)
-      toast({
-        title: 'Success',
-        description: 'Organization deactivated successfully'
-      })
 
       await getOrganizations()
     } catch (err) {

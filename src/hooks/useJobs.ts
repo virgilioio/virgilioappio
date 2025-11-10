@@ -382,16 +382,50 @@ export function useJobs() {
 
     try {
       log.debug('Deleting job:', id)
-      const { error: deleteError } = await withAuthRetry(async () =>
-        await supabase
-          .from('jobs')
-          .delete()
-          .eq('id', id)
-      )
+      
+      // Platform admins must use the admin-operations edge function
+      // This ensures all admin actions are audited
+      if (userType === 'platform_admin') {
+        log.debug('Platform admin deleting job via edge function:', id)
+        const { data, error: edgeFunctionError } = await supabase.functions.invoke('admin-operations', {
+          body: { 
+            action: 'delete-job',
+            job_id: id 
+          }
+        })
 
-      if (deleteError) {
-        console.error('Error deleting job:', deleteError)
-        throw deleteError
+        if (edgeFunctionError) {
+          console.error('Error calling admin-operations edge function:', edgeFunctionError)
+          throw edgeFunctionError
+        }
+
+        if (!data?.success) {
+          throw new Error(data?.error || 'Failed to delete job')
+        }
+
+        log.debug('Job deleted via admin edge function:', data)
+        toast({
+          title: 'Success',
+          description: data.message || 'Job deleted successfully'
+        })
+      } else {
+        // Workspace owners can delete directly via RLS
+        const { error: deleteError } = await withAuthRetry(async () =>
+          await supabase
+            .from('jobs')
+            .delete()
+            .eq('id', id)
+        )
+
+        if (deleteError) {
+          console.error('Error deleting job:', deleteError)
+          throw deleteError
+        }
+
+        toast({
+          title: 'Success',
+          description: 'Job deleted successfully'
+        })
       }
 
       console.log('Deleted job:', id)

@@ -61,7 +61,7 @@ export function useIndependentCandidates() {
   const [candidates, setCandidates] = useState<IndependentCandidate[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const { user, organizationId } = useAuth()
+  const { user, organizationId, userType } = useAuth()
 
   const getCandidates = async () => {
     if (!user || !organizationId) return
@@ -235,19 +235,52 @@ export function useIndependentCandidates() {
 
     try {
       log.debug('Deleting independent candidate:', id)
-      const { error: deleteError } = await withAuthRetry(async () =>
-        await supabase
-          .from('candidates')
-          .delete()
-          .eq('id', id)
-      )
+      
+      // Platform admins must use the admin-operations edge function
+      // This ensures all admin actions are audited
+      if (userType === 'platform_admin') {
+        log.debug('Platform admin deleting candidate via edge function:', id)
+        const { data, error: edgeFunctionError } = await supabase.functions.invoke('admin-operations', {
+          body: { 
+            action: 'delete-candidate',
+            candidate_id: id 
+          }
+        })
 
-      if (deleteError) {
-        log.error('Error deleting independent candidate:', deleteError)
-        throw deleteError
+        if (edgeFunctionError) {
+          log.error('Error calling admin-operations edge function:', edgeFunctionError)
+          throw edgeFunctionError
+        }
+
+        if (!data?.success) {
+          throw new Error(data?.error || 'Failed to delete candidate')
+        }
+
+        log.debug('Candidate deleted via admin edge function:', data)
+        toast({
+          title: 'Success',
+          description: data.message || 'Candidate deleted successfully'
+        })
+      } else {
+        // Workspace owners can delete directly via RLS
+        const { error: deleteError } = await withAuthRetry(async () =>
+          await supabase
+            .from('candidates')
+            .delete()
+            .eq('id', id)
+        )
+
+        if (deleteError) {
+          log.error('Error deleting independent candidate:', deleteError)
+          throw deleteError
+        }
+
+        log.debug('Deleted independent candidate:', id)
+        toast({
+          title: 'Success',
+          description: 'Candidate deleted successfully'
+        })
       }
-
-      log.debug('Deleted independent candidate:', id)
       toast({
         title: 'Success',
         description: 'Candidate deleted successfully'
