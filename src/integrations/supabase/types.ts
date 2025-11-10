@@ -3894,7 +3894,6 @@ export type Database = {
       }
       is_child_organization: { Args: { org_id: string }; Returns: boolean }
       is_platform_admin: { Args: never; Returns: boolean }
-      is_platform_admin_safe: { Args: never; Returns: boolean }
       is_trial_expired: { Args: { tenant_id_param: string }; Returns: boolean }
       is_user_assigned_to_job: {
         Args: { job_id_param: string; user_id_param?: string }
@@ -3991,10 +3990,6 @@ export type Database = {
         Returns: boolean
       }
       user_is_workspace_owner: { Args: { org_id: string }; Returns: boolean }
-      user_is_workspace_owner_safe: {
-        Args: { p_org_id: string }
-        Returns: boolean
-      }
       validate_invite_token: {
         Args: { token_input: string }
         Returns: {
