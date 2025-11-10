@@ -3453,6 +3453,56 @@ export type Database = {
         }
         Relationships: []
       }
+      tenant_domains: {
+        Row: {
+          added_by: string
+          created_at: string
+          domain: string
+          id: string
+          tenant_id: string
+          updated_at: string
+          verification_method: string | null
+          verification_token: string | null
+          verified: boolean
+          verified_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          added_by: string
+          created_at?: string
+          domain: string
+          id?: string
+          tenant_id: string
+          updated_at?: string
+          verification_method?: string | null
+          verification_token?: string | null
+          verified?: boolean
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          added_by?: string
+          created_at?: string
+          domain?: string
+          id?: string
+          tenant_id?: string
+          updated_at?: string
+          verification_method?: string | null
+          verification_token?: string | null
+          verified?: boolean
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_domains_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenant_metrics_daily: {
         Row: {
           ai_requests: number | null
@@ -3870,6 +3920,7 @@ export type Database = {
       }
       encrypt_refresh_token: { Args: { token: string }; Returns: string }
       execute_candidate_sync: { Args: never; Returns: undefined }
+      extract_domain_from_email: { Args: { email: string }; Returns: string }
       generate_invite_token: { Args: never; Returns: string }
       get_all_feature_flags: {
         Args: never
@@ -3969,6 +4020,10 @@ export type Database = {
         Args: { tenant_id_param: string }
         Returns: number
       }
+      get_tenant_for_verified_domain: {
+        Args: { p_domain: string }
+        Returns: string
+      }
       get_tenant_id_for_user: { Args: { p_user_id: string }; Returns: string }
       get_user_email: { Args: never; Returns: string }
       get_user_member_data: {
@@ -3996,6 +4051,7 @@ export type Database = {
       is_child_organization: { Args: { org_id: string }; Returns: boolean }
       is_email_suppressed: { Args: { p_email: string }; Returns: boolean }
       is_platform_admin: { Args: never; Returns: boolean }
+      is_public_email_domain: { Args: { domain: string }; Returns: boolean }
       is_trial_expired: { Args: { tenant_id_param: string }; Returns: boolean }
       is_user_assigned_to_job: {
         Args: { job_id_param: string; user_id_param?: string }
