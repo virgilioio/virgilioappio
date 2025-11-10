@@ -381,7 +381,7 @@ const [orgFormData, setOrgFormData] = useState<OrganizationFormData>({
       {/* Verified Domains Management */}
       {userOrganization?.id && (userType === 'workspace_owner' || isVirgilioAdmin) && (
         <VerifiedDomainsManager
-          tenantId={userOrganization.id}
+          tenantId={userOrganization.tenant_id}
           isWorkspaceOwner={userType === 'workspace_owner'}
           isPlatformAdmin={isVirgilioAdmin}
         />
