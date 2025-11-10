@@ -2,7 +2,7 @@ import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { JobStage, useJobStages } from '@/hooks/useJobStages'
-import { Edit, Trash2 } from 'lucide-react'
+import { Edit, Trash2, Plus } from 'lucide-react'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
 
 interface JobStagesTableProps {
@@ -10,7 +10,9 @@ interface JobStagesTableProps {
   isLoading: boolean
   onEdit: (stage: JobStage) => void
   onDelete?: (id: string) => Promise<void>
+  onCopy?: (stageId: string) => Promise<void>
   context?: 'platform-defaults' | 'organization'
+  readOnly?: boolean
 }
 
 const stageTypeLabels: Record<string, string> = {
@@ -44,7 +46,7 @@ const stageTypeVariants: Record<string, import("@/components/ui/badge").BadgePro
   custom: 'secondary'
 }
 
-export function JobStagesTable({ stages, isLoading, onEdit, onDelete, context = 'organization' }: JobStagesTableProps) {
+export function JobStagesTable({ stages, isLoading, onEdit, onDelete, onCopy, context = 'organization', readOnly = false }: JobStagesTableProps) {
   const { deleteStage, isDeleting } = useJobStages()
 
   const handleDelete = async (id: string) => {
@@ -123,42 +125,54 @@ export function JobStagesTable({ stages, isLoading, onEdit, onDelete, context = 
               )}
               <TableCell>
                 <div className="flex items-center space-x-2">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => onEdit(stage)}
-                    disabled={context === 'organization' && stage.source === 'platform'}
-                  >
-                    <Edit className="w-4 h-4" />
-                  </Button>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
+                  {readOnly && onCopy ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => onCopy(stage.id)}
+                    >
+                      <Plus className="w-4 h-4 mr-1" /> Copy to My Library
+                    </Button>
+                  ) : (
+                    <>
                       <Button
                         variant="ghost"
                         size="sm"
-                        disabled={isDeleting || (context === 'organization' && stage.source === 'platform')}
+                        onClick={() => onEdit(stage)}
+                        disabled={context === 'organization' && stage.source === 'platform'}
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Edit className="w-4 h-4" />
                       </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Stage</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Are you sure you want to delete "{stage.stage_name}"? This action cannot be undone.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                          onClick={() => handleDelete(stage.id)}
-                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        >
-                          Delete
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={isDeleting || (context === 'organization' && stage.source === 'platform')}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Stage</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to delete "{stage.stage_name}"? This action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDelete(stage.id)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </>
+                  )}
                 </div>
               </TableCell>
             </TableRow>

@@ -14,7 +14,10 @@ interface JobStagesManagerProps {
 export function JobStagesManager({ context = 'organization' }: JobStagesManagerProps) {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false)
   const [editingStage, setEditingStage] = useState<JobStage | null>(null)
-  const { stages, isLoading } = useJobStages(context)
+  const { stages, isLoading, copyPlatformTemplate } = useJobStages(context)
+
+  const platformStages = stages?.filter(s => s.source === 'platform')
+  const tenantStages = stages?.filter(s => s.source === 'tenant')
 
   const handleEdit = (stage: JobStage) => {
     setEditingStage(stage)
@@ -32,14 +35,44 @@ export function JobStagesManager({ context = 'organization' }: JobStagesManagerP
     setEditingStage(null)
   }
 
+  const handleCopy = async (stageId: string) => {
+    await copyPlatformTemplate(stageId)
+  }
+
   return (
     <div className="space-y-6">
+      {context === 'organization' && platformStages.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Platform Library</CardTitle>
+            <CardDescription>
+              Default stages provided by the platform. Copy to your library to customize.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <JobStagesTable 
+              stages={platformStages} 
+              isLoading={isLoading} 
+              onEdit={() => {}}
+              onCopy={handleCopy}
+              context={context}
+              readOnly
+            />
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle>Stages Library</CardTitle>
+            <CardTitle>
+              {context === 'organization' ? 'My Library' : 'Stages Library'}
+            </CardTitle>
             <CardDescription>
-              Manage job stages that can be used across jobs in your organization
+              {context === 'organization' 
+                ? 'Custom stages for your organization'
+                : 'Manage job stages that can be used across jobs in your organization'
+              }
             </CardDescription>
           </div>
           <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
@@ -65,7 +98,7 @@ export function JobStagesManager({ context = 'organization' }: JobStagesManagerP
         </CardHeader>
         <CardContent>
           <JobStagesTable 
-            stages={stages} 
+            stages={context === 'organization' ? tenantStages : stages} 
             isLoading={isLoading} 
             onEdit={handleEdit}
             context={context}

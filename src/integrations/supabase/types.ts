@@ -3828,6 +3828,14 @@ export type Database = {
       check_recursion_safety: { Args: never; Returns: boolean }
       cleanup_expired_invitations: { Args: never; Returns: number }
       cleanup_expired_salary_data: { Args: never; Returns: number }
+      copy_platform_template_to_tenant: {
+        Args: {
+          p_target_tenant_id: string
+          p_template_id: string
+          p_template_table: string
+        }
+        Returns: string
+      }
       debug_user_permissions: {
         Args: never
         Returns: {

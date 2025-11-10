@@ -4,11 +4,11 @@ import { useToast } from '@/hooks/use-toast';
 
 interface ContractTemplate {
   id: string;
-  organization_id: string | null;
+  tenant_id: string | null;
   name: string;
   description: string | null;
   content: string;
-  source: string;
+  source: 'platform' | 'tenant';
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -31,29 +31,39 @@ export function useContractTemplates(context: ContractTemplatesContext = 'organi
         .order('created_at', { ascending: false });
 
       if (context === 'platform-defaults') {
-        query = query.is('organization_id', null);
+        query = query.is('tenant_id', null);
       } else {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error('Not authenticated');
 
         const { data: memberData } = await supabase
           .from('members')
-          .select('organization_id')
+          .select('tenant_id')
           .eq('user_id', user.id)
+          .eq('user_status', 'active')
           .single();
 
-        if (!memberData?.organization_id) {
+        if (!memberData?.tenant_id) {
           setTemplates([]);
           return;
         }
 
-        query = query.or(`organization_id.eq.${memberData.organization_id},organization_id.is.null`);
+        query = query.or(`tenant_id.eq.${memberData.tenant_id},tenant_id.is.null`);
       }
 
-      const { data, error } = await query;
+      const { data, error } = await query
+        .order('tenant_id', { ascending: true, nullsFirst: true })
+        .order('name');
 
       if (error) throw error;
-      setTemplates(data || []);
+      
+      // Add source identification
+      const templatesWithSource = (data || []).map((template: any) => ({
+        ...template,
+        source: template.tenant_id ? 'tenant' as const : 'platform' as const
+      }));
+      
+      setTemplates(templatesWithSource);
     } catch (error: any) {
       console.error('Error fetching contract templates:', error);
       toast({
@@ -75,16 +85,19 @@ export function useContractTemplates(context: ContractTemplatesContext = 'organi
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
-      let orgId: string | null = null;
+      let tenantId: string | null = null;
       
       if (context === 'organization') {
         const { data: memberData } = await supabase
           .from('members')
-          .select('organization_id')
+          .select('tenant_id, user_type')
           .eq('user_id', user.id)
+          .eq('user_status', 'active')
           .single();
         
-        orgId = memberData?.organization_id || null;
+        if (memberData?.user_type === 'workspace_owner') {
+          tenantId = memberData?.tenant_id || null;
+        }
       }
 
       const { error } = await supabase
@@ -93,9 +106,8 @@ export function useContractTemplates(context: ContractTemplatesContext = 'organi
           name: templateData.name,
           description: templateData.description,
           content: templateData.content,
-          organization_id: orgId,
+          tenant_id: tenantId,
           created_by: user.id,
-          source: orgId ? 'custom' : 'platform',
         });
 
       if (error) throw error;
@@ -173,6 +185,46 @@ export function useContractTemplates(context: ContractTemplatesContext = 'organi
     }
   };
 
+  const copyPlatformTemplate = async (templateId: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: memberData } = await supabase
+        .from('members')
+        .select('tenant_id')
+        .eq('user_id', user?.id)
+        .eq('user_status', 'active')
+        .single();
+
+      if (!memberData?.tenant_id) {
+        throw new Error('No tenant found');
+      }
+
+      const { data, error } = await supabase.rpc('copy_platform_template_to_tenant', {
+        p_template_table: 'contract_templates',
+        p_template_id: templateId,
+        p_target_tenant_id: memberData.tenant_id
+      });
+
+      if (error) throw error;
+      
+      await fetchTemplates();
+      toast({
+        title: 'Success',
+        description: 'Template copied to your library',
+      });
+      
+      return data;
+    } catch (error: any) {
+      console.error('Error copying platform template:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to copy template',
+        variant: 'destructive',
+      });
+      throw error;
+    }
+  };
+
   useEffect(() => {
     fetchTemplates();
   }, [context]);
@@ -183,6 +235,7 @@ export function useContractTemplates(context: ContractTemplatesContext = 'organi
     createTemplate,
     updateTemplate,
     deleteTemplate,
+    copyPlatformTemplate,
     refetchTemplates: fetchTemplates,
   };
 }

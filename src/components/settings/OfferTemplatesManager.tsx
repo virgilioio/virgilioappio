@@ -25,9 +25,9 @@ export function OfferTemplatesManager({ context = 'organization' }: OfferTemplat
   const [templateType, setTemplateType] = useState<TemplateType>('offer-letters')
   
   // Hooks for different template types
-  const { templates: offerTemplates, isLoading: offerLoading, deleteTemplate: deleteOffer } = useOfferTemplates(context)
+  const { templates: offerTemplates, isLoading: offerLoading, deleteTemplate: deleteOffer, copyPlatformTemplate: copyOffer } = useOfferTemplates(context)
   const { templates: emailTemplates, isLoading: emailLoading, deleteTemplate: deleteEmail } = useEmailTemplates(context)
-  const { templates: contractTemplates, isLoading: contractLoading, deleteTemplate: deleteContract } = useContractTemplates(context)
+  const { templates: contractTemplates, isLoading: contractLoading, deleteTemplate: deleteContract, copyPlatformTemplate: copyContract } = useContractTemplates(context)
   
   // Sheet states
   const [offerLetterSheet, setOfferLetterSheet] = useState({ open: false, templateId: undefined as string | undefined })
@@ -37,6 +37,12 @@ export function OfferTemplatesManager({ context = 'organization' }: OfferTemplat
   // Fields dialog state
   const [isFieldsDialogOpen, setIsFieldsDialogOpen] = useState(false)
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null)
+
+  // Separate platform and tenant templates
+  const platformOfferTemplates = offerTemplates?.filter(t => t.source === 'platform')
+  const tenantOfferTemplates = offerTemplates?.filter(t => t.source === 'tenant')
+  const platformContractTemplates = contractTemplates?.filter(t => t.source === 'platform')
+  const tenantContractTemplates = contractTemplates?.filter(t => t.source === 'tenant')
 
   const openCreateSheet = () => {
     if (templateType === 'offer-letters') {
@@ -61,6 +67,14 @@ export function OfferTemplatesManager({ context = 'organization' }: OfferTemplat
   const openFieldsDialog = (templateId: string) => {
     setSelectedTemplateId(templateId)
     setIsFieldsDialogOpen(true)
+  }
+
+  const handleCopyOffer = async (templateId: string) => {
+    await copyOffer(templateId)
+  }
+
+  const handleCopyContract = async (templateId: string) => {
+    await copyContract(templateId)
   }
 
   return (
@@ -108,9 +122,55 @@ export function OfferTemplatesManager({ context = 'organization' }: OfferTemplat
         <CardContent>
           {templateType === 'offer-letters' && (
             <>
+              {context === 'organization' && platformOfferTemplates.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold mb-2">Platform Library</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Default templates provided by the platform. Copy to your library to customize.
+                  </p>
+                  {offerLoading ? (
+                    <div className="text-center py-8">Loading templates...</div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Name</TableHead>
+                          <TableHead>Description</TableHead>
+                          <TableHead>Created</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {platformOfferTemplates.map((template) => (
+                          <TableRow key={template.id}>
+                            <TableCell className="font-medium">{template.name}</TableCell>
+                            <TableCell>
+                              {template.description || <span className="text-muted-foreground italic">No description</span>}
+                            </TableCell>
+                            <TableCell>
+                              {new Date(template.created_at).toLocaleDateString()}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleCopyOffer(template.id)}
+                              >
+                                <Plus className="h-4 w-4 mr-1" /> Copy to My Library
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </div>
+              )}
+
+              {context === 'organization' && <h3 className="text-lg font-semibold mb-2">My Library</h3>}
               {offerLoading ? (
                 <div className="text-center py-8">Loading templates...</div>
-              ) : offerTemplates.length === 0 ? (
+              ) : (context === 'organization' ? tenantOfferTemplates : offerTemplates).length === 0 ? (
                 <div className="text-center py-8">
                   <FileText className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
                   <p className="text-muted-foreground">No offer templates found</p>
@@ -125,12 +185,11 @@ export function OfferTemplatesManager({ context = 'organization' }: OfferTemplat
                        <TableHead>Name</TableHead>
                        <TableHead>Description</TableHead>
                        <TableHead>Created</TableHead>
-                       {context === 'organization' && <TableHead>Source</TableHead>}
                        <TableHead className="text-right">Actions</TableHead>
                      </TableRow>
                    </TableHeader>
                    <TableBody>
-                    {offerTemplates.map((template) => (
+                    {(context === 'organization' ? tenantOfferTemplates : offerTemplates).map((template) => (
                       <TableRow key={template.id}>
                         <TableCell className="font-medium">{template.name}</TableCell>
                         <TableCell>
@@ -139,20 +198,12 @@ export function OfferTemplatesManager({ context = 'organization' }: OfferTemplat
                          <TableCell>
                            {new Date(template.created_at).toLocaleDateString()}
                          </TableCell>
-                         {context === 'organization' && (
-                           <TableCell>
-                             <Badge variant={template.source === 'platform' ? 'secondary' : 'default'}>
-                               {template.source === 'platform' ? 'Inherited' : 'Custom'}
-                             </Badge>
-                           </TableCell>
-                         )}
                          <TableCell className="text-right">
                            <div className="flex items-center justify-end gap-2">
                              <Button
                                variant="ghost"
                                size="sm"
                                onClick={() => openFieldsDialog(template.id)}
-                               disabled={context === 'organization' && template.source === 'platform'}
                              >
                                <SettingsIcon className="h-4 w-4" />
                              </Button>
@@ -160,7 +211,6 @@ export function OfferTemplatesManager({ context = 'organization' }: OfferTemplat
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => openEditSheet(template.id, 'offer-letters')}
-                                disabled={context === 'organization' && template.source === 'platform'}
                               >
                                 <Edit className="h-4 w-4" />
                               </Button>
@@ -169,7 +219,6 @@ export function OfferTemplatesManager({ context = 'organization' }: OfferTemplat
                                   <Button 
                                     variant="ghost" 
                                     size="sm"
-                                    disabled={context === 'organization' && template.source === 'platform'}
                                   >
                                     <Trash2 className="h-4 w-4" />
                                   </Button>
@@ -290,9 +339,55 @@ export function OfferTemplatesManager({ context = 'organization' }: OfferTemplat
           
           {templateType === 'contract-templates' && (
             <>
+              {context === 'organization' && platformContractTemplates.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold mb-2">Platform Library</h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Default templates provided by the platform. Copy to your library to customize.
+                  </p>
+                  {contractLoading ? (
+                    <div className="text-center py-8">Loading templates...</div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Name</TableHead>
+                          <TableHead>Description</TableHead>
+                          <TableHead>Created</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {platformContractTemplates.map((template) => (
+                          <TableRow key={template.id}>
+                            <TableCell className="font-medium">{template.name}</TableCell>
+                            <TableCell>
+                              {template.description || <span className="text-muted-foreground italic">No description</span>}
+                            </TableCell>
+                            <TableCell>
+                              {new Date(template.created_at).toLocaleDateString()}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleCopyContract(template.id)}
+                              >
+                                <Plus className="h-4 w-4 mr-1" /> Copy to My Library
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </div>
+              )}
+
+              {context === 'organization' && <h3 className="text-lg font-semibold mb-2">My Library</h3>}
               {contractLoading ? (
                 <div className="text-center py-8">Loading templates...</div>
-              ) : contractTemplates.length === 0 ? (
+              ) : (context === 'organization' ? tenantContractTemplates : contractTemplates).length === 0 ? (
                 <div className="text-center py-8">
                   <FileCheck className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
                   <p className="text-muted-foreground">No contract templates found</p>
@@ -307,12 +402,11 @@ export function OfferTemplatesManager({ context = 'organization' }: OfferTemplat
                       <TableHead>Name</TableHead>
                       <TableHead>Description</TableHead>
                       <TableHead>Created</TableHead>
-                      {context === 'organization' && <TableHead>Source</TableHead>}
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {contractTemplates.map((template) => (
+                    {(context === 'organization' ? tenantContractTemplates : contractTemplates).map((template) => (
                       <TableRow key={template.id}>
                         <TableCell className="font-medium">{template.name}</TableCell>
                         <TableCell>
@@ -321,20 +415,12 @@ export function OfferTemplatesManager({ context = 'organization' }: OfferTemplat
                         <TableCell>
                           {new Date(template.created_at).toLocaleDateString()}
                         </TableCell>
-                        {context === 'organization' && (
-                          <TableCell>
-                            <Badge variant={template.source === 'platform' ? 'secondary' : 'default'}>
-                              {template.source === 'platform' ? 'Inherited' : 'Custom'}
-                            </Badge>
-                          </TableCell>
-                        )}
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-2">
                             <Button
                               variant="ghost"
                               size="sm"
                               onClick={() => openEditSheet(template.id, 'contract-templates')}
-                              disabled={context === 'organization' && template.source === 'platform'}
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
@@ -343,7 +429,6 @@ export function OfferTemplatesManager({ context = 'organization' }: OfferTemplat
                                 <Button 
                                   variant="ghost" 
                                   size="sm"
-                                  disabled={context === 'organization' && template.source === 'platform'}
                                 >
                                   <Trash2 className="h-4 w-4" />
                                 </Button>

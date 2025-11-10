@@ -10,8 +10,8 @@ export interface OfferTemplate {
   created_by?: string
   created_at: string
   updated_at: string
-  source?: 'platform' | 'organization'
-  organization_id?: string | null
+  source?: 'platform' | 'tenant'
+  tenant_id?: string | null
 }
 
 export interface OfferTemplateField {
@@ -47,28 +47,28 @@ export function useOfferTemplates(context: OfferTemplatesContext = 'organization
 
       // Filter based on context
       if (context === 'platform-defaults') {
-        query = query.is('organization_id', null)
+        query = query.is('tenant_id', null)
       } else {
-        // For organization context, get both platform defaults and organization templates
+        // For organization context, get both platform defaults and tenant templates
         const { data: { user } } = await supabase.auth.getUser()
         const { data: memberData } = await supabase
           .from('members')
-          .select('organization_id, user_type')
+          .select('tenant_id')
           .eq('user_id', user?.id)
           .eq('user_status', 'active')
           .single()
 
-        if (memberData?.organization_id) {
-          // Fetch both platform defaults (organization_id IS NULL) and organization-specific templates
-          query = query.or(`organization_id.is.null,organization_id.eq.${memberData.organization_id}`)
+        if (memberData?.tenant_id) {
+          // Fetch both platform defaults (tenant_id IS NULL) and tenant-specific templates
+          query = query.or(`tenant_id.is.null,tenant_id.eq.${memberData.tenant_id}`)
         } else {
-          // If no organization, show only platform defaults
-          query = query.is('organization_id', null)
+          // If no tenant, show only platform defaults
+          query = query.is('tenant_id', null)
         }
       }
 
       const { data, error } = await query
-        .order('organization_id', { ascending: true, nullsFirst: true }) // Platform defaults first
+        .order('tenant_id', { ascending: true, nullsFirst: true }) // Platform defaults first
         .order('name')
 
       if (error) throw error
@@ -76,7 +76,7 @@ export function useOfferTemplates(context: OfferTemplatesContext = 'organization
       // Add source identification
       const templatesWithSource = (data || []).map((template: any) => ({
         ...template,
-        source: template.organization_id ? 'organization' as const : 'platform' as const
+        source: template.tenant_id ? 'tenant' as const : 'platform' as const
       }))
       
       setTemplates(templatesWithSource)
@@ -96,23 +96,23 @@ export function useOfferTemplates(context: OfferTemplatesContext = 'organization
     try {
       const { data: { user } } = await supabase.auth.getUser()
       
-      // Get user's organization for workspace owners
+      // Get user's tenant for workspace owners
       const { data: memberData } = await supabase
         .from('members')
-        .select('organization_id, user_type')
+        .select('tenant_id, user_type')
         .eq('user_id', user?.id)
         .eq('user_status', 'active')
         .single()
 
-      let organizationId = null
+      let tenantId = null
       if (context === 'organization' && memberData?.user_type === 'workspace_owner') {
-        organizationId = memberData.organization_id
+        tenantId = memberData.tenant_id
       }
-      // For platform-defaults context, organizationId stays null
+      // For platform-defaults context, tenantId stays null
 
       const enrichedTemplateData = {
         ...templateData,
-        organization_id: organizationId,
+        tenant_id: tenantId,
         created_by: user?.id
       }
 
@@ -194,6 +194,46 @@ export function useOfferTemplates(context: OfferTemplatesContext = 'organization
     }
   }
 
+  const copyPlatformTemplate = async (templateId: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      const { data: memberData } = await supabase
+        .from('members')
+        .select('tenant_id')
+        .eq('user_id', user?.id)
+        .eq('user_status', 'active')
+        .single()
+
+      if (!memberData?.tenant_id) {
+        throw new Error('No tenant found')
+      }
+
+      const { data, error } = await supabase.rpc('copy_platform_template_to_tenant', {
+        p_template_table: 'offer_templates',
+        p_template_id: templateId,
+        p_target_tenant_id: memberData.tenant_id
+      })
+
+      if (error) throw error
+      
+      await fetchTemplates()
+      toast({
+        title: 'Success',
+        description: 'Template copied to your library'
+      })
+      
+      return data
+    } catch (error: any) {
+      console.error('Error copying platform template:', error)
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to copy template',
+        variant: 'destructive'
+      })
+      throw error
+    }
+  }
+
   useEffect(() => {
     fetchTemplates()
   }, [])
@@ -204,6 +244,7 @@ export function useOfferTemplates(context: OfferTemplatesContext = 'organization
     createTemplate,
     updateTemplate,
     deleteTemplate,
+    copyPlatformTemplate,
     refetchTemplates: fetchTemplates
   }
 }
