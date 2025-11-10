@@ -27,6 +27,7 @@ export function MembersTab() {
 
   const currentOrg = organizations.find((o) => o.id === organizationId)
   const parentOrgId = currentOrg?.parent_organization_id || organizationId
+  const tenantId = currentOrg?.tenant_id
 
   const isPayingRole = (r: 'admin' | 'recruiter' | 'hiring_manager' | 'interviewer') =>
     r === 'admin' || r === 'recruiter'
@@ -143,6 +144,9 @@ export function MembersTab() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Seat Usage Card */}
+        {tenantId && <SeatUsageCard tenantId={tenantId} />}
 
         <TabsContent value="members">
           <MembersTable 

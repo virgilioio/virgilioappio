@@ -19,14 +19,14 @@ export function useSeatsLimit(tenantId: string | undefined) {
       }
 
       const { data, error } = await supabase
-        .rpc('check_seat_limit', { p_tenant_id: tenantId })
+        .rpc('check_seat_limit' as any, { p_tenant_id: tenantId }) as any
 
       if (error) {
         console.error('Error checking seat limit:', error)
         throw error
       }
 
-      if (!data || data.length === 0) {
+      if (!data || !Array.isArray(data) || data.length === 0) {
         throw new Error('No seat limit data returned')
       }
 

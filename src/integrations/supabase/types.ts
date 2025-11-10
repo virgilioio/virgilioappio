@@ -3876,6 +3876,17 @@ export type Database = {
         Returns: boolean
       }
       check_recursion_safety: { Args: never; Returns: boolean }
+      check_seat_limit: {
+        Args: { p_tenant_id: string }
+        Returns: {
+          allowed: boolean
+          billing_status: string
+          current_seats: number
+          is_trial: boolean
+          over_limit_count: number
+          seat_limit: number
+        }[]
+      }
       cleanup_expired_invitations: { Args: never; Returns: number }
       cleanup_expired_salary_data: { Args: never; Returns: number }
       copy_platform_template_to_tenant: {
