@@ -3981,6 +3981,14 @@ export type Database = {
         Args: { flag_name_param: string; is_active_param: boolean }
         Returns: boolean
       }
+      user_can_manage_org_members: {
+        Args: { org_id_param: string }
+        Returns: boolean
+      }
+      user_has_active_tenant_membership: {
+        Args: { tenant_id_param: string }
+        Returns: boolean
+      }
       user_has_org_hierarchy_access: {
         Args: { target_org_id: string }
         Returns: boolean
@@ -3990,6 +3998,10 @@ export type Database = {
         Returns: boolean
       }
       user_is_workspace_owner: { Args: { org_id: string }; Returns: boolean }
+      user_is_workspace_owner_in_tenant: {
+        Args: { tenant_id_param: string }
+        Returns: boolean
+      }
       validate_invite_token: {
         Args: { token_input: string }
         Returns: {
