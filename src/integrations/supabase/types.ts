@@ -3768,6 +3768,21 @@ export type Database = {
           updated_at: string
         }[]
       }
+      get_audit_logs: {
+        Args: { p_limit?: number; p_offset?: number }
+        Returns: {
+          action: string
+          created_at: string
+          id: string
+          ip_address: unknown
+          new_values: Json
+          old_values: Json
+          record_id: string
+          table_name: string
+          user_agent: string
+          user_id: string
+        }[]
+      }
       get_candidate_activities: {
         Args: { p_candidate_id: string; p_job_id?: string }
         Returns: {

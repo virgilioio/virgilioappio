@@ -20,7 +20,7 @@ interface AuditLogEntry {
   record_id: string | null
   old_values: any
   new_values: any
-  ip_address: string | null
+  ip_address: unknown // inet type from PostgreSQL
   user_agent: string | null
   created_at: string
 }
@@ -51,12 +51,12 @@ export function AdminAuditLog() {
     try {
       log.debug('Fetching audit logs')
       
-      // Query the audit.audit_logs table
+      // Use RPC function to query audit logs from the audit schema
       const { data, error: fetchError } = await supabase
-        .from('audit.audit_logs')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(100)
+        .rpc('get_audit_logs', { 
+          p_limit: 100,
+          p_offset: 0 
+        })
 
       if (fetchError) {
         log.error('Error fetching audit logs:', fetchError)
@@ -216,7 +216,7 @@ export function AdminAuditLog() {
                         {entry.user_id?.substring(0, 8)}...
                       </TableCell>
                       <TableCell className="font-mono text-xs">
-                        {entry.ip_address || '-'}
+                        {entry.ip_address ? String(entry.ip_address) : '-'}
                       </TableCell>
                     </TableRow>
                   ))
