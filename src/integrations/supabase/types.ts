@@ -1369,6 +1369,94 @@ export type Database = {
           },
         ]
       }
+      email_rate_limits: {
+        Row: {
+          created_at: string | null
+          daily_count: number
+          daily_limit: number
+          day_resets_at: string
+          hour_resets_at: string
+          hourly_count: number
+          hourly_limit: number
+          id: string
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          daily_count?: number
+          daily_limit?: number
+          day_resets_at?: string
+          hour_resets_at?: string
+          hourly_count?: number
+          hourly_limit?: number
+          id?: string
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          daily_count?: number
+          daily_limit?: number
+          day_resets_at?: string
+          hour_resets_at?: string
+          hourly_count?: number
+          hourly_limit?: number
+          id?: string
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_rate_limits_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_suppression_list: {
+        Row: {
+          created_at: string | null
+          details: Json | null
+          email: string
+          id: string
+          reason: string
+          suppressed_at: string | null
+          suppressed_by: string | null
+          tenant_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          details?: Json | null
+          email: string
+          id?: string
+          reason: string
+          suppressed_at?: string | null
+          suppressed_by?: string | null
+          tenant_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          details?: Json | null
+          email?: string
+          id?: string
+          reason?: string
+          suppressed_at?: string | null
+          suppressed_by?: string | null
+          tenant_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_suppression_list_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_templates: {
         Row: {
           body: string
@@ -3725,6 +3813,7 @@ export type Database = {
         }
         Returns: Json
       }
+      check_email_rate_limit: { Args: { p_tenant_id: string }; Returns: Json }
       check_org_hierarchy_role_access: {
         Args: { _organization_id: string; _required_role: string }
         Returns: boolean
@@ -3897,6 +3986,7 @@ export type Database = {
         Returns: undefined
       }
       is_child_organization: { Args: { org_id: string }; Returns: boolean }
+      is_email_suppressed: { Args: { p_email: string }; Returns: boolean }
       is_platform_admin: { Args: never; Returns: boolean }
       is_trial_expired: { Args: { tenant_id_param: string }; Returns: boolean }
       is_user_assigned_to_job: {

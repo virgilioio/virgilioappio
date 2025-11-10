@@ -242,6 +242,24 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
+    // Check if any recipient is suppressed
+    const allRecipients = [
+      ...request.to,
+      ...(request.cc || []),
+      ...(request.bcc || [])
+    ];
+    
+    for (const recipient of allRecipients) {
+      const { data: isSuppressed, error: suppressError } = await supabase
+        .rpc('is_email_suppressed', { p_email: recipient });
+      
+      if (suppressError) {
+        console.error('Error checking suppression:', suppressError);
+      } else if (isSuppressed) {
+        throw new Error(`Cannot send to ${recipient}: email is suppressed (bounced, complained, or unsubscribed)`);
+      }
+    }
+
     // Get tenant and verify from_email
     let memberData = null;
     let identity = null;
@@ -308,6 +326,44 @@ const handler = async (req: Request): Promise<Response> => {
       
       identity = mailIdentity;
     }
+
+    // Check rate limits for tenant (for both service role and user calls)
+    const { data: rateLimitCheck, error: rateLimitError } = await supabase
+      .rpc('check_email_rate_limit', { p_tenant_id: tenantId });
+    
+    if (rateLimitError) {
+      console.error('Rate limit check error:', rateLimitError);
+      throw new Error('Failed to check rate limits');
+    }
+    
+    if (!rateLimitCheck.allowed) {
+      const retryAfter = rateLimitCheck.retry_after || 3600;
+      const reason = rateLimitCheck.reason === 'hourly_limit_exceeded' 
+        ? 'Hourly email limit exceeded (50/hour)'
+        : 'Daily email limit exceeded (500/day)';
+      
+      return new Response(
+        JSON.stringify({ 
+          error: reason,
+          retry_after: retryAfter,
+          hourly_remaining: rateLimitCheck.hourly_remaining || 0,
+          daily_remaining: rateLimitCheck.daily_remaining || 0,
+        }),
+        {
+          status: 429,
+          headers: { 
+            'Content-Type': 'application/json',
+            'Retry-After': retryAfter.toString(),
+            ...corsHeaders 
+          },
+        }
+      );
+    }
+    
+    console.log('Rate limit check passed. Remaining:', {
+      hourly: rateLimitCheck.hourly_remaining,
+      daily: rateLimitCheck.daily_remaining,
+    });
 
     // Check if token needs refresh (expires within 5 minutes)
     let accessToken = identity.access_token;
@@ -515,6 +571,7 @@ const handler = async (req: Request): Promise<Response> => {
     
     const status = error.message.includes('Unauthorized') ? 401 
       : error.message.includes('not a connected identity') ? 403
+      : error.message.includes('email is suppressed') ? 400
       : error.name === 'ZodError' ? 400
       : 500;
 

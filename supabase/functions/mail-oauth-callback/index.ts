@@ -94,6 +94,32 @@ const handler = async (req: Request): Promise<Response> => {
 
     const tokens: GoogleTokenResponse = await tokenResponse.json();
 
+    // Validate OAuth scopes
+    const grantedScopes = tokens.scope ? tokens.scope.split(' ') : [];
+    const requiredMailScopes = [
+      'https://www.googleapis.com/auth/gmail.send',
+      'https://www.googleapis.com/auth/gmail.readonly',
+    ];
+    const requiredCalendarScopes = [
+      'https://www.googleapis.com/auth/calendar.events',
+    ];
+    
+    const missingMailScopes = requiredMailScopes.filter(scope => !grantedScopes.includes(scope));
+    const missingCalendarScopes = requiredCalendarScopes.filter(scope => !grantedScopes.includes(scope));
+    
+    if (missingMailScopes.length > 0) {
+      console.warn('[OAuth] Missing mail scopes:', missingMailScopes);
+      console.warn('[OAuth] Granted scopes:', grantedScopes);
+    }
+    
+    if (missingCalendarScopes.length > 0) {
+      console.warn('[OAuth] Missing calendar scopes:', missingCalendarScopes);
+      console.warn('[OAuth] Granted scopes:', grantedScopes);
+    }
+    
+    const hasMailAccess = missingMailScopes.length === 0;
+    const hasCalendarAccess = missingCalendarScopes.length === 0;
+
     // Fetch user's primary email and profile info
     const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
       headers: {
@@ -148,8 +174,8 @@ const handler = async (req: Request): Promise<Response> => {
       access_token: tokens.access_token,
       refresh_token_encrypted: encryptedToken,
       token_expires_at: new Date(Date.now() + tokens.expires_in * 1000).toISOString(),
-      is_active: true,
-      sync_status: 'active',
+      is_active: hasMailAccess, // Only activate if scopes are granted
+      sync_status: hasMailAccess ? 'active' : 'error',
       last_sync_at: new Date().toISOString(),
     };
 
@@ -176,80 +202,88 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error('Failed to store mail identity');
     }
 
-    console.log('Successfully stored mail identity for user:', user.id);
-
-    // Also store calendar identity with same credentials
-    const calendarIdentityData = {
-      user_id: user.id,
-      tenant_id: memberData.tenant_id,
-      provider: 'google',
-      email_address: userInfo.email,
-      display_name: userInfo.name || userInfo.email,
-      access_token: tokens.access_token,
-      encrypted_refresh_token: encryptedToken,
-      token_expires_at: new Date(Date.now() + tokens.expires_in * 1000).toISOString(),
-      is_active: true,
-      sync_status: 'active',
-      last_sync_at: new Date().toISOString(),
-    };
-
-    const { data: existingCalendarIdentity } = await supabase
-      .from('calendar_identities')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('email_address', userInfo.email)
-      .single();
-
-    let calendarResult;
-    if (existingCalendarIdentity) {
-      calendarResult = await supabase
-        .from('calendar_identities')
-        .update(calendarIdentityData)
-        .eq('id', existingCalendarIdentity.id)
-        .select()
-        .single();
+    if (!hasMailAccess) {
+      console.warn('[OAuth] Mail identity created but not active due to missing scopes');
     } else {
-      calendarResult = await supabase
-        .from('calendar_identities')
-        .insert(calendarIdentityData)
-        .select()
-        .single();
+      console.log('Successfully stored mail identity for user:', user.id);
     }
 
-    if (calendarResult.error) {
-      console.error('Failed to store calendar identity:', calendarResult.error);
-      // Don't throw - mail identity is already stored successfully
-    } else {
-      console.log('Successfully stored calendar identity for user:', user.id);
-      
-      // Automatically setup calendar watch for push notifications
-      try {
-        console.log('[mail-oauth-callback] Setting up calendar watch...');
-        
-        const watchResponse = await fetch(
-          `${supabaseUrl}/functions/v1/setup-calendar-watch`,
-          {
-            method: 'POST',
-            headers: {
-              'Authorization': authHeader,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              calendar_identity_id: calendarResult.data.id,
-            }),
-          }
-        );
+    // Also store calendar identity with same credentials (only if calendar scopes granted)
+    if (hasCalendarAccess) {
+      const calendarIdentityData = {
+        user_id: user.id,
+        tenant_id: memberData.tenant_id,
+        provider: 'google',
+        email_address: userInfo.email,
+        display_name: userInfo.name || userInfo.email,
+        access_token: tokens.access_token,
+        encrypted_refresh_token: encryptedToken,
+        token_expires_at: new Date(Date.now() + tokens.expires_in * 1000).toISOString(),
+        is_active: true,
+        sync_status: 'healthy',
+        last_sync_at: new Date().toISOString(),
+      };
 
-        if (watchResponse.ok) {
-          const watchData = await watchResponse.json();
-          console.log('[mail-oauth-callback] Calendar watch setup successful:', watchData);
-        } else {
-          console.error('[mail-oauth-callback] Failed to setup calendar watch');
-        }
-      } catch (watchError) {
-        console.error('[mail-oauth-callback] Error setting up calendar watch:', watchError);
-        // Don't fail the whole flow if watch setup fails
+      const { data: existingCalendarIdentity } = await supabase
+        .from('calendar_identities')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('email_address', userInfo.email)
+        .single();
+
+      let calendarResult;
+      if (existingCalendarIdentity) {
+        calendarResult = await supabase
+          .from('calendar_identities')
+          .update(calendarIdentityData)
+          .eq('id', existingCalendarIdentity.id)
+          .select()
+          .single();
+      } else {
+        calendarResult = await supabase
+          .from('calendar_identities')
+          .insert(calendarIdentityData)
+          .select()
+          .single();
       }
+
+      if (calendarResult.error) {
+        console.error('Failed to store calendar identity:', calendarResult.error);
+        // Don't throw - mail identity is already stored successfully
+      } else {
+        console.log('Successfully stored calendar identity for user:', user.id);
+        
+        // Automatically setup calendar watch for push notifications
+        try {
+          console.log('[mail-oauth-callback] Setting up calendar watch...');
+          
+          const watchResponse = await fetch(
+            `${supabaseUrl}/functions/v1/setup-calendar-watch`,
+            {
+              method: 'POST',
+              headers: {
+                'Authorization': authHeader,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                calendar_identity_id: calendarResult.data.id,
+              }),
+            }
+          );
+
+          if (watchResponse.ok) {
+            const watchData = await watchResponse.json();
+            console.log('[mail-oauth-callback] Calendar watch setup successful:', watchData);
+          } else {
+            console.error('[mail-oauth-callback] Failed to setup calendar watch');
+          }
+        } catch (watchError) {
+          console.error('[mail-oauth-callback] Error setting up calendar watch:', watchError);
+          // Don't fail the whole flow if watch setup fails
+        }
+      }
+    } else {
+      console.warn('[OAuth] Skipping calendar identity creation due to missing calendar scopes');
     }
 
     return new Response(
@@ -257,6 +291,14 @@ const handler = async (req: Request): Promise<Response> => {
         success: true,
         email: userInfo.email,
         identity_id: result.data.id,
+        scopes_granted: {
+          mail: hasMailAccess,
+          calendar: hasCalendarAccess,
+        },
+        warnings: [
+          ...(!hasMailAccess ? ['Missing required mail scopes. Email sending may not work.'] : []),
+          ...(!hasCalendarAccess ? ['Missing required calendar scopes. Calendar integration disabled.'] : []),
+        ],
       }),
       {
         status: 200,
