@@ -3814,6 +3814,10 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_candidate_tenant_id: {
+        Args: { candidate_id_param: string }
+        Returns: string
+      }
       get_fallback_interviewer_id: {
         Args: { booking_id: string }
         Returns: string

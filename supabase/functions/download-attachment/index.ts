@@ -61,7 +61,7 @@ Deno.serve(async (req) => {
     // Get attachment details from database (RLS will handle permissions)
     const { data: attachment, error: attachmentError } = await supabase
       .from('candidate_attachments')
-      .select('file_url, file_name, file_type')
+      .select('file_url, file_name, file_type, candidate_id, candidates!inner(tenant_id)')
       .eq('id', attachmentId)
       .single()
 
@@ -101,23 +101,31 @@ Deno.serve(async (req) => {
 
     console.log(`Successfully downloaded file: ${attachment.file_name}`)
 
-    // Log audit event for file download
+    // Log download to audit.download_logs table (Phase 4 MVP)
     try {
       // Get user ID from JWT
       const { data: { user } } = await supabase.auth.getUser()
       
-      await supabase.rpc('log_audit_event', {
-        p_action: 'attachment_downloaded',
-        p_table_name: 'candidate_attachments',
-        p_record_id: attachmentId,
-        p_user_id: user?.id || null,
-        p_old_values: null,
-        p_new_values: {
-          file_name: attachment.file_name,
-          file_type: attachment.file_type,
-          downloaded_at: new Date().toISOString()
-        }
-      });
+      // Extract tenant_id from attachment data
+      const tenantId = attachment.candidates?.tenant_id || null
+      
+      // Get IP address and user agent from request
+      const ipAddress = req.headers.get('x-forwarded-for') || req.headers.get('x-real-ip') || 'unknown'
+      const userAgent = req.headers.get('user-agent') || null
+      
+      await supabase
+        .from('download_logs')
+        .insert({
+          user_id: user?.id || null,
+          tenant_id: tenantId,
+          file_path: attachment.file_url,
+          file_type: 'candidate_attachment',
+          entity_id: attachment.candidate_id,
+          ip_address: ipAddress,
+          user_agent: userAgent
+        })
+      
+      console.log('Download logged to audit.download_logs')
     } catch (auditError) {
       // Don't fail the download if audit logging fails
       console.error('Failed to log download audit:', auditError);

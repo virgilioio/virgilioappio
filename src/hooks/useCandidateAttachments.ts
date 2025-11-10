@@ -76,11 +76,19 @@ export function useCandidateAttachments(candidateId: string) {
     try {
       console.log('Uploading file:', file.name, 'for candidate:', candidateId)
       
-      // Generate unique file path
-      const fileExt = file.name.split('.').pop()
-      const fileName = `${candidateId}/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
+      // Get user's tenant ID for tenant-aware path structure
+      const { data: tenantId, error: tenantError } = await supabase.rpc('get_user_tenant_id')
+      
+      if (tenantError || !tenantId) {
+        console.error('Failed to get tenant ID:', tenantError)
+        throw new Error('Unable to determine tenant context')
+      }
 
-      console.log('Generated file path:', fileName)
+      // Generate tenant-aware file path: tenants/{tenant_id}/candidates/{candidate_id}/{timestamp}-{random}.{ext}
+      const fileExt = file.name.split('.').pop()
+      const fileName = `tenants/${tenantId}/candidates/${candidateId}/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`
+
+      console.log('Generated tenant-aware file path:', fileName)
 
       // Upload file to storage
       const { error: storageError } = await supabase.storage
