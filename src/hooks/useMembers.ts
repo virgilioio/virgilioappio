@@ -263,6 +263,48 @@ export function useMembers(includeHierarchy: boolean = false) {
     try {
       log.debug('Creating member with organization_id:', data.organization_id, 'Full data:', data)
       
+      // Get the tenant_id for seat limit check
+      const { data: org } = await supabase
+        .from('organizations')
+        .select('tenant_id')
+        .eq('id', data.organization_id)
+        .single()
+      
+      const tenantId = org?.tenant_id
+      
+      // PRE-CHECK: Verify seat limit before creating invitation
+      // Only check if adding a billable role (admin or recruiter)
+      const isBillableRole = data.member_role === 'admin' || data.member_role === 'recruiter'
+      
+      if (tenantId && isBillableRole) {
+        const { data: seatCheck, error: seatError } = await supabase
+          .rpc('check_seat_limit', { p_tenant_id: tenantId })
+
+        if (seatError) {
+          log.error('Seat limit check failed:', seatError)
+          throw new Error('Failed to verify seat availability. Please try again.')
+        }
+
+        if (seatCheck && seatCheck.length > 0) {
+          const limit = seatCheck[0]
+          
+          if (!limit.allowed) {
+            // Different messages for trial vs paid
+            if (limit.is_trial) {
+              throw new Error(
+                `Trial seat limit reached (${limit.current_seats}/${limit.seat_limit} seats used, ${limit.over_limit_count} over limit). ` +
+                `Upgrade your plan to add more members.`
+              )
+            } else {
+              throw new Error(
+                `Seat limit reached (${limit.current_seats}/${limit.seat_limit}). ` +
+                `Please upgrade your plan to add more members.`
+              )
+            }
+          }
+        }
+      }
+      
       // Check for email duplication if email is provided
       if (data.email) {
         const emailToCheck = data.email;

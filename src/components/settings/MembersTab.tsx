@@ -10,6 +10,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { useAuth } from '@/contexts/AuthContext'
 import { useOrganizations } from '@/hooks/useOrganizations'
 import { PageHeader } from '@/components/layout/PageHeader'
+import { SeatUsageCard } from '@/components/members/SeatUsageCard'
 // Tenant subscription functionality removed
 import { addMonths, addYears, format } from 'date-fns'
 
