@@ -46,6 +46,80 @@ serve(async (req) => {
     );
   }
 
+    // Extract email domain and check for auto-join
+    const emailDomain = user.email?.split('@')[1]?.toLowerCase();
+    log("Email domain extracted", { emailDomain });
+
+    // Check if domain is public (skip auto-join for gmail, yahoo, etc.)
+    const { data: isPublicDomain } = await supabase
+      .rpc('is_public_email_domain', { domain: emailDomain });
+
+    if (!isPublicDomain && emailDomain) {
+      // Check for verified tenant domain
+      const { data: existingTenantId } = await supabase
+        .rpc('get_tenant_for_verified_domain', { p_domain: emailDomain });
+
+      if (existingTenantId) {
+        log("Domain matched verified tenant, auto-joining", { 
+          domain: emailDomain, 
+          tenantId: existingTenantId 
+        });
+
+        // Check if user already has membership in this tenant
+        const { data: existingMember } = await supabase
+          .from("members")
+          .select("id, organization_id, user_status")
+          .eq("user_id", user.id)
+          .eq("organization_id", existingTenantId)
+          .maybeSingle();
+
+        if (existingMember) {
+          log("User already has membership in auto-join tenant", { 
+            userId: user.id, 
+            orgId: existingTenantId 
+          });
+          return new Response(
+            JSON.stringify({
+              status: "auto_joined",
+              tenantId: existingTenantId,
+              message: `Already a member of workspace for ${emailDomain}`
+            }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+          );
+        }
+
+        // Add user as regular member (not workspace_owner)
+        const { error: memberErr } = await supabase.from("members").insert({
+          user_id: user.id,
+          organization_id: existingTenantId,  // Parent tenant
+          tenant_id: existingTenantId,
+          user_type: "recruiter",             // Regular user, not owner
+          member_role: "member",
+          user_status: "active",
+        });
+
+        if (memberErr) throw new Error(`Failed to auto-join tenant: ${memberErr.message}`);
+
+        log("Auto-join complete", { 
+          userId: user.id, 
+          tenantId: existingTenantId,
+          domain: emailDomain 
+        });
+
+        return new Response(
+          JSON.stringify({
+            status: "auto_joined",
+            tenantId: existingTenantId,
+            message: `Joined existing workspace for ${emailDomain}`
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+        );
+      }
+    }
+
+    // If no verified domain found, continue with new tenant creation...
+    log("No verified domain, creating new tenant", { emailDomain });
+
     const body = (await req.json().catch(() => ({}))) as ProvisionBody;
     const workspaceName = (body.workspaceName || "").trim();
     const trialDays = 14; // Fixed 14-day trial

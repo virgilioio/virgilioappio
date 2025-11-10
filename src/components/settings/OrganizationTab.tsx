@@ -7,9 +7,11 @@ import { Building, Edit, Lock, AlertTriangle, Save, Loader2 } from 'lucide-react
 import { PageHeader } from '@/components/layout/PageHeader'
 import { OrganizationDisplay } from './OrganizationDisplay'
 import { OrganizationSwitcher } from './OrganizationSwitcher'
+import { VerifiedDomainsManager } from './VerifiedDomainsManager'
 // Currency settings removed
 import { useAuth } from '@/contexts/AuthContext'
 import { useToast } from '@/hooks/use-toast'
+import { useIsVirgilioAdmin } from '@/hooks/useIsVirgilioAdmin'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,8 +34,9 @@ interface OrganizationFormData {
 
 export function OrganizationTab() {
   const { organizations, updateOrganization, isLoading, error } = useOrganizations()
-  const { userType, user } = useAuth()
+  const { userType, user, organizationId } = useAuth()
   const { toast } = useToast()
+  const isVirgilioAdmin = useIsVirgilioAdmin()
   const [isEditMode, setIsEditMode] = useState(false)
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
@@ -374,6 +377,15 @@ const [orgFormData, setOrgFormData] = useState<OrganizationFormData>({
           <OrganizationDisplay organization={userOrganization} />
         </CardContent>
       </Card>
+
+      {/* Verified Domains Management */}
+      {userOrganization?.id && (userType === 'workspace_owner' || isVirgilioAdmin) && (
+        <VerifiedDomainsManager
+          tenantId={userOrganization.id}
+          isWorkspaceOwner={userType === 'workspace_owner'}
+          isPlatformAdmin={isVirgilioAdmin}
+        />
+      )}
 
       {/* Confirmation Dialog */}
       <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
