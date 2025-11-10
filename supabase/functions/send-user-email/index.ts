@@ -242,9 +242,10 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    // Get organization and verify from_email
+    // Get tenant and verify from_email
     let memberData = null;
     let identity = null;
+    let tenantId = null;
     
     if (isServiceRole) {
       // For service role: verify the from_email exists and is active
@@ -260,37 +261,37 @@ const handler = async (req: Request): Promise<Response> => {
         throw new Error('From email is not a valid connected identity');
       }
       
-      // Step 2: Verify the user is a member of the organization
+      // Step 2: Verify the user is a member and get tenant_id
       const { data: memberData, error: memberError } = await supabase
         .from('members')
-        .select('organization_id, user_id')
+        .select('tenant_id, user_id')
         .eq('user_id', mailIdentity.user_id)
-        .eq('organization_id', mailIdentity.organization_id)
+        .eq('user_status', 'active')
         .single();
       
       if (memberError || !memberData) {
-        throw new Error('User is not a member of the organization');
+        throw new Error('User is not a member');
       }
       
       identity = mailIdentity;
-      organizationId = memberData.organization_id;
+      tenantId = memberData.tenant_id;
       user = { id: memberData.user_id }; // Set user for logging purposes
       
     } else {
-      // For user calls: verify organization and from_email ownership
+      // For user calls: verify tenant and from_email ownership
       const { data: member, error: memberError } = await supabase
         .from('members')
-        .select('organization_id')
+        .select('tenant_id, organization_id')
         .eq('user_id', user.id)
         .eq('user_status', 'active')
         .single();
 
       if (memberError) {
-        throw new Error('Failed to fetch user organization');
+        throw new Error('Failed to fetch user tenant');
       }
       
       memberData = member;
-      organizationId = member.organization_id;
+      tenantId = member.tenant_id;
 
       // Verify from_email belongs to user
       const { data: mailIdentity, error: identityError } = await supabase
@@ -410,7 +411,8 @@ const handler = async (req: Request): Promise<Response> => {
       // Log failed attempt
       await supabase.from('email_logs').insert({
         user_id: user.id,
-        organization_id: organizationId,
+        tenant_id: tenantId,
+        organization_id: memberData.organization_id,
         mail_identity_id: identity.id,
         from_address: processedRequest.from_email,
         to_addresses: processedRequest.to,
@@ -435,7 +437,8 @@ const handler = async (req: Request): Promise<Response> => {
       .from('email_logs')
       .insert({
         user_id: user.id,
-        organization_id: organizationId,
+        tenant_id: tenantId,
+        organization_id: memberData.organization_id,
         mail_identity_id: identity.id,
         direction: 'sent',
         from_address: processedRequest.from_email,
@@ -468,7 +471,7 @@ const handler = async (req: Request): Promise<Response> => {
       
       const { error: activityError } = await supabase.rpc('log_activity', {
         p_user_id: user.id,
-        p_organization_id: organizationId,
+        p_organization_id: memberData.organization_id,
         p_activity_type: 'candidate_email_sent',
         p_title: activityTitle,
         p_description: activityDescription,

@@ -6,7 +6,7 @@ import { useOrgContext } from '@/contexts/OrgContext';
 export interface MailIdentity {
   id: string;
   user_id: string;
-  organization_id: string;
+  tenant_id: string;
   provider: string;
   email_address: string;
   display_name: string;

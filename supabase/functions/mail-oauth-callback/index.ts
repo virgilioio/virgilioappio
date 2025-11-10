@@ -109,17 +109,17 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log('Fetched Google user info for email:', userInfo.email);
 
-    // Get user's organization
+    // Get user's tenant_id
     const { data: memberData, error: memberError } = await supabase
       .from('members')
-      .select('organization_id')
+      .select('tenant_id')
       .eq('user_id', user.id)
       .eq('user_status', 'active')
       .single();
 
     if (memberError) {
-      console.error('Failed to fetch user organization:', memberError);
-      throw new Error('Failed to fetch user organization');
+      console.error('Failed to fetch user tenant:', memberError);
+      throw new Error('Failed to fetch user tenant');
     }
 
     // Encrypt the refresh token using the database function
@@ -141,7 +141,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     const identityData = {
       user_id: user.id,
-      organization_id: memberData.organization_id,
+      tenant_id: memberData.tenant_id,
       provider: 'gmail',
       email_address: userInfo.email,
       display_name: userInfo.name || userInfo.email,
@@ -181,7 +181,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Also store calendar identity with same credentials
     const calendarIdentityData = {
       user_id: user.id,
-      organization_id: memberData.organization_id,
+      tenant_id: memberData.tenant_id,
       provider: 'google',
       email_address: userInfo.email,
       display_name: userInfo.name || userInfo.email,

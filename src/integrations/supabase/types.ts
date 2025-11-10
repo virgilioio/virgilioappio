@@ -473,10 +473,10 @@ export type Database = {
           is_active: boolean | null
           last_sync_at: string | null
           last_webhook_renewal: string | null
-          organization_id: string
           provider: string
           sync_error_message: string | null
           sync_status: string | null
+          tenant_id: string
           token_expires_at: string
           updated_at: string | null
           user_id: string
@@ -494,10 +494,10 @@ export type Database = {
           is_active?: boolean | null
           last_sync_at?: string | null
           last_webhook_renewal?: string | null
-          organization_id: string
           provider: string
           sync_error_message?: string | null
           sync_status?: string | null
+          tenant_id: string
           token_expires_at: string
           updated_at?: string | null
           user_id: string
@@ -515,10 +515,10 @@ export type Database = {
           is_active?: boolean | null
           last_sync_at?: string | null
           last_webhook_renewal?: string | null
-          organization_id?: string
           provider?: string
           sync_error_message?: string | null
           sync_status?: string | null
+          tenant_id?: string
           token_expires_at?: string
           updated_at?: string | null
           user_id?: string
@@ -528,10 +528,10 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "calendar_identities_organization_id_fkey"
-            columns: ["organization_id"]
+            foreignKeyName: "calendar_identities_tenant_id_new_fkey"
+            columns: ["tenant_id"]
             isOneToOne: false
-            referencedRelation: "organizations"
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -3586,7 +3586,6 @@ export type Database = {
           is_active: boolean
           is_default: boolean
           last_sync_at: string | null
-          organization_id: string | null
           provider: string
           refresh_token_encrypted: string | null
           smtp_host: string | null
@@ -3595,6 +3594,7 @@ export type Database = {
           smtp_username: string | null
           sync_error: string | null
           sync_status: string | null
+          tenant_id: string
           token_expires_at: string | null
           updated_at: string
           user_id: string
@@ -3613,7 +3613,6 @@ export type Database = {
           is_active?: boolean
           is_default?: boolean
           last_sync_at?: string | null
-          organization_id?: string | null
           provider: string
           refresh_token_encrypted?: string | null
           smtp_host?: string | null
@@ -3622,6 +3621,7 @@ export type Database = {
           smtp_username?: string | null
           sync_error?: string | null
           sync_status?: string | null
+          tenant_id: string
           token_expires_at?: string | null
           updated_at?: string
           user_id: string
@@ -3640,7 +3640,6 @@ export type Database = {
           is_active?: boolean
           is_default?: boolean
           last_sync_at?: string | null
-          organization_id?: string | null
           provider?: string
           refresh_token_encrypted?: string | null
           smtp_host?: string | null
@@ -3649,16 +3648,17 @@ export type Database = {
           smtp_username?: string | null
           sync_error?: string | null
           sync_status?: string | null
+          tenant_id?: string
           token_expires_at?: string | null
           updated_at?: string
           user_id?: string
         }
         Relationships: [
           {
-            foreignKeyName: "user_mail_identities_organization_id_fkey"
-            columns: ["organization_id"]
+            foreignKeyName: "user_mail_identities_tenant_id_fkey"
+            columns: ["tenant_id"]
             isOneToOne: false
-            referencedRelation: "organizations"
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]

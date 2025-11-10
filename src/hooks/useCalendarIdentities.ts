@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 export interface CalendarIdentity {
   id: string;
   user_id: string;
-  organization_id: string;
+  tenant_id: string;
   provider: 'google' | 'microsoft';
   email_address: string;
   display_name: string | null;
