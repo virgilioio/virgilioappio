@@ -1410,6 +1410,53 @@ export type Database = {
           },
         ]
       }
+      invitations: {
+        Row: {
+          created_at: string | null
+          email: string
+          id: string
+          invite_expires_at: string
+          invite_token: string | null
+          invited_by: string | null
+          member_role: Database["public"]["Enums"]["member_role"]
+          organization_id: string
+          updated_at: string | null
+          used_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          id?: string
+          invite_expires_at?: string
+          invite_token?: string | null
+          invited_by?: string | null
+          member_role: Database["public"]["Enums"]["member_role"]
+          organization_id: string
+          updated_at?: string | null
+          used_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          id?: string
+          invite_expires_at?: string
+          invite_token?: string | null
+          invited_by?: string | null
+          member_role?: Database["public"]["Enums"]["member_role"]
+          organization_id?: string
+          updated_at?: string | null
+          used_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invitations_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_assignments: {
         Row: {
           assigned_by: string | null
