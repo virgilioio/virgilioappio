@@ -165,6 +165,26 @@ export function SourcingProjectView({ projectId }: SourcingProjectViewProps) {
     await refetchCandidates()
     setIsRefreshing(false)
   }
+
+  const handleVisibilityToggle = async (isPublic: boolean) => {
+    if (!project) return
+    
+    const { error } = await supabase
+      .from('sourcing_projects')
+      .update({ is_public: isPublic })
+      .eq('id', project.id)
+    
+    if (error) {
+      toast.error('Failed to update visibility', { description: error.message })
+    } else {
+      toast.success(
+        isPublic 
+          ? 'Project is now visible to your organization' 
+          : 'Project is now private'
+      )
+      refetchProject()
+    }
+  }
   
   if (projectLoading) {
     return <div className="flex items-center justify-center h-96">
@@ -199,6 +219,7 @@ export function SourcingProjectView({ projectId }: SourcingProjectViewProps) {
               onArchive={handleArchive}
               onDelete={handleDelete}
               onNameUpdate={handleSaveName}
+              onVisibilityToggle={handleVisibilityToggle}
             />
           </div>
         </div>

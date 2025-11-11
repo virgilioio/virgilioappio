@@ -2961,6 +2961,7 @@ export type Database = {
           description: string | null
           enabled_sources: Json
           id: string
+          is_public: boolean | null
           job_id: string | null
           last_search_at: string | null
           name: string
@@ -2980,6 +2981,7 @@ export type Database = {
           description?: string | null
           enabled_sources?: Json
           id?: string
+          is_public?: boolean | null
           job_id?: string | null
           last_search_at?: string | null
           name: string
@@ -2999,6 +3001,7 @@ export type Database = {
           description?: string | null
           enabled_sources?: Json
           id?: string
+          is_public?: boolean | null
           job_id?: string | null
           last_search_at?: string | null
           name?: string

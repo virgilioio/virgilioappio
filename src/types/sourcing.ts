@@ -10,6 +10,7 @@ export interface SourcingProject {
   enabled_sources: EnabledSource[]
   total_candidates: number
   last_search_at: string | null
+  is_public: boolean
   created_at: string
   updated_at: string
   

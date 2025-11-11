@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Plus, FileSearch, Clock, PanelLeftClose, PanelLeftOpen, Search } from 'lucide-react'
+import { Plus, FileSearch, Clock, PanelLeftClose, PanelLeftOpen, Search, Globe, Lock } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import {
   Sidebar,
@@ -162,13 +162,24 @@ export function SourcingSidebar({
                   >
                     <div className="flex flex-col gap-2">
                       <div className="flex items-center justify-between">
-                        <span className="font-semibold text-sm truncate max-w-[160px]">
-                          {project.name}
-                        </span>
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <span className="font-semibold text-sm truncate">
+                            {project.name}
+                          </span>
+                          {project.is_public ? (
+                            <span title="Visible to organization">
+                              <Globe className="h-3 w-3 flex-shrink-0" />
+                            </span>
+                          ) : (
+                            <span title="Private">
+                              <Lock className="h-3 w-3 flex-shrink-0 opacity-60" />
+                            </span>
+                          )}
+                        </div>
                         {project.total_candidates > 0 && (
                           <Badge 
                             variant="secondary" 
-                            className={`text-xs h-5 px-2 ${
+                            className={`text-xs h-5 px-2 flex-shrink-0 ${
                               selectedProjectId === project.id 
                                 ? 'bg-white/20 text-white border-white/30' 
                                 : 'bg-virgilio-purple/10 text-virgilio-purple border-virgilio-purple/20'

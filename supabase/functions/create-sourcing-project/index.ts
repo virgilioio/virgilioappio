@@ -12,6 +12,7 @@ interface CreateSourcingProjectRequest {
   name: string;
   description: string;
   job_id: string;
+  is_public?: boolean;
   search_criteria: {
     skills: string[];
     location?: string;
@@ -66,7 +67,7 @@ serve(async (req) => {
 
     // Parse request body
     const body: CreateSourcingProjectRequest = await req.json();
-    const { name, description, job_id, search_criteria } = body;
+    const { name, description, job_id, is_public, search_criteria } = body;
 
     // Validate required fields
     if (!name) {
@@ -124,7 +125,8 @@ serve(async (req) => {
         created_by: userId,
         search_criteria: search_criteria,
         enabled_sources: ['internal'],
-        status: 'active'
+        status: 'active',
+        is_public: is_public ?? false
       })
       .select('id, created_at')
       .single();

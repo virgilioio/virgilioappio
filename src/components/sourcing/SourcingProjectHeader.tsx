@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { formatDistanceToNow } from 'date-fns'
 import { 
   Edit2, MoreHorizontal, RefreshCw, Archive, Trash2, 
-  MapPin, DollarSign, Target, Award, Coins, Loader2 
+  MapPin, DollarSign, Target, Award, Coins, Loader2, Globe, Lock 
 } from 'lucide-react'
 import { useCoresignalUsage } from '@/hooks/useCoresignalUsage'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Switch } from '@/components/ui/switch'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -38,6 +39,7 @@ interface SourcingProjectHeaderProps {
   onArchive: () => void
   onDelete: () => void
   onNameUpdate: (name: string) => void
+  onVisibilityToggle?: (isPublic: boolean) => Promise<void>
 }
 
 export function SourcingProjectHeader({
@@ -46,7 +48,8 @@ export function SourcingProjectHeader({
   onRefresh,
   onArchive,
   onDelete,
-  onNameUpdate
+  onNameUpdate,
+  onVisibilityToggle
 }: SourcingProjectHeaderProps) {
   const [isEditingName, setIsEditingName] = useState(false)
   const [editedName, setEditedName] = useState(project.name)
@@ -113,7 +116,31 @@ export function SourcingProjectHeader({
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
+          <DropdownMenuContent align="end" className="w-64">
+            <div className="p-3 border-b">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  {project.is_public ? (
+                    <Globe className="h-4 w-4 text-blue-500" />
+                  ) : (
+                    <Lock className="h-4 w-4 text-muted-foreground" />
+                  )}
+                  <Label htmlFor="visibility-toggle" className="text-sm font-medium cursor-pointer">
+                    {project.is_public ? 'Public to Organization' : 'Private'}
+                  </Label>
+                </div>
+                <Switch
+                  id="visibility-toggle"
+                  checked={project.is_public}
+                  onCheckedChange={onVisibilityToggle}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {project.is_public 
+                  ? 'Anyone in your organization can view this project' 
+                  : 'Only you can view this project'}
+              </p>
+            </div>
             <DropdownMenuItem onClick={onRefresh}>
               <RefreshCw className="h-4 w-4 mr-2" />
               Refresh Results
