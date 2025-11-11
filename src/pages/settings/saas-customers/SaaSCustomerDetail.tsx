@@ -57,6 +57,48 @@ export function SaaSCustomerDetail() {
     enabled: !!customer?.tenant_id
   })
 
+  // Calculate customer health status (moved before early returns)
+  const customerHealth: HealthStatus = useMemo(() => {
+    if (!customer || customer.status === 'suspended') return 'inactive'
+    
+    const daysSinceActive = customer.last_active_at 
+      ? (Date.now() - new Date(customer.last_active_at).getTime()) / (1000 * 60 * 60 * 24)
+      : 999
+    
+    const hasUsage = customer.jobs_created_30d > 0 || customer.candidates_added_30d > 0
+    
+    if (daysSinceActive > 30) return 'churn-risk'
+    if (daysSinceActive > 14 || !hasUsage) return 'at-risk'
+    return 'healthy'
+  }, [customer])
+
+  // Mock activity data (would come from actual activity tracking)
+  const recentActivities = useMemo(() => {
+    if (!customer) return []
+    
+    const activities = []
+    
+    if (customer.jobs_created_30d > 0) {
+      activities.push({
+        id: '1',
+        type: 'job_created' as const,
+        description: `Created ${customer.jobs_created_30d} job${customer.jobs_created_30d > 1 ? 's' : ''} in the last 30 days`,
+        timestamp: customer.updated_at,
+      })
+    }
+    
+    if (customer.candidates_added_30d > 0) {
+      activities.push({
+        id: '2',
+        type: 'candidate_added' as const,
+        description: `Added ${customer.candidates_added_30d} candidate${customer.candidates_added_30d > 1 ? 's' : ''} in the last 30 days`,
+        timestamp: customer.updated_at,
+      })
+    }
+    
+    return activities
+  }, [customer])
+
   if (isLoading) {
     return <div className="text-center py-8">Loading customer details...</div>
   }
@@ -84,46 +126,6 @@ export function SaaSCustomerDetail() {
       default: return 'outline'
     }
   }
-
-  // Calculate customer health status
-  const customerHealth: HealthStatus = useMemo(() => {
-    if (customer.status === 'suspended') return 'inactive'
-    
-    const daysSinceActive = customer.last_active_at 
-      ? (Date.now() - new Date(customer.last_active_at).getTime()) / (1000 * 60 * 60 * 24)
-      : 999
-    
-    const hasUsage = customer.jobs_created_30d > 0 || customer.candidates_added_30d > 0
-    
-    if (daysSinceActive > 30) return 'churn-risk'
-    if (daysSinceActive > 14 || !hasUsage) return 'at-risk'
-    return 'healthy'
-  }, [customer])
-
-  // Mock activity data (would come from actual activity tracking)
-  const recentActivities = useMemo(() => {
-    const activities = []
-    
-    if (customer.jobs_created_30d > 0) {
-      activities.push({
-        id: '1',
-        type: 'job_created' as const,
-        description: `Created ${customer.jobs_created_30d} job${customer.jobs_created_30d > 1 ? 's' : ''} in the last 30 days`,
-        timestamp: customer.updated_at,
-      })
-    }
-    
-    if (customer.candidates_added_30d > 0) {
-      activities.push({
-        id: '2',
-        type: 'candidate_added' as const,
-        description: `Added ${customer.candidates_added_30d} candidate${customer.candidates_added_30d > 1 ? 's' : ''} in the last 30 days`,
-        timestamp: customer.updated_at,
-      })
-    }
-    
-    return activities
-  }, [customer])
 
   return (
     <div className="px-4 md:px-6 lg:px-8 py-8 md:py-12 space-y-8">
