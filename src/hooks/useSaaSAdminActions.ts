@@ -27,20 +27,32 @@ export function useSuspendOrganization() {
       log.info('Suspending organization:', { orgId, reason })
       
       return withAuthRetry(async () => {
-        const { data, error } = await supabase
+        // Step 1: Get tenant_id from organizations
+        const { data: org, error: orgError } = await supabase
           .from('organizations')
+          .select('tenant_id, name')
+          .eq('id', orgId)
+          .single()
+
+        if (orgError) throw orgError
+        if (!org?.tenant_id) throw new Error('Organization has no tenant_id')
+
+        // Step 2: Update tenant_subscriptions (source of truth for billing)
+        const { data, error } = await supabase
+          .from('tenant_subscriptions')
           .update({
-            status: 'suspended',
+            billing_status: 'locked',
             suspended_at: new Date().toISOString(),
             suspended_reason: reason,
             updated_at: new Date().toISOString()
           })
-          .eq('id', orgId)
+          .eq('tenant_id', org.tenant_id)
           .select()
           .single()
 
         if (error) throw error
-        return data
+        
+        return { ...data, name: org.name, id: orgId }
       })
     },
     onSuccess: (data) => {
@@ -48,6 +60,7 @@ export function useSuspendOrganization() {
       
       queryClient.invalidateQueries({ queryKey: ['saas-customers'] })
       queryClient.invalidateQueries({ queryKey: ['saas-customer', data.id] })
+      queryClient.invalidateQueries({ queryKey: ['tenant-subscription'] })
       
       toast({
         title: 'Organization suspended',
@@ -73,20 +86,47 @@ export function useRestoreOrganization() {
       log.info('Restoring organization:', { orgId })
       
       return withAuthRetry(async () => {
-        const { data, error } = await supabase
+        // Step 1: Get tenant_id and current billing status
+        const { data: org, error: orgError } = await supabase
           .from('organizations')
+          .select('tenant_id, name')
+          .eq('id', orgId)
+          .single()
+
+        if (orgError) throw orgError
+        if (!org?.tenant_id) throw new Error('Organization has no tenant_id')
+
+        // Step 2: Get current subscription to determine proper status to restore to
+        const { data: subscription, error: subError } = await supabase
+          .from('tenant_subscriptions')
+          .select('trial_ends_at, subscription_status')
+          .eq('tenant_id', org.tenant_id)
+          .single()
+
+        if (subError) throw subError
+
+        // Determine proper billing_status to restore to
+        const now = new Date()
+        const trialEndsAt = subscription?.trial_ends_at ? new Date(subscription.trial_ends_at) : null
+        const isTrialing = trialEndsAt && trialEndsAt > now
+        const billingStatus = isTrialing ? 'trialing' : (subscription?.subscription_status || 'active')
+
+        // Step 3: Update tenant_subscriptions (source of truth for billing)
+        const { data, error } = await supabase
+          .from('tenant_subscriptions')
           .update({
-            status: 'active',
+            billing_status: billingStatus,
             suspended_at: null,
             suspended_reason: null,
             updated_at: new Date().toISOString()
           })
-          .eq('id', orgId)
+          .eq('tenant_id', org.tenant_id)
           .select()
           .single()
 
         if (error) throw error
-        return data
+        
+        return { ...data, name: org.name, id: orgId }
       })
     },
     onSuccess: (data) => {
@@ -94,6 +134,7 @@ export function useRestoreOrganization() {
       
       queryClient.invalidateQueries({ queryKey: ['saas-customers'] })
       queryClient.invalidateQueries({ queryKey: ['saas-customer', data.id] })
+      queryClient.invalidateQueries({ queryKey: ['tenant-subscription'] })
       
       toast({
         title: 'Organization restored',
@@ -119,19 +160,31 @@ export function useExtendTrial() {
       log.info('Extending trial:', { orgId, newEndDate })
       
       return withAuthRetry(async () => {
-        const { data, error } = await supabase
+        // Step 1: Get tenant_id from organizations
+        const { data: org, error: orgError } = await supabase
           .from('organizations')
+          .select('tenant_id, name')
+          .eq('id', orgId)
+          .single()
+
+        if (orgError) throw orgError
+        if (!org?.tenant_id) throw new Error('Organization has no tenant_id')
+
+        // Step 2: Update tenant_subscriptions (source of truth for billing)
+        const { data, error } = await supabase
+          .from('tenant_subscriptions')
           .update({
-            trial_end_date: newEndDate.toISOString(),
-            status: 'trialing',
+            trial_ends_at: newEndDate.toISOString(),
+            billing_status: 'trialing',
             updated_at: new Date().toISOString()
           })
-          .eq('id', orgId)
+          .eq('tenant_id', org.tenant_id)
           .select()
           .single()
 
         if (error) throw error
-        return data
+        
+        return { ...data, name: org.name, id: orgId }
       })
     },
     onSuccess: (data) => {
@@ -139,6 +192,7 @@ export function useExtendTrial() {
       
       queryClient.invalidateQueries({ queryKey: ['saas-customers'] })
       queryClient.invalidateQueries({ queryKey: ['saas-customer', data.id] })
+      queryClient.invalidateQueries({ queryKey: ['tenant-subscription'] })
       
       toast({
         title: 'Trial extended',
