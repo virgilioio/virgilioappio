@@ -6,6 +6,8 @@ interface StripePriceData {
   amount: number;
   currency: string;
   interval: string;
+  productImage?: string | null;
+  productName?: string | null;
 }
 
 interface StripePricingResponse {

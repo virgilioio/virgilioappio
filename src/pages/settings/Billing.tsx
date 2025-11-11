@@ -208,7 +208,11 @@ export function Billing() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
               <div className="text-sm text-muted-foreground mb-2">Plan</div>
-              <div className="font-semibold">Virgilio ATS</div>
+              <div className="font-semibold">
+                {billing.billing_status === 'trialing' 
+                  ? 'GoGio: Free Trial' 
+                  : 'GoGio'}
+              </div>
               <div className="text-xs text-muted-foreground">
                 {billing.billing_interval === 'year' ? 'Annual billing' : 'Monthly billing'}
               </div>
@@ -313,7 +317,7 @@ export function Billing() {
               {/* Launch Plan */}
               <div className="border rounded-lg p-6 hover:border-primary transition-colors">
                 <div className="mb-4">
-                  <h3 className="text-xl font-bold">Launch</h3>
+                  <h3 className="text-xl font-bold">GoGio: Launch!</h3>
                   <p className="text-sm text-muted-foreground mt-1">Perfect for small teams</p>
                 </div>
                 
@@ -364,7 +368,7 @@ export function Billing() {
                 </div>
                 
                 <div className="mb-4">
-                  <h3 className="text-xl font-bold">Growth</h3>
+                  <h3 className="text-xl font-bold">GoGio: Growth!</h3>
                   <p className="text-sm text-muted-foreground mt-1">For growing teams</p>
                 </div>
                 
@@ -411,7 +415,7 @@ export function Billing() {
               {/* Business Plan */}
               <div className="border rounded-lg p-6 hover:border-primary transition-colors">
                 <div className="mb-4">
-                  <h3 className="text-xl font-bold">Business</h3>
+                  <h3 className="text-xl font-bold">GoGio: Business!</h3>
                   <p className="text-sm text-muted-foreground mt-1">For established teams</p>
                 </div>
                 

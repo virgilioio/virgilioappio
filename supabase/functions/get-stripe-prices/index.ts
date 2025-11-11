@@ -48,11 +48,11 @@ serve(async (req) => {
 
     // Fetch prices from Stripe
     const [monthlyPrice, yearlyPrice] = await Promise.all([
-      monthlyPriceId ? stripe.prices.retrieve(monthlyPriceId).catch(err => {
+      monthlyPriceId ? stripe.prices.retrieve(monthlyPriceId, { expand: ['product'] }).catch(err => {
         console.error('Error fetching monthly price:', err);
         return null;
       }) : Promise.resolve(null),
-      yearlyPriceId ? stripe.prices.retrieve(yearlyPriceId).catch(err => {
+      yearlyPriceId ? stripe.prices.retrieve(yearlyPriceId, { expand: ['product'] }).catch(err => {
         console.error('Error fetching yearly price:', err);
         return null;
       }) : Promise.resolve(null),
@@ -63,18 +63,26 @@ serve(async (req) => {
       yearly: yearlyPrice ? { amount: yearlyPrice.unit_amount, currency: yearlyPrice.currency } : null
     });
 
+    // Extract product data
+    const monthlyProduct = monthlyPrice?.product && typeof monthlyPrice.product === 'object' ? monthlyPrice.product : null;
+    const yearlyProduct = yearlyPrice?.product && typeof yearlyPrice.product === 'object' ? yearlyPrice.product : null;
+
     const response = {
       monthly: monthlyPrice ? {
         priceId: monthlyPrice.id,
         amount: monthlyPrice.unit_amount || 0,
         currency: monthlyPrice.currency,
-        interval: 'month'
+        interval: 'month',
+        productImage: monthlyProduct?.images?.[0] || null,
+        productName: monthlyProduct?.name || null,
       } : null,
       yearly: yearlyPrice ? {
         priceId: yearlyPrice.id,
         amount: yearlyPrice.unit_amount || 0,
         currency: yearlyPrice.currency,
-        interval: 'year'
+        interval: 'year',
+        productImage: yearlyProduct?.images?.[0] || null,
+        productName: yearlyProduct?.name || null,
       } : null,
       trialDays: 14 // Default trial period
     };
