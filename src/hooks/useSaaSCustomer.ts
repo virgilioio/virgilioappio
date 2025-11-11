@@ -27,6 +27,20 @@ export interface SaaSCustomerDetail {
     last_name: string | null
     email: string | null
   }
+  // Extended tenant fields
+  subscription_plan?: string | null
+  subscription_renewal_date?: string | null
+  billing_email?: string | null
+  billing_contact_name?: string | null
+  billing_phone?: string | null
+  billing_address?: string | null
+  billing_city?: string | null
+  billing_state?: string | null
+  billing_postal_code?: string | null
+  billing_country?: string | null
+  trial_starts_at?: string | null
+  trial_ends_at?: string | null
+  [key: string]: any // Allow other tenant fields
 }
 
 export function useSaaSCustomer(customerId: string) {
@@ -35,28 +49,26 @@ export function useSaaSCustomer(customerId: string) {
     queryFn: async (): Promise<SaaSCustomerDetail | null> => {
       if (!customerId) return null
 
-      // Get the SaaS organization
-      const { data: organization, error } = await supabase
-        .from('organizations')
+      // Get the SaaS tenant
+      const { data: tenant, error } = await supabase
+        .from('tenants')
         .select('*')
         .eq('id', customerId)
         .eq('tenant_type', 'saas')
-        .eq('organization_type', 'client')
-        .eq('signup_source', 'self_serve')
         .single()
 
-      if (error || !organization) {
+      if (error || !tenant) {
         console.error('Error fetching SaaS customer:', error)
         return null
       }
 
-      // Get job IDs for this organization first
-      const { data: orgJobs } = await supabase
+      // Get job IDs for this tenant first
+      const { data: tenantJobs } = await supabase
         .from('jobs')
         .select('id')
-        .eq('organization_id', organization.id)
+        .eq('tenant_id', tenant.id)
       
-      const jobIds = orgJobs?.map(j => j.id) || []
+      const jobIds = tenantJobs?.map(j => j.id) || []
 
       // Get usage data
       const [
@@ -68,10 +80,10 @@ export function useSaaSCustomer(customerId: string) {
         supabase
           .from('jobs')
           .select('*', { count: 'exact', head: true })
-          .eq('organization_id', organization.id)
+          .eq('tenant_id', tenant.id)
           .gte('created_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()),
         
-        // Get recent candidate associations for this org's jobs
+        // Get recent candidate associations for this tenant's jobs
         jobIds.length > 0 
           ? supabase
               .from('job_candidate_associations')
@@ -83,13 +95,13 @@ export function useSaaSCustomer(customerId: string) {
         supabase
           .from('members')
           .select('*', { count: 'exact', head: true })
-          .eq('organization_id', organization.id)
+          .eq('tenant_id', tenant.id)
           .eq('user_status', 'active'),
         
         supabase
           .from('members')
           .select('updated_at')
-          .eq('organization_id', organization.id)
+          .eq('tenant_id', tenant.id)
           .order('updated_at', { ascending: false })
           .limit(1)
           .maybeSingle()
@@ -102,24 +114,29 @@ export function useSaaSCustomer(customerId: string) {
 
       // Get owner details if owner_id exists
       let ownerDetails = null
-      if (organization.owner_id) {
+      if (tenant.owner_id) {
         const { data: profile } = await supabase
           .from('profiles')
           .select('first_name, last_name, email')
-          .eq('user_id', organization.owner_id)
+          .eq('user_id', tenant.owner_id)
           .maybeSingle()
         
         ownerDetails = profile
       }
 
       return {
-        ...organization,
+        ...tenant,
+        tenant_id: tenant.id,
+        plan_type: tenant.subscription_plan,
+        renewal_date: tenant.subscription_renewal_date,
+        billing_id: tenant.billing_email,
+        organization_type: 'client',
         jobs_created_30d: jobsCount || 0,
         candidates_added_30d: candidatesCount || 0,
         members_active_count: membersCount || 0,
         last_active_at: lastActivityQuery.data?.updated_at || null,
         owner_details: ownerDetails
-      }
+      } as SaaSCustomerDetail
     },
     enabled: !!customerId,
   })

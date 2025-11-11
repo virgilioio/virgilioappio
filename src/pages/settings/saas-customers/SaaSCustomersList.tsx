@@ -45,7 +45,10 @@ export function SaaSCustomersList() {
     switch (status) {
       case 'active': return 'default'
       case 'trialing': return 'secondary'
+      case 'locked': return 'destructive'
       case 'suspended': return 'destructive'
+      case 'past_due': return 'outline'
+      case 'canceled': return 'outline'
       case 'cancelled': return 'outline'
       default: return 'default'
     }
@@ -88,8 +91,10 @@ export function SaaSCustomersList() {
               <option value="all">All Status</option>
               <option value="active">Active</option>
               <option value="trialing">Trialing</option>
+              <option value="locked">Locked</option>
               <option value="suspended">Suspended</option>
-              <option value="cancelled">Cancelled</option>
+              <option value="past_due">Past Due</option>
+              <option value="canceled">Canceled</option>
             </select>
           </div>
         </CardHeader>

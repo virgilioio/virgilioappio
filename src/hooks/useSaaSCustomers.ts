@@ -48,6 +48,17 @@ export function useSaaSCustomers() {
         throw error
       }
 
+      // Get tenant subscriptions for billing status
+      const tenantIds = (tenants || []).map(t => t.id)
+      const { data: subscriptions } = await supabase
+        .from('tenant_subscriptions')
+        .select('tenant_id, billing_status, subscription_tier')
+        .in('tenant_id', tenantIds)
+      
+      const subscriptionMap = new Map(
+        (subscriptions || []).map(sub => [sub.tenant_id, sub])
+      )
+
       // Get usage data for each tenant (using tenant_id)
       const customersWithUsage = await Promise.all(
         (tenants || []).map(async (tenant) => {
@@ -105,11 +116,13 @@ export function useSaaSCustomers() {
               (recentAssociationsQuery.data || []).map((a: any) => a.candidate_id)
             ).size
 
+            const subscription = subscriptionMap.get(tenant.id)
+
             return {
               id: tenant.id,
               name: tenant.name,
-              plan_type: tenant.subscription_plan,
-              status: tenant.status,
+              plan_type: subscription?.subscription_tier || tenant.subscription_plan,
+              status: subscription?.billing_status || tenant.status,
               renewal_date: tenant.subscription_renewal_date,
               billing_id: tenant.billing_email,
               owner_id: tenant.owner_id,
@@ -125,11 +138,12 @@ export function useSaaSCustomers() {
             }
           } catch (error) {
             console.error('Error fetching usage data for tenant:', tenant.id, error)
+            const subscription = subscriptionMap.get(tenant.id)
             return {
               id: tenant.id,
               name: tenant.name,
-              plan_type: tenant.subscription_plan,
-              status: tenant.status,
+              plan_type: subscription?.subscription_tier || tenant.subscription_plan,
+              status: subscription?.billing_status || tenant.status,
               renewal_date: tenant.subscription_renewal_date,
               billing_id: tenant.billing_email,
               owner_id: tenant.owner_id,
