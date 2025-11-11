@@ -237,7 +237,7 @@ export function SaaSCustomersList() {
           open={suspendDialogOpen}
           onOpenChange={setSuspendDialogOpen}
           onConfirm={(reason) => {
-            suspendMutation.mutate({ orgId: selectedOrg.id, reason })
+            suspendMutation.mutate({ tenantId: selectedOrg.id, reason })
             setSuspendDialogOpen(false)
           }}
           organizationName={selectedOrg.name}

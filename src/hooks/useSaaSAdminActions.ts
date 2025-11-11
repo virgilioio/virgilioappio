@@ -6,63 +6,54 @@ import { extractErrorMessage } from '@/lib/authUtils'
 import { log } from '@/lib/logger'
 
 interface SuspendOrgParams {
-  orgId: string
+  tenantId: string
   reason: string
 }
 
 interface RestoreOrgParams {
-  orgId: string
+  tenantId: string
 }
 
 interface ExtendTrialParams {
-  orgId: string
+  tenantId: string
   newEndDate: Date
 }
 
 interface ActivateAccountParams {
-  orgId: string
+  tenantId: string
 }
 
 export function useSuspendOrganization() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ orgId, reason }: SuspendOrgParams) => {
-      log.info('Suspending organization:', { orgId, reason })
+    mutationFn: async ({ tenantId, reason }: SuspendOrgParams) => {
+      log.info('Suspending organization:', { tenantId, reason })
       
       return withAuthRetry(async () => {
-        const { data: org, error: orgError } = await supabase
-          .from('organizations')
-          .select('tenant_id, name')
-          .eq('id', orgId)
-          .single()
-
-        if (orgError) throw orgError
-        if (!org?.tenant_id) throw new Error('Organization has no tenant_id')
-
         const { data, error } = await supabase.functions.invoke('admin-manage-subscription', {
           body: {
             action: 'suspend',
-            tenantId: org.tenant_id,
+            tenantId,
             params: { reason }
           }
         })
 
         if (error) throw error
         
-        return { ...data.data, name: org.name, id: orgId }
+        return data.data
       })
     },
-    onSuccess: (data) => {
-      log.info('Organization suspended successfully:', data.id)
+    onSuccess: (data, variables) => {
+      log.info('Organization suspended successfully:', variables.tenantId)
       
       queryClient.invalidateQueries({ queryKey: ['saas-customers'] })
-      queryClient.invalidateQueries({ queryKey: ['saas-customer', data.id] })
-      queryClient.invalidateQueries({ queryKey: ['tenant-subscription'] })
+      queryClient.invalidateQueries({ queryKey: ['saas-customer', variables.tenantId] })
+      queryClient.invalidateQueries({ queryKey: ['tenant-subscription', variables.tenantId] })
       
       toast({
         title: 'Organization suspended',
-        description: `${data.name} has been suspended successfully.`,
+        description: 'The subscription has been suspended successfully.',
       })
     },
     onError: (error) => {
@@ -80,41 +71,32 @@ export function useRestoreOrganization() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ orgId }: RestoreOrgParams) => {
-      log.info('Restoring organization:', { orgId })
+    mutationFn: async ({ tenantId }: RestoreOrgParams) => {
+      log.info('Restoring organization:', { tenantId })
       
       return withAuthRetry(async () => {
-        const { data: org, error: orgError } = await supabase
-          .from('organizations')
-          .select('tenant_id, name')
-          .eq('id', orgId)
-          .single()
-
-        if (orgError) throw orgError
-        if (!org?.tenant_id) throw new Error('Organization has no tenant_id')
-
         const { data, error } = await supabase.functions.invoke('admin-manage-subscription', {
           body: {
             action: 'restore',
-            tenantId: org.tenant_id
+            tenantId
           }
         })
 
         if (error) throw error
         
-        return { ...data.data, name: org.name, id: orgId }
+        return data.data
       })
     },
-    onSuccess: (data) => {
-      log.info('Organization restored successfully:', data.id)
+    onSuccess: (data, variables) => {
+      log.info('Organization restored successfully:', variables.tenantId)
       
       queryClient.invalidateQueries({ queryKey: ['saas-customers'] })
-      queryClient.invalidateQueries({ queryKey: ['saas-customer', data.id] })
-      queryClient.invalidateQueries({ queryKey: ['tenant-subscription'] })
+      queryClient.invalidateQueries({ queryKey: ['saas-customer', variables.tenantId] })
+      queryClient.invalidateQueries({ queryKey: ['tenant-subscription', variables.tenantId] })
       
       toast({
         title: 'Organization restored',
-        description: `${data.name} has been restored successfully.`,
+        description: 'The subscription has been restored successfully.',
       })
     },
     onError: (error) => {
@@ -132,42 +114,33 @@ export function useExtendTrial() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ orgId, newEndDate }: ExtendTrialParams) => {
-      log.info('Extending trial:', { orgId, newEndDate })
+    mutationFn: async ({ tenantId, newEndDate }: ExtendTrialParams) => {
+      log.info('Extending trial:', { tenantId, newEndDate })
       
       return withAuthRetry(async () => {
-        const { data: org, error: orgError } = await supabase
-          .from('organizations')
-          .select('tenant_id, name')
-          .eq('id', orgId)
-          .single()
-
-        if (orgError) throw orgError
-        if (!org?.tenant_id) throw new Error('Organization has no tenant_id')
-
         const { data, error } = await supabase.functions.invoke('admin-manage-subscription', {
           body: {
             action: 'extend_trial',
-            tenantId: org.tenant_id,
+            tenantId,
             params: { newEndDate: newEndDate.toISOString() }
           }
         })
 
         if (error) throw error
         
-        return { ...data.data, name: org.name, id: orgId }
+        return data.data
       })
     },
-    onSuccess: (data) => {
-      log.info('Trial extended successfully:', data.id)
+    onSuccess: (data, variables) => {
+      log.info('Trial extended successfully:', variables.tenantId)
       
       queryClient.invalidateQueries({ queryKey: ['saas-customers'] })
-      queryClient.invalidateQueries({ queryKey: ['saas-customer', data.id] })
-      queryClient.invalidateQueries({ queryKey: ['tenant-subscription'] })
+      queryClient.invalidateQueries({ queryKey: ['saas-customer', variables.tenantId] })
+      queryClient.invalidateQueries({ queryKey: ['tenant-subscription', variables.tenantId] })
       
       toast({
         title: 'Trial extended',
-        description: `Trial period has been extended successfully.`,
+        description: `Trial period extended to ${variables.newEndDate.toLocaleDateString()}.`,
       })
     },
     onError: (error) => {
@@ -185,41 +158,32 @@ export function useActivateAccount() {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async ({ orgId }: ActivateAccountParams) => {
-      log.info('Activating account:', { orgId })
+    mutationFn: async ({ tenantId }: ActivateAccountParams) => {
+      log.info('Activating account:', { tenantId })
       
       return withAuthRetry(async () => {
-        const { data: org, error: orgError } = await supabase
-          .from('organizations')
-          .select('tenant_id, name')
-          .eq('id', orgId)
-          .single()
-
-        if (orgError) throw orgError
-        if (!org?.tenant_id) throw new Error('Organization has no tenant_id')
-
         const { data, error } = await supabase.functions.invoke('admin-manage-subscription', {
           body: {
             action: 'activate',
-            tenantId: org.tenant_id
+            tenantId
           }
         })
 
         if (error) throw error
         
-        return { ...data.data, name: org.name, id: orgId }
+        return data.data
       })
     },
-    onSuccess: (data) => {
-      log.info('Account activated successfully:', data.id)
+    onSuccess: (data, variables) => {
+      log.info('Account activated successfully:', variables.tenantId)
       
       queryClient.invalidateQueries({ queryKey: ['saas-customers'] })
-      queryClient.invalidateQueries({ queryKey: ['saas-customer', data.id] })
-      queryClient.invalidateQueries({ queryKey: ['tenant-subscription'] })
+      queryClient.invalidateQueries({ queryKey: ['saas-customer', variables.tenantId] })
+      queryClient.invalidateQueries({ queryKey: ['tenant-subscription', variables.tenantId] })
       
       toast({
         title: 'Account activated',
-        description: `${data.name} has been activated successfully.`,
+        description: 'The account has been activated successfully.',
       })
     },
     onError: (error) => {

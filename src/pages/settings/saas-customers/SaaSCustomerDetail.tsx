@@ -233,8 +233,8 @@ export function SaaSCustomerDetail() {
               onExtendTrial={() => setExtendTrialDialogOpen(true)}
               onChangePlan={() => setChangePlanDialogOpen(true)}
               onSuspend={() => setSuspendDialogOpen(true)}
-              onRestore={() => restoreMutation.mutate({ orgId: customer.id })}
-              onActivate={() => activateMutation.mutate({ orgId: customer.id })}
+              onRestore={() => restoreMutation.mutate({ tenantId: customer.tenant_id })}
+              onActivate={() => activateMutation.mutate({ tenantId: customer.tenant_id })}
               billingStatus={subscriptionData?.billing_status}
             />
 
@@ -334,7 +334,7 @@ export function SaaSCustomerDetail() {
         open={suspendDialogOpen}
         onOpenChange={setSuspendDialogOpen}
         onConfirm={(reason) => {
-          suspendMutation.mutate({ orgId: customer.id, reason })
+          suspendMutation.mutate({ tenantId: customer.tenant_id, reason })
           setSuspendDialogOpen(false)
         }}
         organizationName={customer.name}
@@ -345,7 +345,7 @@ export function SaaSCustomerDetail() {
         open={extendTrialDialogOpen}
         onOpenChange={setExtendTrialDialogOpen}
         onConfirm={(newEndDate) => {
-          extendTrialMutation.mutate({ orgId: customer.id, newEndDate })
+          extendTrialMutation.mutate({ tenantId: customer.tenant_id, newEndDate })
           setExtendTrialDialogOpen(false)
         }}
         organizationName={customer.name}
@@ -357,7 +357,7 @@ export function SaaSCustomerDetail() {
         open={changePlanDialogOpen}
         onOpenChange={setChangePlanDialogOpen}
         onConfirm={(newTier, newInterval) => {
-          changePlanMutation.mutate({ orgId: customer.id, newTier, newInterval })
+          changePlanMutation.mutate({ tenantId: customer.tenant_id, newTier, newInterval })
           setChangePlanDialogOpen(false)
         }}
         organizationName={customer.name}
