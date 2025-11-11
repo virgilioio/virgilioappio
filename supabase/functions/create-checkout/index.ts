@@ -151,8 +151,8 @@ serve(async (req) => {
     }
 
     const origin = req.headers.get("origin") || "http://localhost:5173";
-    const success_url = `${origin}/settings/billing?session_id={CHECKOUT_SESSION_ID}`;
-    const cancel_url = `${origin}/settings/billing?canceled=true`;
+    const success_url = `${origin}/settings?tab=billing&session_id={CHECKOUT_SESSION_ID}`;
+    const cancel_url = `${origin}/settings?tab=billing&canceled=true`;
 
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
