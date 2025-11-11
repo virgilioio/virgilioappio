@@ -9,7 +9,8 @@ Deno.serve(async (req) => {
   if (preflightResponse) return preflightResponse;
 
   try {
-    const supabase = createClient(
+    // Use anon client for authentication and authorization (respects RLS)
+    const anonClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_ANON_KEY') ?? '',
       {
@@ -24,7 +25,7 @@ Deno.serve(async (req) => {
     )
 
     // Get the user from the auth header
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    const { data: { user }, error: userError } = await anonClient.auth.getUser()
     
     if (userError || !user) {
       console.log('Authentication failed:', userError?.message || 'No user found')
@@ -39,8 +40,8 @@ Deno.serve(async (req) => {
 
     console.log('Authenticated user:', user.id)
 
-    // Verify user is platform admin
-    const { data: memberData, error: memberError } = await supabase
+    // Verify user is platform admin using anon client (respects RLS)
+    const { data: memberData, error: memberError } = await anonClient
       .from('members')
       .select('user_type')
       .eq('user_id', user.id)
@@ -62,6 +63,13 @@ Deno.serve(async (req) => {
         { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
+
+    // ✅ Authorization verified! Create service role client for privileged operations
+    // This bypasses RLS, which is safe because we've verified the user is platform_admin
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    )
 
     if (req.method === 'POST') {
       const formData = await req.formData()
