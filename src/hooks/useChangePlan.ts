@@ -13,11 +13,24 @@ export function useChangePlan() {
 
   return useMutation({
     mutationFn: async ({ orgId, newTier, newInterval }: ChangePlanParams) => {
-      const { data, error } = await supabase.functions.invoke('admin-change-plan', {
+      // Get tenant_id from organization
+      const { data: org, error: orgError } = await supabase
+        .from('organizations')
+        .select('tenant_id')
+        .eq('id', orgId)
+        .single()
+
+      if (orgError) throw orgError
+      if (!org?.tenant_id) throw new Error('Organization has no tenant_id')
+
+      const { data, error } = await supabase.functions.invoke('admin-manage-subscription', {
         body: {
-          organizationId: orgId,
-          newTier,
-          newInterval,
+          action: 'change_plan',
+          tenantId: org.tenant_id,
+          params: {
+            newTier,
+            newInterval,
+          },
         },
       })
 

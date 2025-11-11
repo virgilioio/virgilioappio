@@ -31,7 +31,6 @@ export function useSuspendOrganization() {
       log.info('Suspending organization:', { orgId, reason })
       
       return withAuthRetry(async () => {
-        // Step 1: Get tenant_id from organizations
         const { data: org, error: orgError } = await supabase
           .from('organizations')
           .select('tenant_id, name')
@@ -41,22 +40,17 @@ export function useSuspendOrganization() {
         if (orgError) throw orgError
         if (!org?.tenant_id) throw new Error('Organization has no tenant_id')
 
-        // Step 2: Update tenant_subscriptions (source of truth for billing)
-        const { data, error } = await supabase
-          .from('tenant_subscriptions')
-          .update({
-            billing_status: 'locked',
-            suspended_at: new Date().toISOString(),
-            suspended_reason: reason,
-            updated_at: new Date().toISOString()
-          })
-          .eq('tenant_id', org.tenant_id)
-          .select()
-          .single()
+        const { data, error } = await supabase.functions.invoke('admin-manage-subscription', {
+          body: {
+            action: 'suspend',
+            tenantId: org.tenant_id,
+            params: { reason }
+          }
+        })
 
         if (error) throw error
         
-        return { ...data, name: org.name, id: orgId }
+        return { ...data.data, name: org.name, id: orgId }
       })
     },
     onSuccess: (data) => {
@@ -90,7 +84,6 @@ export function useRestoreOrganization() {
       log.info('Restoring organization:', { orgId })
       
       return withAuthRetry(async () => {
-        // Step 1: Get tenant_id and current billing status
         const { data: org, error: orgError } = await supabase
           .from('organizations')
           .select('tenant_id, name')
@@ -100,37 +93,16 @@ export function useRestoreOrganization() {
         if (orgError) throw orgError
         if (!org?.tenant_id) throw new Error('Organization has no tenant_id')
 
-        // Step 2: Get current subscription to determine proper status to restore to
-        const { data: subscription, error: subError } = await supabase
-          .from('tenant_subscriptions')
-          .select('trial_ends_at, subscription_status')
-          .eq('tenant_id', org.tenant_id)
-          .single()
-
-        if (subError) throw subError
-
-        // Determine proper billing_status to restore to
-        const now = new Date()
-        const trialEndsAt = subscription?.trial_ends_at ? new Date(subscription.trial_ends_at) : null
-        const isTrialing = trialEndsAt && trialEndsAt > now
-        const billingStatus = isTrialing ? 'trialing' : (subscription?.subscription_status || 'active')
-
-        // Step 3: Update tenant_subscriptions (source of truth for billing)
-        const { data, error } = await supabase
-          .from('tenant_subscriptions')
-          .update({
-            billing_status: billingStatus,
-            suspended_at: null,
-            suspended_reason: null,
-            updated_at: new Date().toISOString()
-          })
-          .eq('tenant_id', org.tenant_id)
-          .select()
-          .single()
+        const { data, error } = await supabase.functions.invoke('admin-manage-subscription', {
+          body: {
+            action: 'restore',
+            tenantId: org.tenant_id
+          }
+        })
 
         if (error) throw error
         
-        return { ...data, name: org.name, id: orgId }
+        return { ...data.data, name: org.name, id: orgId }
       })
     },
     onSuccess: (data) => {
@@ -164,7 +136,6 @@ export function useExtendTrial() {
       log.info('Extending trial:', { orgId, newEndDate })
       
       return withAuthRetry(async () => {
-        // Step 1: Get tenant_id from organizations
         const { data: org, error: orgError } = await supabase
           .from('organizations')
           .select('tenant_id, name')
@@ -174,21 +145,17 @@ export function useExtendTrial() {
         if (orgError) throw orgError
         if (!org?.tenant_id) throw new Error('Organization has no tenant_id')
 
-        // Step 2: Update tenant_subscriptions (source of truth for billing)
-        const { data, error } = await supabase
-          .from('tenant_subscriptions')
-          .update({
-            trial_ends_at: newEndDate.toISOString(),
-            billing_status: 'trialing',
-            updated_at: new Date().toISOString()
-          })
-          .eq('tenant_id', org.tenant_id)
-          .select()
-          .single()
+        const { data, error } = await supabase.functions.invoke('admin-manage-subscription', {
+          body: {
+            action: 'extend_trial',
+            tenantId: org.tenant_id,
+            params: { newEndDate: newEndDate.toISOString() }
+          }
+        })
 
         if (error) throw error
         
-        return { ...data, name: org.name, id: orgId }
+        return { ...data.data, name: org.name, id: orgId }
       })
     },
     onSuccess: (data) => {
@@ -222,7 +189,6 @@ export function useActivateAccount() {
       log.info('Activating account:', { orgId })
       
       return withAuthRetry(async () => {
-        // Step 1: Get tenant_id from organizations
         const { data: org, error: orgError } = await supabase
           .from('organizations')
           .select('tenant_id, name')
@@ -232,33 +198,16 @@ export function useActivateAccount() {
         if (orgError) throw orgError
         if (!org?.tenant_id) throw new Error('Organization has no tenant_id')
 
-        // Step 2: Update tenant_subscriptions to activate account
-        const { data, error } = await supabase
-          .from('tenant_subscriptions')
-          .update({
-            billing_status: 'active',
-            suspended_at: null,
-            suspended_reason: null,
-            updated_at: new Date().toISOString()
-          })
-          .eq('tenant_id', org.tenant_id)
-          .select()
-          .single()
+        const { data, error } = await supabase.functions.invoke('admin-manage-subscription', {
+          body: {
+            action: 'activate',
+            tenantId: org.tenant_id
+          }
+        })
 
         if (error) throw error
         
-        // Step 3: Update organizations.status for UI consistency
-        const { error: orgUpdateError } = await supabase
-          .from('organizations')
-          .update({ status: 'active' })
-          .eq('id', orgId)
-
-        if (orgUpdateError) {
-          log.warn('Failed to update organization status:', orgUpdateError)
-          // Don't throw - billing status is source of truth
-        }
-        
-        return { ...data, name: org.name, id: orgId }
+        return { ...data.data, name: org.name, id: orgId }
       })
     },
     onSuccess: (data) => {
