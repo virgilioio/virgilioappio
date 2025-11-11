@@ -33,8 +33,9 @@ serve(async (req) => {
     const user = userData.user;
     log("User", { id: user.id, email: user.email });
 
-    // Read requested interval and optional tenantId from client
+    // Read requested interval, tier, and optional tenantId from client
     const body = await req.json().catch(() => ({}));
+    const tier = body?.tier || 'launch'; // default to launch
     const interval = body?.interval === "year" ? "year" : "month";
     const explicitTenantId = body?.tenantId as string | undefined;
 
@@ -127,13 +128,26 @@ serve(async (req) => {
       if (updErr) throw new Error(`Failed to update stripe_customer_id: ${updErr.message}`);
     }
 
-    // Use Stripe Price IDs from environment
-    const priceId = interval === "year" 
-      ? Deno.env.get("STRIPE_PRICE_YEARLY")
-      : Deno.env.get("STRIPE_PRICE_MONTHLY");
+    // Map tier + interval to Price ID
+    const priceMap: Record<string, Record<string, string>> = {
+      launch: {
+        month: Deno.env.get("STRIPE_PRICE_LAUNCH_MONTHLY") || Deno.env.get("STRIPE_PRICE_MONTHLY") || "",
+        year: Deno.env.get("STRIPE_PRICE_LAUNCH_ANNUAL") || Deno.env.get("STRIPE_PRICE_YEARLY") || "",
+      },
+      growth: {
+        month: Deno.env.get("STRIPE_PRICE_GROWTH_MONTHLY") || "",
+        year: Deno.env.get("STRIPE_PRICE_GROWTH_ANNUAL") || "",
+      },
+      business: {
+        month: Deno.env.get("STRIPE_PRICE_BUSINESS_MONTHLY") || "",
+        year: Deno.env.get("STRIPE_PRICE_BUSINESS_ANNUAL") || "",
+      },
+    };
+
+    const priceId = priceMap[tier]?.[interval];
 
     if (!priceId) {
-      throw new Error(`Missing Stripe Price ID for interval: ${interval}`);
+      throw new Error(`Missing Stripe Price ID for tier: ${tier}, interval: ${interval}`);
     }
 
     const origin = req.headers.get("origin") || "http://localhost:5173";
@@ -154,6 +168,7 @@ serve(async (req) => {
         // No trial - subscription starts immediately after checkout
         metadata: {
           tenant_id: String(tenantId),
+          tier: tier, // Store tier in subscription metadata
         },
       },
       success_url,
@@ -161,7 +176,7 @@ serve(async (req) => {
       allow_promotion_codes: true,
     });
 
-    log("Session created", { id: session.id, url: session.url, interval, quantity, tenantId });
+    log("Session created", { id: session.id, url: session.url, tier, interval, quantity, tenantId });
 
     return new Response(JSON.stringify({ url: session.url }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

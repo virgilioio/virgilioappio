@@ -205,7 +205,7 @@ export function SourcingProjectHeader({
             <div className="flex items-center gap-2">
               <Coins className="h-3.5 w-3.5 text-muted-foreground" />
               <span className="text-sm text-muted-foreground">
-                {usage.search_credits_used}/{usage.search_credits_limit} search, {usage.collect_credits_used}/{usage.collect_credits_limit} collect
+                {usage.search_credits_used || 0}/{usage.search_credits_limit || 0} search, {usage.collect_credits_used || 0}/{usage.collect_credits_limit || 0} collect
               </span>
             </div>
           </>

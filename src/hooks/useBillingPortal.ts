@@ -52,16 +52,17 @@ export function useOpenBillingPortal() {
 
 interface CreateCheckoutParams {
   interval?: 'month' | 'year'
+  tier?: 'launch' | 'growth' | 'business'
 }
 
 export function useCreateCheckout() {
   return useMutation({
-    mutationFn: async ({ interval = 'month' }: CreateCheckoutParams = {}) => {
-      log.info('Creating Stripe checkout session', { interval })
+    mutationFn: async ({ interval = 'month', tier = 'launch' }: CreateCheckoutParams = {}) => {
+      log.info('Creating Stripe checkout session', { interval, tier })
       
       return withAuthRetry(async () => {
         const { data, error } = await supabase.functions.invoke('create-checkout', {
-          body: { interval }
+          body: { interval, tier }
         })
 
         if (error) throw error

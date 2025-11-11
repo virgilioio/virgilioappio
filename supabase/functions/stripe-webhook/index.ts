@@ -153,9 +153,33 @@ async function handleSubscriptionChange(supabaseClient: any, subscription: Strip
     return;
   }
 
-  // Map Stripe status to our billing_status
+  // Extract tier from subscription metadata or price metadata
+  let tier = subscription.metadata?.tier;
+  
+  if (!tier) {
+    // Try to get tier from price metadata
+    const priceId = subscription.items.data[0]?.price.id;
+    if (priceId) {
+      // Fetch price with metadata
+      const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") ?? "", { apiVersion: "2023-10-16" });
+      const price = await stripe.prices.retrieve(priceId);
+      tier = price.metadata?.tier || 'launch';
+    }
+  }
+  
+  tier = tier || 'launch'; // Default to launch
+
+  // Determine max_users based on tier (3 tiers only)
+  const maxUsersMap: Record<string, number> = {
+    launch: 5,
+    growth: 15,
+    business: 50,
+  };
+  const maxUsers = maxUsersMap[tier] || 5;
+
+  // Map Stripe status to billing_status
   let billing_status = 'active';
-  if (subscription.status === 'trialing') billing_status = 'active'; // Stripe trials are active
+  if (subscription.status === 'trialing') billing_status = 'active';
   if (subscription.status === 'past_due') billing_status = 'past_due';
   if (subscription.status === 'canceled') billing_status = 'canceled';
   if (subscription.status === 'unpaid') billing_status = 'locked';
@@ -173,7 +197,7 @@ async function handleSubscriptionChange(supabaseClient: any, subscription: Strip
     ? new Date(subscription.current_period_end * 1000).toISOString() 
     : null;
 
-  // Update tenant_subscriptions - CLEAR trial fields since Stripe subscription is now active
+  // Update tenant_subscriptions with tier and max_users
   await supabaseClient
     .from("tenant_subscriptions")
     .update({
@@ -181,6 +205,8 @@ async function handleSubscriptionChange(supabaseClient: any, subscription: Strip
       stripe_subscription_id: subscription.id,
       subscribed: isSubscribed,
       subscription_status: subscription.status,
+      subscription_tier: tier, // Store tier
+      max_users: maxUsers, // Store user limit
       billing_status: billing_status,
       billing_interval: interval,
       seat_quantity: quantity,
@@ -189,7 +215,7 @@ async function handleSubscriptionChange(supabaseClient: any, subscription: Strip
       subscription_end: currentPeriodEnd,
       cancel_at_period_end: subscription.cancel_at_period_end || false,
       
-      // CLEAR DB trial fields - trial is over, subscription is active
+      // Clear trial fields when subscription is active
       trial_started_at: null,
       trial_ends_at: null,
       trial_source: null,
@@ -200,6 +226,8 @@ async function handleSubscriptionChange(supabaseClient: any, subscription: Strip
 
   logStep("Updated tenant subscription", { 
     tenantId, 
+    tier,
+    max_users: maxUsers,
     billing_status, 
     quantity,
     subscribed: isSubscribed 

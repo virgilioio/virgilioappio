@@ -1180,48 +1180,48 @@ export type Database = {
       }
       coresignal_usage: {
         Row: {
+          billing_cycle_start: string
           collect_credits_limit: number
           collect_credits_used: number
           created_at: string | null
           id: string
           last_collect_at: string | null
           last_search_at: string | null
-          month: string
-          organization_id: string
           search_credits_limit: number
           search_credits_used: number
+          tenant_id: string
           updated_at: string | null
         }
         Insert: {
+          billing_cycle_start: string
           collect_credits_limit?: number
           collect_credits_used?: number
           created_at?: string | null
           id?: string
           last_collect_at?: string | null
           last_search_at?: string | null
-          month: string
-          organization_id: string
           search_credits_limit?: number
           search_credits_used?: number
+          tenant_id: string
           updated_at?: string | null
         }
         Update: {
+          billing_cycle_start?: string
           collect_credits_limit?: number
           collect_credits_used?: number
           created_at?: string | null
           id?: string
           last_collect_at?: string | null
           last_search_at?: string | null
-          month?: string
-          organization_id?: string
           search_credits_limit?: number
           search_credits_used?: number
+          tenant_id?: string
           updated_at?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "coresignal_usage_organization_id_fkey"
-            columns: ["organization_id"]
+            foreignKeyName: "coresignal_usage_tenant_id_fkey"
+            columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "organizations"
             referencedColumns: ["id"]
@@ -3563,6 +3563,7 @@ export type Database = {
           id: string
           last_payment_failed_at: string | null
           last_seat_count: number | null
+          max_users: number | null
           seat_quantity: number
           stripe_customer_id: string | null
           stripe_subscription_id: string | null
@@ -3589,6 +3590,7 @@ export type Database = {
           id?: string
           last_payment_failed_at?: string | null
           last_seat_count?: number | null
+          max_users?: number | null
           seat_quantity?: number
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
@@ -3615,6 +3617,7 @@ export type Database = {
           id?: string
           last_payment_failed_at?: string | null
           last_seat_count?: number | null
+          max_users?: number | null
           seat_quantity?: number
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
@@ -3854,6 +3857,7 @@ export type Database = {
         }[]
       }
       backfill_default_stages_to_all_jobs: { Args: never; Returns: number }
+      can_add_tenant_user: { Args: { p_tenant_id: string }; Returns: boolean }
       categorize_skills: {
         Args: { generated_skills: Json; manual_skills: string[] }
         Returns: Json
@@ -4034,6 +4038,13 @@ export type Database = {
         Args: { tenant_id_param: string }
         Returns: number
       }
+      get_tenant_credit_limits: {
+        Args: { p_tenant_id: string }
+        Returns: {
+          collect_limit: number
+          search_limit: number
+        }[]
+      }
       get_tenant_for_verified_domain: {
         Args: { p_domain: string }
         Returns: string
@@ -4058,6 +4069,14 @@ export type Database = {
       get_user_tenant_id: { Args: never; Returns: string }
       get_user_type: { Args: never; Returns: string }
       get_user_type_secure: { Args: never; Returns: string }
+      increment_coresignal_usage: {
+        Args: {
+          p_billing_cycle_start: string
+          p_credit_type: string
+          p_tenant_id: string
+        }
+        Returns: undefined
+      }
       increment_term_usage: {
         Args: { table_name: string; term_name: string }
         Returns: undefined

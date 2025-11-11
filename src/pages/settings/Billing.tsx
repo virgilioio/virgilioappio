@@ -301,6 +301,164 @@ export function Billing() {
         </CardContent>
       </Card>
 
+      {/* Pricing Plans Selector (for trial/locked users) */}
+      {(isTrialing || isLocked || isGracePeriod || isCanceled) && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Choose Your Plan</CardTitle>
+            <CardDescription>Select the plan that best fits your team size and needs</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Launch Plan */}
+              <div className="border rounded-lg p-6 hover:border-primary transition-colors">
+                <div className="mb-4">
+                  <h3 className="text-xl font-bold">Launch</h3>
+                  <p className="text-sm text-muted-foreground mt-1">Perfect for small teams</p>
+                </div>
+                
+                <div className="mb-6">
+                  <div className="text-3xl font-bold">$149</div>
+                  <div className="text-sm text-muted-foreground">per month</div>
+                  <div className="text-xs text-muted-foreground mt-1">$1,519/year (save 15%)</div>
+                </div>
+
+                <div className="space-y-3 mb-6">
+                  <div className="flex items-start gap-2">
+                    <Check className="h-4 w-4 text-success mt-0.5" />
+                    <span className="text-sm">Up to 5 users</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <Check className="h-4 w-4 text-success mt-0.5" />
+                    <span className="text-sm">25 searches / 10 enrichments per month</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <Check className="h-4 w-4 text-success mt-0.5" />
+                    <span className="text-sm">Full ATS features</span>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Button 
+                    className="w-full" 
+                    variant="outline"
+                    onClick={() => createCheckout.mutate({ tier: 'launch', interval: 'month' })}
+                    disabled={createCheckout.isPending}
+                  >
+                    Monthly
+                  </Button>
+                  <Button 
+                    className="w-full" 
+                    onClick={() => createCheckout.mutate({ tier: 'launch', interval: 'year' })}
+                    disabled={createCheckout.isPending}
+                  >
+                    Annual (Save 15%)
+                  </Button>
+                </div>
+              </div>
+
+              {/* Growth Plan */}
+              <div className="border-2 border-primary rounded-lg p-6 relative">
+                <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
+                  <Badge variant="default">Most Popular</Badge>
+                </div>
+                
+                <div className="mb-4">
+                  <h3 className="text-xl font-bold">Growth</h3>
+                  <p className="text-sm text-muted-foreground mt-1">For growing teams</p>
+                </div>
+                
+                <div className="mb-6">
+                  <div className="text-3xl font-bold">$399</div>
+                  <div className="text-sm text-muted-foreground">per month</div>
+                  <div className="text-xs text-muted-foreground mt-1">$4,069/year (save 15%)</div>
+                </div>
+
+                <div className="space-y-3 mb-6">
+                  <div className="flex items-start gap-2">
+                    <Check className="h-4 w-4 text-success mt-0.5" />
+                    <span className="text-sm">Up to 15 users</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <Check className="h-4 w-4 text-success mt-0.5" />
+                    <span className="text-sm">100 searches / 50 enrichments per month</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <Check className="h-4 w-4 text-success mt-0.5" />
+                    <span className="text-sm">Full ATS features</span>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Button 
+                    className="w-full" 
+                    variant="outline"
+                    onClick={() => createCheckout.mutate({ tier: 'growth', interval: 'month' })}
+                    disabled={createCheckout.isPending}
+                  >
+                    Monthly
+                  </Button>
+                  <Button 
+                    className="w-full" 
+                    onClick={() => createCheckout.mutate({ tier: 'growth', interval: 'year' })}
+                    disabled={createCheckout.isPending}
+                  >
+                    Annual (Save 15%)
+                  </Button>
+                </div>
+              </div>
+
+              {/* Business Plan */}
+              <div className="border rounded-lg p-6 hover:border-primary transition-colors">
+                <div className="mb-4">
+                  <h3 className="text-xl font-bold">Business</h3>
+                  <p className="text-sm text-muted-foreground mt-1">For established teams</p>
+                </div>
+                
+                <div className="mb-6">
+                  <div className="text-3xl font-bold">$799</div>
+                  <div className="text-sm text-muted-foreground">per month</div>
+                  <div className="text-xs text-muted-foreground mt-1">$8,149/year (save 15%)</div>
+                </div>
+
+                <div className="space-y-3 mb-6">
+                  <div className="flex items-start gap-2">
+                    <Check className="h-4 w-4 text-success mt-0.5" />
+                    <span className="text-sm">Up to 50 users</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <Check className="h-4 w-4 text-success mt-0.5" />
+                    <span className="text-sm">250 searches / 125 enrichments per month</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <Check className="h-4 w-4 text-success mt-0.5" />
+                    <span className="text-sm">Full ATS features</span>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Button 
+                    className="w-full" 
+                    variant="outline"
+                    onClick={() => createCheckout.mutate({ tier: 'business', interval: 'month' })}
+                    disabled={createCheckout.isPending}
+                  >
+                    Monthly
+                  </Button>
+                  <Button 
+                    className="w-full" 
+                    onClick={() => createCheckout.mutate({ tier: 'business', interval: 'year' })}
+                    disabled={createCheckout.isPending}
+                  >
+                    Annual (Save 15%)
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Pricing Info Card */}
       <Card>
         <CardHeader>
@@ -308,65 +466,7 @@ export function Billing() {
           <CardDescription>Simple, transparent per-seat pricing</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <div className="text-sm text-muted-foreground mb-2">Price per Recruiter</div>
-              {isPricingLoading ? (
-                <Skeleton className="h-6 w-48" />
-              ) : (
-                <>
-                  <div className="font-semibold text-lg">
-                    {formatPrice(pricing?.monthly?.amount || 1000)}/month or {formatPrice(pricing?.yearly?.amount || 9900)}/year
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-1">
-                    Save {pricing?.monthly && pricing?.yearly 
-                      ? calculateYearlySavings(pricing.monthly.amount, pricing.yearly.amount)
-                      : 17}% with annual billing
-                  </div>
-                </>
-              )}
-            </div>
-
-            <div>
-              <div className="text-sm text-muted-foreground mb-2">Trial Period</div>
-              {isPricingLoading ? (
-                <Skeleton className="h-6 w-24" />
-              ) : (
-                <div className="font-semibold text-lg">{pricing?.trialDays || 14} days free</div>
-              )}
-              <div className="text-xs text-muted-foreground mt-1">
-                No credit card required
-              </div>
-            </div>
-          </div>
-
-          <div className="pt-4 border-t space-y-3">
-            <div className="flex items-start gap-2">
-              <Check className="h-4 w-4 text-success mt-0.5" />
-              <div>
-                <div className="font-medium text-sm">Billable Roles</div>
-                <div className="text-xs text-muted-foreground">Admin, Recruiter</div>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-2">
-              <Check className="h-4 w-4 text-success mt-0.5" />
-              <div>
-                <div className="font-medium text-sm">Free Roles</div>
-                <div className="text-xs text-muted-foreground">Hiring Manager, Interviewer (unlimited)</div>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-2">
-              <Check className="h-4 w-4 text-success mt-0.5" />
-              <div>
-                <div className="font-medium text-sm">All Features Included</div>
-                <div className="text-xs text-muted-foreground">
-                  Full ATS, AI-powered matching, unlimited jobs & candidates
-                </div>
-              </div>
-            </div>
-          </div>
+...
         </CardContent>
       </Card>
 

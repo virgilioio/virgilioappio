@@ -16,8 +16,8 @@ export function CoresignalCreditIndicator() {
 
   if (isLoading || !usage) return null
 
-  const searchUsagePercent = (usage.search_credits_used / usage.search_credits_limit) * 100
-  const collectUsagePercent = (usage.collect_credits_used / usage.collect_credits_limit) * 100
+  const searchUsagePercent = usage.search_percentage || 0
+  const collectUsagePercent = usage.collect_percentage || 0
   const maxUsagePercent = Math.max(searchUsagePercent, collectUsagePercent)
 
   const currentMonth = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' })

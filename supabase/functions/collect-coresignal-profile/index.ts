@@ -19,33 +19,71 @@ interface CollectRequest {
   user_id?: string;
 }
 
-// Check credit availability with enhanced error details
+// Helper to get current billing cycle for tenant
+async function getCurrentBillingCycle(tenantId: string): Promise<Date> {
+  const { data, error } = await supabase
+    .from('tenant_subscriptions')
+    .select('current_period_start, billing_interval, trial_started_at, billing_status')
+    .eq('tenant_id', tenantId)
+    .single();
+  
+  if (error || !data) {
+    throw new Error('Subscription not found');
+  }
+  
+  // If in trial, use trial_started_at
+  if (data.billing_status === 'trialing' && data.trial_started_at) {
+    return new Date(data.trial_started_at);
+  }
+  
+  // Otherwise use current_period_start
+  if (data.current_period_start) {
+    return new Date(data.current_period_start);
+  }
+  
+  // Fallback to current month start
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), 1);
+}
+
+// Updated checkCreditAvailability
 async function checkCreditAvailability(
-  organizationId: string, 
+  tenantId: string,
   type: 'search' | 'collect'
-): Promise<{ available: boolean; remaining: number; usage: any; nextReset: string }> {
-  const currentMonth = new Date().toISOString().slice(0, 7) + '-01';
+): Promise<{
+  available: boolean;
+  remaining: number;
+  usage: any;
+  currentTier: string;
+  requiresUpgrade: boolean;
+  nextReset: string;
+}> {
+  const billingCycleStart = await getCurrentBillingCycle(tenantId);
   
-  // Calculate next reset date (first day of next month)
-  const nextMonth = new Date(currentMonth);
-  nextMonth.setMonth(nextMonth.getMonth() + 1);
-  const nextReset = nextMonth.toISOString().slice(0, 10);
+  // Get subscription tier
+  const { data: subscription } = await supabase
+    .from('tenant_subscriptions')
+    .select('subscription_tier, billing_status, billing_interval')
+    .eq('tenant_id', tenantId)
+    .single();
   
+  const currentTier = subscription?.subscription_tier || 'launch';
+  
+  // Get or create usage record for current billing cycle
   let { data: usage, error } = await supabase
     .from('coresignal_usage')
     .select('*')
-    .eq('organization_id', organizationId)
-    .eq('month', currentMonth)
+    .eq('tenant_id', tenantId)
+    .eq('billing_cycle_start', billingCycleStart.toISOString())
     .single();
   
   if (error && error.code === 'PGRST116') {
+    // Create new usage record (limits auto-set by trigger)
     const { data: newUsage, error: insertError } = await supabase
       .from('coresignal_usage')
       .insert({
-        organization_id: organizationId,
-        month: currentMonth,
-        search_credits_limit: 500,
-        collect_credits_limit: 250
+        tenant_id: tenantId,
+        billing_cycle_start: billingCycleStart.toISOString()
       })
       .select()
       .single();
@@ -56,35 +94,38 @@ async function checkCreditAvailability(
     throw error;
   }
   
-  const limit = type === 'search' ? usage.search_credits_limit : usage.collect_credits_limit;
-  const used = type === 'search' ? usage.search_credits_used : usage.collect_credits_used;
+  // Calculate next reset date
+  const nextReset = new Date(billingCycleStart);
+  const interval = subscription?.billing_interval === 'year' ? 12 : 1;
+  nextReset.setMonth(nextReset.getMonth() + interval);
+  
+  const creditsUsed = type === 'search' ? usage.search_credits_used : usage.collect_credits_used;
+  const creditsLimit = type === 'search' ? usage.search_credits_limit : usage.collect_credits_limit;
+  const remaining = Math.max(0, creditsLimit - creditsUsed);
   
   return {
-    available: used < limit,
-    remaining: limit - used,
+    available: remaining > 0,
+    remaining,
     usage,
-    nextReset
+    currentTier,
+    requiresUpgrade: remaining === 0 && currentTier !== 'business', // business is top tier
+    nextReset: nextReset.toISOString()
   };
 }
 
-// Increment credit usage
+// Updated incrementCreditUsage
 async function incrementCreditUsage(
-  organizationId: string,
+  tenantId: string,
   type: 'search' | 'collect'
 ): Promise<void> {
-  const currentMonth = new Date().toISOString().slice(0, 7) + '-01';
-  const updateField = type === 'search' ? 'search_credits_used' : 'collect_credits_used';
-  const timestampField = type === 'search' ? 'last_search_at' : 'last_collect_at';
+  const billingCycleStart = await getCurrentBillingCycle(tenantId);
   
-  await supabase
-    .from('coresignal_usage')
-    .update({
-      [updateField]: supabase.rpc('increment_value', { current: 1 }),
-      [timestampField]: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    })
-    .eq('organization_id', organizationId)
-    .eq('month', currentMonth);
+  // Use PostgreSQL RPC for atomic increment
+  await supabase.rpc('increment_coresignal_usage', {
+    p_tenant_id: tenantId,
+    p_billing_cycle_start: billingCycleStart.toISOString(),
+    p_credit_type: type
+  });
 }
 
 // Generate profile summary from CoreSignal data using OpenAI
@@ -203,27 +244,52 @@ serve(async (req) => {
 
     console.log('📥 CoreSignal Collect Request:', { coresignal_id, project_id, job_id, user_id });
 
-    // Determine organization ID
-    let orgId = organization_id;
-    
-    if (!orgId && project_id) {
+    // Determine tenant ID
+    let tenantId: string | null = null;
+    let orgId: string | null = null;
+
+    if (project_id) {
       const { data: project, error: projectError } = await supabase
         .from('sourcing_projects')
-        .select('organization_id, job_id')
+        .select('organization_id')
         .eq('id', project_id)
         .single();
       
       if (projectError) throw new Error('Project not found');
       orgId = project.organization_id;
-    } else if (!orgId && job_id) {
+      
+      // Resolve tenant from organization
+      const { data: org } = await supabase
+        .from('organizations')
+        .select('tenant_id')
+        .eq('id', orgId)
+        .single();
+      
+      tenantId = org?.tenant_id;
+    } else if (job_id) {
       const { data: job, error: jobError } = await supabase
         .from('jobs')
-        .select('organization_id')
+        .select('tenant_id, organization_id')
         .eq('id', job_id)
         .single();
       
       if (jobError) throw new Error('Job not found');
+      tenantId = job.tenant_id;
       orgId = job.organization_id;
+    } else if (organization_id) {
+      orgId = organization_id;
+      // Resolve tenant from provided org
+      const { data: org } = await supabase
+        .from('organizations')
+        .select('tenant_id')
+        .eq('id', orgId)
+        .single();
+      
+      tenantId = org?.tenant_id;
+    }
+
+    if (!tenantId) {
+      throw new Error('Tenant ID could not be determined');
     }
     
     if (!orgId) {
@@ -264,8 +330,8 @@ serve(async (req) => {
       });
     }
 
-    // Check collect credit availability BEFORE making API call
-    const creditCheck = await checkCreditAvailability(orgId, 'collect');
+    // Check collect credit availability BEFORE making API call (using tenantId)
+    const creditCheck = await checkCreditAvailability(tenantId, 'collect');
     
     if (!creditCheck.available) {
       console.warn('❌ Monthly collect credit limit reached');
@@ -449,8 +515,8 @@ serve(async (req) => {
         });
     }
 
-    // Increment credit usage
-    await incrementCreditUsage(orgId, 'collect');
+    // Increment credit usage (using tenantId)
+    await incrementCreditUsage(tenantId, 'collect');
 
     const response = {
       candidate_id: candidate.id,
