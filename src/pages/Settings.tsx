@@ -1,6 +1,6 @@
 
 import { useState } from 'react'
-import { useSearchParams, useNavigate } from 'react-router-dom'
+import { useSearchParams, useNavigate, useLocation } from 'react-router-dom'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { ProfileTab } from '@/components/settings/ProfileTab'
@@ -28,9 +28,13 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 export default function Settings() {
   const [searchParams, setSearchParams] = useSearchParams()
   const navigate = useNavigate()
+  const location = useLocation()
   const { canViewBilling, canManageMembers, canViewOrganizations, isPlatformAdmin, isWorkspaceOwner } = usePermissions()
   const { organizationId, userType } = useAuth()
-  const defaultTab = searchParams.get('tab') || 'profile'
+  
+  // Auto-select billing tab if on /billing route
+  const isBillingRoute = location.pathname === '/billing'
+  const defaultTab = isBillingRoute ? 'billing' : (searchParams.get('tab') || 'profile')
   const [currentTab, setCurrentTab] = useState(defaultTab)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
