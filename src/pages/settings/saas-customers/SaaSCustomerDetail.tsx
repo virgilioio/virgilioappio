@@ -1,17 +1,21 @@
 import { useState, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Briefcase, Users, Activity, Calendar, AlertTriangle, Mail, Phone } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { ArrowLeft, Briefcase, Users, Activity, Calendar, AlertTriangle, Mail } from 'lucide-react'
+import { format, formatDistanceToNow } from 'date-fns'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { MetricCard } from '@/components/ui/metric-card'
+import { supabase } from '@/lib/supabaseClient'
 import { useSaaSCustomer } from '@/hooks/useSaaSCustomer'
+import { useSuspendOrganization, useRestoreOrganization, useExtendTrial } from '@/hooks/useSaaSAdminActions'
+import { useChangePlan } from '@/hooks/useChangePlan'
 import { SuspendOrganizationDialog } from '@/components/settings/SuspendOrganizationDialog'
 import { ExtendTrialDialog } from '@/components/settings/ExtendTrialDialog'
-import { useSuspendOrganization, useRestoreOrganization, useExtendTrial } from '@/hooks/useSaaSAdminActions'
-import { format, formatDistanceToNow } from 'date-fns'
-import { MetricCard } from '@/components/ui/metric-card'
+import { ChangePlanDialog } from '@/components/settings/ChangePlanDialog'
 import { CustomerHealthBadge, HealthStatus } from '@/components/saas/CustomerHealthBadge'
 import { QuickActionsPanel } from '@/components/saas/QuickActionsPanel'
 import { ActivityTimeline } from '@/components/saas/ActivityTimeline'
@@ -25,10 +29,29 @@ export function SaaSCustomerDetail() {
   
   const [suspendDialogOpen, setSuspendDialogOpen] = useState(false)
   const [extendTrialDialogOpen, setExtendTrialDialogOpen] = useState(false)
+  const [changePlanDialogOpen, setChangePlanDialogOpen] = useState(false)
   
   const suspendMutation = useSuspendOrganization()
   const restoreMutation = useRestoreOrganization()
   const extendTrialMutation = useExtendTrial()
+  const changePlanMutation = useChangePlan()
+
+  // Fetch subscription data for current plan info
+  const { data: subscriptionData } = useQuery({
+    queryKey: ['tenant-subscription', customer?.tenant_id],
+    queryFn: async () => {
+      if (!customer?.tenant_id) return null
+      const { data, error } = await supabase
+        .from('tenant_subscriptions')
+        .select('subscription_tier, billing_interval')
+        .eq('tenant_id', customer.tenant_id)
+        .single()
+      
+      if (error) throw error
+      return data
+    },
+    enabled: !!customer?.tenant_id
+  })
 
   if (isLoading) {
     return <div className="text-center py-8">Loading customer details...</div>
@@ -202,7 +225,7 @@ export function SaaSCustomerDetail() {
             <QuickActionsPanel
               customer={customer}
               onExtendTrial={() => setExtendTrialDialogOpen(true)}
-              onChangePlan={() => {/* TODO: implement */}}
+              onChangePlan={() => setChangePlanDialogOpen(true)}
               onSuspend={() => setSuspendDialogOpen(true)}
               onRestore={() => restoreMutation.mutate({ orgId: customer.id })}
             />
@@ -294,6 +317,19 @@ export function SaaSCustomerDetail() {
         organizationName={customer.name}
         currentTrialEnd={customer.trial_end_date ? new Date(customer.trial_end_date) : null}
         isPending={extendTrialMutation.isPending}
+      />
+
+      <ChangePlanDialog
+        open={changePlanDialogOpen}
+        onOpenChange={setChangePlanDialogOpen}
+        onConfirm={(newTier, newInterval) => {
+          changePlanMutation.mutate({ orgId: customer.id, newTier, newInterval })
+          setChangePlanDialogOpen(false)
+        }}
+        organizationName={customer.name}
+        currentTier={subscriptionData?.subscription_tier || null}
+        currentInterval={subscriptionData?.billing_interval || null}
+        isPending={changePlanMutation.isPending}
       />
     </div>
   )
