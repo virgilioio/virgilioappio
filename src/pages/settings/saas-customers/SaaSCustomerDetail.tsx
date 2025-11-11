@@ -21,6 +21,9 @@ import { QuickActionsPanel } from '@/components/saas/QuickActionsPanel'
 import { ActivityTimeline } from '@/components/saas/ActivityTimeline'
 import { MembersList } from '@/components/saas/MembersList'
 import { BillingOverview } from '@/components/saas/BillingOverview'
+import { SubscriptionTimeline } from '@/components/saas/SubscriptionTimeline'
+import { SeatManagementCard } from '@/components/saas/SeatManagementCard'
+import { PaymentHistory } from '@/components/saas/PaymentHistory'
 
 export function SaaSCustomerDetail() {
   const { id } = useParams<{ id: string }>()
@@ -44,7 +47,7 @@ export function SaaSCustomerDetail() {
       if (!customer?.tenant_id) return null
       const { data, error } = await supabase
         .from('tenant_subscriptions')
-        .select('subscription_tier, billing_interval, billing_status')
+        .select('*')
         .eq('tenant_id', customer.tenant_id)
         .single()
       
@@ -282,6 +285,19 @@ export function SaaSCustomerDetail() {
             )}
           </div>
 
+          {/* Subscription Timeline */}
+          {subscriptionData && (
+            <SubscriptionTimeline
+              trialStartedAt={subscriptionData.trial_started_at}
+              trialEndsAt={subscriptionData.trial_ends_at}
+              currentPeriodStart={subscriptionData.current_period_start}
+              currentPeriodEndAt={subscriptionData.current_period_end_at}
+              lastPaymentFailedAt={subscriptionData.last_payment_failed_at}
+              suspendedAt={customer.suspended_at}
+              billingStatus={subscriptionData.billing_status}
+            />
+          )}
+
           {/* Activity Timeline */}
           <ActivityTimeline activities={recentActivities} />
         </TabsContent>
@@ -292,6 +308,19 @@ export function SaaSCustomerDetail() {
 
         <TabsContent value="billing" className="space-y-6 mt-6">
           <BillingOverview customer={customer} />
+          
+          {/* Seat Management */}
+          {subscriptionData && (
+            <SeatManagementCard
+              tenantId={customer.tenant_id}
+              currentSeats={subscriptionData.seat_quantity}
+              maxSeats={subscriptionData.max_users}
+              lastUpdated={subscriptionData.updated_at}
+            />
+          )}
+
+          {/* Payment History */}
+          <PaymentHistory stripeCustomerId={subscriptionData?.stripe_customer_id || null} />
         </TabsContent>
 
         <TabsContent value="activity" className="space-y-6 mt-6">
