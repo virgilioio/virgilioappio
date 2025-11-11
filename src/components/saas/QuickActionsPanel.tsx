@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { ExternalLink, CreditCard, UserPlus, Calendar, Ban, RotateCcw } from 'lucide-react'
+import { ExternalLink, CreditCard, Calendar, Ban, RotateCcw, CheckCircle } from 'lucide-react'
 import { SaaSCustomerDetail } from '@/hooks/useSaaSCustomer'
 
 interface QuickActionsPanelProps {
@@ -9,6 +9,8 @@ interface QuickActionsPanelProps {
   onChangePlan: () => void
   onSuspend: () => void
   onRestore: () => void
+  onActivate: () => void
+  billingStatus?: string | null
 }
 
 export function QuickActionsPanel({
@@ -17,6 +19,8 @@ export function QuickActionsPanel({
   onChangePlan,
   onSuspend,
   onRestore,
+  onActivate,
+  billingStatus,
 }: QuickActionsPanelProps) {
   const openStripePortal = () => {
     if (customer.billing_id) {
@@ -62,15 +66,27 @@ export function QuickActionsPanel({
             </Button>
           )}
           
-          {customer.status === 'suspended' ? (
-            <Button 
-              variant="outline" 
-              className="gap-2 justify-start border-virgilio-border hover:border-virgilio-success/30 transition-all text-virgilio-success"
-              onClick={onRestore}
-            >
-              <RotateCcw className="h-4 w-4" />
-              Restore Account
-            </Button>
+          {/* Show different actions based on status */}
+          {billingStatus === 'locked' || billingStatus === 'suspended' ? (
+            <>
+              <Button 
+                variant="outline" 
+                className="gap-2 justify-start border-virgilio-border hover:border-virgilio-success/30 transition-all text-virgilio-success"
+                onClick={onActivate}
+              >
+                <CheckCircle className="h-4 w-4" />
+                Activate Account
+              </Button>
+              
+              <Button 
+                variant="outline" 
+                className="gap-2 justify-start border-virgilio-border hover:border-virgilio-purple/30 transition-all"
+                onClick={onRestore}
+              >
+                <RotateCcw className="h-4 w-4" />
+                Restore to Previous Status
+              </Button>
+            </>
           ) : (
             <Button 
               variant="outline" 

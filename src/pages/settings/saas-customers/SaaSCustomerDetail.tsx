@@ -11,7 +11,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { MetricCard } from '@/components/ui/metric-card'
 import { supabase } from '@/lib/supabaseClient'
 import { useSaaSCustomer } from '@/hooks/useSaaSCustomer'
-import { useSuspendOrganization, useRestoreOrganization, useExtendTrial } from '@/hooks/useSaaSAdminActions'
+import { useSuspendOrganization, useRestoreOrganization, useExtendTrial, useActivateAccount } from '@/hooks/useSaaSAdminActions'
 import { useChangePlan } from '@/hooks/useChangePlan'
 import { SuspendOrganizationDialog } from '@/components/settings/SuspendOrganizationDialog'
 import { ExtendTrialDialog } from '@/components/settings/ExtendTrialDialog'
@@ -35,15 +35,16 @@ export function SaaSCustomerDetail() {
   const restoreMutation = useRestoreOrganization()
   const extendTrialMutation = useExtendTrial()
   const changePlanMutation = useChangePlan()
+  const activateMutation = useActivateAccount()
 
-  // Fetch subscription data for current plan info
+  // Fetch subscription data for current plan info and billing status
   const { data: subscriptionData } = useQuery({
     queryKey: ['tenant-subscription', customer?.tenant_id],
     queryFn: async () => {
       if (!customer?.tenant_id) return null
       const { data, error } = await supabase
         .from('tenant_subscriptions')
-        .select('subscription_tier, billing_interval')
+        .select('subscription_tier, billing_interval, billing_status')
         .eq('tenant_id', customer.tenant_id)
         .single()
       
@@ -228,6 +229,8 @@ export function SaaSCustomerDetail() {
               onChangePlan={() => setChangePlanDialogOpen(true)}
               onSuspend={() => setSuspendDialogOpen(true)}
               onRestore={() => restoreMutation.mutate({ orgId: customer.id })}
+              onActivate={() => activateMutation.mutate({ orgId: customer.id })}
+              billingStatus={subscriptionData?.billing_status}
             />
 
             {/* Owner Contact Card */}

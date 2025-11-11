@@ -19,6 +19,10 @@ interface ExtendTrialParams {
   newEndDate: Date
 }
 
+interface ActivateAccountParams {
+  orgId: string
+}
+
 export function useSuspendOrganization() {
   const queryClient = useQueryClient()
 
@@ -204,6 +208,76 @@ export function useExtendTrial() {
       toast({
         variant: 'destructive',
         title: 'Trial extension failed',
+        description: extractErrorMessage(error),
+      })
+    }
+  })
+}
+
+export function useActivateAccount() {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async ({ orgId }: ActivateAccountParams) => {
+      log.info('Activating account:', { orgId })
+      
+      return withAuthRetry(async () => {
+        // Step 1: Get tenant_id from organizations
+        const { data: org, error: orgError } = await supabase
+          .from('organizations')
+          .select('tenant_id, name')
+          .eq('id', orgId)
+          .single()
+
+        if (orgError) throw orgError
+        if (!org?.tenant_id) throw new Error('Organization has no tenant_id')
+
+        // Step 2: Update tenant_subscriptions to activate account
+        const { data, error } = await supabase
+          .from('tenant_subscriptions')
+          .update({
+            billing_status: 'active',
+            suspended_at: null,
+            suspended_reason: null,
+            updated_at: new Date().toISOString()
+          })
+          .eq('tenant_id', org.tenant_id)
+          .select()
+          .single()
+
+        if (error) throw error
+        
+        // Step 3: Update organizations.status for UI consistency
+        const { error: orgUpdateError } = await supabase
+          .from('organizations')
+          .update({ status: 'active' })
+          .eq('id', orgId)
+
+        if (orgUpdateError) {
+          log.warn('Failed to update organization status:', orgUpdateError)
+          // Don't throw - billing status is source of truth
+        }
+        
+        return { ...data, name: org.name, id: orgId }
+      })
+    },
+    onSuccess: (data) => {
+      log.info('Account activated successfully:', data.id)
+      
+      queryClient.invalidateQueries({ queryKey: ['saas-customers'] })
+      queryClient.invalidateQueries({ queryKey: ['saas-customer', data.id] })
+      queryClient.invalidateQueries({ queryKey: ['tenant-subscription'] })
+      
+      toast({
+        title: 'Account activated',
+        description: `${data.name} has been activated successfully.`,
+      })
+    },
+    onError: (error) => {
+      log.error('Failed to activate account:', error)
+      toast({
+        variant: 'destructive',
+        title: 'Activation failed',
         description: extractErrorMessage(error),
       })
     }
