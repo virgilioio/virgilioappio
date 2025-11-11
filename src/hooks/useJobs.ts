@@ -251,6 +251,17 @@ export function useJobs() {
         console.log('Regular user creating job for their organization:', targetOrganizationId)
       }
 
+      // Fetch tenant_id for the target organization (defense-in-depth)
+      const { data: orgData, error: orgError } = await supabase
+        .from('organizations')
+        .select('tenant_id')
+        .eq('id', targetOrganizationId)
+        .single()
+
+      if (orgError || !orgData?.tenant_id) {
+        throw new Error('Could not determine tenant for organization')
+      }
+
       const { data: newJob, error: createError } = await withAuthRetry(async () =>
         await supabase
           .from('jobs')
@@ -258,6 +269,7 @@ export function useJobs() {
             ...jobData,
             ...normalizedData,
             organization_id: targetOrganizationId,
+            tenant_id: orgData.tenant_id,
             created_by: user.id,
           }])
           .select()
