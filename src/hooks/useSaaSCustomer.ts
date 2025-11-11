@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabaseClient'
 export interface SaaSCustomerDetail {
   id: string
   name: string
+  tenant_id: string
   plan_type: string | null
   status: string
   renewal_date: string | null
