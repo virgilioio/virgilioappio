@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -57,7 +57,10 @@ export function JobFormSheet({ isOpen, onClose, onSubmit, job, isLoading }: JobF
   const { userType, organizationId } = useAuth()
 
   // Filter to only show child organizations (jobs must reference child orgs only)
-  const childOrganizations = organizations.filter(org => org.parent_organization_id !== null)
+  const childOrganizations = useMemo(
+    () => organizations.filter(org => org.parent_organization_id !== null),
+    [organizations]
+  )
 
   useEffect(() => {
     if (job) {
