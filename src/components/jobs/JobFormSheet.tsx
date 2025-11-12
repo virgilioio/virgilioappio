@@ -35,8 +35,6 @@ export function JobFormSheet({ isOpen, onClose, onSubmit, job, isLoading }: JobF
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    department: '',
-    level: 'L1 - Specialists' as JobLevel,
     location: '',
     salary_min: '',
     salary_max: '',
@@ -48,6 +46,7 @@ export function JobFormSheet({ isOpen, onClose, onSubmit, job, isLoading }: JobF
 
   const [selectedSkills, setSelectedSkills] = useState<string[]>([])
   const [autoSkills, setAutoSkills] = useState<CategorizedSkill[]>([])
+  const [descriptionIsExternalUpdate, setDescriptionIsExternalUpdate] = useState(false)
 
   const [currencyOpen, setCurrencyOpen] = useState(false)
   const [hiringTeamOpen, setHiringTeamOpen] = useState(false)
@@ -68,8 +67,6 @@ export function JobFormSheet({ isOpen, onClose, onSubmit, job, isLoading }: JobF
       setFormData({
         title: job.title,
         description: job.description || '',
-        department: job.department || '',
-        level: job.level,
         location: job.location || '',
         salary_min: job.salary_min?.toString() || '',
         salary_max: job.salary_max?.toString() || '',
@@ -79,6 +76,7 @@ export function JobFormSheet({ isOpen, onClose, onSubmit, job, isLoading }: JobF
         hiring_team: job.hiring_team || []
       })
       setSelectedSkills(job.skills || [])
+      setDescriptionIsExternalUpdate(true)
     } else {
       // Creating new job - set appropriate default organization
       let defaultOrganizationId = ''
@@ -101,6 +99,7 @@ export function JobFormSheet({ isOpen, onClose, onSubmit, job, isLoading }: JobF
       }))
       setSelectedSkills([])
       setAutoSkills([])
+      setDescriptionIsExternalUpdate(false)
     }
   }, [job, childOrganizations, userType, organizationId])
 
@@ -115,8 +114,6 @@ export function JobFormSheet({ isOpen, onClose, onSubmit, job, isLoading }: JobF
     const submitData = {
       title: formData.title,
       description: formData.description || null,
-      department: formData.department || null,
-      level: formData.level,
       location: formData.location || null,
       salary_min: formData.salary_min ? parseInt(formData.salary_min) : null,
       salary_max: formData.salary_max ? parseInt(formData.salary_max) : null,
@@ -137,8 +134,6 @@ export function JobFormSheet({ isOpen, onClose, onSubmit, job, isLoading }: JobF
       setFormData({
         title: '',
         description: '',
-        department: '',
-        level: 'L1 - Specialists',
         location: '',
         salary_min: '',
         salary_max: '',
@@ -149,6 +144,7 @@ export function JobFormSheet({ isOpen, onClose, onSubmit, job, isLoading }: JobF
       })
       setSelectedSkills([])
       setAutoSkills([])
+      setDescriptionIsExternalUpdate(false)
     } catch (error) {
       // Error is handled in the hook
     }
@@ -203,21 +199,6 @@ export function JobFormSheet({ isOpen, onClose, onSubmit, job, isLoading }: JobF
             </div>
 
             <div>
-              <Label htmlFor="level">Level *</Label>
-              <Select value={formData.level} onValueChange={(value) => setFormData(prev => ({ ...prev, level: value as JobLevel }))}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="L1 - Specialists">L1 - Specialists</SelectItem>
-                  <SelectItem value="L2 - Managers">L2 - Managers</SelectItem>
-                  <SelectItem value="L3 - Directors / VPs / Executive Search">L3 - Directors / VPs / Executive Search</SelectItem>
-                  <SelectItem value="L4 - C-Level">L4 - C-Level</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
               <Label htmlFor="status">Status</Label>
               <Select value={formData.status} onValueChange={(value) => setFormData(prev => ({ ...prev, status: value as JobStatus }))}>
                 <SelectTrigger>
@@ -230,16 +211,6 @@ export function JobFormSheet({ isOpen, onClose, onSubmit, job, isLoading }: JobF
                   <SelectItem value="archived">Archived</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
-
-            <div>
-              <Label htmlFor="department">Department</Label>
-              <Input
-                id="department"
-                value={formData.department}
-                onChange={(e) => setFormData(prev => ({ ...prev, department: e.target.value }))}
-                placeholder="e.g. Engineering"
-              />
             </div>
 
             <div>
@@ -322,7 +293,7 @@ export function JobFormSheet({ isOpen, onClose, onSubmit, job, isLoading }: JobF
             </div>
 
             <div>
-              <Label htmlFor="organization">Organization *</Label>
+              <Label htmlFor="organization">Organization / Department *</Label>
               <Select 
                 value={formData.organization_id} 
                 onValueChange={(value) => setFormData(prev => ({ ...prev, organization_id: value }))}
@@ -368,7 +339,8 @@ export function JobFormSheet({ isOpen, onClose, onSubmit, job, isLoading }: JobF
                 placeholder="Describe the role, responsibilities, and requirements..."
                 minHeight="300px"
                 className="mt-1"
-                isExternalUpdate={!!job}
+                isExternalUpdate={descriptionIsExternalUpdate}
+                onExternalUpdateComplete={() => setDescriptionIsExternalUpdate(false)}
               />
             </div>
 

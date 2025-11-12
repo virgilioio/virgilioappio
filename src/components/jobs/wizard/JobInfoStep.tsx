@@ -87,7 +87,7 @@ export function JobInfoStep({ jobData, onUpdate }: JobInfoStepProps) {
         {/* Organization - Only show for users who can select org */}
         {canSelectOrganization && (
           <div className="space-y-2">
-            <Label htmlFor="organization">Organization *</Label>
+            <Label htmlFor="organization">Organization / Department *</Label>
             <SearchableSelect
               options={organizationOptions}
               value={jobData.organization_id || ''}
@@ -99,17 +99,6 @@ export function JobInfoStep({ jobData, onUpdate }: JobInfoStepProps) {
             />
           </div>
         )}
-
-        {/* Department */}
-        <div className="space-y-2">
-          <Label htmlFor="department">Department</Label>
-          <Input
-            id="department"
-            value={jobData.department || ''}
-            onChange={(e) => handleInputChange('department', e.target.value)}
-            placeholder="e.g. Engineering"
-          />
-        </div>
 
         {/* Location */}
         <div className="space-y-2">

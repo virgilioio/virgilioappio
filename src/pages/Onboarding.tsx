@@ -55,11 +55,17 @@ export default function Onboarding() {
     setProvisioningStatus('creating')
     
     try {
+      console.log('[Onboarding] Starting provision-tenant request', { workspaceName, userId: user?.id })
+      
       // Step 1: Provision tenant
       const { data, error } = await supabase.functions.invoke('provision-tenant', {
         body: { workspaceName },
       })
+      
+      console.log('[Onboarding] Provision-tenant response', { data, error })
+      
       if (error) {
+        console.error('[Onboarding] Provision-tenant error', error)
         if (error.message?.includes('EMAIL_NOT_VERIFIED')) {
           setEmailVerified(false)
           setProvisioningStatus('idle')
@@ -143,13 +149,14 @@ export default function Onboarding() {
       navigate('/dashboard', { replace: true })
       
     } catch (err: any) {
+      console.error('[Onboarding] Onboarding failed', err)
       setProvisioningStatus('idle')
       if (err?.message?.includes('EMAIL_NOT_VERIFIED')) {
         setEmailVerified(false)
       } else {
         toast({ 
           title: 'Onboarding failed', 
-          description: err?.message || 'Please try again', 
+          description: err?.message || 'Unable to create workspace. Please try again or contact support.', 
           variant: 'destructive' 
         })
       }
