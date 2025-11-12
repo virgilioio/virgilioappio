@@ -72,6 +72,9 @@ function AppContent() {
         <Route path="/schedule/:shortCode" element={<PublicBookingPage />} />
         <Route path="/schedule/:shortCode/confirmed/:bookingId" element={<BookingConfirmed />} />
 
+        {/* Onboarding route - requires auth but NOT Layout (to bypass OrgGate) */}
+        <Route path="/onboarding" element={<RequireAuth><Onboarding /></RequireAuth>} />
+
         {/* Authenticated routes wrapped with RequireAuth and Layout */}
         <Route element={<RequireAuth><Layout /></RequireAuth>}>
           {/* Always accessible routes - users need access to manage billing */}
@@ -80,7 +83,6 @@ function AppContent() {
           <Route path="/settings/platform/saas-customers/:id" element={<SaaSCustomerDetail />} />
           <Route path="/account-setup" element={<AccountSetup />} />
           <Route path="/mail/oauth/callback" element={<MailOAuthCallback />} />
-          <Route path="/onboarding" element={<Onboarding />} />
           
           {/* Protected routes - wrapped with BillingGuard */}
           <Route element={<BillingGuard requireActive={false} />}>
