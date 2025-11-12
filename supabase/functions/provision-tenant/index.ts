@@ -15,6 +15,15 @@ serve(async (req) => {
   const preflightResponse = handleSecureCorsPreFlight(req, corsHeaders);
   if (preflightResponse) return preflightResponse;
 
+  const requestId = crypto.randomUUID();
+  const startTime = Date.now();
+  
+  log(`Function invoked [${requestId}]`, { 
+    method: req.method,
+    hasAuth: !!req.headers.get("Authorization"),
+    timestamp: new Date().toISOString()
+  });
+
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
@@ -26,8 +35,17 @@ serve(async (req) => {
     const token = authHeader.replace("Bearer ", "");
 
   const { data: userData, error: userErr } = await supabase.auth.getUser(token);
-  if (userErr || !userData?.user) throw new Error(`Auth error: ${userErr?.message}`);
+  if (userErr || !userData?.user) {
+    log(`Auth failed [${requestId}]`, { error: userErr?.message });
+    throw new Error(`Auth error: ${userErr?.message}`);
+  }
   const user = userData.user;
+  
+  log(`User authenticated [${requestId}]`, { 
+    userId: user.id, 
+    email: user.email,
+    provider: user.app_metadata?.provider 
+  });
 
   // Email verification gate - prevent tenant creation for unverified emails
   const isGoogleOAuth = user.app_metadata?.provider === 'google';
@@ -36,7 +54,13 @@ serve(async (req) => {
     : user.email_confirmed_at !== null;
 
   if (!isEmailVerified) {
-    log("Email not verified", { userId: user.id, provider: user.app_metadata?.provider });
+    log(`Email not verified [${requestId}]`, { 
+      userId: user.id, 
+      email: user.email,
+      provider: user.app_metadata?.provider,
+      emailConfirmedAt: user.email_confirmed_at,
+      googleEmailVerified: user.user_metadata?.email_verified
+    });
     return new Response(
       JSON.stringify({ 
         code: 'EMAIL_NOT_VERIFIED', 
@@ -48,11 +72,19 @@ serve(async (req) => {
 
     // Extract email domain and check for auto-join
     const emailDomain = user.email?.split('@')[1]?.toLowerCase();
-    log("Email domain extracted", { emailDomain });
+    log(`Email domain extracted [${requestId}]`, { 
+      emailDomain, 
+      userEmail: user.email 
+    });
 
     // Check if domain is public (skip auto-join for gmail, yahoo, etc.)
     const { data: isPublicDomain } = await supabase
       .rpc('is_public_email_domain', { domain: emailDomain });
+    
+    log(`Domain check [${requestId}]`, { 
+      emailDomain, 
+      isPublicDomain 
+    });
 
     if (!isPublicDomain && emailDomain) {
       // Check for verified tenant domain
@@ -60,9 +92,10 @@ serve(async (req) => {
         .rpc('get_tenant_for_verified_domain', { p_domain: emailDomain });
 
       if (existingTenantId) {
-        log("Domain matched verified tenant, auto-joining", { 
+        log(`Domain matched verified tenant, auto-joining [${requestId}]`, { 
           domain: emailDomain, 
-          tenantId: existingTenantId 
+          tenantId: existingTenantId,
+          userId: user.id
         });
 
         // Check if user already has membership in this tenant
@@ -74,9 +107,10 @@ serve(async (req) => {
           .maybeSingle();
 
         if (existingMember) {
-          log("User already has membership in auto-join tenant", { 
+          log(`User already has membership in auto-join tenant [${requestId}]`, { 
             userId: user.id, 
-            orgId: existingTenantId 
+            orgId: existingTenantId,
+            memberStatus: existingMember.user_status
           });
           return new Response(
             JSON.stringify({
@@ -98,12 +132,20 @@ serve(async (req) => {
           user_status: "active",
         });
 
-        if (memberErr) throw new Error(`Failed to auto-join tenant: ${memberErr.message}`);
+        if (memberErr) {
+          log(`Auto-join failed [${requestId}]`, { 
+            error: memberErr.message,
+            userId: user.id,
+            tenantId: existingTenantId
+          });
+          throw new Error(`Failed to auto-join tenant: ${memberErr.message}`);
+        }
 
-        log("Auto-join complete", { 
+        log(`Auto-join complete [${requestId}]`, { 
           userId: user.id, 
           tenantId: existingTenantId,
-          domain: emailDomain 
+          domain: emailDomain,
+          duration: Date.now() - startTime
         });
 
         return new Response(
@@ -118,12 +160,24 @@ serve(async (req) => {
     }
 
     // If no verified domain found, continue with new tenant creation...
-    log("No verified domain, creating new tenant", { emailDomain });
+    log(`No verified domain, creating new tenant [${requestId}]`, { 
+      emailDomain,
+      userId: user.id 
+    });
 
     const body = (await req.json().catch(() => ({}))) as ProvisionBody;
     const workspaceName = (body.workspaceName || "").trim();
     const trialDays = 14; // Fixed 14-day trial
-    if (!workspaceName) throw new Error("workspaceName is required");
+    
+    log(`Workspace name received [${requestId}]`, { 
+      workspaceName, 
+      userId: user.id 
+    });
+    
+    if (!workspaceName) {
+      log(`Missing workspace name [${requestId}]`, { userId: user.id });
+      throw new Error("workspaceName is required");
+    }
 
     // Idempotency: if user already has an active membership, return early
     const { data: existingMember } = await supabase
@@ -135,7 +189,11 @@ serve(async (req) => {
       .maybeSingle();
 
     if (existingMember) {
-      log("User already has active membership", { userId: user.id, orgId: existingMember.organization_id });
+      log(`User already has active membership [${requestId}]`, { 
+        userId: user.id, 
+        orgId: existingMember.organization_id,
+        duration: Date.now() - startTime
+      });
       return new Response(
         JSON.stringify({
           status: "exists",
@@ -147,6 +205,13 @@ serve(async (req) => {
 
     // Create tenant organization with signup tracking
     const authProvider = user.app_metadata?.provider || 'email';
+    
+    log(`Creating tenant organization [${requestId}]`, { 
+      workspaceName, 
+      userId: user.id,
+      authProvider 
+    });
+    
     const { data: tenantOrg, error: tenantErr } = await supabase
       .from("organizations")
       .insert({ 
@@ -160,11 +225,31 @@ serve(async (req) => {
       })
       .select("id")
       .single();
-    if (tenantErr) throw new Error(`Failed to create tenant org: ${tenantErr.message}`);
+    
+    if (tenantErr) {
+      log(`Failed to create tenant organization [${requestId}]`, { 
+        error: tenantErr.message,
+        code: tenantErr.code,
+        details: tenantErr.details,
+        hint: tenantErr.hint,
+        userId: user.id
+      });
+      throw new Error(`Failed to create tenant org: ${tenantErr.message}`);
+    }
+    
     const tenantId = tenantOrg.id as string;
-    log("Created tenant", { tenantId });
+    log(`Created tenant [${requestId}]`, { 
+      tenantId,
+      userId: user.id,
+      workspaceName 
+    });
 
     // Add user as workspace_owner/admin of parent tenant
+    log(`Creating member record [${requestId}]`, { 
+      userId: user.id,
+      tenantId 
+    });
+    
     const { error: memberErr } = await supabase.from("members").insert({
       user_id: user.id,
       organization_id: tenantId,
@@ -173,11 +258,34 @@ serve(async (req) => {
       member_role: "admin",
       user_status: "active",
     });
-    if (memberErr) throw new Error(`Failed to add member: ${memberErr.message}`);
+    
+    if (memberErr) {
+      log(`Failed to create member record [${requestId}]`, { 
+        error: memberErr.message,
+        code: memberErr.code,
+        details: memberErr.details,
+        hint: memberErr.hint,
+        userId: user.id,
+        tenantId
+      });
+      throw new Error(`Failed to add member: ${memberErr.message}`);
+    }
+    
+    log(`Member record created [${requestId}]`, { 
+      userId: user.id,
+      tenantId 
+    });
 
     // Start 14-day trial with new billing_status fields
     const trialStart = new Date();
     const trialEnd = new Date(Date.now() + trialDays * 24 * 60 * 60 * 1000);
+    
+    log(`Creating trial subscription [${requestId}]`, { 
+      tenantId,
+      trialDays,
+      trialEndsAt: trialEnd.toISOString() 
+    });
+    
     const { error: upsertErr } = await supabase.from("tenant_subscriptions").upsert(
       {
         tenant_id: tenantId,
@@ -196,15 +304,29 @@ serve(async (req) => {
       },
       { onConflict: "tenant_id" }
     );
-    if (upsertErr) throw new Error(`Failed to set trial: ${upsertErr.message}`);
+    
+    if (upsertErr) {
+      log(`Failed to create trial subscription [${requestId}]`, { 
+        error: upsertErr.message,
+        code: upsertErr.code,
+        details: upsertErr.details,
+        hint: upsertErr.hint,
+        tenantId
+      });
+      throw new Error(`Failed to set trial: ${upsertErr.message}`);
+    }
 
-    log("Provisioning complete", { 
+    log(`Provisioning complete [${requestId}]`, { 
       tenantId, 
+      userId: user.id,
+      email: user.email,
+      workspaceName,
       trialEndsAt: trialEnd.toISOString(),
       trialDays: 14,
       billingStatus: 'trialing',
       authProvider, 
-      signupSource: "self_serve" 
+      signupSource: "self_serve",
+      duration: Date.now() - startTime
     });
 
     return new Response(
@@ -213,8 +335,24 @@ serve(async (req) => {
     );
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);
-    console.error("[provision-tenant] ERROR", message);
-    return new Response(JSON.stringify({ error: message }), {
+    const stack = e instanceof Error ? e.stack : undefined;
+    
+    log(`ERROR [${requestId}]`, {
+      error: message,
+      stack,
+      duration: Date.now() - startTime
+    });
+    
+    console.error(`[provision-tenant] ERROR [${requestId}]`, {
+      message,
+      stack,
+      timestamp: new Date().toISOString()
+    });
+    
+    return new Response(JSON.stringify({ 
+      error: message,
+      requestId // Include requestId for support debugging
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
     });
