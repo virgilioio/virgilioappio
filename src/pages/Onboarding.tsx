@@ -173,6 +173,34 @@ export default function Onboarding() {
     })
   }
 
+  // Pre-flight check: If user already has a workspace, redirect to dashboard
+  useEffect(() => {
+    const checkExistingMembership = async () => {
+      if (!user || !emailVerified) return;
+      
+      const { data: existingMember } = await supabase
+        .from('members')
+        .select('tenant_id')
+        .eq('user_id', user.id)
+        .eq('user_status', 'active')
+        .maybeSingle();
+      
+      if (existingMember) {
+        console.log('[Onboarding] User already has workspace, redirecting', { 
+          tenantId: existingMember.tenant_id 
+        });
+        toast({
+          title: 'Welcome back!',
+          description: 'Taking you to your dashboard...',
+        });
+        navigate('/dashboard', { replace: true });
+      }
+    };
+    
+    checkExistingMembership();
+  }, [user, emailVerified, navigate, toast]);
+
+
   const handleCancel = async () => {
     try {
       await logout()
