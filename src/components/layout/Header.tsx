@@ -48,6 +48,8 @@ export function Header() {
     canViewCandidatesNavigation,
     isPlatformAdmin,
     isWorkspaceOwner,
+    isAdmin,
+    isRecruiter,
     canViewCandidates
   } = usePermissions()
   const navigate = useNavigate()
@@ -132,7 +134,7 @@ export function Header() {
       href: '/find',
       icon: Sparkles,
       label: 'Find',
-      show: isPlatformAdmin,
+      show: isPlatformAdmin || isWorkspaceOwner || isAdmin || isRecruiter,
     },
     {
       href: '/jobs',
