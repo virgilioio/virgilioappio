@@ -56,26 +56,46 @@ serve(async (req) => {
       performedBy: adminUser.id 
     });
 
-    // Create tenant
-    const { data: tenant, error: tenantErr } = await supabase
+    // Generate UUID once for both tenant and root organization
+    const tenantId = crypto.randomUUID();
+
+    // 1. Create tenant record
+    const { error: tenantErr } = await supabase
       .from("tenants")
       .insert({ 
+        id: tenantId,
         name: workspaceName,
         tenant_type: "saas",
         status: "active",
         owner_id: userId,
         signup_source: "admin_recovery"
-      })
-      .select("id")
-      .single();
+      });
 
     if (tenantErr) {
       log("Failed to create tenant", { error: tenantErr });
       throw new Error(`Failed to create tenant: ${tenantErr.message}`);
     }
 
-    const tenantId = tenant.id as string;
     log("Created tenant", { tenantId });
+
+    // 2. Create matching root organization (satisfies members.organization_id FK)
+    const { error: orgErr } = await supabase
+      .from("organizations")
+      .insert({
+        id: tenantId,  // SAME UUID - critical for FK constraint
+        name: workspaceName,
+        org_kind: "root",
+        status: "active",
+        tenant_id: tenantId,
+        parent_organization_id: null
+      });
+
+    if (orgErr) {
+      log("Failed to create root organization", { error: orgErr });
+      throw new Error(`Failed to create root org: ${orgErr.message}`);
+    }
+
+    log("Created root organization", { tenantId });
 
     // Add member record
     const { error: memberErr } = await supabase.from("members").insert({

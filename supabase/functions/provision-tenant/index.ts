@@ -212,34 +212,66 @@ serve(async (req) => {
       authProvider 
     });
     
-    const { data: tenant, error: tenantErr } = await supabase
+    // Generate UUID once for both tenant and root organization
+    const tenantId = crypto.randomUUID();
+
+    // 1. Create tenant record
+    const { error: tenantErr } = await supabase
       .from("tenants")
       .insert({ 
+        id: tenantId,
         name: workspaceName,
         tenant_type: "saas",
         status: "active",
         owner_id: user.id,
         signup_source: "self_serve"
-      })
-      .select("id")
-      .single();
-    
+      });
+
     if (tenantErr) {
-      log(`Failed to create tenant organization [${requestId}]`, { 
+      log(`Failed to create tenant [${requestId}]`, { 
         error: tenantErr.message,
         code: tenantErr.code,
         details: tenantErr.details,
         hint: tenantErr.hint,
-        userId: user.id
+        userId: user.id,
+        workspaceName 
       });
-      throw new Error(`Failed to create tenant org: ${tenantErr.message}`);
+      throw new Error(`Failed to create tenant: ${tenantErr.message}`);
     }
     
-    const tenantId = tenant.id as string;
     log(`Created tenant [${requestId}]`, { 
       tenantId,
       userId: user.id,
       workspaceName 
+    });
+
+    // 2. Create matching root organization (satisfies members.organization_id FK)
+    const { error: orgErr } = await supabase
+      .from("organizations")
+      .insert({
+        id: tenantId,  // SAME UUID - critical for FK constraint
+        name: workspaceName,
+        org_kind: "root",
+        status: "active",
+        tenant_id: tenantId,
+        parent_organization_id: null
+      });
+
+    if (orgErr) {
+      log(`Failed to create root organization [${requestId}]`, { 
+        error: orgErr.message,
+        code: orgErr.code,
+        details: orgErr.details,
+        hint: orgErr.hint,
+        tenantId,
+        userId: user.id
+      });
+      throw new Error(`Failed to create root org: ${orgErr.message}`);
+    }
+
+    log(`Created root organization [${requestId}]`, { 
+      tenantId,
+      userId: user.id 
     });
 
     // Add user as workspace_owner/admin of parent tenant
