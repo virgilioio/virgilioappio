@@ -101,9 +101,9 @@ serve(async (req) => {
         // Check if user already has membership in this tenant
         const { data: existingMember } = await supabase
           .from("members")
-          .select("id, organization_id, user_status")
+          .select("id, tenant_id, user_status")
           .eq("user_id", user.id)
-          .eq("organization_id", existingTenantId)
+          .eq("tenant_id", existingTenantId)
           .maybeSingle();
 
         if (existingMember) {
@@ -212,16 +212,14 @@ serve(async (req) => {
       authProvider 
     });
     
-    const { data: tenantOrg, error: tenantErr } = await supabase
-      .from("organizations")
+    const { data: tenant, error: tenantErr } = await supabase
+      .from("tenants")
       .insert({ 
-        name: workspaceName, 
-        org_kind: "tenant", 
-        status: "active", 
-        owner_id: user.id,
-        signup_source: "self_serve",
+        name: workspaceName,
         tenant_type: "saas",
-        organization_type: "client"
+        status: "active",
+        owner_id: user.id,
+        signup_source: "self_serve"
       })
       .select("id")
       .single();
@@ -237,7 +235,7 @@ serve(async (req) => {
       throw new Error(`Failed to create tenant org: ${tenantErr.message}`);
     }
     
-    const tenantId = tenantOrg.id as string;
+    const tenantId = tenant.id as string;
     log(`Created tenant [${requestId}]`, { 
       tenantId,
       userId: user.id,

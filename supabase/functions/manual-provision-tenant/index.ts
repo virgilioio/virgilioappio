@@ -56,17 +56,15 @@ serve(async (req) => {
       performedBy: adminUser.id 
     });
 
-    // Create tenant organization
-    const { data: tenantOrg, error: tenantErr } = await supabase
-      .from("organizations")
+    // Create tenant
+    const { data: tenant, error: tenantErr } = await supabase
+      .from("tenants")
       .insert({ 
-        name: workspaceName, 
-        org_kind: "tenant", 
-        status: "active", 
-        owner_id: userId,
-        signup_source: "admin_recovery",
+        name: workspaceName,
         tenant_type: "saas",
-        organization_type: "client"
+        status: "active",
+        owner_id: userId,
+        signup_source: "admin_recovery"
       })
       .select("id")
       .single();
@@ -76,7 +74,7 @@ serve(async (req) => {
       throw new Error(`Failed to create tenant: ${tenantErr.message}`);
     }
 
-    const tenantId = tenantOrg.id as string;
+    const tenantId = tenant.id as string;
     log("Created tenant", { tenantId });
 
     // Add member record
