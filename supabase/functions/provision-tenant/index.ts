@@ -206,30 +206,6 @@ serve(async (req) => {
       throw new Error("workspaceName is required");
     }
 
-    // Idempotency: if user already has an active membership, return early
-    const { data: existingMember } = await supabase
-      .from("members")
-      .select("id, organization_id, user_status")
-      .eq("user_id", user.id)
-      .eq("user_status", "active")
-      .limit(1)
-      .maybeSingle();
-
-    if (existingMember) {
-      log(`User already has active membership [${requestId}]`, { 
-        userId: user.id, 
-        orgId: existingMember.organization_id,
-        duration: Date.now() - startTime
-      });
-      return new Response(
-        JSON.stringify({
-          status: "exists",
-          organizationId: existingMember.organization_id,
-        }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
-      );
-    }
-
     // Create tenant organization with signup tracking
     const authProvider = user.app_metadata?.provider || 'email';
     
