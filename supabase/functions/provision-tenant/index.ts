@@ -70,6 +70,33 @@ serve(async (req) => {
     );
   }
 
+    // Check if user already has an active membership (idempotency check)
+    log(`Checking for existing membership [${requestId}]`, { userId: user.id });
+    
+    const { data: existingMember } = await supabase
+      .from('members')
+      .select('tenant_id, organization_id, user_status')
+      .eq('user_id', user.id)
+      .eq('user_status', 'active')
+      .maybeSingle();
+    
+    if (existingMember) {
+      log(`User already provisioned [${requestId}]`, { 
+        userId: user.id,
+        tenantId: existingMember.tenant_id 
+      });
+      
+      return new Response(
+        JSON.stringify({ 
+          status: "ok", 
+          workspaceId: existingMember.tenant_id,
+          tenantId: existingMember.tenant_id,
+          message: "User already has an active workspace"
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+      );
+    }
+
     // Extract email domain and check for auto-join
     const emailDomain = user.email?.split('@')[1]?.toLowerCase();
     log(`Email domain extracted [${requestId}]`, { 
@@ -282,7 +309,7 @@ serve(async (req) => {
 
     const { error: profileErr } = await supabase
       .from('profiles')
-      .insert({
+      .upsert({
         user_id: user.id,
         email: user.email,
         first_name: user.user_metadata?.first_name || 
@@ -294,17 +321,20 @@ serve(async (req) => {
                    (user.user_metadata?.name?.split(' ').slice(1).join(' ')) || 
                    null,
         avatar_url: user.user_metadata?.avatar_url || null,
+      }, {
+        onConflict: 'user_id',
+        ignoreDuplicates: false  // Update if exists
       });
 
     if (profileErr) {
-      log(`Failed to create profile [${requestId}]`, { 
+      log(`Failed to upsert profile [${requestId}]`, { 
         error: profileErr.message,
         code: profileErr.code,
         details: profileErr.details,
         hint: profileErr.hint,
         userId: user.id
       });
-      throw new Error(`Failed to create profile: ${profileErr.message}`);
+      throw new Error(`Failed to upsert profile: ${profileErr.message}`);
     }
 
     log(`Created user profile [${requestId}]`, { 
