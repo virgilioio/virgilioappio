@@ -4270,7 +4270,7 @@ export type Database = {
         | "L4 - C-Level"
       job_status: "draft" | "open" | "closed" | "archived"
       member_role: "admin" | "recruiter" | "hiring_manager" | "interviewer"
-      org_kind_enum: "tenant" | "client" | "department"
+      org_kind_enum: "tenant" | "client" | "department" | "root"
       payment_frequency_enum: "bi_monthly" | "monthly" | "custom"
       payment_period_enum:
         | "annual"
@@ -4502,7 +4502,7 @@ export const Constants = {
       ],
       job_status: ["draft", "open", "closed", "archived"],
       member_role: ["admin", "recruiter", "hiring_manager", "interviewer"],
-      org_kind_enum: ["tenant", "client", "department"],
+      org_kind_enum: ["tenant", "client", "department", "root"],
       payment_frequency_enum: ["bi_monthly", "monthly", "custom"],
       payment_period_enum: [
         "annual",
