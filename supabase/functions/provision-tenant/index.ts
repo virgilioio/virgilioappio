@@ -274,7 +274,38 @@ serve(async (req) => {
       userId: user.id 
     });
 
-    // Add user as workspace_owner/admin of parent tenant
+    // 3. Create user profile (REQUIRED for FK constraint on members table)
+    log(`Creating user profile [${requestId}]`, { 
+      userId: user.id,
+      email: user.email 
+    });
+
+    const { error: profileErr } = await supabase
+      .from('profiles')
+      .insert({
+        user_id: user.id,
+        email: user.email,
+        full_name: user.user_metadata?.full_name || user.user_metadata?.name || null,
+        avatar_url: user.user_metadata?.avatar_url || null,
+      });
+
+    if (profileErr) {
+      log(`Failed to create profile [${requestId}]`, { 
+        error: profileErr.message,
+        code: profileErr.code,
+        details: profileErr.details,
+        hint: profileErr.hint,
+        userId: user.id
+      });
+      throw new Error(`Failed to create profile: ${profileErr.message}`);
+    }
+
+    log(`Created user profile [${requestId}]`, { 
+      userId: user.id,
+      email: user.email 
+    });
+
+    // 4. Add user as workspace_owner/admin of parent tenant
     log(`Creating member record [${requestId}]`, { 
       userId: user.id,
       tenantId 
