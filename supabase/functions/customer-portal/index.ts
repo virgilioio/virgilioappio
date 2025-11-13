@@ -53,7 +53,7 @@ serve(async (req) => {
         const { data: anyTenant, error: anyErr } = await supabase
           .from("organizations")
           .select("id,name,org_kind")
-          .eq("org_kind", "tenant")
+          .eq("org_kind", "root")
           .limit(1)
           .maybeSingle();
         if (anyErr) log("Fallback tenant lookup error", anyErr);
