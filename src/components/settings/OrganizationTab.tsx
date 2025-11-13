@@ -59,7 +59,7 @@ export function OrganizationTab() {
           .eq('name', 'Virgilio')
           .eq('organization_type', 'platform')
           .eq('tenant_type', 'saas')
-          .eq('org_kind', 'tenant')
+          .eq('org_kind', 'root')
           .single()
         
         if (error) {
@@ -93,30 +93,30 @@ export function OrganizationTab() {
       return null
     }
     
-    // Filter to only parent tenants (org_kind = 'tenant')
-    const parentTenants = organizations.filter(org => org.org_kind === 'tenant')
+    // Filter to only root organizations (the primary workspace entity for each tenant)
+    const rootOrganizations = organizations.filter(org => org.org_kind === 'root')
     
-    if (parentTenants.length === 0) {
-      console.warn('OrganizationTab getUserOrganization - no parent tenants found')
+    if (rootOrganizations.length === 0) {
+      console.warn('OrganizationTab getUserOrganization - no root organizations found')
       return null
     }
     
     // For workspace owners, prioritize organizations they own
     if (userType === 'workspace_owner' && user) {
-      console.log('OrganizationTab getUserOrganization - checking for owned parent tenants for user:', user.id)
+      console.log('OrganizationTab getUserOrganization - checking for owned root organizations for user:', user.id)
       
-      const ownedTenant = parentTenants.find(org => org.owner_id === user.id)
-      if (ownedTenant) {
-        console.log('OrganizationTab getUserOrganization - found owned parent tenant:', ownedTenant.name, 'id:', ownedTenant.id)
-        return ownedTenant
+      const ownedRoot = rootOrganizations.find(org => org.owner_id === user.id)
+      if (ownedRoot) {
+        console.log('OrganizationTab getUserOrganization - found owned root organization:', ownedRoot.name, 'id:', ownedRoot.id)
+        return ownedRoot
       }
       
-      console.warn('OrganizationTab getUserOrganization - workspace owner has no owned parent tenant, this may indicate a data issue')
+      console.warn('OrganizationTab getUserOrganization - workspace owner has no owned root organization, this may indicate a data issue')
     }
     
-    // Fallback to first parent tenant
-    console.log('OrganizationTab getUserOrganization - using first available parent tenant for userType:', userType)
-    return parentTenants[0]
+    // Fallback to first root organization
+    console.log('OrganizationTab getUserOrganization - using first available root organization for userType:', userType)
+    return rootOrganizations[0]
   }
   
   const userOrganization = getUserOrganization()
