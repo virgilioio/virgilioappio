@@ -285,7 +285,14 @@ serve(async (req) => {
       .insert({
         user_id: user.id,
         email: user.email,
-        full_name: user.user_metadata?.full_name || user.user_metadata?.name || null,
+        first_name: user.user_metadata?.first_name || 
+                    (user.user_metadata?.full_name?.split(' ')[0]) || 
+                    (user.user_metadata?.name?.split(' ')[0]) || 
+                    null,
+        last_name: user.user_metadata?.last_name || 
+                   (user.user_metadata?.full_name?.split(' ').slice(1).join(' ')) || 
+                   (user.user_metadata?.name?.split(' ').slice(1).join(' ')) || 
+                   null,
         avatar_url: user.user_metadata?.avatar_url || null,
       });
 
