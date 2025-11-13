@@ -18,7 +18,7 @@ serve(async (req) => {
   const requestId = crypto.randomUUID();
   const startTime = Date.now();
   
-  log(`Function invoked [${requestId}]`, { 
+  log(`🚀 Function invoked [${requestId}]`, { 
     method: req.method,
     hasAuth: !!req.headers.get("Authorization"),
     timestamp: new Date().toISOString()
@@ -41,7 +41,7 @@ serve(async (req) => {
   }
   const user = userData.user;
   
-  log(`User authenticated [${requestId}]`, { 
+  log(`👤 User authenticated [${requestId}]`, { 
     userId: user.id, 
     email: user.email,
     provider: user.app_metadata?.provider 
@@ -266,7 +266,7 @@ serve(async (req) => {
       throw new Error(`Failed to create tenant: ${tenantErr.message}`);
     }
     
-    log(`Created tenant [${requestId}]`, { 
+    log(`✅ Created tenant [${requestId}]`, { 
       tenantId,
       userId: user.id,
       workspaceName 
@@ -296,69 +296,25 @@ serve(async (req) => {
       throw new Error(`Failed to create root org: ${orgErr.message}`);
     }
 
-    log(`Created root organization [${requestId}]`, { 
+    log(`✅ Created root organization [${requestId}]`, { 
       tenantId,
       userId: user.id 
     });
 
-    // 3. Create user profile (REQUIRED for FK constraint on members table)
-    log(`Creating user profile [${requestId}]`, { 
-      userId: user.id,
-      email: user.email 
-    });
-
-    const { error: profileErr } = await supabase
-      .from('profiles')
-      .upsert({
-        user_id: user.id,
-        email: user.email,
-        first_name: user.user_metadata?.first_name || 
-                    (user.user_metadata?.full_name?.split(' ')[0]) || 
-                    (user.user_metadata?.name?.split(' ')[0]) || 
-                    null,
-        last_name: user.user_metadata?.last_name || 
-                   (user.user_metadata?.full_name?.split(' ').slice(1).join(' ')) || 
-                   (user.user_metadata?.name?.split(' ').slice(1).join(' ')) || 
-                   null,
-        avatar_url: user.user_metadata?.avatar_url || null,
-      }, {
-        onConflict: 'user_id',
-        ignoreDuplicates: false  // Update if exists
-      });
-
-    if (profileErr) {
-      log(`Failed to upsert profile [${requestId}]`, { 
-        error: profileErr.message,
-        code: profileErr.code,
-        details: profileErr.details,
-        hint: profileErr.hint,
-        userId: user.id
-      });
-      throw new Error(`Failed to upsert profile: ${profileErr.message}`);
-    }
-
-    log(`Created user profile [${requestId}]`, { 
-      userId: user.id,
-      email: user.email 
-    });
-
-    // 4. Add user as workspace_owner/admin of parent tenant
-    log(`Creating member record [${requestId}]`, { 
+    // 3. Create first member using SECURITY DEFINER function (bypasses RLS)
+    log(`👤 Creating first member via RPC [${requestId}]`, { 
       userId: user.id,
       tenantId 
     });
     
-    const { error: memberErr } = await supabase.from("members").insert({
-      user_id: user.id,
-      organization_id: tenantId,
-      tenant_id: tenantId,
-      user_type: "workspace_owner",
-      member_role: "admin",
-      user_status: "active",
-    });
+    const { data: memberId, error: memberErr } = await supabase
+      .rpc('admin_insert_first_member', {
+        p_tenant_id: tenantId,
+        p_user_id: user.id
+      });
     
     if (memberErr) {
-      log(`Failed to create member record [${requestId}]`, { 
+      log(`❌ Failed to create member via RPC [${requestId}]`, { 
         error: memberErr.message,
         code: memberErr.code,
         details: memberErr.details,
@@ -369,23 +325,33 @@ serve(async (req) => {
       throw new Error(`Failed to add member: ${memberErr.message}`);
     }
     
-    log(`Member record created [${requestId}]`, { 
+    log(`✅ First member created [${requestId}]`, { 
+      memberId,
       userId: user.id,
       tenantId 
     });
 
-    // Start 14-day trial with new billing_status fields
+    // 4. Create trial subscription (idempotent)
     const trialStart = new Date();
     const trialEnd = new Date(Date.now() + trialDays * 24 * 60 * 60 * 1000);
     
-    log(`Creating trial subscription [${requestId}]`, { 
-      tenantId,
-      trialDays,
-      trialEndsAt: trialEnd.toISOString() 
-    });
+    // Check if trial already exists
+    const { data: existingTrial } = await supabase
+      .from("tenant_subscriptions")
+      .select("tenant_id")
+      .eq("tenant_id", tenantId)
+      .maybeSingle();
     
-    const { error: upsertErr } = await supabase.from("tenant_subscriptions").upsert(
-      {
+    if (existingTrial) {
+      log(`⏭️ Trial already exists, skipping [${requestId}]`, { tenantId });
+    } else {
+      log(`🎁 Creating trial subscription [${requestId}]`, { 
+        tenantId,
+        trialDays,
+        trialEndsAt: trialEnd.toISOString() 
+      });
+      
+      const { error: upsertErr } = await supabase.from("tenant_subscriptions").insert({
         tenant_id: tenantId,
         subscribed: false,
         subscription_tier: null,
@@ -399,22 +365,23 @@ serve(async (req) => {
         subscription_end: null,
         last_seat_count: 1,
         updated_at: new Date().toISOString(),
-      },
-      { onConflict: "tenant_id" }
-    );
-    
-    if (upsertErr) {
-      log(`Failed to create trial subscription [${requestId}]`, { 
-        error: upsertErr.message,
-        code: upsertErr.code,
-        details: upsertErr.details,
-        hint: upsertErr.hint,
-        tenantId
       });
-      throw new Error(`Failed to set trial: ${upsertErr.message}`);
+      
+      if (upsertErr) {
+        log(`❌ Failed to create trial subscription [${requestId}]`, { 
+          error: upsertErr.message,
+          code: upsertErr.code,
+          details: upsertErr.details,
+          hint: upsertErr.hint,
+          tenantId
+        });
+        throw new Error(`Failed to set trial: ${upsertErr.message}`);
+      }
+      
+      log(`✅ Trial subscription created [${requestId}]`, { tenantId });
     }
 
-    log(`Provisioning complete [${requestId}]`, { 
+    log(`🎉 Provisioning complete [${requestId}]`, { 
       tenantId, 
       userId: user.id,
       email: user.email,
@@ -424,7 +391,7 @@ serve(async (req) => {
       billingStatus: 'trialing',
       authProvider, 
       signupSource: "self_serve",
-      duration: Date.now() - startTime
+      duration: `${Date.now() - startTime}ms`
     });
 
     return new Response(
@@ -440,13 +407,13 @@ serve(async (req) => {
     const message = e instanceof Error ? e.message : String(e);
     const stack = e instanceof Error ? e.stack : undefined;
     
-    log(`ERROR [${requestId}]`, {
+    log(`❌ ERROR [${requestId}]`, { 
       error: message,
       stack,
-      duration: Date.now() - startTime
+      duration: `${Date.now() - startTime}ms`
     });
     
-    console.error(`[provision-tenant] ERROR [${requestId}]`, {
+    console.error(`[provision-tenant] ❌ ERROR [${requestId}]`, {
       message,
       stack,
       timestamp: new Date().toISOString()
@@ -454,7 +421,8 @@ serve(async (req) => {
     
     return new Response(JSON.stringify({ 
       error: message,
-      requestId // Include requestId for support debugging
+      requestId,
+      duration: `${Date.now() - startTime}ms`
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
