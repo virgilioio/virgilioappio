@@ -176,6 +176,7 @@ serve(async (req) => {
     let jobSkills: string[] = [];
     let job: any = null;
     let organization_id: string | null = null;
+    let tenant_id: string | null = null;
     let criteria: any = null;
 
     // Option 1: Load from sourcing project
@@ -184,7 +185,7 @@ serve(async (req) => {
       
       const { data: project, error: projectError } = await supabase
         .from('sourcing_projects')
-        .select('*, jobs(*)')
+        .select('*, jobs(*), organizations(tenant_id)')
         .eq('id', sourcing_project_id)
         .single();
         
@@ -196,6 +197,7 @@ serve(async (req) => {
       criteria = providedCriteria || (project.search_criteria as any);
       jobSkills = criteria.skills || [];
       organization_id = project.organization_id;
+      tenant_id = project.organizations?.tenant_id || null;
       
       // Extract location correctly - handle both array and scalar formats
       const locationValue = criteria.locations?.[0] || criteria.location || undefined;
@@ -233,7 +235,7 @@ serve(async (req) => {
       
       const { data: jobData, error: jobError } = await supabase
         .from('jobs')
-        .select('id, title, skills, standardized_skills, location, salary_min, salary_max, currency, organization_id')
+        .select('id, title, skills, standardized_skills, location, salary_min, salary_max, currency, organization_id, tenant_id')
         .eq('id', job_id)
         .single();
 
@@ -244,6 +246,7 @@ serve(async (req) => {
       job = jobData;
       jobSkills = job.standardized_skills || job.skills || [];
       organization_id = job.organization_id;
+      tenant_id = job.tenant_id;
       
       // Set criteria for job_id path
       criteria = providedCriteria || {
@@ -299,9 +302,18 @@ serve(async (req) => {
       role_current
     `;
 
+    // CRITICAL: Filter by tenant_id for tenant isolation
+    if (!tenant_id) {
+      throw new Error('Unable to determine tenant_id - data isolation required');
+    }
+
+    console.log(`🔒 Filtering candidates by tenant: ${tenant_id}`);
+
     const { data: localCandidates, error: localError } = await supabase
       .from('candidates')
       .select(candidateFields)
+      .eq('tenant_id', tenant_id)
+      .is('deleted_at', null)
       .limit(1000); // Fetch all candidates for sourcing projects (up to 1000)
 
     if (localError) {

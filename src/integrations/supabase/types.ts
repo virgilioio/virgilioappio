@@ -3832,6 +3832,10 @@ export type Database = {
         Returns: Json
       }
       admin_delete_job: { Args: { p_job_id: string }; Returns: Json }
+      admin_insert_first_member: {
+        Args: { p_tenant_id: string; p_user_id: string }
+        Returns: string
+      }
       admin_manage_member: {
         Args: { p_changes: Json; p_member_id: string }
         Returns: Json
