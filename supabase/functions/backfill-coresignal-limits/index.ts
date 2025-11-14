@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
       try {
         // Get correct limits for this tenant
         const { data: limitsData, error: limitsError } = await supabaseAdmin
-          .rpc('get_tenant_credit_limits', { tenant_id_param: record.tenant_id })
+          .rpc('get_tenant_credit_limits', { p_tenant_id: record.tenant_id })
 
         if (limitsError) {
           console.error(`Error getting limits for tenant ${record.tenant_id}:`, limitsError)
