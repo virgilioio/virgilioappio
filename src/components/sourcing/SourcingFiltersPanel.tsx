@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -35,6 +35,11 @@ export function SourcingFiltersPanel({
   const [editableCriteria, setEditableCriteria] = useState<SearchCriteria>(project.search_criteria)
   const [newSkill, setNewSkill] = useState('')
   const [newTitleKeyword, setNewTitleKeyword] = useState('')
+
+  // Sync editableCriteria when project updates
+  useEffect(() => {
+    setEditableCriteria(project.search_criteria)
+  }, [project.search_criteria])
 
   const handleSaveAndRefresh = async () => {
     if (editableCriteria.skills.length === 0) return
