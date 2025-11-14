@@ -189,7 +189,7 @@ async function getTenantIdFromOrganization(organizationId: string): Promise<stri
   return org.tenant_id;
 }
 
-// Check credit availability with enhanced error details
+// Check credit availability with tier-based limits
 async function checkCreditAvailability(
   organizationId: string, 
   type: 'search' | 'collect'
@@ -211,15 +211,25 @@ async function checkCreditAvailability(
     .eq('billing_cycle_start', currentMonth)
     .single();
   
-  // If no record exists, create one
+  // If no record exists, create one with tier-based limits
   if (error && error.code === 'PGRST116') {
+    // Get tier-based limits
+    const { data: limits, error: limitsError } = await supabase
+      .rpc('get_tenant_credit_limits', { p_tenant_id: tenant_id })
+      .single();
+    
+    if (limitsError) {
+      console.error('Error getting tenant credit limits:', limitsError);
+      throw limitsError;
+    }
+    
     const { data: newUsage, error: insertError } = await supabase
       .from('coresignal_usage')
       .insert({
         tenant_id: tenant_id,
         billing_cycle_start: currentMonth,
-        search_credits_limit: 500,
-        collect_credits_limit: 250
+        search_credits_limit: limits.search_limit,
+        collect_credits_limit: limits.collect_limit
       })
       .select()
       .single();
@@ -241,37 +251,31 @@ async function checkCreditAvailability(
   };
 }
 
-// Increment credit usage
+// Increment credit usage using atomic RPC
 async function incrementCreditUsage(
   organizationId: string,
   type: 'search' | 'collect'
 ): Promise<void> {
+  const supabase = createClient(
+    Deno.env.get('SUPABASE_URL') ?? '',
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+  );
+  
   // Get tenant_id from organization
   const tenant_id = await getTenantIdFromOrganization(organizationId);
-  const currentMonth = new Date().toISOString().slice(0, 7) + '-01';
-  const updateField = type === 'search' ? 'search_credits_used' : 'collect_credits_used';
-  const timestampField = type === 'search' ? 'last_search_at' : 'last_collect_at';
   
-  const { error } = await supabase.rpc('increment', {
-    table_name: 'coresignal_usage',
-    id_column: 'organization_id',
-    id_value: organizationId,
-    counter_column: updateField,
-    month_value: currentMonth
+  // Use the atomic RPC to increment credits
+  const { error } = await supabase.rpc('increment_coresignal_usage', {
+    p_tenant_id: tenant_id,
+    p_credit_type: type
   });
   
-  // Fallback if RPC doesn't exist - use direct update
   if (error) {
-    await supabase
-      .from('coresignal_usage')
-      .update({
-        [updateField]: supabase.rpc('increment_value', { current: 1 }),
-        [timestampField]: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
-      .eq('tenant_id', tenant_id)
-      .eq('billing_cycle_start', currentMonth);
+    console.error(`Failed to increment ${type} credit usage:`, error);
+    throw error;
   }
+  
+  console.log(`Successfully incremented ${type} credit for tenant ${tenant_id}`);
 }
 
 serve(async (req) => {
