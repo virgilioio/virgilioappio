@@ -36,20 +36,26 @@ export function SourcingFiltersPanel({
   const [newSkill, setNewSkill] = useState('')
   const [newTitleKeyword, setNewTitleKeyword] = useState('')
 
-  // Sync editableCriteria when project updates
+  // Sync editableCriteria when project updates (but not during editing)
   useEffect(() => {
-    setEditableCriteria(project.search_criteria)
-  }, [project.search_criteria])
+    if (!isEditingCriteria) {
+      setEditableCriteria(project.search_criteria)
+    }
+  }, [project.search_criteria, isEditingCriteria])
 
   const handleSaveAndRefresh = async () => {
     if (editableCriteria.skills.length === 0) return
-    await onUpdateSearchCriteria(editableCriteria)
+    
+    // Exit edit mode first to prevent useEffect from overwriting
     setIsEditingCriteria(false)
+    
+    // Then perform the async update
+    await onUpdateSearchCriteria(editableCriteria)
   }
 
   const handleCancelEdit = () => {
-    setEditableCriteria(project.search_criteria)
     setIsEditingCriteria(false)
+    setEditableCriteria(project.search_criteria)
   }
 
   const handleAddSkill = () => {
