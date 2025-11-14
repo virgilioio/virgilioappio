@@ -11,11 +11,12 @@ const supabase = createClient(
 interface CreateSourcingProjectRequest {
   name: string;
   description: string;
-  job_id: string;
+  job_id?: string;  // Now optional
+  organization_id?: string;  // Added for standalone projects
   is_public?: boolean;
   search_criteria: {
     skills: string[];
-    location?: string;
+    locations?: string[];  // Changed to array
     title_keywords?: string[];
     salary_min?: number;
     salary_max?: number;
@@ -67,7 +68,7 @@ serve(async (req) => {
 
     // Parse request body
     const body: CreateSourcingProjectRequest = await req.json();
-    const { name, description, job_id, is_public, search_criteria } = body;
+    const { name, description, job_id, organization_id, is_public, search_criteria } = body;
 
     // Validate required fields
     if (!name) {
@@ -77,9 +78,10 @@ serve(async (req) => {
       );
     }
 
-    if (!job_id) {
+    // Either job_id OR organization_id must be provided
+    if (!job_id && !organization_id) {
       return new Response(
-        JSON.stringify({ error: 'Missing required field: job_id' }),
+        JSON.stringify({ error: 'Either job_id or organization_id must be provided' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -91,25 +93,34 @@ serve(async (req) => {
       );
     }
 
-    console.log(`📝 Creating sourcing project for job: ${job_id}`);
+    let targetOrganizationId: string;
 
-    // Fetch job to get organization_id and validate it exists
-    const { data: job, error: jobError } = await supabase
-      .from('jobs')
-      .select('id, organization_id, title')
-      .eq('id', job_id)
-      .single();
+    if (job_id) {
+      // Scenario 1: Linked to existing job
+      console.log(`📝 Creating sourcing project for job: ${job_id}`);
+      
+      const { data: job, error: jobError } = await supabase
+        .from('jobs')
+        .select('id, organization_id, title')
+        .eq('id', job_id)
+        .single();
 
-    if (jobError || !job) {
-      console.error('❌ Job not found:', jobError);
-      return new Response(
-        JSON.stringify({ error: 'Job not found' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      if (jobError || !job) {
+        console.error('❌ Job not found:', jobError);
+        return new Response(
+          JSON.stringify({ error: 'Job not found' }),
+          { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      targetOrganizationId = job.organization_id;
+      console.log(`🏢 Organization from job: ${targetOrganizationId}`);
+    } else {
+      // Scenario 2: Standalone sourcing project
+      console.log(`📝 Creating standalone sourcing project for organization: ${organization_id}`);
+      targetOrganizationId = organization_id!;
+      console.log(`🏢 Organization: ${targetOrganizationId}`);
     }
-
-    const organizationId = job.organization_id;
-    console.log(`🏢 Organization: ${organizationId}`);
 
     // Insert sourcing project
     // RLS policies will automatically enforce:
@@ -120,8 +131,8 @@ serve(async (req) => {
       .insert({
         name,
         description,
-        job_id,
-        organization_id: organizationId,
+        job_id: job_id || null,  // Can be null now
+        organization_id: targetOrganizationId,
         created_by: userId,
         search_criteria: search_criteria,
         enabled_sources: ['internal'],

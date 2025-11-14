@@ -99,15 +99,21 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
   const [editableJobSpec, setEditableJobSpec] = useState<JobSpec | null>(null)
   const [isRefreshingMatches, setIsRefreshingMatches] = useState(false)
   const [marketInsights, setMarketInsights] = useState<any>(null)
-  const [createdJobId, setCreatedJobId] = useState<string | null>(null)
+  const [selectedJobId, setSelectedJobId] = useState<string>('')  // For optional job linking
   const [selectedOrgId, setSelectedOrgId] = useState<string>('')
+  const [isCreatingProject, setIsCreatingProject] = useState(false)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const { toast } = useToast()
-  const { createJob } = useJobs()
+  const { jobs } = useJobs()
   const navigate = useNavigate()
   const { user, organizationId, userType } = useAuth()
   const { isSearchDisabled } = useCoresignalCreditWarnings()
   const { data: childOrgs, isLoading: isLoadingOrgs } = useChildOrganizationsForJobCreation()
+
+  // Filter jobs by selected organization
+  const jobsInOrg = selectedOrgId 
+    ? (jobs || []).filter(job => job.organization_id === selectedOrgId)
+    : []
 
   const currentValidation = validateJobPrompt(prompt)
   const validItemsCount = currentValidation.filter(item => item.checked).length
@@ -204,164 +210,75 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
   }
 
   const handleSaveDraft = async () => {
-    if (!editableJobSpec || createdJobId) return // Idempotent check
-
-    // Validate organization is selected
-    if (!selectedOrgId) {
-      toast({
-        title: 'Organization Required',
-        description: 'Please select a job folder (department) for this job.',
-        variant: 'destructive'
-      })
-      return
-    }
-
-    setIsCreatingJob(true)
-    try {
-      // Map AI level format to database enum
-      const levelMapping: Record<string, any> = {
-        'L1': 'L1 - Specialists',
-        'L2': 'L2 - Managers', 
-        'L3': 'L3 - Directors / VPs / Executive Search'
-      }
-
-      const jobData = {
-        title: selectedTitle,
-        description: editableJobSpec.job_description,
-        level: levelMapping[editableJobSpec.level] || 'L1 - Specialists',
-        location: editableJobSpec.location,
-        department: editableJobSpec.department,
-        salary_min: editableJobSpec.salary_range.min,
-        salary_max: editableJobSpec.salary_range.max,
-        currency: editableJobSpec.salary_range.currency,
-        status: 'draft' as const,
-        skills: editableSkills,
-        organization_id: selectedOrgId
-      }
-
-      const newJob = await createJob(jobData)
-      
-      setCreatedJobId(newJob.id)
-      
-      // Create sourcing project automatically
-      try {
-        const { data: project, error: projectError } = await supabase.functions.invoke('create-sourcing-project', {
-          body: {
-            name: `${selectedTitle} - ${editableJobSpec.location}`,
-            description: prompt,
-            job_id: newJob.id,
-        search_criteria: {
-          skills: editableSkills,
-          locations: [editableJobSpec.location],
-          title_keywords: [
-            selectedTitle,
-            ...(editableJobSpec.alt_titles || [])
-          ],
-          salary_min: editableJobSpec.salary_range.min,
-          salary_max: editableJobSpec.salary_range.max,
-          currency: editableJobSpec.salary_range.currency
-        }
-          }
-        })
-        
-        if (projectError) {
-          console.error('❌ Failed to create sourcing project:', projectError)
-        } else {
-          console.log('✅ Sourcing project created:', project.id)
-          
-          if (onProjectCreated) {
-            onProjectCreated(project.id)
-          }
-        }
-      } catch (err) {
-        console.error('❌ Exception creating sourcing project:', err)
-      }
-      
-      // Navigate to decision
-      setCurrentStep('decision')
-      toast({
-        title: 'Draft Saved',
-        description: `"${selectedTitle}" has been saved as a draft.`,
-      })
-    } catch (error: any) {
-      console.error('Error saving draft:', error)
-      toast({
-        title: 'Failed to Save Draft',
-        description: error.message || 'An error occurred while saving the draft job.',
-        variant: 'destructive'
-      })
-    } finally {
-      setIsCreatingJob(false)
-    }
-  }
-
-  const handleCreateJob = async () => {
     if (!editableJobSpec) return
 
-    // If already created (via draft), just close and navigate
-    if (createdJobId) {
-      toast({
-        title: 'Job Ready',
-        description: `"${selectedTitle}" has been created and is ready for review.`,
-      })
-      setShowModal(false)
-      navigate(`/jobs/${createdJobId}`)
-      return
-    }
-
     // Validate organization is selected
     if (!selectedOrgId) {
       toast({
         title: 'Organization Required',
-        description: 'Please select a job folder (department) for this job.',
+        description: 'Please select a job folder for this search.',
         variant: 'destructive'
       })
       return
     }
 
-    // Otherwise create new (fallback if user skipped sourcing somehow)
-    setIsCreatingJob(true)
+    setIsCreatingProject(true)
     try {
-      const levelMapping: Record<string, any> = {
-        'L1': 'L1 - Specialists',
-        'L2': 'L2 - Managers', 
-        'L3': 'L3 - Directors / VPs / Executive Search'
-      }
+      console.log('🚀 Creating sourcing project...')
+      console.log('📁 Organization ID:', selectedOrgId)
+      console.log('🔗 Job ID (optional):', selectedJobId || 'none')
 
-      const jobData = {
-        title: selectedTitle,
-        description: editableJobSpec.job_description,
-        level: levelMapping[editableJobSpec.level] || 'L1 - Specialists',
-        location: editableJobSpec.location,
-        department: editableJobSpec.department,
-        salary_min: editableJobSpec.salary_range.min,
-        salary_max: editableJobSpec.salary_range.max,
-        currency: editableJobSpec.salary_range.currency,
-        status: 'draft' as const,
-        skills: editableSkills,
-        organization_id: selectedOrgId
-      }
-
-      const newJob = await createJob(jobData)
-      
-      toast({
-        title: 'Job Created Successfully',
-        description: `"${selectedTitle}" has been created and saved as a draft.`,
+      const { data: project, error: projectError } = await supabase.functions.invoke('create-sourcing-project', {
+        body: {
+          name: `${selectedTitle} - ${editableJobSpec.location}`,
+          description: prompt,
+          job_id: selectedJobId || null,  // Optional job link
+          organization_id: selectedOrgId,  // Direct org assignment
+          search_criteria: {
+            skills: editableSkills,
+            locations: [editableJobSpec.location],
+            title_keywords: [
+              selectedTitle,
+              ...(editableJobSpec.alt_titles || [])
+            ],
+            salary_min: editableJobSpec.salary_range.min,
+            salary_max: editableJobSpec.salary_range.max,
+            currency: editableJobSpec.salary_range.currency
+          }
+        }
       })
 
-      setShowModal(false)
-      navigate(`/jobs/${newJob.id}`)
-    } catch (error: any) {
-      console.error('Error creating job:', error)
+      if (projectError) {
+        throw new Error(projectError.message)
+      }
+
+      console.log('✅ Sourcing project created:', project.id)
+
       toast({
-        title: 'Failed to Create Job',
-        description: error.message || 'An error occurred while creating the job.',
+        title: 'Search Created',
+        description: selectedJobId 
+          ? `Finding candidates for "${selectedTitle}" linked to job...`
+          : `Finding candidates for "${selectedTitle}"...`,
+      })
+
+      if (onProjectCreated) {
+        onProjectCreated(project.id)
+      }
+
+      setShowModal(false)
+      
+    } catch (error: any) {
+      console.error('Error creating sourcing project:', error)
+      toast({
+        title: 'Failed to Create Search',
+        description: error.message || 'An error occurred while creating the search.',
         variant: 'destructive'
       })
     } finally {
-      setIsCreatingJob(false)
+      setIsCreatingProject(false)
     }
   }
+
 
   const handleEditField = (field: string) => {
     setIsEditing(prev => ({ ...prev, [field]: !prev[field] }))
@@ -446,7 +363,7 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
       case 'prompt':
         return 'Continue to Specs'
       case 'specs':
-        return isCreatingJob ? 'Saving Draft...' : 'Save Draft'
+        return isCreatingProject ? 'Creating Search...' : 'Find Candidates'
       default:
         return 'Continue'
     }
@@ -457,7 +374,7 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
       case 'prompt':
         return jobSpec !== null
       case 'specs':
-        return editableJobSpec !== null && !isCreatingJob && !!selectedOrgId
+        return editableJobSpec !== null && !isCreatingProject && !!selectedOrgId
       default:
         return false
     }
@@ -600,26 +517,57 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
                 {/* Step 2: Specs */}
                 {currentStep === 'specs' && (
                   <div className="space-y-6 pt-6">
-                    {/* Organization Selector */}
+                    {/* Organization Selector - Required */}
                     <div className="space-y-2">
-                      <Label>Job Folder (Department) *</Label>
+                      <Label htmlFor="organization-select">
+                        Job Folder (Department) <span className="text-red-500">*</span>
+                      </Label>
                       <SearchableSelect
                         options={(childOrgs || []).map(org => ({
                           value: org.id,
                           label: org.name
                         }))}
                         value={selectedOrgId}
-                        onValueChange={setSelectedOrgId}
+                        onValueChange={(value) => {
+                          setSelectedOrgId(value)
+                          setSelectedJobId('')  // Reset job selection when org changes
+                        }}
                         placeholder={isLoadingOrgs ? "Loading organizations..." : "Select a job folder..."}
                         disabled={isLoadingOrgs}
                         searchPlaceholder="Search folders..."
                       />
                       <p className="text-xs text-muted-foreground">
-                        {userType === 'platform_admin' 
-                          ? 'Select which client organization this job belongs to'
-                          : 'Select which department/folder this job belongs to'}
+                        Select which department or client this search belongs to
                       </p>
                     </div>
+
+                    {/* Job Selector - Optional */}
+                    {selectedOrgId && jobsInOrg.length > 0 && (
+                      <div className="space-y-2">
+                        <Label htmlFor="job-select">
+                          Link to Existing Job <span className="text-muted-foreground">(Optional)</span>
+                        </Label>
+                        <SearchableSelect
+                          options={[
+                            { value: '', label: 'No job (standalone search)' },
+                            ...jobsInOrg.map(job => ({
+                              value: job.id,
+                              label: job.title,
+                              badge: job.status === 'open' ? 'Open' : job.status === 'draft' ? 'Draft' : undefined
+                            }))
+                          ]}
+                          value={selectedJobId}
+                          onValueChange={setSelectedJobId}
+                          placeholder="Select a job to link to..."
+                          searchPlaceholder="Search jobs..."
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          {selectedJobId 
+                            ? '✅ Candidates will be available in this job\'s pipeline' 
+                            : '📊 Candidates will be saved for review without a specific job'}
+                        </p>
+                      </div>
+                    )}
 
                     {/* Job Title */}
                     <div className="space-y-2">
@@ -718,22 +666,6 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
                   </div>
                 )}
 
-                {/* Step 3: Decision/Review */}
-                {currentStep === 'decision' && (
-                  <div className="space-y-4 pt-6">
-                    <h4 className="text-lg font-semibold text-text-primary">Ready to Create Job?</h4>
-                    <div className="p-4 bg-muted rounded-lg">
-                      <h5 className="font-medium mb-3 text-text-secondary">Job Summary</h5>
-                      <div className="space-y-2 text-sm text-text-secondary">
-                        <div><strong>Title:</strong> {selectedTitle}</div>
-                        <div><strong>Department:</strong> {editableJobSpec.department}</div>
-                        <div><strong>Location:</strong> {editableJobSpec.location}</div>
-                        <div><strong>Skills:</strong> {editableSkills.join(', ')}</div>
-                        <div><strong>Salary:</strong> {editableJobSpec.salary_range.currency} {editableJobSpec.salary_range.min?.toLocaleString()} - {editableJobSpec.salary_range.max?.toLocaleString()}</div>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
 
               {/* Sticky Footer */}
@@ -766,27 +698,6 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
                       <>
                         <Sparkles className="h-5 w-5 mr-2" />
                         {getContinueButtonText()}
-                      </>
-                    )}
-                  </Button>
-                )}
-                
-                {currentStep === 'decision' && (
-                  <Button
-                    onClick={handleCreateJob}
-                    disabled={isCreatingJob}
-                    size="lg"
-                    className="bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-700 hover:to-cyan-700"
-                  >
-                    {isCreatingJob ? (
-                      <>
-                        <Loader2 className="h-5 w-5 mr-2 animate-spin" />
-                        Creating Job...
-                      </>
-                    ) : (
-                      <>
-                        <Target className="h-5 w-5 mr-2" />
-                        Create Job
                       </>
                     )}
                   </Button>
