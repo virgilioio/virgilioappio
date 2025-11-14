@@ -77,11 +77,23 @@ export function useCoresignalUsage() {
 
       // Create new record if doesn't exist
       if (!data) {
+        // Get correct credit limits based on subscription tier
+        const { data: limits, error: limitsError } = await supabase
+          .rpc('get_tenant_credit_limits', { p_tenant_id: tenantId })
+          .single()
+
+        if (limitsError) {
+          console.error('Failed to get credit limits:', limitsError)
+          throw limitsError
+        }
+
         const { data: newRecord, error: insertError } = await supabase
           .from('coresignal_usage')
           .insert({
             tenant_id: tenantId,
-            billing_cycle_start: billingCycleStart.toISOString()
+            billing_cycle_start: billingCycleStart.toISOString(),
+            search_credits_limit: limits.search_limit,
+            collect_credits_limit: limits.collect_limit
           })
           .select()
           .single()
