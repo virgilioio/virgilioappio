@@ -145,7 +145,8 @@ export function SourcingProjectView({ projectId }: SourcingProjectViewProps) {
       
       if (updateError) throw updateError
       
-      // 2. Refresh the project data
+      // 2. Invalidate cache and refetch the project data
+      queryClient.invalidateQueries({ queryKey: ['sourcing-project', projectId] })
       await refetchProject()
       
       // 3. Refetch candidates with new criteria (the hook will use updated project data)
