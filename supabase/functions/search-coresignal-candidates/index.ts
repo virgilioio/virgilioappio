@@ -174,11 +174,28 @@ function buildCoresignalFilterQuery(criteria: SearchCriteria): any {
   return query;
 }
 
+// Helper to get tenant_id from organization
+async function getTenantIdFromOrganization(organizationId: string): Promise<string> {
+  const { data: org, error } = await supabase
+    .from('organizations')
+    .select('tenant_id')
+    .eq('id', organizationId)
+    .single();
+  
+  if (error || !org) {
+    throw new Error(`Organization not found: ${organizationId}`);
+  }
+  
+  return org.tenant_id;
+}
+
 // Check credit availability with enhanced error details
 async function checkCreditAvailability(
   organizationId: string, 
   type: 'search' | 'collect'
 ): Promise<{ available: boolean; remaining: number; usage: any; nextReset: string }> {
+  // Get tenant_id from organization
+  const tenant_id = await getTenantIdFromOrganization(organizationId);
   const currentMonth = new Date().toISOString().slice(0, 7) + '-01';
   
   // Calculate next reset date (first day of next month)
@@ -186,12 +203,12 @@ async function checkCreditAvailability(
   nextMonth.setMonth(nextMonth.getMonth() + 1);
   const nextReset = nextMonth.toISOString().slice(0, 10);
   
-  // Get or create usage record for current month
+  // Get or create usage record for current month using tenant_id
   let { data: usage, error } = await supabase
     .from('coresignal_usage')
     .select('*')
-    .eq('organization_id', organizationId)
-    .eq('month', currentMonth)
+    .eq('tenant_id', tenant_id)
+    .eq('billing_cycle_start', currentMonth)
     .single();
   
   // If no record exists, create one
@@ -199,8 +216,8 @@ async function checkCreditAvailability(
     const { data: newUsage, error: insertError } = await supabase
       .from('coresignal_usage')
       .insert({
-        organization_id: organizationId,
-        month: currentMonth,
+        tenant_id: tenant_id,
+        billing_cycle_start: currentMonth,
         search_credits_limit: 500,
         collect_credits_limit: 250
       })
@@ -229,6 +246,8 @@ async function incrementCreditUsage(
   organizationId: string,
   type: 'search' | 'collect'
 ): Promise<void> {
+  // Get tenant_id from organization
+  const tenant_id = await getTenantIdFromOrganization(organizationId);
   const currentMonth = new Date().toISOString().slice(0, 7) + '-01';
   const updateField = type === 'search' ? 'search_credits_used' : 'collect_credits_used';
   const timestampField = type === 'search' ? 'last_search_at' : 'last_collect_at';
@@ -250,8 +269,8 @@ async function incrementCreditUsage(
         [timestampField]: new Date().toISOString(),
         updated_at: new Date().toISOString()
       })
-      .eq('organization_id', organizationId)
-      .eq('month', currentMonth);
+      .eq('tenant_id', tenant_id)
+      .eq('billing_cycle_start', currentMonth);
   }
 }
 
