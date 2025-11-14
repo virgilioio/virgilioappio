@@ -17,56 +17,37 @@ export interface ChildOrgOption {
  * - Other roles: No org selection (will use their default org)
  */
 export function useChildOrganizationsForJobCreation() {
-  const { user, userType, organizationId } = useAuth()
+  const { user, organizationId } = useAuth()
   
   const query = useQuery({
-    queryKey: ['child-orgs-for-job-creation', organizationId, userType],
+    queryKey: ['child-orgs-for-job-creation', organizationId],
     queryFn: async () => {
-      if (!user) return []
+      if (!user || !organizationId) return []
       
-      // Platform admins see ALL client orgs
-      if (userType === 'platform_admin') {
-        const { data, error } = await supabase
-          .from('organizations')
-          .select('id, name')
-          .eq('org_kind', 'client')
-          .eq('status', 'active')
-          .order('name')
-        
-        if (error) throw error
-        return data || []
-      }
-      
-      // For workspace owners and recruiters: Get their parent org + all children
-      if (!organizationId) return []
-      
-      // Get user's parent org details (including tenant_id)
-      const { data: memberData, error: memberError } = await supabase
-        .from('members')
-        .select('organizations!inner(id, name, tenant_id)')
-        .eq('user_id', user.id)
-        .eq('user_status', 'active')
-        .single()
-      
-      if (memberError) throw memberError
-      if (!memberData?.organizations) return []
-      
-      const parentOrg = memberData.organizations
-      const tenantId = parentOrg.tenant_id
-      
-      // Get all orgs in the same tenant (parent + children)
-      const { data: orgs, error: orgsError } = await supabase
+      // Get the user's root organization (where they're a member)
+      const { data: rootOrg, error: rootError } = await supabase
         .from('organizations')
         .select('id, name')
-        .eq('tenant_id', tenantId)
-        .eq('org_kind', 'client')
+        .eq('id', organizationId)
+        .single()
+      
+      if (rootError) throw rootError
+      if (!rootOrg) return []
+      
+      // Get all child organizations (job folders)
+      const { data: children, error: childrenError } = await supabase
+        .from('organizations')
+        .select('id, name')
+        .eq('parent_organization_id', organizationId)
         .eq('status', 'active')
         .order('name')
       
-      if (orgsError) throw orgsError
-      return orgs || []
+      if (childrenError) throw childrenError
+      
+      // Return root org + all children
+      return [rootOrg, ...(children || [])]
     },
-    enabled: !!user
+    enabled: !!user && !!organizationId
   })
   
   return query
