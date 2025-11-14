@@ -32,25 +32,29 @@ export function SourcingFiltersPanel({
   isRefreshing
 }: SourcingFiltersPanelProps) {
   const [isEditingCriteria, setIsEditingCriteria] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
   const [editableCriteria, setEditableCriteria] = useState<SearchCriteria>(project.search_criteria)
   const [newSkill, setNewSkill] = useState('')
   const [newTitleKeyword, setNewTitleKeyword] = useState('')
 
-  // Sync editableCriteria when project updates (but not during editing)
+  // Sync editableCriteria when project updates (but not during editing or saving)
   useEffect(() => {
-    if (!isEditingCriteria) {
+    if (!isEditingCriteria && !isSaving) {
       setEditableCriteria(project.search_criteria)
     }
-  }, [project.search_criteria, isEditingCriteria])
+  }, [project.search_criteria, isEditingCriteria, isSaving])
 
   const handleSaveAndRefresh = async () => {
     if (editableCriteria.skills.length === 0) return
     
-    // Exit edit mode first to prevent useEffect from overwriting
+    setIsSaving(true)
     setIsEditingCriteria(false)
     
-    // Then perform the async update
-    await onUpdateSearchCriteria(editableCriteria)
+    try {
+      await onUpdateSearchCriteria(editableCriteria)
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   const handleCancelEdit = () => {
