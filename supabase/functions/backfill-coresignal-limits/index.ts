@@ -1,6 +1,14 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
+import { handlePreflight, corsHeadersFor } from '../_shared/mod.ts'
 
 Deno.serve(async (req) => {
+  // Handle CORS preflight
+  const preflightResponse = handlePreflight(req)
+  if (preflightResponse) return preflightResponse
+
+  const origin = req.headers.get('Origin') ?? undefined
+  const corsHeaders = corsHeadersFor(origin)
+
   try {
     // Create Supabase client with service role key for admin operations
     const supabaseAdmin = createClient(
@@ -19,7 +27,7 @@ Deno.serve(async (req) => {
     if (!authHeader) {
       return new Response(
         JSON.stringify({ error: 'Missing authorization header' }),
-        { status: 401, headers: { 'Content-Type': 'application/json' } }
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
@@ -38,7 +46,7 @@ Deno.serve(async (req) => {
     if (!user || user.user_metadata?.user_type !== 'platform_admin') {
       return new Response(
         JSON.stringify({ error: 'Unauthorized. Only platform admins can run this backfill.' }),
-        { status: 403, headers: { 'Content-Type': 'application/json' } }
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
@@ -114,13 +122,13 @@ Deno.serve(async (req) => {
         total_records: usageRecords?.length || 0,
         errors: errors.length > 0 ? errors : undefined
       }),
-      { status: 200, headers: { 'Content-Type': 'application/json' } }
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   } catch (error) {
     console.error('Backfill error:', error)
     return new Response(
       JSON.stringify({ error: error.message }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }
 })
