@@ -4009,6 +4009,7 @@ export type Database = {
           id: string
         }[]
       }
+      get_org_tenant_id: { Args: { org_id: string }; Returns: string }
       get_pipeline_global_metrics: {
         Args: {
           job_statuses?: string[]
