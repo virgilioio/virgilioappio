@@ -15,6 +15,7 @@ interface CollectRequest {
   coresignal_id: string;
   project_id?: string;
   job_id?: string;
+  stage_id?: string;
   organization_id?: string;
   user_id?: string;
 }
@@ -240,9 +241,9 @@ serve(async (req) => {
   const cors = corsHeadersFor(origin);
 
   try {
-    const { coresignal_id, project_id, job_id, organization_id, user_id }: CollectRequest = await req.json();
+    const { coresignal_id, project_id, job_id, stage_id, organization_id, user_id }: CollectRequest = await req.json();
 
-    console.log('📥 CoreSignal Collect Request:', { coresignal_id, project_id, job_id, user_id });
+    console.log('📥 CoreSignal Collect Request:', { coresignal_id, project_id, job_id, stage_id, user_id });
 
     // Determine tenant ID
     let tenantId: string | null = null;
@@ -334,9 +335,10 @@ serve(async (req) => {
           .upsert(
             { 
               job_id, 
-              candidate_id: existing.id 
+              candidate_id: existing.id,
+              current_stage_id: stage_id || null
             },
-            { onConflict: 'job_id,candidate_id', ignoreDuplicates: true }
+            { onConflict: 'job_id,candidate_id', ignoreDuplicates: false }
           );
         
         if (assocError) {
@@ -482,7 +484,8 @@ serve(async (req) => {
           {
             job_id,
             candidate_id: candidateId,
-            added_by: user_id || null
+            added_by: user_id || null,
+            current_stage_id: stage_id || null
           },
           { onConflict: 'job_id,candidate_id', ignoreDuplicates: true }
         );
