@@ -330,19 +330,24 @@ serve(async (req) => {
       
       // Create association if job_id provided
       if (job_id) {
-        const { error: assocError } = await supabase
-          .from('job_candidate_associations')
-          .upsert(
-            { 
-              job_id, 
-              candidate_id: existing.id,
-              current_stage_id: stage_id || null
-            },
-            { onConflict: 'job_id,candidate_id', ignoreDuplicates: false }
-          );
-        
-        if (assocError) {
-          console.error('⚠️ Failed to create job association:', assocError);
+        try {
+          const { error: assocError } = await supabase
+            .from('job_candidate_associations')
+            .upsert(
+              { 
+                job_id, 
+                candidate_id: existing.id,
+                current_stage_id: stage_id || null,
+                added_by: user_id || null
+              },
+              { onConflict: 'job_id,candidate_id', ignoreDuplicates: false }
+            );
+          
+          if (assocError) {
+            console.error('⚠️ Failed to create job association:', assocError);
+          }
+        } catch (err) {
+          console.error('⚠️ Job association error (non-fatal):', err);
         }
       }
       
@@ -478,20 +483,24 @@ serve(async (req) => {
 
     // Create job association if job_id provided
     if (job_id) {
-      const { error: assocError } = await supabase
-        .from('job_candidate_associations')
-        .upsert(
-          {
-            job_id,
-            candidate_id: candidateId,
-            added_by: user_id || null,
-            current_stage_id: stage_id || null
-          },
-          { onConflict: 'job_id,candidate_id', ignoreDuplicates: true }
-        );
-      
-      if (assocError) {
-        console.error('⚠️ Failed to create job association:', assocError);
+      try {
+        const { error: assocError } = await supabase
+          .from('job_candidate_associations')
+          .upsert(
+            {
+              job_id,
+              candidate_id: candidateId,
+              added_by: user_id || null,
+              current_stage_id: stage_id || null
+            },
+            { onConflict: 'job_id,candidate_id', ignoreDuplicates: true }
+          );
+        
+        if (assocError) {
+          console.error('⚠️ Failed to create job association:', assocError);
+        }
+      } catch (err) {
+        console.error('⚠️ Job association error (non-fatal):', err);
       }
     }
 
