@@ -269,17 +269,19 @@ export function CandidateResumeViewer({ candidateId, jobCandidateId, fallbackRes
 
           {/* Document content */}
       {isPdf && previewUrl && !iframeError ? (
-        <iframe
-          src={previewUrl}
-          title="Resume preview"
-          className="w-full"
-          style={{ height: `${height}vh` }}
-          onError={(e) => {
-            console.error('❌ Iframe failed to load PDF:', e)
-            setIframeError(true)
-            setError('Failed to load PDF preview. The file may be corrupt or the storage bucket may have CORS restrictions.')
-          }}
-        />
+              <iframe
+                src={previewUrl}
+                title="Resume preview"
+                className="w-full"
+                style={{ height: `${height}vh` }}
+                allow="fullscreen; clipboard-read; clipboard-write"
+                sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+                onError={(e) => {
+                  console.error('❌ Iframe failed to load PDF:', e)
+                  setIframeError(true)
+                  setError('Failed to load PDF preview. The file may be corrupt or the storage bucket may have CORS restrictions.')
+                }}
+              />
       ) : isPdf && iframeError ? (
         <div className="flex flex-col items-center justify-center p-8 text-center border-2 border-dashed border-border rounded-lg" style={{ height: `${height}vh` }}>
           <FileText className="h-12 w-12 text-muted-foreground mb-4" />
