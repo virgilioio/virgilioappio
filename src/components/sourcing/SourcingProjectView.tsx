@@ -127,35 +127,48 @@ export function SourcingProjectView({ projectId }: SourcingProjectViewProps) {
 
   const handleUpdateSearchCriteria = async (newCriteria: SearchCriteria) => {
     if (!project) return
-    
     setIsRefreshing(true)
-    
+
+    // 1. Optimistically update cache IMMEDIATELY (no stale window)
+    queryClient.setQueryData(['sourcing-project', projectId], (old: any) =>
+      old ? { 
+        ...old, 
+        search_criteria: newCriteria, 
+        updated_at: new Date().toISOString() 
+      } : old
+    )
+
     try {
-      // 1. Update sourcing_project record with new search_criteria and invalidate cache
-      const { error: updateError } = await supabase
+      // 2. Persist to DB and RETURN the updated row (critical for reconciliation)
+      const { data, error } = await supabase
         .from('sourcing_projects')
-        .update({ 
+        .update({
           search_criteria: newCriteria as any,
           updated_at: new Date().toISOString(),
-          // Invalidate CoreSignal cache to force fresh search
           coresignal_cache_expires_at: null,
-          coresignal_candidate_count: 0
+          coresignal_candidate_count: 0,
         })
         .eq('id', projectId)
-      
-      if (updateError) throw updateError
-      
-      // 2. Invalidate cache and refetch the project data
-      queryClient.invalidateQueries({ queryKey: ['sourcing-project', projectId] })
-      await refetchProject()
-      
-      // 3. Refetch candidates with new criteria (the hook will use updated project data)
+        .select('id, search_criteria, updated_at, coresignal_cache_expires_at, coresignal_candidate_count')
+        .single()
+
+      if (error) throw error
+
+      // 3. Reconcile cache with authoritative server result
+      queryClient.setQueryData(['sourcing-project', projectId], (old: any) =>
+        old ? { ...old, ...data } : data
+      )
+
+      // 4. Now refresh dependent data (candidates) after cache is consistent
       await refetchCandidates()
-      
+
       toast.success('Search Updated', { description: 'Candidates refreshed with updated criteria.' })
     } catch (error: any) {
       console.error('Error updating search criteria:', error)
       toast.error('Failed to Update Search', { description: error.message })
+      
+      // Rollback: refetch to get server truth
+      await queryClient.refetchQueries({ queryKey: ['sourcing-project', projectId] })
     } finally {
       setIsRefreshing(false)
     }
@@ -202,6 +215,7 @@ export function SourcingProjectView({ projectId }: SourcingProjectViewProps) {
   return (
     <div className="flex h-full overflow-hidden">
       <SourcingFiltersPanel 
+        key={`filters-${project.id}-${project.updated_at || ''}`}
         filters={filters}
         onFiltersChange={setFilters}
         project={project}

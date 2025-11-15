@@ -32,34 +32,25 @@ export function SourcingFiltersPanel({
   isRefreshing
 }: SourcingFiltersPanelProps) {
   const [isEditingCriteria, setIsEditingCriteria] = useState(false)
-  const [isSaving, setIsSaving] = useState(false)
   const [editableCriteria, setEditableCriteria] = useState<SearchCriteria>(project.search_criteria)
   const [newSkill, setNewSkill] = useState('')
   const [newTitleKeyword, setNewTitleKeyword] = useState('')
 
-  // Sync editableCriteria when project updates (but not during editing or saving)
-  useEffect(() => {
-    if (!isEditingCriteria && !isSaving) {
-      setEditableCriteria(project.search_criteria)
-    }
-  }, [project.search_criteria, isEditingCriteria, isSaving])
+  // Seed editableCriteria once when entering edit mode
+  const handleStartEdit = () => {
+    setEditableCriteria(project.search_criteria) // Seed from canonical data exactly once
+    setIsEditingCriteria(true)
+  }
 
   const handleSaveAndRefresh = async () => {
     if (editableCriteria.skills.length === 0) return
-    
-    setIsSaving(true)
-    setIsEditingCriteria(false)
-    
-    try {
-      await onUpdateSearchCriteria(editableCriteria)
-    } finally {
-      setIsSaving(false)
-    }
+    setIsEditingCriteria(false) // Exit edit mode
+    await onUpdateSearchCriteria(editableCriteria)
   }
 
   const handleCancelEdit = () => {
+    setEditableCriteria(project.search_criteria) // Re-seed from latest canonical data
     setIsEditingCriteria(false)
-    setEditableCriteria(project.search_criteria)
   }
 
   const handleAddSkill = () => {
@@ -117,10 +108,7 @@ export function SourcingFiltersPanel({
               <Button 
                 variant="ghost" 
                 size="sm"
-                onClick={() => {
-                  setEditableCriteria(project.search_criteria)
-                  setIsEditingCriteria(true)
-                }}
+                onClick={handleStartEdit}
                 className="h-8 px-3 text-xs rounded-lg transition-all duration-200 hover:bg-virgilio-purple/10 hover:text-virgilio-text hover:shadow-sm"
               >
                 Edit
