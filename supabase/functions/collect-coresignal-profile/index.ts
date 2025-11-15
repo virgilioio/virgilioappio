@@ -286,6 +286,26 @@ serve(async (req) => {
         .single();
       
       tenantId = org?.tenant_id;
+    } else if (user_id) {
+      // Find user's organization from their profile
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('organization_id')
+        .eq('user_id', user_id)
+        .single();
+      
+      if (profile?.organization_id) {
+        orgId = profile.organization_id;
+        
+        // Resolve tenant from user's organization
+        const { data: org } = await supabase
+          .from('organizations')
+          .select('tenant_id')
+          .eq('id', orgId)
+          .single();
+        
+        tenantId = org?.tenant_id;
+      }
     }
 
     if (!tenantId) {
