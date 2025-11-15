@@ -36,9 +36,10 @@ interface JobStage {
 interface HiringPlanTabProps {
   jobId: string
   readOnly?: boolean
+  hideHeader?: boolean
 }
 
-export function HiringPlanTab({ jobId, readOnly = false }: HiringPlanTabProps) {
+export function HiringPlanTab({ jobId, readOnly = false, hideHeader = false }: HiringPlanTabProps) {
   const { stages, isLoading } = useJobStages()
   const [selectedStages, setSelectedStages] = useState<JobStage[]>([])
   const [availableStages, setAvailableStages] = useState<JobStage[]>([])
@@ -311,12 +312,14 @@ export function HiringPlanTab({ jobId, readOnly = false }: HiringPlanTabProps) {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-medium text-text-primary mb-2">Hiring Plan</h3>
-        <p className="text-sm text-text-secondary mb-4">
-          Customize the hiring process for this job. Default stages (grayed out) are fixed in priority order. Stages marked as "last" priority will always appear at the end, with custom stages positioned before them.
-        </p>
-      </div>
+      {!hideHeader && (
+        <div>
+          <h3 className="text-lg font-medium text-text-primary mb-2">Hiring Plan</h3>
+          <p className="text-sm text-text-secondary mb-4">
+            Customize the hiring process for this job. Default stages (grayed out) are fixed in priority order. Stages marked as "last" priority will always appear at the end, with custom stages positioned before them.
+          </p>
+        </div>
+      )}
 
       <ReadOnlyOverlay active={readOnly} message="Clients can view the hiring plan but cannot edit it.">
         <div className="space-y-4">

@@ -27,8 +27,8 @@ export function HiringPlanStep({ jobId, onNext, onBack }: HiringPlanStepProps) {
         </p>
       </div>
 
-      <div className="border border-border rounded-lg">
-        <HiringPlanTab jobId={jobId} />
+      <div className="border border-border rounded-lg p-6">
+        <HiringPlanTab jobId={jobId} hideHeader={true} />
       </div>
 
       <div className="flex items-center justify-between pt-4 border-t border-border">
