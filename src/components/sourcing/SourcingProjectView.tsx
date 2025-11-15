@@ -215,7 +215,6 @@ export function SourcingProjectView({ projectId }: SourcingProjectViewProps) {
   return (
     <div className="flex h-full overflow-hidden">
       <SourcingFiltersPanel 
-        key={`filters-${project.id}-${project.updated_at || ''}`}
         filters={filters}
         onFiltersChange={setFilters}
         project={project}
