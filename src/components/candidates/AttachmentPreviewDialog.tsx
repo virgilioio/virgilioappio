@@ -121,6 +121,8 @@ export function AttachmentPreviewDialog({
             src={previewUrl}
             className="w-full h-full border-0 rounded"
             title={`Preview of ${attachment.file_name}`}
+            allow="fullscreen; clipboard-read; clipboard-write"
+            sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
           />
         </div>
       )
