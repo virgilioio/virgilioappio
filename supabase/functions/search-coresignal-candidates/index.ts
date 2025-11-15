@@ -264,9 +264,14 @@ async function incrementCreditUsage(
   // Get tenant_id from organization
   const tenant_id = await getTenantIdFromOrganization(organizationId);
   
+  // Calculate current billing cycle start (first day of current month)
+  const now = new Date();
+  const billingCycleStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+  
   // Use the atomic RPC to increment credits
   const { error } = await supabase.rpc('increment_coresignal_usage', {
     p_tenant_id: tenant_id,
+    p_billing_cycle_start: billingCycleStart,
     p_credit_type: type
   });
   
