@@ -110,7 +110,7 @@ export function CoreSignalPreviewSheet({
   const queryClient = useQueryClient()
   const navigate = useNavigate()
 
-  const handleCollectProfile = async (selectedJobId?: string) => {
+  const handleCollectProfile = async (selectedJobId?: string, selectedStageId?: string) => {
     if (!coresignalId) return
 
     setIsCollecting(true)
@@ -123,6 +123,7 @@ export function CoreSignalPreviewSheet({
         body: {
           coresignal_id: parseInt(coresignalId),
           job_id: jobIdToUse,
+          stage_id: selectedStageId,
           user_id: user?.id,
         }
       })
@@ -172,9 +173,9 @@ export function CoreSignalPreviewSheet({
     setShowJobSelection(true)
   }
 
-  const handleJobSelected = (jobId: string) => {
+  const handleJobSelected = (jobId: string, stageId?: string) => {
     setShowJobSelection(false)
-    handleCollectProfile(jobId)
+    handleCollectProfile(jobId, stageId)
   }
 
   const handleSkipJobSelection = () => {
