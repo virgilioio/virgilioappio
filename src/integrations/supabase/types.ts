@@ -4088,6 +4088,7 @@ export type Database = {
       }
       is_child_organization: { Args: { org_id: string }; Returns: boolean }
       is_email_suppressed: { Args: { p_email: string }; Returns: boolean }
+      is_org_owner: { Args: { p_org_id: string }; Returns: boolean }
       is_platform_admin: { Args: never; Returns: boolean }
       is_public_email_domain: { Args: { domain: string }; Returns: boolean }
       is_trial_expired: { Args: { tenant_id_param: string }; Returns: boolean }

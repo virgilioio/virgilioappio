@@ -242,8 +242,15 @@ export function useJobs() {
         }
         targetOrganizationId = jobData.organization_id
         console.log('Platform admin creating job for organization:', targetOrganizationId)
+      } else if (userType === 'workspace_owner' || userType === 'recruiter') {
+        // Workspace owners and recruiters can create jobs for selected child orgs
+        if (!jobData.organization_id) {
+          throw new Error('Please select a job folder for this job')
+        }
+        targetOrganizationId = jobData.organization_id
+        console.log('Creating job for selected organization:', targetOrganizationId)
       } else {
-        // Regular users can only create jobs for their own organization (from DB context)
+        // Other user types create jobs for their default organization
         if (!organizationId) {
           throw new Error('No organization context found for user')
         }
