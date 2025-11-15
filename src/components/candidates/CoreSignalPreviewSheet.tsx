@@ -11,6 +11,9 @@ import { useCoresignalCreditWarnings } from '@/hooks/useCoresignalCreditWarnings
 import AddToJobPipelineDialog from './AddToJobPipelineDialog'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { Separator } from '@/components/ui/separator'
+import { useQueryClient } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
+import { JobSelectionDialog } from '@/components/sourcing/JobSelectionDialog'
 
 interface CoreSignalPreviewSheetProps {
   open: boolean
@@ -38,6 +41,7 @@ interface CoreSignalPreviewSheetProps {
   hasNext?: boolean
   onNavigatePrev?: () => void
   onNavigateNext?: () => void
+  onCandidateCollected?: (candidateId: string) => void
 }
 
 // Helper component for locked fields (with icon)
@@ -97,22 +101,28 @@ export function CoreSignalPreviewSheet({
   hasNext,
   onNavigatePrev,
   onNavigateNext,
+  onCandidateCollected,
 }: CoreSignalPreviewSheetProps) {
   const [isCollecting, setIsCollecting] = useState(false)
   const [collectedCandidateId, setCollectedCandidateId] = useState<string | null>(null)
+  const [showJobSelection, setShowJobSelection] = useState(false)
   const { isCollectDisabled } = useCoresignalCreditWarnings()
+  const queryClient = useQueryClient()
+  const navigate = useNavigate()
 
-  const handleCollectProfile = async () => {
+  const handleCollectProfile = async (selectedJobId?: string) => {
     if (!coresignalId) return
 
     setIsCollecting(true)
     try {
       const { data: { user } } = await supabase.auth.getUser()
 
+      const jobIdToUse = selectedJobId || jobId
+      
       const { data, error } = await supabase.functions.invoke('collect-coresignal-profile', {
         body: {
           coresignal_id: parseInt(coresignalId),
-          job_id: jobId,
+          job_id: jobIdToUse,
           user_id: user?.id,
         }
       })
@@ -121,14 +131,29 @@ export function CoreSignalPreviewSheet({
 
       if (data?.candidate_id) {
         setCollectedCandidateId(data.candidate_id)
+        
         toast({
           title: 'Profile Collected',
-          description: 'Full profile has been collected successfully. Reloading...',
+          description: data.already_collected 
+            ? 'Profile was already in your database'
+            : 'Full profile is being processed in the background',
         })
-        // Close and let parent refresh
-        setTimeout(() => {
-          window.location.reload()
-        }, 1000)
+
+        // Invalidate queries to refresh data
+        queryClient.invalidateQueries({ queryKey: ['coresignal-preview-candidates'] })
+        queryClient.invalidateQueries({ queryKey: ['candidates'] })
+        queryClient.invalidateQueries({ queryKey: ['coresignal-usage'] })
+
+        // Notify parent to remove from list
+        onCandidateCollected?.(data.candidate_id)
+
+        // Navigate to job pipeline if job was selected
+        if (jobIdToUse) {
+          onOpenChange(false)
+          navigate(`/jobs/${jobIdToUse}/pipeline?candidate=${data.candidate_id}`)
+        } else {
+          onOpenChange(false)
+        }
       }
     } catch (error: any) {
       console.error('Failed to collect profile:', error)
@@ -141,6 +166,20 @@ export function CoreSignalPreviewSheet({
     } finally {
       setIsCollecting(false)
     }
+  }
+
+  const handleOpenJobSelection = () => {
+    setShowJobSelection(true)
+  }
+
+  const handleJobSelected = (jobId: string) => {
+    setShowJobSelection(false)
+    handleCollectProfile(jobId)
+  }
+
+  const handleSkipJobSelection = () => {
+    setShowJobSelection(false)
+    handleCollectProfile()
   }
 
   return (
@@ -206,7 +245,7 @@ export function CoreSignalPreviewSheet({
                     <div className="flex items-center justify-between w-full">
                       {/* Primary Action */}
                       <Button
-                        onClick={handleCollectProfile}
+                        onClick={handleOpenJobSelection}
                         disabled={isCollecting || isCollectDisabled}
                         className="flex-1"
                       >
@@ -522,6 +561,13 @@ export function CoreSignalPreviewSheet({
           </div>
         </div>
       </SheetContent>
+
+      <JobSelectionDialog
+        open={showJobSelection}
+        onOpenChange={setShowJobSelection}
+        onJobSelected={handleJobSelected}
+        onSkip={handleSkipJobSelection}
+      />
     </Sheet>
   )
 }

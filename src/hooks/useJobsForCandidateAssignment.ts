@@ -40,7 +40,32 @@ export function useJobsForCandidateAssignment() {
 
       // Apply permission-based filtering
       if (userType === 'platform_admin') {
-        // Platform admins see all jobs (no additional filter)
+        // Platform admins see jobs across their entire org hierarchy (tenant org + all child orgs)
+        const { data: memberOrgs } = await supabase
+          .from('members')
+          .select('organization_id')
+          .eq('user_id', user.id)
+          .eq('user_status', 'active')
+
+        if (memberOrgs && memberOrgs.length > 0) {
+          // Get full org tree for each membership
+          const allOrgIds = new Set<string>()
+          
+          for (const member of memberOrgs) {
+            const treeIds = await getOrganizationTree(member.organization_id)
+            treeIds.forEach(id => allOrgIds.add(id))
+          }
+          
+          if (allOrgIds.size > 0) {
+            query = query.in('organization_id', Array.from(allOrgIds))
+          } else {
+            setJobs([])
+            return
+          }
+        } else {
+          setJobs([])
+          return
+        }
       } else if (userType === 'workspace_owner') {
         // Workspace owners see jobs across their entire org hierarchy
         // (tenant org + all child workspaces)
