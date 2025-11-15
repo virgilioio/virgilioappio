@@ -329,14 +329,19 @@ serve(async (req) => {
       
       // Create association if job_id provided
       if (job_id) {
-        await supabase
+        const { error: assocError } = await supabase
           .from('job_candidate_associations')
-          .insert({
-            job_id,
-            candidate_id: existing.id
-          })
-          .onConflict('job_id,candidate_id')
-          .ignore();
+          .upsert(
+            { 
+              job_id, 
+              candidate_id: existing.id 
+            },
+            { onConflict: 'job_id,candidate_id', ignoreDuplicates: true }
+          );
+        
+        if (assocError) {
+          console.error('⚠️ Failed to create job association:', assocError);
+        }
       }
       
       return new Response(JSON.stringify({
@@ -471,15 +476,20 @@ serve(async (req) => {
 
     // Create job association if job_id provided
     if (job_id) {
-      await supabase
+      const { error: assocError } = await supabase
         .from('job_candidate_associations')
-        .insert({
-          job_id,
-          candidate_id: candidateId,
-          added_by: user_id || null
-        })
-        .onConflict('job_id,candidate_id')
-        .ignore();
+        .upsert(
+          {
+            job_id,
+            candidate_id: candidateId,
+            added_by: user_id || null
+          },
+          { onConflict: 'job_id,candidate_id', ignoreDuplicates: true }
+        );
+      
+      if (assocError) {
+        console.error('⚠️ Failed to create job association:', assocError);
+      }
     }
 
     // Increment credit usage (async, but we await to ensure it completes)
