@@ -431,7 +431,11 @@ serve(async (req) => {
       location_state: profile.location_state || null,
       
       // Raw data without AI processing
-      skills: profile.skills?.map((s: any) => s.name || s) || [],
+      skills: profile.skills?.map((s: any) => {
+        // CoreSignal returns skills as objects with 'skill' property
+        if (typeof s === 'string') return s;
+        return s.skill || s.name || String(s);
+      }) || [],
       source: 'coresignal',
       coresignal_profile_id: coresignal_id,
       coresignal_search_score: profile._score || 0,
