@@ -84,19 +84,24 @@ export function JobInfoStep({ jobData, onUpdate }: JobInfoStepProps) {
           </Select>
         </div>
 
-        {/* Organization - Only show for users who can select org */}
+        {/* Job Folder - Only show for users who can select org */}
         {canSelectOrganization && (
           <div className="space-y-2">
-            <Label htmlFor="organization">Organization / Department *</Label>
+            <Label htmlFor="organization">
+              Job Folder <span className="text-red-500">*</span>
+            </Label>
             <SearchableSelect
               options={organizationOptions}
               value={jobData.organization_id || ''}
               onValueChange={(value) => handleInputChange('organization_id', value)}
-              placeholder={isLoadingOrgs ? "Loading organizations..." : "Select organization..."}
-              searchPlaceholder="Search organizations..."
-              emptyMessage="No organizations found."
+              placeholder={isLoadingOrgs ? "Loading job folders..." : "Select a job folder..."}
+              searchPlaceholder="Search folders..."
+              emptyMessage="No job folders found."
               disabled={isLoadingOrgs}
             />
+            <p className="text-xs text-muted-foreground">
+              Select which department or client this job belongs to
+            </p>
           </div>
         )}
 
