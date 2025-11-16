@@ -110,7 +110,12 @@ export function CoreSignalPreviewSheet({
   const queryClient = useQueryClient()
   const navigate = useNavigate()
 
-  const handleCollectProfile = async (selectedJobId?: string, selectedStageId?: string) => {
+  const handleCollectProfile = async (
+    selectedJobId?: string, 
+    selectedJobName?: string,
+    selectedStageId?: string,
+    selectedStageName?: string
+  ) => {
     if (!coresignalId) return
 
     setIsCollecting(true)
@@ -133,11 +138,18 @@ export function CoreSignalPreviewSheet({
       if (data?.candidate_id) {
         setCollectedCandidateId(data.candidate_id)
         
+        // Improved toast message with job and stage names
+        const toastDescription = data.already_collected 
+          ? jobIdToUse 
+            ? `Profile was already in your database and has been added to ${selectedJobName || 'the job'} (${selectedStageName || 'stage'})`
+            : 'Profile was already in your database'
+          : jobIdToUse
+            ? `Successfully added to ${selectedJobName || 'job'} at stage "${selectedStageName || 'Unknown'}"`
+            : 'Full profile is being processed in the background'
+        
         toast({
           title: 'Profile Collected',
-          description: data.already_collected 
-            ? 'Profile was already in your database'
-            : 'Full profile is being processed in the background',
+          description: toastDescription,
         })
 
         // Invalidate queries to refresh data
@@ -148,13 +160,8 @@ export function CoreSignalPreviewSheet({
         // Notify parent to remove from list
         onCandidateCollected?.(data.candidate_id)
 
-        // Navigate to job pipeline if job was selected
-        if (jobIdToUse) {
-          onOpenChange(false)
-          navigate(`/jobs/${jobIdToUse}/pipeline?candidate=${data.candidate_id}`)
-        } else {
-          onOpenChange(false)
-        }
+        // Simply close the sheet, keep user on current screen
+        onOpenChange(false)
       }
     } catch (error: any) {
       console.error('Failed to collect profile:', error)
@@ -173,9 +180,14 @@ export function CoreSignalPreviewSheet({
     setShowJobSelection(true)
   }
 
-  const handleJobSelected = (jobId: string, stageId?: string) => {
+  const handleJobSelected = (
+    jobId: string, 
+    jobName: string, 
+    stageId?: string, 
+    stageName?: string
+  ) => {
     setShowJobSelection(false)
-    handleCollectProfile(jobId, stageId)
+    handleCollectProfile(jobId, jobName, stageId, stageName)
   }
 
   const handleSkipJobSelection = () => {

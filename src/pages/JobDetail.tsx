@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
@@ -40,7 +40,6 @@ import { useRealTimeSkillMatching } from '@/hooks/useRealTimeSkillMatching'
 export default function JobDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const [searchParams, setSearchParams] = useSearchParams()
   const { user, userType } = useAuth()
   const permissions = usePermissions()
   const isMobile = useIsMobile()
@@ -67,19 +66,6 @@ export default function JobDetail() {
   const [profileContext, setProfileContext] = useState<'application' | 'pipeline' | null>(null)
   const [profileCandidateList, setProfileCandidateList] = useState<any[]>([])
   const [profileCurrentIndex, setProfileCurrentIndex] = useState(0)
-  
-  // Handle ?candidate= query parameter from CoreSignal collection
-  useEffect(() => {
-    const candidateParam = searchParams.get('candidate')
-    if (candidateParam && !profileOpen) {
-      setProfileCandidateId(candidateParam)
-      setProfileContext('pipeline')
-      setProfileCandidateList([])
-      setProfileCurrentIndex(0)
-      setProfileOpen(true)
-      setSearchParams({}, { replace: true })
-    }
-  }, [searchParams, profileOpen, setSearchParams])
 
   const openProfileInPlace = (candidateId: string, context: 'application' | 'pipeline' = 'application', candidateList: any[] = []) => {
     const index = candidateList.findIndex((c: any) => c.id === candidateId)

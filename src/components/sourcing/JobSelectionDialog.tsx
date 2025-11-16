@@ -10,7 +10,7 @@ import { useJobHiringPlan } from '@/hooks/useJobHiringPlan'
 interface JobSelectionDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onJobSelected: (jobId: string, stageId?: string) => void
+  onJobSelected: (jobId: string, jobName: string, stageId?: string, stageName?: string) => void
   onSkip: () => void
 }
 
@@ -64,7 +64,15 @@ export function JobSelectionDialog({
 
   const handleConfirm = () => {
     if (selectedJobId && selectedStageId) {
-      onJobSelected(selectedJobId, selectedStageId)
+      const selectedJob = jobs.find(j => j.id === selectedJobId)
+      const selectedStage = stageOptions.find(s => s.jhsId === selectedStageId)
+      
+      onJobSelected(
+        selectedJobId, 
+        selectedJob?.title || 'Unknown Job',
+        selectedStageId, 
+        selectedStage?.label || 'Unknown Stage'
+      )
       setSelectedJobId('')
       setSelectedStageId('')
     }
