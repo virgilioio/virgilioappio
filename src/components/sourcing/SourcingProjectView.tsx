@@ -1,8 +1,10 @@
 import { useState, useMemo } from 'react'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Sparkles, Users } from 'lucide-react'
 import { SourcingProjectHeader } from './SourcingProjectHeader'
-import { SourcingCandidateTable } from './SourcingCandidateTable'
-import { SourcingFiltersPanel } from './SourcingFiltersPanel'
+import { CandidatesTab } from './CandidatesTab'
+import { ConversationTab } from './ConversationTab'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Badge } from '@/components/ui/badge'
 import { useSourcingProject } from '@/hooks/useSourcingProject'
 import { useSourcingProjectCandidates } from '@/hooks/useSourcingProjectCandidates'
 import { SourcingProjectFilters, SearchCriteria } from '@/types/sourcing'
@@ -33,6 +35,7 @@ export function SourcingProjectView({ projectId }: SourcingProjectViewProps) {
     source: 'all'
   })
   const [isRefreshing, setIsRefreshing] = useState(false)
+  const [activeTab, setActiveTab] = useState('candidates')
   
   // Apply filters locally
   const filteredCandidates = useMemo(() => {
