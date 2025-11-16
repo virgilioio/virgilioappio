@@ -216,42 +216,67 @@ export function SourcingProjectView({ projectId }: SourcingProjectViewProps) {
   }
   
   return (
-    <div className="flex h-full overflow-hidden">
-      <SourcingFiltersPanel 
-        filters={filters}
-        onFiltersChange={setFilters}
-        project={project}
-        onUpdateSearchCriteria={handleUpdateSearchCriteria}
-        isRefreshing={isRefreshing}
-      />
+    <div className="flex flex-col h-full overflow-hidden">
+      {/* Fixed Header Section */}
+      <div className="flex-shrink-0 border-b bg-background">
+        <div className="container mx-auto p-4">
+          <SourcingProjectHeader 
+            project={project}
+            breakdown={breakdown}
+            onRefresh={handleRefresh}
+            onArchive={handleArchive}
+            onDelete={handleDelete}
+            onNameUpdate={handleSaveName}
+            onVisibilityToggle={handleVisibilityToggle}
+          />
+        </div>
+      </div>
       
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Fixed Header Section */}
-        <div className="flex-shrink-0 border-b bg-background">
-          <div className="container mx-auto p-4">
-            <SourcingProjectHeader 
-              project={project}
-              breakdown={breakdown}
-              onRefresh={handleRefresh}
-              onArchive={handleArchive}
-              onDelete={handleDelete}
-              onNameUpdate={handleSaveName}
-              onVisibilityToggle={handleVisibilityToggle}
-            />
+      {/* Tabs Section */}
+      <Tabs 
+        value={activeTab} 
+        onValueChange={setActiveTab}
+        className="flex-1 flex flex-col overflow-hidden"
+      >
+        <div className="border-b bg-background">
+          <div className="container mx-auto px-4">
+            <TabsList className="grid w-full max-w-md grid-cols-2">
+              <TabsTrigger value="conversation" className="gap-2">
+                <Sparkles className="h-4 w-4" />
+                Chat with Gio
+              </TabsTrigger>
+              <TabsTrigger value="candidates" className="gap-2">
+                <Users className="h-4 w-4" />
+                Candidates
+                {filteredCandidates.length > 0 && (
+                  <Badge variant="secondary" className="ml-1">
+                    {filteredCandidates.length}
+                  </Badge>
+                )}
+              </TabsTrigger>
+            </TabsList>
           </div>
         </div>
         
-        {/* Scrollable Candidate Table */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="container mx-auto p-4">
-            <SourcingCandidateTable 
-              candidates={filteredCandidates}
-              isLoading={candidatesLoading}
-              jobId={project.job_id}
-            />
-          </div>
-        </div>
-      </div>
+        <TabsContent value="conversation" className="flex-1 overflow-hidden m-0">
+          <ConversationTab 
+            projectId={projectId}
+            onRefinementComplete={() => setActiveTab('candidates')}
+          />
+        </TabsContent>
+        
+        <TabsContent value="candidates" className="flex-1 overflow-hidden m-0">
+          <CandidatesTab 
+            project={project}
+            candidates={filteredCandidates}
+            filters={filters}
+            onFiltersChange={setFilters}
+            onUpdateSearchCriteria={handleUpdateSearchCriteria}
+            isRefreshing={isRefreshing}
+            isLoading={candidatesLoading}
+          />
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

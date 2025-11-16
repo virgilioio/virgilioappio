@@ -12,10 +12,10 @@ import gioAvatar from '@/assets/gio-avatar.png';
 
 interface ConversationTabProps {
   projectId: string;
-  onSearchUpdated?: () => void;
+  onRefinementComplete?: () => void;
 }
 
-export function ConversationTab({ projectId, onSearchUpdated }: ConversationTabProps) {
+export function ConversationTab({ projectId, onRefinementComplete }: ConversationTabProps) {
   const [inputMessage, setInputMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { data, isLoading: historyLoading } = useConversationHistory(projectId);
@@ -49,9 +49,7 @@ export function ConversationTab({ projectId, onSearchUpdated }: ConversationTabP
       conversationHistory
     });
 
-    if (onSearchUpdated) {
-      onSearchUpdated();
-    }
+    onRefinementComplete?.();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
