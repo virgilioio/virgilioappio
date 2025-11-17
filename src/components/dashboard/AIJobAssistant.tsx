@@ -478,17 +478,6 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
     <>
       {/* Main Prompt Card - ChatGPT Style */}
       <div className="space-y-6">
-        {/* Chat Mode Toggle */}
-        <div className="flex items-center justify-center gap-3 mb-6">
-          <Switch 
-            checked={chatMode} 
-            onCheckedChange={handleToggleChatMode}
-          />
-          <Label className="text-sm text-text-secondary cursor-pointer" onClick={() => handleToggleChatMode(!chatMode)}>
-            <MessageSquare className="h-4 w-4 inline mr-1.5" />
-            Chat with Gio before creating job specs
-          </Label>
-        </div>
 
         {/* Chat History - shown when in chat mode and has messages */}
         {chatMode && chatMessages.length > 0 && (
@@ -569,8 +558,12 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
               }}
             />
             
-            {/* Send Button - only show when text exists */}
+            {/* Toggle and Send Button */}
             <div className="flex items-center gap-2 flex-shrink-0 pb-1">
+              <Switch 
+                checked={chatMode} 
+                onCheckedChange={handleToggleChatMode}
+              />
               {prompt.trim().length > 0 && (
                 <button
                   onClick={chatMode ? handleSendChatMessage : handleGenerate}
