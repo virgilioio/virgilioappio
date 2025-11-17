@@ -25,6 +25,11 @@ import { useChildOrganizationsForJobCreation } from '@/hooks/useChildOrganizatio
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { useChatWithGio } from '@/hooks/useChatWithGio'
 
+interface Message {
+  role: 'user' | 'assistant'
+  content: string
+}
+
 interface JobSpec {
   job_title: string
   alt_titles: string[]
@@ -98,6 +103,7 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
   const [organizationName, setOrganizationName] = useState<string>('')
   const [currentStep, setCurrentStep] = useState<'prompt' | 'specs' | 'decision'>('prompt')
   const [isEditing, setIsEditing] = useState<{[key: string]: boolean}>({})
+  const [preservedConversation, setPreservedConversation] = useState<Message[]>([])
   const [editableJobSpec, setEditableJobSpec] = useState<JobSpec | null>(null)
   const [isRefreshingMatches, setIsRefreshingMatches] = useState(false)
   const [marketInsights, setMarketInsights] = useState<any>(null)
@@ -124,7 +130,8 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
     conversationId,
     isReadyForCreation,
     sendMessage,
-    resetConversation
+    resetConversation,
+    restoreMessages
   } = useChatWithGio()
 
   // Filter jobs by selected organization
@@ -533,6 +540,24 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
               ) : (
                 <><Sparkles className="mr-2 h-4 w-4" /> Create Job Specs from Conversation</>
               )}
+            </Button>
+          </div>
+        )}
+
+        {/* Restore Previous Conversation Button - PHASE 3 */}
+        {!chatMode && preservedConversation.length > 0 && (
+          <div className="max-w-3xl mx-auto mb-4">
+            <Button 
+              variant="outline"
+              onClick={() => {
+                restoreMessages(preservedConversation)
+                setChatMode(true)
+                setPreservedConversation([])
+              }}
+              className="w-full"
+            >
+              <MessageSquare className="mr-2 h-4 w-4" />
+              Restore Previous Conversation
             </Button>
           </div>
         )}

@@ -131,6 +131,12 @@ Use this market data to provide SPECIFIC salary recommendations instead of gener
 
 A client has described their hiring need. Your task is to analyze this input and return a structured response that Virgilio's system can use to generate a high-quality job record.
 
+${conversationHistory ? 
+  '🗨️ **CRITICAL - CONVERSATION CONTEXT PROVIDED:**\n\nIMPORTANT: A complete conversation history is provided below. You MUST synthesize ALL information from the ENTIRE conversation to create a comprehensive job specification.\n\n⚠️ DO NOT rely solely on the final user message - it may be a simple confirmation like "Yes!" or "Create it!"\n\nUse the FULL conversation context to understand:\n- The job title and role requirements\n- Required skills and qualifications\n- Salary expectations and budget\n- Location and work arrangement preferences\n- Any other details discussed throughout the conversation\n\nNEVER return placeholder values like "Job Title Not Specified" or "Not Specified" - synthesize concrete information from the conversation.' 
+  : 
+  'Generate a job specification based on the user\'s prompt.'
+}
+
 🌐 **PRIMARY INSTRUCTION - LANGUAGE DETECTION (CRITICAL):**
 **IMPORTANT: The user's prompt is written in ${detectedLanguage}. You MUST respond in ${detectedLanguage}.**
 

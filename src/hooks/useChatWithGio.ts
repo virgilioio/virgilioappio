@@ -64,12 +64,19 @@ export function useChatWithGio() {
     setIsReadyForCreation(false);
   };
 
+  const restoreMessages = (restoredMessages: Message[]) => {
+    setMessages(restoredMessages);
+    // Don't restore conversationId as it might be stale
+    // Let the next message create a new conversation
+  };
+
   return {
     messages,
     isLoading,
     conversationId,
     isReadyForCreation,
     sendMessage,
-    resetConversation
+    resetConversation,
+    restoreMessages
   };
 }
