@@ -14,6 +14,7 @@ interface CreateSourcingProjectRequest {
   job_id?: string;  // Now optional
   organization_id?: string;  // Added for standalone projects
   is_public?: boolean;
+  conversationId?: string;  // Optional: link to existing AI conversation
   search_criteria: {
     skills: string[];
     locations?: string[];  // Changed to array
@@ -68,7 +69,7 @@ serve(async (req) => {
 
     // Parse request body
     const body: CreateSourcingProjectRequest = await req.json();
-    const { name, description, job_id, organization_id, is_public, search_criteria } = body;
+    const { name, description, job_id, organization_id, is_public, conversationId, search_criteria } = body;
 
     // Validate required fields
     if (!name) {
@@ -160,6 +161,26 @@ serve(async (req) => {
     }
 
     console.log(`✅ Project created: ${project.id}`);
+
+    // Link conversation to project if conversationId provided
+    if (conversationId) {
+      console.log(`🔗 Linking conversation ${conversationId} to project ${project.id}`);
+      const { error: convUpdateError } = await supabase
+        .from('ai_conversations')
+        .update({
+          sourcing_project_id: project.id,
+          status: 'active',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', conversationId);
+      
+      if (convUpdateError) {
+        console.error('⚠️ Failed to link conversation to project:', convUpdateError);
+        // Don't fail the whole operation, just log it
+      } else {
+        console.log(`✅ Conversation linked successfully`);
+      }
+    }
 
     const response: CreateSourcingProjectResponse = {
       id: project.id,
