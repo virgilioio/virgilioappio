@@ -9,6 +9,9 @@ verify_jwt = true
 [functions.check-calendar-availability]
 verify_jwt = true
 
+[functions.chat-with-gio]
+verify_jwt = true
+
 [functions.collect-coresignal-profile]
 verify_jwt = true
 

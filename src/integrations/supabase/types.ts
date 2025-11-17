@@ -230,27 +230,36 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string | null
+          expires_at: string | null
           id: string
           initial_prompt: string
-          sourcing_project_id: string
+          is_ready_for_creation: boolean
+          sourcing_project_id: string | null
+          status: Database["public"]["Enums"]["conversation_status"]
           tenant_id: string
           updated_at: string
         }
         Insert: {
           created_at?: string
           created_by?: string | null
+          expires_at?: string | null
           id?: string
           initial_prompt: string
-          sourcing_project_id: string
+          is_ready_for_creation?: boolean
+          sourcing_project_id?: string | null
+          status?: Database["public"]["Enums"]["conversation_status"]
           tenant_id: string
           updated_at?: string
         }
         Update: {
           created_at?: string
           created_by?: string | null
+          expires_at?: string | null
           id?: string
           initial_prompt?: string
-          sourcing_project_id?: string
+          is_ready_for_creation?: boolean
+          sourcing_project_id?: string | null
+          status?: Database["public"]["Enums"]["conversation_status"]
           tenant_id?: string
           updated_at?: string
         }
@@ -3978,6 +3987,7 @@ export type Database = {
           seat_limit: number
         }[]
       }
+      cleanup_expired_draft_conversations: { Args: never; Returns: undefined }
       cleanup_expired_invitations: { Args: never; Returns: number }
       cleanup_expired_salary_data: { Args: never; Returns: number }
       copy_platform_template_to_tenant: {
@@ -4331,6 +4341,7 @@ export type Database = {
         | "fixed_term"
         | "seasonal"
       contractor_payment_type_enum: "fixed_rate" | "hourly_rate" | "per_project"
+      conversation_status: "draft" | "active"
       delay_unit: "days" | "weeks"
       email_send_to: "candidate" | "hiring_team" | "interviewers" | "custom"
       employment_duration_enum: "indefinite" | "definite"
@@ -4560,6 +4571,7 @@ export const Constants = {
         "hourly_rate",
         "per_project",
       ],
+      conversation_status: ["draft", "active"],
       delay_unit: ["days", "weeks"],
       email_send_to: ["candidate", "hiring_team", "interviewers", "custom"],
       employment_duration_enum: ["indefinite", "definite"],
