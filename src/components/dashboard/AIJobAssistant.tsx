@@ -104,6 +104,7 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
   const [selectedJobId, setSelectedJobId] = useState<string>('')  // For optional job linking
   const [selectedOrgId, setSelectedOrgId] = useState<string>('')
   const [isCreatingProject, setIsCreatingProject] = useState(false)
+  const [projectConversationId, setProjectConversationId] = useState<string | null>(null)
   
   // Chat mode state
   const [chatMode, setChatMode] = useState(false)
@@ -218,6 +219,7 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
         setEditableSkills(data.jobSpec.skills || [])
         setCurrentStep('specs')
         setShowModal(true)
+        setProjectConversationId(conversationId) // Store for linking to project
         
         // Reset chat after successful job spec creation
         resetConversation()
@@ -328,6 +330,7 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
           description: prompt,
           job_id: selectedJobId || null,  // Optional job link
           organization_id: selectedOrgId,  // Direct org assignment
+          conversationId: projectConversationId || undefined, // Link conversation to project
           search_criteria: {
             skills: editableSkills,
             locations: [editableJobSpec.location],
@@ -360,6 +363,7 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
       }
 
       setShowModal(false)
+      setProjectConversationId(null) // Reset conversation link
       
     } catch (error: any) {
       console.error('Error creating sourcing project:', error)
