@@ -18,7 +18,24 @@ serve(async (req) => {
   const cors = corsHeadersFor(origin);
 
   try {
-    const { prompt } = await req.json();
+    const { prompt, conversationId } = await req.json();
+    
+    let conversationHistory = '';
+    
+    // If conversationId provided, fetch conversation context
+    if (conversationId) {
+      const { data: messages, error: msgError } = await supabase
+        .from('conversation_messages')
+        .select('role, content')
+        .eq('conversation_id', conversationId)
+        .order('created_at', { ascending: true });
+      
+      if (!msgError && messages && messages.length > 0) {
+        conversationHistory = '\n\nCONVERSATION HISTORY:\n' + 
+          messages.map(m => `${m.role.toUpperCase()}: ${m.content}`).join('\n');
+        console.log('Including conversation history from', messages.length, 'messages');
+      }
+    }
 
     console.log('Generating job spec for prompt:', prompt);
     console.log('First 100 chars of prompt:', prompt.substring(0, 100));

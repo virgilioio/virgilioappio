@@ -10,7 +10,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Loader2, Sparkles, CheckCircle2, Circle, Briefcase, DollarSign, MapPin, Target, ChevronDown, ChevronUp, TrendingUp, Clock, Users, Award, Building2, Edit2, BarChart3, AlertTriangle, PieChart, RefreshCw, ArrowUp } from 'lucide-react'
+import { Switch } from '@/components/ui/switch'
+import { Loader2, Sparkles, CheckCircle2, Circle, Briefcase, DollarSign, MapPin, Target, ChevronDown, ChevronUp, TrendingUp, Clock, Users, Award, Building2, Edit2, BarChart3, AlertTriangle, PieChart, RefreshCw, ArrowUp, MessageSquare } from 'lucide-react'
 import gioAvatar from '@/assets/gio-avatar.png'
 import { supabase } from '@/lib/supabaseClient'
 import { useToast } from '@/hooks/use-toast'
@@ -22,6 +23,7 @@ import { SafeHtml } from '@/components/ui/safe-html'
 import { useCoresignalCreditWarnings } from '@/hooks/useCoresignalCreditWarnings'
 import { useChildOrganizationsForJobCreation } from '@/hooks/useChildOrganizationsForJobCreation'
 import { SearchableSelect } from '@/components/ui/searchable-select'
+import { useChatWithGio } from '@/hooks/useChatWithGio'
 
 interface JobSpec {
   job_title: string
@@ -102,6 +104,10 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
   const [selectedJobId, setSelectedJobId] = useState<string>('')  // For optional job linking
   const [selectedOrgId, setSelectedOrgId] = useState<string>('')
   const [isCreatingProject, setIsCreatingProject] = useState(false)
+  
+  // Chat mode state
+  const [chatMode, setChatMode] = useState(false)
+  
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const { toast } = useToast()
   const { jobs } = useJobs()
@@ -109,6 +115,16 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
   const { user, organizationId, userType } = useAuth()
   const { isSearchDisabled } = useCoresignalCreditWarnings()
   const { data: childOrgs, isLoading: isLoadingOrgs } = useChildOrganizationsForJobCreation()
+  
+  // Import chat hook
+  const {
+    messages: chatMessages,
+    isLoading: isChatLoading,
+    conversationId,
+    isReadyForCreation,
+    sendMessage,
+    resetConversation
+  } = useChatWithGio()
 
   // Filter jobs by selected organization
   const jobsInOrg = selectedOrgId 
@@ -153,9 +169,71 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
     // Submit on Enter (without Shift)
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
-      if (canGenerate && !isGenerating) {
-        handleGenerate()
+      if (chatMode) {
+        if (prompt.trim() && !isChatLoading) {
+          handleSendChatMessage()
+        }
+      } else {
+        if (canGenerate && !isGenerating) {
+          handleGenerate()
+        }
       }
+    }
+  }
+
+  const handleSendChatMessage = async () => {
+    if (!prompt.trim() || isChatLoading) return
+    const message = prompt
+    setPrompt('') // Clear immediately for better UX
+    await sendMessage(message)
+  }
+
+  const handleCreateJobSpecsFromChat = async () => {
+    if (!conversationId || !isReadyForCreation) return
+
+    setIsGenerating(true)
+    try {
+      // Get the last user message from chat as the final prompt
+      const lastUserMessage = chatMessages.filter(m => m.role === 'user').pop()?.content || ''
+      
+      const { data, error } = await supabase.functions.invoke('generate-job-spec', {
+        body: { 
+          prompt: lastUserMessage,
+          conversationId 
+        }
+      })
+
+      if (error) {
+        if (error.message?.includes('CREDITS_EXHAUSTED')) {
+          throw new Error('Monthly search credit limit reached. Credits will reset on the 1st of next month.')
+        }
+        throw error
+      }
+
+      if (data?.jobSpec) {
+        setJobSpec(data.jobSpec)
+        setEditableJobSpec(data.jobSpec)
+        setCandidateMatching(data.candidateMatching || null)
+        setSelectedTitle(data.jobSpec.job_title)
+        setEditableSkills(data.jobSpec.skills || [])
+        setCurrentStep('specs')
+        setShowModal(true)
+        
+        // Reset chat after successful job spec creation
+        resetConversation()
+        setChatMode(false)
+      } else {
+        throw new Error('Invalid response from AI service')
+      }
+    } catch (error: any) {
+      console.error('Error generating job spec from chat:', error)
+      toast({
+        title: 'Generation Failed',
+        description: error.message || 'Failed to generate job specification. Please try again.',
+        variant: 'destructive'
+      })
+    } finally {
+      setIsGenerating(false)
     }
   }
 
@@ -206,6 +284,22 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
       })
     } finally {
       setIsGenerating(false)
+    }
+  }
+
+  const handleToggleChatMode = (enabled: boolean) => {
+    if (!enabled && chatMessages.length > 0) {
+      // Show confirmation if user has active chat
+      if (window.confirm('This will discard your conversation. Continue?')) {
+        resetConversation()
+        setChatMode(false)
+        setPrompt('')
+      }
+    } else {
+      setChatMode(enabled)
+      if (enabled) {
+        setPrompt('')
+      }
     }
   }
 
@@ -384,6 +478,72 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
     <>
       {/* Main Prompt Card - ChatGPT Style */}
       <div className="space-y-6">
+        {/* Chat Mode Toggle */}
+        <div className="flex items-center justify-center gap-3 mb-6">
+          <Switch 
+            checked={chatMode} 
+            onCheckedChange={handleToggleChatMode}
+          />
+          <Label className="text-sm text-text-secondary cursor-pointer" onClick={() => handleToggleChatMode(!chatMode)}>
+            <MessageSquare className="h-4 w-4 inline mr-1.5" />
+            Chat with Gio before creating job specs
+          </Label>
+        </div>
+
+        {/* Chat History - shown when in chat mode and has messages */}
+        {chatMode && chatMessages.length > 0 && (
+          <div className="max-w-3xl mx-auto mb-6 space-y-4 max-h-[400px] overflow-y-auto p-4 bg-surface-primary rounded-lg border border-border">
+            {chatMessages.map((msg, idx) => (
+              <div key={idx} className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                {msg.role === 'assistant' && (
+                  <img 
+                    src={gioAvatar} 
+                    alt="Gio"
+                    className="h-8 w-8 rounded-full flex-shrink-0"
+                  />
+                )}
+                <div className={`max-w-[80%] rounded-2xl px-4 py-2 ${
+                  msg.role === 'user' 
+                    ? 'bg-primary text-primary-foreground' 
+                    : 'bg-surface-secondary text-foreground'
+                }`}>
+                  <p className="text-sm whitespace-pre-wrap">{msg.content}</p>
+                </div>
+                {msg.role === 'user' && (
+                  <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 text-primary font-semibold">
+                    {user?.email?.[0]?.toUpperCase()}
+                  </div>
+                )}
+              </div>
+            ))}
+            {isChatLoading && (
+              <div className="flex gap-3 justify-start">
+                <img src={gioAvatar} alt="Gio" className="h-8 w-8 rounded-full" />
+                <div className="bg-surface-secondary rounded-2xl px-4 py-2">
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Create Job Specs Button - shown when ready */}
+        {chatMode && isReadyForCreation && (
+          <div className="max-w-3xl mx-auto mb-4">
+            <Button 
+              onClick={handleCreateJobSpecsFromChat}
+              disabled={isGenerating}
+              className="w-full"
+            >
+              {isGenerating ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating Job Specs...</>
+              ) : (
+                <><Sparkles className="mr-2 h-4 w-4" /> Create Job Specs from Conversation</>
+              )}
+            </Button>
+          </div>
+        )}
+        
         {/* ChatGPT-style Input */}
         <div className="relative max-w-3xl mx-auto">
           <div className={`relative flex items-end gap-2 px-5 py-3 rounded-[28px] border transition-all ${
@@ -413,12 +573,18 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
             <div className="flex items-center gap-2 flex-shrink-0 pb-1">
               {prompt.trim().length > 0 && (
                 <button
-                  onClick={handleGenerate}
-                  disabled={!canGenerate || isGenerating || isSearchDisabled}
-                  title={isSearchDisabled ? 'Monthly search credit limit reached' : canGenerate ? 'Generate job specification' : 'Enter at least 10 words'}
+                  onClick={chatMode ? handleSendChatMessage : handleGenerate}
+                  disabled={chatMode ? isChatLoading : (!canGenerate || isGenerating || isSearchDisabled)}
+                  title={
+                    isSearchDisabled 
+                      ? 'Monthly search credit limit reached' 
+                      : chatMode 
+                        ? 'Send message to Gio'
+                        : canGenerate ? 'Generate job specification' : 'Enter at least 10 words'
+                  }
                   className="flex items-center justify-center h-8 w-8 rounded-full bg-virgilio-text hover:bg-black disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
                 >
-                  {isGenerating ? (
+                  {(isGenerating || isChatLoading) ? (
                     <Loader2 className="h-4 w-4 text-white animate-spin" />
                   ) : (
                     <ArrowUp className="h-4 w-4 text-white" />
@@ -428,34 +594,38 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
             </div>
           </div>
           
-          {/* Word Count (subtle, bottom-right) */}
-          <div className="absolute -bottom-6 right-2 text-xs text-gray-400">
-            {wordCount} words
-          </div>
+          {/* Word Count - hide in chat mode */}
+          {!chatMode && (
+            <div className="absolute -bottom-6 right-2 text-xs text-gray-400">
+              {wordCount} words
+            </div>
+          )}
         </div>
 
-        {/* Validation Pills - Centered below input */}
-        <div className="flex justify-center mt-10">
-          <div className="flex flex-wrap gap-3 justify-center">
-            {currentValidation.map((item) => (
-              <div 
-                key={item.id} 
-                className={`flex items-center gap-2 text-xs px-3 py-1.5 rounded-full border transition-colors ${
-                  item.checked 
-                    ? 'bg-green-50 border-green-200 text-green-700' 
-                    : 'bg-gray-50 border-gray-200 text-gray-500'
-                }`}
-              >
-                {item.checked ? (
-                  <CheckCircle2 className="h-3.5 w-3.5" />
-                ) : (
-                  <Circle className="h-3.5 w-3.5" />
-                )}
-                <span>{item.label}</span>
-              </div>
-            ))}
+        {/* Validation Pills - only show in normal mode */}
+        {!chatMode && (
+          <div className="flex justify-center mt-10">
+            <div className="flex flex-wrap gap-3 justify-center">
+              {currentValidation.map((item) => (
+                <div 
+                  key={item.id} 
+                  className={`flex items-center gap-2 text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                    item.checked 
+                      ? 'bg-green-50 border-green-200 text-green-700' 
+                      : 'bg-gray-50 border-gray-200 text-gray-500'
+                  }`}
+                >
+                  {item.checked ? (
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                  ) : (
+                    <Circle className="h-3.5 w-3.5" />
+                  )}
+                  <span>{item.label}</span>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       <Sheet open={showModal} onOpenChange={setShowModal}>
