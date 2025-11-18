@@ -1,5 +1,5 @@
 
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.50.0'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0'
 import { createSecureCorsHeaders, handleSecureCorsPreFlight } from "../_shared/cors.ts";
 
 const corsHeaders = createSecureCorsHeaders();
