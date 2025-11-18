@@ -249,6 +249,14 @@ serve(async (req) => {
     });
 
     // 2. Create matching root organization (satisfies members.organization_id FK)
+    log(`Attempting to create root organization [${requestId}]`, {
+      tenantId,
+      workspaceName,
+      userId: user.id,
+      auth_context: 'service_role',
+      timestamp: new Date().toISOString()
+    });
+
     const { error: orgErr } = await supabase
       .from("organizations")
       .insert({
@@ -261,14 +269,29 @@ serve(async (req) => {
       });
 
     if (orgErr) {
-      log(`Failed to create root organization [${requestId}]`, { 
+      // Enhanced logging for debugging
+      log(`❌ CRITICAL: Failed to create root organization [${requestId}]`, { 
         error: orgErr.message,
         code: orgErr.code,
         details: orgErr.details,
         hint: orgErr.hint,
         tenantId,
-        userId: user.id
+        userId: user.id,
+        auth_context: 'service_role',
+        timestamp: new Date().toISOString()
       });
+      
+      // CRITICAL: Also log to console.error for edge function logs
+      console.error(`[provision-tenant] ORG_CREATE_FAILED [${requestId}]`, {
+        error: orgErr.message,
+        code: orgErr.code,
+        details: orgErr.details,
+        hint: orgErr.hint,
+        tenantId,
+        userId: user.id,
+        workspaceName
+      });
+      
       throw new Error(`Failed to create root org: ${orgErr.message}`);
     }
 
