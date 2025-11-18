@@ -3990,6 +3990,10 @@ export type Database = {
       cleanup_expired_draft_conversations: { Args: never; Returns: undefined }
       cleanup_expired_invitations: { Args: never; Returns: number }
       cleanup_expired_salary_data: { Args: never; Returns: number }
+      consolidate_coresignal_usage: {
+        Args: { p_tenant_id: string }
+        Returns: Json
+      }
       copy_platform_template_to_tenant: {
         Args: {
           p_target_tenant_id: string
