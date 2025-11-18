@@ -201,12 +201,13 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
 
     setIsGenerating(true)
     try {
-      // Get the last user message from chat as the final prompt
-      const lastUserMessage = chatMessages.filter(m => m.role === 'user').pop()?.content || ''
+      // Send explicit synthesis instruction instead of last user message
+      // This ensures the AI properly synthesizes the entire conversation
+      const synthesisPrompt = "Based on our complete conversation above, generate a comprehensive job specification that incorporates all the requirements, skills, location, salary, and other details we discussed. Ensure the job spec accurately reflects everything we talked about."
       
       const { data, error } = await supabase.functions.invoke('generate-job-spec', {
         body: { 
-          prompt: lastUserMessage,
+          prompt: synthesisPrompt,
           conversationId 
         }
       })

@@ -62,7 +62,11 @@ serve(async (req) => {
         .single();
 
       if (convError || !existingConv) {
-        throw new Error('Conversation not found or not a draft');
+        // Improved error message for used conversations
+        if (convError?.code === 'PGRST116') {
+          throw new Error('This conversation has already been used to create a job spec. Please start a new conversation.');
+        }
+        throw convError || new Error('Conversation not found or not accessible');
       }
 
       conversation = existingConv;

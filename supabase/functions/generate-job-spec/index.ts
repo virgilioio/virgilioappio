@@ -19,11 +19,56 @@ serve(async (req) => {
 
   try {
     const { prompt, conversationId } = await req.json();
+
+    // Get user from auth header
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      throw new Error('No authorization header');
+    }
+
+    const { data: { user }, error: userError } = await supabase.auth.getUser(
+      authHeader.replace('Bearer ', '')
+    );
+
+    if (userError || !user) {
+      throw new Error('Unauthorized');
+    }
+
+    // Get user's tenant_id for validation
+    const { data: memberData, error: memberError } = await supabase
+      .from('members')
+      .select('tenant_id')
+      .eq('user_id', user.id)
+      .eq('user_status', 'active')
+      .single();
+
+    if (memberError || !memberData) {
+      throw new Error('User membership not found');
+    }
+
+    console.log(`Generating job spec for tenant: ${memberData.tenant_id}`);
     
     let conversationHistory = '';
     
-    // If conversationId provided, fetch conversation context
+    // If conversationId provided, fetch and VALIDATE conversation
     if (conversationId) {
+      // CRITICAL: Validate conversation belongs to user's tenant
+      const { data: conversation, error: convError } = await supabase
+        .from('ai_conversations')
+        .select('id, tenant_id, status, created_by')
+        .eq('id', conversationId)
+        .eq('tenant_id', memberData.tenant_id)
+        .eq('status', 'draft')
+        .single();
+      
+      if (convError || !conversation) {
+        console.error('🚨 SECURITY: Unauthorized conversation access attempt | User:', user.id, '| Conversation:', conversationId, '| Tenant:', memberData.tenant_id);
+        throw new Error('Conversation not found, already used, or access denied');
+      }
+
+      console.log(`✅ Conversation validated: ${conversationId} | Tenant: ${conversation.tenant_id} | User: ${user.id}`);
+      
+      // Now fetch messages - already tenant-safe due to conversation validation
       const { data: messages, error: msgError } = await supabase
         .from('conversation_messages')
         .select('role, content')
@@ -37,8 +82,20 @@ serve(async (req) => {
       }
     }
 
-    console.log('Generating job spec for prompt:', prompt);
-    console.log('First 100 chars of prompt:', prompt.substring(0, 100));
+    // Detect weak prompts that won't provide good synthesis
+    const weakPromptPatterns = /^(yes|yeah|yep|ok|okay|sure|create|generate|do it|proceed)!?$/i;
+    const isWeakPrompt = conversationId && weakPromptPatterns.test(prompt.trim());
+    
+    if (isWeakPrompt) {
+      console.log('Weak prompt detected, replacing with synthesis instruction');
+    }
+    
+    const effectivePrompt = isWeakPrompt 
+      ? "Generate a comprehensive job specification based on the detailed conversation history provided above. Synthesize all requirements discussed."
+      : prompt;
+
+    console.log('Generating job spec with prompt:', effectivePrompt);
+    console.log('First 100 chars of prompt:', effectivePrompt.substring(0, 100));
     
     // Simple language detection based on common words
     function detectPromptLanguage(text: string): string {
@@ -261,7 +318,7 @@ Return ONLY valid JSON in this format:
   ]
 }`
           },
-          { role: 'user', content: prompt }
+          { role: 'user', content: effectivePrompt }
         ],
         temperature: 0.7,
         max_tokens: 1500,
@@ -333,6 +390,20 @@ Return ONLY valid JSON in this format:
       },
       marketSalaryData: marketSalaryData // Include salary data for frontend insights
     };
+
+    // Mark conversation as 'used' to prevent reuse
+    if (conversationId && memberData) {
+      await supabase
+        .from('ai_conversations')
+        .update({ 
+          status: 'used',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', conversationId)
+        .eq('tenant_id', memberData.tenant_id);
+      
+      console.log(`✅ Conversation marked as used: ${conversationId} | Tenant: ${memberData.tenant_id}`);
+    }
 
     return new Response(JSON.stringify(finalResponse), {
       status: 200,
