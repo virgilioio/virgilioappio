@@ -590,6 +590,9 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
             
             {/* Toggle and Send Button */}
             <div className="flex items-center gap-2 flex-shrink-0 pb-1">
+              <span className="text-xs text-muted-foreground font-medium whitespace-nowrap">
+                Chat with Gio
+              </span>
               <Switch 
                 checked={chatMode} 
                 onCheckedChange={handleToggleChatMode}
