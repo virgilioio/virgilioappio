@@ -303,13 +303,9 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
       if (window.confirm('This will discard your conversation. Continue?')) {
         resetConversation()
         setChatMode(false)
-        setPrompt('')
       }
     } else {
       setChatMode(enabled)
-      if (enabled) {
-        setPrompt('')
-      }
     }
   }
 
