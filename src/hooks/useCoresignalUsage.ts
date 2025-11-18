@@ -52,7 +52,7 @@ export function useCoresignalUsage() {
         return null
       }
 
-      // Determine billing cycle start
+      // Determine billing cycle start for reference only
       let billingCycleStart: Date
       if (subscription.billing_status === 'trialing' && subscription.trial_started_at) {
         billingCycleStart = new Date(subscription.trial_started_at)
@@ -63,12 +63,13 @@ export function useCoresignalUsage() {
         billingCycleStart = new Date(now.getFullYear(), now.getMonth(), 1)
       }
 
-      // Step 3: Query usage for current billing cycle
+      // Step 3: Query usage - get most recent record for this tenant (FIXED: no exact timestamp match)
       const { data, error } = await supabase
         .from('coresignal_usage')
         .select('*')
         .eq('tenant_id', tenantId)
-        .eq('billing_cycle_start', billingCycleStart.toISOString())
+        .order('billing_cycle_start', { ascending: false })
+        .limit(1)
         .maybeSingle()
 
       if (error && error.code !== 'PGRST116') {
@@ -104,18 +105,19 @@ export function useCoresignalUsage() {
         const interval = subscription.billing_interval === 'year' ? 12 : 1
         nextReset.setMonth(nextReset.getMonth() + interval)
 
-      return {
-        ...newRecord,
-        subscription_tier: (subscription.subscription_tier || 'launch') as 'launch' | 'growth' | 'business',
-        billing_status: subscription.billing_status,
-        next_reset: nextReset.toISOString(),
-        search_percentage: 0,
-        collect_percentage: 0
-      }
+        return {
+          ...newRecord,
+          subscription_tier: (subscription.subscription_tier || 'launch') as 'launch' | 'growth' | 'business',
+          billing_status: subscription.billing_status,
+          next_reset: nextReset.toISOString(),
+          search_percentage: 0,
+          collect_percentage: 0
+        }
       }
 
-      // Calculate next reset
-      const nextReset = new Date(billingCycleStart)
+      // Calculate next reset based on the actual billing_cycle_start from the record
+      const recordCycleStart = new Date(data.billing_cycle_start)
+      const nextReset = new Date(recordCycleStart)
       const interval = subscription.billing_interval === 'year' ? 12 : 1
       nextReset.setMonth(nextReset.getMonth() + interval)
 
