@@ -126,6 +126,17 @@ export default function JobDetail() {
     }
   }
 
+  // Wrapper for opening pipeline candidates with URL support
+  const openPipelineProfile = (candidateId: string) => {
+    const allPipelineCandidates = [
+      ...matchingCandidates,
+      ...offersCandidates, 
+      ...hiredCandidates,
+      ...rejectedCandidates
+    ];
+    openProfileInPlace(candidateId, 'pipeline', allPipelineCandidates);
+  }
+
   const hasPrev = profileCurrentIndex > 0
   const hasNext = profileCurrentIndex < profileCandidateList.length - 1
 
@@ -891,6 +902,7 @@ export default function JobDetail() {
                                 onSelectedIdsChange={setSelectedCandidateIds}
                                 refreshToken={pipelineRefresh}
                                 onStageChanged={() => setPipelineRefresh((v) => v + 1)}
+                                onCandidateClick={openPipelineProfile}
                               />
                             </div>
                             ) : pipelineSectionTab === 'suggested' ? (
@@ -1260,6 +1272,7 @@ export default function JobDetail() {
                                 onSelectedIdsChange={setSelectedCandidateIds}
                                 refreshToken={pipelineRefresh}
                                 onStageChanged={() => setPipelineRefresh((v) => v + 1)}
+                                onCandidateClick={openPipelineProfile}
                               />
                             </div>
                           ) : pipelineSectionTab === 'suggested' ? (
