@@ -23,6 +23,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { format } from 'date-fns';
 import { Globe } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 const formSchema = z.object({
   candidate_name: z.string().min(2, 'Name must be at least 2 characters').max(100),
@@ -46,12 +48,13 @@ function InternalBookingConfirmationForm({
   selectedSlot: { start: string; end: string };
   candidateTimezone: string;
   onCancel: () => void;
-  onConfirm: (formData: FormData) => Promise<void>;
+  onConfirm: (formData: FormData, sendInvitation: boolean) => Promise<void>;
   candidateName: string;
   candidateEmail: string;
   candidatePhone: string;
 }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [sendInvitation, setSendInvitation] = useState(true);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -66,7 +69,7 @@ function InternalBookingConfirmationForm({
   const handleSubmit = async (data: FormData) => {
     setIsSubmitting(true);
     try {
-      await onConfirm(data);
+      await onConfirm(data, sendInvitation);
     } finally {
       setIsSubmitting(false);
     }
@@ -95,6 +98,23 @@ function InternalBookingConfirmationForm({
           </div>
         </CardContent>
       </Card>
+
+      {/* Send Invitation Toggle */}
+      <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/30">
+        <div className="flex-1">
+          <Label htmlFor="send-invitation" className="text-sm font-medium">
+            Send invitation to candidate
+          </Label>
+          <p className="text-xs text-muted-foreground mt-1">
+            When disabled, the interview will be scheduled but no email will be sent to the candidate
+          </p>
+        </div>
+        <Switch
+          id="send-invitation"
+          checked={sendInvitation}
+          onCheckedChange={setSendInvitation}
+        />
+      </div>
 
       {/* Form */}
       <Card>
@@ -363,35 +383,38 @@ export function ScheduleInterviewSheet({
     });
   }, [selectedDate, availabilityData]);
 
+  // Handle form confirmation
+  const handleConfirmBooking = async (formData: FormData, sendInvitation: boolean) => {
+    if (!selectedSlot || !selectedInterviewer?.booking_configurations) {
+      throw new Error('Missing required data');
+    }
+
+    const bookingData = {
+      booking_config_id: selectedInterviewer.booking_configurations.id,
+      candidate_name: formData.candidate_name,
+      candidate_email: formData.candidate_email,
+      candidate_phone: formData.candidate_phone || null,
+      candidate_timezone: candidateTimezone,
+      scheduled_start: selectedSlot.start,
+      scheduled_end: selectedSlot.end,
+      notes: formData.notes || null,
+      // Internal booking context
+      job_id: jobId,
+      candidate_id: candidateId,
+      job_candidate_association_id: associationId,
+      job_hiring_stage_id: jhsId,
+      booked_by_user_id: user?.id,
+      send_invitation: sendInvitation,
+    };
+
+    await createBookingMutation.mutateAsync(bookingData);
+  };
+
   // Create booking mutation
   const createBookingMutation = useMutation({
-    mutationFn: async (formData: {
-      candidate_name: string;
-      candidate_email: string;
-      candidate_phone?: string;
-      notes?: string;
-    }) => {
-      if (!selectedSlot || !selectedInterviewer?.booking_configurations) {
-        throw new Error('Missing required data');
-      }
-
+    mutationFn: async (bookingData: any) => {
       const { data, error } = await supabase.functions.invoke('create-booking', {
-        body: {
-          booking_config_id: selectedInterviewer.booking_configurations.id,
-          candidate_name: formData.candidate_name,
-          candidate_email: formData.candidate_email,
-          candidate_phone: formData.candidate_phone || null,
-          candidate_timezone: candidateTimezone,
-          scheduled_start: selectedSlot.start,
-          scheduled_end: selectedSlot.end,
-          notes: formData.notes || null,
-          // Internal booking context
-          job_id: jobId,
-          candidate_id: candidateId,
-          job_candidate_association_id: associationId,
-          job_hiring_stage_id: jhsId,
-          booked_by_user_id: user?.id,
-        },
+        body: bookingData,
       });
 
       if (error) throw error;
@@ -618,7 +641,7 @@ export function ScheduleInterviewSheet({
                     selectedSlot={selectedSlot}
                     candidateTimezone={candidateTimezone}
                     onCancel={handleBack}
-                    onConfirm={createBookingMutation.mutateAsync}
+                    onConfirm={handleConfirmBooking}
                     candidateName={candidateName}
                     candidateEmail={candidateEmail}
                     candidatePhone={candidatePhone || ''}
