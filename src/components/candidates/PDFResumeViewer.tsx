@@ -2,9 +2,11 @@ import { useEffect, useState, useRef } from 'react';
 import { Loader2, AlertCircle } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
 
-// Configure PDF.js worker
-const workerSrc = `https://cdn.jsdelivr.net/npm/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
-pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
+// Configure PDF.js worker using Vite's module resolution
+pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.mjs',
+  import.meta.url
+).toString();
 
 interface PDFResumeViewerProps {
   url: string;
