@@ -11,8 +11,8 @@ import type { ScoreRating, ScorecardRow } from "@/hooks/useScorecards";
 import { ThumbsDown, ThumbsUp, Star, Octagon, Loader2 } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import type { InterviewQuestion, SelectOption } from "@/hooks/useScorecardsConfiguration";
-import { VirgilioLogo } from "@/components/VirgilioLogo";
 import { markdownToHtml } from "@/utils/markdown";
+import gioIcon from "@/assets/gio-icon.png";
 
 interface ScorecardSheetProps {
   open: boolean;
@@ -465,7 +465,7 @@ export function ScorecardSheet({
                       </>
                     ) : (
                       <>
-                        <VirgilioLogo size="sm" />
+                        <img src={gioIcon} alt="Gio" className="h-4 w-4" />
                         Polish Notes
                       </>
                     )}
