@@ -603,22 +603,42 @@ const [oldBookingId, setOldBookingId] = useState<string | null>(null)
             />
           )}
 
-          {/* Schedule Interview Button */}
-          {isCurrent && (opt.stage.stage_type === 'screening' || opt.stage.stage_type === 'interview') && (
-            <div className="mt-3">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setScheduleStageId(opt.jhsId)
-                  setScheduleStageName(opt.stage.stage_name)
-                  setScheduleOpen(true)
-                }}
-                className="gap-2"
-              >
-                <Calendar className="h-4 w-4" />
-                Schedule Interview
-              </Button>
+          {/* Action Buttons for Current Stage */}
+          {isCurrent && (
+            <div className="mt-3 flex gap-2">
+              {/* Schedule Interview Button - only for screening/interview stages */}
+              {(opt.stage.stage_type === 'screening' || opt.stage.stage_type === 'interview') && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setScheduleStageId(opt.jhsId)
+                    setScheduleStageName(opt.stage.stage_name)
+                    setScheduleOpen(true)
+                  }}
+                  className="gap-2"
+                >
+                  <Calendar className="h-4 w-4" />
+                  Schedule Interview
+                </Button>
+              )}
+              
+              {/* Submit Scorecard Button - for all stages that support scorecards */}
+              {supportsScorecard(opt.stage.stage_type) && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setScoreStageInstId(opt.jhsId)
+                    setScoreStageName(opt.stage.stage_name)
+                    setScoreOpen(true)
+                  }}
+                  className="gap-2"
+                >
+                  <Star className="h-4 w-4" />
+                  Submit Scorecard
+                </Button>
+              )}
             </div>
           )}
 
