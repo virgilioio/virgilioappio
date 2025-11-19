@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
 import { Badge } from '@/components/ui/badge'
-import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
 import { CandidateJobSidebar } from '@/components/candidates/CandidateJobSidebar'
 import { EnhancedSkillBadge } from '@/components/ui/enhanced-skill-badge'
 import { CandidateAttachments } from '@/components/candidates/CandidateAttachments'
@@ -373,23 +372,20 @@ const [oldBookingId, setOldBookingId] = useState<string | null>(null)
     <>
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-[77vw] sm:max-w-none h-full p-0" showOverlay={false}>
-        <SidebarProvider>
-          <div className="flex h-full w-full">
-            {/* Job Navigation Sidebar */}
-            {candidateId && (
-              <CandidateJobSidebar
-                candidateId={candidateId}
-                currentJobId={jobId}
-                onJobSelect={handleJobChange}
-              />
-            )}
+        <div className="flex h-full w-full">
+          {/* Job Navigation Sidebar */}
+          {candidateId && (
+            <CandidateJobSidebar
+              candidateId={candidateId}
+              currentJobId={jobId}
+              onJobSelect={handleJobChange}
+            />
+          )}
 
-            {/* Main Profile Content */}
-            <div className="flex-1 flex flex-col min-w-0">
-              <SheetHeader className="p-6 border-b">
-                <div className="flex items-center gap-2">
-                  <SidebarTrigger />
-                  <div className="flex items-center justify-between flex-1">
+          {/* Main Profile Content */}
+          <div className="flex-1 flex flex-col min-w-0">
+            <SheetHeader className="p-6 border-b">
+              <div className="flex items-center justify-between flex-1">
               <div className="flex flex-col gap-2">
                 <div className="flex items-center gap-2">
                   <h2 className="font-poppins font-bold tracking-page-title text-text-primary text-4xl">
@@ -435,7 +431,6 @@ const [oldBookingId, setOldBookingId] = useState<string | null>(null)
                   <ChevronRight className="h-4 w-4" />
                 </Button>
                   </div>
-                </div>
                 </div>
               </SheetHeader>
 
@@ -1126,7 +1121,6 @@ const [oldBookingId, setOldBookingId] = useState<string | null>(null)
               </div>
             </div>
           </div>
-        </SidebarProvider>
 
       {/* Minimizable Email Composer (portal to body) */}
       <MinimizableEmailComposer

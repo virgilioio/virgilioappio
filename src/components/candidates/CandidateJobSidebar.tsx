@@ -1,16 +1,6 @@
 import { Briefcase, Loader2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarMenu,
-  SidebarMenuItem,
-  SidebarMenuButton,
-  useSidebar,
-} from '@/components/ui/sidebar'
+import { Button } from '@/components/ui/button'
 import { useCandidateJobAssociations } from '@/hooks/useCandidateJobAssociations'
 import { cn } from '@/lib/utils'
 
@@ -36,18 +26,15 @@ export function CandidateJobSidebar({
   onJobSelect,
   className
 }: CandidateJobSidebarProps) {
-  const { open: isOpen } = useSidebar()
   const { jobAssociations, isLoading } = useCandidateJobAssociations(candidateId)
 
   if (isLoading) {
     return (
-      <Sidebar className={cn('border-r', className)} collapsible="icon">
-        <SidebarContent>
-          <div className="flex items-center justify-center h-full">
-            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-          </div>
-        </SidebarContent>
-      </Sidebar>
+      <div className={cn('w-60 border-r bg-background flex flex-col', className)}>
+        <div className="flex items-center justify-center h-full">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      </div>
     )
   }
 
@@ -56,68 +43,55 @@ export function CandidateJobSidebar({
   }
 
   return (
-    <Sidebar className={cn('border-r', className)} collapsible="icon">
-      <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>
-            {isOpen && (
-              <>
+    <div className={cn('w-60 border-r bg-background flex flex-col', className)}>
+      <div className="flex-1 overflow-y-auto">
+        <div className="p-4">
+          <div className="mb-3 px-2">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-muted-foreground">
                 Associated Jobs
-                <Badge variant="secondary" className="ml-2">
-                  {jobAssociations.length}
-                </Badge>
-              </>
-            )}
-            {!isOpen && (
-              <Badge variant="secondary" className="w-full justify-center">
+              </h3>
+              <Badge variant="secondary">
                 {jobAssociations.length}
               </Badge>
-            )}
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {jobAssociations.map((association) => {
-                const isActive = association.job_id === currentJobId
-                const jobTitle = association.job.title
-                const orgName = association.job.organization?.name || 'Unknown'
-                const status = association.status || 'Active'
+            </div>
+          </div>
+          <div className="space-y-1">
+            {jobAssociations.map((association) => {
+              const isActive = association.job_id === currentJobId
+              const jobTitle = association.job.title
+              const orgName = association.job.organization?.name || 'Unknown'
+              const status = association.status || 'Active'
 
-                return (
-                  <SidebarMenuItem key={association.id}>
-                    <SidebarMenuButton
-                      onClick={() => onJobSelect(association.job_id)}
-                      isActive={isActive}
-                      tooltip={isOpen ? undefined : jobTitle}
-                      className={cn(
-                        'cursor-pointer',
-                        isActive && 'bg-accent'
-                      )}
-                    >
-                      <Briefcase className="h-4 w-4 shrink-0" />
-                      {isOpen && (
-                        <div className="flex-1 min-w-0">
-                          <div className="font-medium truncate">{jobTitle}</div>
-                          <div className="text-xs text-muted-foreground truncate">
-                            {orgName}
-                          </div>
-                        </div>
-                      )}
-                      {isOpen && (
-                        <Badge
-                          variant={getStatusVariant(status)}
-                          className="ml-2 shrink-0 text-xs"
-                        >
-                          {status}
-                        </Badge>
-                      )}
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                )
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </SidebarContent>
-    </Sidebar>
+              return (
+                <Button
+                  key={association.id}
+                  variant="ghost"
+                  onClick={() => onJobSelect(association.job_id)}
+                  className={cn(
+                    'w-full justify-start text-left h-auto py-3 px-3',
+                    isActive && 'bg-accent text-accent-foreground'
+                  )}
+                >
+                  <Briefcase className="h-4 w-4 shrink-0" />
+                  <div className="flex-1 min-w-0 ml-2">
+                    <div className="font-medium truncate text-sm">{jobTitle}</div>
+                    <div className="text-xs text-muted-foreground truncate">
+                      {orgName}
+                    </div>
+                  </div>
+                  <Badge
+                    variant={getStatusVariant(status)}
+                    className="ml-2 shrink-0 text-xs"
+                  >
+                    {status}
+                  </Badge>
+                </Button>
+              )
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }
