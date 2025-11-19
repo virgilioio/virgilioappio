@@ -3039,6 +3039,95 @@ export type Database = {
           },
         ]
       }
+      scorecard_interview_questions: {
+        Row: {
+          answer_type: Database["public"]["Enums"]["interview_answer_type"]
+          created_at: string
+          display_order: number
+          id: string
+          is_required: boolean
+          question_text: string
+          scorecard_template_id: string
+          select_options: Json | null
+          updated_at: string
+        }
+        Insert: {
+          answer_type: Database["public"]["Enums"]["interview_answer_type"]
+          created_at?: string
+          display_order: number
+          id?: string
+          is_required?: boolean
+          question_text: string
+          scorecard_template_id: string
+          select_options?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          answer_type?: Database["public"]["Enums"]["interview_answer_type"]
+          created_at?: string
+          display_order?: number
+          id?: string
+          is_required?: boolean
+          question_text?: string
+          scorecard_template_id?: string
+          select_options?: Json | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scorecard_interview_questions_scorecard_template_id_fkey"
+            columns: ["scorecard_template_id"]
+            isOneToOne: false
+            referencedRelation: "stage_scorecard_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scorecard_question_responses: {
+        Row: {
+          answer_options: Json | null
+          answer_text: string | null
+          created_at: string
+          id: string
+          question_id: string
+          scorecard_id: string
+          updated_at: string
+        }
+        Insert: {
+          answer_options?: Json | null
+          answer_text?: string | null
+          created_at?: string
+          id?: string
+          question_id: string
+          scorecard_id: string
+          updated_at?: string
+        }
+        Update: {
+          answer_options?: Json | null
+          answer_text?: string | null
+          created_at?: string
+          id?: string
+          question_id?: string
+          scorecard_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scorecard_question_responses_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "scorecard_interview_questions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scorecard_question_responses_scorecard_id_fkey"
+            columns: ["scorecard_id"]
+            isOneToOne: false
+            referencedRelation: "job_stage_scorecards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sourcing_projects: {
         Row: {
           coresignal_cache_expires_at: string | null
@@ -3277,6 +3366,38 @@ export type Database = {
             columns: ["member_id"]
             isOneToOne: false
             referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stage_scorecard_templates: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          job_hiring_stage_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          job_hiring_stage_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          job_hiring_stage_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stage_scorecard_templates_job_hiring_stage_id_fkey"
+            columns: ["job_hiring_stage_id"]
+            isOneToOne: false
+            referencedRelation: "job_hiring_stages"
             referencedColumns: ["id"]
           },
         ]
@@ -4364,6 +4485,11 @@ export type Database = {
         | "date"
         | "file"
         | "url"
+      interview_answer_type:
+        | "text"
+        | "yes_no"
+        | "single_select"
+        | "multi_select"
       job_level:
         | "L1 - Specialists"
         | "L2 - Managers"
@@ -4595,6 +4721,12 @@ export const Constants = {
         "date",
         "file",
         "url",
+      ],
+      interview_answer_type: [
+        "text",
+        "yes_no",
+        "single_select",
+        "multi_select",
       ],
       job_level: [
         "L1 - Specialists",
