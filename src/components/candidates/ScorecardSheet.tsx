@@ -8,9 +8,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { toast } from "@/hooks/use-toast";
 import type { ScoreRating, ScorecardRow } from "@/hooks/useScorecards";
-import { ThumbsDown, ThumbsUp, Star, Octagon } from "lucide-react";
+import { ThumbsDown, ThumbsUp, Star, Octagon, Loader2 } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import type { InterviewQuestion, SelectOption } from "@/hooks/useScorecardsConfiguration";
+import { VirgilioLogo } from "@/components/VirgilioLogo";
 
 interface ScorecardSheetProps {
   open: boolean;
@@ -53,6 +54,7 @@ export function ScorecardSheet({
   const [questions, setQuestions] = useState<InterviewQuestion[]>([]);
   const [responses, setResponses] = useState<Record<string, QuestionResponse>>({});
   const [loadingQuestions, setLoadingQuestions] = useState(true);
+  const [isPolishing, setIsPolishing] = useState(false);
 
   const isReadOnly = useMemo(() => !editMode, [editMode]);
 
@@ -114,6 +116,60 @@ export function ScorecardSheet({
       console.error('Error loading questions:', error);
     } finally {
       setLoadingQuestions(false);
+    }
+  };
+
+  const handlePolishNotes = async () => {
+    setIsPolishing(true);
+    try {
+      // Prepare questions and responses data
+      const questionsWithAnswers = questions.map(q => {
+        const response = responses[q.id];
+        return {
+          question_text: q.question_text,
+          answer_type: q.answer_type,
+          answerText: response?.answerText,
+          answerOptions: response?.answerOptions
+        };
+      });
+
+      // Get candidate_id from association
+      const { data: association } = await supabase
+        .from('job_candidate_associations')
+        .select('candidate_id')
+        .eq('id', associationId)
+        .single();
+
+      if (!association) throw new Error('Candidate not found');
+
+      // Call edge function
+      const { data, error } = await supabase.functions.invoke('polish-scorecard-notes', {
+        body: {
+          candidateId: association.candidate_id,
+          stageInstanceId,
+          currentNotes: overview,
+          questions: questionsWithAnswers
+        }
+      });
+
+      if (error) throw error;
+
+      // Update the Key Takeaways field
+      setOverview(data.polishedNotes);
+
+      toast({
+        title: "Notes polished successfully!",
+        description: "Your interview notes have been enhanced by Gio.",
+      });
+    } catch (error) {
+      console.error('Error polishing notes:', error);
+      toast({
+        title: "Error",
+        description: "Failed to polish notes. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsPolishing(false);
     }
   };
 
@@ -382,12 +438,39 @@ export function ScorecardSheet({
             )}
 
             <div className="space-y-2 border-t border-virgilio-border pt-6">
-              <Label htmlFor="overview" className="text-base font-semibold">
-                Key Takeaways
-              </Label>
-              <p className="text-sm text-virgilio-muted mb-2">
-                Provide comprehensive notes about your interview with this candidate
-              </p>
+              <div className="flex items-center justify-between mb-2">
+                <div>
+                  <Label htmlFor="overview" className="text-base font-semibold">
+                    Key Takeaways
+                  </Label>
+                  <p className="text-sm text-virgilio-muted mt-1">
+                    Provide comprehensive notes about your interview with this candidate
+                  </p>
+                </div>
+                
+                {!isReadOnly && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handlePolishNotes}
+                    disabled={isPolishing || !overview.trim()}
+                    className="gap-2 shrink-0"
+                  >
+                    {isPolishing ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Polishing...
+                      </>
+                    ) : (
+                      <>
+                        <VirgilioLogo size="sm" />
+                        Polish Notes
+                      </>
+                    )}
+                  </Button>
+                )}
+              </div>
+              
               <RichTextEditor
                 value={overview}
                 onChange={setOverview}
