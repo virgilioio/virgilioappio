@@ -52,22 +52,49 @@ export const PlaceholderInput = forwardRef<PlaceholderInputHandle, PlaceholderIn
       onChange(plainText);
     }, [onChange]);
 
-    const handleInput = useCallback((e: React.FormEvent<HTMLDivElement>) => {
-      if (isUpdatingRef.current) return;
-      
-      const target = e.target as HTMLDivElement;
-      const processed = processPlaceholders(target.innerText || '');
+  const handleInput = useCallback((e: React.FormEvent<HTMLDivElement>) => {
+    if (isUpdatingRef.current) return;
+    
+    const target = e.target as HTMLDivElement;
+    
+    // Save cursor position BEFORE any processing
+    const selection = window.getSelection();
+    let cursorOffset = 0;
+    let anchorNode = selection?.anchorNode;
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      cursorOffset = range.startOffset;
+      anchorNode = range.startContainer;
+    }
+    
+    // Normalize and process placeholders
+    const normalized = convertHtmlToPlaceholders(target.innerHTML);
+    const processed = processPlaceholders(normalized);
+    
+    if (processed !== target.innerHTML) {
       target.innerHTML = processed;
       
-      // Move cursor to end
-      const selection = window.getSelection();
-      if (selection) {
-        selection.selectAllChildren(target);
-        selection.collapseToEnd();
-      }
-      
-      updateContent(target.innerHTML);
-    }, [processPlaceholders, updateContent]);
+      // Restore cursor position
+      requestAnimationFrame(() => {
+        try {
+          const selection = window.getSelection();
+          if (selection && target.firstChild) {
+            const range = document.createRange();
+            const textNode = target.firstChild;
+            const offset = Math.min(cursorOffset, textNode.textContent?.length || 0);
+            range.setStart(textNode, offset);
+            range.collapse(true);
+            selection.removeAllRanges();
+            selection.addRange(range);
+          }
+        } catch (error) {
+          console.debug('Failed to restore cursor:', error);
+        }
+      });
+    }
+    
+    updateContent(target.innerHTML);
+  }, [processPlaceholders, updateContent]);
 
     const handlePaste = useCallback((e: React.ClipboardEvent<HTMLDivElement>) => {
       e.preventDefault();

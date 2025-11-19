@@ -247,34 +247,38 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
     const target = e.target as HTMLDivElement
     let newContent = target.innerHTML
     
-    // STEP 1: First normalize - convert any existing badge HTML back to plain {{placeholder}}
-    const normalized = convertHtmlToPlaceholders(newContent)
+    // Check if content contains placeholders that need processing
+    const hasPlaceholders = /\{\{[^}]+\}\}/.test(newContent) || 
+                           newContent.includes('placeholder-badge')
     
-    // STEP 2: Then re-process - convert plain {{placeholder}} to badge HTML
-    const processed = convertPlaceholdersToHtml(normalized)
-    
-    if (processed !== newContent) {
-      // Save cursor position
+    if (hasPlaceholders) {
+      // Save cursor position BEFORE any DOM manipulation
       cursorPositionRef.current = saveTextCursorPosition(target)
-      target.innerHTML = processed
-      newContent = processed
       
-      // Restore cursor position
-      requestAnimationFrame(() => {
-        try {
-          if (cursorPositionRef.current) {
-            restoreTextCursorPosition(target, cursorPositionRef.current)
+      // STEP 1: Normalize - convert badge HTML back to plain {{placeholder}}
+      const normalized = convertHtmlToPlaceholders(newContent)
+      
+      // STEP 2: Re-process - convert plain {{placeholder}} to badge HTML
+      const processed = convertPlaceholdersToHtml(normalized)
+      
+      if (processed !== newContent) {
+        target.innerHTML = processed
+        newContent = processed
+        
+        // Restore cursor position after DOM update
+        requestAnimationFrame(() => {
+          try {
+            if (editorRef.current && cursorPositionRef.current) {
+              restoreTextCursorPosition(editorRef.current, cursorPositionRef.current)
+            }
+          } catch (error) {
+            if (import.meta.env.DEV) {
+              console.debug('Failed to restore cursor after processing:', error)
+            }
           }
-        } catch (error) {
-          if (import.meta.env.DEV) {
-            console.debug('Failed to restore cursor after processing:', error)
-          }
-        }
-      })
+        })
+      }
     }
-    
-    // Save cursor position before triggering onChange
-    cursorPositionRef.current = saveTextCursorPosition(target)
     
     updateContent(newContent)
   }, [updateContent])
