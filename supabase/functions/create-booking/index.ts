@@ -470,6 +470,12 @@ serve(async (req) => {
         ? '' 
         : '<p style="margin-top: 16px; padding: 12px; background-color: #fef3c7; border-left: 4px solid: #f59e0b; color: #92400e;"><strong>Note:</strong> The candidate has not been notified yet. You may need to send them the interview details separately.</p>';
 
+      // Construct candidate profile URL for scorecard submission
+      const frontendUrl = Deno.env.get('FRONTEND_URL') || 'https://app.virgilio.io';
+      const candidateProfileUrl = (job_id && candidate_id) 
+        ? `${frontendUrl}/jobs/${job_id}?candidate=${candidate_id}`
+        : null;
+
       let interviewerContent = `
         <p>A candidate has scheduled an interview with you!</p>
         ${candidateNotificationNote}
@@ -479,6 +485,16 @@ serve(async (req) => {
         <p style="margin-top: 24px;"><strong>Interview Details:</strong></p>
         ${formatEmailList(interviewDetails)}
         ${notes ? `<p style="margin-top: 24px;"><strong>Candidate Notes:</strong><br/>${notes}</p>` : ''}
+        ${candidateProfileUrl ? `
+          <div style="margin-top: 24px; padding: 16px; background-color: #f0f9ff; border-left: 4px solid #3b82f6; border-radius: 4px;">
+            <p style="margin: 0; color: #1e40af;"><strong>📝 Submit Scorecard:</strong></p>
+            <p style="margin: 8px 0 0 0;">
+              <a href="${candidateProfileUrl}" style="color: #2563eb; text-decoration: none; font-weight: 500;">
+                View candidate profile and submit your scorecard →
+              </a>
+            </p>
+          </div>
+        ` : ''}
         <p style="margin-top: 24px;">The calendar invite is attached. ${googleEventId ? 'This interview has also been added to your Google Calendar.' : ''}</p>
       `;
 
@@ -487,8 +503,8 @@ serve(async (req) => {
         preheaderText: `New interview scheduled with ${candidate_name}`,
         title: `New Interview: ${stageName} with ${candidate_name}${jobTitle}`,
         content: interviewerContent,
-        ctaText: 'View in Dashboard',
-        ctaUrl: 'https://app.virgilio.io/settings',
+        ctaText: candidateProfileUrl ? 'View Candidate Profile' : 'View in Dashboard',
+        ctaUrl: candidateProfileUrl || `${frontendUrl}/settings`,
       });
 
       await supabase.functions.invoke('send-user-email', {
