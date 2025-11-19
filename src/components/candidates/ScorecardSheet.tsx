@@ -12,6 +12,7 @@ import { ThumbsDown, ThumbsUp, Star, Octagon, Loader2 } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import type { InterviewQuestion, SelectOption } from "@/hooks/useScorecardsConfiguration";
 import { VirgilioLogo } from "@/components/VirgilioLogo";
+import { markdownToHtml } from "@/utils/markdown";
 
 interface ScorecardSheetProps {
   open: boolean;
@@ -154,8 +155,9 @@ export function ScorecardSheet({
 
       if (error) throw error;
 
-      // Update the Key Takeaways field
-      setOverview(data.polishedNotes);
+      // Convert markdown to HTML and update the Key Takeaways field
+      const htmlContent = markdownToHtml(data.polishedNotes);
+      setOverview(htmlContent);
 
       toast({
         title: "Notes polished successfully!",
