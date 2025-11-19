@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select'
+import { SearchableSelect, SearchableSelectOption } from '@/components/ui/searchable-select'
 import { AlertCircle, Plus, ArrowRightLeft } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useJobs } from '@/hooks/useJobs'
@@ -66,6 +67,12 @@ export function AddOrTransferCandidateDialog({
   const availableJobs = jobs?.filter(
     job => job.id !== currentJobId && job.status !== 'archived'
   ) || []
+
+  // Transform jobs into searchable select options
+  const jobOptions: SearchableSelectOption[] = availableJobs.map(job => ({
+    value: job.id,
+    label: job.title
+  }))
 
   const handleAdd = async () => {
     if (!selectedJobId || !selectedStageId) return
@@ -149,18 +156,16 @@ export function AddOrTransferCandidateDialog({
             <div className="space-y-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Select Target Job</label>
-                <Select value={selectedJobId} onValueChange={setSelectedJobId} disabled={jobsLoading}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose a job..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableJobs.map(job => (
-                      <SelectItem key={job.id} value={job.id}>
-                        {job.title}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  options={jobOptions}
+                  value={selectedJobId}
+                  onValueChange={setSelectedJobId}
+                  placeholder="Search or select a job..."
+                  searchPlaceholder="Search jobs..."
+                  emptyMessage="No jobs found."
+                  className="w-full"
+                  disabled={jobsLoading}
+                />
               </div>
 
               {selectedJobId && (
@@ -211,18 +216,16 @@ export function AddOrTransferCandidateDialog({
             <div className="space-y-4">
               <div className="space-y-2">
                 <label className="text-sm font-medium">Select Target Job</label>
-                <Select value={selectedJobId} onValueChange={setSelectedJobId} disabled={jobsLoading}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose a job..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {availableJobs.map(job => (
-                      <SelectItem key={job.id} value={job.id}>
-                        {job.title}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  options={jobOptions}
+                  value={selectedJobId}
+                  onValueChange={setSelectedJobId}
+                  placeholder="Search or select a job..."
+                  searchPlaceholder="Search jobs..."
+                  emptyMessage="No jobs found."
+                  className="w-full"
+                  disabled={jobsLoading}
+                />
               </div>
 
               {selectedJobId && (
