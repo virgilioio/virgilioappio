@@ -275,7 +275,7 @@ export function CandidateResumeViewer({ candidateId, jobCandidateId, fallbackRes
                 className="w-full"
                 style={{ height: `${height}vh` }}
                 allow="fullscreen; clipboard-read; clipboard-write"
-                sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+                sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-downloads allow-modals allow-presentation allow-top-navigation-by-user-activation"
                 onError={(e) => {
                   console.error('❌ Iframe failed to load PDF:', e)
                   setIframeError(true)
