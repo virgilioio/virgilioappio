@@ -40,7 +40,8 @@ export function PlaceholderHelper({ templateId, onInsert }: PlaceholderHelperPro
     { key: '{{sender.email}}', description: 'Your email address' },
     { key: '{{sender.title}}', description: 'Your job title' },
     { key: '{{sender.phone}}', description: 'Your phone number' },
-    { key: '{{sender.linkedin}}', description: 'Your LinkedIn profile URL' }
+    { key: '{{sender.linkedin}}', description: 'Your LinkedIn profile URL' },
+    { key: '{{sender.booking_link}}', description: 'Your booking/scheduling link' }
   ]
 
   const candidatePlaceholders = [
