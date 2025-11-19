@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { RotateCcw, ExternalLink, Download, FileText } from 'lucide-react'
 import { toast } from 'sonner'
+import { PDFResumeViewer } from './PDFResumeViewer'
 
 interface CandidateResumeViewerProps {
   candidateId?: string
@@ -268,31 +269,9 @@ export function CandidateResumeViewer({ candidateId, jobCandidateId, fallbackRes
           )}
 
           {/* Document content */}
-      {isPdf && previewUrl && !iframeError ? (
-              <iframe
-                src={previewUrl}
-                title="Resume preview"
-                className="w-full"
-                style={{ height: `${height}vh` }}
-                allow="fullscreen; clipboard-read; clipboard-write"
-                sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-downloads allow-modals allow-presentation allow-top-navigation-by-user-activation"
-                onError={(e) => {
-                  console.error('❌ Iframe failed to load PDF:', e)
-                  setIframeError(true)
-                  setError('Failed to load PDF preview. The file may be corrupt or the storage bucket may have CORS restrictions.')
-                }}
-              />
-      ) : isPdf && iframeError ? (
-        <div className="flex flex-col items-center justify-center p-8 text-center border-2 border-dashed border-border rounded-lg" style={{ height: `${height}vh` }}>
-          <FileText className="h-12 w-12 text-muted-foreground mb-4" />
-          <p className="text-sm text-muted-foreground mb-2">
-            Direct preview unavailable
-          </p>
-          <p className="text-xs text-muted-foreground">
-            Use the buttons below to view or download the PDF
-          </p>
-        </div>
-      ) : isImage && signedUrl ? (
+          {isPdf && previewUrl ? (
+            <PDFResumeViewer url={previewUrl} height={height} />
+          ) : isImage && signedUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={signedUrl}
