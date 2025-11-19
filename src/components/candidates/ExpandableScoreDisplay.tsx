@@ -11,7 +11,7 @@ import type { ScoreRating } from "@/hooks/useScorecards";
 interface ExpandableScoreDisplayProps {
   scorecards: ScorecardWithAuthor[];
   currentUserId?: string;
-  onOpenFullSheet?: () => void;
+  onOpenFullSheet?: (scorecardId: string) => void;
 }
 
 const ratingOptions = [
@@ -98,7 +98,7 @@ export function ExpandableScoreDisplay({ scorecards, currentUserId, onOpenFullSh
                       <Button
                         variant="link"
                         size="sm"
-                        onClick={onOpenFullSheet}
+                        onClick={() => onOpenFullSheet(scorecard.id)}
                         className="mt-2 p-0 h-auto text-xs text-primary"
                       >
                         Read more →
@@ -117,12 +117,6 @@ export function ExpandableScoreDisplay({ scorecards, currentUserId, onOpenFullSh
           </div>
         );
       })}
-
-      {onOpenFullSheet && (
-        <Button variant="outline" size="sm" onClick={onOpenFullSheet} className="mt-2">
-          Open Scorecard
-        </Button>
-      )}
     </div>
   );
 }

@@ -50,7 +50,7 @@ import { ScheduleInterviewSheet } from './ScheduleInterviewSheet'
 interface StageScorecardProps {
   stageInstanceId: string;
   currentUserId?: string;
-  onOpenFullSheet: () => void;
+  onOpenFullSheet: (scorecardId: string) => void;
 }
 
 function StageScorecards({ stageInstanceId, currentUserId, onOpenFullSheet }: StageScorecardProps) {
@@ -98,6 +98,8 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
   const [associationId, setAssociationId] = useState<string | null>(null)
   const [associationStatus, setAssociationStatus] = useState<'active' | 'rejected' | 'hired' | 'offer' | null>(null)
   const [currentStageId, setCurrentStageId] = useState<string | null>(null)
+  const [viewingScorecardId, setViewingScorecardId] = useState<string | null>(null)
+  const [viewingScorecard, setViewingScorecard] = useState<any>(null)
   const [movingStageId, setMovingStageId] = useState<string | null>(null)
   const [emailComposerOpen, setEmailComposerOpen] = useState(false)
   
@@ -219,6 +221,23 @@ const [oldBookingId, setOldBookingId] = useState<string | null>(null)
     }
     loadRelated()
   }, [open, candidate, jobId, candidateId])
+
+  // Fetch specific scorecard when viewing another user's submission
+  useEffect(() => {
+    const fetchViewingScorecard = async () => {
+      if (viewingScorecardId && scoreOpen) {
+        const { data } = await supabase
+          .from('job_stage_scorecards')
+          .select('*')
+          .eq('id', viewingScorecardId)
+          .single()
+        setViewingScorecard(data || null)
+      } else {
+        setViewingScorecard(null)
+      }
+    }
+    fetchViewingScorecard()
+  }, [viewingScorecardId, scoreOpen])
 
   const handleUpdateCandidate = async (candidateData: any) => {
     if (!candidateId) return
@@ -579,9 +598,10 @@ const [oldBookingId, setOldBookingId] = useState<string | null>(null)
               <StageScorecards 
                 stageInstanceId={opt.jhsId}
                 currentUserId={user?.id}
-                onOpenFullSheet={() => {
+                onOpenFullSheet={(scorecardId) => {
                   setScoreStageInstId(opt.jhsId)
                   setScoreStageName(opt.stage.stage_name)
+                  setViewingScorecardId(scorecardId)
                   setScoreOpen(true)
                 }}
               />
@@ -1102,16 +1122,24 @@ const [oldBookingId, setOldBookingId] = useState<string | null>(null)
               open={scoreOpen}
               onOpenChange={(o) => {
                 setScoreOpen(o)
-                if (!o) setScoreStageInstId(null)
+                if (!o) {
+                  setScoreStageInstId(null)
+                  setViewingScorecardId(null)
+                }
               }}
               stageName={scoreStageName}
               associationId={associationId}
               stageInstanceId={scoreStageInstId}
-              existing={myScorecardsByStage[scoreStageInstId] || null}
-              isAuthor={!!(myScorecardsByStage[scoreStageInstId] && user?.id === myScorecardsByStage[scoreStageInstId].created_by)}
+              existing={viewingScorecard || myScorecardsByStage[scoreStageInstId] || null}
+              isAuthor={!!(
+                viewingScorecard 
+                  ? user?.id === viewingScorecard.created_by 
+                  : myScorecardsByStage[scoreStageInstId] && user?.id === myScorecardsByStage[scoreStageInstId].created_by
+              )}
               onSubmit={async (rating, overview) => {
                 await upsertMyScorecard(scoreStageInstId!, rating, overview || '')
                 await refetchScorecards()
+                setViewingScorecardId(null)
                 toast({ title: 'Scorecard saved', description: 'Your scorecard has been saved.' })
               }}
             />
