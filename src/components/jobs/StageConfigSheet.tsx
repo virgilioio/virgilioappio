@@ -14,6 +14,7 @@ import { useStageConfiguration, type StageConfiguration } from '@/hooks/useStage
 import { BasicsTab } from './stage-config/BasicsTab'
 import { TeamTab } from './stage-config/TeamTab'
 import { AutomationsTab } from './stage-config/AutomationsTab'
+import { ScorecardsTab } from './stage-config/ScorecardsTab'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
 
@@ -97,10 +98,9 @@ export function StageConfigSheet({ open, onOpenChange, jhsId, jobId }: StageConf
               <Zap className="h-4 w-4 mr-2" />
               Automations
             </TabsTrigger>
-            <TabsTrigger value="scorecards" disabled>
+            <TabsTrigger value="scorecards">
               <ClipboardList className="h-4 w-4 mr-2" />
               Scorecards
-              <Badge variant="secondary" className="ml-2 text-xs">Soon</Badge>
             </TabsTrigger>
           </TabsList>
           
@@ -133,7 +133,12 @@ export function StageConfigSheet({ open, onOpenChange, jhsId, jobId }: StageConf
           </TabsContent>
           
           <TabsContent value="scorecards" className="mt-6">
-            {/* Phase 4 */}
+            {job && jhsId && (
+              <ScorecardsTab 
+                jhsId={jhsId} 
+                jobId={jobId}
+              />
+            )}
           </TabsContent>
         </Tabs>
         
