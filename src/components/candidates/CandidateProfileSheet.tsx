@@ -38,6 +38,7 @@ import { useCandidateAttachments } from '@/hooks/useCandidateAttachments'
 import { useCandidateResolver } from '@/hooks/useCandidateResolver'
 import { EnhancedResumeDropzone } from '@/components/candidates/EnhancedResumeDropzone'
 import MoveToPipelineMenu from '@/components/candidates/MoveToPipelineMenu'
+import { AddOrTransferCandidateDialog } from '@/components/candidates/AddOrTransferCandidateDialog'
 import { useJobHiringPlan, JobStage } from '@/hooks/useJobHiringPlan'
 import { cn } from '@/lib/utils'
 import { MinimizableEmailComposer } from '@/components/candidates/MinimizableEmailComposer'
@@ -432,6 +433,16 @@ const [oldBookingId, setOldBookingId] = useState<string | null>(null)
                                     jobId={jobId}
                                     candidateId={candidate.id}
                                     buttonText="Move to pipeline"
+                                  />
+                                )}
+                                
+                                {/* Add/Transfer button for candidates already in the job */}
+                                {associationId && jobId && candidate.id && job && (
+                                  <AddOrTransferCandidateDialog
+                                    candidateId={candidate.id}
+                                    candidateName={`${candidate.first_name || ''} ${candidate.last_name || ''}`.trim() || 'Candidate'}
+                                    currentJobId={jobId}
+                                    currentJobTitle={job.title}
                                   />
                                 )}
                                 <Button
