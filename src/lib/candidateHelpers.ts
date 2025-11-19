@@ -132,6 +132,20 @@ export async function checkForDuplicateCandidate(
 export async function createCandidate(candidateData: CandidateData) {
   log.debug('Creating new candidate:', candidateData.candidate_name)
 
+  // Fetch tenant_id from organization_id for defense-in-depth
+  let tenantId: string | null = null
+  if (candidateData.organization_id) {
+    const { data: orgData, error: orgError } = await supabase
+      .from('organizations')
+      .select('tenant_id')
+      .eq('id', candidateData.organization_id)
+      .single()
+    
+    if (!orgError && orgData) {
+      tenantId = orgData.tenant_id
+    }
+  }
+
   const { data: newCandidate, error: createError } = await withAuthRetry(async () =>
     await supabase
       .from('candidates')
@@ -153,6 +167,7 @@ export async function createCandidate(candidateData: CandidateData) {
         source: candidateData.source || 'direct',
         created_by: candidateData.created_by,
         organization_id: candidateData.organization_id,
+        tenant_id: tenantId,
       }])
       .select()
       .single()
