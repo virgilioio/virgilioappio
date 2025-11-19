@@ -20,7 +20,7 @@ import {
 import { cn } from '@/lib/utils'
 import { saveTextCursorPosition, restoreTextCursorPosition, type TextCursorPosition } from '@/lib/cursorUtils'
 import { sanitizeHtml, sanitizeHtmlForEditor } from '@/utils/htmlSanitizer'
-import { convertPlaceholdersToHtml } from '@/utils/placeholderUtils'
+import { convertPlaceholdersToHtml, convertHtmlToPlaceholders } from '@/utils/placeholderUtils'
 
 // Placeholder badge styles - injected into document head
 const PLACEHOLDER_BADGE_STYLES = `
@@ -247,8 +247,12 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
     const target = e.target as HTMLDivElement
     let newContent = target.innerHTML
     
-    // Process placeholders
-    const processed = processPlaceholders(newContent)
+    // STEP 1: First normalize - convert any existing badge HTML back to plain {{placeholder}}
+    const normalized = convertHtmlToPlaceholders(newContent)
+    
+    // STEP 2: Then re-process - convert plain {{placeholder}} to badge HTML
+    const processed = convertPlaceholdersToHtml(normalized)
+    
     if (processed !== newContent) {
       // Save cursor position
       cursorPositionRef.current = saveTextCursorPosition(target)
@@ -273,7 +277,7 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
     cursorPositionRef.current = saveTextCursorPosition(target)
     
     updateContent(newContent)
-  }, [updateContent, processPlaceholders])
+  }, [updateContent])
 
   const handlePaste = useCallback((e: React.ClipboardEvent<HTMLDivElement>) => {
     e.preventDefault()
