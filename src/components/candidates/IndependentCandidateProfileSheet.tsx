@@ -222,58 +222,6 @@ export function IndependentCandidateProfileSheet({
                       <Card className="bg-surface-primary border-border">
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between w-full">
-                            {/* Group 1: Communication Actions */}
-                            <div className="flex items-center gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setEmailComposerOpen(true)}
-                              >
-                                <Send className="h-4 w-4 mr-2" />
-                                Send Email
-                              </Button>
-                            </div>
-
-                            <Separator orientation="vertical" className="h-6" />
-
-                            {/* Group 2: Data Management Actions */}
-                            <div className="flex items-center gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setEditOpen(true)}
-                              >
-                                <Edit className="h-4 w-4 mr-2" />
-                                Edit
-                              </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={async () => {
-                    try {
-                      await generateCandidatePdf({ candidate })
-                      toast({ 
-                        title: 'Success', 
-                        description: 'Profile PDF downloaded successfully' 
-                      })
-                    } catch (error) {
-                      console.error('PDF generation failed:', error)
-                      toast({ 
-                        title: 'Error', 
-                        description: 'Failed to generate PDF. Please try again.', 
-                        variant: 'destructive' 
-                      })
-                    }
-                  }}
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  Download
-                </Button>
-                            </div>
-
-                            <Separator orientation="vertical" className="h-6" />
-
-                            {/* Group 3: Pipeline Actions */}
                             <div className="flex items-center gap-2">
                               <AddToJobPipelineDialog candidateId={candidate.id} />
                             </div>
@@ -554,6 +502,42 @@ export function IndependentCandidateProfileSheet({
                       <Card className="bg-surface-primary border-border">
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between w-full">
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setEditOpen(true)}
+                              >
+                                <Edit className="h-4 w-4 mr-2" />
+                                Edit
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={async () => {
+                                  try {
+                                    await generateCandidatePdf({ candidate })
+                                    toast({ 
+                                      title: 'Success', 
+                                      description: 'Profile PDF downloaded successfully' 
+                                    })
+                                  } catch (error) {
+                                    console.error('PDF generation failed:', error)
+                                    toast({ 
+                                      title: 'Error', 
+                                      description: 'Failed to generate PDF. Please try again.', 
+                                      variant: 'destructive' 
+                                    })
+                                  }
+                                }}
+                              >
+                                <Download className="h-4 w-4 mr-2" />
+                                Download
+                              </Button>
+                            </div>
+                            
+                            <Separator orientation="vertical" className="h-6" />
+                            
                             <div className="flex items-center gap-2">
                               <Button
                                 variant="outline"

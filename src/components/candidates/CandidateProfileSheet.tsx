@@ -313,6 +313,10 @@ const [oldBookingId, setOldBookingId] = useState<string | null>(null)
     }
   }
 
+  const handleReject = () => handleSetStatus('rejected')
+  const handleReactivate = () => handleSetStatus('active')
+  const handleHire = () => handleSetStatus('hired')
+
   const getHeaderBgClass = (type: string) => {
     switch (type) {
       case 'application':
@@ -421,58 +425,6 @@ const [oldBookingId, setOldBookingId] = useState<string | null>(null)
                      <Card className="bg-surface-primary border-border">
                         <CardContent className="p-4">
                            <div className="flex items-center justify-between w-full">
-                              {/* Group 1: Communication Actions */}
-                              <div className="flex items-center gap-2">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => setEmailComposerOpen(true)}
-                                >
-                                  <Send className="h-4 w-4 mr-2" />
-                                  Send Email
-                                </Button>
-                              </div>
-
-                              <Separator orientation="vertical" className="h-6" />
-
-                              {/* Group 2: Data Management Actions */}
-                              <div className="flex items-center gap-2">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => setEditOpen(true)}
-                                >
-                                  <Edit className="h-4 w-4 mr-2" />
-                                  Edit
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={async () => {
-                                    try {
-                                      await generateCandidatePdf({ candidate, job })
-                                      toast({ 
-                                        title: 'Success', 
-                                        description: 'Profile PDF downloaded successfully' 
-                                      })
-                                    } catch (error) {
-                                      console.error('PDF generation failed:', error)
-                                      toast({ 
-                                        title: 'Error', 
-                                        description: 'Failed to generate PDF. Please try again.', 
-                                        variant: 'destructive' 
-                                      })
-                                    }
-                                  }}
-                                >
-                                  <Download className="h-4 w-4 mr-2" />
-                                  Download
-                                </Button>
-                              </div>
-
-                              <Separator orientation="vertical" className="h-6" />
-
-                              {/* Group 3: Pipeline & Status Actions */}
                               <div className="flex items-center gap-2">
                                 {/* Move to Pipeline button for suggested candidates */}
                                 {!associationId && jobId && candidate.id && (
@@ -497,52 +449,44 @@ const [oldBookingId, setOldBookingId] = useState<string | null>(null)
                                       size="sm"
                                     >
                                       <FileText className="h-4 w-4 mr-2" />
-                                      Create Offer
+                                      Offer Form
                                     </Button>
                                   </Link>
                                 )}
-                                {associationId && associationStatus !== 'rejected' && (
-                                  <Button
-                                    variant="destructive"
-                                    size="sm"
-                                    onClick={() => handleSetStatus('rejected')}
-                                    title="Reject candidate"
-                                  >
-                                    <X className="h-4 w-4 mr-1.5" />
-                                    Reject
-                                  </Button>
-                                )}
-                                {/* Mark Hired only when in Offer stage */}
-                                {(() => {
-                                  const current = planStages.find(s => s.jhsId === currentStageId)
-                                  const canMarkHired = !!associationId && associationStatus !== 'hired' && (associationStatus === 'offer' || current?.stage.stage_type === 'offer')
-                                  return canMarkHired ? (
-                                    <Button
-                                      variant="default"
-                                      size="sm"
-                                      onClick={() => handleSetStatus('hired')}
-                                      title="Mark candidate as hired"
-                                    >
-                                      <Check className="h-4 w-4 mr-1.5" />
-                                      Mark Hired
-                                    </Button>
-                                  ) : null
-                                })()}
-                                {/* Restore button - show when status is not active */}
-                                {associationId && associationStatus && associationStatus !== 'active' && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={handleReject}
+                                  className="text-destructive hover:text-destructive"
+                                >
+                                  <ThumbsDown className="h-4 w-4 mr-2" />
+                                  Reject
+                                </Button>
+                                {associationStatus === 'rejected' && (
                                   <Button
                                     variant="outline"
                                     size="sm"
-                                    onClick={() => handleSetStatus('active')}
-                                    title="Restore candidate to active status"
+                                    onClick={handleReactivate}
+                                    className="text-success hover:text-success"
                                   >
-                                    <RotateCcw className="h-4 w-4 mr-1.5" />
-                                    Restore
+                                    <RotateCcw className="h-4 w-4 mr-2" />
+                                    Reactivate
+                                  </Button>
+                                )}
+                                {associationStatus === 'offer' && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={handleHire}
+                                    className="text-success hover:text-success"
+                                  >
+                                    <Check className="h-4 w-4 mr-2" />
+                                    Mark as Hired
                                   </Button>
                                 )}
                               </div>
                            </div>
-                       </CardContent>
+                        </CardContent>
                      </Card>
 
                      <CandidateNameCard
@@ -953,6 +897,42 @@ const [oldBookingId, setOldBookingId] = useState<string | null>(null)
                      <Card className="bg-surface-primary border-border">
                        <CardContent className="p-4">
                          <div className="flex items-center justify-between w-full">
+                           <div className="flex items-center gap-2">
+                             <Button
+                               variant="outline"
+                               size="sm"
+                               onClick={() => setEditOpen(true)}
+                             >
+                               <Edit className="h-4 w-4 mr-2" />
+                               Edit
+                             </Button>
+                             <Button
+                               variant="outline"
+                               size="sm"
+                               onClick={async () => {
+                                 try {
+                                   await generateCandidatePdf({ candidate, job })
+                                   toast({ 
+                                     title: 'Success', 
+                                     description: 'Profile PDF downloaded successfully' 
+                                   })
+                                 } catch (error) {
+                                   console.error('PDF generation failed:', error)
+                                   toast({ 
+                                     title: 'Error', 
+                                     description: 'Failed to generate PDF. Please try again.', 
+                                     variant: 'destructive' 
+                                   })
+                                 }
+                               }}
+                             >
+                               <Download className="h-4 w-4 mr-2" />
+                               Download
+                             </Button>
+                           </div>
+                           
+                           <Separator orientation="vertical" className="h-6" />
+                           
                            <div className="flex items-center gap-2">
                              <Button
                                variant="outline"
