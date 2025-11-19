@@ -49,12 +49,13 @@ import { ScheduleInterviewSheet } from './ScheduleInterviewSheet'
 
 interface StageScorecardProps {
   stageInstanceId: string;
+  associationId: string;
   currentUserId?: string;
   onOpenFullSheet: (scorecardId: string) => void;
 }
 
-function StageScorecards({ stageInstanceId, currentUserId, onOpenFullSheet }: StageScorecardProps) {
-  const { scorecards, loading } = useAllStageScorecards(stageInstanceId);
+function StageScorecards({ stageInstanceId, associationId, currentUserId, onOpenFullSheet }: StageScorecardProps) {
+  const { scorecards, loading } = useAllStageScorecards(stageInstanceId, associationId);
 
   if (loading) {
     return <div className="text-sm text-text-tertiary">Loading scorecards...</div>;
@@ -597,6 +598,7 @@ const [oldBookingId, setOldBookingId] = useState<string | null>(null)
             <div className="mt-3 space-y-2">
               <StageScorecards 
                 stageInstanceId={opt.jhsId}
+                associationId={associationId!}
                 currentUserId={user?.id}
                 onOpenFullSheet={(scorecardId) => {
                   setScoreStageInstId(opt.jhsId)

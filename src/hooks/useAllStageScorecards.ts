@@ -18,22 +18,23 @@ export interface ScorecardWithAuthor {
   author_email: string | null;
 }
 
-export function useAllStageScorecards(stageInstanceId?: string | null) {
+export function useAllStageScorecards(stageInstanceId?: string | null, associationId?: string | null) {
   const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [scorecards, setScorecards] = useState<ScorecardWithAuthor[]>([]);
 
   const fetchAllScorecards = async () => {
-    if (!stageInstanceId) return;
+    if (!stageInstanceId || !associationId) return;
     setLoading(true);
     setError(null);
     try {
-      // First get all scorecards for this stage
+      // First get all scorecards for this stage and association
       const { data: scorecardsData, error: scorecardsError } = await supabase
         .from("job_stage_scorecards")
         .select("*")
         .eq("stage_instance_id", stageInstanceId)
+        .eq("association_id", associationId)
         .order("created_at", { ascending: false });
 
       if (scorecardsError) throw scorecardsError;
@@ -76,7 +77,7 @@ export function useAllStageScorecards(stageInstanceId?: string | null) {
   useEffect(() => {
     void fetchAllScorecards();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [stageInstanceId, user?.id]);
+  }, [stageInstanceId, associationId, user?.id]);
 
   return { loading, error, scorecards, refetch: fetchAllScorecards };
 }
