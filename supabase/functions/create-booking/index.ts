@@ -25,6 +25,7 @@ serve(async (req) => {
       scheduled_start,
       scheduled_end,
       notes,
+      send_invitation = true, // Default to true for backward compatibility
       // Internal booking context (optional)
       job_id,
       candidate_id,
@@ -365,67 +366,71 @@ serve(async (req) => {
 
     const icsBase64 = btoa(icsContent);
 
-    // Send confirmation email to candidate
-    try {
-      // Import email template
-      const { createEmailTemplate, formatEmailList } = await import('../_shared/emailTemplate.ts');
+    // Send confirmation email to candidate (only if send_invitation is true)
+    if (send_invitation) {
+      try {
+        // Import email template
+        const { createEmailTemplate, formatEmailList } = await import('../_shared/emailTemplate.ts');
 
-      const formattedDate = new Date(scheduled_start).toLocaleString('en-US', { 
-        weekday: 'long', 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-        timeZone: candidate_timezone,
-      });
+        const formattedDate = new Date(scheduled_start).toLocaleString('en-US', { 
+          weekday: 'long', 
+          year: 'numeric', 
+          month: 'long', 
+          day: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit',
+          timeZone: candidate_timezone,
+        });
 
-      const meetingDetails = [
-        `<strong>Date & Time:</strong> ${formattedDate}`,
-        `<strong>Duration:</strong> ${config.duration_minutes} minutes`,
-        `<strong>Interviewer:</strong> ${profile.first_name} ${profile.last_name}`,
-      ];
+        const meetingDetails = [
+          `<strong>Date & Time:</strong> ${formattedDate}`,
+          `<strong>Duration:</strong> ${config.duration_minutes} minutes`,
+          `<strong>Interviewer:</strong> ${profile.first_name} ${profile.last_name}`,
+        ];
 
-      if (googleMeetLink) {
-        meetingDetails.push(`<strong>Location:</strong> <a href="${googleMeetLink}" style="color: #6366f1;">Google Meet (Click to Join)</a>`);
-      } else if (config.meeting_location) {
-        meetingDetails.push(`<strong>Location:</strong> ${config.meeting_location}`);
+        if (googleMeetLink) {
+          meetingDetails.push(`<strong>Location:</strong> <a href="${googleMeetLink}" style="color: #6366f1;">Google Meet (Click to Join)</a>`);
+        } else if (config.meeting_location) {
+          meetingDetails.push(`<strong>Location:</strong> ${config.meeting_location}`);
+        }
+
+        let emailContent = `
+          <p>Your interview with <strong>${profile.first_name} ${profile.last_name}</strong> has been confirmed!</p>
+          <div class="divider"></div>
+          <p><strong>Interview Details:</strong></p>
+          ${formatEmailList(meetingDetails)}
+          ${notes ? `<p style="margin-top: 16px;"><strong>Your notes:</strong><br/>${notes}</p>` : ''}
+          <p style="margin-top: 24px;">A calendar invite is attached to this email. We recommend adding it to your calendar so you don't miss the interview.</p>
+        `;
+
+        const candidateEmailBody = createEmailTemplate({
+          recipientName: candidate_name,
+          preheaderText: `Your interview is confirmed for ${formattedDate}`,
+          title: `Interview Confirmed: ${stageName}${jobTitle}`,
+          content: emailContent,
+          footerNote: 'If you need to reschedule, please contact us as soon as possible.'
+        });
+
+        await supabase.functions.invoke('send-user-email', {
+          body: {
+            from_email: profile.email,
+            to: [candidate_email],
+            subject: `Your Interview is Confirmed: ${stageName}${jobTitle}`,
+            body_html: candidateEmailBody,
+            attachments: [{
+              filename: 'interview.ics',
+              content: icsBase64,
+              content_type: 'text/calendar',
+            }],
+          },
+        });
+
+        console.log('[create-booking] Candidate confirmation email sent');
+      } catch (emailError) {
+        console.error('[create-booking] Failed to send candidate email:', emailError);
       }
-
-      let emailContent = `
-        <p>Your interview with <strong>${profile.first_name} ${profile.last_name}</strong> has been confirmed!</p>
-        <div class="divider"></div>
-        <p><strong>Interview Details:</strong></p>
-        ${formatEmailList(meetingDetails)}
-        ${notes ? `<p style="margin-top: 16px;"><strong>Your notes:</strong><br/>${notes}</p>` : ''}
-        <p style="margin-top: 24px;">A calendar invite is attached to this email. We recommend adding it to your calendar so you don't miss the interview.</p>
-      `;
-
-      const candidateEmailBody = createEmailTemplate({
-        recipientName: candidate_name,
-        preheaderText: `Your interview is confirmed for ${formattedDate}`,
-        title: `Interview Confirmed: ${stageName}${jobTitle}`,
-        content: emailContent,
-        footerNote: 'If you need to reschedule, please contact us as soon as possible.'
-      });
-
-      await supabase.functions.invoke('send-user-email', {
-        body: {
-          from_email: profile.email,
-          to: [candidate_email],
-          subject: `Your Interview is Confirmed: ${stageName}${jobTitle}`,
-          body_html: candidateEmailBody,
-          attachments: [{
-            filename: 'interview.ics',
-            content: icsBase64,
-            content_type: 'text/calendar',
-          }],
-        },
-      });
-
-      console.log('[create-booking] Candidate confirmation email sent');
-    } catch (emailError) {
-      console.error('[create-booking] Failed to send candidate email:', emailError);
+    } else {
+      console.log('[create-booking] Skipping candidate email (send_invitation=false)');
     }
 
     // Send notification email to interviewer
@@ -461,8 +466,13 @@ serve(async (req) => {
         interviewDetails.push(`<strong>Location:</strong> ${config.meeting_location}`);
       }
 
+      const candidateNotificationNote = send_invitation 
+        ? '' 
+        : '<p style="margin-top: 16px; padding: 12px; background-color: #fef3c7; border-left: 4px solid: #f59e0b; color: #92400e;"><strong>Note:</strong> The candidate has not been notified yet. You may need to send them the interview details separately.</p>';
+
       let interviewerContent = `
         <p>A candidate has scheduled an interview with you!</p>
+        ${candidateNotificationNote}
         <div class="divider"></div>
         <p><strong>Candidate Information:</strong></p>
         ${formatEmailList(candidateDetails)}
