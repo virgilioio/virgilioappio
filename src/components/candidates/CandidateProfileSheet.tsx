@@ -465,20 +465,18 @@ const [oldBookingId, setOldBookingId] = useState<string | null>(null)
                                   </Link>
                                 )}
                                 <Button
-                                  variant="outline"
+                                  variant="destructive"
                                   size="sm"
                                   onClick={handleReject}
-                                  className="text-destructive hover:text-destructive"
                                 >
                                   <ThumbsDown className="h-4 w-4 mr-2" />
                                   Reject
                                 </Button>
                                 {associationStatus === 'rejected' && (
                                   <Button
-                                    variant="outline"
+                                    variant="success"
                                     size="sm"
                                     onClick={handleReactivate}
-                                    className="text-success hover:text-success"
                                   >
                                     <RotateCcw className="h-4 w-4 mr-2" />
                                     Reactivate
