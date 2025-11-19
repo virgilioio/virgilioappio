@@ -3,6 +3,8 @@ import { Candidate } from '@/hooks/useCandidates'
 import { getSkillColor, PastelColor } from '@/utils/skillColors'
 import { supabase } from '@/lib/supabaseClient'
 import { withFetchTimeout } from '@/utils/timeout'
+import PoppinsBoldFont from '@/assets/fonts/Poppins-Bold.ttf'
+import LatoRegularFont from '@/assets/fonts/Lato-Regular.ttf'
 
 // Skill color mapping for PDF (HSL values converted to RGB)
 const skillColorMap: Record<PastelColor, { bg: [number, number, number], text: [number, number, number] }> = {
@@ -200,14 +202,14 @@ export const generateCandidatePdf = async ({ candidate, job, organization }: Gen
     const contentWidth = pageWidth - (margin * 2)
     let yPosition = margin
 
-    // Load custom fonts using TTF format for jsPDF compatibility
+    // Load custom fonts using bundled TTF format for jsPDF compatibility
     const loadCustomFonts = async () => {
       try {
-        console.log('[PDF] Loading custom fonts...')
+        console.log('[PDF] Loading bundled custom fonts...')
         
-        // Fetch Poppins Bold font with validation
+        // Fetch bundled Poppins Bold font
         const poppinsBoldResponse = await withFetchTimeout(
-          fetch('https://fonts.gstatic.com/s/poppins/v20/pxiByp8kv8JHgFVrLGT9Z1xlFd2JQEk.woff2'),
+          fetch(PoppinsBoldFont),
           5000
         )
         
@@ -218,9 +220,9 @@ export const generateCandidatePdf = async ({ candidate, job, organization }: Gen
         const poppinsBoldBuffer = await poppinsBoldResponse.arrayBuffer()
         const poppinsBoldBase64 = btoa(String.fromCharCode(...new Uint8Array(poppinsBoldBuffer)))
         
-        // Fetch Lato Regular font with validation
+        // Fetch bundled Lato Regular font
         const latoRegularResponse = await withFetchTimeout(
-          fetch('https://fonts.gstatic.com/s/lato/v24/S6uyw4BMUTPHjx4wXg.woff2'),
+          fetch(LatoRegularFont),
           5000
         )
         
@@ -238,10 +240,10 @@ export const generateCandidatePdf = async ({ candidate, job, organization }: Gen
         pdf.addFileToVFS('Lato-Regular.ttf', latoRegularBase64)
         pdf.addFont('Lato-Regular.ttf', 'Lato', 'normal')
         
-        console.log('[PDF] Custom fonts loaded successfully')
+        console.log('[PDF] Bundled custom fonts loaded successfully')
         return true
       } catch (error) {
-        console.warn('[PDF] Failed to load custom fonts, using fallbacks:', error)
+        console.warn('[PDF] Failed to load bundled custom fonts, using fallbacks:', error)
         return false
       }
     }
