@@ -161,7 +161,7 @@ export function IndependentCandidateProfileSheet({
   return (
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent side="right" className="w-[96vw] sm:max-w-none h-full p-0" showOverlay={false}>
+        <SheetContent side="right" className="w-[77vw] sm:max-w-none h-full p-0" showOverlay={false}>
           <div className="flex h-full flex-col relative">
             <SheetHeader className="p-6 border-b">
               <div className="flex items-center justify-between">
