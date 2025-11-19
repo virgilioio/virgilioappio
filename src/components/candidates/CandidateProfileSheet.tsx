@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
 import { Badge } from '@/components/ui/badge'
+import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar'
+import { CandidateJobSidebar } from '@/components/candidates/CandidateJobSidebar'
 import { EnhancedSkillBadge } from '@/components/ui/enhanced-skill-badge'
 import { CandidateAttachments } from '@/components/candidates/CandidateAttachments'
 import { CandidateComments } from '@/components/candidates/CandidateComments'
@@ -357,13 +359,37 @@ const [oldBookingId, setOldBookingId] = useState<string | null>(null)
     }
   }
 
+  const handleJobChange = (newJobId: string) => {
+    if (newJobId === jobId) return // Already viewing this job
+    
+    // Navigate to the new job with the same candidate
+    const url = new URL(window.location.href)
+    url.pathname = `/jobs/${newJobId}`
+    url.searchParams.set('candidate', candidateId!)
+    window.location.href = url.toString()
+  }
+
   return (
     <>
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-[96vw] sm:max-w-none h-full p-0" showOverlay={false}>
-        <div className="flex h-full flex-col relative">
-          <SheetHeader className="p-6 border-b">
-            <div className="flex items-center justify-between">
+        <SidebarProvider>
+          <div className="flex h-full w-full">
+            {/* Job Navigation Sidebar */}
+            {candidateId && (
+              <CandidateJobSidebar
+                candidateId={candidateId}
+                currentJobId={jobId}
+                onJobSelect={handleJobChange}
+              />
+            )}
+
+            {/* Main Profile Content */}
+            <div className="flex-1 flex flex-col min-w-0">
+              <SheetHeader className="p-6 border-b">
+                <div className="flex items-center gap-2">
+                  <SidebarTrigger />
+                  <div className="flex items-center justify-between flex-1">
               <div className="flex flex-col gap-2">
                 <div className="flex items-center gap-2">
                   <h2 className="font-poppins font-bold tracking-page-title text-text-primary text-4xl">
@@ -408,11 +434,12 @@ const [oldBookingId, setOldBookingId] = useState<string | null>(null)
                   Next
                   <ChevronRight className="h-4 w-4" />
                 </Button>
-              </div>
-            </div>
-          </SheetHeader>
+                  </div>
+                </div>
+                </div>
+              </SheetHeader>
 
-          <div className="flex-1 overflow-y-auto p-6">
+              <div className="flex-1 overflow-y-auto p-6">
             {loading ? (
               <div className="text-text-secondary text-sm">Loading profile…</div>
             ) : !candidate ? (
@@ -1096,8 +1123,10 @@ const [oldBookingId, setOldBookingId] = useState<string | null>(null)
             />
           )}
 
+              </div>
+            </div>
           </div>
-        </div>
+        </SidebarProvider>
 
       {/* Minimizable Email Composer (portal to body) */}
       <MinimizableEmailComposer
