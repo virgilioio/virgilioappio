@@ -129,6 +129,7 @@ export default function JobDetail() {
   // Wrapper for opening pipeline candidates with URL support
   const openPipelineProfile = (candidateId: string) => {
     const allPipelineCandidates = [
+      ...recruitingProcessCandidates,
       ...matchingCandidates,
       ...offersCandidates, 
       ...hiredCandidates,
@@ -157,6 +158,7 @@ export default function JobDetail() {
   const [offersCandidates, setOffersCandidates] = useState<any[]>([])
   const [hiredCandidates, setHiredCandidates] = useState<any[]>([])
   const [rejectedCandidates, setRejectedCandidates] = useState<any[]>([])
+  const [recruitingProcessCandidates, setRecruitingProcessCandidates] = useState<any[]>([])
   const [suggestedCandidates, setSuggestedCandidates] = useState<any[]>([])
   const [allAssociatedCandidates, setAllAssociatedCandidates] = useState<any[]>([])
   const [statusListsLoading, setStatusListsLoading] = useState(false)
@@ -354,7 +356,7 @@ export default function JobDetail() {
   useEffect(() => {
     const run = async () => {
       if (!associations.length) {
-        setOffersCandidates([]); setHiredCandidates([]); setRejectedCandidates([]); setAllAssociatedCandidates([]); return
+        setOffersCandidates([]); setHiredCandidates([]); setRejectedCandidates([]); setRecruitingProcessCandidates([]); setAllAssociatedCandidates([]); return
       }
       const allIdsAll = Array.from(new Set(associations.map(a => a.candidate_id)))
       const offerIds = associations
@@ -362,6 +364,15 @@ export default function JobDetail() {
         .map(a => a.candidate_id)
       const hiredIds = associations.filter(a => a.status === 'hired').map(a => a.candidate_id)
       const rejectedIds = associations.filter(a => a.status === 'rejected').map(a => a.candidate_id)
+      const recruitingIds = associations
+        .filter(a => 
+          a.status !== 'rejected' && 
+          a.status !== 'hired' && 
+          a.status !== 'offer' &&
+          a.current_stage_id &&
+          stageMap[a.current_stage_id]?.type !== 'offer'
+        )
+        .map(a => a.candidate_id)
       setStatusListsLoading(true)
       const { data, error } = await supabase
         .from('candidates')
@@ -376,6 +387,7 @@ export default function JobDetail() {
       setOffersCandidates(offerIds.map((id) => byId.get(id)).filter(Boolean))
       setHiredCandidates(hiredIds.map((id) => byId.get(id)).filter(Boolean))
       setRejectedCandidates(rejectedIds.map((id) => byId.get(id)).filter(Boolean))
+      setRecruitingProcessCandidates(recruitingIds.map((id) => byId.get(id)).filter(Boolean))
       setAllAssociatedCandidates(allIdsAll.map((id) => byId.get(id)).filter(Boolean))
       setStatusListsLoading(false)
     }
