@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
@@ -40,6 +40,7 @@ import { useRealTimeSkillMatching } from '@/hooks/useRealTimeSkillMatching'
 export default function JobDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { user, userType } = useAuth()
   const permissions = usePermissions()
   const isMobile = useIsMobile()
@@ -67,6 +68,23 @@ export default function JobDetail() {
   const [profileCandidateList, setProfileCandidateList] = useState<any[]>([])
   const [profileCurrentIndex, setProfileCurrentIndex] = useState(0)
 
+  // Helper to update URL with candidate parameter
+  const updateCandidateUrl = (candidateId: string | null) => {
+    if (candidateId) {
+      setSearchParams({ candidate: candidateId }, { replace: true })
+    } else {
+      // Remove candidate param when closing
+      const newParams = new URLSearchParams(searchParams)
+      newParams.delete('candidate')
+      setSearchParams(newParams, { replace: true })
+    }
+  }
+
+  // Helper to get candidate ID from URL
+  const getCandidateIdFromUrl = () => {
+    return searchParams.get('candidate')
+  }
+
   const openProfileInPlace = (candidateId: string, context: 'application' | 'pipeline' = 'application', candidateList: any[] = []) => {
     const index = candidateList.findIndex((c: any) => c.id === candidateId)
     setProfileCandidateId(candidateId)
@@ -74,6 +92,9 @@ export default function JobDetail() {
     setProfileCandidateList(candidateList)
     setProfileCurrentIndex(index >= 0 ? index : 0)
     setProfileOpen(true)
+    
+    // Update URL
+    updateCandidateUrl(candidateId)
   }
 
   // Navigation functions for profile sheet
@@ -84,6 +105,9 @@ export default function JobDetail() {
       if (newCandidateId) {
         setProfileCurrentIndex(newIndex)
         setProfileCandidateId(newCandidateId)
+        
+        // Update URL
+        updateCandidateUrl(newCandidateId)
       }
     }
   }
@@ -95,6 +119,9 @@ export default function JobDetail() {
       if (newCandidateId) {
         setProfileCurrentIndex(newIndex)
         setProfileCandidateId(newCandidateId)
+        
+        // Update URL
+        updateCandidateUrl(newCandidateId)
       }
     }
   }
@@ -411,6 +438,40 @@ export default function JobDetail() {
     enabled: !!id && pipelineSectionTab === 'suggested',
     jobSkills: job?.skills // Pass job skills to trigger refresh when they change
   })
+
+  // Handle URL candidate parameter on mount and when URL changes
+  useEffect(() => {
+    const candidateIdFromUrl = getCandidateIdFromUrl()
+    
+    if (candidateIdFromUrl && candidateIdFromUrl !== profileCandidateId) {
+      // Check if candidate exists in any of the candidate lists
+      const allLists = [
+        { list: applicationReviewCandidates, context: 'application' as const },
+        { list: matchingCandidates, context: 'pipeline' as const },
+        { list: offersCandidates, context: 'pipeline' as const },
+        { list: hiredCandidates, context: 'pipeline' as const },
+        { list: rejectedCandidates, context: 'pipeline' as const },
+      ]
+      
+      for (const { list, context } of allLists) {
+        const candidate = list.find(c => c.id === candidateIdFromUrl)
+        if (candidate) {
+          openProfileInPlace(candidateIdFromUrl, context, list)
+          return
+        }
+      }
+      
+      // If not found in any list, still try to open (may load independently)
+      setProfileCandidateId(candidateIdFromUrl)
+      setProfileContext('application')
+      setProfileCandidateList([])
+      setProfileCurrentIndex(0)
+      setProfileOpen(true)
+    } else if (!candidateIdFromUrl && profileOpen) {
+      // URL has no candidate param but sheet is open - this means user pressed back
+      setProfileOpen(false)
+    }
+  }, [searchParams, applicationReviewCandidates, matchingCandidates, offersCandidates, hiredCandidates, rejectedCandidates, profileCandidateId, profileOpen])
 
   const handleBackToJobs = () => {
     navigate('/jobs')
@@ -1385,7 +1446,13 @@ export default function JobDetail() {
 
         <CandidateProfileSheet
           open={profileOpen}
-          onOpenChange={setProfileOpen}
+          onOpenChange={(open) => {
+            setProfileOpen(open)
+            if (!open) {
+              // Clear URL when sheet closes
+              updateCandidateUrl(null)
+            }
+          }}
           candidateId={profileCandidateId}
           jobId={id!}
           hasPrev={hasPrev}
