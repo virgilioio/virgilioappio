@@ -204,18 +204,30 @@ export const generateCandidatePdf = async ({ candidate, job, organization }: Gen
     const loadCustomFonts = async () => {
       try {
         console.log('[PDF] Loading custom fonts...')
-        // Use CDN TTF fonts that work with jsPDF
+        
+        // Fetch Poppins Bold font with validation
         const poppinsBoldResponse = await withFetchTimeout(
-          fetch('https://fonts.gstatic.com/s/poppins/v20/pxiByp8kv8JHgFVrLGT9Z1xlFd2JQEk.ttf'),
+          fetch('https://fonts.gstatic.com/s/poppins/v20/pxiByp8kv8JHgFVrLGT9Z1xlFd2JQEk.woff2'),
           5000
         )
+        
+        if (!poppinsBoldResponse.ok) {
+          throw new Error(`Failed to fetch Poppins font: ${poppinsBoldResponse.status}`)
+        }
+        
         const poppinsBoldBuffer = await poppinsBoldResponse.arrayBuffer()
         const poppinsBoldBase64 = btoa(String.fromCharCode(...new Uint8Array(poppinsBoldBuffer)))
         
+        // Fetch Lato Regular font with validation
         const latoRegularResponse = await withFetchTimeout(
-          fetch('https://fonts.gstatic.com/s/lato/v24/S6uNw4ZXOJXAKKYAKSwPRhE.ttf'),
+          fetch('https://fonts.gstatic.com/s/lato/v24/S6uyw4BMUTPHjx4wXg.woff2'),
           5000
         )
+        
+        if (!latoRegularResponse.ok) {
+          throw new Error(`Failed to fetch Lato font: ${latoRegularResponse.status}`)
+        }
+        
         const latoRegularBuffer = await latoRegularResponse.arrayBuffer()
         const latoRegularBase64 = btoa(String.fromCharCode(...new Uint8Array(latoRegularBuffer)))
         
