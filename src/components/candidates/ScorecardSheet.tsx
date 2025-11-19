@@ -391,7 +391,6 @@ export function ScorecardSheet({
               <RichTextEditor
                 value={overview}
                 onChange={setOverview}
-                disabled={isReadOnly}
                 placeholder="Share your key takeaways and observations..."
               />
             </div>
