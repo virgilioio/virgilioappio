@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Copy, ExternalLink, Check, AlertCircle, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -39,9 +39,12 @@ export function BookingLinkSection() {
   const [maxDaysAhead, setMaxDaysAhead] = useState(30);
   const [meetingLocation, setMeetingLocation] = useState('');
 
-  // Sync form state with config
+  // Track if we've done initial sync to prevent resetting after saves
+  const hasInitializedRef = useRef(false);
+
+  // Sync form state with config ONLY on initial load
   useEffect(() => {
-    if (config) {
+    if (config && !hasInitializedRef.current) {
       setWeeklySchedule(config.weekly_schedule || getDefaultWeeklySchedule());
       setTimezone(config.timezone || 'America/New_York');
       setDurationMinutes(config.duration_minutes || 30);
@@ -49,6 +52,12 @@ export function BookingLinkSection() {
       setMinNoticeHours(config.min_notice_hours || 24);
       setMaxDaysAhead(config.max_days_ahead || 30);
       setMeetingLocation(config.meeting_location || '');
+      hasInitializedRef.current = true;
+    }
+    
+    // Reset on unmount or if config becomes null (logout scenario)
+    if (!config) {
+      hasInitializedRef.current = false;
     }
   }, [config]);
 
