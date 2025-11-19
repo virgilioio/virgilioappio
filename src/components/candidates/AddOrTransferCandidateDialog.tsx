@@ -11,6 +11,14 @@ import { useJobHiringPlan } from '@/hooks/useJobHiringPlan'
 import { useCandidateTransfer } from '@/hooks/useCandidateTransfer'
 import type { JobStage } from '@/hooks/useJobStages'
 
+// Local type matching the hiring plan instance structure
+type HiringPlanStageOption = {
+  jhsId: string
+  stage: JobStage
+  position: number
+  customStageName?: string | null
+}
+
 interface AddOrTransferCandidateDialogProps {
   candidateId: string
   candidateName: string
@@ -30,11 +38,11 @@ export function AddOrTransferCandidateDialog({
   const [activeTab, setActiveTab] = useState<'add' | 'transfer'>('add')
   const [selectedJobId, setSelectedJobId] = useState<string>('')
   const [selectedStageId, setSelectedStageId] = useState<string>('')
-  const [stages, setStages] = useState<JobStage[]>([])
+  const [stages, setStages] = useState<HiringPlanStageOption[]>([])
   const [stagesLoading, setStagesLoading] = useState(false)
 
   const { jobs, isLoading: jobsLoading } = useJobs()
-  const { loadHiringPlan } = useJobHiringPlan()
+  const { loadHiringPlanInstances } = useJobHiringPlan()
   const { addToJob, transferCandidate, isTransferring } = useCandidateTransfer()
 
   // Reset state when dialog opens/closes
@@ -51,10 +59,10 @@ export function AddOrTransferCandidateDialog({
     if (selectedJobId) {
       setStagesLoading(true)
       setSelectedStageId('') // Clear stage when loading new job's stages
-      loadHiringPlan(selectedJobId).then(loadedStages => {
+      loadHiringPlanInstances(selectedJobId).then(loadedStages => {
         setStages(loadedStages)
         if (loadedStages.length > 0) {
-          setSelectedStageId(loadedStages[0].id)
+          setSelectedStageId(loadedStages[0].jhsId) // Use jhsId (job_hiring_stages.id)
         }
         setStagesLoading(false)
       })
@@ -62,7 +70,7 @@ export function AddOrTransferCandidateDialog({
       setStages([])
       setSelectedStageId('')
     }
-  }, [selectedJobId, loadHiringPlan])
+  }, [selectedJobId, loadHiringPlanInstances])
 
   // Filter out current job and archived jobs
   const availableJobs = jobs?.filter(
@@ -177,9 +185,9 @@ export function AddOrTransferCandidateDialog({
                       <SelectValue placeholder="Choose a stage..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {stages?.map(stage => (
-                        <SelectItem key={stage.id} value={stage.id}>
-                          {stage.stage_name}
+                      {stages?.map(option => (
+                        <SelectItem key={option.jhsId} value={option.jhsId}>
+                          {option.customStageName || option.stage.stage_name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -237,9 +245,9 @@ export function AddOrTransferCandidateDialog({
                       <SelectValue placeholder="Choose a stage..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {stages?.map(stage => (
-                        <SelectItem key={stage.id} value={stage.id}>
-                          {stage.stage_name}
+                      {stages?.map(option => (
+                        <SelectItem key={option.jhsId} value={option.jhsId}>
+                          {option.customStageName || option.stage.stage_name}
                         </SelectItem>
                       ))}
                     </SelectContent>
