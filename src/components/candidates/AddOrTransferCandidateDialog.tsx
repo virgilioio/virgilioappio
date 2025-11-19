@@ -50,6 +50,7 @@ export function AddOrTransferCandidateDialog({
   useEffect(() => {
     if (selectedJobId) {
       setStagesLoading(true)
+      setSelectedStageId('') // Clear stage when loading new job's stages
       loadHiringPlan(selectedJobId).then(loadedStages => {
         setStages(loadedStages)
         if (loadedStages.length > 0) {
