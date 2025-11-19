@@ -83,3 +83,6 @@ verify_jwt = true
 
 [functions.upload-invoice-document]
 verify_jwt = true
+
+[functions.polish-scorecard-notes]
+verify_jwt = true
