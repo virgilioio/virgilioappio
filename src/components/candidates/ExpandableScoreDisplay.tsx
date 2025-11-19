@@ -86,11 +86,24 @@ export function ExpandableScoreDisplay({ scorecards, currentUserId, onOpenFullSh
               <Collapsible open={isExpanded} onOpenChange={() => toggleExpanded(scorecard.id)}>
                 <CollapsibleContent className="mt-3">
                   <div className="pl-6 border-l-2 border-border">
-                    <div className="text-sm text-text-tertiary mb-1">Feedback:</div>
-                    <SafeHtml 
-                      content={scorecard.general_overview} 
-                      className="text-sm prose prose-sm max-w-none"
-                    />
+                    <div className="text-sm text-text-tertiary mb-1">Key Takeaways:</div>
+                    <div className="max-h-32 overflow-hidden relative">
+                      <SafeHtml 
+                        content={scorecard.general_overview} 
+                        className="text-sm prose prose-sm max-w-none"
+                      />
+                      <div className="absolute bottom-0 left-0 right-0 h-8 bg-gradient-to-t from-card to-transparent pointer-events-none" />
+                    </div>
+                    {onOpenFullSheet && (
+                      <Button
+                        variant="link"
+                        size="sm"
+                        onClick={onOpenFullSheet}
+                        className="mt-2 p-0 h-auto text-xs text-primary"
+                      >
+                        Read more →
+                      </Button>
+                    )}
                   </div>
                 </CollapsibleContent>
               </Collapsible>
