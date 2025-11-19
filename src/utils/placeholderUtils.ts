@@ -47,4 +47,5 @@ export const AVAILABLE_PLACEHOLDERS = [
   { value: '{{sender.title}}', label: 'Your Job Title', category: 'Sender' },
   { value: '{{sender.phone}}', label: 'Your Phone', category: 'Sender' },
   { value: '{{sender.linkedin}}', label: 'Your LinkedIn URL', category: 'Sender' },
+  { value: '{{sender.booking_link}}', label: 'Your Booking Link', category: 'Sender' },
 ];

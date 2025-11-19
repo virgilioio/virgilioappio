@@ -146,7 +146,8 @@ async function replacePlaceholders(
   text: string,
   candidate: any,
   job: any,
-  user: any
+  user: any,
+  bookingUrl: string | null
 ): Promise<string> {
   let result = text;
   
@@ -179,6 +180,7 @@ async function replacePlaceholders(
     result = result.replace(/\{\{sender\.title\}\}/g, user.title || '');
     result = result.replace(/\{\{sender\.phone\}\}/g, user.phone || '');
     result = result.replace(/\{\{sender\.linkedin\}\}/g, user.linkedin_url || '');
+    result = result.replace(/\{\{sender\.booking_link\}\}/g, bookingUrl || '');
   }
   
   return result;
@@ -408,6 +410,19 @@ const handler = async (req: Request): Promise<Response> => {
       .eq('user_id', user.id)
       .single();
 
+    // Get booking configuration for booking link placeholder
+    let bookingUrl: string | null = null;
+    const { data: bookingConfig } = await supabase
+      .from('booking_configurations')
+      .select('short_code')
+      .eq('user_id', user.id)
+      .single();
+    
+    if (bookingConfig?.short_code) {
+      const frontendUrl = Deno.env.get('FRONTEND_URL') || 'https://etrxjxstjfcozdjumfsj.lovable.app';
+      bookingUrl = `${frontendUrl}/schedule/${bookingConfig.short_code}`;
+    }
+
     // Handle reply threading
     let threadId: string | undefined;
     let inReplyTo: string | undefined;
@@ -432,12 +447,12 @@ const handler = async (req: Request): Promise<Response> => {
     // Replace placeholders in subject and body
     const processedRequest = {
       ...request,
-      subject: await replacePlaceholders(request.subject, candidateData, jobData, userProfile || user),
+      subject: await replacePlaceholders(request.subject, candidateData, jobData, userProfile || user, bookingUrl),
       body_text: request.body_text 
-        ? await replacePlaceholders(request.body_text, candidateData, jobData, userProfile || user)
+        ? await replacePlaceholders(request.body_text, candidateData, jobData, userProfile || user, bookingUrl)
         : undefined,
       body_html: request.body_html
-        ? await replacePlaceholders(request.body_html, candidateData, jobData, userProfile || user)
+        ? await replacePlaceholders(request.body_html, candidateData, jobData, userProfile || user, bookingUrl)
         : undefined,
     };
 
