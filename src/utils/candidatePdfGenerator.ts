@@ -526,6 +526,13 @@ export const generateCandidatePdf = async ({ candidate, job, organization }: Gen
   
   } catch (error) {
     console.error('[PDF] Failed to generate PDF:', error)
+    if (error instanceof Error) {
+      console.error('[PDF] Error details:', {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      })
+    }
     throw error // Re-throw to allow caller to handle
   }
 }
