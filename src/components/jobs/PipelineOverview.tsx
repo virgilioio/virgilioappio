@@ -38,6 +38,7 @@ interface PipelineOverviewProps {
   onSelectedIdsChange?: (ids: string[]) => void
   refreshToken?: number
   onStageChanged?: () => void
+  onCandidateClick?: (candidateId: string) => void
 }
 
 
@@ -58,7 +59,7 @@ const isLastPriorityStage = (stage: JobStage) => {
   return p === 'last' || p === 99 || p === '99' || p === 999 || p === '999'
 }
 
-export function PipelineOverview({ jobId, showHeader = true, externalScroll = false, viewMode: controlledView, onViewModeChange, selectionMode: controlledSelectionMode, onSelectionModeChange, onSelectedIdsChange, refreshToken, onStageChanged }: PipelineOverviewProps) {
+export function PipelineOverview({ jobId, showHeader = true, externalScroll = false, viewMode: controlledView, onViewModeChange, selectionMode: controlledSelectionMode, onSelectionModeChange, onSelectedIdsChange, refreshToken, onStageChanged, onCandidateClick }: PipelineOverviewProps) {
   const { loadHiringPlanInstances, isLoadingPlan } = useJobHiringPlan()
   const { fetchAssociationsForJob, moveAssociationToStage, updateAssociationStatus } = usePipelineActions()
 
@@ -519,7 +520,15 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
                                 timeInStageLabel={t.label}
                                 timeBadgeVariant={t.variant}
                                 onMove={(toId) => handleMove(assoc.id, toId)}
-                                onClick={() => { setSelectedCandidateId(orderedCandidateIds.find(id => id === assoc.candidate_id) || assoc.candidate_id); setPanelOpen(true) }}
+                                onClick={() => { 
+                                  const candidateId = orderedCandidateIds.find(id => id === assoc.candidate_id) || assoc.candidate_id;
+                                  if (onCandidateClick) {
+                                    onCandidateClick(candidateId);
+                                  } else {
+                                    setSelectedCandidateId(candidateId);
+                                    setPanelOpen(true);
+                                  }
+                                }}
                                 showCheckbox={selectionMode}
                                 checked={isSelected(assoc.id)}
                                 onCheckedChange={(v) => toggleSelect(assoc.id, !!v)}
@@ -548,7 +557,15 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
                         timeInStageLabel={t.label}
                         timeBadgeVariant={t.variant}
                         onMove={(toId) => handleMove(assoc.id, toId)}
-                        onClick={() => { setSelectedCandidateId(orderedCandidateIds.find(id => id === assoc.candidate_id) || assoc.candidate_id); setPanelOpen(true) }}
+                        onClick={() => { 
+                          const candidateId = orderedCandidateIds.find(id => id === assoc.candidate_id) || assoc.candidate_id;
+                          if (onCandidateClick) {
+                            onCandidateClick(candidateId);
+                          } else {
+                            setSelectedCandidateId(candidateId);
+                            setPanelOpen(true);
+                          }
+                        }}
                       />
                     </div>
                   )
@@ -627,7 +644,14 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
                               <Table className="w-full">
                                 <TableBody>
                                   {group.rows.map((row) => (
-                                    <TableRow key={row.id} interactive className="hover:bg-transparent" onClick={() => { setSelectedCandidateId(row.candidateId); setPanelOpen(true) }}>
+                                    <TableRow key={row.id} interactive className="hover:bg-transparent" onClick={() => { 
+                                      if (onCandidateClick) {
+                                        onCandidateClick(row.candidateId);
+                                      } else {
+                                        setSelectedCandidateId(row.candidateId);
+                                        setPanelOpen(true);
+                                      }
+                                    }}>
                                       {selectionMode && (
                                         <TableCell className="w-10" onClick={(e) => e.stopPropagation()}>
                                           <Checkbox
@@ -664,7 +688,15 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
                                         <Badge variant={row.timeVariant}>{row.timeLabel}</Badge>
                                       </TableCell>
                                       <TableCell className="w-28 text-right">
-                                        <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); setSelectedCandidateId(row.candidateId); setPanelOpen(true) }}>
+                                        <Button size="sm" variant="outline" onClick={(e) => { 
+                                          e.stopPropagation();
+                                          if (onCandidateClick) {
+                                            onCandidateClick(row.candidateId);
+                                          } else {
+                                            setSelectedCandidateId(row.candidateId);
+                                            setPanelOpen(true);
+                                          }
+                                        }}>
                                           View
                                         </Button>
                                       </TableCell>
@@ -684,7 +716,9 @@ export function PipelineOverview({ jobId, showHeader = true, externalScroll = fa
           </Card>
         </div>
       )}
-      <CandidateProfileSheet open={panelOpen} onOpenChange={(o) => setPanelOpen(o)} candidateId={selectedCandidateId} jobId={jobId} hasPrev={hasPrev} hasNext={hasNext} onNavigatePrev={handlePrevCandidate} onNavigateNext={handleNextCandidate} onStageChanged={() => { loadPipeline(); onStageChanged?.(); }} />
+      {!onCandidateClick && (
+        <CandidateProfileSheet open={panelOpen} onOpenChange={(o) => setPanelOpen(o)} candidateId={selectedCandidateId} jobId={jobId} hasPrev={hasPrev} hasNext={hasNext} onNavigatePrev={handlePrevCandidate} onNavigateNext={handleNextCandidate} onStageChanged={() => { loadPipeline(); onStageChanged?.(); }} />
+      )}
     </div>
   )
 }
