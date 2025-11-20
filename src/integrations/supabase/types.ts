@@ -3947,6 +3947,7 @@ export type Database = {
           display_name: string | null
           email_address: string
           gmail_history_id: string | null
+          history_id: string | null
           id: string
           imap_host: string | null
           imap_password_encrypted: string | null
@@ -3974,6 +3975,7 @@ export type Database = {
           display_name?: string | null
           email_address: string
           gmail_history_id?: string | null
+          history_id?: string | null
           id?: string
           imap_host?: string | null
           imap_password_encrypted?: string | null
@@ -4001,6 +4003,7 @@ export type Database = {
           display_name?: string | null
           email_address?: string
           gmail_history_id?: string | null
+          history_id?: string | null
           id?: string
           imap_host?: string | null
           imap_password_encrypted?: string | null
