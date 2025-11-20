@@ -186,14 +186,14 @@ serve(async (req) => {
       }
     }
 
-    // Check if slot is still available
+    // Check if slot is still available (strict overlap check - back-to-back bookings are allowed)
     const { data: conflictingBookings } = await supabase
       .from('scheduled_bookings')
       .select('id')
       .eq('booking_config_id', booking_config_id)
       .eq('status', 'confirmed')
-      .gte('scheduled_end', scheduled_start)
-      .lte('scheduled_start', scheduled_end)
+      .lt('scheduled_start', scheduled_end)    // existing_start < new_end
+      .gt('scheduled_end', scheduled_start)    // existing_end > new_start
       .limit(1);
 
     if (conflictingBookings && conflictingBookings.length > 0) {

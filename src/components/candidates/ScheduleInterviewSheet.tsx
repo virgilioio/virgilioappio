@@ -465,10 +465,16 @@ export function ScheduleInterviewSheet({
       onOpenChange(false);
     },
     onError: (error: any) => {
+      // Check if it's a 409 conflict from create-booking
+      const errorMessage = error?.message || '';
+      const isConflict = errorMessage.includes('409') || errorMessage.includes('no longer available');
+      
       toast({
         variant: 'destructive',
         title: 'Booking Failed',
-        description: error.message || 'Failed to schedule interview. Please try again.',
+        description: isConflict 
+          ? 'That time is already booked for this interviewer. Please choose another time.'
+          : error.message || 'Failed to schedule interview. Please try again.',
       });
     },
   });
