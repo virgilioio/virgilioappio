@@ -408,12 +408,21 @@ export function ScorecardSheet({
                   const active = rating === opt.value;
                   const base =
                     opt.value === "definitely_no"
-                      ? `text-destructive border-destructive ${active ? "bg-destructive/30 ring-2 ring-destructive" : "bg-destructive/25"}`
+                      ? `text-white ${active ? "ring-2" : ""}`
                       : opt.value === "no"
-                      ? `text-destructive border-destructive/80 ${active ? "bg-destructive/25 ring-2 ring-destructive/90" : "bg-destructive/20"}`
+                      ? `text-white ${active ? "ring-2" : ""}`
                       : opt.value === "strong_yes"
-                      ? `text-success border-success ${active ? "bg-success/45 ring-2 ring-success" : "bg-success/35"}`
-                      : `text-success border-success/90 ${active ? "bg-success/40 ring-2 ring-success/95" : "bg-success/30"}`;
+                      ? `text-white ${active ? "ring-2" : ""}`
+                      : `text-white ${active ? "ring-2" : ""}`;
+                  
+                  const colorStyles =
+                    opt.value === "definitely_no"
+                      ? { backgroundColor: '#C23636', borderColor: '#C23636', ringColor: active ? '#C23636' : undefined }
+                      : opt.value === "no"
+                      ? { backgroundColor: '#E76A6A', borderColor: '#E76A6A', ringColor: active ? '#E76A6A' : undefined }
+                      : opt.value === "strong_yes"
+                      ? { backgroundColor: '#4BAF3A', borderColor: '#4BAF3A', ringColor: active ? '#4BAF3A' : undefined }
+                      : { backgroundColor: '#7ED96A', borderColor: '#7ED96A', ringColor: active ? '#7ED96A' : undefined };
 
                   return (
                     <Label
@@ -424,6 +433,7 @@ export function ScorecardSheet({
                         transition-all duration-200
                         ${base}
                       `}
+                      style={colorStyles}
                     >
                       <RadioGroupItem value={opt.value} id={`rating-${opt.value}`} className="sr-only" />
                       <div className="flex items-center gap-1">
