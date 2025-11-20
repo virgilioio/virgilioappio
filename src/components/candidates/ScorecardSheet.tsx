@@ -417,12 +417,12 @@ export function ScorecardSheet({
                   
                   const colorStyles =
                     opt.value === "definitely_no"
-                      ? { backgroundColor: '#C23636', borderColor: '#C23636', ringColor: active ? '#C23636' : undefined }
+                      ? { backgroundColor: '#FA5252', borderColor: '#FA5252', ringColor: active ? '#FA5252' : undefined }
                       : opt.value === "no"
-                      ? { backgroundColor: '#E76A6A', borderColor: '#E76A6A', ringColor: active ? '#E76A6A' : undefined }
+                      ? { backgroundColor: '#FA8F8F', borderColor: '#FA8F8F', ringColor: active ? '#FA8F8F' : undefined }
                       : opt.value === "strong_yes"
-                      ? { backgroundColor: '#4BAF3A', borderColor: '#4BAF3A', ringColor: active ? '#4BAF3A' : undefined }
-                      : { backgroundColor: '#7ED96A', borderColor: '#7ED96A', ringColor: active ? '#7ED96A' : undefined };
+                      ? { backgroundColor: '#6F3FF5', borderColor: '#6F3FF5', ringColor: active ? '#6F3FF5' : undefined }
+                      : { backgroundColor: '#9B7BF7', borderColor: '#9B7BF7', ringColor: active ? '#9B7BF7' : undefined };
 
                   return (
                     <Label
