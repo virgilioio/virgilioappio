@@ -2901,6 +2901,7 @@ export type Database = {
           candidate_confirmation_status: string | null
           candidate_confirmed_at: string | null
           candidate_email: string
+          candidate_google_event_id: string | null
           candidate_id: string
           candidate_name: string
           candidate_phone: string | null
@@ -2935,6 +2936,7 @@ export type Database = {
           candidate_confirmation_status?: string | null
           candidate_confirmed_at?: string | null
           candidate_email: string
+          candidate_google_event_id?: string | null
           candidate_id: string
           candidate_name: string
           candidate_phone?: string | null
@@ -2969,6 +2971,7 @@ export type Database = {
           candidate_confirmation_status?: string | null
           candidate_confirmed_at?: string | null
           candidate_email?: string
+          candidate_google_event_id?: string | null
           candidate_id?: string
           candidate_name?: string
           candidate_phone?: string | null
