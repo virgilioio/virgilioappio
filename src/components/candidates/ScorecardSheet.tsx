@@ -457,23 +457,29 @@ export function ScorecardSheet({
             )}
 
             <div className="space-y-2 border-t border-virgilio-border pt-6">
-              <div className="flex items-center justify-between mb-2">
-                <div>
-                  <Label htmlFor="overview" className="text-base font-semibold">
-                    Key Takeaways
-                  </Label>
-                  <p className="text-sm text-virgilio-muted mt-1">
-                    Provide comprehensive notes about your interview with this candidate
-                  </p>
-                </div>
-                
-                {!isReadOnly && (
+              <div className="mb-2">
+                <Label htmlFor="overview" className="text-base font-semibold">
+                  Key Takeaways
+                </Label>
+                <p className="text-sm text-virgilio-muted mt-1">
+                  Provide comprehensive notes about your interview with this candidate
+                </p>
+              </div>
+              
+              <RichTextEditor
+                value={overview}
+                onChange={setOverview}
+                placeholder="Share your key takeaways and observations..."
+              />
+              
+              {!isReadOnly && (
+                <div className="flex justify-end">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={handlePolishNotes}
                     disabled={isPolishing || !overview.trim()}
-                    className="gap-2 shrink-0"
+                    className="gap-2"
                   >
                     {isPolishing ? (
                       <>
@@ -487,14 +493,8 @@ export function ScorecardSheet({
                       </>
                     )}
                   </Button>
-                )}
-              </div>
-              
-              <RichTextEditor
-                value={overview}
-                onChange={setOverview}
-                placeholder="Share your key takeaways and observations..."
-              />
+                </div>
+              )}
             </div>
           </div>
 
