@@ -172,20 +172,66 @@ const handler = async (req: Request): Promise<Response> => {
       accessToken = await refreshAccessToken(supabase, identity);
     }
 
-    // Fetch messages from Gmail API
-    const messagesUrl = `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=50&q=-in:sent`;
-    const messagesResponse = await fetch(messagesUrl, {
-      headers: { 'Authorization': `Bearer ${accessToken}` },
-    });
+    // Use Gmail History API for incremental sync if we have a historyId
+    console.log(`[Gmail Sync] Current historyId: ${identity.history_id || 'none'}`);
+    
+    let messages = [];
+    let newHistoryId = null;
+    
+    if (identity.history_id) {
+      // Incremental sync using History API
+      console.log(`[Gmail Sync] Using History API for incremental sync from historyId: ${identity.history_id}`);
+      const historyResponse = await fetch(
+        `https://gmail.googleapis.com/gmail/v1/users/me/history?startHistoryId=${identity.history_id}&historyTypes=messageAdded`,
+        {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        }
+      );
 
-    if (!messagesResponse.ok) {
-      throw new Error('Failed to fetch Gmail messages');
+      if (!historyResponse.ok) {
+        // If historyId is invalid/expired, fall back to full sync
+        if (historyResponse.status === 404) {
+          console.log(`[Gmail Sync] HistoryId expired, falling back to full sync`);
+          identity.history_id = null;
+        } else {
+          throw new Error(`Gmail History API error: ${historyResponse.statusText}`);
+        }
+      } else {
+        const historyData = await historyResponse.json();
+        newHistoryId = historyData.historyId;
+        
+        if (historyData.history) {
+          // Extract message IDs from history
+          messages = historyData.history
+            .flatMap((h: any) => h.messagesAdded || [])
+            .map((ma: any) => ({ id: ma.message.id }));
+          console.log(`[Gmail Sync] History API found ${messages.length} new messages`);
+        } else {
+          console.log(`[Gmail Sync] No new messages in history`);
+        }
+      }
+    }
+    
+    // Full sync if no historyId or it expired
+    if (!identity.history_id) {
+      console.log(`[Gmail Sync] Fetching recent messages (full sync)...`);
+      const messagesResponse = await fetch(
+        `https://gmail.googleapis.com/gmail/v1/users/me/messages?maxResults=100&q=newer_than:7d`,
+        {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        }
+      );
+
+      if (!messagesResponse.ok) {
+        throw new Error(`Gmail API error: ${messagesResponse.statusText}`);
+      }
+
+      const messagesData = await messagesResponse.json();
+      messages = messagesData.messages || [];
+      console.log(`[Gmail Sync] Found ${messages.length} total messages in last 7 days`);
     }
 
-    const messagesData = await messagesResponse.json();
-    const messages = messagesData.messages || [];
-
-    console.log(`Found ${messages.length} messages to process`);
+    console.log(`[Gmail Sync] Processing ${messages.length} messages...`);
 
     let syncedCount = 0;
     let skippedCount = 0;
@@ -269,13 +315,41 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    // Update last sync time
+    // Update last sync timestamp and historyId
+    const updateData: any = { 
+      last_sync_at: new Date().toISOString(),
+      sync_status: 'active'
+    };
+    
+    // Store new historyId if we got one (from History API)
+    if (newHistoryId) {
+      updateData.history_id = newHistoryId;
+      console.log(`[Gmail Sync] Storing new historyId: ${newHistoryId}`);
+    } else if (messages.length > 0) {
+      // For full sync, get the current historyId from the last message processed
+      const lastMessageId = messages[messages.length - 1].id;
+      const lastMessageResponse = await fetch(
+        `https://gmail.googleapis.com/gmail/v1/users/me/messages/${lastMessageId}?format=minimal`,
+        {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        }
+      );
+      
+      if (lastMessageResponse.ok) {
+        const lastMessage = await lastMessageResponse.json();
+        if (lastMessage.historyId) {
+          updateData.history_id = lastMessage.historyId;
+          console.log(`[Gmail Sync] Storing historyId from last message: ${lastMessage.historyId}`);
+        }
+      }
+    }
+    
     await supabase
       .from('user_mail_identities')
-      .update({ last_sync_at: new Date().toISOString() })
+      .update(updateData)
       .eq('id', mail_identity_id);
 
-    console.log(`Sync complete: ${syncedCount} synced, ${skippedCount} skipped`);
+    console.log(`[Gmail Sync] Complete: ${syncedCount} synced, ${skippedCount} skipped`);
 
     return new Response(
       JSON.stringify({ 
