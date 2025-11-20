@@ -121,6 +121,13 @@ export function ScorecardSheet({
   };
 
   const handlePolishNotes = async () => {
+    // Force the editor to save its current content to state
+    const editorElement = document.querySelector('[contenteditable="true"]');
+    if (editorElement && editorElement instanceof HTMLElement) {
+      editorElement.blur(); // Trigger blur to save content
+      await new Promise(resolve => setTimeout(resolve, 100)); // Give state time to update
+    }
+
     setIsPolishing(true);
     try {
       // Prepare questions and responses data
