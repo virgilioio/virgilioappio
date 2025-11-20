@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { format, parseISO, isToday, isTomorrow } from 'date-fns'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -29,6 +29,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   Calendar,
@@ -37,12 +43,16 @@ import {
   ChevronDown,
   ChevronUp,
   ExternalLink,
+  RefreshCw,
+  AlertTriangle,
 } from 'lucide-react'
 import { useScheduledBookings, type ScheduledBooking } from '@/hooks/useScheduledBookings'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useAuth } from '@/contexts/AuthContext'
 import { BookingDetailsDialog } from '@/components/booking/BookingDetailsDialog'
 import { toast } from '@/hooks/use-toast'
+import { supabase } from '@/integrations/supabase/client'
+import { useQueryClient } from '@tanstack/react-query'
 
 export function MyInterviews() {
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past'>('upcoming')
@@ -55,9 +65,55 @@ export function MyInterviews() {
 
   const permissions = usePermissions()
   const { user } = useAuth()
+  const queryClient = useQueryClient()
   
   const { bookings, isLoading, cancelBooking, updateStatus, isCancelling, isUpdating } =
     useScheduledBookings(activeTab, permissions)
+
+  // Set up realtime listener for Google Calendar sync updates
+  useEffect(() => {
+    if (!user?.id) return;
+
+    const channel = supabase
+      .channel('booking-sync-notifications')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'scheduled_bookings',
+          filter: `interviewer_id=eq.${user.id}`
+        },
+        (payload) => {
+          const newBooking = payload.new as ScheduledBooking;
+          const oldBooking = payload.old as ScheduledBooking;
+          
+          if (newBooking.sync_source === 'google_calendar') {
+            // Determine what changed
+            if (newBooking.status === 'cancelled' && oldBooking.status !== 'cancelled') {
+              toast({
+                title: "Interview Cancelled",
+                description: `Your interview with ${newBooking.candidate_name} was cancelled in Google Calendar.`,
+                variant: "destructive"
+              });
+            } else if (newBooking.scheduled_start !== oldBooking.scheduled_start) {
+              toast({
+                title: "Interview Rescheduled",
+                description: `Your interview with ${newBooking.candidate_name} was rescheduled in Google Calendar.`,
+              });
+            }
+            
+            // Refetch bookings to show updated data
+            queryClient.invalidateQueries({ queryKey: ['scheduled-bookings'] });
+          }
+        }
+      )
+      .subscribe();
+    
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id, queryClient]);
 
   const displayedBookings = isExpanded ? bookings : bookings.slice(0, 5)
 
@@ -235,9 +291,38 @@ export function MyInterviews() {
                             </Badge>
                           </TableCell>
                           <TableCell>
-                            <Badge variant={getStatusBadgeVariant(booking.status)}>
-                              {booking.status}
-                            </Badge>
+                            <div className="flex items-center gap-2">
+                              <Badge variant={getStatusBadgeVariant(booking.status)}>
+                                {booking.status}
+                              </Badge>
+                              {booking.sync_source === 'google_calendar' && (
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger>
+                                      <Badge variant="outline" className="gap-1">
+                                        <RefreshCw className="h-3 w-3" />
+                                        Synced
+                                      </Badge>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>Last synced: {booking.last_synced_at ? format(parseISO(booking.last_synced_at), 'MMM d, h:mm a') : 'Never'}</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              )}
+                              {booking.sync_errors && Array.isArray(booking.sync_errors) && booking.sync_errors.length > 0 && (
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger>
+                                      <AlertTriangle className="h-4 w-4 text-yellow-500" />
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>Sync issues detected. View details for more info.</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              )}
+                            </div>
                           </TableCell>
                           <TableCell onClick={(e) => e.stopPropagation()}>
                             <DropdownMenu>

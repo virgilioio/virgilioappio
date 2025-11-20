@@ -23,6 +23,14 @@ export interface ScheduledBooking {
   updated_at: string
   job_id: string | null
   job_hiring_stage_id: string | null
+  last_synced_at?: string | null
+  sync_source?: string | null
+  sync_errors?: Array<{
+    timestamp: string
+    error_message: string
+    event_id: string
+  }> | null
+  google_calendar_cancelled?: boolean | null
   interviewer_profile?: {
     user_id: string
     first_name: string | null
