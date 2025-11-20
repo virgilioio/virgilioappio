@@ -131,27 +131,54 @@ export function useCalendarIdentities() {
           toast.success(`Calendar connected: ${e.data.payload.email}`);
           queryClient.invalidateQueries({ queryKey: ['calendar-identities'] });
 
-          // Check if booking config exists
+          // Setup webhook for bidirectional sync
           const { data: { user } } = await supabase.auth.getUser();
           if (user) {
-            const { data: bookingConfig } = await supabase
-              .from('booking_configurations')
-              .select('id, is_active')
-              .eq('user_id', user.id)
-              .maybeSingle();
+            try {
+              // Fetch the newly created calendar identity
+              const { data: calendarIdentity } = await supabase
+                .from('calendar_identities')
+                .select('id')
+                .eq('user_id', user.id)
+                .eq('email_address', e.data.payload.email)
+                .single();
 
-            if (!bookingConfig) {
-              // Trigger lazy creation by invalidating the query
-              queryClient.invalidateQueries({ queryKey: ['booking-config'] });
-              toast.success('Calendar connected! Setting up your booking link...');
-            } else if (!bookingConfig.is_active) {
-              // Activate existing config
-              await supabase
+              if (calendarIdentity) {
+                // Setup webhook for bidirectional calendar sync
+                const { error: webhookError } = await supabase.functions.invoke('setup-calendar-watch', {
+                  body: { calendar_identity_id: calendarIdentity.id }
+                });
+
+                if (webhookError) {
+                  console.error('[Calendar] Webhook setup failed:', webhookError);
+                  toast.warning('Calendar connected, but sync setup failed. Please reconnect if needed.');
+                } else {
+                  console.log('[Calendar] Webhook setup successful for bidirectional sync');
+                }
+              }
+
+              // Check if booking config exists
+              const { data: bookingConfig } = await supabase
                 .from('booking_configurations')
-                .update({ is_active: true })
-                .eq('id', bookingConfig.id);
+                .select('id, is_active')
+                .eq('user_id', user.id)
+                .maybeSingle();
 
-              toast.success('Your booking link is now active! Share it with candidates.');
+              if (!bookingConfig) {
+                // Trigger lazy creation by invalidating the query
+                queryClient.invalidateQueries({ queryKey: ['booking-config'] });
+                toast.success('Calendar connected! Setting up your booking link...');
+              } else if (!bookingConfig.is_active) {
+                // Activate existing config
+                await supabase
+                  .from('booking_configurations')
+                  .update({ is_active: true })
+                  .eq('id', bookingConfig.id);
+
+                toast.success('Your booking link is now active! Share it with candidates.');
+              }
+            } catch (setupError) {
+              console.error('[Calendar] Post-connection setup error:', setupError);
             }
           }
         }
