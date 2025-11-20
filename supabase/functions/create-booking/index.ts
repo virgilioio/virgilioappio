@@ -209,6 +209,12 @@ serve(async (req) => {
     let googleEventId = null;
     let googleMeetLink = null;
 
+    // Construct candidate profile URL for scorecard submission
+    const frontendUrl = Deno.env.get('FRONTEND_URL') || 'https://app.virgilio.io';
+    const candidateProfileUrl = (job_id && candidate_id) 
+      ? `${frontendUrl}/jobs/${job_id}?candidate=${candidate_id}`
+      : null;
+
     if (accessToken && calendarIdentity) {
       try {
         console.log('[create-booking] Creating Google Calendar event...');
@@ -223,7 +229,7 @@ serve(async (req) => {
             },
             body: JSON.stringify({
               summary: interviewTitle,
-              description: `Interview scheduled via Virgilio booking system.\n\nCandidate: ${candidate_name}\nEmail: ${candidate_email}${notes ? '\n\nNotes: ' + notes : ''}`,
+              description: `Interview scheduled via Virgilio booking system.\n\nCandidate: ${candidate_name}\nEmail: ${candidate_email}${notes ? '\n\nNotes: ' + notes : ''}${candidateProfileUrl ? `\n\n📝 SUBMIT SCORECARD:\n${candidateProfileUrl}` : ''}`,
               start: {
                 dateTime: scheduled_start,
                 timeZone: candidate_timezone,
@@ -469,12 +475,6 @@ serve(async (req) => {
       const candidateNotificationNote = send_invitation 
         ? '' 
         : '<p style="margin-top: 16px; padding: 12px; background-color: #fef3c7; border-left: 4px solid: #f59e0b; color: #92400e;"><strong>Note:</strong> The candidate has not been notified yet. You may need to send them the interview details separately.</p>';
-
-      // Construct candidate profile URL for scorecard submission
-      const frontendUrl = Deno.env.get('FRONTEND_URL') || 'https://app.virgilio.io';
-      const candidateProfileUrl = (job_id && candidate_id) 
-        ? `${frontendUrl}/jobs/${job_id}?candidate=${candidate_id}`
-        : null;
 
       let interviewerContent = `
         <p>A candidate has scheduled an interview with you!</p>
