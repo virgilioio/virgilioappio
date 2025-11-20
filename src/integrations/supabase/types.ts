@@ -2908,6 +2908,7 @@ export type Database = {
           candidate_timezone: string
           created_at: string | null
           duration_minutes: number | null
+          google_calendar_cancelled: boolean | null
           google_event_id: string | null
           google_meet_link: string | null
           ics_uid: string | null
@@ -2918,6 +2919,7 @@ export type Database = {
           job_candidate_association_id: string | null
           job_hiring_stage_id: string
           job_id: string | null
+          last_synced_at: string | null
           meeting_location: string | null
           meeting_type: string | null
           notes: string | null
@@ -2925,6 +2927,8 @@ export type Database = {
           scheduled_end: string
           scheduled_start: string
           status: string
+          sync_errors: Json | null
+          sync_source: string | null
           updated_at: string | null
         }
         Insert: {
@@ -2943,6 +2947,7 @@ export type Database = {
           candidate_timezone: string
           created_at?: string | null
           duration_minutes?: number | null
+          google_calendar_cancelled?: boolean | null
           google_event_id?: string | null
           google_meet_link?: string | null
           ics_uid?: string | null
@@ -2953,6 +2958,7 @@ export type Database = {
           job_candidate_association_id?: string | null
           job_hiring_stage_id: string
           job_id?: string | null
+          last_synced_at?: string | null
           meeting_location?: string | null
           meeting_type?: string | null
           notes?: string | null
@@ -2960,6 +2966,8 @@ export type Database = {
           scheduled_end: string
           scheduled_start: string
           status?: string
+          sync_errors?: Json | null
+          sync_source?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -2978,6 +2986,7 @@ export type Database = {
           candidate_timezone?: string
           created_at?: string | null
           duration_minutes?: number | null
+          google_calendar_cancelled?: boolean | null
           google_event_id?: string | null
           google_meet_link?: string | null
           ics_uid?: string | null
@@ -2988,6 +2997,7 @@ export type Database = {
           job_candidate_association_id?: string | null
           job_hiring_stage_id?: string
           job_id?: string | null
+          last_synced_at?: string | null
           meeting_location?: string | null
           meeting_type?: string | null
           notes?: string | null
@@ -2995,6 +3005,8 @@ export type Database = {
           scheduled_end?: string
           scheduled_start?: string
           status?: string
+          sync_errors?: Json | null
+          sync_source?: string | null
           updated_at?: string | null
         }
         Relationships: [

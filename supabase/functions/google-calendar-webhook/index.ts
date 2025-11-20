@@ -61,9 +61,9 @@ serve(async (req) => {
     // Fetch all bookings for this user with google_event_id
     const { data: bookings, error: bookingsError } = await supabase
       .from('scheduled_bookings')
-      .select('id, google_event_id, interviewer_id, interviewer_confirmation_status, candidate_email, candidate_confirmation_status')
+      .select('id, google_event_id, candidate_google_event_id, interviewer_id, interviewer_confirmation_status, candidate_email, candidate_confirmation_status, scheduled_start, scheduled_end, meeting_location, google_meet_link, status, last_synced_at, sync_errors')
       .eq('interviewer_id', calIdentity.user_id)
-      .eq('status', 'confirmed')
+      .in('status', ['confirmed', 'rescheduled'])
       .not('google_event_id', 'is', null);
 
     if (bookingsError || !bookings || bookings.length === 0) {
@@ -114,11 +114,26 @@ serve(async (req) => {
       accessToken = refreshData.access_token;
     }
 
-    // Sync each booking's confirmation status
+    // Helper to map Google status
+    const mapGoogleStatus = (responseStatus: string): string => {
+      if (responseStatus === 'accepted') return 'confirmed';
+      if (responseStatus === 'declined') return 'declined';
+      return 'pending';
+    };
+
+    // Sync each booking's confirmation status and details
     let updatedCount = 0;
 
     for (const booking of bookings) {
       try {
+        // Skip if synced recently (debounce rapid changes)
+        const lastSync = booking.last_synced_at ? new Date(booking.last_synced_at) : null;
+        const thirtySecondsAgo = new Date(Date.now() - 30000);
+        if (lastSync && lastSync > thirtySecondsAgo) {
+          console.log(`[google-calendar-webhook] Skipping booking ${booking.id} - recently synced`);
+          continue;
+        }
+
         // Fetch event details from Google Calendar
         const eventResponse = await fetch(
           `https://www.googleapis.com/calendar/v3/calendars/primary/events/${booking.google_event_id}`,
@@ -130,7 +145,36 @@ serve(async (req) => {
         );
 
         if (!eventResponse.ok) {
-          console.error(`[google-calendar-webhook] Failed to fetch event ${booking.google_event_id}`);
+          // Handle event deletion (404)
+          if (eventResponse.status === 404) {
+            console.log(`[google-calendar-webhook] Event ${booking.google_event_id} not found (deleted)`);
+            await supabase
+              .from('scheduled_bookings')
+              .update({
+                status: 'cancelled',
+                cancelled_at: new Date().toISOString(),
+                cancellation_reason: 'Event deleted in Google Calendar',
+                google_calendar_cancelled: true,
+                sync_source: 'google_calendar',
+                last_synced_at: new Date().toISOString(),
+              })
+              .eq('id', booking.id);
+            
+            // Cancel candidate's event if exists
+            if (booking.candidate_google_event_id) {
+              await fetch(
+                `https://www.googleapis.com/calendar/v3/calendars/primary/events/${booking.candidate_google_event_id}`,
+                {
+                  method: 'DELETE',
+                  headers: { 'Authorization': `Bearer ${accessToken}` }
+                }
+              );
+            }
+            
+            updatedCount++;
+            continue;
+          }
+          console.error(`[google-calendar-webhook] Failed to fetch event ${booking.google_event_id}: ${eventResponse.status}`);
           continue;
         }
 
@@ -147,48 +191,100 @@ serve(async (req) => {
           continue;
         }
 
-        // Map Google response status to our status
-        let newStatus = booking.interviewer_confirmation_status;
-        const responseStatus = interviewerAttendee.responseStatus;
+        // Check for event cancellation
+        if (eventData.status === 'cancelled') {
+          console.log(`[google-calendar-webhook] Event cancelled in Google for booking ${booking.id}`);
+          
+          await supabase
+            .from('scheduled_bookings')
+            .update({
+              status: 'cancelled',
+              cancelled_at: new Date().toISOString(),
+              cancellation_reason: 'Cancelled in Google Calendar',
+              google_calendar_cancelled: true,
+              sync_source: 'google_calendar',
+              last_synced_at: new Date().toISOString(),
+            })
+            .eq('id', booking.id);
 
-        if (responseStatus === 'accepted') {
-          newStatus = 'confirmed';
-        } else if (responseStatus === 'declined') {
-          newStatus = 'declined';
-        } else if (responseStatus === 'tentative' || responseStatus === 'needsAction') {
-          newStatus = 'pending';
+          // Also cancel the candidate's event if it exists
+          if (booking.candidate_google_event_id) {
+            await fetch(
+              `https://www.googleapis.com/calendar/v3/calendars/primary/events/${booking.candidate_google_event_id}`,
+              {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${accessToken}` }
+              }
+            );
+          }
+
+          updatedCount++;
+          continue;
         }
 
-        // Check if we need to update interviewer status
+        // Extract event times
+        const googleStart = eventData.start?.dateTime;
+        const googleEnd = eventData.end?.dateTime;
+        const currentStart = new Date(booking.scheduled_start).toISOString();
+        const currentEnd = new Date(booking.scheduled_end).toISOString();
+
+        // Initialize update tracking
         let needsUpdate = false;
         const updateData: any = {};
 
-        if (newStatus !== booking.interviewer_confirmation_status) {
-          console.log(`[google-calendar-webhook] Updating interviewer status for booking ${booking.id}: ${booking.interviewer_confirmation_status} -> ${newStatus}`);
-          updateData.interviewer_confirmation_status = newStatus;
-          if (newStatus === 'confirmed') {
-            updateData.interviewer_confirmed_at = new Date().toISOString();
-          }
+        // Detect time changes
+        if (googleStart && googleEnd && (googleStart !== currentStart || googleEnd !== currentEnd)) {
+          console.log(`[google-calendar-webhook] Time change detected for booking ${booking.id}`);
+          console.log(`  Current: ${currentStart} - ${currentEnd}`);
+          console.log(`  Google:  ${googleStart} - ${googleEnd}`);
+          
+          updateData.scheduled_start = googleStart;
+          updateData.scheduled_end = googleEnd;
+          updateData.status = 'rescheduled';
           needsUpdate = true;
         }
 
-        // Also check candidate's response
+        // Detect meeting location changes
+        const googleLocation = eventData.location || '';
+        const googleMeetLink = eventData.conferenceData?.entryPoints?.[0]?.uri || eventData.hangoutLink || '';
+
+        if (googleLocation && googleLocation !== booking.meeting_location) {
+          updateData.meeting_location = googleLocation;
+          needsUpdate = true;
+        }
+
+        if (googleMeetLink && googleMeetLink !== booking.google_meet_link) {
+          updateData.google_meet_link = googleMeetLink;
+          needsUpdate = true;
+        }
+
+        // Map Google response status to our status
+        const interviewerEmail = calIdentity.email_address;
+        const interviewerAttendee = eventData.attendees?.find(
+          (a: any) => a.email.toLowerCase() === interviewerEmail.toLowerCase()
+        );
+
+        if (interviewerAttendee) {
+          const newStatus = mapGoogleStatus(interviewerAttendee.responseStatus);
+
+          if (newStatus !== booking.interviewer_confirmation_status) {
+            console.log(`[google-calendar-webhook] Updating interviewer status for booking ${booking.id}: ${booking.interviewer_confirmation_status} -> ${newStatus}`);
+            updateData.interviewer_confirmation_status = newStatus;
+            if (newStatus === 'confirmed') {
+              updateData.interviewer_confirmed_at = new Date().toISOString();
+            }
+            needsUpdate = true;
+          }
+        }
+
+        // Check candidate's response from interviewer's event
         if (booking.candidate_email) {
           const candidateAttendee = eventData.attendees?.find(
             (a: any) => a.email.toLowerCase() === booking.candidate_email.toLowerCase()
           );
 
           if (candidateAttendee) {
-            let candidateStatus = booking.candidate_confirmation_status;
-            const candidateResponseStatus = candidateAttendee.responseStatus;
-
-            if (candidateResponseStatus === 'accepted') {
-              candidateStatus = 'confirmed';
-            } else if (candidateResponseStatus === 'declined') {
-              candidateStatus = 'declined';
-            } else if (candidateResponseStatus === 'tentative' || candidateResponseStatus === 'needsAction') {
-              candidateStatus = 'pending';
-            }
+            const candidateStatus = mapGoogleStatus(candidateAttendee.responseStatus);
 
             if (candidateStatus !== booking.candidate_confirmation_status) {
               console.log(`[google-calendar-webhook] Updating candidate status for booking ${booking.id}: ${booking.candidate_confirmation_status} -> ${candidateStatus}`);
@@ -201,8 +297,61 @@ serve(async (req) => {
           }
         }
 
+        // Sync candidate's separate event if it exists
+        if (booking.candidate_google_event_id) {
+          try {
+            const candidateEventResponse = await fetch(
+              `https://www.googleapis.com/calendar/v3/calendars/primary/events/${booking.candidate_google_event_id}`,
+              { headers: { 'Authorization': `Bearer ${accessToken}` } }
+            );
+
+            if (candidateEventResponse.ok) {
+              const candidateEventData = await candidateEventResponse.json();
+
+              // Check if candidate cancelled their event
+              if (candidateEventData.status === 'cancelled') {
+                updateData.candidate_confirmation_status = 'declined';
+                updateData.candidate_confirmed_at = null;
+                needsUpdate = true;
+              } else {
+                // Sync candidate's response from their event
+                const candidateAttendee = candidateEventData.attendees?.find(
+                  (a: any) => a.email.toLowerCase() === booking.candidate_email.toLowerCase()
+                );
+
+                if (candidateAttendee) {
+                  const candidateStatus = mapGoogleStatus(candidateAttendee.responseStatus);
+                  if (candidateStatus !== booking.candidate_confirmation_status) {
+                    updateData.candidate_confirmation_status = candidateStatus;
+                    if (candidateStatus === 'confirmed') {
+                      updateData.candidate_confirmed_at = new Date().toISOString();
+                    }
+                    needsUpdate = true;
+                  }
+                }
+              }
+            } else if (candidateEventResponse.status === 404) {
+              // Candidate deleted their event
+              console.log(`[google-calendar-webhook] Candidate event ${booking.candidate_google_event_id} not found (deleted)`);
+              updateData.candidate_confirmation_status = 'declined';
+              updateData.candidate_google_event_id = null;
+              needsUpdate = true;
+            }
+          } catch (error: any) {
+            console.error(`[google-calendar-webhook] Error syncing candidate event:`, error);
+            const syncErrors = Array.isArray(booking.sync_errors) ? booking.sync_errors : [];
+            updateData.sync_errors = [
+              ...syncErrors.slice(-9),
+              { timestamp: new Date().toISOString(), error: error.message, event_type: 'candidate' }
+            ];
+          }
+        }
+
         // Perform update if needed
         if (needsUpdate) {
+          updateData.sync_source = 'google_calendar';
+          updateData.last_synced_at = new Date().toISOString();
+
           await supabase
             .from('scheduled_bookings')
             .update(updateData)
@@ -210,8 +359,28 @@ serve(async (req) => {
 
           updatedCount++;
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error(`[google-calendar-webhook] Error syncing booking ${booking.id}:`, error);
+        
+        // Store error for later review
+        try {
+          const syncErrors = Array.isArray(booking.sync_errors) ? booking.sync_errors : [];
+          await supabase
+            .from('scheduled_bookings')
+            .update({
+              sync_errors: [
+                ...syncErrors.slice(-9), // Keep last 10 errors
+                {
+                  timestamp: new Date().toISOString(),
+                  error_message: error.message,
+                  event_id: booking.google_event_id
+                }
+              ]
+            })
+            .eq('id', booking.id);
+        } catch (updateError) {
+          console.error(`[google-calendar-webhook] Failed to store sync error:`, updateError);
+        }
       }
     }
 
