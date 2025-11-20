@@ -205,8 +205,9 @@ serve(async (req) => {
       });
     }
 
-    // Create Google Calendar event
+    // Create Google Calendar events (two separate events approach)
     let googleEventId = null;
+    let candidateGoogleEventId = null;
     let googleMeetLink = null;
 
     // Construct candidate profile URL for scorecard submission
@@ -217,9 +218,10 @@ serve(async (req) => {
 
     if (accessToken && calendarIdentity) {
       try {
-        console.log('[create-booking] Creating Google Calendar event...');
+        // 1. Create interviewer's calendar event (always created)
+        console.log('[create-booking] Creating interviewer\'s Google Calendar event...');
 
-        const eventResponse = await fetch(
+        const interviewerEventResponse = await fetch(
           'https://www.googleapis.com/calendar/v3/calendars/primary/events?conferenceDataVersion=1',
           {
             method: 'POST',
@@ -228,19 +230,18 @@ serve(async (req) => {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
-              summary: interviewTitle,
-              description: `Interview scheduled via Virgilio booking system.\n\nCandidate: ${candidate_name}\nEmail: ${candidate_email}${candidate_phone ? `\nPhone: ${candidate_phone}` : ''}${notes ? '\n\nNotes: ' + notes : ''}${candidateProfileUrl ? `\n\n📝 SUBMIT SCORECARD:\n${candidateProfileUrl}` : ''}`,
+              summary: `Interview: ${candidate_name}`,
+              description: `Interview scheduled via Virgilio\n\nCANDIDATE DETAILS:\nName: ${candidate_name}\nEmail: ${candidate_email}${candidate_phone ? `\nPhone: ${candidate_phone}` : ''}${notes ? `\n\nNOTES:\n${notes}` : ''}${candidateProfileUrl ? `\n\n📝 SUBMIT SCORECARD:\n${candidateProfileUrl}` : ''}`,
               start: {
                 dateTime: scheduled_start,
-                timeZone: candidate_timezone,
+                timeZone: config.timezone,
               },
               end: {
                 dateTime: scheduled_end,
-                timeZone: candidate_timezone,
+                timeZone: config.timezone,
               },
               attendees: [
-                { email: candidate_email },
-                { email: profile.email },
+                { email: profile.email }, // Only interviewer
               ],
               conferenceData: {
                 createRequest: {
@@ -259,25 +260,25 @@ serve(async (req) => {
           }
         );
 
-        if (!eventResponse.ok) {
-          const errorText = await eventResponse.text();
-          console.error('[create-booking] Google Calendar API error:', eventResponse.status, errorText);
+        if (!interviewerEventResponse.ok) {
+          const errorText = await interviewerEventResponse.text();
+          console.error('[create-booking] Interviewer calendar event creation failed:', interviewerEventResponse.status, errorText);
           
           await supabase
             .from('calendar_identities')
             .update({ 
               sync_status: 'error', 
-              sync_error_message: `Calendar event creation failed: ${eventResponse.status}`,
+              sync_error_message: `Calendar event creation failed: ${interviewerEventResponse.status}`,
             })
             .eq('id', calendarIdentity.id);
 
           console.warn('[create-booking] Proceeding with booking creation without calendar event');
         } else {
-          const eventData = await eventResponse.json();
-          googleEventId = eventData.id;
-          googleMeetLink = eventData.hangoutLink || eventData.conferenceData?.entryPoints?.[0]?.uri || null;
+          const interviewerEventData = await interviewerEventResponse.json();
+          googleEventId = interviewerEventData.id;
+          googleMeetLink = interviewerEventData.hangoutLink || interviewerEventData.conferenceData?.entryPoints?.[0]?.uri || null;
           
-          console.log('[create-booking] Calendar event created successfully:', googleEventId);
+          console.log('[create-booking] Interviewer calendar event created successfully:', googleEventId);
           
           await supabase
             .from('calendar_identities')
@@ -287,6 +288,59 @@ serve(async (req) => {
               last_sync_at: new Date().toISOString(),
             })
             .eq('id', calendarIdentity.id);
+
+          // 2. Create candidate's calendar event (only if send_invitation is true)
+          if (send_invitation && googleMeetLink) {
+            try {
+              console.log('[create-booking] Creating candidate\'s Google Calendar event...');
+
+              const candidateEventResponse = await fetch(
+                'https://www.googleapis.com/calendar/v3/calendars/primary/events',
+                {
+                  method: 'POST',
+                  headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    summary: interviewTitle,
+                    description: `You have an interview scheduled with ${profile.first_name} ${profile.last_name}.\n\n${googleMeetLink ? `Join via Google Meet: ${googleMeetLink}` : config.meeting_location ? `Location: ${config.meeting_location}` : ''}${notes ? `\n\nAdditional information:\n${notes}` : ''}`,
+                    start: {
+                      dateTime: scheduled_start,
+                      timeZone: candidate_timezone,
+                    },
+                    end: {
+                      dateTime: scheduled_end,
+                      timeZone: candidate_timezone,
+                    },
+                    attendees: [
+                      { email: candidate_email }, // Only candidate
+                    ],
+                    reminders: {
+                      useDefault: false,
+                      overrides: [
+                        { method: 'email', minutes: 24 * 60 },
+                        { method: 'popup', minutes: 30 },
+                      ],
+                    },
+                  }),
+                }
+              );
+
+              if (!candidateEventResponse.ok) {
+                const errorText = await candidateEventResponse.text();
+                console.error('[create-booking] Candidate calendar event creation failed:', candidateEventResponse.status, errorText);
+              } else {
+                const candidateEventData = await candidateEventResponse.json();
+                candidateGoogleEventId = candidateEventData.id;
+                console.log('[create-booking] Candidate calendar event created successfully:', candidateGoogleEventId);
+              }
+            } catch (error) {
+              console.error('[create-booking] Error creating candidate calendar event:', error);
+            }
+          } else {
+            console.log('[create-booking] Skipping candidate calendar event (send_invitation=false or no Meet link)');
+          }
         }
       } catch (error) {
         console.error('[create-booking] Google Calendar integration error:', error);
@@ -299,7 +353,7 @@ serve(async (req) => {
     const bookingId = crypto.randomUUID();
     const icsUid = `booking-${bookingId}@virgilio.io`;
 
-    // Insert booking with all Phase 4 fields
+    // Insert booking with all Phase 4 fields and two-event support
     const { data: booking, error: insertError } = await supabase
       .from('scheduled_bookings')
       .insert({
@@ -318,13 +372,14 @@ serve(async (req) => {
         meeting_type: googleMeetLink ? 'google_meet' : 'other',
         ics_uid: icsUid,
         notes,
-        google_event_id: googleEventId,
+        google_event_id: googleEventId, // Interviewer's event
+        candidate_google_event_id: candidateGoogleEventId, // Candidate's event (null if not sent)
         google_meet_link: googleMeetLink,
         status: 'confirmed',
         // Confirmation tracking
         interviewer_confirmation_status: 'pending',
-        candidate_confirmation_status: 'confirmed',
-        candidate_confirmed_at: new Date().toISOString(),
+        candidate_confirmation_status: send_invitation ? 'pending' : 'not_sent',
+        candidate_confirmed_at: send_invitation ? new Date().toISOString() : null,
         // Internal booking context
         candidate_id: candidate_id || null,
         job_id: job_id || null,
@@ -348,6 +403,11 @@ serve(async (req) => {
       return text.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n');
     };
 
+    // Only include candidate in ICS if send_invitation is true
+    const icsAttendees = send_invitation 
+      ? `ATTENDEE;CN=${escapeICSText(candidate_name)};RSVP=TRUE:mailto:${candidate_email}\r\n`
+      : '';
+
     const icsContent = [
       'BEGIN:VCALENDAR',
       'VERSION:2.0',
@@ -363,7 +423,7 @@ serve(async (req) => {
       `DESCRIPTION:${escapeICSText(`Scheduled via Virgilio\n\nCandidate Notes:\n${notes || 'None'}`)}`,
       `LOCATION:${escapeICSText(googleMeetLink || config.meeting_location || '')}`,
       `ORGANIZER;CN=${escapeICSText(`${profile.first_name} ${profile.last_name}`)}:mailto:${profile.email}`,
-      `ATTENDEE;CN=${escapeICSText(candidate_name)};RSVP=TRUE:mailto:${candidate_email}`,
+      icsAttendees,
       'STATUS:CONFIRMED',
       'SEQUENCE:0',
       'END:VEVENT',
