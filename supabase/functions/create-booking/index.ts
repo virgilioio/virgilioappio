@@ -229,7 +229,7 @@ serve(async (req) => {
             },
             body: JSON.stringify({
               summary: interviewTitle,
-              description: `Interview scheduled via Virgilio booking system.\n\nCandidate: ${candidate_name}\nEmail: ${candidate_email}${notes ? '\n\nNotes: ' + notes : ''}${candidateProfileUrl ? `\n\n📝 SUBMIT SCORECARD:\n${candidateProfileUrl}` : ''}`,
+              description: `Interview scheduled via Virgilio booking system.\n\nCandidate: ${candidate_name}\nEmail: ${candidate_email}${candidate_phone ? `\nPhone: ${candidate_phone}` : ''}${notes ? '\n\nNotes: ' + notes : ''}${candidateProfileUrl ? `\n\n📝 SUBMIT SCORECARD:\n${candidateProfileUrl}` : ''}`,
               start: {
                 dateTime: scheduled_start,
                 timeZone: candidate_timezone,
