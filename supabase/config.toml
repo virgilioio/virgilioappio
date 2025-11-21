@@ -86,3 +86,6 @@ verify_jwt = true
 
 [functions.polish-scorecard-notes]
 verify_jwt = true
+
+[functions.assign-tenant-credits]
+verify_jwt = true

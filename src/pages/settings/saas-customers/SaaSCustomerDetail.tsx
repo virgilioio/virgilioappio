@@ -13,9 +13,11 @@ import { supabase } from '@/lib/supabaseClient'
 import { useSaaSCustomer } from '@/hooks/useSaaSCustomer'
 import { useSuspendOrganization, useRestoreOrganization, useExtendTrial, useActivateAccount } from '@/hooks/useSaaSAdminActions'
 import { useChangePlan } from '@/hooks/useChangePlan'
+import { useAssignTenantCredits } from '@/hooks/useAssignTenantCredits'
 import { SuspendOrganizationDialog } from '@/components/settings/SuspendOrganizationDialog'
 import { ExtendTrialDialog } from '@/components/settings/ExtendTrialDialog'
 import { ChangePlanDialog } from '@/components/settings/ChangePlanDialog'
+import { AssignCreditsDialog } from '@/components/settings/AssignCreditsDialog'
 import { CustomerHealthBadge, HealthStatus } from '@/components/saas/CustomerHealthBadge'
 import { QuickActionsPanel } from '@/components/saas/QuickActionsPanel'
 import { ActivityTimeline } from '@/components/saas/ActivityTimeline'
@@ -33,12 +35,14 @@ export function SaaSCustomerDetail() {
   const [suspendDialogOpen, setSuspendDialogOpen] = useState(false)
   const [extendTrialDialogOpen, setExtendTrialDialogOpen] = useState(false)
   const [changePlanDialogOpen, setChangePlanDialogOpen] = useState(false)
+  const [assignCreditsDialogOpen, setAssignCreditsDialogOpen] = useState(false)
   
   const suspendMutation = useSuspendOrganization()
   const restoreMutation = useRestoreOrganization()
   const extendTrialMutation = useExtendTrial()
   const changePlanMutation = useChangePlan()
   const activateMutation = useActivateAccount()
+  const assignCreditsMutation = useAssignTenantCredits()
 
   // Fetch subscription data for current plan info and billing status
   const { data: subscriptionData } = useQuery({
@@ -50,6 +54,25 @@ export function SaaSCustomerDetail() {
         .select('*')
         .eq('tenant_id', customer.tenant_id)
         .single()
+      
+      if (error) throw error
+      return data
+    },
+    enabled: !!customer?.tenant_id
+  })
+
+  // Fetch current CoreSignal usage
+  const { data: creditUsage } = useQuery({
+    queryKey: ['coresignal-usage', customer?.tenant_id],
+    queryFn: async () => {
+      if (!customer?.tenant_id) return null
+      const { data, error } = await supabase
+        .from('coresignal_usage')
+        .select('*')
+        .eq('tenant_id', customer.tenant_id)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
       
       if (error) throw error
       return data
@@ -235,6 +258,7 @@ export function SaaSCustomerDetail() {
               onSuspend={() => setSuspendDialogOpen(true)}
               onRestore={() => restoreMutation.mutate({ tenantId: customer.tenant_id })}
               onActivate={() => activateMutation.mutate({ tenantId: customer.tenant_id })}
+              onAssignCredits={() => setAssignCreditsDialogOpen(true)}
               billingStatus={subscriptionData?.billing_status}
             />
 
@@ -364,6 +388,24 @@ export function SaaSCustomerDetail() {
         currentTier={subscriptionData?.subscription_tier || null}
         currentInterval={subscriptionData?.billing_interval || null}
         isPending={changePlanMutation.isPending}
+      />
+
+      <AssignCreditsDialog
+        open={assignCreditsDialogOpen}
+        onOpenChange={setAssignCreditsDialogOpen}
+        onConfirm={(searchLimit, collectLimit, resetUsage) => {
+          assignCreditsMutation.mutate({
+            tenantId: customer.tenant_id,
+            searchCreditsLimit: searchLimit,
+            collectCreditsLimit: collectLimit,
+            resetUsage,
+          })
+          setAssignCreditsDialogOpen(false)
+        }}
+        tenantName={customer.name}
+        currentSearchLimit={creditUsage?.search_credits_limit}
+        currentCollectLimit={creditUsage?.collect_credits_limit}
+        isPending={assignCreditsMutation.isPending}
       />
     </div>
   )

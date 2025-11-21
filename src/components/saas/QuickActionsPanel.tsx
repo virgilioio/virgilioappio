@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { ExternalLink, CreditCard, Calendar, Ban, RotateCcw, CheckCircle } from 'lucide-react'
+import { ExternalLink, CreditCard, Calendar, Ban, RotateCcw, CheckCircle, Coins } from 'lucide-react'
 import { SaaSCustomerDetail } from '@/hooks/useSaaSCustomer'
 
 interface QuickActionsPanelProps {
@@ -10,6 +10,7 @@ interface QuickActionsPanelProps {
   onSuspend: () => void
   onRestore: () => void
   onActivate: () => void
+  onAssignCredits: () => void
   billingStatus?: string | null
 }
 
@@ -20,6 +21,7 @@ export function QuickActionsPanel({
   onSuspend,
   onRestore,
   onActivate,
+  onAssignCredits,
   billingStatus,
 }: QuickActionsPanelProps) {
   const openStripePortal = () => {
@@ -37,6 +39,15 @@ export function QuickActionsPanel({
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <Button 
+            variant="outline" 
+            className="gap-2 justify-start border-virgilio-border hover:border-virgilio-purple/30 transition-all"
+            onClick={onAssignCredits}
+          >
+            <Coins className="h-4 w-4" />
+            Assign Credits
+          </Button>
+
           <Button 
             variant="outline" 
             className="gap-2 justify-start border-virgilio-border hover:border-virgilio-purple/30 transition-all"
