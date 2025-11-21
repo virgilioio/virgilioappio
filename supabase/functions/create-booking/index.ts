@@ -378,7 +378,7 @@ serve(async (req) => {
         status: 'confirmed',
         // Confirmation tracking
         interviewer_confirmation_status: 'pending',
-        candidate_confirmation_status: send_invitation ? 'pending' : 'not_sent',
+        candidate_confirmation_status: send_invitation ? 'pending' : null,
         candidate_confirmed_at: send_invitation ? new Date().toISOString() : null,
         // Internal booking context
         candidate_id: candidate_id || null,
