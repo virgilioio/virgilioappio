@@ -190,10 +190,18 @@ Deno.serve(async (req) => {
           )
         }
 
+        // Set max_users based on tier
+        const tierMaxUsers: Record<string, number | null> = {
+          launch: 5,
+          growth: 20,
+          business: null, // unlimited
+        }
+
         updateData = {
           ...updateData,
           subscription_tier: params.newTier.toLowerCase(),
           billing_interval: params.newInterval.toLowerCase(),
+          max_users: tierMaxUsers[params.newTier.toLowerCase()],
         }
         auditAction = 'tenant_subscription_plan_changed'
         break

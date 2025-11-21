@@ -157,7 +157,7 @@ export function SaaSCustomerDetail() {
         <Button 
           variant="ghost" 
           size="sm" 
-          onClick={() => navigate('/settings/platform/saas-customers')}
+          onClick={() => navigate('/settings?tab=platform-saas-customers')}
           className="hover:bg-virgilio-purple/10"
         >
           <ArrowLeft className="h-4 w-4" />
