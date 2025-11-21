@@ -195,7 +195,19 @@ serve(async (req) => {
       
       // Extract criteria from project (use provided criteria if available for refresh)
       criteria = providedCriteria || (project.search_criteria as any);
-      jobSkills = criteria.skills || [];
+      
+      // Ensure skills are properly extracted from criteria (defensive)
+      jobSkills = Array.isArray(criteria?.skills) ? criteria.skills : [];
+
+      // If still empty, try to extract from nested search_criteria (defensive)
+      if (jobSkills.length === 0 && project && project.search_criteria) {
+        const projectCriteria = typeof project.search_criteria === 'string' 
+          ? JSON.parse(project.search_criteria)  
+          : project.search_criteria;
+        jobSkills = Array.isArray(projectCriteria?.skills) ? projectCriteria.skills : [];
+      }
+
+      console.log(`🐛 DEBUG: organization_id=${organization_id}, count_only=${count_only}, jobSkills.length=${jobSkills.length}, jobSkills=${JSON.stringify(jobSkills.slice(0, 3))}${jobSkills.length > 3 ? '...' : ''}`);
       organization_id = project.organization_id;
       tenant_id = project.organizations?.tenant_id || null;
       
@@ -387,7 +399,7 @@ serve(async (req) => {
     
     if (!count_only && organization_id && jobSkills.length > 0) {
       try {
-        console.log('🔍 Searching CoreSignal for additional candidates...');
+        console.log(`🔍 Searching CoreSignal for additional candidates with ${jobSkills.length} skills...`);
         
         // Build search criteria from job or provided criteria
         // For sourcing projects, prefer criteria.locations over job.location
@@ -475,6 +487,9 @@ serve(async (req) => {
         console.error('❌ Unexpected error calling CoreSignal:', error);
         // Continue with local candidates only
       }
+    } else {
+      // Log why CoreSignal was skipped
+      console.warn(`⚠️ CoreSignal search skipped: count_only=${count_only}, has_org_id=${!!organization_id}, skills_count=${jobSkills.length}`);
     }
 
     // Merge local and CoreSignal candidates
