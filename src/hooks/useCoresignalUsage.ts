@@ -63,12 +63,12 @@ export function useCoresignalUsage() {
         billingCycleStart = new Date(now.getFullYear(), now.getMonth(), 1)
       }
 
-      // Step 3: Query usage - get most recent record for this tenant (FIXED: no exact timestamp match)
+      // Step 3: Query usage - get most recent record for this tenant
       const { data, error } = await supabase
         .from('coresignal_usage')
         .select('*')
         .eq('tenant_id', tenantId)
-        .order('billing_cycle_start', { ascending: false })
+        .order('updated_at', { ascending: false })
         .limit(1)
         .maybeSingle()
 
