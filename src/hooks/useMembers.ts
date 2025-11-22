@@ -292,16 +292,19 @@ export function useMembers(includeHierarchy: boolean = false) {
             // Different messages for trial vs paid
             if (limit.is_trial) {
               throw new Error(
-                `Trial seat limit reached (${limit.current_seats}/${limit.seat_limit} seats used, ${limit.over_limit_count} over limit). ` +
+                `Trial seat limit reached (${limit.current_seats ?? 'unknown'}/${limit.seat_limit ?? 'unknown'} seats used, ${limit.over_limit_count ?? 0} over limit). ` +
                 `Upgrade your plan to add more members.`
               )
             } else {
               throw new Error(
-                `Seat limit reached (${limit.current_seats}/${limit.seat_limit}). ` +
+                `Seat limit reached (${limit.current_seats ?? 'unknown'}/${limit.seat_limit ?? 'unknown'}). ` +
                 `Please upgrade your plan to add more members.`
               )
             }
           }
+        } else {
+          // If seatCheck is null/undefined, log warning but don't block
+          log.warn('Seat limit check returned no data, allowing operation to proceed')
         }
       }
       

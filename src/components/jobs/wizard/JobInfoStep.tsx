@@ -7,13 +7,15 @@ import { SearchableSelect, SearchableSelectOption } from '@/components/ui/search
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Button } from '@/components/ui/button'
-import { Check, ChevronsUpDown } from 'lucide-react'
+import { Check, ChevronsUpDown, Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { CreateJobData } from '@/hooks/useJobs'
 import { useChildOrganizationsForJobCreation } from '@/hooks/useChildOrganizationsForJobCreation'
 import { useAuth } from '@/contexts/AuthContext'
 import { CURRENCIES } from '@/constants/currencies'
 import { usePermissions } from '@/hooks/usePermissions'
+import { OrganizationFormSheet } from '@/components/organizations/OrganizationFormSheet'
+import { useOrganizations } from '@/hooks/useOrganizations'
 
 interface JobInfoStepProps {
   jobData: Partial<CreateJobData>
@@ -24,9 +26,11 @@ type JobStatus = 'draft' | 'open' | 'closed' | 'archived'
 
 export function JobInfoStep({ jobData, onUpdate }: JobInfoStepProps) {
   const [currencyOpen, setCurrencyOpen] = React.useState(false)
-  const { data: childOrgs = [], isLoading: isLoadingOrgs } = useChildOrganizationsForJobCreation()
+  const [isOrgFormOpen, setIsOrgFormOpen] = React.useState(false)
+  const { data: childOrgs = [], isLoading: isLoadingOrgs, refetch: refetchOrgs } = useChildOrganizationsForJobCreation()
   const { userType, organizationId } = useAuth()
   const permissions = usePermissions()
+  const { createOrganization, isLoading: isCreatingOrg } = useOrganizations()
 
   // Transform child orgs for SearchableSelect
   const organizationOptions: SearchableSelectOption[] = React.useMemo(() => 
@@ -48,6 +52,20 @@ export function JobInfoStep({ jobData, onUpdate }: JobInfoStepProps) {
 
   const handleInputChange = (field: keyof CreateJobData, value: any) => {
     onUpdate({ [field]: value })
+  }
+
+  const handleCreateOrganization = async (data: any) => {
+    try {
+      const result = await createOrganization(data)
+      await refetchOrgs()
+      setIsOrgFormOpen(false)
+      // Auto-select the newly created organization
+      if (result && typeof result === 'object' && 'id' in result) {
+        onUpdate({ organization_id: result.id })
+      }
+    } catch (error) {
+      console.error('Failed to create organization:', error)
+    }
   }
 
   return (
@@ -84,21 +102,34 @@ export function JobInfoStep({ jobData, onUpdate }: JobInfoStepProps) {
           </Select>
         </div>
 
-        {/* Job Folder - Only show for users who can select org */}
+        {/* Department / Organization - Only show for users who can select org */}
         {canSelectOrganization && (
           <div className="space-y-2">
             <Label htmlFor="organization">
-              Job Folder <span className="text-red-500">*</span>
+              Department / Organization <span className="text-red-500">*</span>
             </Label>
-            <SearchableSelect
-              options={organizationOptions}
-              value={jobData.organization_id || ''}
-              onValueChange={(value) => handleInputChange('organization_id', value)}
-              placeholder={isLoadingOrgs ? "Loading job folders..." : "Select a job folder..."}
-              searchPlaceholder="Search folders..."
-              emptyMessage="No job folders found."
-              disabled={isLoadingOrgs}
-            />
+            <div className="flex gap-2">
+              <div className="flex-1">
+                <SearchableSelect
+                  options={organizationOptions}
+                  value={jobData.organization_id || ''}
+                  onValueChange={(value) => handleInputChange('organization_id', value)}
+                  placeholder={isLoadingOrgs ? "Loading departments..." : "Select a department..."}
+                  searchPlaceholder="Search departments..."
+                  emptyMessage="No departments found."
+                  disabled={isLoadingOrgs}
+                />
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={() => setIsOrgFormOpen(true)}
+                title="Create Organization"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </div>
             <p className="text-xs text-muted-foreground">
               Select which department or client this job belongs to
             </p>
@@ -195,6 +226,14 @@ export function JobInfoStep({ jobData, onUpdate }: JobInfoStepProps) {
           After creating the basic job information, you'll be able to configure the hiring plan with custom stages and assign team members.
         </p>
       </div>
+
+      {/* Organization Creation Sheet */}
+      <OrganizationFormSheet
+        isOpen={isOrgFormOpen}
+        onClose={() => setIsOrgFormOpen(false)}
+        onSubmit={handleCreateOrganization}
+        isLoading={isCreatingOrg}
+      />
     </div>
   )
 }

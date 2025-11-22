@@ -293,19 +293,19 @@ export function JobFormSheet({ isOpen, onClose, onSubmit, job, isLoading }: JobF
             </div>
 
             <div>
-              <Label htmlFor="organization">Organization / Department *</Label>
+              <Label htmlFor="organization">Department / Organization *</Label>
               <Select 
                 value={formData.organization_id} 
                 onValueChange={(value) => setFormData(prev => ({ ...prev, organization_id: value }))}
                 required
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select organization" />
+                  <SelectValue placeholder="Select department or organization" />
                 </SelectTrigger>
                 <SelectContent>
                   {childOrganizations.length === 0 ? (
                     <div className="p-2 text-sm text-muted-foreground">
-                      No child organizations available. Jobs must be assigned to child organizations.
+                      No departments available. Jobs must be assigned to departments.
                     </div>
                   ) : (
                     childOrganizations.map(org => (
@@ -319,13 +319,13 @@ export function JobFormSheet({ isOpen, onClose, onSubmit, job, isLoading }: JobF
               {!formData.organization_id && childOrganizations.length > 0 && (
                 <p className="text-sm text-muted-foreground mt-1">
                   {userType === 'platform_admin' 
-                    ? 'Platform admins must select a child organization' 
-                    : 'Please select a child organization'}
+                    ? 'Platform admins must select a department' 
+                    : 'Please select a department'}
                 </p>
               )}
               {childOrganizations.length === 0 && (
                 <p className="text-sm text-destructive mt-1">
-                  No child organizations available. Contact your administrator.
+                  No departments available. Contact your administrator.
                 </p>
               )}
             </div>
