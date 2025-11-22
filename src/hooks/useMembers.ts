@@ -288,19 +288,18 @@ export function useMembers(includeHierarchy: boolean = false) {
         if (seatCheck) {
           const limit = seatCheck
           
-          if (!limit.allowed) {
-            // Different messages for trial vs paid
-            if (limit.is_trial) {
-              throw new Error(
-                `Trial seat limit reached (${limit.current_seats ?? 'unknown'}/${limit.seat_limit ?? 'unknown'} seats used, ${limit.over_limit_count ?? 0} over limit). ` +
-                `Upgrade your plan to add more members.`
-              )
-            } else {
-              throw new Error(
-                `Seat limit reached (${limit.current_seats ?? 'unknown'}/${limit.seat_limit ?? 'unknown'}). ` +
-                `Please upgrade your plan to add more members.`
-              )
+          // Handle unlimited plans (seat_limit === null means unlimited)
+          if (limit.seat_limit === null || limit.seat_limit === undefined) {
+            log.debug('Unlimited seat plan detected, allowing invitation')
+          } else if (!limit.allowed) {
+            // Seat limit reached - throw specific error that UI will catch
+            const errorData = {
+              type: 'SEAT_LIMIT_REACHED',
+              current_seats: limit.current_seats ?? 0,
+              seat_limit: limit.seat_limit ?? 0,
+              is_trial: limit.is_trial ?? false,
             }
+            throw new Error(JSON.stringify(errorData))
           }
         } else {
           // If seatCheck is null/undefined, log warning but don't block

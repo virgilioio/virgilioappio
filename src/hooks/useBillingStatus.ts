@@ -14,6 +14,7 @@ export interface BillingStatus {
   billing_interval: 'month' | 'year' | null
   stripe_subscription_id: string | null
   subscribed: boolean
+  subscription_tier: 'launch' | 'growth' | 'business' | null
 }
 
 export function useBillingStatus() {
@@ -47,7 +48,8 @@ export function useBillingStatus() {
           seat_quantity,
           billing_interval,
           stripe_subscription_id,
-          subscribed
+          subscribed,
+          subscription_tier
         `)
         .eq('tenant_id', org.tenant_id)
         .single()
@@ -88,6 +90,7 @@ export function useBillingStatus() {
         billing_interval: data.billing_interval as BillingStatus['billing_interval'],
         stripe_subscription_id: data.stripe_subscription_id,
         subscribed: data.subscribed,
+        subscription_tier: data.subscription_tier as BillingStatus['subscription_tier'],
         days_until_trial_end: daysUntilTrialEnd,
         hours_until_trial_end: hoursUntilTrialEnd,
         days_until_lockout: daysUntilLockout,
