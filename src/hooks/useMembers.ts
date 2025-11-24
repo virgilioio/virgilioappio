@@ -6,6 +6,7 @@ import { toast } from '@/hooks/use-toast'
 import { withAuthRetry, extractErrorMessage } from '@/lib/authUtils'
 import { log } from '@/lib/logger'
 import { getOrganizationTree } from '@/lib/organizationHelpers'
+import { useQueryClient } from '@tanstack/react-query'
 
 export interface Member {
   id: string
@@ -46,6 +47,7 @@ export function useMembers(includeHierarchy: boolean = false) {
   const [error, setError] = useState<string | null>(null)
   const { user } = useAuth()
   const { organizationId } = useOrgContext()
+  const queryClient = useQueryClient()
 
   const getMembers = async () => {
     if (!user || !organizationId) return
@@ -416,6 +418,7 @@ export function useMembers(includeHierarchy: boolean = false) {
 
       await getMembers()
       await syncSeatsAfterChange()
+      queryClient.invalidateQueries({ queryKey: ['onboarding-progress'] })
       return newMember
     } catch (err) {
       const errorMessage = extractErrorMessage(err)

@@ -6,6 +6,7 @@ import { toast } from '@/hooks/use-toast'
 import { useJobSpecNormalization } from './useJobSpecNormalization'
 import { withAuthRetry, extractErrorMessage } from '@/lib/authUtils'
 import { log } from '@/lib/logger'
+import { useQueryClient } from '@tanstack/react-query'
 
 export interface Job {
   id: string
@@ -71,6 +72,7 @@ export function useJobs() {
   const [error, setError] = useState<string | null>(null)
   const { user, userId, userType, organizationId } = useAuth()
   const { normalizeJobSpecs } = useJobSpecNormalization()
+  const queryClient = useQueryClient()
 
   // Optimized single query function to replace N+1 pattern
   const getJobsOptimized = async () => {
@@ -292,6 +294,7 @@ export function useJobs() {
       })
 
       await getJobs() // Refresh the list
+      queryClient.invalidateQueries({ queryKey: ['onboarding-progress'] })
       return newJob
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to create job'

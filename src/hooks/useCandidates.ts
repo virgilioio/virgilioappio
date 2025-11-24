@@ -5,6 +5,7 @@ import { withAuthRetry, extractErrorMessage } from '@/lib/authUtils'
 import { toast } from '@/hooks/use-toast'
 import { log } from '@/lib/logger'
 import { checkForDuplicateCandidate, createCandidate, createJobAssociation, mergeCandidate, smartMerge, DuplicateCheckResult } from '@/lib/candidateHelpers'
+import { useQueryClient } from '@tanstack/react-query'
 
 export interface Candidate {
   id: string
@@ -69,6 +70,7 @@ export function useCandidates(jobId: string) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const { user } = useAuth()
+  const queryClient = useQueryClient()
 
   const getCandidates = async () => {
     if (!user || !jobId) return
@@ -275,6 +277,7 @@ export function useCandidates(jobId: string) {
         })
 
         await getCandidates()
+        queryClient.invalidateQueries({ queryKey: ['onboarding-progress'] })
         
         return {
           id: duplicateCheck.existingCandidate.id,
@@ -310,6 +313,7 @@ export function useCandidates(jobId: string) {
       })
 
       await getCandidates()
+      queryClient.invalidateQueries({ queryKey: ['onboarding-progress'] })
       
       return {
         id: newCandidate.id,
