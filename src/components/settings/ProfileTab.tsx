@@ -11,8 +11,7 @@ import { User, Mail, Shield, Save } from 'lucide-react'
 import { AvatarUploader } from './AvatarUploader'
 import { ProfileForm } from './ProfileForm'
 import { PageHeader } from '@/components/layout/PageHeader'
-import { EmailAccountsSection } from './EmailAccountsSection'
-import { CalendarIntegrationSection } from './CalendarIntegrationSection'
+import { GoogleWorkspaceIntegrationSection } from './GoogleWorkspaceIntegrationSection'
 import { BookingLinkSection } from './BookingLinkSection'
 
 interface ProfileFormData {
@@ -151,11 +150,7 @@ export function ProfileTab() {
 
       <Separator className="my-8" />
       
-      <EmailAccountsSection />
-      
-      <Separator className="my-8" />
-      
-      <CalendarIntegrationSection />
+      <GoogleWorkspaceIntegrationSection />
       
       <Separator className="my-8" />
 
