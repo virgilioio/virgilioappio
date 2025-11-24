@@ -114,6 +114,14 @@ export function useOnboardingProgress() {
       route: '/settings?tab=profile'
     },
     {
+      id: 'google',
+      title: 'Connect Google Workspace',
+      description: 'Enable Gmail and Google Calendar integration',
+      completed: progress?.task_google_connected || false,
+      manuallyCompleted: progress?.task_google_manual || false,
+      route: '/settings?tab=profile&highlight=google'
+    },
+    {
       id: 'booking',
       title: 'Configure Booking Link',
       description: 'Set up your availability for scheduling interviews',
