@@ -13,10 +13,13 @@ import { FormField } from '@/components/ui/form-field'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
 import { useTenant } from '@/hooks/useTenant'
+import { useJobBoardIntegration } from '@/hooks/useJobBoardIntegration'
 import { SafeHtml } from '@/components/ui/safe-html'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { ExternalLink } from 'lucide-react'
+import { ExternalLink, Globe, Info } from 'lucide-react'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 // Currency functionality removed
 
 interface PostingSheetProps {
@@ -41,6 +44,7 @@ export function PostingSheet({
   const { toast } = useToast()
   const { getPosting, createPosting, updatePosting } = useJobPostings(jobId)
   const { tenant } = useTenant()
+  const { integration: talentIntegration, isEnabled: talentEnabled } = useJobBoardIntegration('talent')
   // Currency functionality removed
   const currencies: any[] = []
 
@@ -60,6 +64,7 @@ export function PostingSheet({
   const [hasCommissions, setHasCommissions] = useState<boolean>(false)
   const [commissionsCurrency, setCommissionsCurrency] = useState<string>('USD')
   const [commissionsAmount, setCommissionsAmount] = useState<string>('')
+  const [publishToTalent, setPublishToTalent] = useState<boolean>(false)
 
   useEffect(() => {
     setLocalId(postingId)
@@ -83,6 +88,7 @@ export function PostingSheet({
           setHasCommissions(!!d.has_commissions)
           setCommissionsCurrency(d.commissions_currency || 'USD')
           setCommissionsAmount(d.commissions_amount != null ? String(d.commissions_amount) : '')
+          setPublishToTalent((p as any).publish_to_talent || false)
           setIsExternalUpdate(true)
         }
       } else {
@@ -98,6 +104,7 @@ export function PostingSheet({
         setHasCommissions(false)
         setCommissionsCurrency('USD')
         setCommissionsAmount('')
+        setPublishToTalent(false)
         setIsExternalUpdate(true)
       }
     }
@@ -124,12 +131,14 @@ export function PostingSheet({
     }
 
     if (localId) {
-      await updatePosting(localId, { title, description, details })
+      await updatePosting(localId, { title, description, details, publish_to_talent: publishToTalent } as any)
       toast({ title: 'Saved', description: 'Posting updated' })
     } else {
       const created = await createPosting({ title, description, details })
       if (created) {
         setLocalId(created.id)
+        // Update with publish_to_talent flag
+        await updatePosting(created.id, { publish_to_talent: publishToTalent } as any)
         toast({ title: 'Created', description: 'Posting created' })
       }
     }
@@ -299,6 +308,48 @@ export function PostingSheet({
                 </Card>
               </section>
             )}
+
+            {/* Job Boards Publishing Section */}
+            <section aria-labelledby="job-boards-publishing" className="space-y-3">
+              <h3 id="job-boards-publishing" className="text-sm font-medium text-text-primary">
+                Job Board Publishing
+              </h3>
+              <Card className="bg-muted/30">
+                <CardContent className="pt-4">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <Globe className="h-4 w-4 text-muted-foreground" />
+                        <Label htmlFor="publish-talent" className="text-sm font-medium">
+                          Publish to Talent.com
+                        </Label>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Make this job visible on Talent.com job board
+                      </p>
+                    </div>
+                    <Switch
+                      id="publish-talent"
+                      checked={publishToTalent}
+                      onCheckedChange={setPublishToTalent}
+                      disabled={readOnly || !talentEnabled}
+                    />
+                  </div>
+                  
+                  {!talentEnabled && (
+                    <Alert className="mt-3">
+                      <Info className="h-4 w-4" />
+                      <AlertDescription className="text-xs">
+                        Enable Talent.com integration in{' '}
+                        <a href="/settings?tab=job-boards" className="underline" target="_blank" rel="noopener noreferrer">
+                          Settings &gt; Workspace &gt; Job Boards
+                        </a>
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </CardContent>
+              </Card>
+            </section>
 
             <FormField label="Description">
               <RichTextEditor

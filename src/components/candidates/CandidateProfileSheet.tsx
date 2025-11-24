@@ -14,7 +14,7 @@ import { CandidateResumeViewer } from '@/components/candidates/CandidateResumeVi
 import { CandidateUrls } from '@/components/candidates/CandidateUrls'
 import { CandidateWorkExperienceComponent, CandidateWorkExperience } from '@/components/candidates/CandidateWorkExperience'
 import { CandidateEducationComponent, CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
-import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight, CheckCircle2, Circle, MoveRight, ThumbsDown, ThumbsUp, Star, Octagon, Mail, Phone, Copy, ExternalLink, Send, X, Check, RotateCcw, Activity, StickyNote, Sparkles, Calendar } from 'lucide-react'
+import { Edit, FileText, Clock, Download, ChevronLeft, ChevronRight, CheckCircle2, Circle, MoveRight, ThumbsDown, ThumbsUp, Star, Octagon, Mail, Phone, Copy, ExternalLink, Send, X, Check, RotateCcw, Activity, StickyNote, Sparkles, Calendar, Globe } from 'lucide-react'
 import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
@@ -465,10 +465,16 @@ const [oldBookingId, setOldBookingId] = useState<string | null>(null)
                    {/* Left column (50%) */}
                    <div className="space-y-6">
                      {/* Controls Card */}
-                     <Card className="bg-surface-primary border-border">
+                      <Card className="bg-surface-primary border-border">
                         <CardContent className="p-4">
                            <div className="flex items-center justify-between w-full">
                               <div className="flex items-center gap-2">
+                                {candidate.job_board_source && (
+                                  <Badge variant="secondary" className="gap-1">
+                                    <Globe className="h-3 w-3" />
+                                    Applied via {candidate.job_board_source}
+                                  </Badge>
+                                )}
                                 {/* Move to Pipeline button for suggested candidates */}
                                 {!associationId && jobId && candidate.id && (
                                   <MoveToPipelineMenu

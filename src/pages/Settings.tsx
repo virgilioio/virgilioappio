@@ -17,6 +17,7 @@ import { CustomerManagementTab } from '@/pages/settings/customer-management/Cust
 import { SaaSSubscription } from '@/pages/settings/saas-customers/SaaSSubscription'
 import { SaaSCustomersList } from '@/pages/settings/saas-customers/SaaSCustomersList'
 import { Billing } from '@/pages/settings/Billing'
+import { JobBoardsTab } from '@/pages/settings/JobBoardsTab'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useAuth } from '@/contexts/AuthContext'
 import { AppContainer } from '@/components/layout/AppContainer'
@@ -167,6 +168,13 @@ export default function Settings() {
                 {(isPlatformAdmin || isWorkspaceOwnerOfSaaSOrg()) && (
                   <TabsContent value="workspace-job-settings">
                     <JobSettingsManager />
+                  </TabsContent>
+                )}
+
+                {/* Job Boards Tab for Workspace Owners */}
+                {(isPlatformAdmin || isWorkspaceOwnerOfSaaSOrg()) && (
+                  <TabsContent value="job-boards">
+                    <JobBoardsTab />
                   </TabsContent>
                 )}
               </div>
