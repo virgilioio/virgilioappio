@@ -11,6 +11,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { MetricCard } from '@/components/ui/metric-card'
 import { supabase } from '@/lib/supabaseClient'
 import { useSaaSCustomer } from '@/hooks/useSaaSCustomer'
+import { OnboardingProgressCard } from '@/components/settings/OnboardingProgressCard'
 import { useSuspendOrganization, useRestoreOrganization, useExtendTrial, useActivateAccount } from '@/hooks/useSaaSAdminActions'
 import { useChangePlan } from '@/hooks/useChangePlan'
 import { useAssignTenantCredits } from '@/hooks/useAssignTenantCredits'
@@ -261,6 +262,9 @@ export function SaaSCustomerDetail() {
               onAssignCredits={() => setAssignCreditsDialogOpen(true)}
               billingStatus={subscriptionData?.billing_status}
             />
+
+            {/* Onboarding Progress Card */}
+            <OnboardingProgressCard tenantId={customer.id} />
 
             {/* Owner Contact Card */}
             {customer.owner_details && (
