@@ -82,6 +82,7 @@ export default function PublicJobPosting() {
   const [showConfirmationDialog, setShowConfirmationDialog] = useState(false)
   const [organizationName, setOrganizationName] = useState<string>('')
   const [companySlug, setCompanySlug] = useState<string | null>(null)
+  const [tenantAbout, setTenantAbout] = useState<string | null>(null)
   
   const { coreFields } = useCoreFields()
   // Canonical host redirect to app.virgilio.io (skip local dev)
@@ -134,6 +135,18 @@ export default function PublicJobPosting() {
       // Extract organization name
       const orgName = (p as any)?.jobs?.organizations?.name || 'our company'
       setOrganizationName(orgName)
+
+      // Fetch tenant data (about and company slug)
+      const { data: tenantData } = await supabase
+        .from('tenants')
+        .select('about, name')
+        .eq('id', (p as any).tenant_id)
+        .maybeSingle()
+      
+      if (tenantData) {
+        setTenantAbout(tenantData.about)
+        setOrganizationName(tenantData.name) // Use tenant name for consistency
+      }
 
       // Fetch company slug from careers page settings
       const { data: careersSettings } = await supabase
@@ -546,10 +559,29 @@ export default function PublicJobPosting() {
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               <div className="order-2 lg:order-1 lg:col-span-2 space-y-8">
                 <section aria-labelledby="job-description">
-                  {posting.description && (
+                  {(tenantAbout || posting.description) && (
                     <Card>
-                      <CardContent>
-                        <SafeHtml content={posting.description} className="prose prose-sm text-text-secondary max-w-none" />
+                      <CardContent className="space-y-6">
+                        {/* Tenant About comes first for company context */}
+                        {tenantAbout && (
+                          <SafeHtml 
+                            content={tenantAbout} 
+                            className="prose prose-sm text-text-secondary max-w-none" 
+                          />
+                        )}
+                        
+                        {/* Subtle separator if both exist */}
+                        {tenantAbout && posting.description && (
+                          <div className="border-t border-border/50 my-6" />
+                        )}
+                        
+                        {/* Job description */}
+                        {posting.description && (
+                          <SafeHtml 
+                            content={posting.description} 
+                            className="prose prose-sm text-text-secondary max-w-none" 
+                          />
+                        )}
                       </CardContent>
                     </Card>
                   )}
