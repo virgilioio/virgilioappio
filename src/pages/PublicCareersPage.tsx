@@ -95,7 +95,7 @@ export default function PublicCareersPage() {
             details,
             created_at,
             job_id,
-            jobs!inner (
+            jobs (
               id,
               location,
               job_type,
@@ -104,11 +104,18 @@ export default function PublicCareersPage() {
             )
           `)
           .eq('is_active', true)
-          .eq('jobs.tenant_id', settingsData.tenant_id)
           .order('created_at', { ascending: false })
 
+        console.log('Fetched postings:', postingsData)
+        console.log('Tenant ID to match:', settingsData.tenant_id)
+
         if (!postingsError && postingsData) {
-          setPostings(postingsData as any[])
+          // Filter by tenant_id in JavaScript for better visibility
+          const filteredPostings = postingsData.filter(
+            (p: any) => p.jobs?.tenant_id === settingsData.tenant_id
+          )
+          console.log('Filtered postings:', filteredPostings)
+          setPostings(filteredPostings as any[])
         }
 
         setIsLoading(false)
@@ -152,7 +159,7 @@ export default function PublicCareersPage() {
   }
 
   const handleViewJob = (slug: string) => {
-    window.open(`/apply/${slug}`, '_blank', 'noopener,noreferrer')
+    window.open(`/p/${slug}`, '_blank', 'noopener,noreferrer')
   }
 
   return (
