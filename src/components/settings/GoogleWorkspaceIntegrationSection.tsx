@@ -80,7 +80,7 @@ export function GoogleWorkspaceIntegrationSection() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" data-onboarding-target="google">
       <div>
         <h3 className="text-lg font-semibold mb-1">Google Workspace Integration</h3>
         <p className="text-sm text-muted-foreground">
