@@ -96,11 +96,12 @@ export default function PublicCareersPage() {
               id,
               location,
               job_type,
-              organization_id
+              organization_id,
+              tenant_id
             )
           `)
           .eq('is_active', true)
-          .eq('jobs.organization_id', settingsData.tenant_id)
+          .eq('jobs.tenant_id', settingsData.tenant_id)
           .order('created_at', { ascending: false })
 
         if (!postingsError && postingsData) {
