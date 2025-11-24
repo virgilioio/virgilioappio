@@ -159,8 +159,8 @@ export default function PublicCareersPage() {
       {/* Header */}
       <header className="border-b border-virgilio-border bg-surface-primary">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="text-center space-y-4">
-            <div className="flex justify-center">
+          <div className="space-y-4">
+            <div className="flex">
               {settings.logo_url ? (
                 <img
                   src={settings.logo_url}
@@ -178,14 +178,14 @@ export default function PublicCareersPage() {
               )}
             </div>
             {settings.show_company_name && tenantInfo && (
-              <div className="flex justify-center">
+              <div className="flex">
                 <PageTitle as="h1">
                   {tenantInfo.name}
                 </PageTitle>
               </div>
             )}
             {settings.header_text && (
-              <p className="text-text-secondary max-w-2xl mx-auto">
+              <p className="text-text-secondary max-w-2xl">
                 {settings.header_text}
               </p>
             )}
