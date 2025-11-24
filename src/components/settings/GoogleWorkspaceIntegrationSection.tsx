@@ -5,6 +5,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { AlertCircle, CheckCircle, XCircle } from "lucide-react"
 import { GoogleLogo } from "@/components/icons/GoogleLogo"
 import { GoogleCalendarLogo } from "@/components/icons/GoogleCalendarLogo"
+import { GmailLogo } from "@/components/icons/GmailLogo"
 import { useMailIdentities } from "@/hooks/useMailIdentities"
 import { useCalendarIdentities } from "@/hooks/useCalendarIdentities"
 import { useAuth } from "@/contexts/AuthContext"
@@ -101,10 +102,7 @@ export function GoogleWorkspaceIntegrationSection() {
           <CardContent className="space-y-3">
             <div className="flex flex-col gap-2 text-sm text-muted-foreground">
               <div className="flex items-center gap-2">
-                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" fill="#EA4335"/>
-                  <path d="M22 6l-10 7L2 6" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
+                <GmailLogo className="h-4 w-4" />
                 <span>Send emails directly from Virgilio</span>
               </div>
               <div className="flex items-center gap-2">
@@ -172,15 +170,12 @@ export function GoogleWorkspaceIntegrationSection() {
               </div>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Email Service Status */}
+              {/* Gmail Status */}
               {hasMailConnection && mailIdentities && (
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 text-sm font-medium">
-                    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" fill="#EA4335"/>
-                      <path d="M22 6l-10 7L2 6" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                    Email Service
+                    <GmailLogo className="h-4 w-4" />
+                    Gmail
                   </div>
                   <div className="space-y-2 text-sm pl-6">
                     <div className="flex items-center justify-between">
@@ -232,11 +227,8 @@ export function GoogleWorkspaceIntegrationSection() {
               {!hasMailConnection && (
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" fill="#EA4335"/>
-                      <path d="M22 6l-10 7L2 6" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                    Email Service
+                    <GmailLogo className="h-4 w-4" />
+                    Gmail
                   </div>
                   <div className="pl-6">
                     <Badge variant="secondary" className="gap-1">
