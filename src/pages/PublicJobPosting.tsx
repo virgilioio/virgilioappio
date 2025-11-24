@@ -564,10 +564,15 @@ export default function PublicJobPosting() {
                       <CardContent className="space-y-6">
                         {/* Tenant About comes first for company context */}
                         {tenantAbout && (
-                          <SafeHtml 
-                            content={tenantAbout} 
-                            className="prose prose-sm text-text-secondary max-w-none" 
-                          />
+                          <div className="space-y-3">
+                            <h3 className="text-lg font-semibold text-text-primary">
+                              About {organizationName}
+                            </h3>
+                            <SafeHtml 
+                              content={tenantAbout} 
+                              className="prose prose-sm text-text-secondary max-w-none" 
+                            />
+                          </div>
                         )}
                         
                         {/* Subtle separator if both exist */}
