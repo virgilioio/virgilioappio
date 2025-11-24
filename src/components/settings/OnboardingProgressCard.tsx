@@ -14,9 +14,11 @@ export function OnboardingProgressCard({ tenantId }: OnboardingProgressCardProps
   
   if (isLoading) {
     return (
-      <Card className="card-brand">
+      <Card className="shadow-calendly border-virgilio-border">
         <CardHeader>
-          <CardTitle>Onboarding Progress</CardTitle>
+          <CardTitle className="text-h4-mobile md:text-h4-desktop font-poppins font-bold text-virgilio-text">
+            Onboarding Progress<span className="text-virgilio-purple">.</span>
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="animate-pulse space-y-3">
@@ -41,23 +43,25 @@ export function OnboardingProgressCard({ tenantId }: OnboardingProgressCardProps
   };
   
   return (
-    <Card className="card-brand">
+    <Card className="shadow-calendly border-virgilio-border">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-        <CardTitle className="text-base font-medium">Onboarding Progress</CardTitle>
+        <CardTitle className="text-h4-mobile md:text-h4-desktop font-poppins font-bold text-virgilio-text">
+          Onboarding Progress<span className="text-virgilio-purple">.</span>
+        </CardTitle>
         {getStatusBadge()}
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="space-y-2">
           <div className="flex items-center justify-between text-sm">
-            <span className="text-secondary-foreground font-medium">
+            <span className="text-virgilio-text font-medium">
               {completedCount} of {totalCount} tasks completed
             </span>
-            <span className="text-tertiary">{Math.round(progressPercent)}%</span>
+            <span className="text-virgilio-muted">{Math.round(progressPercent)}%</span>
           </div>
           <Progress 
             value={progressPercent} 
             className="h-2"
-            indicatorClassName="bg-primary"
+            indicatorClassName="bg-virgilio-purple"
           />
         </div>
         
@@ -68,11 +72,11 @@ export function OnboardingProgressCard({ tenantId }: OnboardingProgressCardProps
               className="flex items-center gap-2 text-sm"
             >
               {task.completed ? (
-                <CheckCircle2 className="h-4 w-4 text-primary flex-shrink-0" />
+                <CheckCircle2 className="h-4 w-4 text-virgilio-purple flex-shrink-0" />
               ) : (
-                <Circle className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                <Circle className="h-4 w-4 text-virgilio-muted flex-shrink-0" />
               )}
-              <span className={task.completed ? "text-foreground" : "text-muted-foreground"}>
+              <span className={task.completed ? "text-virgilio-text" : "text-virgilio-muted"}>
                 {task.title}
               </span>
             </div>
@@ -81,7 +85,7 @@ export function OnboardingProgressCard({ tenantId }: OnboardingProgressCardProps
         
         {isComplete && completedAt && (
           <div className="pt-2 border-t border-border">
-            <p className="text-xs text-tertiary">
+            <p className="text-xs text-virgilio-muted">
               Completed {formatDistanceToNow(new Date(completedAt), { addSuffix: true })}
             </p>
           </div>
