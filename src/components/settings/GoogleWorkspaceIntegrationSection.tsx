@@ -2,13 +2,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
-import { AlertCircle, CheckCircle, XCircle, Mail, Calendar } from "lucide-react"
+import { AlertCircle, CheckCircle, XCircle } from "lucide-react"
 import { GoogleLogo } from "@/components/icons/GoogleLogo"
+import { GoogleCalendarLogo } from "@/components/icons/GoogleCalendarLogo"
 import { useMailIdentities } from "@/hooks/useMailIdentities"
 import { useCalendarIdentities } from "@/hooks/useCalendarIdentities"
 import { useAuth } from "@/contexts/AuthContext"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
-import { formatDistanceToNow } from "date-fns"
 import { useSyncGmail } from "@/hooks/useSyncGmail"
 
 export function GoogleWorkspaceIntegrationSection() {
@@ -101,11 +101,14 @@ export function GoogleWorkspaceIntegrationSection() {
           <CardContent className="space-y-3">
             <div className="flex flex-col gap-2 text-sm text-muted-foreground">
               <div className="flex items-center gap-2">
-                <Mail className="h-4 w-4 text-virgilio-purple" />
+                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" fill="#EA4335"/>
+                  <path d="M22 6l-10 7L2 6" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
                 <span>Send emails directly from Virgilio</span>
               </div>
               <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-virgilio-purple" />
+                <GoogleCalendarLogo className="h-4 w-4" />
                 <span>Schedule interviews and check availability</span>
               </div>
             </div>
@@ -173,7 +176,10 @@ export function GoogleWorkspaceIntegrationSection() {
               {hasMailConnection && mailIdentities && (
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 text-sm font-medium">
-                    <Mail className="h-4 w-4 text-virgilio-purple" />
+                    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" fill="#EA4335"/>
+                      <path d="M22 6l-10 7L2 6" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
                     Email Service
                   </div>
                   <div className="space-y-2 text-sm pl-6">
@@ -181,26 +187,6 @@ export function GoogleWorkspaceIntegrationSection() {
                       <span className="text-muted-foreground">Status:</span>
                       {getSyncStatusBadge(mailIdentities[0].sync_status)}
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Provider:</span>
-                      <span className="font-medium capitalize">{mailIdentities[0].provider}</span>
-                    </div>
-                    {mailIdentities[0].last_sync_at && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">Last synced:</span>
-                        <span className="font-medium">
-                          {formatDistanceToNow(new Date(mailIdentities[0].last_sync_at), { addSuffix: true })}
-                        </span>
-                      </div>
-                    )}
-                    {mailIdentities[0].token_expires_at && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">Token expires:</span>
-                        <span className="font-medium">
-                          {formatDistanceToNow(new Date(mailIdentities[0].token_expires_at), { addSuffix: true })}
-                        </span>
-                      </div>
-                    )}
                     <div className="pt-2">
                       <Button 
                         variant="outline" 
@@ -219,7 +205,7 @@ export function GoogleWorkspaceIntegrationSection() {
               {hasCalendarConnection && calendarIdentities && (
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 text-sm font-medium">
-                    <Calendar className="h-4 w-4 text-virgilio-purple" />
+                    <GoogleCalendarLogo className="h-4 w-4" />
                     Calendar Service
                   </div>
                   <div className="space-y-2 text-sm pl-6">
@@ -227,26 +213,6 @@ export function GoogleWorkspaceIntegrationSection() {
                       <span className="text-muted-foreground">Status:</span>
                       {getSyncStatusBadge(calendarIdentities[0].sync_status || 'healthy')}
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Provider:</span>
-                      <span className="font-medium capitalize">{calendarIdentities[0].provider}</span>
-                    </div>
-                    {calendarIdentities[0].last_sync_at && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">Last synced:</span>
-                        <span className="font-medium">
-                          {formatDistanceToNow(new Date(calendarIdentities[0].last_sync_at), { addSuffix: true })}
-                        </span>
-                      </div>
-                    )}
-                    {calendarIdentities[0].token_expires_at && (
-                      <div className="flex items-center justify-between">
-                        <span className="text-muted-foreground">Token expires:</span>
-                        <span className="font-medium">
-                          {formatDistanceToNow(new Date(calendarIdentities[0].token_expires_at), { addSuffix: true })}
-                        </span>
-                      </div>
-                    )}
                     {calendarIdentities[0].sync_status === 'expired' && (
                       <div className="pt-2">
                         <Button
@@ -266,7 +232,10 @@ export function GoogleWorkspaceIntegrationSection() {
               {!hasMailConnection && (
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                    <Mail className="h-4 w-4" />
+                    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" fill="#EA4335"/>
+                      <path d="M22 6l-10 7L2 6" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
                     Email Service
                   </div>
                   <div className="pl-6">
@@ -284,7 +253,7 @@ export function GoogleWorkspaceIntegrationSection() {
               {!hasCalendarConnection && (
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                    <Calendar className="h-4 w-4" />
+                    <GoogleCalendarLogo className="h-4 w-4" />
                     Calendar Service
                   </div>
                   <div className="pl-6">
