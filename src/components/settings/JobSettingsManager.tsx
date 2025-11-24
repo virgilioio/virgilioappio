@@ -1,6 +1,7 @@
 import { JobStagesManager } from './JobStagesManager'
 import { ApplicationFieldsManager } from './ApplicationFieldsManager'
 import { OfferTemplatesManager } from './OfferTemplatesManager'
+import { CareersPageTab } from './CareersPageTab'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { PageHeader } from '@/components/layout/PageHeader'
 
@@ -24,6 +25,7 @@ export function JobSettingsManager({ context = 'organization' }: JobSettingsMana
           <TabsTrigger value="stages">Stages Library</TabsTrigger>
           <TabsTrigger value="application-fields">Application Fields</TabsTrigger>
           <TabsTrigger value="templates">Templates</TabsTrigger>
+          <TabsTrigger value="careers-page">Careers Page</TabsTrigger>
         </TabsList>
         <TabsContent value="stages" className="mt-4">
           <JobStagesManager context={context} />
@@ -33,6 +35,9 @@ export function JobSettingsManager({ context = 'organization' }: JobSettingsMana
         </TabsContent>
         <TabsContent value="templates" className="mt-4">
           <OfferTemplatesManager context={context} />
+        </TabsContent>
+        <TabsContent value="careers-page" className="mt-4">
+          <CareersPageTab />
         </TabsContent>
       </Tabs>
     </div>

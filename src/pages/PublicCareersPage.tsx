@@ -1,0 +1,262 @@
+import { useEffect, useState } from 'react'
+import { useParams } from 'react-router-dom'
+import { supabase } from '@/lib/supabaseClient'
+import { Card } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Briefcase, MapPin, Clock, Loader2 } from 'lucide-react'
+import VirgilioLogo from '@/assets/virgilio_hor_1.svg'
+
+interface CareersSettings {
+  id: string
+  tenant_id: string
+  logo_url: string | null
+  company_website_url: string | null
+  company_slug: string
+  page_title: string
+  header_text: string | null
+  show_company_name: boolean
+}
+
+interface TenantInfo {
+  id: string
+  name: string
+}
+
+interface JobPosting {
+  id: string
+  title: string
+  description: string | null
+  slug: string
+  details: any
+  created_at: string
+  job_id: string
+  jobs: {
+    id: string
+    location: string | null
+    job_type: string | null
+    organization_id: string
+  }
+}
+
+export default function PublicCareersPage() {
+  const { companySlug } = useParams<{ companySlug: string }>()
+  const [settings, setSettings] = useState<CareersSettings | null>(null)
+  const [tenantInfo, setTenantInfo] = useState<TenantInfo | null>(null)
+  const [postings, setPostings] = useState<JobPosting[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!companySlug) {
+        setError('No company slug provided')
+        setIsLoading(false)
+        return
+      }
+
+      try {
+        // Fetch careers page settings
+        const { data: settingsData, error: settingsError } = await supabase
+          .from('careers_page_settings')
+          .select('*')
+          .eq('company_slug', companySlug)
+          .eq('is_active', true)
+          .single()
+
+        if (settingsError || !settingsData) {
+          setError('Company careers page not found')
+          setIsLoading(false)
+          return
+        }
+
+        setSettings(settingsData)
+
+        // Fetch tenant info
+        const { data: tenantData, error: tenantError } = await supabase
+          .from('tenants')
+          .select('id, name')
+          .eq('id', settingsData.tenant_id)
+          .single()
+
+        if (!tenantError && tenantData) {
+          setTenantInfo(tenantData)
+        }
+
+        // Fetch active job postings for this tenant
+        const { data: postingsData, error: postingsError } = await supabase
+          .from('job_postings')
+          .select(`
+            id,
+            title,
+            description,
+            slug,
+            details,
+            created_at,
+            job_id,
+            jobs!inner (
+              id,
+              location,
+              job_type,
+              organization_id
+            )
+          `)
+          .eq('is_active', true)
+          .eq('jobs.organization_id', settingsData.tenant_id)
+          .order('created_at', { ascending: false })
+
+        if (!postingsError && postingsData) {
+          setPostings(postingsData as any[])
+        }
+
+        setIsLoading(false)
+      } catch (err) {
+        console.error('Error fetching careers page:', err)
+        setError('Failed to load careers page')
+        setIsLoading(false)
+      }
+    }
+
+    fetchData()
+  }, [companySlug])
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-surface-primary">
+        <Loader2 className="h-8 w-8 animate-spin text-virgilio-purple" />
+      </div>
+    )
+  }
+
+  if (error || !settings) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-surface-primary">
+        <Card className="max-w-md w-full mx-4 p-6 text-center">
+          <h1 className="text-2xl font-bold text-virgilio-text mb-2">
+            {error || 'Page Not Found'}
+          </h1>
+          <p className="text-text-tertiary">
+            The careers page you're looking for doesn't exist or is no longer available.
+          </p>
+        </Card>
+      </div>
+    )
+  }
+
+  const handleLogoClick = () => {
+    if (settings.company_website_url) {
+      window.open(settings.company_website_url, '_blank', 'noopener,noreferrer')
+    }
+  }
+
+  const handleViewJob = (slug: string) => {
+    window.open(`/apply/${slug}`, '_blank', 'noopener,noreferrer')
+  }
+
+  return (
+    <div className="min-h-screen bg-surface-primary">
+      {/* Header */}
+      <header className="border-b border-virgilio-border bg-surface-primary">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="text-center space-y-4">
+            {settings.logo_url && (
+              <div className="flex justify-center">
+                <img
+                  src={settings.logo_url}
+                  alt={tenantInfo?.name || 'Company logo'}
+                  className={`max-h-16 object-contain ${settings.company_website_url ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
+                  onClick={handleLogoClick}
+                />
+              </div>
+            )}
+            {settings.show_company_name && tenantInfo && (
+              <h1 className="text-3xl font-bold text-virgilio-text">
+                {tenantInfo.name}
+              </h1>
+            )}
+            <h2 className="text-2xl font-semibold text-virgilio-text">
+              {settings.page_title}
+            </h2>
+            {settings.header_text && (
+              <p className="text-text-secondary max-w-2xl mx-auto">
+                {settings.header_text}
+              </p>
+            )}
+          </div>
+        </div>
+      </header>
+
+      {/* Job Listings */}
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        {postings.length === 0 ? (
+          <Card className="p-12 text-center">
+            <Briefcase className="h-12 w-12 mx-auto text-text-tertiary mb-4" />
+            <h3 className="text-xl font-semibold text-virgilio-text mb-2">
+              No open positions at this time
+            </h3>
+            <p className="text-text-tertiary">
+              Check back soon for new opportunities!
+            </p>
+          </Card>
+        ) : (
+          <div className="space-y-4">
+            {postings.map((posting) => (
+              <Card
+                key={posting.id}
+                className="p-6 hover:shadow-[var(--shadow-lg)] transition-all cursor-pointer"
+                onClick={() => handleViewJob(posting.slug)}
+              >
+                <div className="flex justify-between items-start gap-4">
+                  <div className="flex-1 space-y-3">
+                    <div>
+                      <h3 className="text-xl font-semibold text-virgilio-text mb-2">
+                        {posting.title}
+                      </h3>
+                      <div className="flex flex-wrap gap-3 text-sm text-text-secondary">
+                        {posting.jobs.location && (
+                          <div className="flex items-center gap-1">
+                            <MapPin className="h-4 w-4" />
+                            <span>{posting.jobs.location}</span>
+                          </div>
+                        )}
+                        {posting.jobs.job_type && (
+                          <div className="flex items-center gap-1">
+                            <Clock className="h-4 w-4" />
+                            <span>{posting.jobs.job_type}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    {posting.description && (
+                      <p className="text-text-secondary line-clamp-2">
+                        {posting.description}
+                      </p>
+                    )}
+                  </div>
+                  <Button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleViewJob(posting.slug)
+                    }}
+                  >
+                    View Details
+                  </Button>
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
+      </main>
+
+      {/* Footer */}
+      <footer className="border-t border-virgilio-border bg-surface-primary mt-16">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex items-center justify-center gap-2 text-sm text-text-tertiary">
+            <span>Powered by</span>
+            <img src={VirgilioLogo} alt="Virgilio" className="h-4" />
+          </div>
+        </div>
+      </footer>
+    </div>
+  )
+}
