@@ -2156,7 +2156,6 @@ export type Database = {
           hiring_team: Json | null
           id: string
           last_skills_generation: string | null
-          level: Database["public"]["Enums"]["job_level"] | null
           location: string | null
           normalization_metadata: Json | null
           organization_id: string
@@ -2182,7 +2181,6 @@ export type Database = {
           hiring_team?: Json | null
           id?: string
           last_skills_generation?: string | null
-          level?: Database["public"]["Enums"]["job_level"] | null
           location?: string | null
           normalization_metadata?: Json | null
           organization_id: string
@@ -2208,7 +2206,6 @@ export type Database = {
           hiring_team?: Json | null
           id?: string
           last_skills_generation?: string | null
-          level?: Database["public"]["Enums"]["job_level"] | null
           location?: string | null
           normalization_metadata?: Json | null
           organization_id?: string
@@ -4657,11 +4654,6 @@ export type Database = {
         | "yes_no"
         | "single_select"
         | "multi_select"
-      job_level:
-        | "L1 - Specialists"
-        | "L2 - Managers"
-        | "L3 - Directors / VPs / Executive Search"
-        | "L4 - C-Level"
       job_status: "draft" | "open" | "closed" | "archived"
       member_role: "admin" | "recruiter" | "hiring_manager" | "interviewer"
       org_kind_enum: "tenant" | "client" | "department" | "root"
@@ -4894,12 +4886,6 @@ export const Constants = {
         "yes_no",
         "single_select",
         "multi_select",
-      ],
-      job_level: [
-        "L1 - Specialists",
-        "L2 - Managers",
-        "L3 - Directors / VPs / Executive Search",
-        "L4 - C-Level",
       ],
       job_status: ["draft", "open", "closed", "archived"],
       member_role: ["admin", "recruiter", "hiring_manager", "interviewer"],
