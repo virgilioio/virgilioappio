@@ -592,3 +592,23 @@
 .ai-border-active {
   animation: gradient-shift 3s ease infinite;
 }
+
+/* Onboarding highlight animation */
+.onboarding-highlight {
+  animation: highlight-pulse 3s ease-in-out;
+  position: relative;
+}
+
+@keyframes highlight-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 hsl(var(--virgilio-purple) / 0);
+  }
+  10%, 30%, 50% {
+    box-shadow: 0 0 0 8px hsl(var(--virgilio-purple) / 0.2),
+                0 0 0 12px hsl(var(--virgilio-purple) / 0.1);
+  }
+  20%, 40%, 60% {
+    box-shadow: 0 0 0 4px hsl(var(--virgilio-purple) / 0.3),
+                0 0 0 8px hsl(var(--virgilio-purple) / 0.15);
+  }
+}

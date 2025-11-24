@@ -159,7 +159,7 @@ export function BookingLinkSection() {
   }
 
   return (
-    <Card>
+    <Card data-onboarding-target="booking">
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>

@@ -1,5 +1,5 @@
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useSearchParams, useNavigate, useLocation } from 'react-router-dom'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -24,6 +24,7 @@ import { Section } from '@/components/layout/Section'
 import { SettingsSidebar } from '@/components/settings/SettingsSidebar'
 import { SettingsMobileHeader } from '@/components/settings/SettingsMobileHeader'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
+import { scrollToHighlightedSection } from '@/utils/scrollToHighlight'
 
 export default function Settings() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -37,6 +38,11 @@ export default function Settings() {
   const defaultTab = isBillingRoute ? 'billing' : (searchParams.get('tab') || 'profile')
   const [currentTab, setCurrentTab] = useState(defaultTab)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  
+  // Handle onboarding highlight scrolling
+  useEffect(() => {
+    scrollToHighlightedSection();
+  }, [currentTab]);
 
   const handleTabChange = (tab: string) => {
     setCurrentTab(tab)

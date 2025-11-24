@@ -93,7 +93,7 @@ export function ProfileTab() {
       />
       
       {/* Profile Information Card */}
-      <Card>
+      <Card data-onboarding-target="profile">
         <CardHeader className="pb-sm">
           <CardTitle className="flex items-center gap-2 text-lg font-poppins font-bold text-virgilio-text tracking-page-title">
             <User className="h-4 w-4 text-virgilio-purple" />

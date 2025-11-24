@@ -61,13 +61,17 @@ export default function Dashboard() {
         <div className="space-y-6">
           <WelcomeHeader profile={profile} isLoading={isLoading} />
           
-          {/* Onboarding Checklist */}
-          <OnboardingChecklist />
-          
           {/* Trial countdown banner */}
           <TrialCountdownBanner />
+          
+          {/* Layout: Onboarding on left, content on right */}
+          <div className="grid gap-6 lg:grid-cols-[340px_1fr]">
+            {/* Onboarding Checklist - Left Column */}
+            <div>
+              <OnboardingChecklist />
+            </div>
             
-            {/* 50/50 layout with Jobs Overview and My Interviews */}
+            {/* Main Content - Right Column */}
             <div className="grid gap-6 lg:grid-cols-2">
               {/* Jobs Overview */}
               {hasJobContent && (
@@ -81,6 +85,7 @@ export default function Dashboard() {
                 <MyInterviews />
               </div>
             </div>
+          </div>
         </div>
       </Section>
     </div>
