@@ -421,20 +421,22 @@ export function useMembers(includeHierarchy: boolean = false) {
       
       // Recompute onboarding progress
       try {
-        if (user?.id && organizationId) {
-          const { data: org } = await supabase
-            .from('organizations')
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        if (authUser?.id) {
+          const { data: member } = await supabase
+            .from('members')
             .select('tenant_id')
-            .eq('id', organizationId)
+            .eq('user_id', authUser.id)
+            .eq('user_status', 'active')
             .single();
-          
-          if (org?.tenant_id) {
+
+          if (member?.tenant_id) {
             await supabase.rpc('check_onboarding_task_completion', {
-              p_user_id: user.id,
-              p_tenant_id: org.tenant_id,
+              p_user_id: authUser.id,
+              p_tenant_id: member.tenant_id
             });
             queryClient.invalidateQueries({ 
-              queryKey: ['onboarding-progress', user.id, org.tenant_id] 
+              queryKey: ['onboarding-progress', authUser.id, member.tenant_id] 
             });
           }
         }
