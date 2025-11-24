@@ -1,9 +1,7 @@
 
-import { Building, Lock, User, Mail, Phone, Globe, Calendar, Shield, FileText, Download, CheckCircle } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Building, User, Mail, Phone, Calendar } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-// Billing POC functionality removed
+import { Separator } from '@/components/ui/separator'
 
 interface Organization {
   id: string
@@ -21,190 +19,89 @@ interface OrganizationDisplayProps {
   organization: Organization
 }
 
-// Enhanced Security Header Component
-function SecurityHeader({ title, icon: Icon, subtitle }: { title: string; icon: any; subtitle?: string }) {
-  return (
-    <div className="flex items-start justify-between">
-      <div className="flex-1">
-        <div className="flex items-center gap-2 mb-1">
-          <Icon className="h-4 w-4 text-primary" />
-          <h3 className="text-lg font-medium text-text-primary">{title}</h3>
-        </div>
-        {subtitle && (
-          <p className="text-xs text-text-secondary">{subtitle}</p>
-        )}
-      </div>
-      <div className="flex items-center gap-2">
-        <Badge variant="secondary" className="text-xs flex items-center gap-1">
-          <Shield className="h-3 w-3" />
-          Protected
-        </Badge>
-        <Lock className="h-4 w-4 text-muted-foreground" />
-      </div>
-    </div>
-  )
-}
-
-// Enhanced Info Row Component
-function InfoRow({ label, value, icon: Icon, isLast = false }: { 
-  label: string; 
-  value: React.ReactNode; 
-  icon?: any; 
-  isLast?: boolean;
-}) {
-  return (
-    <div className={`flex items-center justify-between py-3 ${!isLast ? 'border-b border-border/30' : ''}`}>
-      <div className="space-y-1 flex-1">
-        <p className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
-          {Icon && <Icon className="h-3 w-3" />}
-          {label}
-        </p>
-        <div className="text-sm font-medium text-text-primary">{value}</div>
-      </div>
-    </div>
-  )
-}
-
 export function OrganizationDisplay({ organization }: OrganizationDisplayProps) {
-  // Billing POC functionality removed
-  const members: any[] = []
-  const billingPOCMember = null
+  // Format date
+  const formattedDate = new Date(organization.created_at).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  })
 
-
-  const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return '0 Bytes'
-    const k = 1024
-    const sizes = ['Bytes', 'KB', 'MB', 'GB']
-    const i = Math.floor(Math.log(bytes) / Math.log(k))
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
-  }
+  // Billing POC data (removed member lookup for simplicity)
+  const billingPOCName = organization.billing_poc_user_name || 'Not assigned'
+  const billingPOCEmail = organization.billing_poc_user_email || organization.billing_poc_additional_email || 'Not provided'
 
   return (
-    <div className="space-y-6">
-      {/* Enhanced Security Notice */}
-      <div className="bg-gradient-to-r from-accent/10 to-accent/5 border border-accent/20 rounded-brand p-4">
-        <div className="flex items-center gap-3">
-          <div className="flex-shrink-0">
-            <Shield className="h-5 w-5 text-accent-foreground" />
+    <div className="space-y-md">
+      {/* Basic Info Section */}
+      <div className="space-y-sm">
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="text-xs text-muted-foreground font-medium">Organization Name</label>
+            <p className="text-sm font-medium mt-1">{organization.name}</p>
           </div>
           <div>
-            <p className="text-sm font-medium text-accent-foreground">Protected Organization Information</p>
-            <p className="text-xs text-accent-foreground/80 mt-0.5">
-              All organization data is securely stored and encrypted. Only authorized users can view this information.
-            </p>
+            <label className="text-xs text-muted-foreground font-medium">Status</label>
+            <div className="mt-1">
+              <Badge variant={organization.status === 'active' ? 'success' : 'secondary'}>
+                {organization.status === 'active' ? 'Active' : 'Inactive'}
+              </Badge>
+            </div>
           </div>
-          <CheckCircle className="h-4 w-4 text-success ml-auto flex-shrink-0" />
+        </div>
+        <Separator />
+        <div>
+          <label className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
+            <Calendar className="h-3 w-3" />
+            Created
+          </label>
+          <p className="text-sm font-medium mt-1">{formattedDate}</p>
         </div>
       </div>
 
-      {/* Enhanced Basic Organization Information */}
-      <Card className="border-l-4 border-l-primary bg-gradient-to-br from-surface-primary to-surface-secondary/20 shadow-neumorphic hover:shadow-neumorphic-hover transition-all duration-200">
-        <CardHeader className="pb-4 bg-gradient-to-r from-surface-primary/50 to-transparent">
-          <SecurityHeader 
-            title="Organization Information" 
-            icon={Building}
-            subtitle="Core organizational details and registration information"
-          />
-        </CardHeader>
-        <CardContent className="space-y-0 bg-surface-primary/30">
-          <InfoRow 
-            label="Organization Name" 
-            value={organization.name}
-          />
-          
-          
-          <InfoRow 
-            label="Status" 
-            value={
-              <Badge 
-                variant={organization.status === 'active' ? 'success' : 'secondary'}
-                className="text-xs flex items-center gap-1"
-              >
-                <CheckCircle className="h-3 w-3" />
-                {organization.status === 'active' ? 'Active' : 'Inactive'}
-              </Badge>
-            }
-          />
-          
-          <InfoRow 
-            label="Created" 
-            value={new Date(organization.created_at).toLocaleDateString('en-US', {
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric'
-            })}
-            icon={Calendar}
-            isLast={true}
-          />
-        </CardContent>
-      </Card>
-
-
-      {/* Enhanced Billing POC Information */}
-      <Card className="border-l-4 border-l-warning bg-gradient-to-br from-surface-primary to-warning/5 shadow-neumorphic hover:shadow-neumorphic-hover transition-all duration-200">
-        <CardHeader className="pb-4 bg-gradient-to-r from-warning/10 to-transparent">
-          <SecurityHeader 
-            title="Billing Point of Contact" 
-            icon={Shield}
-            subtitle="Designated contact for billing and compliance matters"
-          />
-        </CardHeader>
-        <CardContent className="bg-surface-primary/30">
-          {organization.billing_poc_user_id && billingPOCMember ? (
-            <div className="space-y-0">
-              <InfoRow 
-                label="Primary Contact" 
-                value={`${billingPOCMember.first_name || ''} ${billingPOCMember.last_name || ''}`.trim() || 'Unknown User'}
-                icon={User}
-              />
-              
-              <InfoRow 
-                label="Primary Email" 
-                value={billingPOCMember.email || 'Not provided'}
-                icon={Mail}
-              />
-              
-              {organization.billing_poc_additional_email && (
-                <InfoRow 
-                  label="Additional Email" 
-                  value={organization.billing_poc_additional_email}
-                  icon={Mail}
-                />
-              )}
-              
-              <InfoRow 
-                label="Phone Number" 
-                value={organization.billing_poc_phone || 'Not provided'}
-                icon={Phone}
-                isLast={true}
-              />
+      {/* Billing POC - if assigned */}
+      {organization.billing_poc_user_id && (
+        <>
+          <Separator />
+          <div className="space-y-sm">
+            <h4 className="text-sm font-medium">Billing Point of Contact</h4>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <label className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
+                  <User className="h-3 w-3" />
+                  Name
+                </label>
+                <p className="mt-1">{billingPOCName}</p>
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
+                  <Mail className="h-3 w-3" />
+                  Email
+                </label>
+                <p className="mt-1">{billingPOCEmail}</p>
+              </div>
             </div>
-          ) : (
-            <div className="text-center py-8">
-              <Shield className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
-              <p className="text-muted-foreground text-sm">No billing point of contact assigned</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                A billing POC is required for compliance purposes
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Enhanced System Information */}
-      <Card className="bg-gradient-to-r from-muted/20 to-muted/10 border border-muted/30">
-        <CardContent className="pt-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Lock className="h-3 w-3 text-muted-foreground" />
-              <span className="text-xs text-muted-foreground">Organization ID:</span>
-            </div>
-            <code className="text-xs bg-muted px-2 py-1 rounded font-mono text-muted-foreground">
-              {organization.id}
-            </code>
+            {organization.billing_poc_phone && (
+              <div>
+                <label className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
+                  <Phone className="h-3 w-3" />
+                  Phone Number
+                </label>
+                <p className="text-sm mt-1">{organization.billing_poc_phone}</p>
+              </div>
+            )}
           </div>
-        </CardContent>
-      </Card>
+        </>
+      )}
+
+      {/* System Information */}
+      <Separator />
+      <div className="flex items-center justify-between text-xs">
+        <span className="text-muted-foreground">Organization ID:</span>
+        <code className="bg-muted px-2 py-1 rounded font-mono text-muted-foreground">
+          {organization.id}
+        </code>
+      </div>
     </div>
   )
 }

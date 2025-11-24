@@ -348,73 +348,71 @@ const [orgFormData, setOrgFormData] = useState<OrganizationFormData>({
   return (
     <div className="space-y-6">
       <PageHeader 
-        title="Organization" 
+        title="Company Profile" 
         subtitle="Manage your organization details and preferences"
-      />
+      >
+        {!isEditMode && (
+          <Button 
+            onClick={handleEditModeToggle}
+            variant="outline"
+            size="sm"
+            className="flex items-center gap-1"
+          >
+            <Edit className="h-3 w-3" />
+            Edit
+          </Button>
+        )}
+      </PageHeader>
       
       {/* Organization Switcher for Platform Admins */}
       <OrganizationSwitcher />
       
-      {/* Header with Edit Toggle */}
+      {/* Main Card */}
       <Card>
         <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2 text-lg font-poppins font-bold text-virgilio-text tracking-page-title">
-                <Building className="h-4 w-4 text-virgilio-purple" />
-                Organization Settings<span className="text-purple-period">.</span>
-                {!isEditMode && <Lock className="h-3 w-3 text-virgilio-muted ml-1" />}
-              </CardTitle>
-              <CardDescription className="text-xs text-virgilio-muted">
-                {isEditMode 
-                  ? 'Make changes to your organization details and preferences'
-                  : 'View your organization details and preferences'
-                }
-              </CardDescription>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              {!isEditMode ? (
-                <Button 
-                  onClick={handleEditModeToggle}
-                  variant="outline"
-                  size="sm"
-                  className="flex items-center gap-1"
-                >
-                  <Edit className="h-3 w-3" />
-                  Edit Organization
-                </Button>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={handleCancelEdit}
-                    disabled={isSaving}
-                  >
-                    Cancel
-                  </Button>
-                  <Button 
-                    size="sm"
-                    onClick={handleSave}
-                    disabled={isLoading || isSaving}
-                    className="flex items-center gap-1"
-                  >
-                    {isSaving ? (
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                    ) : (
-                      <Save className="h-3 w-3" />
-                    )}
-                    {isSaving ? 'Saving...' : 'Save Changes'}
-                  </Button>
-                </div>
-              )}
-            </div>
-          </div>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <Building className="h-4 w-4 text-virgilio-purple" />
+            Company Profile<span className="text-purple-period">.</span>
+          </CardTitle>
+          <CardDescription className="text-xs">
+            {isEditMode 
+              ? 'Make changes to your organization details and preferences'
+              : 'View your organization details and preferences'
+            }
+          </CardDescription>
         </CardHeader>
         
-        <CardContent className="pt-6">
+        <CardContent className="space-y-md">
           <OrganizationDisplay organization={userOrganization} />
+          
+          {/* Save Buttons - only show in edit mode */}
+          {isEditMode && (
+            <div className="flex justify-end pt-sm border-t border-border">
+              <div className="flex items-center gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleCancelEdit}
+                  disabled={isSaving}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  size="sm"
+                  onClick={handleSave}
+                  disabled={isSaving}
+                  className="flex items-center gap-1"
+                >
+                  {isSaving ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <Save className="h-3 w-3" />
+                  )}
+                  {isSaving ? 'Saving...' : 'Save Changes'}
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
