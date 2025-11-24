@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { FormField } from '@/components/ui/form-field'
+import { ReadOnlyOverlay } from '@/components/ui/read-only-overlay'
 import { Copy, ExternalLink, Upload, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '@/contexts/AuthContext'
@@ -72,11 +73,10 @@ export function CareersPageTab() {
     }
   }, [settings])
 
-  // Track changes
+  // Track changes (excluding company_slug as it's read-only)
   useEffect(() => {
     if (settings) {
       const changed =
-        companySlug !== settings.company_slug ||
         companyWebsiteUrl !== (settings.company_website_url || '') ||
         pageTitle !== settings.page_title ||
         headerText !== (settings.header_text || '') ||
@@ -84,7 +84,7 @@ export function CareersPageTab() {
 
       setHasChanges(changed)
     }
-  }, [settings, companySlug, companyWebsiteUrl, pageTitle, headerText, showCompanyName])
+  }, [settings, companyWebsiteUrl, pageTitle, headerText, showCompanyName])
 
   const careersPageUrl = `${window.location.origin}/careers/${companySlug || settings?.company_slug || 'your-company'}`
 
@@ -118,13 +118,7 @@ export function CareersPageTab() {
   }
 
   const handleSave = () => {
-    if (slugError) {
-      toast.error('Please fix errors before saving')
-      return
-    }
-
     updateSettings({
-      company_slug: companySlug,
       company_website_url: companyWebsiteUrl || null,
       page_title: pageTitle,
       header_text: headerText || null,
@@ -180,22 +174,25 @@ export function CareersPageTab() {
         <CardHeader>
           <CardTitle>Company Slug</CardTitle>
           <CardDescription>
-            Customize your careers page URL. Use lowercase letters, numbers, and hyphens only.
+            This slug is used in your public careers page URL
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <FormField
-            label="Slug"
-            error={slugError}
-            helpText={`Your URL will be: ${window.location.origin}/careers/${companySlug || '...'}`}
+          <ReadOnlyOverlay 
+            active={true}
+            message="The company slug cannot be changed after creation to prevent breaking existing shared URLs. Contact support if you need to change it."
           >
-            <Input
-              value={companySlug}
-              onChange={(e) => handleSlugChange(e.target.value)}
-              placeholder="your-company-name"
-              error={!!slugError}
-            />
-          </FormField>
+            <FormField
+              label="Slug"
+              helpText={`Your URL will be: ${window.location.origin}/careers/${companySlug || '...'}`}
+            >
+              <Input
+                value={companySlug}
+                readOnly
+                placeholder="your-company-name"
+              />
+            </FormField>
+          </ReadOnlyOverlay>
         </CardContent>
       </Card>
 
@@ -304,7 +301,7 @@ export function CareersPageTab() {
       <div className="flex gap-3">
         <Button
           onClick={handleSave}
-          disabled={!hasChanges || isUpdating || !!slugError}
+          disabled={!hasChanges || isUpdating}
         >
           {isUpdating ? (
             <>
