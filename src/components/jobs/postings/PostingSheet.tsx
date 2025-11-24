@@ -13,6 +13,10 @@ import { FormField } from '@/components/ui/form-field'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
+import { useTenant } from '@/hooks/useTenant'
+import { SafeHtml } from '@/components/ui/safe-html'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { ExternalLink } from 'lucide-react'
 // Currency functionality removed
 
 interface PostingSheetProps {
@@ -36,6 +40,7 @@ export function PostingSheet({
 }: PostingSheetProps) {
   const { toast } = useToast()
   const { getPosting, createPosting, updatePosting } = useJobPostings(jobId)
+  const { tenant } = useTenant()
   // Currency functionality removed
   const currencies: any[] = []
 
@@ -261,6 +266,39 @@ export function PostingSheet({
                 )}
               </div>
             </section>
+
+            {/* About Company Section - shows what candidates will see */}
+            {tenant?.about && (
+              <section aria-labelledby="about-company" className="space-y-2">
+                <Card className="bg-muted/30 border-dashed">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="text-sm font-medium">About {tenant.name}</CardTitle>
+                        <CardDescription className="text-xs mt-1">
+                          This content appears on all your job postings for employer branding
+                        </CardDescription>
+                      </div>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => window.open('/settings?tab=organization', '_blank')}
+                        className="h-8 text-xs gap-1"
+                      >
+                        Edit
+                        <ExternalLink className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <SafeHtml 
+                      content={tenant.about} 
+                      className="prose prose-sm text-text-secondary max-w-none text-sm" 
+                    />
+                  </CardContent>
+                </Card>
+              </section>
+            )}
 
             <FormField label="Description">
               <RichTextEditor
