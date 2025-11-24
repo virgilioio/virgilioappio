@@ -2488,6 +2488,8 @@ export type Database = {
           task_booking_manual: boolean | null
           task_candidate_created: boolean | null
           task_candidate_manual: boolean | null
+          task_google_connected: boolean | null
+          task_google_manual: boolean | null
           task_job_created: boolean | null
           task_job_manual: boolean | null
           task_organization_created: boolean | null
@@ -2510,6 +2512,8 @@ export type Database = {
           task_booking_manual?: boolean | null
           task_candidate_created?: boolean | null
           task_candidate_manual?: boolean | null
+          task_google_connected?: boolean | null
+          task_google_manual?: boolean | null
           task_job_created?: boolean | null
           task_job_manual?: boolean | null
           task_organization_created?: boolean | null
@@ -2532,6 +2536,8 @@ export type Database = {
           task_booking_manual?: boolean | null
           task_candidate_created?: boolean | null
           task_candidate_manual?: boolean | null
+          task_google_connected?: boolean | null
+          task_google_manual?: boolean | null
           task_job_created?: boolean | null
           task_job_manual?: boolean | null
           task_organization_created?: boolean | null
