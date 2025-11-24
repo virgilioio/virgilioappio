@@ -1108,6 +1108,59 @@ export type Database = {
           },
         ]
       }
+      careers_page_settings: {
+        Row: {
+          company_slug: string
+          company_website_url: string | null
+          created_at: string | null
+          created_by: string | null
+          header_text: string | null
+          id: string
+          is_active: boolean | null
+          logo_url: string | null
+          page_title: string | null
+          show_company_name: boolean | null
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          company_slug: string
+          company_website_url?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          header_text?: string | null
+          id?: string
+          is_active?: boolean | null
+          logo_url?: string | null
+          page_title?: string | null
+          show_company_name?: boolean | null
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          company_slug?: string
+          company_website_url?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          header_text?: string | null
+          id?: string
+          is_active?: boolean | null
+          logo_url?: string | null
+          page_title?: string | null
+          show_company_name?: boolean | null
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "careers_page_settings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contract_templates: {
         Row: {
           content: string
