@@ -10,9 +10,7 @@ export function scrollToHighlightedSection() {
   
   // Map highlight IDs to element selectors or data attributes
   const selectorMap: Record<string, string> = {
-    'profile': '[data-onboarding-target="profile"]',
     'google': '[data-onboarding-target="google"]',
-    'booking': '[data-onboarding-target="booking"]',
     'organization': '[data-onboarding-target="organization"]',
     'job': '[data-onboarding-target="job"]',
     'candidate': '[data-onboarding-target="candidate"]',
