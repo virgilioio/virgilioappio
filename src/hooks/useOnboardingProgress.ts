@@ -13,8 +13,8 @@ export interface OnboardingTask {
 }
 
 export function useOnboardingProgress() {
-  const { user } = useAuth();
-  const { organizationId } = useOrgContext();
+  const { user, userType } = useAuth();
+  const { organizationId, role } = useOrgContext();
   const queryClient = useQueryClient();
   
   // Get tenant_id directly from user's membership
@@ -106,8 +106,8 @@ export function useOnboardingProgress() {
     queryClient.invalidateQueries({ queryKey: ['onboarding-progress'] });
   };
   
-  // Build task list
-  const tasks: OnboardingTask[] = [
+  // Build task list - all tasks
+  const allTasks: OnboardingTask[] = [
     {
       id: 'google',
       title: 'Connect Google Workspace',
@@ -149,6 +149,18 @@ export function useOnboardingProgress() {
       route: '/settings?tab=members'
     }
   ];
+  
+  // Filter tasks based on role
+  // Platform admins, workspace owners, and admins see all tasks
+  // Recruiters, hiring managers, and interviewers only see Google Workspace task
+  const shouldShowFullOnboarding = 
+    userType === 'platform_admin' || 
+    userType === 'workspace_owner' || 
+    role === 'admin';
+  
+  const tasks = shouldShowFullOnboarding 
+    ? allTasks 
+    : allTasks.filter(t => t.id === 'google');
   
   const completedCount = tasks.filter(t => t.completed).length;
   const totalCount = tasks.length;
