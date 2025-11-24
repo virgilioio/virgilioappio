@@ -17,23 +17,24 @@ export function useOnboardingProgress() {
   const { organizationId } = useOrgContext();
   const queryClient = useQueryClient();
   
-  // Get tenant_id from organization
-  const { data: tenantData } = useQuery({
-    queryKey: ['organization-tenant', organizationId],
+  // Get tenant_id directly from user's membership
+  const { data: memberData } = useQuery({
+    queryKey: ['user-tenant', user?.id],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('organizations')
+        .from('members')
         .select('tenant_id')
-        .eq('id', organizationId)
+        .eq('user_id', user.id)
+        .eq('user_status', 'active')
         .single();
       
       if (error) throw error;
       return data;
     },
-    enabled: !!organizationId
+    enabled: !!user
   });
 
-  const tenantId = tenantData?.tenant_id;
+  const tenantId = memberData?.tenant_id;
   
   // Fetch onboarding progress
   const { data: progress, isLoading } = useQuery({
@@ -65,7 +66,9 @@ export function useOnboardingProgress() {
       p_tenant_id: tenantId
     });
     
-    queryClient.invalidateQueries({ queryKey: ['onboarding-progress'] });
+    queryClient.invalidateQueries({ 
+      queryKey: ['onboarding-progress', user.id, tenantId] 
+    });
   };
   
   // Manual task completion
