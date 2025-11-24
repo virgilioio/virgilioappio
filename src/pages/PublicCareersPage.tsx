@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { VirgilioLogo } from '@/components/VirgilioLogo'
 import { Briefcase, MapPin, Clock, Loader2 } from 'lucide-react'
 
 interface CareersSettings {
@@ -159,12 +160,21 @@ export default function PublicCareersPage() {
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="text-center space-y-4">
             <div className="flex justify-center">
-              <img
-                src={settings.logo_url || '/virgilio-logo.png'}
-                alt={tenantInfo?.name || 'Company logo'}
-                className={`max-h-16 object-contain ${settings.company_website_url ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
-                onClick={handleLogoClick}
-              />
+              {settings.logo_url ? (
+                <img
+                  src={settings.logo_url}
+                  alt={tenantInfo?.name || 'Company logo'}
+                  className={`max-h-16 object-contain ${settings.company_website_url ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
+                  onClick={handleLogoClick}
+                />
+              ) : (
+                <div 
+                  className={settings.company_website_url ? 'cursor-pointer' : ''}
+                  onClick={handleLogoClick}
+                >
+                  <VirgilioLogo size="xl" />
+                </div>
+              )}
             </div>
             {settings.show_company_name && tenantInfo && (
               <h1 className="text-3xl font-bold text-virgilio-text">
