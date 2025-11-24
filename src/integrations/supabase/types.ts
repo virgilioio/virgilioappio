@@ -2477,6 +2477,83 @@ export type Database = {
           },
         ]
       }
+      onboarding_progress: {
+        Row: {
+          completed_at: string | null
+          created_at: string | null
+          dismissed: boolean | null
+          dismissed_at: string | null
+          id: string
+          task_booking_configured: boolean | null
+          task_booking_manual: boolean | null
+          task_candidate_created: boolean | null
+          task_candidate_manual: boolean | null
+          task_job_created: boolean | null
+          task_job_manual: boolean | null
+          task_organization_created: boolean | null
+          task_organization_manual: boolean | null
+          task_profile_complete: boolean | null
+          task_profile_manual: boolean | null
+          task_team_invited: boolean | null
+          task_team_manual: boolean | null
+          tenant_id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string | null
+          dismissed?: boolean | null
+          dismissed_at?: string | null
+          id?: string
+          task_booking_configured?: boolean | null
+          task_booking_manual?: boolean | null
+          task_candidate_created?: boolean | null
+          task_candidate_manual?: boolean | null
+          task_job_created?: boolean | null
+          task_job_manual?: boolean | null
+          task_organization_created?: boolean | null
+          task_organization_manual?: boolean | null
+          task_profile_complete?: boolean | null
+          task_profile_manual?: boolean | null
+          task_team_invited?: boolean | null
+          task_team_manual?: boolean | null
+          tenant_id: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string | null
+          dismissed?: boolean | null
+          dismissed_at?: string | null
+          id?: string
+          task_booking_configured?: boolean | null
+          task_booking_manual?: boolean | null
+          task_candidate_created?: boolean | null
+          task_candidate_manual?: boolean | null
+          task_job_created?: boolean | null
+          task_job_manual?: boolean | null
+          task_organization_created?: boolean | null
+          task_organization_manual?: boolean | null
+          task_profile_complete?: boolean | null
+          task_profile_manual?: boolean | null
+          task_team_invited?: boolean | null
+          task_team_manual?: boolean | null
+          tenant_id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "onboarding_progress_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organizations: {
         Row: {
           billing_id: string | null
@@ -4103,6 +4180,10 @@ export type Database = {
         Returns: Json
       }
       check_email_rate_limit: { Args: { p_tenant_id: string }; Returns: Json }
+      check_onboarding_task_completion: {
+        Args: { p_tenant_id: string; p_user_id: string }
+        Returns: undefined
+      }
       check_org_hierarchy_role_access: {
         Args: { _organization_id: string; _required_role: string }
         Returns: boolean
