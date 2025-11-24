@@ -21,10 +21,18 @@ export function scrollToHighlightedSection() {
   const selector = selectorMap[highlightId];
   if (!selector) return;
   
-  // Wait for DOM to be ready, then scroll and highlight
-  setTimeout(() => {
+  const MAX_ATTEMPTS = 10;
+  const DELAY_MS = 400;
+
+  const attemptScroll = (attempt: number) => {
+    if (attempt > MAX_ATTEMPTS) return;
+
     const element = document.querySelector(selector);
-    if (!element) return;
+    if (!element) {
+      // Try again after a short delay in case content (like booking config) is still loading
+      setTimeout(() => attemptScroll(attempt + 1), DELAY_MS);
+      return;
+    }
     
     // Scroll into view with smooth behavior
     element.scrollIntoView({ 
@@ -44,7 +52,10 @@ export function scrollToHighlightedSection() {
       url.searchParams.delete('highlight');
       window.history.replaceState({}, '', url.toString());
     }, 3000);
-  }, 300); // Small delay to ensure page has rendered
+  };
+
+  // Initial attempt (will retry if element isn't ready yet)
+  setTimeout(() => attemptScroll(0), DELAY_MS);
 }
 
 /**
