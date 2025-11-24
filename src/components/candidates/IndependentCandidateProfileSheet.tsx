@@ -11,12 +11,13 @@ import { CandidateResumeViewer } from '@/components/candidates/CandidateResumeVi
 import { CandidateUrls } from '@/components/candidates/CandidateUrls'
 import { CandidateWorkExperienceComponent, CandidateWorkExperience } from '@/components/candidates/CandidateWorkExperience'
 import { CandidateEducationComponent, CandidateEducation } from '@/components/candidates/CandidateEducationComponent'
-import { Edit, FileText, Download, ChevronLeft, ChevronRight, Mail, Phone, Copy, ExternalLink, Send, Activity, StickyNote, Sparkles, User } from 'lucide-react'
+import { Edit, FileText, Download, ChevronLeft, ChevronRight, Mail, Phone, Copy, ExternalLink, Send, Activity, StickyNote, Sparkles, User, Globe } from 'lucide-react'
 import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { SafeHtml } from '@/components/ui/safe-html'
+import { Badge } from '@/components/ui/badge'
 import { generateCandidatePdf } from '@/utils/candidatePdfGenerator'
 import CandidateFormSheet from '@/components/candidates/CandidateFormSheet'
 import { toast } from '@/hooks/use-toast'
@@ -223,6 +224,12 @@ export function IndependentCandidateProfileSheet({
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between w-full">
                             <div className="flex items-center gap-2">
+                              {candidate.job_board_source && (
+                                <Badge variant="secondary" className="gap-1">
+                                  <Globe className="h-3 w-3" />
+                                  Applied via {candidate.job_board_source}
+                                </Badge>
+                              )}
                               <AddToJobPipelineDialog candidateId={candidate.id} />
                             </div>
                           </div>

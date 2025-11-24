@@ -17,6 +17,8 @@ export interface JobPosting {
   tenant_id: string
   location: string | null
   job_type: string | null
+  publish_to_talent?: boolean
+  external_postings?: any
 }
 
 // Helper to create a URL-friendly slug and reduce collisions with a short suffix
