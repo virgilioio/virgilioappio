@@ -104,11 +104,6 @@ export function JobOverviewTab({ job, onEdit, onArchive }: JobOverviewTabProps) 
               <Building className="h-4 w-4" />
               <span>{job.organization_name || 'Organization'}</span>
             </div>
-            <span className="text-virgilio-muted">·</span>
-            <div className="flex items-center gap-2 text-virgilio-muted">
-              <Briefcase className="h-4 w-4" />
-              <span>{job.level}</span>
-            </div>
           </div>
         </div>
         

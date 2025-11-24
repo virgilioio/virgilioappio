@@ -27,7 +27,6 @@ interface TenantInfo {
 interface JobPosting {
   id: string
   title: string
-  description: string | null
   slug: string
   details: any
   created_at: string
@@ -87,7 +86,6 @@ export default function PublicCareersPage() {
           .select(`
             id,
             title,
-            description,
             slug,
             details,
             created_at,
@@ -212,31 +210,24 @@ export default function PublicCareersPage() {
                 onClick={() => handleViewJob(posting.slug)}
               >
                 <div className="flex justify-between items-start gap-4">
-                  <div className="flex-1 space-y-3">
-                    <div>
-                      <h3 className="text-xl font-semibold text-virgilio-text mb-2">
-                        {posting.title}
-                      </h3>
-                      <div className="flex flex-wrap gap-3 text-sm text-text-secondary">
-                        {posting.location && (
-                          <div className="flex items-center gap-1">
-                            <MapPin className="h-4 w-4" />
-                            <span>{posting.location}</span>
-                          </div>
-                        )}
-                        {posting.job_type && (
-                          <div className="flex items-center gap-1">
-                            <Clock className="h-4 w-4" />
-                            <span>{posting.job_type}</span>
-                          </div>
-                        )}
-                      </div>
+                  <div className="flex-1">
+                    <h3 className="text-xl font-semibold text-virgilio-text mb-2">
+                      {posting.title}
+                    </h3>
+                    <div className="flex flex-wrap gap-3 text-sm text-text-secondary">
+                      {posting.location && (
+                        <div className="flex items-center gap-1">
+                          <MapPin className="h-4 w-4" />
+                          <span>{posting.location}</span>
+                        </div>
+                      )}
+                      {posting.job_type && (
+                        <div className="flex items-center gap-1">
+                          <Clock className="h-4 w-4" />
+                          <span>{posting.job_type}</span>
+                        </div>
+                      )}
                     </div>
-                    {posting.description && (
-                      <p className="text-text-secondary line-clamp-2">
-                        {posting.description}
-                      </p>
-                    )}
                   </div>
                   <Button
                     onClick={(e) => {
