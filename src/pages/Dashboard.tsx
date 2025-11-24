@@ -64,26 +64,17 @@ export default function Dashboard() {
           {/* Trial countdown banner */}
           <TrialCountdownBanner />
           
-          {/* Layout: Onboarding on left, content on right */}
-          <div className="grid gap-6 lg:grid-cols-[340px_1fr]">
-            {/* Onboarding Checklist - Left Column */}
-            <div>
+          {/* Layout: Two columns with 1:1 proportions */}
+          <div className="grid gap-6 lg:grid-cols-2">
+            {/* Left Column */}
+            <div className="space-y-6">
               <OnboardingChecklist />
+              {hasJobContent && <JobsOverview permissions={permissions} />}
             </div>
             
-            {/* Main Content - Right Column */}
-            <div className="grid gap-6 lg:grid-cols-2">
-              {/* Jobs Overview */}
-              {hasJobContent && (
-                <div>
-                  <JobsOverview permissions={permissions} />
-                </div>
-              )}
-              
-              {/* My Interviews */}
-              <div className="space-y-6">
-                <MyInterviews />
-              </div>
+            {/* Right Column */}
+            <div>
+              <MyInterviews />
             </div>
           </div>
         </div>
