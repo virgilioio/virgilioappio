@@ -5,7 +5,8 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { VirgilioLogo } from '@/components/VirgilioLogo'
 import { PageTitle } from '@/components/ui/page-title'
-import { Briefcase, MapPin, Clock, Loader2 } from 'lucide-react'
+import { MapPin, Clock, Loader2 } from 'lucide-react'
+import gioEmptyState from '@/assets/gio-empty-state.png'
 
 interface CareersSettings {
   id: string
@@ -200,12 +201,13 @@ export default function PublicCareersPage() {
         </h2>
         {postings.length === 0 ? (
           <Card className="p-12 text-center">
-            <Briefcase className="h-12 w-12 mx-auto text-text-tertiary mb-4" />
-            <h3 className="text-xl font-semibold text-virgilio-text mb-2">
-              No open positions at this time
-            </h3>
+            <img 
+              src={gioEmptyState} 
+              alt="No open positions" 
+              className="h-32 w-32 mx-auto mb-6"
+            />
             <p className="text-text-tertiary">
-              Check back soon for new opportunities!
+              No open positions at this time. Check back soon for new opportunities!
             </p>
           </Card>
         ) : (
