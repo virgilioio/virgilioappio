@@ -120,7 +120,7 @@ export function MembersTab() {
           <TabsTrigger value="collaborators">Collaborators</TabsTrigger>
         </TabsList>
 
-        <Card>
+        <Card data-onboarding-target="team">
           <CardContent className="py-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {/* Next Billing - Purple */}

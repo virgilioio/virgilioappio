@@ -26,56 +26,56 @@ export function OnboardingChecklist() {
   const progressPercent = (completedCount / totalCount) * 100;
   
   return (
-    <Card className="border-virgilio-purple/20 bg-gradient-to-br from-virgilio-purple/5 to-surface-primary">
-      <CardHeader>
+    <Card className="border-virgilio-purple/20 bg-gradient-to-br from-virgilio-purple/5 to-surface-primary h-fit">
+      <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="text-xl flex items-center gap-2">
-              <Rocket className="h-5 w-5 text-virgilio-purple" />
-              Get Started with GoGio
-            </CardTitle>
-            <CardDescription className="mt-1">
-              Complete these steps to unlock the full power of your recruiting platform
-            </CardDescription>
-          </div>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Rocket className="h-4 w-4 text-virgilio-purple" />
+            Get Started
+          </CardTitle>
           <Button
             variant="ghost"
             size="sm"
             onClick={dismissChecklist}
+            className="h-6 w-6 p-0"
           >
-            <X className="h-4 w-4" />
+            <X className="h-3 w-3" />
           </Button>
         </div>
         
         {/* Progress Bar */}
-        <div className="mt-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-virgilio-text">
-              {completedCount} of {totalCount} completed
+        <div className="mt-3">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-xs font-medium text-virgilio-text">
+              {completedCount}/{totalCount}
             </span>
-            <span className="text-sm text-text-secondary">
+            <span className="text-xs text-text-secondary">
               {Math.round(progressPercent)}%
             </span>
           </div>
           <Progress 
             value={progressPercent} 
-            className="h-2"
+            className="h-1.5"
             indicatorClassName="bg-gradient-to-r from-virgilio-purple to-virgilio-purple/70"
           />
         </div>
       </CardHeader>
       
-      <CardContent>
-        <div className="space-y-3">
+      <CardContent className="pt-0 pb-3 px-3">
+        <div className="space-y-1.5">
           {tasks.map((task, index) => (
             <div
               key={task.id}
               className={cn(
-                "flex items-center gap-3 p-3 rounded-lg border border-virgilio-border transition-all cursor-pointer",
+                "flex items-center gap-2 p-2 rounded-md border border-virgilio-border transition-all cursor-pointer",
                 "hover:border-virgilio-purple/40 hover:bg-virgilio-purple/5",
-                task.completed && "opacity-60"
+                task.completed && "opacity-50"
               )}
-              onClick={() => navigate(task.route)}
+              onClick={() => {
+                const url = new URL(task.route, window.location.origin);
+                url.searchParams.set('highlight', task.id);
+                navigate(`${url.pathname}${url.search}`);
+              }}
             >
               {/* Checkbox */}
               <div className="flex-shrink-0">
@@ -85,18 +85,19 @@ export function OnboardingChecklist() {
                     markTaskComplete(task.id, checked as boolean);
                   }}
                   onClick={(e) => e.stopPropagation()}
+                  className="h-3.5 w-3.5"
                 />
               </div>
               
               {/* Task Number */}
               <div className={cn(
-                "flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium",
+                "flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-xs font-medium",
                 task.completed 
                   ? "bg-virgilio-purple text-white" 
                   : "bg-surface-secondary text-text-secondary"
               )}>
                 {task.completed ? (
-                  <Check className="h-4 w-4" />
+                  <Check className="h-3 w-3" />
                 ) : (
                   index + 1
                 )}
@@ -104,31 +105,28 @@ export function OnboardingChecklist() {
               
               {/* Task Info */}
               <div className="flex-1 min-w-0">
-                <h4 className="font-medium text-sm text-virgilio-text">{task.title}</h4>
-                <p className="text-xs text-text-secondary mt-0.5">
-                  {task.description}
-                </p>
+                <h4 className="font-medium text-xs text-virgilio-text leading-tight">{task.title}</h4>
               </div>
               
               {/* Arrow */}
-              <ChevronRight className="h-4 w-4 text-text-secondary flex-shrink-0" />
+              <ChevronRight className="h-3 w-3 text-text-secondary flex-shrink-0" />
             </div>
           ))}
         </div>
         
         {/* Celebration when complete */}
         {isComplete && (
-          <div className="mt-4 p-4 bg-virgilio-purple/10 border border-virgilio-purple/20 rounded-lg">
-            <div className="flex items-center gap-3">
-              <div className="text-3xl">🎉</div>
-              <div className="flex-1">
-                <h4 className="font-semibold text-virgilio-purple">Congratulations!</h4>
-                <p className="text-sm text-text-secondary">
-                  You've completed all setup tasks. You're ready to hire amazing talent!
+          <div className="mt-3 p-3 bg-virgilio-purple/10 border border-virgilio-purple/20 rounded-md">
+            <div className="flex items-center gap-2">
+              <div className="text-2xl">🎉</div>
+              <div className="flex-1 min-w-0">
+                <h4 className="font-semibold text-virgilio-purple text-xs">All done!</h4>
+                <p className="text-xs text-text-secondary">
+                  You're ready to hire!
                 </p>
               </div>
-              <Button onClick={dismissChecklist} size="sm">
-                Got it!
+              <Button onClick={dismissChecklist} size="sm" className="h-7 text-xs">
+                Got it
               </Button>
             </div>
           </div>

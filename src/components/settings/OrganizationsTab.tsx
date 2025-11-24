@@ -62,13 +62,15 @@ export function OrganizationsTab() {
         subtitle="Manage your organizations and departments"
       />
 
-      <OrganizationsTable
-        organizations={organizations}
-        isLoading={isLoading}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-        onCreateNew={handleCreateNew}
-      />
+      <div data-onboarding-target="organization">
+        <OrganizationsTable
+          organizations={organizations}
+          isLoading={isLoading}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+          onCreateNew={handleCreateNew}
+        />
+      </div>
 
       <OrganizationFormSheet
         isOpen={isFormOpen}
