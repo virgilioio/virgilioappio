@@ -4,6 +4,7 @@ import { WelcomeHeader } from '@/components/dashboard/WelcomeHeader'
 import { MyInterviews } from '@/components/dashboard/MyInterviews'
 import { JobsOverview } from '@/components/dashboard/JobsOverview'
 import { TrialCountdownBanner } from '@/components/dashboard/TrialCountdownBanner'
+import { OnboardingChecklist } from '@/components/dashboard/OnboardingChecklist'
 import { useUserProfile } from '@/hooks/useUserProfile'
 import { usePermissions } from '@/hooks/usePermissions'
 import { Section } from '@/components/layout/Section'
@@ -58,10 +59,13 @@ export default function Dashboard() {
     <div>
       <Section container className="py-6 sm:py-8 lg:py-12 animate-fade-in">
         <div className="space-y-6">
-            <WelcomeHeader profile={profile} isLoading={isLoading} />
-
-            {/* Trial countdown banner */}
-            <TrialCountdownBanner />
+          <WelcomeHeader profile={profile} isLoading={isLoading} />
+          
+          {/* Onboarding Checklist */}
+          <OnboardingChecklist />
+          
+          {/* Trial countdown banner */}
+          <TrialCountdownBanner />
             
             {/* 50/50 layout with Jobs Overview and My Interviews */}
             <div className="grid gap-6 lg:grid-cols-2">
