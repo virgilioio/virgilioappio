@@ -102,11 +102,11 @@ export function GoogleWorkspaceIntegrationSection() {
           <CardContent className="space-y-3">
             <div className="flex flex-col gap-2 text-sm text-muted-foreground">
               <div className="flex items-center gap-2">
-                <GmailLogo className="h-4 w-4" />
+                <GmailLogo className="h-4 w-auto" />
                 <span>Send emails directly from Virgilio</span>
               </div>
               <div className="flex items-center gap-2">
-                <GoogleCalendarLogo className="h-4 w-4" />
+                <GoogleCalendarLogo className="h-4 w-auto" />
                 <span>Schedule interviews and check availability</span>
               </div>
             </div>
@@ -174,7 +174,7 @@ export function GoogleWorkspaceIntegrationSection() {
               {hasMailConnection && mailIdentities && (
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 text-sm font-medium">
-                    <GmailLogo className="h-4 w-4" />
+                    <GmailLogo className="h-4 w-auto" />
                     Gmail
                   </div>
                   <div className="space-y-2 text-sm pl-6">
@@ -196,12 +196,12 @@ export function GoogleWorkspaceIntegrationSection() {
                 </div>
               )}
 
-              {/* Calendar Service Status */}
+              {/* Google Calendar Status */}
               {hasCalendarConnection && calendarIdentities && (
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 text-sm font-medium">
-                    <GoogleCalendarLogo className="h-4 w-4" />
-                    Calendar Service
+                    <GoogleCalendarLogo className="h-4 w-auto" />
+                    Google Calendar
                   </div>
                   <div className="space-y-2 text-sm pl-6">
                     <div className="flex items-center justify-between">
@@ -227,7 +227,7 @@ export function GoogleWorkspaceIntegrationSection() {
               {!hasMailConnection && (
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                    <GmailLogo className="h-4 w-4" />
+                    <GmailLogo className="h-4 w-auto" />
                     Gmail
                   </div>
                   <div className="pl-6">
@@ -245,8 +245,8 @@ export function GoogleWorkspaceIntegrationSection() {
               {!hasCalendarConnection && (
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                    <GoogleCalendarLogo className="h-4 w-4" />
-                    Calendar Service
+                    <GoogleCalendarLogo className="h-4 w-auto" />
+                    Google Calendar
                   </div>
                   <div className="pl-6">
                     <Badge variant="secondary" className="gap-1">
