@@ -106,28 +106,12 @@ export function useOnboardingProgress() {
   // Build task list
   const tasks: OnboardingTask[] = [
     {
-      id: 'profile',
-      title: 'Complete Your Profile',
-      description: 'Add your name, job title, phone, timezone, and LinkedIn',
-      completed: progress?.task_profile_complete || false,
-      manuallyCompleted: progress?.task_profile_manual || false,
-      route: '/settings?tab=profile'
-    },
-    {
       id: 'google',
       title: 'Connect Google Workspace',
       description: 'Enable Gmail and Google Calendar integration',
       completed: progress?.task_google_connected || false,
       manuallyCompleted: progress?.task_google_manual || false,
       route: '/settings?tab=profile&highlight=google'
-    },
-    {
-      id: 'booking',
-      title: 'Configure Booking Link',
-      description: 'Set up your availability for scheduling interviews',
-      completed: progress?.task_booking_configured || false,
-      manuallyCompleted: progress?.task_booking_manual || false,
-      route: '/settings?tab=profile&highlight=booking'
     },
     {
       id: 'organization',
