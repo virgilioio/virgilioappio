@@ -1,7 +1,7 @@
 
 import { useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { OrganizationDisplay } from '@/components/settings/OrganizationDisplay'
+import { DepartmentDisplay } from '@/components/settings/DepartmentDisplay'
 
 import { Organization } from '@/hooks/useOrganizations'
 import { useMembers } from '@/hooks/useMembers'
@@ -130,7 +130,7 @@ export function OrganizationDetailsDialog({
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-4">
             {/* Organization Information - Takes 2 columns */}
             <div className="lg:col-span-2">
-              <OrganizationDisplay organization={organization} />
+              <DepartmentDisplay organization={organization} />
             </div>
             
             {/* Members Section - Takes 1 column */}

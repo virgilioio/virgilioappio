@@ -4003,6 +4003,7 @@ export type Database = {
       }
       tenants: {
         Row: {
+          about: string | null
           billing_address: string | null
           billing_city: string | null
           billing_contact_name: string | null
@@ -4029,6 +4030,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          about?: string | null
           billing_address?: string | null
           billing_city?: string | null
           billing_contact_name?: string | null
@@ -4055,6 +4057,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          about?: string | null
           billing_address?: string | null
           billing_city?: string | null
           billing_contact_name?: string | null
