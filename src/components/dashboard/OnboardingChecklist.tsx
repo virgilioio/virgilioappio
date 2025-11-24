@@ -4,7 +4,6 @@ import { X, Check, ChevronRight } from 'lucide-react';
 import gioAvatar from '@/assets/gio-avatar.png';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Progress } from '@/components/ui/progress';
 import { useOnboardingProgress } from '@/hooks/useOnboardingProgress';
 import { cn } from '@/lib/utils';
@@ -85,18 +84,6 @@ export function OnboardingChecklist() {
                 navigate(`${url.pathname}${url.search}`);
               }}
             >
-              {/* Checkbox */}
-              <div className="flex-shrink-0">
-                <Checkbox
-                  checked={task.completed}
-                  onCheckedChange={(checked) => {
-                    markTaskComplete(task.id, checked as boolean);
-                  }}
-                  onClick={(e) => e.stopPropagation()}
-                  className="h-3.5 w-3.5"
-                />
-              </div>
-              
               {/* Task Number */}
               <div className={cn(
                 "flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center text-xs font-medium",
