@@ -158,24 +158,19 @@ export default function PublicCareersPage() {
       <header className="border-b border-virgilio-border bg-surface-primary">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="text-center space-y-4">
-            {settings.logo_url && (
-              <div className="flex justify-center">
-                <img
-                  src={settings.logo_url}
-                  alt={tenantInfo?.name || 'Company logo'}
-                  className={`max-h-16 object-contain ${settings.company_website_url ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
-                  onClick={handleLogoClick}
-                />
-              </div>
-            )}
+            <div className="flex justify-center">
+              <img
+                src={settings.logo_url || '/virgilio-logo.png'}
+                alt={tenantInfo?.name || 'Company logo'}
+                className={`max-h-16 object-contain ${settings.company_website_url ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
+                onClick={handleLogoClick}
+              />
+            </div>
             {settings.show_company_name && tenantInfo && (
               <h1 className="text-3xl font-bold text-virgilio-text">
                 {tenantInfo.name}
               </h1>
             )}
-            <h2 className="text-2xl font-semibold text-virgilio-text">
-              {settings.page_title}
-            </h2>
             {settings.header_text && (
               <p className="text-text-secondary max-w-2xl mx-auto">
                 {settings.header_text}
@@ -187,6 +182,9 @@ export default function PublicCareersPage() {
 
       {/* Job Listings */}
       <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <h2 className="text-xl font-semibold text-virgilio-text mb-6">
+          Open Jobs ({postings.length})
+        </h2>
         {postings.length === 0 ? (
           <Card className="p-12 text-center">
             <Briefcase className="h-12 w-12 mx-auto text-text-tertiary mb-4" />
