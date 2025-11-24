@@ -119,7 +119,7 @@ export function useOnboardingProgress() {
       description: 'Set up your availability for scheduling interviews',
       completed: progress?.task_booking_configured || false,
       manuallyCompleted: progress?.task_booking_manual || false,
-      route: '/settings?tab=profile'
+      route: '/settings?tab=profile&highlight=booking'
     },
     {
       id: 'organization',
