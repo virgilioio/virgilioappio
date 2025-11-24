@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
+import { useOrgContext } from '@/contexts/OrgContext'
 import { withAuthRetry, extractErrorMessage } from '@/lib/authUtils'
 import { toast } from '@/hooks/use-toast'
 import { log } from '@/lib/logger'
@@ -70,6 +71,7 @@ export function useCandidates(jobId: string) {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const { user } = useAuth()
+  const { organizationId } = useOrgContext()
   const queryClient = useQueryClient()
 
   const getCandidates = async () => {
@@ -277,7 +279,29 @@ export function useCandidates(jobId: string) {
         })
 
         await getCandidates()
-        queryClient.invalidateQueries({ queryKey: ['onboarding-progress'] })
+        
+        // Recompute onboarding progress
+        try {
+          if (user?.id && organizationId) {
+            const { data: org } = await supabase
+              .from('organizations')
+              .select('tenant_id')
+              .eq('id', organizationId)
+              .single();
+            
+            if (org?.tenant_id) {
+              await supabase.rpc('check_onboarding_task_completion', {
+                p_user_id: user.id,
+                p_tenant_id: org.tenant_id,
+              });
+              queryClient.invalidateQueries({ 
+                queryKey: ['onboarding-progress', user.id, org.tenant_id] 
+              });
+            }
+          }
+        } catch (error) {
+          console.error('Failed to update onboarding progress:', error);
+        }
         
         return {
           id: duplicateCheck.existingCandidate.id,
@@ -313,7 +337,29 @@ export function useCandidates(jobId: string) {
       })
 
       await getCandidates()
-      queryClient.invalidateQueries({ queryKey: ['onboarding-progress'] })
+      
+      // Recompute onboarding progress
+      try {
+        if (user?.id && organizationId) {
+          const { data: org } = await supabase
+            .from('organizations')
+            .select('tenant_id')
+            .eq('id', organizationId)
+            .single();
+          
+          if (org?.tenant_id) {
+            await supabase.rpc('check_onboarding_task_completion', {
+              p_user_id: user.id,
+              p_tenant_id: org.tenant_id,
+            });
+            queryClient.invalidateQueries({ 
+              queryKey: ['onboarding-progress', user.id, org.tenant_id] 
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Failed to update onboarding progress:', error);
+      }
       
       return {
         id: newCandidate.id,
