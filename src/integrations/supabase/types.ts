@@ -1977,7 +1977,10 @@ export type Database = {
           id: string
           is_active: boolean
           job_id: string
+          job_type: string | null
+          location: string | null
           slug: string
+          tenant_id: string
           title: string
           updated_at: string
         }
@@ -1990,7 +1993,10 @@ export type Database = {
           id?: string
           is_active?: boolean
           job_id: string
+          job_type?: string | null
+          location?: string | null
           slug: string
+          tenant_id: string
           title: string
           updated_at?: string
         }
@@ -2003,7 +2009,10 @@ export type Database = {
           id?: string
           is_active?: boolean
           job_id?: string
+          job_type?: string | null
+          location?: string | null
           slug?: string
+          tenant_id?: string
           title?: string
           updated_at?: string
         }
