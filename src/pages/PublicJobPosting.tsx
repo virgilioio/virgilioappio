@@ -1,6 +1,6 @@
 
 import { useEffect, useMemo, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { SafeHtml } from '@/components/ui/safe-html'
 import { VirgilioLogo } from '@/components/VirgilioLogo'
-import { MapPin, Briefcase, DollarSign, Sparkles, Loader2 } from 'lucide-react'
+import { MapPin, Briefcase, DollarSign, Sparkles, Loader2, ArrowLeft } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/use-toast'
@@ -59,6 +59,7 @@ interface SelectOption {
 
 export default function PublicJobPosting() {
   const { slug } = useParams<{ slug: string }>()
+  const navigate = useNavigate()
   const [posting, setPosting] = useState<Posting | null>(null)
   const [customFields, setCustomFields] = useState<PostingField[]>([])
   const [options, setOptions] = useState<Record<string, SelectOption[]>>({})
@@ -80,6 +81,7 @@ export default function PublicJobPosting() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showConfirmationDialog, setShowConfirmationDialog] = useState(false)
   const [organizationName, setOrganizationName] = useState<string>('')
+  const [companySlug, setCompanySlug] = useState<string | null>(null)
   
   const { coreFields } = useCoreFields()
   // Canonical host redirect to app.virgilio.io (skip local dev)
@@ -116,6 +118,7 @@ export default function PublicJobPosting() {
           title,
           description,
           details,
+          tenant_id,
           jobs!inner(
             organizations!inner(name)
           )
@@ -131,6 +134,18 @@ export default function PublicJobPosting() {
       // Extract organization name
       const orgName = (p as any)?.jobs?.organizations?.name || 'our company'
       setOrganizationName(orgName)
+
+      // Fetch company slug from careers page settings
+      const { data: careersSettings } = await supabase
+        .from('careers_page_settings')
+        .select('company_slug')
+        .eq('tenant_id', (p as any).tenant_id)
+        .eq('is_active', true)
+        .maybeSingle()
+      
+      if (careersSettings) {
+        setCompanySlug(careersSettings.company_slug)
+      }
 
       const { data: f } = await supabase
         .from('job_posting_application_fields')
@@ -496,9 +511,22 @@ export default function PublicJobPosting() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Header with logo on the right */}
+      {/* Header with logo and back button */}
       <header className={`fixed top-0 left-0 right-0 z-50 border-b border-border transition-shadow supports-[backdrop-filter]:bg-surface-primary/60 bg-surface-primary/90 backdrop-blur ${scrolled ? 'shadow-sm' : ''}`}>
-        <div className="max-w-5xl mx-auto flex items-center justify-start px-md py-2 sm:px-lg">
+        <div className="max-w-5xl mx-auto flex items-center justify-between px-md py-2 sm:px-lg">
+          <div className="flex items-center gap-4">
+            {companySlug && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate(`/careers/${companySlug}`)}
+                className="gap-2"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                Back to Careers Page
+              </Button>
+            )}
+          </div>
           <VirgilioLogo className="h-6 w-auto" />
         </div>
       </header>
