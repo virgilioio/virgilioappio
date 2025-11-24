@@ -74,8 +74,9 @@ export function useMailIdentities() {
         
         if (e.data?.type === 'mail-oauth-success') {
           window.removeEventListener('message', onMessage);
-          toast.success(`Connected ${e.data.payload.email}`);
+          toast.success(`Google Workspace connected: ${e.data.payload.email}`);
           queryClient.invalidateQueries({ queryKey: ['mail-identities'] });
+          queryClient.invalidateQueries({ queryKey: ['calendar-identities'] });
         }
         
         if (e.data?.type === 'mail-oauth-error') {
