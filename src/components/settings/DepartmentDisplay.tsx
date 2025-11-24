@@ -1,24 +1,13 @@
 import { Building2, Calendar, User, Mail, Phone } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { sanitizeHtml } from "@/utils/htmlSanitizer";
+import { Organization } from "@/hooks/useOrganizations";
 
-interface Tenant {
-  id: string;
-  name: string;
-  status: string;
-  created_at: string;
-  about?: string | null;
-  billing_contact_name?: string;
-  billing_email?: string;
-  billing_phone?: string;
+interface DepartmentDisplayProps {
+  organization: Organization;
 }
 
-interface OrganizationDisplayProps {
-  tenant: Tenant;
-}
-
-export function OrganizationDisplay({ tenant }: OrganizationDisplayProps) {
+export function DepartmentDisplay({ organization }: DepartmentDisplayProps) {
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -27,9 +16,9 @@ export function OrganizationDisplay({ tenant }: OrganizationDisplayProps) {
     });
   };
 
-  const hasBillingPOC = tenant.billing_contact_name || 
-                        tenant.billing_email || 
-                        tenant.billing_phone;
+  const hasBillingPOC = organization.billing_poc_user_id || 
+                        organization.billing_poc_additional_email || 
+                        organization.billing_poc_phone;
 
   return (
     <div className="space-y-md">
@@ -37,14 +26,14 @@ export function OrganizationDisplay({ tenant }: OrganizationDisplayProps) {
         <div className="space-y-1">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Building2 className="h-4 w-4" />
-            <span>Company Name</span>
+            <span>Organization Name</span>
           </div>
-          <p className="font-medium">{tenant.name}</p>
+          <p className="font-medium">{organization.name}</p>
         </div>
 
         <div className="space-y-1">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Badge variant="outline">{tenant.status}</Badge>
+            <Badge variant="outline">{organization.status}</Badge>
           </div>
         </div>
 
@@ -53,22 +42,9 @@ export function OrganizationDisplay({ tenant }: OrganizationDisplayProps) {
             <Calendar className="h-4 w-4" />
             <span>Created</span>
           </div>
-          <p className="text-sm">{formatDate(tenant.created_at)}</p>
+          <p className="text-sm">{formatDate(organization.created_at)}</p>
         </div>
       </div>
-
-      {tenant.about && (
-        <>
-          <Separator />
-          <div className="space-y-2">
-            <h4 className="text-sm font-medium">About</h4>
-            <div 
-              className="text-sm text-muted-foreground prose prose-sm max-w-none"
-              dangerouslySetInnerHTML={{ __html: sanitizeHtml(tenant.about) }}
-            />
-          </div>
-        </>
-      )}
 
       {hasBillingPOC && (
         <>
@@ -76,33 +52,33 @@ export function OrganizationDisplay({ tenant }: OrganizationDisplayProps) {
           <div className="space-y-2">
             <h4 className="text-sm font-medium">Billing Point of Contact</h4>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {tenant.billing_contact_name && (
+              {organization.billing_poc_user_id && (
                 <div className="space-y-1">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <User className="h-4 w-4" />
-                    <span>Name</span>
+                    <span>User ID</span>
                   </div>
-                  <p className="text-sm">{tenant.billing_contact_name}</p>
+                  <p className="text-sm">{organization.billing_poc_user_id}</p>
                 </div>
               )}
 
-              {tenant.billing_email && (
+              {organization.billing_poc_additional_email && (
                 <div className="space-y-1">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Mail className="h-4 w-4" />
                     <span>Email</span>
                   </div>
-                  <p className="text-sm">{tenant.billing_email}</p>
+                  <p className="text-sm">{organization.billing_poc_additional_email}</p>
                 </div>
               )}
 
-              {tenant.billing_phone && (
+              {organization.billing_poc_phone && (
                 <div className="space-y-1">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <Phone className="h-4 w-4" />
                     <span>Phone</span>
                   </div>
-                  <p className="text-sm">{tenant.billing_phone}</p>
+                  <p className="text-sm">{organization.billing_poc_phone}</p>
                 </div>
               )}
             </div>
@@ -112,8 +88,8 @@ export function OrganizationDisplay({ tenant }: OrganizationDisplayProps) {
 
       <Separator />
       <div className="space-y-1">
-        <p className="text-xs text-muted-foreground">Tenant ID</p>
-        <code className="text-xs bg-muted px-2 py-1 rounded">{tenant.id}</code>
+        <p className="text-xs text-muted-foreground">Organization ID</p>
+        <code className="text-xs bg-muted px-2 py-1 rounded">{organization.id}</code>
       </div>
     </div>
   );
