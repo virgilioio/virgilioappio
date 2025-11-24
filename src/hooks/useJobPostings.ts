@@ -14,6 +14,9 @@ export interface JobPosting {
   created_by: string | null
   created_at: string
   updated_at: string
+  tenant_id: string
+  location: string | null
+  job_type: string | null
 }
 
 // Helper to create a URL-friendly slug and reduce collisions with a short suffix
@@ -79,6 +82,8 @@ export function useJobPostings(jobId: string) {
         description: description || null,
         slug,
         details: details ?? {},
+        // tenant_id will be auto-populated by trigger
+        tenant_id: '00000000-0000-0000-0000-000000000000', // placeholder, will be overwritten by trigger
       })
       .select()
       .maybeSingle()

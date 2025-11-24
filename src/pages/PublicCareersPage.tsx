@@ -32,12 +32,9 @@ interface JobPosting {
   details: any
   created_at: string
   job_id: string
-  jobs: {
-    id: string
-    location: string | null
-    job_type: string | null
-    organization_id: string
-  }
+  tenant_id: string
+  location: string | null
+  job_type: string | null
 }
 
 export default function PublicCareersPage() {
@@ -95,27 +92,16 @@ export default function PublicCareersPage() {
             details,
             created_at,
             job_id,
-            jobs (
-              id,
-              location,
-              job_type,
-              organization_id,
-              tenant_id
-            )
+            tenant_id,
+            location,
+            job_type
           `)
           .eq('is_active', true)
+          .eq('tenant_id', settingsData.tenant_id)
           .order('created_at', { ascending: false })
 
-        console.log('Fetched postings:', postingsData)
-        console.log('Tenant ID to match:', settingsData.tenant_id)
-
         if (!postingsError && postingsData) {
-          // Filter by tenant_id in JavaScript for better visibility
-          const filteredPostings = postingsData.filter(
-            (p: any) => p.jobs?.tenant_id === settingsData.tenant_id
-          )
-          console.log('Filtered postings:', filteredPostings)
-          setPostings(filteredPostings as any[])
+          setPostings(postingsData as JobPosting[])
         }
 
         setIsLoading(false)
@@ -232,16 +218,16 @@ export default function PublicCareersPage() {
                         {posting.title}
                       </h3>
                       <div className="flex flex-wrap gap-3 text-sm text-text-secondary">
-                        {posting.jobs.location && (
+                        {posting.location && (
                           <div className="flex items-center gap-1">
                             <MapPin className="h-4 w-4" />
-                            <span>{posting.jobs.location}</span>
+                            <span>{posting.location}</span>
                           </div>
                         )}
-                        {posting.jobs.job_type && (
+                        {posting.job_type && (
                           <div className="flex items-center gap-1">
                             <Clock className="h-4 w-4" />
-                            <span>{posting.jobs.job_type}</span>
+                            <span>{posting.job_type}</span>
                           </div>
                         )}
                       </div>
