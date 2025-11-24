@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useOrgContext } from '@/contexts/OrgContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 export interface MailIdentity {
   id: string;
@@ -19,6 +20,8 @@ export interface MailIdentity {
 
 export function useMailIdentities() {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const { organizationId } = useOrgContext();
 
   const { data: identities, isLoading } = useQuery({
     queryKey: ['mail-identities'],
@@ -69,7 +72,7 @@ export function useMailIdentities() {
       }
 
       // Listen for success/error from the popup
-      const onMessage = (e: MessageEvent) => {
+      const onMessage = async (e: MessageEvent) => {
         if (e.origin !== window.location.origin) return;
         
         if (e.data?.type === 'mail-oauth-success') {
@@ -77,7 +80,29 @@ export function useMailIdentities() {
           toast.success(`Google Workspace connected: ${e.data.payload.email}`);
           queryClient.invalidateQueries({ queryKey: ['mail-identities'] });
           queryClient.invalidateQueries({ queryKey: ['calendar-identities'] });
-          queryClient.invalidateQueries({ queryKey: ['onboarding-progress'] });
+          
+          // Recompute onboarding progress
+          try {
+            if (user?.id && organizationId) {
+              const { data: org } = await supabase
+                .from('organizations')
+                .select('tenant_id')
+                .eq('id', organizationId)
+                .single();
+              
+              if (org?.tenant_id) {
+                await supabase.rpc('check_onboarding_task_completion', {
+                  p_user_id: user.id,
+                  p_tenant_id: org.tenant_id,
+                });
+                queryClient.invalidateQueries({ 
+                  queryKey: ['onboarding-progress', user.id, org.tenant_id] 
+                });
+              }
+            }
+          } catch (error) {
+            console.error('Failed to update onboarding progress:', error);
+          }
         }
         
         if (e.data?.type === 'mail-oauth-error') {

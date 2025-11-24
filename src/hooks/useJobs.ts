@@ -294,7 +294,30 @@ export function useJobs() {
       })
 
       await getJobs() // Refresh the list
-      queryClient.invalidateQueries({ queryKey: ['onboarding-progress'] })
+      
+      // Recompute onboarding progress
+      try {
+        if (user?.id && organizationId) {
+          const { data: org } = await supabase
+            .from('organizations')
+            .select('tenant_id')
+            .eq('id', organizationId)
+            .single();
+          
+          if (org?.tenant_id) {
+            await supabase.rpc('check_onboarding_task_completion', {
+              p_user_id: user.id,
+              p_tenant_id: org.tenant_id,
+            });
+            queryClient.invalidateQueries({ 
+              queryKey: ['onboarding-progress', user.id, org.tenant_id] 
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Failed to update onboarding progress:', error);
+      }
+      
       return newJob
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to create job'
