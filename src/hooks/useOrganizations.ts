@@ -5,6 +5,7 @@ import { toast } from '@/hooks/use-toast'
 import { useIsVirgilioAdmin } from '@/hooks/useIsVirgilioAdmin'
 import { withAuthRetry, extractErrorMessage } from '@/lib/authUtils'
 import { log } from '@/lib/logger'
+import { useQueryClient } from '@tanstack/react-query'
 
 export interface Organization {
   id: string
@@ -69,6 +70,7 @@ export function useOrganizations() {
   const [error, setError] = useState<string | null>(null)
   const { user, userType, organizationId } = useAuth()
   const isVirgilioAdmin = useIsVirgilioAdmin()
+  const queryClient = useQueryClient()
 
   // Helper function to get user's tenant organization
   const getUserTenantOrganization = async () => {
@@ -234,6 +236,7 @@ export function useOrganizations() {
       })
 
       await getOrganizations()
+      queryClient.invalidateQueries({ queryKey: ['onboarding-progress'] })
       return newOrg
     } catch (err) {
       const errorMessage = extractErrorMessage(err)

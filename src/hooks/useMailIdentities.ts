@@ -77,6 +77,7 @@ export function useMailIdentities() {
           toast.success(`Google Workspace connected: ${e.data.payload.email}`);
           queryClient.invalidateQueries({ queryKey: ['mail-identities'] });
           queryClient.invalidateQueries({ queryKey: ['calendar-identities'] });
+          queryClient.invalidateQueries({ queryKey: ['onboarding-progress'] });
         }
         
         if (e.data?.type === 'mail-oauth-error') {
