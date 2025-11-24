@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabaseClient'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { VirgilioLogo } from '@/components/VirgilioLogo'
+import { PageTitle } from '@/components/ui/page-title'
 import { Briefcase, MapPin, Clock, Loader2 } from 'lucide-react'
 
 interface CareersSettings {
@@ -164,7 +165,7 @@ export default function PublicCareersPage() {
                 <img
                   src={settings.logo_url}
                   alt={tenantInfo?.name || 'Company logo'}
-                  className={`max-h-16 object-contain ${settings.company_website_url ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
+                  className={`max-h-11 object-contain ${settings.company_website_url ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
                   onClick={handleLogoClick}
                 />
               ) : (
@@ -172,14 +173,16 @@ export default function PublicCareersPage() {
                   className={settings.company_website_url ? 'cursor-pointer' : ''}
                   onClick={handleLogoClick}
                 >
-                  <VirgilioLogo size="xl" />
+                  <VirgilioLogo size="lg" />
                 </div>
               )}
             </div>
             {settings.show_company_name && tenantInfo && (
-              <h1 className="text-3xl font-bold text-virgilio-text">
-                {tenantInfo.name}
-              </h1>
+              <div className="flex justify-center">
+                <PageTitle as="h1">
+                  {tenantInfo.name}
+                </PageTitle>
+              </div>
             )}
             {settings.header_text && (
               <p className="text-text-secondary max-w-2xl mx-auto">
