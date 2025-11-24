@@ -2,10 +2,8 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
 import { Card } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Briefcase, MapPin, Clock, Loader2 } from 'lucide-react'
-import VirgilioLogo from '@/assets/virgilio_hor_1.svg'
 
 interface CareersSettings {
   id: string
@@ -253,7 +251,7 @@ export default function PublicCareersPage() {
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-center gap-2 text-sm text-text-tertiary">
             <span>Powered by</span>
-            <img src={VirgilioLogo} alt="Virgilio" className="h-4" />
+            <span className="font-semibold text-virgilio-purple">Virgilio</span>
           </div>
         </div>
       </footer>
