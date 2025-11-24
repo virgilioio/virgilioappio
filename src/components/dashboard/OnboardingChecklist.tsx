@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
-import { Rocket, X, Check, ChevronRight } from 'lucide-react';
+import { X, Check, ChevronRight } from 'lucide-react';
+import gioAvatar from '@/assets/gio-avatar.png';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -30,7 +31,7 @@ export function OnboardingChecklist() {
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2">
-            <Rocket className="h-4 w-4 text-virgilio-purple" />
+            <img src={gioAvatar} alt="Gio" className="h-5 w-5 rounded-full" />
             Get Started
           </CardTitle>
           <Button
