@@ -262,10 +262,10 @@ export default function PublicCareersPage() {
 
       {/* Footer */}
       <footer className="border-t border-virgilio-border bg-surface-primary mt-16">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-center gap-2 text-sm text-text-tertiary">
             <span>Powered by</span>
-            <span className="font-semibold text-virgilio-purple">Virgilio</span>
+            <VirgilioLogo size="sm" />
           </div>
         </div>
       </footer>
