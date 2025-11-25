@@ -264,7 +264,7 @@ export function SaaSCustomerDetail() {
             />
 
             {/* Onboarding Progress Card */}
-            <OnboardingProgressCard tenantId={customer.id} />
+            <OnboardingProgressCard tenantId={customer.tenant_id} />
 
             {/* Owner Contact Card */}
             {customer.owner_details && (
