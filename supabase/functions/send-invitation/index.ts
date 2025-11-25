@@ -119,6 +119,27 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log("Invitation email sent successfully:", emailResponse);
 
+    // Log activity for member invitation
+    const { error: activityError } = await supabase.rpc('log_activity', {
+      p_user_id: (await supabase.auth.getUser()).data.user?.id || null,
+      p_organization_id: member.organization_id,
+      p_activity_type: 'member_invited',
+      p_title: `Team member invited: ${email}`,
+      p_description: 'Invitation sent to new team member',
+      p_metadata: {
+        invited_email: email,
+        role: member.member_role,
+        member_id: memberId
+      },
+      p_entity_type: 'member',
+      p_entity_id: memberId
+    });
+
+    if (activityError) {
+      console.error('Failed to log activity:', activityError);
+      // Don't fail the request if activity logging fails
+    }
+
     return new Response(
       JSON.stringify({ 
         success: true, 
