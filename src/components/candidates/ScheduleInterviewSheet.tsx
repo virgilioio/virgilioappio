@@ -653,6 +653,17 @@ export function ScheduleInterviewSheet({
                   
                   <Card>
                     <CardContent className="p-6">
+                      <MeetingLocationSelector
+                        meetingType={meetingType}
+                        onMeetingTypeChange={setMeetingType}
+                        customLocation={customLocation}
+                        onCustomLocationChange={setCustomLocation}
+                      />
+                    </CardContent>
+                  </Card>
+                  
+                  <Card>
+                    <CardContent className="p-6">
                       <MonthCalendar
                         availableDates={availableDates}
                         selectedDate={selectedDate}
@@ -674,20 +685,6 @@ export function ScheduleInterviewSheet({
                       />
                     </CardContent>
                   </Card>
-
-                  {/* Meeting Location Selector */}
-                  {selectedDate && (
-                    <Card>
-                      <CardContent className="p-6">
-                        <MeetingLocationSelector
-                          meetingType={meetingType}
-                          onMeetingTypeChange={setMeetingType}
-                          customLocation={customLocation}
-                          onCustomLocationChange={setCustomLocation}
-                        />
-                      </CardContent>
-                    </Card>
-                  )}
                 </div>
               )}
 
