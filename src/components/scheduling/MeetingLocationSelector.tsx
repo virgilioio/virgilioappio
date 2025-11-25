@@ -1,7 +1,8 @@
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Input } from "@/components/ui/input";
-import { Video, MapPin } from "lucide-react";
+import { MapPin } from "lucide-react";
+import googleMeetIcon from "@/assets/google-meet-icon.png";
 
 interface MeetingLocationSelectorProps {
   meetingType: 'google_meet' | 'custom';
@@ -31,8 +32,8 @@ export function MeetingLocationSelector({
               htmlFor="google_meet"
               className="flex items-center gap-2 cursor-pointer font-medium"
             >
-              <Video className="h-4 w-4 text-primary" />
-              Auto-generate Google Meet
+              <img src={googleMeetIcon} alt="Google Meet" className="h-4 w-4" />
+              Google Meet
             </Label>
             <p className="text-sm text-text-secondary">
               A Meet link will be created automatically
