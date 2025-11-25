@@ -4588,34 +4588,20 @@ export type Database = {
         Args: { job_id_param: string }
         Returns: boolean
       }
-      log_activity:
-        | {
-            Args: {
-              p_activity_type: Database["public"]["Enums"]["activity_type"]
-              p_description?: string
-              p_entity_id?: string
-              p_entity_type?: string
-              p_metadata?: Json
-              p_organization_id: string
-              p_tenant_id?: string
-              p_title: string
-              p_user_id: string
-            }
-            Returns: string
-          }
-        | {
-            Args: {
-              p_activity_type: Database["public"]["Enums"]["activity_type"]
-              p_description?: string
-              p_entity_id?: string
-              p_entity_type?: string
-              p_metadata?: Json
-              p_organization_id: string
-              p_title: string
-              p_user_id: string
-            }
-            Returns: string
-          }
+      log_activity: {
+        Args: {
+          p_activity_type: Database["public"]["Enums"]["activity_type"]
+          p_description?: string
+          p_entity_id?: string
+          p_entity_type?: string
+          p_metadata?: Json
+          p_organization_id: string
+          p_tenant_id?: string
+          p_title: string
+          p_user_id: string
+        }
+        Returns: string
+      }
       log_audit_event: {
         Args: {
           p_action: string
