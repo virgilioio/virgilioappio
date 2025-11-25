@@ -20,8 +20,16 @@ export function useFavicon() {
           const isValidUrl = data.file_url.startsWith('http') || data.file_url.startsWith('/') || data.file_url.startsWith('data:')
           
           if (isValidUrl) {
-            // Add cache-busting parameter for mobile browsers
-            const cacheBustedUrl = `${data.file_url}?v=${Date.now()}`
+            // Add aggressive cache-busting for mobile browsers
+            const timestamp = Date.now()
+            const cacheBustedUrl = `${data.file_url}?v=${timestamp}&mobile=${timestamp}`
+            
+            // Add preload hint for priority loading
+            const preloadLink = document.createElement('link')
+            preloadLink.rel = 'preload'
+            preloadLink.as = 'image'
+            preloadLink.href = cacheBustedUrl
+            document.head.appendChild(preloadLink)
             
             // Update all favicon-related links
             const faviconSelectors = [
