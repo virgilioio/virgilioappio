@@ -4724,6 +4724,7 @@ export type Database = {
         | "candidate_email_sent"
         | "candidate_attachment_uploaded"
         | "candidate_profile_updated"
+        | "interview_scheduled"
       application_field_source: "library" | "custom"
       automation_type: "single_email" | "email_sequence"
       contract_status_enum:
@@ -4947,6 +4948,7 @@ export const Constants = {
         "candidate_email_sent",
         "candidate_attachment_uploaded",
         "candidate_profile_updated",
+        "interview_scheduled",
       ],
       application_field_source: ["library", "custom"],
       automation_type: ["single_email", "email_sequence"],
