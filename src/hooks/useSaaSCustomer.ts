@@ -99,10 +99,10 @@ export function useSaaSCustomer(customerId: string) {
           .eq('user_status', 'active'),
         
         supabase
-          .from('members')
-          .select('updated_at')
+          .from('activities')
+          .select('created_at')
           .eq('tenant_id', tenant.id)
-          .order('updated_at', { ascending: false })
+          .order('created_at', { ascending: false })
           .limit(1)
           .maybeSingle()
       ])
@@ -134,7 +134,7 @@ export function useSaaSCustomer(customerId: string) {
         jobs_created_30d: jobsCount || 0,
         candidates_added_30d: candidatesCount || 0,
         members_active_count: membersCount || 0,
-        last_active_at: lastActivityQuery.data?.updated_at || null,
+        last_active_at: lastActivityQuery.data?.created_at || null,
         owner_details: ownerDetails
       } as SaaSCustomerDetail
     },
