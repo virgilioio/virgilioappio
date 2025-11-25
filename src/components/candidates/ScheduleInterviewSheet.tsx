@@ -9,11 +9,12 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from '@/hooks/use-toast';
-import { AlertCircle, Calendar, CheckCircle2, Clock, User } from 'lucide-react';
+import { AlertCircle, Calendar, CheckCircle2, Clock, User, Video, MapPin } from 'lucide-react';
 import { startOfMonth, endOfMonth, isSameDay, parseISO } from 'date-fns';
 import { useBookingAvailability } from '@/hooks/useBookingAvailability';
 import { MonthCalendar } from '@/components/booking/MonthCalendar';
 import { TimeSlotsList } from '@/components/booking/TimeSlotsList';
+import { MeetingLocationSelector } from '@/components/scheduling/MeetingLocationSelector';
 import { useAuth } from '@/contexts/AuthContext';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -44,6 +45,8 @@ function InternalBookingConfirmationForm({
   candidateName,
   candidateEmail,
   candidatePhone,
+  meetingType,
+  customLocation,
 }: {
   selectedSlot: { start: string; end: string };
   candidateTimezone: string;
@@ -52,6 +55,8 @@ function InternalBookingConfirmationForm({
   candidateName: string;
   candidateEmail: string;
   candidatePhone: string;
+  meetingType: 'google_meet' | 'custom';
+  customLocation: string;
 }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [sendInvitation, setSendInvitation] = useState(true);
@@ -95,6 +100,19 @@ function InternalBookingConfirmationForm({
           <div className="flex items-center gap-2 text-sm">
             <Globe className="w-4 h-4 text-primary" />
             <span className="text-text-secondary">{candidateTimezone.replace(/_/g, ' ')}</span>
+          </div>
+          <div className="flex items-center gap-2 text-sm">
+            {meetingType === 'google_meet' ? (
+              <>
+                <Video className="w-4 h-4 text-primary" />
+                <span>Google Meet (auto-generated)</span>
+              </>
+            ) : (
+              <>
+                <MapPin className="w-4 h-4 text-primary" />
+                <span className="break-all">{customLocation}</span>
+              </>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -269,6 +287,8 @@ export function ScheduleInterviewSheet({
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<{ start: string; end: string } | null>(null);
+  const [meetingType, setMeetingType] = useState<'google_meet' | 'custom'>('google_meet');
+  const [customLocation, setCustomLocation] = useState('');
   const candidateTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   // Fetch stage interviewer assignments
@@ -405,6 +425,8 @@ export function ScheduleInterviewSheet({
       job_hiring_stage_id: jhsId,
       booked_by_user_id: user?.id,
       send_invitation: sendInvitation,
+      meeting_type_preference: meetingType,
+      custom_meeting_location: meetingType === 'custom' ? customLocation : null,
     };
 
     await createBookingMutation.mutateAsync(bookingData);
@@ -462,6 +484,8 @@ export function ScheduleInterviewSheet({
       setSelectedInterviewer(null);
       setSelectedDate(null);
       setSelectedSlot(null);
+      setMeetingType('google_meet');
+      setCustomLocation('');
       onOpenChange(false);
     },
     onError: (error: any) => {
@@ -496,6 +520,8 @@ export function ScheduleInterviewSheet({
       setSelectedInterviewer(null);
       setSelectedDate(null);
       setSelectedSlot(null);
+      setMeetingType('google_meet');
+      setCustomLocation('');
     }
     onOpenChange(newOpen);
   };
@@ -633,6 +659,20 @@ export function ScheduleInterviewSheet({
                       />
                     </CardContent>
                   </Card>
+
+                  {/* Meeting Location Selector */}
+                  {selectedDate && (
+                    <Card>
+                      <CardContent className="p-6">
+                        <MeetingLocationSelector
+                          meetingType={meetingType}
+                          onMeetingTypeChange={setMeetingType}
+                          customLocation={customLocation}
+                          onCustomLocationChange={setCustomLocation}
+                        />
+                      </CardContent>
+                    </Card>
+                  )}
                 </div>
               )}
 
@@ -651,6 +691,8 @@ export function ScheduleInterviewSheet({
                     candidateName={candidateName}
                     candidateEmail={candidateEmail}
                     candidatePhone={candidatePhone || ''}
+                    meetingType={meetingType}
+                    customLocation={customLocation}
                   />
                 </div>
               )}

@@ -980,7 +980,9 @@ export type Database = {
           email: string | null
           enriched_at: string | null
           enrichment_status: string | null
+          external_application_id: string | null
           id: string
+          job_board_source: string | null
           last_skills_generation: string | null
           linkedin_url: string | null
           location_city: string | null
@@ -1023,7 +1025,9 @@ export type Database = {
           email?: string | null
           enriched_at?: string | null
           enrichment_status?: string | null
+          external_application_id?: string | null
           id?: string
+          job_board_source?: string | null
           last_skills_generation?: string | null
           linkedin_url?: string | null
           location_city?: string | null
@@ -1066,7 +1070,9 @@ export type Database = {
           email?: string | null
           enriched_at?: string | null
           enrichment_status?: string | null
+          external_application_id?: string | null
           id?: string
+          job_board_source?: string | null
           last_skills_generation?: string | null
           linkedin_url?: string | null
           location_city?: string | null
@@ -1643,6 +1649,47 @@ export type Database = {
           },
         ]
       }
+      failed_job_board_applications: {
+        Row: {
+          board_name: string
+          created_at: string | null
+          error_message: string | null
+          id: string
+          payload: Json | null
+          posting_id: string | null
+          resolved: boolean | null
+          retry_count: number | null
+        }
+        Insert: {
+          board_name: string
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          payload?: Json | null
+          posting_id?: string | null
+          resolved?: boolean | null
+          retry_count?: number | null
+        }
+        Update: {
+          board_name?: string
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          payload?: Json | null
+          posting_id?: string | null
+          resolved?: boolean | null
+          retry_count?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "failed_job_board_applications_posting_id_fkey"
+            columns: ["posting_id"]
+            isOneToOne: false
+            referencedRelation: "job_postings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invitations: {
         Row: {
           created_at: string | null
@@ -1727,6 +1774,59 @@ export type Database = {
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_board_integrations: {
+        Row: {
+          api_key: string | null
+          board_name: string
+          created_at: string | null
+          created_by: string | null
+          feed_url: string | null
+          id: string
+          is_enabled: boolean | null
+          questions_url: string | null
+          settings: Json | null
+          tenant_id: string
+          updated_at: string | null
+          webhook_url: string | null
+        }
+        Insert: {
+          api_key?: string | null
+          board_name: string
+          created_at?: string | null
+          created_by?: string | null
+          feed_url?: string | null
+          id?: string
+          is_enabled?: boolean | null
+          questions_url?: string | null
+          settings?: Json | null
+          tenant_id: string
+          updated_at?: string | null
+          webhook_url?: string | null
+        }
+        Update: {
+          api_key?: string | null
+          board_name?: string
+          created_at?: string | null
+          created_by?: string | null
+          feed_url?: string | null
+          id?: string
+          is_enabled?: boolean | null
+          questions_url?: string | null
+          settings?: Json | null
+          tenant_id?: string
+          updated_at?: string | null
+          webhook_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_board_integrations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -1974,11 +2074,13 @@ export type Database = {
           deleted_at: string | null
           description: string | null
           details: Json
+          external_postings: Json | null
           id: string
           is_active: boolean
           job_id: string
           job_type: string | null
           location: string | null
+          publish_to_talent: boolean | null
           slug: string
           tenant_id: string
           title: string
@@ -1990,11 +2092,13 @@ export type Database = {
           deleted_at?: string | null
           description?: string | null
           details?: Json
+          external_postings?: Json | null
           id?: string
           is_active?: boolean
           job_id: string
           job_type?: string | null
           location?: string | null
+          publish_to_talent?: boolean | null
           slug: string
           tenant_id: string
           title: string
@@ -2006,11 +2110,13 @@ export type Database = {
           deleted_at?: string | null
           description?: string | null
           details?: Json
+          external_postings?: Json | null
           id?: string
           is_active?: boolean
           job_id?: string
           job_type?: string | null
           location?: string | null
+          publish_to_talent?: boolean | null
           slug?: string
           tenant_id?: string
           title?: string

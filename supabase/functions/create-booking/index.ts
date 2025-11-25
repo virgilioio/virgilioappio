@@ -32,7 +32,20 @@ serve(async (req) => {
       job_candidate_association_id,
       job_hiring_stage_id,
       booked_by_user_id,
+      // Meeting location preferences
+      meeting_type_preference = 'google_meet', // 'google_meet' or 'custom'
+      custom_meeting_location = null,
     } = await req.json();
+
+    // Validate custom location if specified
+    if (meeting_type_preference === 'custom' && (!custom_meeting_location || custom_meeting_location.trim() === '')) {
+      return new Response(JSON.stringify({
+        error: 'Custom meeting location is required when meeting type is set to custom',
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     console.log('[create-booking] Creating booking for:', candidate_email);
 
@@ -231,7 +244,7 @@ serve(async (req) => {
             },
             body: JSON.stringify({
               summary: `Interview: ${candidate_name}`,
-              description: `Interview scheduled via Virgilio\n\nCANDIDATE DETAILS:\nName: ${candidate_name}\nEmail: ${candidate_email}${candidate_phone ? `\nPhone: ${candidate_phone}` : ''}${notes ? `\n\nNOTES:\n${notes}` : ''}${candidateProfileUrl ? `\n\n📝 SUBMIT SCORECARD:\n${candidateProfileUrl}` : ''}`,
+              description: `Interview scheduled via Virgilio\n\nCANDIDATE DETAILS:\nName: ${candidate_name}\nEmail: ${candidate_email}${candidate_phone ? `\nPhone: ${candidate_phone}` : ''}${notes ? `\n\nNOTES:\n${notes}` : ''}${meeting_type_preference === 'custom' && custom_meeting_location ? `\n\nMEETING LOCATION:\n${custom_meeting_location}` : ''}${candidateProfileUrl ? `\n\n📝 SUBMIT SCORECARD:\n${candidateProfileUrl}` : ''}`,
               start: {
                 dateTime: scheduled_start,
                 timeZone: config.timezone,
@@ -243,12 +256,12 @@ serve(async (req) => {
               attendees: [
                 { email: profile.email }, // Only interviewer
               ],
-              conferenceData: {
+              conferenceData: meeting_type_preference === 'google_meet' ? {
                 createRequest: {
                   requestId: crypto.randomUUID(),
                   conferenceSolutionKey: { type: 'hangoutsMeet' },
                 },
-              },
+              } : undefined,
               reminders: {
                 useDefault: false,
                 overrides: [
@@ -304,7 +317,15 @@ serve(async (req) => {
                   },
                   body: JSON.stringify({
                     summary: interviewTitle,
-                    description: `You have an interview scheduled with ${profile.first_name} ${profile.last_name}.\n\n${googleMeetLink ? `Join via Google Meet: ${googleMeetLink}` : config.meeting_location ? `Location: ${config.meeting_location}` : ''}${notes ? `\n\nAdditional information:\n${notes}` : ''}`,
+                    description: `You have an interview scheduled with ${profile.first_name} ${profile.last_name}.\n\n${
+                      googleMeetLink 
+                        ? `Join via Google Meet: ${googleMeetLink}` 
+                        : custom_meeting_location 
+                          ? `Location: ${custom_meeting_location}` 
+                          : config.meeting_location 
+                            ? `Location: ${config.meeting_location}` 
+                            : ''
+                    }${notes ? `\n\nAdditional information:\n${notes}` : ''}`,
                     start: {
                       dateTime: scheduled_start,
                       timeZone: candidate_timezone,
@@ -368,8 +389,10 @@ serve(async (req) => {
         scheduled_start,
         scheduled_end,
         duration_minutes: config.duration_minutes,
-        meeting_location: googleMeetLink || config.meeting_location,
-        meeting_type: googleMeetLink ? 'google_meet' : 'other',
+        meeting_location: meeting_type_preference === 'google_meet' 
+          ? (googleMeetLink || config.meeting_location) 
+          : custom_meeting_location,
+        meeting_type: meeting_type_preference,
         ics_uid: icsUid,
         notes,
         google_event_id: googleEventId, // Interviewer's event
@@ -421,7 +444,11 @@ serve(async (req) => {
       `DTEND:${formatDateForICS(new Date(scheduled_end))}`,
       `SUMMARY:${escapeICSText(interviewTitle)}`,
       `DESCRIPTION:${escapeICSText(`Scheduled via Virgilio\n\nCandidate Notes:\n${notes || 'None'}`)}`,
-      `LOCATION:${escapeICSText(googleMeetLink || config.meeting_location || '')}`,
+      `LOCATION:${escapeICSText(
+        meeting_type_preference === 'google_meet' 
+          ? (googleMeetLink || config.meeting_location || '') 
+          : (custom_meeting_location || '')
+      )}`,
       `ORGANIZER;CN=${escapeICSText(`${profile.first_name} ${profile.last_name}`)}:mailto:${profile.email}`,
       icsAttendees,
       'STATUS:CONFIRMED',
@@ -455,7 +482,9 @@ serve(async (req) => {
         ];
 
         if (googleMeetLink) {
-          meetingDetails.push(`<strong>Location:</strong> <a href="${googleMeetLink}" style="color: #6366f1;">Google Meet (Click to Join)</a>`);
+          meetingDetails.push(`<strong>Join via:</strong> <a href="${googleMeetLink}" style="color: #7e3eff;">Google Meet</a>`);
+        } else if (custom_meeting_location) {
+          meetingDetails.push(`<strong>Location:</strong> ${custom_meeting_location}`);
         } else if (config.meeting_location) {
           meetingDetails.push(`<strong>Location:</strong> ${config.meeting_location}`);
         }
