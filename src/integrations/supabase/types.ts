@@ -828,50 +828,6 @@ export type Database = {
           },
         ]
       }
-      candidate_enrichment_logs: {
-        Row: {
-          candidate_id: string
-          created_at: string | null
-          credits_used: number | null
-          data_found: Json | null
-          enrichment_type: string
-          error_message: string | null
-          id: string
-          processed_by: string | null
-          status: string
-        }
-        Insert: {
-          candidate_id: string
-          created_at?: string | null
-          credits_used?: number | null
-          data_found?: Json | null
-          enrichment_type: string
-          error_message?: string | null
-          id?: string
-          processed_by?: string | null
-          status: string
-        }
-        Update: {
-          candidate_id?: string
-          created_at?: string | null
-          credits_used?: number | null
-          data_found?: Json | null
-          enrichment_type?: string
-          error_message?: string | null
-          id?: string
-          processed_by?: string | null
-          status?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "candidate_enrichment_logs_candidate_id_fkey"
-            columns: ["candidate_id"]
-            isOneToOne: false
-            referencedRelation: "candidates"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       candidate_urls: {
         Row: {
           candidate_id: string
@@ -1559,47 +1515,6 @@ export type Database = {
             foreignKeyName: "email_rate_limits_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: true
-            referencedRelation: "tenants"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      email_suppression_list: {
-        Row: {
-          created_at: string | null
-          details: Json | null
-          email: string
-          id: string
-          reason: string
-          suppressed_at: string | null
-          suppressed_by: string | null
-          tenant_id: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          details?: Json | null
-          email: string
-          id?: string
-          reason: string
-          suppressed_at?: string | null
-          suppressed_by?: string | null
-          tenant_id?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          details?: Json | null
-          email?: string
-          id?: string
-          reason?: string
-          suppressed_at?: string | null
-          suppressed_by?: string | null
-          tenant_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "email_suppression_list_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
             referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
@@ -2342,54 +2257,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      library_enrichment_logs: {
-        Row: {
-          additions_made: Json | null
-          ai_suggestions: Json | null
-          candidates_analyzed: number | null
-          created_at: string | null
-          enrichment_type: string
-          extracted_terms: Json
-          id: string
-          processed_by: string | null
-          processing_time_ms: number | null
-          rejection_reasons: Json | null
-          source_search_id: string | null
-          synonyms_added: number | null
-          terms_added: number | null
-        }
-        Insert: {
-          additions_made?: Json | null
-          ai_suggestions?: Json | null
-          candidates_analyzed?: number | null
-          created_at?: string | null
-          enrichment_type: string
-          extracted_terms: Json
-          id?: string
-          processed_by?: string | null
-          processing_time_ms?: number | null
-          rejection_reasons?: Json | null
-          source_search_id?: string | null
-          synonyms_added?: number | null
-          terms_added?: number | null
-        }
-        Update: {
-          additions_made?: Json | null
-          ai_suggestions?: Json | null
-          candidates_analyzed?: number | null
-          created_at?: string | null
-          enrichment_type?: string
-          extracted_terms?: Json
-          id?: string
-          processed_by?: string | null
-          processing_time_ms?: number | null
-          rejection_reasons?: Json | null
-          source_search_id?: string | null
-          synonyms_added?: number | null
-          terms_added?: number | null
-        }
-        Relationships: []
       }
       members: {
         Row: {
@@ -3806,39 +3673,6 @@ export type Database = {
         }
         Relationships: []
       }
-      stripe_event_log: {
-        Row: {
-          created_at: string
-          error_message: string | null
-          event_id: string
-          payload: Json
-          processed: boolean
-          received_at: string
-          type: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          error_message?: string | null
-          event_id: string
-          payload: Json
-          processed?: boolean
-          received_at?: string
-          type: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          error_message?: string | null
-          event_id?: string
-          payload?: Json
-          processed?: boolean
-          received_at?: string
-          type?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
       stripe_webhook_events: {
         Row: {
           created_at: string
@@ -3972,50 +3806,6 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "tenant_domains_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      tenant_metrics_daily: {
-        Row: {
-          ai_requests: number | null
-          candidates_added: number | null
-          created_at: string
-          date: string
-          dau: number | null
-          id: string
-          jobs_created: number | null
-          tenant_id: string
-          updated_at: string
-        }
-        Insert: {
-          ai_requests?: number | null
-          candidates_added?: number | null
-          created_at?: string
-          date: string
-          dau?: number | null
-          id?: string
-          jobs_created?: number | null
-          tenant_id: string
-          updated_at?: string
-        }
-        Update: {
-          ai_requests?: number | null
-          candidates_added?: number | null
-          created_at?: string
-          date?: string
-          dau?: number | null
-          id?: string
-          jobs_created?: number | null
-          tenant_id?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "tenant_metrics_daily_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "organizations"
