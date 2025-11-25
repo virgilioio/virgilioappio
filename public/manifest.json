@@ -10,9 +10,14 @@
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/favicon.ico",
-      "sizes": "48x48",
-      "type": "image/x-icon"
+      "src": "https://storage.googleapis.com/gpt-engineer-file-uploads/iM05FhWwZITw5zQUP1QfNJjzeoj1/uploads/1762897937707-Gio (2).png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://storage.googleapis.com/gpt-engineer-file-uploads/iM05FhWwZITw5zQUP1QfNJjzeoj1/uploads/1762897937707-Gio (2).png",
+      "sizes": "512x512",
+      "type": "image/png"
     }
   ],
   "categories": ["business", "productivity"],
