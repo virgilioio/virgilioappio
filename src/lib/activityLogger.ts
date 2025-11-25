@@ -8,6 +8,7 @@ export interface LogActivityParams {
   entityType?: string;
   entityId?: string;
   organizationId?: string;
+  tenantId?: string;
 }
 
 export async function logActivity(params: LogActivityParams): Promise<string | null> {
@@ -18,6 +19,7 @@ export async function logActivity(params: LogActivityParams): Promise<string | n
     const { data, error } = await supabase.rpc('log_activity', {
       p_user_id: user.id,
       p_organization_id: params.organizationId || null,
+      p_tenant_id: params.tenantId || null,
       p_activity_type: params.activityType as any,
       p_title: params.title,
       p_description: params.description || null,

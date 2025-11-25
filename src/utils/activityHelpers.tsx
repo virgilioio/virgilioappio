@@ -8,6 +8,10 @@ import {
   StickyNote,
   Paperclip,
   Calendar,
+  Search,
+  RefreshCw,
+  Archive,
+  Award,
   LucideIcon
 } from 'lucide-react';
 
@@ -22,6 +26,10 @@ export function getActivityIcon(activityType: string): React.ReactNode {
     'candidate_note_added': StickyNote,
     'candidate_attachment_uploaded': Paperclip,
     'interview_scheduled': Calendar,
+    'sourcing_project_created': Search,
+    'sourcing_project_updated': RefreshCw,
+    'sourcing_project_archived': Archive,
+    'scorecard_submitted': Award,
   };
   
   const Icon = iconMap[activityType] || Briefcase;
@@ -39,6 +47,10 @@ export function getActivityColor(activityType: string): string {
     'candidate_note_added': 'hsl(var(--primary))',
     'candidate_attachment_uploaded': 'hsl(var(--success))',
     'interview_scheduled': 'hsl(var(--primary))',
+    'sourcing_project_created': 'hsl(var(--success))',
+    'sourcing_project_updated': 'hsl(var(--info))',
+    'sourcing_project_archived': 'hsl(var(--muted))',
+    'scorecard_submitted': 'hsl(var(--primary))',
   };
   
   return colorMap[activityType] || 'hsl(var(--muted))';
