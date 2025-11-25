@@ -4744,6 +4744,7 @@ export type Database = {
         | "sourcing_project_updated"
         | "sourcing_project_archived"
         | "scorecard_submitted"
+        | "member_activated"
       application_field_source: "library" | "custom"
       automation_type: "single_email" | "email_sequence"
       contract_status_enum:
@@ -4972,6 +4973,7 @@ export const Constants = {
         "sourcing_project_updated",
         "sourcing_project_archived",
         "scorecard_submitted",
+        "member_activated",
       ],
       application_field_source: ["library", "custom"],
       automation_type: ["single_email", "email_sequence"],
