@@ -106,7 +106,7 @@ function InternalBookingConfirmationForm({
           <div className="flex items-center gap-2 text-sm">
             {meetingType === 'google_meet' ? (
               <>
-                <img src={googleMeetIcon} alt="Google Meet" className="h-4 w-4" />
+                <img src={googleMeetIcon} alt="Google Meet" className="h-4 w-auto object-contain" />
                 <span>Google Meet</span>
               </>
             ) : (

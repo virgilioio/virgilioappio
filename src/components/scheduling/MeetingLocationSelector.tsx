@@ -32,7 +32,7 @@ export function MeetingLocationSelector({
               htmlFor="google_meet"
               className="flex items-center gap-2 cursor-pointer font-medium"
             >
-              <img src={googleMeetIcon} alt="Google Meet" className="h-4 w-4" />
+              <img src={googleMeetIcon} alt="Google Meet" className="h-4 w-auto object-contain" />
               Google Meet
             </Label>
             <p className="text-sm text-text-secondary">
