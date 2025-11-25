@@ -7,6 +7,7 @@ import { useJobSpecNormalization } from './useJobSpecNormalization'
 import { withAuthRetry, extractErrorMessage } from '@/lib/authUtils'
 import { log } from '@/lib/logger'
 import { useQueryClient } from '@tanstack/react-query'
+import { logActivity } from '@/lib/activityLogger'
 
 export interface Job {
   id: string
@@ -293,6 +294,22 @@ export function useJobs() {
         description: 'Job created successfully'
       })
 
+      // Log activity
+      await logActivity({
+        activityType: 'job_created',
+        title: `Job created: ${newJob.title}`,
+        description: `New job opening created`,
+        entityType: 'job',
+        entityId: newJob.id,
+        organizationId: newJob.organization_id,
+        metadata: {
+          job_title: newJob.title,
+          location: newJob.location,
+          employment_type: newJob.department,
+          status: newJob.status
+        }
+      });
+
       await getJobs() // Refresh the list
       
       // Recompute onboarding progress
@@ -362,6 +379,19 @@ export function useJobs() {
         description: 'Job updated successfully'
       })
 
+      // Log activity
+      await logActivity({
+        activityType: 'job_updated',
+        title: `Job updated: ${updatedJob.title}`,
+        description: `Job details modified`,
+        entityType: 'job',
+        entityId: updatedJob.id,
+        organizationId: updatedJob.organization_id,
+        metadata: {
+          updated_fields: Object.keys(jobData)
+        }
+      });
+
       await getJobs() // Refresh the list
       return updatedJob
     } catch (err) {
@@ -402,6 +432,19 @@ export function useJobs() {
         title: 'Success',
         description: 'Job archived successfully'
       })
+
+      // Log activity
+      await logActivity({
+        activityType: 'job_archived',
+        title: `Job archived: ${archivedJob.title}`,
+        description: `Job moved to archived status`,
+        entityType: 'job',
+        entityId: archivedJob.id,
+        organizationId: archivedJob.organization_id,
+        metadata: {
+          previous_status: 'open'
+        }
+      });
 
       await getJobs() // Refresh the list
       return archivedJob
@@ -473,10 +516,18 @@ export function useJobs() {
       }
 
       console.log('Deleted job:', id)
-      toast({
-        title: 'Success',
-        description: 'Job deleted successfully'
-      })
+      
+      // Log activity (job details may not be available after deletion)
+      await logActivity({
+        activityType: 'job_deleted',
+        title: `Job deleted`,
+        description: `Job permanently removed from system`,
+        entityType: 'job',
+        entityId: id,
+        metadata: {
+          deleted_by_admin: userType === 'platform_admin'
+        }
+      });
 
       await getJobs() // Refresh the list
     } catch (err) {

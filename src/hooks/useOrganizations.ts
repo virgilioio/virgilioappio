@@ -6,6 +6,7 @@ import { useIsVirgilioAdmin } from '@/hooks/useIsVirgilioAdmin'
 import { withAuthRetry, extractErrorMessage } from '@/lib/authUtils'
 import { log } from '@/lib/logger'
 import { useQueryClient } from '@tanstack/react-query'
+import { logActivity } from '@/lib/activityLogger'
 
 export interface Organization {
   id: string
@@ -235,6 +236,21 @@ export function useOrganizations() {
         description: 'Organization created successfully'
       })
 
+      // Log activity
+      await logActivity({
+        activityType: 'organization_created',
+        title: `Department created: ${newOrg.name}`,
+        description: `New department/organization created`,
+        entityType: 'organization',
+        entityId: newOrg.id,
+        organizationId: newOrg.id,
+        metadata: {
+          org_name: newOrg.name,
+          org_kind: newOrg.org_kind,
+          parent_id: newOrg.parent_organization_id
+        }
+      });
+
       await getOrganizations()
       
       // Recompute onboarding progress
@@ -309,6 +325,19 @@ export function useOrganizations() {
         description: 'Organization updated successfully'
       })
 
+      // Log activity
+      await logActivity({
+        activityType: 'organization_updated',
+        title: `Department updated: ${updatedOrg.name}`,
+        description: `Department/organization details modified`,
+        entityType: 'organization',
+        entityId: updatedOrg.id,
+        organizationId: updatedOrg.id,
+        metadata: {
+          updated_fields: Object.keys(data)
+        }
+      });
+
       await getOrganizations()
       return updatedOrg
     } catch (err) {
@@ -377,6 +406,18 @@ export function useOrganizations() {
           description: 'Organization deactivated successfully'
         })
       }
+
+      // Log activity (organization may not be fully accessible after deletion)
+      await logActivity({
+        activityType: 'organization_deleted',
+        title: `Department archived`,
+        description: `Department/organization deactivated`,
+        entityType: 'organization',
+        entityId: id,
+        metadata: {
+          deleted_by_admin: userType === 'platform_admin'
+        }
+      });
 
       await getOrganizations()
     } catch (err) {
