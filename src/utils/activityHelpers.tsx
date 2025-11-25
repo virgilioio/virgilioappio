@@ -7,6 +7,7 @@ import {
   Mail, 
   StickyNote,
   Paperclip,
+  Calendar,
   LucideIcon
 } from 'lucide-react';
 
@@ -20,6 +21,7 @@ export function getActivityIcon(activityType: string): React.ReactNode {
     'candidate_email_sent': Mail,
     'candidate_note_added': StickyNote,
     'candidate_attachment_uploaded': Paperclip,
+    'interview_scheduled': Calendar,
   };
   
   const Icon = iconMap[activityType] || Briefcase;
@@ -36,6 +38,7 @@ export function getActivityColor(activityType: string): string {
     'candidate_email_sent': 'hsl(var(--accent))',
     'candidate_note_added': 'hsl(var(--primary))',
     'candidate_attachment_uploaded': 'hsl(var(--success))',
+    'interview_scheduled': 'hsl(var(--primary))',
   };
   
   return colorMap[activityType] || 'hsl(var(--muted))';
