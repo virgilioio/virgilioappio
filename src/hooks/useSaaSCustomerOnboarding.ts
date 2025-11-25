@@ -8,7 +8,7 @@ export interface SaaSCustomerOnboardingTask {
 }
 
 export function useSaaSCustomerOnboarding(tenantId: string | undefined) {
-  const { data: progress, isLoading } = useQuery({
+  const { data: progressRecords, isLoading } = useQuery({
     queryKey: ['saas-customer-onboarding', tenantId],
     queryFn: async () => {
       if (!tenantId) return null;
@@ -16,18 +16,27 @@ export function useSaaSCustomerOnboarding(tenantId: string | undefined) {
       const { data, error } = await supabase
         .from('onboarding_progress')
         .select('*')
-        .eq('tenant_id', tenantId)
-        .single();
+        .eq('tenant_id', tenantId);
       
-      if (error) {
-        // If no record exists, return null
-        if (error.code === 'PGRST116') return null;
-        throw error;
-      }
-      return data;
+      if (error) throw error;
+      if (!data || data.length === 0) return null;
+      
+      // Aggregate progress: task is complete if ANY user completed it
+      const aggregated = {
+        task_organization_created: data.some(r => r.task_organization_created),
+        task_job_created: data.some(r => r.task_job_created),
+        task_candidate_created: data.some(r => r.task_candidate_created),
+        task_team_invited: data.some(r => r.task_team_invited),
+        task_google_connected: data.some(r => r.task_google_connected),
+        completed_at: data.find(r => r.completed_at)?.completed_at || null
+      };
+      
+      return aggregated;
     },
     enabled: !!tenantId
   });
+  
+  const progress = progressRecords;
   
   const tasks: SaaSCustomerOnboardingTask[] = [
     {
