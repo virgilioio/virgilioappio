@@ -20,10 +20,11 @@ export function useBookingAvailability(
   startDate: Date,
   endDate: Date,
   durationMinutes: number,
-  candidateTimezone: string
+  candidateTimezone: string,
+  internalScheduling = false
 ) {
   return useQuery({
-    queryKey: ['booking-availability', bookingConfigId, startDate.toISOString(), endDate.toISOString(), durationMinutes, candidateTimezone],
+    queryKey: ['booking-availability', bookingConfigId, startDate.toISOString(), endDate.toISOString(), durationMinutes, candidateTimezone, internalScheduling],
     queryFn: async () => {
       if (!bookingConfigId) throw new Error('Booking config ID is required');
 
@@ -34,6 +35,7 @@ export function useBookingAvailability(
           end_date: endDate.toISOString(),
           duration_minutes: durationMinutes,
           candidate_timezone: candidateTimezone,
+          internal_scheduling: internalScheduling,
         },
       });
 

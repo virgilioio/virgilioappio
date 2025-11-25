@@ -12,6 +12,7 @@ interface GetAvailabilityRequest {
   end_date: string;   // ISO 8601
   duration_minutes: number;
   candidate_timezone: string;
+  internal_scheduling?: boolean;
 }
 
 interface WeeklySchedule {
@@ -38,6 +39,7 @@ serve(async (req) => {
       end_date,
       duration_minutes,
       candidate_timezone,
+      internal_scheduling = false,
     }: GetAvailabilityRequest = await req.json();
 
     console.log('[get-booking-availability] Request:', {
@@ -46,6 +48,7 @@ serve(async (req) => {
       end_date,
       duration_minutes,
       candidate_timezone,
+      internal_scheduling,
     });
 
     // Load booking configuration
@@ -66,25 +69,36 @@ serve(async (req) => {
     }
 
     // Generate potential time slots
-    const potentialSlots = generatePotentialSlots(
-      new Date(start_date),
-      new Date(end_date),
-      config.weekly_schedule as WeeklySchedule,
-      duration_minutes,
-      config.buffer_time_minutes || 0,
-      config.timezone
-    );
+    const potentialSlots = internal_scheduling 
+      ? generateUnrestrictedSlots(
+          new Date(start_date),
+          new Date(end_date),
+          duration_minutes,
+          config.timezone
+        )
+      : generatePotentialSlots(
+          new Date(start_date),
+          new Date(end_date),
+          config.weekly_schedule as WeeklySchedule,
+          duration_minutes,
+          config.buffer_time_minutes || 0,
+          config.timezone
+        );
 
     console.log('[get-booking-availability] Generated', potentialSlots.length, 'potential slots');
 
-    // Apply booking rules
-    const now = new Date();
-    const minStartTime = new Date(now.getTime() + (config.min_notice_hours || 24) * 60 * 60 * 1000);
-    const maxDate = new Date(now.getTime() + (config.max_days_ahead || 30) * 24 * 60 * 60 * 1000);
+    // Apply booking rules (skip if internal scheduling)
+    let filteredSlots = potentialSlots;
 
-    let filteredSlots = potentialSlots.filter(slot => 
-      slot.start >= minStartTime && slot.start <= maxDate
-    );
+    if (!internal_scheduling) {
+      const now = new Date();
+      const minStartTime = new Date(now.getTime() + (config.min_notice_hours || 24) * 60 * 60 * 1000);
+      const maxDate = new Date(now.getTime() + (config.max_days_ahead || 30) * 24 * 60 * 60 * 1000);
+
+      filteredSlots = potentialSlots.filter(slot => 
+        slot.start >= minStartTime && slot.start <= maxDate
+      );
+    }
 
     console.log('[get-booking-availability] After booking rules:', filteredSlots.length, 'slots');
 
@@ -234,6 +248,45 @@ function generatePotentialSlots(
       }
     }
 
+    // Move to next day
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+
+  return slots;
+}
+
+// Helper: Generate unrestricted slots (all dates, 8 AM - 8 PM)
+function generateUnrestrictedSlots(
+  startDate: Date,
+  endDate: Date,
+  durationMinutes: number,
+  timezone: string
+): Array<{ start: Date; end: Date }> {
+  const slots: Array<{ start: Date; end: Date }> = [];
+  const startHour = 8;  // 8 AM
+  const endHour = 20;   // 8 PM
+  const slotIntervalMinutes = 15; // 15-minute intervals
+
+  let currentDate = new Date(startDate);
+  
+  while (currentDate <= endDate) {
+    const dateStr = currentDate.toISOString().split('T')[0]; // "YYYY-MM-DD"
+    
+    // Generate slots from 8 AM to 8 PM
+    for (let hour = startHour; hour < endHour; hour++) {
+      for (let minute = 0; minute < 60; minute += slotIntervalMinutes) {
+        const timeStr = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+        const slotStart = createDateInTimezone(dateStr, timeStr, timezone);
+        const slotEnd = new Date(slotStart.getTime() + durationMinutes * 60 * 1000);
+        
+        // Only add slot if it doesn't extend past 8 PM
+        const dayEnd = createDateInTimezone(dateStr, '20:00', timezone);
+        if (slotEnd <= dayEnd) {
+          slots.push({ start: new Date(slotStart), end: slotEnd });
+        }
+      }
+    }
+    
     // Move to next day
     currentDate.setDate(currentDate.getDate() + 1);
   }

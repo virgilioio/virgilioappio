@@ -15,6 +15,7 @@ import { useBookingAvailability } from '@/hooks/useBookingAvailability';
 import { MonthCalendar } from '@/components/booking/MonthCalendar';
 import { TimeSlotsList } from '@/components/booking/TimeSlotsList';
 import { MeetingLocationSelector } from '@/components/scheduling/MeetingLocationSelector';
+import { InterviewDurationSelector } from '@/components/scheduling/InterviewDurationSelector';
 import { useAuth } from '@/contexts/AuthContext';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -287,6 +288,7 @@ export function ScheduleInterviewSheet({
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<{ start: string; end: string } | null>(null);
+  const [selectedDuration, setSelectedDuration] = useState<number>(30);
   const [meetingType, setMeetingType] = useState<'google_meet' | 'custom'>('google_meet');
   const [customLocation, setCustomLocation] = useState('');
   const candidateTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -376,8 +378,9 @@ export function ScheduleInterviewSheet({
     selectedInterviewer?.booking_configurations?.id,
     monthStart,
     monthEnd,
-    selectedInterviewer?.booking_configurations?.duration_minutes || 30,
-    candidateTimezone
+    selectedDuration,
+    candidateTimezone,
+    true // internal_scheduling = true
   );
 
   // Extract available dates
@@ -416,7 +419,8 @@ export function ScheduleInterviewSheet({
       candidate_phone: formData.candidate_phone || null,
       candidate_timezone: candidateTimezone,
       scheduled_start: selectedSlot.start,
-      scheduled_end: selectedSlot.end,
+      scheduled_end: new Date(new Date(selectedSlot.start).getTime() + selectedDuration * 60 * 1000).toISOString(),
+      duration_minutes: selectedDuration,
       notes: formData.notes || null,
       // Internal booking context
       job_id: jobId,
@@ -484,6 +488,7 @@ export function ScheduleInterviewSheet({
       setSelectedInterviewer(null);
       setSelectedDate(null);
       setSelectedSlot(null);
+      setSelectedDuration(30);
       setMeetingType('google_meet');
       setCustomLocation('');
       onOpenChange(false);
@@ -635,6 +640,15 @@ export function ScheduleInterviewSheet({
                   </div>
 
                   <h3 className="text-lg font-semibold">Select Date & Time</h3>
+                  
+                  <Card>
+                    <CardContent className="p-6">
+                      <InterviewDurationSelector
+                        value={selectedDuration}
+                        onChange={setSelectedDuration}
+                      />
+                    </CardContent>
+                  </Card>
                   
                   <Card>
                     <CardContent className="p-6">
