@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { SuspendOrganizationDialog } from '@/components/settings/SuspendOrganizationDialog'
 import { useSuspendOrganization } from '@/hooks/useSaaSAdminActions'
+import { CustomerHealthBadge } from '@/components/saas/CustomerHealthBadge'
 import {
   Table,
   TableBody,
@@ -161,6 +162,7 @@ export function SaaSCustomersList() {
                   <TableHead>Owner Contact</TableHead>
                   <TableHead>Plan</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Churn Risk</TableHead>
                   <TableHead>Renewal</TableHead>
                   <TableHead>Usage (30d)</TableHead>
                   <TableHead>Last Active</TableHead>
@@ -204,6 +206,10 @@ export function SaaSCustomersList() {
                       <Badge variant={getStatusVariant(customer.status)}>
                         {customer.status}
                       </Badge>
+                    </TableCell>
+                    
+                    <TableCell>
+                      <CustomerHealthBadge health={customer.churn_risk} />
                     </TableCell>
                     
                     <TableCell>

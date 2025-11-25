@@ -18,6 +18,7 @@ export interface SaaSCustomer {
   candidates_added_30d: number
   members_active_count: number
   last_active_at: string | null
+  churn_risk: 'healthy' | 'at-risk' | 'churn-risk' | 'inactive'
 }
 
 export function useSaaSCustomers() {
@@ -101,12 +102,12 @@ export function useSaaSCustomers() {
                 .eq('tenant_id', tenant.id)
                 .eq('user_status', 'active'),
               
-              // Last activity timestamp for this tenant
+              // Last activity timestamp for this tenant (real user activity)
               supabase
-                .from('members')
-                .select('updated_at')
+                .from('activities')
+                .select('created_at')
                 .eq('tenant_id', tenant.id)
-                .order('updated_at', { ascending: false })
+                .order('created_at', { ascending: false })
                 .limit(1)
                 .maybeSingle()
             ])
@@ -117,6 +118,23 @@ export function useSaaSCustomers() {
             ).size
 
             const subscription = subscriptionMap.get(tenant.id)
+            const lastActiveAt = lastActivity?.data?.created_at || null
+
+            // Calculate churn risk based on activity
+            const daysSinceActive = lastActiveAt 
+              ? (Date.now() - new Date(lastActiveAt).getTime()) / (1000 * 60 * 60 * 24)
+              : 999
+
+            let churnRisk: 'healthy' | 'at-risk' | 'churn-risk' | 'inactive'
+            if (daysSinceActive > 30) {
+              churnRisk = 'inactive'
+            } else if (daysSinceActive > 14 || (jobsCount === 0 && candidatesCount === 0)) {
+              churnRisk = 'churn-risk'
+            } else if ((jobsCount || 0) < 2 || candidatesCount < 5) {
+              churnRisk = 'at-risk'
+            } else {
+              churnRisk = 'healthy'
+            }
 
             return {
               id: tenant.id,
@@ -134,8 +152,9 @@ export function useSaaSCustomers() {
               jobs_created_30d: jobsCount || 0,
               candidates_added_30d: candidatesCount,
               members_active_count: membersCount || 0,
-              last_active_at: lastActivity?.data?.updated_at || null
-            }
+              last_active_at: lastActiveAt,
+              churn_risk: churnRisk
+            } as SaaSCustomer
           } catch (error) {
             console.error('Error fetching usage data for tenant:', tenant.id, error)
             const subscription = subscriptionMap.get(tenant.id)
@@ -155,8 +174,9 @@ export function useSaaSCustomers() {
               jobs_created_30d: 0,
               candidates_added_30d: 0,
               members_active_count: 0,
-              last_active_at: null
-            }
+              last_active_at: null,
+              churn_risk: 'inactive' as const
+            } as SaaSCustomer
           }
         })
       )
