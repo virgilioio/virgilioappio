@@ -125,6 +125,27 @@ Also provide a friendly explanation of what you changed.`
 
     if (updateError) throw updateError;
 
+    // Log activity for sourcing project refinement
+    const { error: activityError } = await supabase.rpc('log_activity', {
+      p_user_id: (await supabase.auth.getUser(req.headers.get('Authorization')?.replace('Bearer ', '') || '')).data.user?.id || null,
+      p_organization_id: project.organization_id,
+      p_activity_type: 'sourcing_project_updated',
+      p_title: `Sourcing project refined: ${project.name}`,
+      p_description: `Updated search criteria based on AI conversation`,
+      p_metadata: {
+        project_id: project_id,
+        project_name: project.name,
+        updated_criteria: updatedCriteria,
+        candidate_count: 0  // Will be updated below
+      },
+      p_entity_type: 'sourcing_project',
+      p_entity_id: project_id
+    });
+
+    if (activityError) {
+      console.error('⚠️ Failed to log sourcing project update activity:', activityError);
+    }
+
     // Save messages to conversation
     await supabase
       .from('conversation_messages')

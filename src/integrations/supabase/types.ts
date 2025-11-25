@@ -4597,6 +4597,7 @@ export type Database = {
               p_entity_type?: string
               p_metadata?: Json
               p_organization_id: string
+              p_tenant_id?: string
               p_title: string
               p_user_id: string
             }
@@ -4610,7 +4611,6 @@ export type Database = {
               p_entity_type?: string
               p_metadata?: Json
               p_organization_id: string
-              p_tenant_id?: string
               p_title: string
               p_user_id: string
             }
@@ -4740,6 +4740,10 @@ export type Database = {
         | "candidate_attachment_uploaded"
         | "candidate_profile_updated"
         | "interview_scheduled"
+        | "sourcing_project_created"
+        | "sourcing_project_updated"
+        | "sourcing_project_archived"
+        | "scorecard_submitted"
       application_field_source: "library" | "custom"
       automation_type: "single_email" | "email_sequence"
       contract_status_enum:
@@ -4964,6 +4968,10 @@ export const Constants = {
         "candidate_attachment_uploaded",
         "candidate_profile_updated",
         "interview_scheduled",
+        "sourcing_project_created",
+        "sourcing_project_updated",
+        "sourcing_project_archived",
+        "scorecard_submitted",
       ],
       application_field_source: ["library", "custom"],
       automation_type: ["single_email", "email_sequence"],

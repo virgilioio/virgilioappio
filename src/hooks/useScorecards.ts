@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/contexts/AuthContext";
+import { logActivity } from "@/lib/activityLogger";
 
 export type ScoreRating = "definitely_no" | "no" | "yes" | "strong_yes";
 
@@ -72,7 +73,24 @@ export function useMyScorecards(associationId?: string | null) {
         .single();
       if (error) throw error;
       setRows((prev) => prev.map((r) => (r.id === existing.id ? ((data as unknown) as ScorecardRow) : r)));
-      return (data as unknown) as ScorecardRow;
+      
+      // Log scorecard submission activity
+      const scorecard = (data as unknown) as ScorecardRow;
+      await logActivity({
+        activityType: 'scorecard_submitted',
+        title: 'Interview scorecard submitted',
+        description: `Updated scorecard with rating: ${rating}`,
+        metadata: {
+          candidate_id: scorecard.candidate_id,
+          job_id: scorecard.job_id,
+          stage_instance_id: stageInstanceId,
+          overall_rating: rating
+        },
+        entityType: 'scorecard',
+        entityId: scorecard.id
+      });
+      
+      return scorecard;
     } else {
       const { data, error } = await (supabase as any)
         .from("job_stage_scorecards")
@@ -88,7 +106,24 @@ export function useMyScorecards(associationId?: string | null) {
         .single();
       if (error) throw error;
       setRows((prev) => [...prev, ((data as unknown) as ScorecardRow)]);
-      return (data as unknown) as ScorecardRow;
+      
+      // Log scorecard submission activity
+      const scorecard = (data as unknown) as ScorecardRow;
+      await logActivity({
+        activityType: 'scorecard_submitted',
+        title: 'Interview scorecard submitted',
+        description: `Submitted scorecard with rating: ${rating}`,
+        metadata: {
+          candidate_id: scorecard.candidate_id,
+          job_id: scorecard.job_id,
+          stage_instance_id: stageInstanceId,
+          overall_rating: rating
+        },
+        entityType: 'scorecard',
+        entityId: scorecard.id
+      });
+      
+      return scorecard;
     }
   };
 

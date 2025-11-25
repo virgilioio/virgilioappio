@@ -162,6 +162,31 @@ serve(async (req) => {
 
     console.log(`✅ Project created: ${project.id}`);
 
+    // Log activity for sourcing project creation
+    const { error: activityError } = await supabase.rpc('log_activity', {
+      p_user_id: userId,
+      p_organization_id: targetOrganizationId,
+      p_activity_type: 'sourcing_project_created',
+      p_title: `Sourcing project created: ${name}`,
+      p_description: job_id 
+        ? `Created sourcing project for job` 
+        : `Created standalone sourcing project`,
+      p_metadata: {
+        project_id: project.id,
+        project_name: name,
+        job_id: job_id || null,
+        skills: search_criteria.skills,
+        is_public: is_public ?? false
+      },
+      p_entity_type: 'sourcing_project',
+      p_entity_id: project.id
+    });
+
+    if (activityError) {
+      console.error('⚠️ Failed to log sourcing project creation activity:', activityError);
+      // Don't fail the operation, just log the error
+    }
+
     // Link conversation to project if conversationId provided
     if (conversationId) {
       console.log(`🔗 Linking conversation ${conversationId} to project ${project.id}`);
