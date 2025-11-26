@@ -15,7 +15,7 @@ const buttonVariants = cva(
         destructive: "bg-destructive text-destructive-foreground shadow-[var(--shadow-button)] hover:bg-destructive/90 hover:-translate-y-0.5 hover:shadow-[var(--shadow-md)] active:scale-95 active:shadow-[var(--shadow-xs)]",
         outline: "border border-virgilio-border bg-background shadow-[var(--shadow-xs)] hover:bg-virgilio-purple/5 hover:border-virgilio-purple/50 hover:text-accent-foreground hover:-translate-y-0.5 hover:shadow-[var(--shadow-button)] active:scale-95",
         secondary: "bg-secondary text-secondary-foreground shadow-[var(--shadow-button)] hover:bg-secondary/80 hover:-translate-y-0.5 hover:shadow-[var(--shadow-md)] active:scale-95 active:shadow-[var(--shadow-xs)]",
-        ghost: "hover:bg-accent hover:text-accent-foreground hover:scale-105 active:scale-95",
+        ghost: "hover:bg-accent hover:text-virgilio-text hover:scale-105 active:scale-95",
         link: "text-primary underline-offset-4 hover:underline hover:scale-105 active:scale-95",
         success: "bg-success text-success-foreground shadow-[var(--shadow-button)] hover:bg-success/90 hover:-translate-y-0.5 hover:shadow-[var(--shadow-md)] active:scale-95 active:shadow-[var(--shadow-xs)]",
         warning: "bg-warning text-warning-foreground shadow-[var(--shadow-button)] hover:bg-warning/90 hover:-translate-y-0.5 hover:shadow-[var(--shadow-md)] active:scale-95 active:shadow-[var(--shadow-xs)]",
