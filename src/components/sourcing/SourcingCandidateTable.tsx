@@ -367,7 +367,7 @@ export function SourcingCandidateTable({
                     currentSort={sortConfig} 
                     onSort={requestSort}
                   >
-                    Score
+                    Matching Score
                   </SortableHeader>
                 </TableHead>
                 <TableHead className="w-[200px]">
@@ -474,7 +474,7 @@ export function SourcingCandidateTable({
                       <div className="flex flex-col gap-1">
                         {candidate.match_score > 0 && (
                           <Badge className={cn("text-xs font-semibold", getMatchBadgeColor(candidate.match_tier))}>
-                            Match: {candidate.match_score}%
+                            {candidate.match_score}%
                           </Badge>
                         )}
                         {candidate.coresignal_score && (
