@@ -238,7 +238,7 @@ export function MemberInviteSheet({
         <SeatLimitUpgradeDialog
           open={showUpgradeDialog}
           onOpenChange={setShowUpgradeDialog}
-          currentTier={billing?.subscription_tier as 'launch' | 'growth' | 'business' | null}
+          currentTier={billing?.subscription_tier as 'solo' | 'launch' | 'growth' | 'business' | null}
           currentSeats={seatLimitInfo?.currentSeats ?? 0}
           seatLimit={seatLimitInfo?.seatLimit ?? null}
         />
@@ -363,7 +363,7 @@ export function MemberInviteSheet({
       <SeatLimitUpgradeDialog
         open={showUpgradeDialog}
         onOpenChange={setShowUpgradeDialog}
-        currentTier={billing?.subscription_tier as 'launch' | 'growth' | 'business' | null}
+        currentTier={billing?.subscription_tier as 'solo' | 'launch' | 'growth' | 'business' | null}
         currentSeats={seatLimitInfo?.currentSeats ?? 0}
         seatLimit={seatLimitInfo?.seatLimit ?? null}
       />
