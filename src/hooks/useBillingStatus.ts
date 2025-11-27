@@ -14,7 +14,7 @@ export interface BillingStatus {
   billing_interval: 'month' | 'year' | null
   stripe_subscription_id: string | null
   subscribed: boolean
-  subscription_tier: 'launch' | 'growth' | 'business' | null
+  subscription_tier: 'solo' | 'launch' | 'growth' | 'business' | null
 }
 
 export function useBillingStatus() {

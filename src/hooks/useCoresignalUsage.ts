@@ -9,7 +9,7 @@ export interface CoresignalUsageWithTier {
   collect_credits_used: number
   search_credits_limit: number
   collect_credits_limit: number
-  subscription_tier: 'launch' | 'growth' | 'business'
+  subscription_tier: 'solo' | 'launch' | 'growth' | 'business'
   billing_status: string
   next_reset: string
   search_percentage: number
@@ -107,7 +107,7 @@ export function useCoresignalUsage() {
 
         return {
           ...newRecord,
-          subscription_tier: (subscription.subscription_tier || 'launch') as 'launch' | 'growth' | 'business',
+          subscription_tier: (subscription.subscription_tier || 'launch') as 'solo' | 'launch' | 'growth' | 'business',
           billing_status: subscription.billing_status,
           next_reset: nextReset.toISOString(),
           search_percentage: 0,
@@ -123,7 +123,7 @@ export function useCoresignalUsage() {
 
       return {
         ...data,
-        subscription_tier: (subscription.subscription_tier || 'launch') as 'launch' | 'growth' | 'business',
+        subscription_tier: (subscription.subscription_tier || 'launch') as 'solo' | 'launch' | 'growth' | 'business',
         billing_status: subscription.billing_status,
         next_reset: nextReset.toISOString(),
         search_percentage: Math.round((data.search_credits_used / data.search_credits_limit) * 100),
