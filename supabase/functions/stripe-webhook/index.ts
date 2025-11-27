@@ -169,8 +169,9 @@ async function handleSubscriptionChange(supabaseClient: any, subscription: Strip
   
   tier = tier || 'launch'; // Default to launch
 
-  // Determine max_users based on tier (3 tiers only)
+  // Determine max_users based on tier (4 tiers)
   const maxUsersMap: Record<string, number> = {
+    solo: 1,
     launch: 5,
     growth: 15,
     business: 50,

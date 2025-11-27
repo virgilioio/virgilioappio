@@ -12,15 +12,16 @@ import { useCreateCheckout } from '@/hooks/useBillingPortal'
 interface SeatLimitUpgradeDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  currentTier: 'launch' | 'growth' | 'business' | null
+  currentTier: 'solo' | 'launch' | 'growth' | 'business' | null
   currentSeats: number
   seatLimit: number | null
 }
 
 const tierInfo = {
+  solo: { name: 'Solo', maxUsers: 1, price: 29, yearlyPrice: 306 },
   launch: { name: 'Launch', maxUsers: 5, price: 149, yearlyPrice: 1519 },
-  growth: { name: 'Growth', maxUsers: 20, price: 399, yearlyPrice: 4069 },
-  business: { name: 'Business', maxUsers: null, price: 799, yearlyPrice: 8149 },
+  growth: { name: 'Growth', maxUsers: 15, price: 399, yearlyPrice: 4069 },
+  business: { name: 'Business', maxUsers: 50, price: 799, yearlyPrice: 8149 },
 }
 
 export function SeatLimitUpgradeDialog({
@@ -32,7 +33,8 @@ export function SeatLimitUpgradeDialog({
 }: SeatLimitUpgradeDialogProps) {
   const createCheckout = useCreateCheckout()
 
-  const getNextTier = (): 'growth' | 'business' | null => {
+  const getNextTier = (): 'launch' | 'growth' | 'business' | null => {
+    if (currentTier === 'solo') return 'launch'
     if (currentTier === 'launch') return 'growth'
     if (currentTier === 'growth') return 'business'
     return null
