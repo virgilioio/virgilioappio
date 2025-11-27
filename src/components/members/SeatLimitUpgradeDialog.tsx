@@ -116,7 +116,9 @@ export function SeatLimitUpgradeDialog({
                 <div className="flex items-start gap-2">
                   <Check className="h-4 w-4 text-success mt-0.5 flex-shrink-0" />
                   <span className="text-sm">
-                    {nextTier === 'growth' ? '100 searches / 50 enrichments per month' : '500 searches / 200 enrichments per month'}
+                    {nextTier === 'launch' ? '25 searches / 10 enrichments per month' : 
+                     nextTier === 'growth' ? '100 searches / 50 enrichments per month' : 
+                     '250 searches / 125 enrichments per month'}
                   </span>
                 </div>
                 <div className="flex items-start gap-2">
