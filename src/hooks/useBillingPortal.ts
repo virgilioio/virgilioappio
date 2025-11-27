@@ -52,7 +52,7 @@ export function useOpenBillingPortal() {
 
 interface CreateCheckoutParams {
   interval?: 'month' | 'year'
-  tier?: 'launch' | 'growth' | 'business'
+  tier?: 'solo' | 'launch' | 'growth' | 'business'
 }
 
 export function useCreateCheckout() {

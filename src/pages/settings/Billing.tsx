@@ -313,7 +313,54 @@ export function Billing() {
             <CardDescription>Select the plan that best fits your team size and needs</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {/* Solo Plan */}
+              <div className="border rounded-lg p-6 hover:border-primary transition-colors">
+                <div className="mb-4">
+                  <h3 className="text-xl font-bold">GoGio: Solo!</h3>
+                  <p className="text-sm text-muted-foreground mt-1">For individual recruiters</p>
+                </div>
+                
+                <div className="mb-6">
+                  <div className="text-3xl font-bold">$29</div>
+                  <div className="text-sm text-muted-foreground">per month</div>
+                  <div className="text-xs text-muted-foreground mt-1">$306/year (save 15%)</div>
+                </div>
+
+                <div className="space-y-3 mb-6">
+                  <div className="flex items-start gap-2">
+                    <Check className="h-4 w-4 text-success mt-0.5" />
+                    <span className="text-sm">1 user</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <Check className="h-4 w-4 text-success mt-0.5" />
+                    <span className="text-sm">25 searches / 10 enrichments per month</span>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <Check className="h-4 w-4 text-success mt-0.5" />
+                    <span className="text-sm">Full ATS features</span>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Button 
+                    className="w-full" 
+                    variant="outline"
+                    onClick={() => createCheckout.mutate({ tier: 'solo', interval: 'month' })}
+                    disabled={createCheckout.isPending}
+                  >
+                    Monthly
+                  </Button>
+                  <Button 
+                    className="w-full" 
+                    onClick={() => createCheckout.mutate({ tier: 'solo', interval: 'year' })}
+                    disabled={createCheckout.isPending}
+                  >
+                    Annual (Save 15%)
+                  </Button>
+                </div>
+              </div>
+
               {/* Launch Plan */}
               <div className="border rounded-lg p-6 hover:border-primary transition-colors">
                 <div className="mb-4">

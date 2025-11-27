@@ -130,6 +130,10 @@ serve(async (req) => {
 
     // Map tier + interval to Price ID
     const priceMap: Record<string, Record<string, string>> = {
+      solo: {
+        month: Deno.env.get("STRIPE_PRICE_SOLO_MONTHLY") || "",
+        year: Deno.env.get("STRIPE_PRICE_SOLO_ANNUAL") || "",
+      },
       launch: {
         month: Deno.env.get("STRIPE_PRICE_LAUNCH_MONTHLY") || Deno.env.get("STRIPE_PRICE_MONTHLY") || "",
         year: Deno.env.get("STRIPE_PRICE_LAUNCH_ANNUAL") || Deno.env.get("STRIPE_PRICE_YEARLY") || "",

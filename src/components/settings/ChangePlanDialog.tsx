@@ -30,6 +30,7 @@ interface ChangePlanDialogProps {
 }
 
 const tierOptions = [
+  { value: 'solo', label: 'GoGio: Solo!' },
   { value: 'launch', label: 'GoGio: Launch!' },
   { value: 'growth', label: 'GoGio: Growth!' },
   { value: 'business', label: 'GoGio: Business!' },
@@ -41,9 +42,10 @@ const intervalOptions = [
 ]
 
 const tierPricing = {
-  launch: { monthly: 99, yearly: 950 },
-  growth: { monthly: 299, yearly: 2870 },
-  business: { monthly: 599, yearly: 5750 },
+  solo: { monthly: 29, yearly: 306 },
+  launch: { monthly: 149, yearly: 1519 },
+  growth: { monthly: 399, yearly: 4069 },
+  business: { monthly: 799, yearly: 8149 },
 }
 
 export function ChangePlanDialog({
