@@ -173,12 +173,12 @@ Deno.serve(async (req) => {
           )
         }
 
-        const validTiers = ['launch', 'growth', 'business']
+        const validTiers = ['solo', 'launch', 'growth', 'business']
         const validIntervals = ['monthly', 'yearly']
 
         if (!validTiers.includes(params.newTier.toLowerCase())) {
           return new Response(
-            JSON.stringify({ error: 'Invalid tier. Must be one of: launch, growth, business' }),
+            JSON.stringify({ error: 'Invalid tier. Must be one of: solo, launch, growth, business' }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           )
         }
@@ -191,10 +191,11 @@ Deno.serve(async (req) => {
         }
 
         // Set max_users based on tier
-        const tierMaxUsers: Record<string, number | null> = {
+        const tierMaxUsers: Record<string, number> = {
+          solo: 1,
           launch: 5,
-          growth: 20,
-          business: null, // unlimited
+          growth: 15,
+          business: 50,
         }
 
         updateData = {
