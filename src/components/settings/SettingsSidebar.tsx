@@ -1,5 +1,5 @@
 
-import { User, Building, Building2, Receipt, Users, Shield, Settings as SettingsIcon, Megaphone, FileText, Image, Globe, BarChart3, UserCheck, Briefcase, UsersIcon, CreditCard, Layers } from 'lucide-react'
+import { User, Building, Building2, Receipt, Users, Shield, Settings as SettingsIcon, Megaphone, FileText, Image, BarChart3, UserCheck, Briefcase, UsersIcon, CreditCard, Layers } from 'lucide-react'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useAuth } from '@/contexts/AuthContext'
 import { cn } from '@/lib/utils'
@@ -30,7 +30,7 @@ export function SettingsSidebar({ currentTab, onTabChange, className }: Settings
     ['platform-dashboard', 'platform-settings', 'platform-job-settings', 'platform-customers', 'platform-saas-customers'].includes(currentTab)
   )
   const [workspaceOpen, setWorkspaceOpen] = useState(
-    ['workspace-job-settings', 'organization', 'members', 'job-boards'].includes(currentTab)
+    ['workspace-job-settings', 'organization', 'members'].includes(currentTab)
   )
 
   const isWorkspaceOwnerOfSaaSOrg = () => {
@@ -65,7 +65,6 @@ export function SettingsSidebar({ currentTab, onTabChange, className }: Settings
         { id: 'organization', label: 'Company Profile', icon: Building, show: permissions.canManageOrganization },
         { id: 'members', label: 'Members', icon: Users, show: permissions.canViewMembers },
         { id: 'workspace-job-settings', label: 'Job Settings', icon: SettingsIcon, show: permissions.isPlatformAdmin || (userType === 'workspace_owner' && !!organizationId) },
-        { id: 'job-boards', label: 'Job Boards', icon: Globe, show: permissions.isPlatformAdmin || (userType === 'workspace_owner' && !!organizationId) },
       ]
     },
     { 
