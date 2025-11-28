@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { Plus, Edit, Trash2, FileText, Settings as SettingsIcon, Mail, FileCheck } from 'lucide-react'
+import { Plus, Edit, Trash2, FileText, Settings as SettingsIcon, Mail, FileCheck, Ban, FileX } from 'lucide-react'
 import { useOfferTemplates, type OfferTemplate } from '@/hooks/useOfferTemplates'
 import { useEmailTemplates } from '@/hooks/useEmailTemplates'
 import { useContractTemplates } from '@/hooks/useContractTemplates'
@@ -15,7 +15,7 @@ import { EmailTemplateSheet } from './templates/EmailTemplateSheet'
 import { ContractTemplateSheet } from './templates/ContractTemplateSheet'
 import { OfferTemplateFieldsManager } from './OfferTemplateFieldsManager'
 
-type TemplateType = 'offer-letters' | 'email-templates' | 'contract-templates'
+type TemplateType = 'offer-letters' | 'email-templates' | 'contract-templates' | 'rejection-reasons' | 'rejection-templates'
 
 interface OfferTemplatesManagerProps {
   context?: 'platform-defaults' | 'organization'
@@ -116,6 +116,18 @@ export function OfferTemplatesManager({ context = 'organization' }: OfferTemplat
               <FileCheck className="h-4 w-4 mr-2" />
               <span className="hidden sm:inline">Contracts</span>
               <span className="sm:hidden">Contracts</span>
+            </ToggleGroupItem>
+            <ToggleGroupItem value="rejection-reasons" aria-label="Rejection Reasons" disabled className="opacity-60">
+              <Ban className="h-4 w-4 mr-2" />
+              <span className="hidden sm:inline">Rejection Reasons</span>
+              <span className="sm:hidden">Reasons</span>
+              <Badge variant="secondary" className="ml-2 text-[10px] px-1.5 py-0">Soon</Badge>
+            </ToggleGroupItem>
+            <ToggleGroupItem value="rejection-templates" aria-label="Rejection Templates" disabled className="opacity-60">
+              <FileX className="h-4 w-4 mr-2" />
+              <span className="hidden sm:inline">Rejection Templates</span>
+              <span className="sm:hidden">Reject</span>
+              <Badge variant="secondary" className="ml-2 text-[10px] px-1.5 py-0">Soon</Badge>
             </ToggleGroupItem>
           </ToggleGroup>
         </CardHeader>
@@ -459,6 +471,26 @@ export function OfferTemplatesManager({ context = 'organization' }: OfferTemplat
                 </Table>
               )}
             </>
+          )}
+          
+          {templateType === 'rejection-reasons' && (
+            <div className="text-center py-12">
+              <Ban className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-text-primary mb-2">Coming Soon</h3>
+              <p className="text-text-secondary">
+                Configure rejection reasons to standardize candidate feedback across your organization.
+              </p>
+            </div>
+          )}
+
+          {templateType === 'rejection-templates' && (
+            <div className="text-center py-12">
+              <FileX className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-text-primary mb-2">Coming Soon</h3>
+              <p className="text-text-secondary">
+                Create rejection email templates for consistent and professional candidate communication.
+              </p>
+            </div>
           )}
         </CardContent>
       </Card>
