@@ -101,7 +101,7 @@ export function EditableSearchCriteria({
             }}
             className="flex-1"
           />
-          <Button size="sm" onClick={handleAddSkill}>
+          <Button size="sm" variant="virgilio" onClick={handleAddSkill}>
             <Plus className="h-4 w-4" />
           </Button>
         </div>
@@ -137,7 +137,7 @@ export function EditableSearchCriteria({
             }}
             className="flex-1"
           />
-          <Button size="sm" onClick={handleAddTitleKeyword}>
+          <Button size="sm" variant="virgilio" onClick={handleAddTitleKeyword}>
             <Plus className="h-4 w-4" />
           </Button>
         </div>
@@ -175,7 +175,7 @@ export function EditableSearchCriteria({
             }}
             className="flex-1"
           />
-          <Button size="sm" onClick={handleAddLocation}>
+          <Button size="sm" variant="virgilio" onClick={handleAddLocation}>
             <Plus className="h-4 w-4" />
           </Button>
         </div>
