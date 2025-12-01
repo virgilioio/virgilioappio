@@ -48,7 +48,8 @@ serve(async (req) => {
 
     console.log(`Generating job spec for tenant: ${memberData.tenant_id}`);
     
-    let conversationHistory = '';
+    let conversationMessages: Array<{ role: string; content: string }> = [];
+    let hasConversation = false;
     
     // If conversationId provided, fetch and VALIDATE conversation
     if (conversationId) {
@@ -76,9 +77,14 @@ serve(async (req) => {
         .order('created_at', { ascending: true });
       
       if (!msgError && messages && messages.length > 0) {
-        conversationHistory = '\n\nCONVERSATION HISTORY:\n' + 
-          messages.map(m => `${m.role.toUpperCase()}: ${m.content}`).join('\n');
-        console.log('Including conversation history from', messages.length, 'messages');
+        // CRITICAL FIX: Store conversation messages as proper OpenAI message objects
+        // This ensures the AI properly understands the conversation context
+        conversationMessages = messages.map(m => ({
+          role: m.role === 'assistant' ? 'assistant' : 'user',
+          content: m.content
+        }));
+        hasConversation = true;
+        console.log('Including conversation history from', messages.length, 'messages as proper message objects');
       }
     }
 
@@ -188,8 +194,8 @@ Use this market data to provide SPECIFIC salary recommendations instead of gener
 
 A client has described their hiring need. Your task is to analyze this input and return a structured response that Virgilio's system can use to generate a high-quality job record.
 
-${conversationHistory ? 
-  '🗨️ **CRITICAL - CONVERSATION CONTEXT PROVIDED:**\n\nIMPORTANT: A complete conversation history is provided below. You MUST synthesize ALL information from the ENTIRE conversation to create a comprehensive job specification.\n\n⚠️ DO NOT rely solely on the final user message - it may be a simple confirmation like "Yes!" or "Create it!"\n\nUse the FULL conversation context to understand:\n- The job title and role requirements\n- Required skills and qualifications\n- Salary expectations and budget\n- Location and work arrangement preferences\n- Any other details discussed throughout the conversation\n\nNEVER return placeholder values like "Job Title Not Specified" or "Not Specified" - synthesize concrete information from the conversation.' 
+${hasConversation ? 
+  '🗨️ **CRITICAL - CONVERSATION CONTEXT PROVIDED:**\n\nIMPORTANT: The conversation messages are included as separate messages in this chat. You MUST synthesize ALL information from the ENTIRE conversation to create a comprehensive job specification.\n\n⚠️ The user\'s final message may be a simple confirmation like "Yes!" or "Create it!" - synthesize from the FULL conversation.\n\nUse the conversation to understand:\n- The job title and role requirements\n- Required skills and qualifications\n- Salary expectations and budget\n- Location and work arrangement preferences\n- Any other details discussed\n\nNEVER return placeholder values like "Job Title Not Specified" - synthesize concrete information from the conversation.' 
   : 
   'Generate a job specification based on the user\'s prompt.'
 }
@@ -318,6 +324,9 @@ Return ONLY valid JSON in this format:
   ]
 }`
           },
+          // CRITICAL: Include conversation messages as proper OpenAI messages
+          // This ensures the AI properly understands the full conversation context
+          ...conversationMessages,
           { role: 'user', content: effectivePrompt }
         ],
         temperature: 0.7,
