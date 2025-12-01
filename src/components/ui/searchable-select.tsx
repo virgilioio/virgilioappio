@@ -1,6 +1,6 @@
 
 import * as React from "react"
-import { Check, ChevronsUpDown } from "lucide-react"
+import { Check, ChevronsUpDown, Plus } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -11,6 +11,7 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
+  CommandSeparator,
 } from "@/components/ui/command"
 import {
   Popover,
@@ -34,6 +35,8 @@ interface SearchableSelectProps {
   emptyMessage?: string
   className?: string
   disabled?: boolean
+  onCreateNew?: () => void
+  createNewLabel?: string
 }
 
 export function SearchableSelect({
@@ -45,6 +48,8 @@ export function SearchableSelect({
   emptyMessage = "No results found.",
   className,
   disabled = false,
+  onCreateNew,
+  createNewLabel = "Create new",
 }: SearchableSelectProps) {
   const [open, setOpen] = React.useState(false)
 
@@ -100,6 +105,23 @@ export function SearchableSelect({
                 </CommandItem>
               ))}
             </CommandGroup>
+            {onCreateNew && (
+              <>
+                <CommandSeparator />
+                <CommandGroup>
+                  <CommandItem
+                    onSelect={() => {
+                      setOpen(false)
+                      onCreateNew()
+                    }}
+                    className="text-primary cursor-pointer"
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    {createNewLabel}
+                  </CommandItem>
+                </CommandGroup>
+              </>
+            )}
           </CommandList>
         </Command>
       </PopoverContent>
