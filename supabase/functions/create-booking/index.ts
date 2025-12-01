@@ -301,9 +301,10 @@ serve(async (req) => {
 
           console.warn('[create-booking] Proceeding with booking creation without calendar event');
         } else {
-          const interviewerEventData = await interviewerEventResponse.json();
+        const interviewerEventData = await interviewerEventResponse.json();
           googleEventId = interviewerEventData.id;
           googleMeetLink = interviewerEventData.hangoutLink || interviewerEventData.conferenceData?.entryPoints?.[0]?.uri || null;
+          const conferenceData = interviewerEventData.conferenceData; // Capture full conference data for candidate event
           
           console.log('[create-booking] Interviewer calendar event created successfully:', googleEventId);
           
@@ -322,7 +323,7 @@ serve(async (req) => {
               console.log('[create-booking] Creating candidate\'s Google Calendar event...');
 
               const candidateEventResponse = await fetch(
-                'https://www.googleapis.com/calendar/v3/calendars/primary/events',
+                'https://www.googleapis.com/calendar/v3/calendars/primary/events?conferenceDataVersion=1',
                 {
                   method: 'POST',
                   headers: {
@@ -358,6 +359,7 @@ serve(async (req) => {
                         { method: 'popup', minutes: 30 },
                       ],
                     },
+                    ...(conferenceData && { conferenceData }), // Attach Google Meet to candidate's event
                   }),
                 }
               );
