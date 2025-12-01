@@ -2049,38 +2049,47 @@ export type Database = {
       }
       job_stage_scorecards: {
         Row: {
+          ai_suggested_rating: string | null
           association_id: string
           candidate_id: string
           created_at: string
           created_by: string
           general_overview: string | null
           id: string
+          is_ai_draft: boolean | null
           job_id: string
           rating: Database["public"]["Enums"]["score_rating"]
+          source_booking_id: string | null
           stage_instance_id: string
           updated_at: string
         }
         Insert: {
+          ai_suggested_rating?: string | null
           association_id: string
           candidate_id: string
           created_at?: string
           created_by: string
           general_overview?: string | null
           id?: string
+          is_ai_draft?: boolean | null
           job_id: string
           rating: Database["public"]["Enums"]["score_rating"]
+          source_booking_id?: string | null
           stage_instance_id: string
           updated_at?: string
         }
         Update: {
+          ai_suggested_rating?: string | null
           association_id?: string
           candidate_id?: string
           created_at?: string
           created_by?: string
           general_overview?: string | null
           id?: string
+          is_ai_draft?: boolean | null
           job_id?: string
           rating?: Database["public"]["Enums"]["score_rating"]
+          source_booking_id?: string | null
           stage_instance_id?: string
           updated_at?: string
         }
@@ -2104,6 +2113,13 @@ export type Database = {
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_stage_scorecards_source_booking_id_fkey"
+            columns: ["source_booking_id"]
+            isOneToOne: false
+            referencedRelation: "scheduled_bookings"
             referencedColumns: ["id"]
           },
           {
@@ -3022,6 +3038,7 @@ export type Database = {
           candidate_phone: string | null
           candidate_timezone: string
           created_at: string | null
+          draft_scorecard_id: string | null
           duration_minutes: number | null
           google_calendar_cancelled: boolean | null
           google_event_id: string | null
@@ -3044,6 +3061,12 @@ export type Database = {
           status: string
           sync_errors: Json | null
           sync_source: string | null
+          transcript_ingest_code: string | null
+          transcript_ingest_email: string | null
+          transcript_metadata: Json | null
+          transcript_raw: string | null
+          transcript_received_at: string | null
+          transcript_summary: string | null
           updated_at: string | null
         }
         Insert: {
@@ -3061,6 +3084,7 @@ export type Database = {
           candidate_phone?: string | null
           candidate_timezone: string
           created_at?: string | null
+          draft_scorecard_id?: string | null
           duration_minutes?: number | null
           google_calendar_cancelled?: boolean | null
           google_event_id?: string | null
@@ -3083,6 +3107,12 @@ export type Database = {
           status?: string
           sync_errors?: Json | null
           sync_source?: string | null
+          transcript_ingest_code?: string | null
+          transcript_ingest_email?: string | null
+          transcript_metadata?: Json | null
+          transcript_raw?: string | null
+          transcript_received_at?: string | null
+          transcript_summary?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -3100,6 +3130,7 @@ export type Database = {
           candidate_phone?: string | null
           candidate_timezone?: string
           created_at?: string | null
+          draft_scorecard_id?: string | null
           duration_minutes?: number | null
           google_calendar_cancelled?: boolean | null
           google_event_id?: string | null
@@ -3122,6 +3153,12 @@ export type Database = {
           status?: string
           sync_errors?: Json | null
           sync_source?: string | null
+          transcript_ingest_code?: string | null
+          transcript_ingest_email?: string | null
+          transcript_metadata?: Json | null
+          transcript_raw?: string | null
+          transcript_received_at?: string | null
+          transcript_summary?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -3137,6 +3174,13 @@ export type Database = {
             columns: ["candidate_id"]
             isOneToOne: false
             referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scheduled_bookings_draft_scorecard_id_fkey"
+            columns: ["draft_scorecard_id"]
+            isOneToOne: false
+            referencedRelation: "job_stage_scorecards"
             referencedColumns: ["id"]
           },
           {
