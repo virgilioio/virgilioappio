@@ -7,7 +7,7 @@ import { SearchableSelect, SearchableSelectOption } from '@/components/ui/search
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Button } from '@/components/ui/button'
-import { Check, ChevronsUpDown, Plus } from 'lucide-react'
+import { Check, ChevronsUpDown } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { CreateJobData } from '@/hooks/useJobs'
 import { useChildOrganizationsForJobCreation } from '@/hooks/useChildOrganizationsForJobCreation'
@@ -108,28 +108,17 @@ export function JobInfoStep({ jobData, onUpdate }: JobInfoStepProps) {
             <Label htmlFor="organization">
               Department / Organization <span className="text-red-500">*</span>
             </Label>
-            <div className="flex gap-2">
-              <div className="flex-1">
-                <SearchableSelect
-                  options={organizationOptions}
-                  value={jobData.organization_id || ''}
-                  onValueChange={(value) => handleInputChange('organization_id', value)}
-                  placeholder={isLoadingOrgs ? "Loading departments..." : "Select a department..."}
-                  searchPlaceholder="Search departments..."
-                  emptyMessage="No departments found."
-                  disabled={isLoadingOrgs}
-                />
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                onClick={() => setIsOrgFormOpen(true)}
-                title="Create Organization"
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
-            </div>
+            <SearchableSelect
+              options={organizationOptions}
+              value={jobData.organization_id || ''}
+              onValueChange={(value) => handleInputChange('organization_id', value)}
+              placeholder={isLoadingOrgs ? "Loading departments..." : "Select a department..."}
+              searchPlaceholder="Search departments..."
+              emptyMessage="No departments found."
+              disabled={isLoadingOrgs}
+              onCreateNew={() => setIsOrgFormOpen(true)}
+              createNewLabel="Create Department"
+            />
             <p className="text-xs text-muted-foreground">
               Select which department or client this job belongs to
             </p>
