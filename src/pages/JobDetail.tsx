@@ -67,6 +67,9 @@ export default function JobDetail() {
   const [profileContext, setProfileContext] = useState<'application' | 'pipeline' | null>(null)
   const [profileCandidateList, setProfileCandidateList] = useState<any[]>([])
   const [profileCurrentIndex, setProfileCurrentIndex] = useState(0)
+  
+  // Auto-open scorecard from URL parameter (for AI note-taker notifications)
+  const [autoOpenScorecard, setAutoOpenScorecard] = useState(false)
 
   // Helper to update URL with candidate parameter
   const updateCandidateUrl = (candidateId: string | null) => {
@@ -465,6 +468,16 @@ export default function JobDetail() {
   // Handle URL candidate parameter on mount and when URL changes
   useEffect(() => {
     const candidateIdFromUrl = getCandidateIdFromUrl()
+    const openParam = searchParams.get('open')
+    
+    // Handle ?open=scorecard parameter
+    if (openParam === 'scorecard' && candidateIdFromUrl) {
+      setAutoOpenScorecard(true)
+      // Clean up the 'open' param from URL
+      const newParams = new URLSearchParams(searchParams)
+      newParams.delete('open')
+      setSearchParams(newParams, { replace: true })
+    }
     
     if (candidateIdFromUrl && candidateIdFromUrl !== profileCandidateId) {
       // Check if candidate exists in any of the candidate lists
@@ -493,6 +506,7 @@ export default function JobDetail() {
     } else if (!candidateIdFromUrl && profileOpen) {
       // URL has no candidate param but sheet is open - this means user pressed back
       setProfileOpen(false)
+      setAutoOpenScorecard(false) // Reset scorecard auto-open when profile closes
     }
   }, [searchParams, applicationReviewCandidates, matchingCandidates, offersCandidates, hiredCandidates, rejectedCandidates, profileCandidateId, profileOpen])
 
