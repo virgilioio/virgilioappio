@@ -104,3 +104,6 @@ verify_jwt = false
 
 [functions.generate-scorecard-from-transcript]
 verify_jwt = false
+
+[functions.generate-next-steps]
+verify_jwt = true

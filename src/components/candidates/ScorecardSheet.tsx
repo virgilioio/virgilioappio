@@ -6,13 +6,15 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
 import type { ScoreRating, ScorecardRow } from "@/hooks/useScorecards";
-import { ThumbsDown, ThumbsUp, Star, Octagon, Loader2 } from "lucide-react";
+import { ThumbsDown, ThumbsUp, Star, Octagon, Loader2, Sparkles, Lightbulb } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import type { InterviewQuestion, SelectOption } from "@/hooks/useScorecardsConfiguration";
 import { markdownToHtml } from "@/utils/markdown";
 import gioIcon from "@/assets/gio-icon.png";
+import { RecommendedNextStepsDialog } from "./RecommendedNextStepsDialog";
 
 interface ScorecardSheetProps {
   open: boolean;
@@ -23,6 +25,11 @@ interface ScorecardSheetProps {
   existing?: ScorecardRow | null;
   onSubmit: (rating: ScoreRating, overview: string) => Promise<void>;
   isAuthor: boolean;
+  candidateName?: string;
+  jobId?: string;
+  onMoveToNextStage?: () => void;
+  onScheduleFollowUp?: () => void;
+  onReject?: () => void;
 }
 
 interface QuestionResponse {
@@ -38,6 +45,13 @@ const ratingOptions: { value: ScoreRating; label: string }[] = [
   { value: "strong_yes", label: "Strong Yes" },
 ];
 
+const aiRatingToScoreRating: Record<string, ScoreRating> = {
+  "Strong Yes": "strong_yes",
+  "Yes": "yes",
+  "No": "no",
+  "Definitely No": "definitely_no",
+};
+
 export function ScorecardSheet({
   open,
   onOpenChange,
@@ -47,6 +61,11 @@ export function ScorecardSheet({
   existing,
   onSubmit,
   isAuthor,
+  candidateName,
+  jobId,
+  onMoveToNextStage,
+  onScheduleFollowUp,
+  onReject,
 }: ScorecardSheetProps) {
   const [rating, setRating] = useState<ScoreRating>(existing?.rating || "yes");
   const [overview, setOverview] = useState<string>(existing?.general_overview || "");
@@ -56,8 +75,11 @@ export function ScorecardSheet({
   const [responses, setResponses] = useState<Record<string, QuestionResponse>>({});
   const [loadingQuestions, setLoadingQuestions] = useState(true);
   const [isPolishing, setIsPolishing] = useState(false);
+  const [showNextStepsDialog, setShowNextStepsDialog] = useState(false);
 
   const isReadOnly = useMemo(() => !editMode, [editMode]);
+  const isAiDraft = existing?.is_ai_draft === true;
+  const aiSuggestedRating = existing?.ai_suggested_rating;
 
   useEffect(() => {
     if (open && stageInstanceId) {
@@ -268,12 +290,30 @@ export function ScorecardSheet({
         }
       }
 
+      // Clear AI draft flag after saving
+      if (isAiDraft && scorecardId) {
+        await supabase
+          .from('job_stage_scorecards')
+          .update({ is_ai_draft: false })
+          .eq('id', scorecardId);
+      }
+
       setEditMode(false);
     } catch (err: any) {
       const msg = err?.message || 'Failed to save scorecard';
       toast({ title: 'Save failed', description: msg, variant: 'destructive' });
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleAcceptAiSuggestion = () => {
+    if (aiSuggestedRating && aiRatingToScoreRating[aiSuggestedRating]) {
+      setRating(aiRatingToScoreRating[aiSuggestedRating]);
+      toast({
+        title: "AI suggestion applied",
+        description: `Rating set to "${aiSuggestedRating}"`,
+      });
     }
   };
 
@@ -383,139 +423,197 @@ export function ScorecardSheet({
   };
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-[80vw] sm:w-[80vw] max-w-[1080px] sm:max-w-[1080px] p-0">
-        <div className="flex h-full flex-col">
-          <SheetHeader className="p-6 border-b">
-            <div className="flex items-center justify-between">
-              <SheetTitle>Scorecard{stageName ? ` • ${stageName}` : ""}</SheetTitle>
-              {existing && isAuthor && !editMode && (
-                <Button variant="outline" onClick={() => setEditMode(true)}>Edit scorecard</Button>
-              )}
-            </div>
-          </SheetHeader>
-
-          <div className="flex-1 overflow-y-auto p-6 space-y-6">
-            <div className="space-y-2">
-              <div className="text-sm font-medium">Overall rating</div>
-              <RadioGroup
-                className="grid grid-cols-4 gap-3"
-                value={rating}
-                onValueChange={(v) => setRating(v as ScoreRating)}
-                disabled={isReadOnly}
-              >
-                {ratingOptions.map((opt) => {
-                  const active = rating === opt.value;
-                  const base =
-                    opt.value === "definitely_no"
-                      ? `text-white ${active ? "ring-2" : ""}`
-                      : opt.value === "no"
-                      ? `text-white ${active ? "ring-2" : ""}`
-                      : opt.value === "strong_yes"
-                      ? `text-white ${active ? "ring-2" : ""}`
-                      : `text-white ${active ? "ring-2" : ""}`;
-                  
-                  const colorStyles =
-                    opt.value === "definitely_no"
-                      ? { backgroundColor: '#FA5252', borderColor: '#FA5252', ringColor: active ? '#FA5252' : undefined }
-                      : opt.value === "no"
-                      ? { backgroundColor: '#FA8F8F', borderColor: '#FA8F8F', ringColor: active ? '#FA8F8F' : undefined }
-                      : opt.value === "strong_yes"
-                      ? { backgroundColor: '#6F3FF5', borderColor: '#6F3FF5', ringColor: active ? '#6F3FF5' : undefined }
-                      : { backgroundColor: '#9B7BF7', borderColor: '#9B7BF7', ringColor: active ? '#9B7BF7' : undefined };
-
-                  return (
-                    <Label
-                      key={opt.value}
-                      htmlFor={`rating-${opt.value}`}
-                      className={`
-                        flex flex-col items-center justify-center gap-1 p-3 rounded-lg border-2 cursor-pointer
-                        transition-all duration-200
-                        ${base}
-                      `}
-                      style={colorStyles}
+    <>
+      <Sheet open={open} onOpenChange={onOpenChange}>
+        <SheetContent side="right" className="w-[80vw] sm:w-[80vw] max-w-[1080px] sm:max-w-[1080px] p-0">
+          <div className="flex h-full flex-col">
+            <SheetHeader className="p-6 border-b">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <SheetTitle>Scorecard{stageName ? ` • ${stageName}` : ""}</SheetTitle>
+                  {isAiDraft && (
+                    <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20 gap-1">
+                      <Sparkles className="h-3 w-3" />
+                      AI-Generated Draft
+                    </Badge>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  {existing && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowNextStepsDialog(true)}
+                      className="gap-2"
                     >
-                      <RadioGroupItem value={opt.value} id={`rating-${opt.value}`} className="sr-only" />
-                      <div className="flex items-center gap-1">
-                        {opt.value === "definitely_no" && <ThumbsDown className="h-4 w-4" />}
-                        {opt.value === "no" && <Octagon className="h-4 w-4" />}
-                        {opt.value === "yes" && <ThumbsUp className="h-4 w-4" />}
-                        {opt.value === "strong_yes" && <Star className="h-4 w-4" />}
-                        <span className="text-sm font-medium">{opt.label}</span>
-                      </div>
-                    </Label>
-                  );
-                })}
-              </RadioGroup>
-            </div>
-
-            {!loadingQuestions && questions.length > 0 && (
-              <div className="space-y-6 border-t border-virgilio-border pt-6">
-                <h3 className="text-base font-semibold text-virgilio-text">Interview Questions</h3>
-                {questions.map(renderQuestion)}
+                      <Lightbulb className="h-4 w-4" />
+                      Next Steps
+                    </Button>
+                  )}
+                  {existing && isAuthor && !editMode && (
+                    <Button variant="outline" onClick={() => setEditMode(true)}>Edit scorecard</Button>
+                  )}
+                </div>
               </div>
-            )}
+            </SheetHeader>
 
-            <div className="space-y-2 border-t border-virgilio-border pt-6">
-              <div className="mb-2">
-                <Label htmlFor="overview" className="text-base font-semibold">
-                  Key Takeaways
-                </Label>
-                <p className="text-sm text-virgilio-muted mt-1">
-                  Provide comprehensive notes about your interview with this candidate
-                </p>
-              </div>
-              
-              <RichTextEditor
-                value={overview}
-                onChange={setOverview}
-                placeholder="Share your key takeaways and observations..."
-              />
-              
-              {!isReadOnly && (
-                <div className="flex justify-end">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handlePolishNotes}
-                    disabled={isPolishing || !overview.trim()}
-                    className="gap-2"
-                  >
-                    {isPolishing ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Polishing...
-                      </>
-                    ) : (
-                      <>
-                        <img src={gioIcon} alt="Gio" className="h-4 w-4" />
-                        Polish Notes
-                      </>
-                    )}
-                  </Button>
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              {/* AI Suggested Rating Banner */}
+              {isAiDraft && aiSuggestedRating && (
+                <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Sparkles className="h-5 w-5 text-primary" />
+                    <div>
+                      <p className="text-sm font-medium">AI Suggested Rating: {aiSuggestedRating}</p>
+                      <p className="text-xs text-muted-foreground">Based on interview transcript analysis</p>
+                    </div>
+                  </div>
+                  {!isReadOnly && aiRatingToScoreRating[aiSuggestedRating] !== rating && (
+                    <Button size="sm" variant="outline" onClick={handleAcceptAiSuggestion}>
+                      Apply Suggestion
+                    </Button>
+                  )}
                 </div>
               )}
-            </div>
-          </div>
 
-          <div className="p-6 border-t">
-            <div className="flex justify-end gap-3">
-              {isReadOnly && !editMode ? (
-                <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
-              ) : (
-                <>
-                  <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
-                    Cancel
-                  </Button>
-                  <Button onClick={handleSave} disabled={saving}>
-                    {saving ? "Saving..." : existing ? "Update Scorecard" : "Submit Scorecard"}
-                  </Button>
-                </>
+              <div className="space-y-2">
+                <div className="text-sm font-medium">Overall rating</div>
+                <RadioGroup
+                  className="grid grid-cols-4 gap-3"
+                  value={rating}
+                  onValueChange={(v) => setRating(v as ScoreRating)}
+                  disabled={isReadOnly}
+                >
+                  {ratingOptions.map((opt) => {
+                    const active = rating === opt.value;
+                    const base =
+                      opt.value === "definitely_no"
+                        ? `text-white ${active ? "ring-2" : ""}`
+                        : opt.value === "no"
+                        ? `text-white ${active ? "ring-2" : ""}`
+                        : opt.value === "strong_yes"
+                        ? `text-white ${active ? "ring-2" : ""}`
+                        : `text-white ${active ? "ring-2" : ""}`;
+                    
+                    const colorStyles =
+                      opt.value === "definitely_no"
+                        ? { backgroundColor: '#FA5252', borderColor: '#FA5252', ringColor: active ? '#FA5252' : undefined }
+                        : opt.value === "no"
+                        ? { backgroundColor: '#FA8F8F', borderColor: '#FA8F8F', ringColor: active ? '#FA8F8F' : undefined }
+                        : opt.value === "strong_yes"
+                        ? { backgroundColor: '#6F3FF5', borderColor: '#6F3FF5', ringColor: active ? '#6F3FF5' : undefined }
+                        : { backgroundColor: '#9B7BF7', borderColor: '#9B7BF7', ringColor: active ? '#9B7BF7' : undefined };
+
+                    return (
+                      <Label
+                        key={opt.value}
+                        htmlFor={`rating-${opt.value}`}
+                        className={`
+                          flex flex-col items-center justify-center gap-1 p-3 rounded-lg border-2 cursor-pointer
+                          transition-all duration-200
+                          ${base}
+                        `}
+                        style={colorStyles}
+                      >
+                        <RadioGroupItem value={opt.value} id={`rating-${opt.value}`} className="sr-only" />
+                        <div className="flex items-center gap-1">
+                          {opt.value === "definitely_no" && <ThumbsDown className="h-4 w-4" />}
+                          {opt.value === "no" && <Octagon className="h-4 w-4" />}
+                          {opt.value === "yes" && <ThumbsUp className="h-4 w-4" />}
+                          {opt.value === "strong_yes" && <Star className="h-4 w-4" />}
+                          <span className="text-sm font-medium">{opt.label}</span>
+                        </div>
+                      </Label>
+                    );
+                  })}
+                </RadioGroup>
+              </div>
+
+              {!loadingQuestions && questions.length > 0 && (
+                <div className="space-y-6 border-t border-virgilio-border pt-6">
+                  <h3 className="text-base font-semibold text-virgilio-text">Interview Questions</h3>
+                  {questions.map(renderQuestion)}
+                </div>
               )}
+
+              <div className="space-y-2 border-t border-virgilio-border pt-6">
+                <div className="mb-2">
+                  <Label htmlFor="overview" className="text-base font-semibold">
+                    Key Takeaways
+                  </Label>
+                  <p className="text-sm text-virgilio-muted mt-1">
+                    Provide comprehensive notes about your interview with this candidate
+                  </p>
+                </div>
+                
+                <RichTextEditor
+                  value={overview}
+                  onChange={setOverview}
+                  placeholder="Share your key takeaways and observations..."
+                />
+                
+                {!isReadOnly && (
+                  <div className="flex justify-end">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handlePolishNotes}
+                      disabled={isPolishing || !overview.trim()}
+                      className="gap-2"
+                    >
+                      {isPolishing ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Polishing...
+                        </>
+                      ) : (
+                        <>
+                          <img src={gioIcon} alt="Gio" className="h-4 w-4" />
+                          Polish Notes
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="p-6 border-t">
+              <div className="flex justify-end gap-3">
+                {isReadOnly && !editMode ? (
+                  <Button variant="outline" onClick={() => onOpenChange(false)}>Close</Button>
+                ) : (
+                  <>
+                    <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+                      Cancel
+                    </Button>
+                    <Button onClick={handleSave} disabled={saving}>
+                      {saving ? "Saving..." : existing ? "Update Scorecard" : "Submit Scorecard"}
+                    </Button>
+                  </>
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      </SheetContent>
-    </Sheet>
+        </SheetContent>
+      </Sheet>
+
+      {/* Recommended Next Steps Dialog */}
+      {existing && (
+        <RecommendedNextStepsDialog
+          open={showNextStepsDialog}
+          onOpenChange={setShowNextStepsDialog}
+          scorecardId={existing.id}
+          candidateId={existing.candidate_id}
+          jobId={jobId || existing.job_id}
+          rating={rating}
+          overview={overview}
+          candidateName={candidateName}
+          onMoveToNextStage={onMoveToNextStage}
+          onScheduleFollowUp={onScheduleFollowUp}
+          onReject={onReject}
+        />
+      )}
+    </>
   );
 }

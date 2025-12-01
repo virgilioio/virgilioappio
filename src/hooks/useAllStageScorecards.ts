@@ -16,6 +16,10 @@ export interface ScorecardWithAuthor {
   updated_at: string;
   author_name: string | null;
   author_email: string | null;
+  // AI draft fields
+  is_ai_draft?: boolean;
+  ai_suggested_rating?: string | null;
+  source_booking_id?: string | null;
 }
 
 export function useAllStageScorecards(stageInstanceId?: string | null, associationId?: string | null) {

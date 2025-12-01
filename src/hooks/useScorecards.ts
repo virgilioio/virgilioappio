@@ -16,6 +16,10 @@ export interface ScorecardRow {
   general_overview: string | null;
   created_at: string;
   updated_at: string;
+  // AI draft fields
+  is_ai_draft?: boolean;
+  ai_suggested_rating?: string | null;
+  source_booking_id?: string | null;
 }
 
 export function useMyScorecards(associationId?: string | null) {
