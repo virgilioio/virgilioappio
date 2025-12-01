@@ -229,6 +229,19 @@ serve(async (req) => {
       ? `${frontendUrl}/jobs/${job_id}?candidate=${candidate_id}`
       : null;
 
+    // Generate unique transcript ingest code (8 alphanumeric chars)
+    const generateIngestCode = (): string => {
+      const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+      let code = '';
+      for (let i = 0; i < 8; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return code;
+    };
+    const transcriptIngestCode = generateIngestCode();
+    const transcriptIngestEmail = `int_${transcriptIngestCode}@ingest.virgilio.io`;
+    console.log('[create-booking] Generated transcript ingest email:', transcriptIngestEmail);
+
     if (accessToken && calendarIdentity) {
       try {
         // 1. Create interviewer's calendar event (always created)
@@ -244,7 +257,7 @@ serve(async (req) => {
             },
             body: JSON.stringify({
               summary: `Interview: ${candidate_name}`,
-              description: `Interview scheduled via Virgilio\n\nCANDIDATE DETAILS:\nName: ${candidate_name}\nEmail: ${candidate_email}${candidate_phone ? `\nPhone: ${candidate_phone}` : ''}${notes ? `\n\nNOTES:\n${notes}` : ''}${meeting_type_preference === 'custom' && custom_meeting_location ? `\n\nMEETING LOCATION:\n${custom_meeting_location}` : ''}${candidateProfileUrl ? `\n\n📝 SUBMIT SCORECARD:\n${candidateProfileUrl}` : ''}`,
+              description: `Interview scheduled via Virgilio\n\nCANDIDATE DETAILS:\nName: ${candidate_name}\nEmail: ${candidate_email}${candidate_phone ? `\nPhone: ${candidate_phone}` : ''}${notes ? `\n\nNOTES:\n${notes}` : ''}${meeting_type_preference === 'custom' && custom_meeting_location ? `\n\nMEETING LOCATION:\n${custom_meeting_location}` : ''}${candidateProfileUrl ? `\n\n📝 SUBMIT SCORECARD:\n${candidateProfileUrl}` : ''}\n\n🎙️ TRANSCRIPT EMAIL:\n${transcriptIngestEmail}\n(Add this to your note-taking app to auto-generate interview notes)`,
               start: {
                 dateTime: scheduled_start,
                 timeZone: config.timezone,
@@ -254,7 +267,8 @@ serve(async (req) => {
                 timeZone: config.timezone,
               },
               attendees: [
-                { email: profile.email }, // Only interviewer
+                { email: profile.email }, // Interviewer
+                { email: transcriptIngestEmail, optional: true, responseStatus: 'accepted' }, // Transcript ingest (optional attendee)
               ],
               conferenceData: meeting_type_preference === 'google_meet' ? {
                 createRequest: {
@@ -409,6 +423,9 @@ serve(async (req) => {
         job_candidate_association_id: job_candidate_association_id || null,
         job_hiring_stage_id: job_hiring_stage_id || null,
         booked_by: booked_by_user_id || null,
+        // Transcript ingest
+        transcript_ingest_code: transcriptIngestCode,
+        transcript_ingest_email: transcriptIngestEmail,
       })
       .select()
       .single();
