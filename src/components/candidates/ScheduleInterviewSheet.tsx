@@ -17,6 +17,7 @@ import { MonthCalendar } from '@/components/booking/MonthCalendar';
 import { TimeSlotsList } from '@/components/booking/TimeSlotsList';
 import { MeetingLocationSelector } from '@/components/scheduling/MeetingLocationSelector';
 import { InterviewDurationSelector } from '@/components/scheduling/InterviewDurationSelector';
+import { ManualInterviewerSelector } from '@/components/scheduling/ManualInterviewerSelector';
 import { useAuth } from '@/contexts/AuthContext';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -252,7 +253,7 @@ interface ScheduleInterviewSheetProps {
 interface StageInterviewer {
   id: string;
   member_id: string;
-  assignment_type: 'required' | 'optional' | 'backup';
+  assignment_type: 'required' | 'optional' | 'backup' | 'manual';
   member_user_id?: string;
   profiles: {
     first_name: string | null;
@@ -555,14 +556,12 @@ export function ScheduleInterviewSheet({
               <Skeleton className="h-20 w-full" />
               <Skeleton className="h-20 w-full" />
             </div>
-          ) : !availableInterviewers || availableInterviewers.length === 0 ? (
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                No interviewers with active booking configurations are assigned to this stage. 
-                Please assign interviewers in the Stage Configuration.
-              </AlertDescription>
-            </Alert>
+          ) : !selectedInterviewer && (!availableInterviewers || availableInterviewers.length === 0) ? (
+            <ManualInterviewerSelector
+              jobId={jobId}
+              organizationId={organizationId}
+              onSelect={setSelectedInterviewer}
+            />
           ) : !candidateEmail ? (
             <Alert>
               <AlertCircle className="h-4 w-4" />
