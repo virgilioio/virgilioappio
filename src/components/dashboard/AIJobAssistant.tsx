@@ -134,6 +134,7 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
   const {
     messages: chatMessages,
     isLoading: isChatLoading,
+    isStreaming,
     conversationId,
     isReadyForCreation,
     sendMessage,
@@ -531,7 +532,8 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
                 )}
               </div>
             ))}
-            {isChatLoading && (
+            {/* Show typing dots only when waiting for first token, not during streaming */}
+            {isChatLoading && !isStreaming && (
               <div className="flex gap-3 justify-start">
                 <img src={gioAvatar} alt="Gio" className="h-8 w-8 rounded-full" />
                 <div className="bg-surface-secondary rounded-2xl px-4 py-3 flex items-center gap-1">
