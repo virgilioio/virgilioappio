@@ -72,7 +72,24 @@ export function SearchableSelect({
       <PopoverContent className="w-full p-0" align="start">
         <Command>
           <CommandInput placeholder={searchPlaceholder} />
-          <CommandList>
+          <CommandList className="max-h-[300px] overflow-y-auto">
+            {onCreateNew && (
+              <>
+                <CommandGroup>
+                  <CommandItem
+                    onSelect={() => {
+                      setOpen(false)
+                      onCreateNew()
+                    }}
+                    className="text-primary cursor-pointer"
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    {createNewLabel}
+                  </CommandItem>
+                </CommandGroup>
+                <CommandSeparator />
+              </>
+            )}
             <CommandEmpty>{emptyMessage}</CommandEmpty>
             <CommandGroup>
               {options.map((option) => (
@@ -105,23 +122,6 @@ export function SearchableSelect({
                 </CommandItem>
               ))}
             </CommandGroup>
-            {onCreateNew && (
-              <>
-                <CommandSeparator />
-                <CommandGroup>
-                  <CommandItem
-                    onSelect={() => {
-                      setOpen(false)
-                      onCreateNew()
-                    }}
-                    className="text-primary cursor-pointer"
-                  >
-                    <Plus className="mr-2 h-4 w-4" />
-                    {createNewLabel}
-                  </CommandItem>
-                </CommandGroup>
-              </>
-            )}
           </CommandList>
         </Command>
       </PopoverContent>
