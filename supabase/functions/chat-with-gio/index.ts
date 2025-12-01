@@ -157,7 +157,7 @@ Example responses:
       }
     ];
 
-    // Call OpenAI
+    // Call OpenAI with streaming enabled
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -168,7 +168,8 @@ Example responses:
         model: 'gpt-4o-mini',
         messages: conversationHistory,
         max_tokens: 500,
-        temperature: 0.7
+        temperature: 0.7,
+        stream: true
       }),
     });
 
@@ -178,57 +179,124 @@ Example responses:
       throw new Error(`OpenAI API error: ${response.status}`);
     }
 
-    const data = await response.json();
-    const assistantMessage = data.choices[0].message.content.trim();
+    const encoder = new TextEncoder();
+    const conversationIdToSend = conversation.id;
+    
+    // Create streaming response
+    const stream = new ReadableStream({
+      async start(controller) {
+        const reader = response.body!.getReader();
+        const decoder = new TextDecoder();
+        let fullContent = '';
+        let buffer = '';
 
-    console.log('Assistant response:', assistantMessage);
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
 
-    // Parse readiness from response
-    let isReadyForCreation = false;
-    let cleanMessage = assistantMessage;
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
 
-    // Look for JSON metadata at the end
-    const jsonMatch = assistantMessage.match(/\{[^}]*"ready_for_creation":\s*(true|false)[^}]*\}/);
-    if (jsonMatch) {
-      try {
-        const metadata = JSON.parse(jsonMatch[0]);
-        isReadyForCreation = metadata.ready_for_creation === true;
-        // Remove the JSON from the message
-        cleanMessage = assistantMessage.replace(jsonMatch[0], '').trim();
-      } catch (e) {
-        console.error('Failed to parse readiness metadata:', e);
+            for (const line of lines) {
+              const trimmedLine = line.trim();
+              if (!trimmedLine || trimmedLine === 'data: [DONE]') continue;
+              if (!trimmedLine.startsWith('data: ')) continue;
+
+              try {
+                const json = JSON.parse(trimmedLine.slice(6));
+                const content = json.choices?.[0]?.delta?.content;
+                
+                if (content) {
+                  fullContent += content;
+                  // Send delta to client
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ delta: content })}\n\n`));
+                }
+              } catch (e) {
+                // Skip malformed JSON
+              }
+            }
+          }
+
+          // Process any remaining buffer
+          if (buffer.trim() && buffer.trim() !== 'data: [DONE]') {
+            if (buffer.trim().startsWith('data: ')) {
+              try {
+                const json = JSON.parse(buffer.trim().slice(6));
+                const content = json.choices?.[0]?.delta?.content;
+                if (content) {
+                  fullContent += content;
+                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ delta: content })}\n\n`));
+                }
+              } catch (e) {
+                // Skip
+              }
+            }
+          }
+
+          console.log('Full assistant response:', fullContent);
+
+          // Parse readiness from full response
+          let isReadyForCreation = false;
+          let cleanMessage = fullContent;
+
+          const jsonMatch = fullContent.match(/\{[^}]*"ready_for_creation":\s*(true|false)[^}]*\}/);
+          if (jsonMatch) {
+            try {
+              const metadata = JSON.parse(jsonMatch[0]);
+              isReadyForCreation = metadata.ready_for_creation === true;
+              cleanMessage = fullContent.replace(jsonMatch[0], '').trim();
+            } catch (e) {
+              console.error('Failed to parse readiness metadata:', e);
+            }
+          }
+
+          console.log('Readiness assessment:', isReadyForCreation);
+
+          // Insert assistant message
+          await supabase
+            .from('conversation_messages')
+            .insert({
+              conversation_id: conversationIdToSend,
+              role: 'assistant',
+              content: cleanMessage,
+              metadata: { ready_for_creation: isReadyForCreation }
+            });
+
+          // Update conversation readiness
+          await supabase
+            .from('ai_conversations')
+            .update({ 
+              is_ready_for_creation: isReadyForCreation,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', conversationIdToSend);
+
+          // Send final done event with metadata
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
+            done: true, 
+            conversationId: conversationIdToSend, 
+            isReadyForCreation 
+          })}\n\n`));
+          
+          controller.close();
+        } catch (error) {
+          console.error('Stream processing error:', error);
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: 'Stream processing failed' })}\n\n`));
+          controller.close();
+        }
       }
-    }
+    });
 
-    console.log('Readiness assessment:', isReadyForCreation);
-
-    // Insert assistant message
-    await supabase
-      .from('conversation_messages')
-      .insert({
-        conversation_id: conversation.id,
-        role: 'assistant',
-        content: cleanMessage,
-        metadata: { ready_for_creation: isReadyForCreation }
-      });
-
-    // Update conversation readiness
-    await supabase
-      .from('ai_conversations')
-      .update({ 
-        is_ready_for_creation: isReadyForCreation,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', conversation.id);
-
-    return new Response(
-      JSON.stringify({ 
-        message: cleanMessage,
-        isReadyForCreation,
-        conversationId: conversation.id
-      }),
-      { headers: { ...cors, 'Content-Type': 'application/json' } }
-    );
+    return new Response(stream, {
+      headers: {
+        ...cors,
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive'
+      }
+    });
 
   } catch (error) {
     console.error('Error in chat-with-gio:', error);
