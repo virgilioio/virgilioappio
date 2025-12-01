@@ -1490,6 +1490,7 @@ export default function JobDetail() {
             if (!open) {
               // Clear URL when sheet closes
               updateCandidateUrl(null)
+              setAutoOpenScorecard(false)
             }
           }}
           candidateId={profileCandidateId}
@@ -1499,6 +1500,8 @@ export default function JobDetail() {
           onNavigatePrev={handleNavigatePrev}
           onNavigateNext={handleNavigateNext}
           onStageChanged={() => setPipelineRefresh((v) => v + 1)}
+          autoOpenScorecard={autoOpenScorecard}
+          onScorecardOpened={() => setAutoOpenScorecard(false)}
         />
       </div>
     </div>

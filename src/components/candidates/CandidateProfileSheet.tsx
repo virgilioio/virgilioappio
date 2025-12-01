@@ -80,9 +80,11 @@ interface CandidateProfileSheetProps {
   onNavigatePrev?: () => void
   onNavigateNext?: () => void
   onStageChanged?: () => void
+  autoOpenScorecard?: boolean
+  onScorecardOpened?: () => void
 }
 
-export default function CandidateProfileSheet({ open, onOpenChange, candidateId, jobId, hasPrev, hasNext, onNavigatePrev, onNavigateNext, onStageChanged }: CandidateProfileSheetProps) {
+export default function CandidateProfileSheet({ open, onOpenChange, candidateId, jobId, hasPrev, hasNext, onNavigatePrev, onNavigateNext, onStageChanged, autoOpenScorecard, onScorecardOpened }: CandidateProfileSheetProps) {
   const { organizationId, user } = useAuth()
   const [loading, setLoading] = useState(false)
   const [candidate, setCandidate] = useState<any | null>(null)
@@ -186,6 +188,17 @@ const [oldBookingId, setOldBookingId] = useState<string | null>(null)
     }
     if (openStageId === null) {
       setOpenStageId(planStages[0].stage.id)
+    }
+    
+    // Auto-open scorecard if requested via URL param
+    if (autoOpenScorecard && currentStageId && associationId) {
+      const currentStage = planStages.find(s => s.jhsId === currentStageId)
+      if (currentStage && supportsScorecard(currentStage.stage.stage_type)) {
+        setScoreStageInstId(currentStageId)
+        setScoreStageName(currentStage.stage.stage_name)
+        setScoreOpen(true)
+        onScorecardOpened?.()
+      }
     }
   }, [open, planStages, currentStageId])
 

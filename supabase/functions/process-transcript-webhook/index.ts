@@ -149,7 +149,7 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Look up booking by ingest code
+    // Look up booking by ingest code (without FK join to profiles)
     const { data: booking, error: bookingError } = await supabase
       .from('scheduled_bookings')
       .select(`
@@ -159,8 +159,7 @@ serve(async (req) => {
         job_hiring_stage:job_hiring_stages(
           id,
           stage:job_stages(id, stage_name)
-        ),
-        interviewer:profiles!scheduled_bookings_interviewer_id_fkey(user_id, first_name, last_name, email)
+        )
       `)
       .eq('transcript_ingest_code', ingestCode)
       .single();
@@ -171,6 +170,17 @@ serve(async (req) => {
         status: 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
+    }
+
+    // Fetch interviewer separately (no FK constraint exists)
+    let interviewer = null;
+    if (booking.interviewer_id) {
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('user_id, first_name, last_name, email')
+        .eq('user_id', booking.interviewer_id)
+        .single();
+      interviewer = profileData;
     }
 
     console.log('[process-transcript-webhook] Found booking:', booking.id, 'for candidate:', booking.candidate?.candidate_name);
