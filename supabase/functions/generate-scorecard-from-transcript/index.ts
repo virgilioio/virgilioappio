@@ -34,7 +34,7 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Fetch full booking context
+    // Fetch full booking context (without FK join to profiles)
     const { data: booking, error: bookingError } = await supabase
       .from('scheduled_bookings')
       .select(`
@@ -44,8 +44,7 @@ serve(async (req) => {
         job_hiring_stage:job_hiring_stages(
           id,
           stage:job_stages(id, stage_name)
-        ),
-        interviewer:profiles!scheduled_bookings_interviewer_id_fkey(user_id, first_name, last_name, email)
+        )
       `)
       .eq('id', booking_id)
       .single();
@@ -56,6 +55,17 @@ serve(async (req) => {
         status: 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
+    }
+
+    // Fetch interviewer separately (no FK constraint exists)
+    let interviewer: any = null;
+    if (booking.interviewer_id) {
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('user_id, first_name, last_name, email')
+        .eq('user_id', booking.interviewer_id)
+        .single();
+      interviewer = profileData;
     }
 
     if (!booking.transcript_raw) {
@@ -154,12 +164,12 @@ ${questionsContext ? `\n7. SCORECARD QUESTION RESPONSES:\n(Address each question
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-5-mini-2025-08-07',
+        model: 'gpt-4o-mini',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
         ],
-        max_completion_tokens: 2000,
+        max_tokens: 2000,
       }),
     });
 
@@ -202,13 +212,13 @@ ${questionsContext ? `\n7. SCORECARD QUESTION RESPONSES:\n(Address each question
     // Check if a scorecard already exists for this interviewer/stage/candidate
     let scorecardId = null;
     
-    if (booking.job_candidate_association_id && booking.job_hiring_stage?.id && booking.interviewer?.user_id) {
+    if (booking.job_candidate_association_id && booking.job_hiring_stage?.id && interviewer?.user_id) {
       const { data: existingScorecard } = await supabase
         .from('job_stage_scorecards')
         .select('id, is_ai_draft')
         .eq('association_id', booking.job_candidate_association_id)
         .eq('stage_instance_id', booking.job_hiring_stage.id)
-        .eq('created_by', booking.interviewer.user_id)
+        .eq('created_by', interviewer.user_id)
         .single();
 
       if (existingScorecard) {
@@ -241,7 +251,7 @@ ${questionsContext ? `\n7. SCORECARD QUESTION RESPONSES:\n(Address each question
             candidate_id: booking.candidate_id,
             job_id: booking.job_id,
             stage_instance_id: booking.job_hiring_stage.id,
-            created_by: booking.interviewer.user_id,
+            created_by: interviewer.user_id,
             rating: suggestedRating,
             general_overview: generatedNotes,
             is_ai_draft: true,
@@ -267,7 +277,7 @@ ${questionsContext ? `\n7. SCORECARD QUESTION RESPONSES:\n(Address each question
     }
 
     // Send notification email to interviewer
-    if (booking.interviewer?.email) {
+    if (interviewer?.email) {
       const scorecardUrl = scorecardId && booking.job_id && booking.candidate_id
         ? `${frontendUrl}/jobs/${booking.job_id}?candidate=${booking.candidate_id}&open=scorecard`
         : `${frontendUrl}/jobs/${booking.job_id}?candidate=${booking.candidate_id}`;
@@ -275,14 +285,14 @@ ${questionsContext ? `\n7. SCORECARD QUESTION RESPONSES:\n(Address each question
       try {
         await resend.emails.send({
           from: 'Virgilio <noreply@app.virgilio.io>',
-          to: [booking.interviewer.email],
+          to: [interviewer.email],
           subject: `📝 Interview notes ready: ${booking.candidate?.candidate_name || 'Candidate'}`,
           html: `
             <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
               <h2 style="color: #1a1a1a; margin-bottom: 20px;">Your Interview Notes Are Ready</h2>
               
               <p style="color: #4a4a4a; line-height: 1.6;">
-                Hi ${booking.interviewer.first_name || 'there'},
+                Hi ${interviewer.first_name || 'there'},
               </p>
               
               <p style="color: #4a4a4a; line-height: 1.6;">
@@ -315,7 +325,7 @@ ${questionsContext ? `\n7. SCORECARD QUESTION RESPONSES:\n(Address each question
           `,
         });
 
-        console.log('[generate-scorecard] Notification email sent to:', booking.interviewer.email);
+        console.log('[generate-scorecard] Notification email sent to:', interviewer.email);
       } catch (emailError) {
         console.error('[generate-scorecard] Failed to send notification email:', emailError);
         // Don't fail the whole operation if email fails
