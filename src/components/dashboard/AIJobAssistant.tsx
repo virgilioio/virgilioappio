@@ -118,6 +118,7 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
   const [chatMode, setChatMode] = useState(false)
   
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
   const { toast } = useToast()
   const { jobs } = useJobs()
   const navigate = useNavigate()
@@ -149,6 +150,17 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
   const validItemsCount = currentValidation.filter(item => item.checked).length
   const wordCount = prompt.trim().split(/\s+/).filter(word => word.length > 0).length
   const canGenerate = wordCount >= 10
+
+  // Auto-scroll to bottom when new messages arrive
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }
+
+  useEffect(() => {
+    if (chatMessages.length > 0) {
+      scrollToBottom()
+    }
+  }, [chatMessages, isChatLoading])
 
   // Fetch organization name when component mounts
   useEffect(() => {
@@ -522,11 +534,16 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
             {isChatLoading && (
               <div className="flex gap-3 justify-start">
                 <img src={gioAvatar} alt="Gio" className="h-8 w-8 rounded-full" />
-                <div className="bg-surface-secondary rounded-2xl px-4 py-2">
-                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                <div className="bg-surface-secondary rounded-2xl px-4 py-3 flex items-center gap-1">
+                  {/* Typing animation dots */}
+                  <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                  <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                  <span className="w-2 h-2 bg-muted-foreground rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                 </div>
               </div>
             )}
+            {/* Auto-scroll anchor */}
+            <div ref={messagesEndRef} />
           </div>
         )}
 

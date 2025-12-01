@@ -19,10 +19,10 @@ export function ImageCropDialog({ isOpen, onClose, imageUrl, onCropComplete, fil
   const imgRef = useRef<HTMLImageElement>(null)
 
   const onImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
-    const { width, height } = e.currentTarget
+    const { width, height, naturalWidth, naturalHeight } = e.currentTarget
     
     // Create a centered square crop
-    const crop = centerCrop(
+    const percentCrop = centerCrop(
       makeAspectCrop(
         {
           unit: '%',
@@ -36,7 +36,18 @@ export function ImageCropDialog({ isOpen, onClose, imageUrl, onCropComplete, fil
       height
     )
     
-    setCrop(crop)
+    setCrop(percentCrop)
+    
+    // CRITICAL: Also set completedCrop immediately so "Apply Crop" button works without adjusting
+    // Convert percent crop to pixel crop for the initial state
+    const pixelCrop: PixelCrop = {
+      unit: 'px',
+      x: Math.round((percentCrop.x / 100) * width),
+      y: Math.round((percentCrop.y / 100) * height),
+      width: Math.round((percentCrop.width / 100) * width),
+      height: Math.round((percentCrop.height / 100) * height),
+    }
+    setCompletedCrop(pixelCrop)
   }
 
   const getCroppedImg = (image: HTMLImageElement, crop: PixelCrop): Promise<File> => {
