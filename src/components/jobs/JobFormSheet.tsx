@@ -19,6 +19,8 @@ import { CURRENCIES } from '@/constants/currencies'
 import type { CategorizedSkill } from '@/hooks/useSkillsGeneration'
 import { JobSkillsGenerationPanel } from './JobSkillsGenerationPanel'
 import { getSkillColor } from '@/utils/skillColors'
+import { SearchableSelect, SearchableSelectOption } from '@/components/ui/searchable-select'
+import { OrganizationFormSheet } from '@/components/organizations/OrganizationFormSheet'
 
 interface JobFormSheetProps {
   isOpen: boolean
@@ -50,8 +52,9 @@ export function JobFormSheet({ isOpen, onClose, onSubmit, job, isLoading }: JobF
 
   const [currencyOpen, setCurrencyOpen] = useState(false)
   const [hiringTeamOpen, setHiringTeamOpen] = useState(false)
+  const [isOrgFormOpen, setIsOrgFormOpen] = useState(false)
 
-  const { organizations } = useOrganizations()
+  const { organizations, createOrganization, isLoading: isCreatingOrg } = useOrganizations()
   const { members } = useMembers()
   const { userType, organizationId } = useAuth()
 
@@ -60,6 +63,25 @@ export function JobFormSheet({ isOpen, onClose, onSubmit, job, isLoading }: JobF
     () => organizations.filter(org => org.parent_organization_id !== null),
     [organizations]
   )
+
+  // Create options for SearchableSelect
+  const organizationOptions: SearchableSelectOption[] = useMemo(
+    () => childOrganizations.map(org => ({ value: org.id, label: org.name })),
+    [childOrganizations]
+  )
+
+  // Handle organization creation
+  const handleCreateOrganization = async (data: { name?: string; status?: string }) => {
+    if (!data.name) return
+    const result = await createOrganization({ 
+      name: data.name, 
+      status: (data.status as 'active' | 'inactive') || 'active'
+    })
+    if (result && typeof result === 'object' && 'id' in result) {
+      setFormData(prev => ({ ...prev, organization_id: result.id }))
+    }
+    setIsOrgFormOpen(false)
+  }
 
   useEffect(() => {
     if (job) {
@@ -176,6 +198,7 @@ export function JobFormSheet({ isOpen, onClose, onSubmit, job, isLoading }: JobF
   }
 
   return (
+    <>
     <Sheet open={isOpen} onOpenChange={onClose}>
       <SheetContent className="w-[600px] sm:w-[800px] flex flex-col">
         <SheetHeader>
@@ -294,28 +317,16 @@ export function JobFormSheet({ isOpen, onClose, onSubmit, job, isLoading }: JobF
 
             <div>
               <Label htmlFor="organization">Department / Organization *</Label>
-              <Select 
-                value={formData.organization_id} 
+              <SearchableSelect
+                options={organizationOptions}
+                value={formData.organization_id}
                 onValueChange={(value) => setFormData(prev => ({ ...prev, organization_id: value }))}
-                required
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select department or organization" />
-                </SelectTrigger>
-                <SelectContent>
-                  {childOrganizations.length === 0 ? (
-                    <div className="p-2 text-sm text-muted-foreground">
-                      No departments available. Jobs must be assigned to departments.
-                    </div>
-                  ) : (
-                    childOrganizations.map(org => (
-                      <SelectItem key={org.id} value={org.id}>
-                        {org.name}
-                      </SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
+                placeholder="Select department or organization"
+                searchPlaceholder="Search departments..."
+                emptyMessage="No departments available."
+                onCreateNew={() => setIsOrgFormOpen(true)}
+                createNewLabel="Create Department"
+              />
               {!formData.organization_id && childOrganizations.length > 0 && (
                 <p className="text-sm text-muted-foreground mt-1">
                   {userType === 'platform_admin' 
@@ -448,5 +459,14 @@ export function JobFormSheet({ isOpen, onClose, onSubmit, job, isLoading }: JobF
         </div>
       </SheetContent>
     </Sheet>
+
+    {/* Organization Creation Form */}
+    <OrganizationFormSheet
+      isOpen={isOrgFormOpen}
+      onClose={() => setIsOrgFormOpen(false)}
+      onSubmit={handleCreateOrganization}
+      isLoading={isCreatingOrg}
+    />
+  </>
   )
 }

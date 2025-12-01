@@ -24,6 +24,8 @@ import { useCoresignalCreditWarnings } from '@/hooks/useCoresignalCreditWarnings
 import { useChildOrganizationsForJobCreation } from '@/hooks/useChildOrganizationsForJobCreation'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { useChatWithGio } from '@/hooks/useChatWithGio'
+import { OrganizationFormSheet } from '@/components/organizations/OrganizationFormSheet'
+import { useOrganizations } from '@/hooks/useOrganizations'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -121,7 +123,11 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
   const navigate = useNavigate()
   const { user, organizationId, userType } = useAuth()
   const { isSearchDisabled } = useCoresignalCreditWarnings()
-  const { data: childOrgs, isLoading: isLoadingOrgs } = useChildOrganizationsForJobCreation()
+  const { data: childOrgs, isLoading: isLoadingOrgs, refetch: refetchOrgs } = useChildOrganizationsForJobCreation()
+  const { createOrganization, isLoading: isCreatingOrg } = useOrganizations()
+  
+  // State for organization creation form
+  const [isOrgFormOpen, setIsOrgFormOpen] = useState(false)
   
   // Import chat hook
   const {
@@ -727,6 +733,8 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
                         placeholder={isLoadingOrgs ? "Loading organizations..." : "Select a job folder..."}
                         disabled={isLoadingOrgs}
                         searchPlaceholder="Search folders..."
+                        onCreateNew={() => setIsOrgFormOpen(true)}
+                        createNewLabel="Create Department"
                       />
                       <p className="text-xs text-muted-foreground">
                         Select which department or client this search belongs to
@@ -899,6 +907,24 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
           )}
         </SheetContent>
       </Sheet>
+
+      {/* Organization Creation Form */}
+      <OrganizationFormSheet
+        isOpen={isOrgFormOpen}
+        onClose={() => setIsOrgFormOpen(false)}
+        onSubmit={async (data) => {
+          const result = await createOrganization({ 
+            name: data.name, 
+            status: data.status as 'active' | 'inactive' 
+          })
+          if (result && typeof result === 'object' && 'id' in result) {
+            setSelectedOrgId(result.id)
+            refetchOrgs()
+          }
+          setIsOrgFormOpen(false)
+        }}
+        isLoading={isCreatingOrg}
+      />
     </>
   )
 }
