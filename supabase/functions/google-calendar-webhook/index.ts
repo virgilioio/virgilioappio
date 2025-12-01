@@ -258,12 +258,7 @@ serve(async (req) => {
           needsUpdate = true;
         }
 
-        // Map Google response status to our status
-        const interviewerEmail = calIdentity.email_address;
-        const interviewerAttendee = eventData.attendees?.find(
-          (a: any) => a.email.toLowerCase() === interviewerEmail.toLowerCase()
-        );
-
+        // Map Google response status to our status (reuse interviewerAttendee from above)
         if (interviewerAttendee) {
           const newStatus = mapGoogleStatus(interviewerAttendee.responseStatus);
 
