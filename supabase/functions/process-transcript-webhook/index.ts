@@ -7,7 +7,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, svix-id, svix-timestamp, svix-signature',
 };
 
-// Verify Resend webhook signature
+// Verify Resend webhook signature (Svix format)
 async function verifyResendSignature(
   payload: string,
   signature: string,
@@ -15,23 +15,52 @@ async function verifyResendSignature(
   secret: string
 ): Promise<boolean> {
   try {
-    // Resend uses svix for webhooks
-    const signedContent = `${timestamp}.${payload}`;
-    const secretBytes = Uint8Array.from(atob(secret.replace('whsec_', '')), c => c.charCodeAt(0));
+    // Svix signature format: v1,base64sig v1,base64sig ...
+    // Timestamp tolerance: 5 minutes
+    const currentTime = Math.floor(Date.now() / 1000);
+    const webhookTimestamp = parseInt(timestamp, 10);
     
-    const expectedSignature = await crypto.subtle.importKey(
+    if (Math.abs(currentTime - webhookTimestamp) > 300) {
+      console.error('[process-transcript-webhook] Timestamp too old:', { currentTime, webhookTimestamp });
+      return false;
+    }
+
+    // Resend uses svix - the secret starts with whsec_ followed by base64
+    const signedContent = `${timestamp}.${payload}`;
+    
+    // Decode the secret (remove whsec_ prefix, then base64 decode)
+    const secretBase64 = secret.replace('whsec_', '');
+    const secretBytes = Uint8Array.from(atob(secretBase64), c => c.charCodeAt(0));
+    
+    // Create HMAC-SHA256 signature
+    const key = await crypto.subtle.importKey(
       'raw',
       secretBytes,
       { name: 'HMAC', hash: 'SHA-256' },
       false,
       ['sign']
-    ).then(async key => {
-      const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(signedContent));
-      return btoa(String.fromCharCode(...new Uint8Array(sig)));
+    );
+    
+    const signatureBuffer = await crypto.subtle.sign(
+      'HMAC',
+      key,
+      new TextEncoder().encode(signedContent)
+    );
+    
+    const expectedSignature = btoa(String.fromCharCode(...new Uint8Array(signatureBuffer)));
+
+    // Parse signature header: "v1,base64sig v1,base64sig ..."
+    const signatures = signature.split(' ').map(s => {
+      const parts = s.split(',');
+      return parts.length === 2 ? parts[1] : null;
+    }).filter(Boolean);
+
+    console.log('[process-transcript-webhook] Signature verification:', {
+      signedContentLength: signedContent.length,
+      expectedSigPrefix: expectedSignature.substring(0, 20) + '...',
+      receivedSigsCount: signatures.length,
     });
 
-    // Signature header can contain multiple signatures separated by space
-    const signatures = signature.split(' ').map(s => s.split(',')[1]);
     return signatures.some(sig => sig === expectedSignature);
   } catch (error) {
     console.error('[process-transcript-webhook] Signature verification error:', error);
