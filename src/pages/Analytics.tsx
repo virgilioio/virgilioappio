@@ -7,6 +7,7 @@ import { AnalyticsTimeFilter } from '@/components/analytics/AnalyticsTimeFilter'
 import { ApplicationsTrendChart } from '@/components/analytics/ApplicationsTrendChart'
 import { CandidateStatusPieChart } from '@/components/analytics/CandidateStatusPieChart'
 import { StageDistributionChart } from '@/components/analytics/StageDistributionChart'
+import { RecruitmentFunnelChart } from '@/components/analytics/RecruitmentFunnelChart'
 import { Card, CardContent } from '@/components/ui/card'
 import { FileText, Users, UserCheck, Calendar, BarChart3 } from 'lucide-react'
 import { subDays } from 'date-fns'
@@ -143,7 +144,17 @@ export default function Analytics() {
       </div>
 
       {/* Charts Row 2 */}
-      <StageDistributionChart data={metrics.stageDistribution} isLoading={metrics.isLoading} />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <RecruitmentFunnelChart 
+          data={{
+            applications: metrics.applications,
+            activeCandidates: metrics.activeCandidates,
+            totalHires: metrics.totalHires
+          }} 
+          isLoading={metrics.isLoading} 
+        />
+        <StageDistributionChart data={metrics.stageDistribution} isLoading={metrics.isLoading} />
+      </div>
     </div>
   )
 }
