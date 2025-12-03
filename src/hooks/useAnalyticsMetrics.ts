@@ -136,10 +136,10 @@ export function useAnalyticsMetrics(dateRange: DateRange): AnalyticsMetrics {
       })
 
       const statusColors: Record<string, string> = {
-        active: 'hsl(var(--info))',
+        active: 'hsl(var(--virgilio-purple))',
         hired: 'hsl(var(--success))',
         rejected: 'hsl(var(--destructive))',
-        offer: 'hsl(var(--virgilio-purple))',
+        offer: 'hsl(var(--info))',
         withdrawn: 'hsl(var(--muted))',
         unknown: 'hsl(var(--muted))'
       }
