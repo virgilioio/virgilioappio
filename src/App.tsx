@@ -48,6 +48,7 @@ import AuthCallback from './pages/AuthCallback'
 import MailOAuthCallback from './pages/MailOAuthCallback'
 import AccountSetup from './pages/AccountSetup'
 import { SaaSCustomerDetail } from './pages/settings/saas-customers/SaaSCustomerDetail'
+import Analytics from './pages/Analytics'
 const queryClient = new QueryClient()
 
 function AppContent() {
@@ -93,6 +94,7 @@ function AppContent() {
             <Route path="/find" element={<Find />} />
             <Route path="/jobs" element={<Jobs />} />
             <Route path="/pipeline" element={<Pipeline />} />
+            <Route path="/analytics" element={<Analytics />} />
             <Route path="/jobs/:id" element={<JobDetail />} />
             <Route path="/jobs/:jobId/pipeline" element={<JobDetail />} />
             <Route path="/jobs/:jobId/candidates/:candidateId" element={<CandidateProfile />} />
