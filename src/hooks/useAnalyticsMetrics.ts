@@ -80,7 +80,7 @@ export function useAnalyticsMetrics(dateRange: DateRange): AnalyticsMetrics {
             custom_stage_name,
             job_stages!inner(
               id,
-              name,
+              stage_name,
               stage_type
             )
           )
@@ -154,7 +154,7 @@ export function useAnalyticsMetrics(dateRange: DateRange): AnalyticsMetrics {
       const stageCounts: Record<string, number> = {}
       allAssociations.forEach(a => {
         const stageInfo = a.job_hiring_stages as any
-        const stageName = stageInfo?.custom_stage_name || stageInfo?.job_stages?.name || 'Unknown'
+        const stageName = stageInfo?.custom_stage_name || stageInfo?.job_stages?.stage_name || 'Unknown'
         stageCounts[stageName] = (stageCounts[stageName] || 0) + 1
       })
 
