@@ -26,6 +26,7 @@ import {
   Users,
   TrendingUp,
   Sparkles,
+  BarChart3,
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePermissions } from '@/hooks/usePermissions'
@@ -153,6 +154,12 @@ export function Header() {
       icon: Users,
       label: 'Candidates',
       show: canViewCandidatesNavigation,
+    },
+    {
+      href: '/analytics',
+      icon: BarChart3,
+      label: 'Analytics',
+      show: isPlatformAdmin,
     },
   ]
 
