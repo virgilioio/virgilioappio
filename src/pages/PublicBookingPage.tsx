@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useState, useMemo, useEffect } from 'react';
+import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 import { VirgilioLogo } from '@/components/VirgilioLogo';
@@ -12,9 +12,10 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
-import { AlertCircle, CheckCircle2, Globe } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Globe, Briefcase } from 'lucide-react';
 import { startOfMonth, endOfMonth, isSameDay, parseISO } from 'date-fns';
 import { useBookingAvailability } from '@/hooks/useBookingAvailability';
+import { parseBookingContextFromUrl, BookingContext } from '@/lib/bookingLinkUtils';
 
 // Common timezones for the selector
 const COMMON_TIMEZONES = [
@@ -33,12 +34,18 @@ const COMMON_TIMEZONES = [
 
 export default function PublicBookingPage() {
   const { shortCode } = useParams<{ shortCode: string }>();
+  const [searchParams] = useSearchParams();
   const [candidateTimezone, setCandidateTimezone] = useState(
     Intl.DateTimeFormat().resolvedOptions().timeZone
   );
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<{ start: string; end: string } | null>(null);
+
+  // Parse contextual booking context from URL
+  const bookingContext = useMemo(() => {
+    return parseBookingContextFromUrl(searchParams);
+  }, [searchParams]);
 
   // Fetch booking configuration
   const { data: config, isLoading, error } = useQuery({
@@ -139,6 +146,13 @@ export default function PublicBookingPage() {
           scheduled_start: selectedSlot.start,
           scheduled_end: selectedSlot.end,
           notes: formData.notes || null,
+          // Pass contextual booking context if available
+          ...(bookingContext && {
+            job_id: bookingContext.jobId,
+            candidate_id: bookingContext.candidateId,
+            job_hiring_stage_id: bookingContext.jhsId,
+            job_candidate_association_id: bookingContext.associationId,
+          }),
         },
       });
 
@@ -217,6 +231,24 @@ export default function PublicBookingPage() {
       </header>
 
       <main className="container mx-auto px-4 md:px-6 lg:px-8 py-8 md:py-12 max-w-[1400px]">
+        {/* Contextual Booking Header - show job/stage info if available */}
+        {bookingContext?.jobTitle && (
+          <div className="mb-6 p-4 bg-primary/5 border border-primary/20 rounded-lg">
+            <div className="flex items-center gap-3">
+              <Briefcase className="h-5 w-5 text-primary" />
+              <div>
+                <p className="text-sm text-muted-foreground">Scheduling interview for</p>
+                <p className="font-medium text-foreground">
+                  {bookingContext.jobTitle}
+                  {bookingContext.stageName && (
+                    <span className="text-muted-foreground"> · {bookingContext.stageName}</span>
+                  )}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         <h1 className="text-h1-mobile md:text-h1-desktop font-poppins font-bold text-virgilio-text mb-8">
           Select a Date & Time<span className="text-virgilio-purple">.</span>
         </h1>
@@ -281,6 +313,9 @@ export default function PublicBookingPage() {
                 candidateTimezone={candidateTimezone}
                 onCancel={() => setSelectedSlot(null)}
                 onConfirm={createBookingMutation.mutateAsync}
+                // Pre-fill candidate info from context
+                defaultCandidateName={bookingContext?.candidateName}
+                defaultCandidateEmail={bookingContext?.candidateEmail}
               />
             )}
           </div>

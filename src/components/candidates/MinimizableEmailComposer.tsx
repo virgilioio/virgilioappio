@@ -12,6 +12,9 @@ interface MinimizableEmailComposerProps {
   defaultTo?: string;
   candidateName?: string;
   onSuccess?: () => void;
+  // Contextual booking link context
+  jhsId?: string;
+  associationId?: string;
 }
 
 export function MinimizableEmailComposer({
@@ -22,6 +25,8 @@ export function MinimizableEmailComposer({
   defaultTo,
   candidateName,
   onSuccess,
+  jhsId,
+  associationId,
 }: MinimizableEmailComposerProps) {
   const [isMinimized, setIsMinimized] = useState(false);
 
@@ -81,6 +86,8 @@ export function MinimizableEmailComposer({
             defaultTo={defaultTo}
             onSuccess={handleSuccess}
             embedded
+            jhsId={jhsId}
+            associationId={associationId}
           />
         </div>
       )}

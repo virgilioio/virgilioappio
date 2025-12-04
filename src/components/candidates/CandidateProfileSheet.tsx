@@ -46,6 +46,7 @@ import { MinimizableEmailComposer } from '@/components/candidates/MinimizableEma
 import { EmailHistoryList } from './EmailHistoryList'
 import { ActivityFeedList } from './ActivityFeedList'
 import { ScheduleInterviewSheet } from './ScheduleInterviewSheet'
+import { GenerateBookingLinkButton } from '@/components/candidates/GenerateBookingLinkButton'
 
 interface StageScorecardProps {
   stageInstanceId: string;
@@ -646,7 +647,7 @@ const [oldBookingId, setOldBookingId] = useState<string | null>(null)
 
           {/* Action Buttons for Current Stage */}
           {isCurrent && (
-            <div className="mt-3 flex gap-2">
+            <div className="mt-3 flex flex-wrap gap-2">
               {/* Schedule Interview Button - only for screening/interview stages */}
               {(opt.stage.stage_type === 'screening' || opt.stage.stage_type === 'interview') && (
                 <Button
@@ -662,6 +663,20 @@ const [oldBookingId, setOldBookingId] = useState<string | null>(null)
                   <Calendar className="h-4 w-4" />
                   Schedule Interview
                 </Button>
+              )}
+              
+              {/* Generate Booking Link Button - for screening/interview stages with association */}
+              {(opt.stage.stage_type === 'screening' || opt.stage.stage_type === 'interview') && associationId && candidateId && (
+                <GenerateBookingLinkButton
+                  jobId={jobId}
+                  candidateId={candidateId}
+                  jhsId={opt.jhsId}
+                  associationId={associationId}
+                  candidateName={candidate?.candidate_name}
+                  candidateEmail={candidate?.email}
+                  jobTitle={job?.title}
+                  stageName={opt.stage.stage_name}
+                />
               )}
               
               {/* Submit Scorecard Button - for all stages that support scorecards */}
@@ -1200,6 +1215,8 @@ const [oldBookingId, setOldBookingId] = useState<string | null>(null)
         defaultTo={candidate?.email}
         candidateName={candidate?.candidate_name}
         onSuccess={() => setEmailComposerOpen(false)}
+        jhsId={currentStageId || undefined}
+        associationId={associationId || undefined}
       />
       </SheetContent>
     </Sheet>
