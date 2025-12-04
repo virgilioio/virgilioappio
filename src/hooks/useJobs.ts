@@ -71,7 +71,7 @@ export function useJobs() {
   const [jobs, setJobs] = useState<Job[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const { user, userId, userType, organizationId } = useAuth()
+  const { user, userId, userType, memberRole, organizationId } = useAuth()
   const { normalizeJobSpecs } = useJobSpecNormalization()
   const queryClient = useQueryClient()
 
@@ -242,7 +242,7 @@ export function useJobs() {
         }
         targetOrganizationId = jobData.organization_id
         console.log('Platform admin creating job for organization:', targetOrganizationId)
-      } else if (userType === 'workspace_owner' || userType === 'recruiter') {
+      } else if (userType === 'workspace_owner' || memberRole === 'recruiter') {
         // Workspace owners and recruiters can create jobs for selected child orgs
         if (!jobData.organization_id) {
           throw new Error('Please select a job folder for this job')
