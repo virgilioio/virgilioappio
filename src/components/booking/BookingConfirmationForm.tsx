@@ -24,6 +24,9 @@ interface BookingConfirmationFormProps {
   candidateTimezone: string;
   onCancel: () => void;
   onConfirm: (formData: FormData) => Promise<void>;
+  // Pre-fill values from contextual booking links
+  defaultCandidateName?: string;
+  defaultCandidateEmail?: string;
 }
 
 export function BookingConfirmationForm({
@@ -31,14 +34,16 @@ export function BookingConfirmationForm({
   candidateTimezone,
   onCancel,
   onConfirm,
+  defaultCandidateName,
+  defaultCandidateEmail,
 }: BookingConfirmationFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      candidate_name: '',
-      candidate_email: '',
+      candidate_name: defaultCandidateName || '',
+      candidate_email: defaultCandidateEmail || '',
       candidate_phone: '',
       notes: '',
     },

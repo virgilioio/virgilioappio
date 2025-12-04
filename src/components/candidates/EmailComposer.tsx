@@ -35,6 +35,9 @@ interface EmailComposerProps {
   defaultTo?: string;
   onSuccess?: () => void;
   embedded?: boolean;
+  // Contextual booking link context
+  jhsId?: string;
+  associationId?: string;
 }
 
 interface Attachment {
@@ -43,7 +46,7 @@ interface Attachment {
   size: number;
 }
 
-export function EmailComposer({ candidateId, jobId, defaultTo, onSuccess, embedded = false }: EmailComposerProps) {
+export function EmailComposer({ candidateId, jobId, defaultTo, onSuccess, embedded = false, jhsId, associationId }: EmailComposerProps) {
   const { identities, isLoading: loadingIdentities } = useMailIdentities();
   const { templates, isLoading: loadingTemplates } = useEmailTemplates('organization');
   const sendEmail = useSendEmail();
@@ -151,6 +154,9 @@ export function EmailComposer({ candidateId, jobId, defaultTo, onSuccess, embedd
       attachments: processedAttachments.length > 0 ? processedAttachments : undefined,
       candidate_id: candidateId,
       job_id: jobId,
+      // Pass contextual booking link context for automatic {{sender.booking_link}} replacement
+      jhs_id: jhsId,
+      association_id: associationId,
     };
 
     await sendEmail.mutateAsync(request);

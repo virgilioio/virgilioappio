@@ -18,6 +18,9 @@ export interface SendEmailRequest {
   candidate_id?: string;
   job_id?: string;
   in_reply_to_message_id?: string;
+  // Contextual booking link context
+  jhs_id?: string; // job_hiring_stage_id for contextual booking links
+  association_id?: string; // job_candidate_association_id for contextual booking links
 }
 
 export function useSendEmail() {

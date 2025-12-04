@@ -24,6 +24,9 @@ const SendEmailSchema = z.object({
   candidate_id: z.string().uuid().optional(),
   job_id: z.string().uuid().optional(),
   in_reply_to_message_id: z.string().optional(), // For threading replies
+  // Contextual booking link context
+  jhs_id: z.string().uuid().optional(), // job_hiring_stage_id for contextual booking links
+  association_id: z.string().uuid().optional(), // job_candidate_association_id
 });
 
 type SendEmailRequest = z.infer<typeof SendEmailSchema>;
@@ -140,6 +143,31 @@ function base64UrlEncode(str: string): string {
   const data = encoder.encode(str);
   const base64 = btoa(String.fromCharCode(...data));
   return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+/**
+ * Encode booking context to a URL-safe base64 string for contextual booking links
+ */
+function encodeBookingContext(context: {
+  jobId: string;
+  candidateId: string;
+  jhsId: string;
+  associationId: string;
+  candidateName?: string;
+  candidateEmail?: string;
+  jobTitle?: string;
+}): string {
+  try {
+    const json = JSON.stringify(context);
+    // Use base64url encoding (URL-safe)
+    return btoa(json)
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '');
+  } catch (e) {
+    console.error('Failed to encode booking context:', e);
+    return '';
+  }
 }
 
 async function replacePlaceholders(
@@ -420,7 +448,25 @@ const handler = async (req: Request): Promise<Response> => {
     
     if (bookingConfig?.short_code) {
       const frontendUrl = Deno.env.get('FRONTEND_URL') || 'https://etrxjxstjfcozdjumfsj.lovable.app';
-      bookingUrl = `${frontendUrl}/schedule/${bookingConfig.short_code}`;
+      
+      // Generate contextual booking link if job+candidate context is provided
+      if (request.job_id && request.candidate_id && request.jhs_id && request.association_id) {
+        const context = {
+          jobId: request.job_id,
+          candidateId: request.candidate_id,
+          jhsId: request.jhs_id,
+          associationId: request.association_id,
+          candidateName: candidateData?.candidate_name,
+          candidateEmail: candidateData?.email,
+          jobTitle: jobData?.title,
+        };
+        const encodedContext = encodeBookingContext(context);
+        bookingUrl = `${frontendUrl}/schedule/${bookingConfig.short_code}?ctx=${encodedContext}`;
+        console.log('Generated contextual booking link for candidate:', request.candidate_id);
+      } else {
+        // Fallback to generic booking link
+        bookingUrl = `${frontendUrl}/schedule/${bookingConfig.short_code}`;
+      }
     }
 
     // Handle reply threading
