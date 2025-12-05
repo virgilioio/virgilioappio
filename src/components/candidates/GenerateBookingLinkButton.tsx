@@ -4,6 +4,7 @@ import { Link2, Loader2 } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
+  TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { Link } from 'react-router-dom';
@@ -76,16 +77,18 @@ export function GenerateBookingLinkButton({
   }
 
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Button variant={variant} size={size} onClick={copyToClipboard}>
-          <Link2 className="h-4 w-4" />
-          {showLabel && <span className="ml-2">Booking Link</span>}
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent>
-        <p>Copy self-scheduling link for this candidate</p>
-      </TooltipContent>
-    </Tooltip>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button variant={variant} size={size} onClick={copyToClipboard}>
+            <Link2 className="h-4 w-4" />
+            {showLabel && <span className="ml-2">Booking Link</span>}
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>Copy self-scheduling link for this candidate</p>
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }
