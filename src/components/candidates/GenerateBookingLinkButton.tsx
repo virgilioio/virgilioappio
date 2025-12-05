@@ -36,7 +36,13 @@ export function GenerateBookingLinkButton({
   size = 'sm',
   showLabel = true,
 }: GenerateBookingLinkButtonProps) {
-  const { copyToClipboard, hasBookingConfig, isLoading } = useContextualBookingLink({
+  const {
+    copyToClipboard,
+    hasBookingConfig,
+    isLoading,
+    linkOwnerName,
+    usingAssignedInterviewer,
+  } = useContextualBookingLink({
     jobId,
     candidateId,
     jhsId,
@@ -46,6 +52,14 @@ export function GenerateBookingLinkButton({
     jobTitle,
     stageName,
   });
+
+  const linkOwnerLabel = usingAssignedInterviewer ? linkOwnerName || 'assigned interviewer' : 'your';
+  const buttonLabel = usingAssignedInterviewer
+    ? `Copy ${linkOwnerName ? `${linkOwnerName}'s` : 'Interviewer'} Link`
+    : 'Copy Your Link';
+  const tooltipCopyMessage = usingAssignedInterviewer
+    ? `Copy ${linkOwnerLabel}'s self-scheduling link for this candidate`
+    : 'Copy your self-scheduling link for this candidate';
 
   if (isLoading) {
     return (
@@ -65,13 +79,15 @@ export function GenerateBookingLinkButton({
               <Link to="/settings?tab=booking">
                 <Button variant={variant} size={size} className="opacity-60">
                   <Link2 className="h-4 w-4" />
-                  {showLabel && <span className="ml-2">Booking Link</span>}
+                  {showLabel && <span className="ml-2">Set up booking link</span>}
                 </Button>
               </Link>
             </span>
           </TooltipTrigger>
           <TooltipContent>
-            <p>Configure your booking settings first</p>
+            <p>
+              Neither the assigned interviewer nor you have an active booking link. Configure your booking settings first.
+            </p>
           </TooltipContent>
         </Tooltip>
       </TooltipProvider>
@@ -84,11 +100,11 @@ export function GenerateBookingLinkButton({
         <TooltipTrigger asChild>
           <Button variant={variant} size={size} onClick={copyToClipboard}>
             <Link2 className="h-4 w-4" />
-            {showLabel && <span className="ml-2">Booking Link</span>}
+            {showLabel && <span className="ml-2">{buttonLabel}</span>}
           </Button>
         </TooltipTrigger>
         <TooltipContent>
-          <p>Copy self-scheduling link for this candidate</p>
+          <p>{tooltipCopyMessage}</p>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
