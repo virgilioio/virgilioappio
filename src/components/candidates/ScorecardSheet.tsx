@@ -9,12 +9,22 @@ import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
 import type { ScoreRating, ScorecardRow } from "@/hooks/useScorecards";
-import { ThumbsDown, ThumbsUp, Star, Octagon, Loader2, Sparkles, Lightbulb } from "lucide-react";
+import { ThumbsDown, ThumbsUp, Star, Octagon, Loader2, Sparkles, Lightbulb, Trash2 } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import type { InterviewQuestion, SelectOption } from "@/hooks/useScorecardsConfiguration";
 import { markdownToHtml } from "@/utils/markdown";
 import gioIcon from "@/assets/gio-icon.png";
 import { RecommendedNextStepsDialog } from "./RecommendedNextStepsDialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface ScorecardSheetProps {
   open: boolean;
@@ -24,6 +34,7 @@ interface ScorecardSheetProps {
   stageInstanceId: string;
   existing?: ScorecardRow | null;
   onSubmit: (rating: ScoreRating, overview: string) => Promise<void>;
+  onDelete?: () => Promise<void>;
   isAuthor: boolean;
   candidateName?: string;
   jobId?: string;
@@ -60,6 +71,7 @@ export function ScorecardSheet({
   stageInstanceId,
   existing,
   onSubmit,
+  onDelete,
   isAuthor,
   candidateName,
   jobId,
@@ -76,6 +88,8 @@ export function ScorecardSheet({
   const [loadingQuestions, setLoadingQuestions] = useState(true);
   const [isPolishing, setIsPolishing] = useState(false);
   const [showNextStepsDialog, setShowNextStepsDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const isReadOnly = useMemo(() => !editMode, [editMode]);
   const isAiDraft = existing?.is_ai_draft === true;
@@ -453,6 +467,16 @@ export function ScorecardSheet({
                   {existing && isAuthor && !editMode && (
                     <Button variant="outline" onClick={() => setEditMode(true)}>Edit scorecard</Button>
                   )}
+                  {existing && isAuthor && onDelete && (
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => setShowDeleteDialog(true)}
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
               </div>
             </SheetHeader>
@@ -614,6 +638,42 @@ export function ScorecardSheet({
           onReject={onReject}
         />
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Scorecard</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this scorecard? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={isDeleting}
+              onClick={async (e) => {
+                e.preventDefault();
+                if (!onDelete) return;
+                setIsDeleting(true);
+                try {
+                  await onDelete();
+                  toast({ title: 'Scorecard deleted', description: 'Your scorecard has been deleted.' });
+                  setShowDeleteDialog(false);
+                  onOpenChange(false);
+                } catch (err: any) {
+                  toast({ title: 'Delete failed', description: err?.message || 'Failed to delete scorecard', variant: 'destructive' });
+                } finally {
+                  setIsDeleting(false);
+                }
+              }}
+            >
+              {isDeleting ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

@@ -200,8 +200,8 @@ export function CandidateFormSheet({
       // Reset job assignment state when opening for new candidate
       if (preSelectedJob) {
         setSelectedJobId(preSelectedJob.id)
-        // Load stages for pre-selected job
-        loadStagesForJob(preSelectedJob.id)
+        // Load stages for pre-selected job and auto-select first stage if no stageId provided
+        loadStagesForJob(preSelectedJob.id, !stageId)
         // Pre-select stage if provided
         if (stageId) {
           setSelectedStageId(stageId)
@@ -210,14 +210,15 @@ export function CandidateFormSheet({
         setSelectedJobId(jobId || '')
         setSelectedStageId(stageId || '')
         if (jobId) {
-          loadStagesForJob(jobId)
+          // Auto-select first stage if no stageId provided
+          loadStagesForJob(jobId, !stageId)
         }
       }
     }
   }, [isOpen, candidate, preSelectedJob, jobId, stageId])
 
   // Function to load stages for selected job
-  const loadStagesForJob = async (jobIdToLoad: string) => {
+  const loadStagesForJob = async (jobIdToLoad: string, autoSelectFirst: boolean = false) => {
     if (!jobIdToLoad) {
       setJobStages([])
       return
@@ -227,6 +228,10 @@ export function CandidateFormSheet({
     try {
       const stages = await loadHiringPlanInstances(jobIdToLoad)
       setJobStages(stages)
+      // Auto-select first stage if requested and no stage already selected
+      if (autoSelectFirst && stages.length > 0 && !stageId) {
+        setSelectedStageId(stages[0].jhsId)
+      }
     } catch (error) {
       console.error('Error loading stages:', error)
       setJobStages([])
@@ -236,11 +241,12 @@ export function CandidateFormSheet({
   }
 
   // Handle job selection change
-  const handleJobChange = (jobId: string) => {
+  const handleJobChange = async (jobId: string) => {
     setSelectedJobId(jobId)
     setSelectedStageId('') // Reset stage when job changes
     if (jobId) {
-      loadStagesForJob(jobId)
+      // Auto-select first stage when user manually changes job
+      await loadStagesForJob(jobId, true)
     } else {
       setJobStages([])
     }
