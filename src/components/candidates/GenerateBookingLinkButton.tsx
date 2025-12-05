@@ -58,21 +58,23 @@ export function GenerateBookingLinkButton({
 
   if (!hasBookingConfig) {
     return (
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <span>
-            <Link to="/settings?tab=booking">
-              <Button variant={variant} size={size} className="opacity-60">
-                <Link2 className="h-4 w-4" />
-                {showLabel && <span className="ml-2">Booking Link</span>}
-              </Button>
-            </Link>
-          </span>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p>Configure your booking settings first</p>
-        </TooltipContent>
-      </Tooltip>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span>
+              <Link to="/settings?tab=booking">
+                <Button variant={variant} size={size} className="opacity-60">
+                  <Link2 className="h-4 w-4" />
+                  {showLabel && <span className="ml-2">Booking Link</span>}
+                </Button>
+              </Link>
+            </span>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Configure your booking settings first</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
     );
   }
 
