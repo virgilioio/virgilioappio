@@ -12,10 +12,11 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from '@/hooks/use-toast';
-import { AlertCircle, CheckCircle2, Globe, Briefcase } from 'lucide-react';
+import { AlertCircle, Globe } from 'lucide-react';
 import { startOfMonth, endOfMonth, isSameDay, parseISO } from 'date-fns';
 import { useBookingAvailability } from '@/hooks/useBookingAvailability';
 import { parseBookingContextFromUrl, BookingContext } from '@/lib/bookingLinkUtils';
+import gioAvatar from '@/assets/gio-avatar.png';
 
 // Common timezones for the selector
 const COMMON_TIMEZONES = [
@@ -231,27 +232,27 @@ export default function PublicBookingPage() {
       </header>
 
       <main className="container mx-auto px-4 md:px-6 lg:px-8 py-8 md:py-12 max-w-[1400px]">
+        <h1 className="text-h1-mobile md:text-h1-desktop font-poppins font-bold text-virgilio-text mb-6">
+          Select a Date & Time<span className="text-virgilio-purple">.</span>
+        </h1>
+
         {/* Contextual Booking Header - show job/stage info if available */}
         {bookingContext?.jobTitle && (
-          <div className="mb-6 p-4 bg-primary/5 border border-primary/20 rounded-lg">
+          <div className="mb-8 p-4 bg-virgilio-purple/10 border border-virgilio-purple/25 rounded-lg">
             <div className="flex items-center gap-3">
-              <Briefcase className="h-5 w-5 text-primary" />
+              <img src={gioAvatar} alt="Gio" className="h-10 w-10 rounded-full bg-white" />
               <div>
-                <p className="text-sm text-muted-foreground">Scheduling interview for</p>
-                <p className="font-medium text-foreground">
+                <p className="text-sm text-virgilio-purple">Scheduling interview for</p>
+                <p className="font-medium text-virgilio-text">
                   {bookingContext.jobTitle}
                   {bookingContext.stageName && (
-                    <span className="text-muted-foreground"> · {bookingContext.stageName}</span>
+                    <span className="text-virgilio-purple"> · {bookingContext.stageName}</span>
                   )}
                 </p>
               </div>
             </div>
           </div>
         )}
-
-        <h1 className="text-h1-mobile md:text-h1-desktop font-poppins font-bold text-virgilio-text mb-8">
-          Select a Date & Time<span className="text-virgilio-purple">.</span>
-        </h1>
         
         <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr_380px] gap-8">
           {/* Left column - Event summary */}
