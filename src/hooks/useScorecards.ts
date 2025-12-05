@@ -131,5 +131,46 @@ export function useMyScorecards(associationId?: string | null) {
     }
   };
 
-  return { loading, error, rows, byStage, refetch: fetchMyScorecards, upsertMyScorecard };
+  const deleteMyScorecard = async (scorecardId: string) => {
+    if (!user?.id) throw new Error("Not authenticated");
+
+    // Find the scorecard to verify ownership
+    const existing = rows.find((r) => r.id === scorecardId);
+    if (!existing) throw new Error("Scorecard not found");
+    if (existing.created_by !== user.id) throw new Error("You can only delete your own scorecards");
+
+    // Delete question responses first (FK constraint)
+    await (supabase as any)
+      .from("scorecard_question_responses")
+      .delete()
+      .eq("scorecard_id", scorecardId);
+
+    // Delete the scorecard
+    const { error } = await (supabase as any)
+      .from("job_stage_scorecards")
+      .delete()
+      .eq("id", scorecardId)
+      .eq("created_by", user.id);
+
+    if (error) throw error;
+
+    // Update local state
+    setRows((prev) => prev.filter((r) => r.id !== scorecardId));
+
+    // Log activity
+    await logActivity({
+      activityType: 'scorecard_submitted',
+      title: 'Scorecard deleted',
+      description: `Deleted scorecard for stage`,
+      metadata: {
+        candidate_id: existing.candidate_id,
+        job_id: existing.job_id,
+        stage_instance_id: existing.stage_instance_id,
+      },
+      entityType: 'scorecard',
+      entityId: scorecardId
+    });
+  };
+
+  return { loading, error, rows, byStage, refetch: fetchMyScorecards, upsertMyScorecard, deleteMyScorecard };
 }

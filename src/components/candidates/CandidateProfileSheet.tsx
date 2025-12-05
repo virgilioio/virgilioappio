@@ -118,7 +118,7 @@ const [planStages, setPlanStages] = useState<PlanStageOption[]>([])
 const [openStageId, setOpenStageId] = useState<string | null>(null)
 
 // Scorecards
-const { rows: myScorecards, byStage: myScorecardsByStage, upsertMyScorecard, refetch: refetchScorecards } = useMyScorecards(associationId)
+const { rows: myScorecards, byStage: myScorecardsByStage, upsertMyScorecard, refetch: refetchScorecards, deleteMyScorecard } = useMyScorecards(associationId)
 const [scoreOpen, setScoreOpen] = useState(false)
 const [scoreStageInstId, setScoreStageInstId] = useState<string | null>(null)
 const [scoreStageName, setScoreStageName] = useState<string | undefined>(undefined)
@@ -1177,6 +1177,14 @@ const [oldBookingId, setOldBookingId] = useState<string | null>(null)
                 await refetchScorecards()
                 setViewingScorecardId(null)
                 toast({ title: 'Scorecard saved', description: 'Your scorecard has been saved.' })
+              }}
+              onDelete={async () => {
+                const existingScorecard = viewingScorecard || myScorecardsByStage[scoreStageInstId]
+                if (existingScorecard?.id) {
+                  await deleteMyScorecard(existingScorecard.id)
+                  await refetchScorecards()
+                  setViewingScorecardId(null)
+                }
               }}
             />
           )}
