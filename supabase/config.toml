@@ -107,3 +107,6 @@ verify_jwt = false
 
 [functions.generate-next-steps]
 verify_jwt = true
+
+[functions.send-scheduled-emails]
+verify_jwt = false
