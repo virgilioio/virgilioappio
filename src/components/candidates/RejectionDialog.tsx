@@ -10,7 +10,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { RejectionReasonSelector } from './RejectionReasonSelector';
 import { RejectionEmailComposer } from './RejectionEmailComposer';
 import { useRejectCandidate } from '@/hooks/useRejectCandidate';
@@ -86,7 +85,7 @@ export function RejectionDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col overflow-hidden">
+      <DialogContent className="sm:max-w-[600px] max-h-[85vh] flex flex-col">
         <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <ThumbsDown className="h-5 w-5 text-destructive" />
@@ -97,8 +96,8 @@ export function RejectionDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 min-h-0 pr-4 -mr-4">
-          <div className="space-y-6 py-2 pr-2">
+        <div className="flex-1 overflow-y-auto min-h-0 pr-2 -mr-2">
+          <div className="space-y-6 py-2">
             {/* Rejection Reason */}
             <div className="space-y-2">
               <Label>Rejection Reason</Label>
@@ -139,7 +138,7 @@ export function RejectionDialog({
               </div>
             )}
           </div>
-        </ScrollArea>
+        </div>
 
         <DialogFooter className="gap-2 sm:gap-0">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
