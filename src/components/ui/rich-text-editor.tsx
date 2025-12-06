@@ -377,8 +377,12 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
       nextSibling.remove()
       if (editorRef.current) updateContent(editorRef.current.innerHTML)
     } else if (isBadge) {
-      // Prevent typing inside badges
-      e.preventDefault()
+      // Allow modifier key combinations (Ctrl/Cmd + key) for undo/redo/copy/paste
+      const isModifierCombo = e.ctrlKey || e.metaKey || e.altKey
+      if (!isModifierCombo) {
+        // Only prevent regular typing inside badges, not shortcuts
+        e.preventDefault()
+      }
     }
   }, [updateContent])
 
