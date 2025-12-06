@@ -127,7 +127,7 @@ export function SourcingFiltersPanel({
                   size="sm" 
                   onClick={handleSaveAndRefresh} 
                   disabled={isRefreshing || editableCriteria.skills.length === 0}
-                  className="h-8 px-3 text-xs rounded-lg bg-gradient-to-r from-virgilio-purple to-virgilio-purple/90 hover:shadow-md transition-all duration-200"
+                  className="h-8 px-3 text-xs rounded-lg text-white bg-gradient-to-r from-virgilio-purple to-virgilio-purple/90 hover:shadow-md transition-all duration-200"
                 >
                   {isRefreshing ? (
                     <>
@@ -166,7 +166,7 @@ export function SourcingFiltersPanel({
                   <Button 
                     size="sm" 
                     onClick={handleAddSkill} 
-                    className="h-9 w-9 p-0 rounded-lg bg-gradient-to-r from-virgilio-purple to-virgilio-purple/90 hover:shadow-md transition-all duration-200"
+                    className="h-9 w-9 p-0 rounded-lg text-white bg-gradient-to-r from-virgilio-purple to-virgilio-purple/90 hover:shadow-md transition-all duration-200"
                   >
                     <Plus className="h-4 w-4" />
                   </Button>
@@ -205,7 +205,7 @@ export function SourcingFiltersPanel({
                   <Button 
                     size="sm" 
                     onClick={handleAddTitleKeyword} 
-                    className="h-9 w-9 p-0 rounded-lg bg-gradient-to-r from-virgilio-purple to-virgilio-purple/90 hover:shadow-md transition-all duration-200"
+                    className="h-9 w-9 p-0 rounded-lg text-white bg-gradient-to-r from-virgilio-purple to-virgilio-purple/90 hover:shadow-md transition-all duration-200"
                   >
                     <Plus className="h-4 w-4" />
                   </Button>
