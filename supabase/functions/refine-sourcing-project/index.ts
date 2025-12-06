@@ -29,16 +29,43 @@ serve(async (req) => {
 
     console.log('Refining sourcing project:', project_id);
 
-    // Fetch current project
+    // Fetch current project with optional conversation (left join)
     const { data: project, error: projectError } = await supabase
       .from('sourcing_projects')
-      .select('*, ai_conversations!inner(id)')
+      .select('*, ai_conversations(id)')
       .eq('id', project_id)
       .single();
 
     if (projectError) throw projectError;
 
-    const conversationId = project.ai_conversations.id;
+    // Get or create conversation for this project
+    let conversationId: string;
+    
+    if (project.ai_conversations?.id) {
+      conversationId = project.ai_conversations.id;
+    } else {
+      // Auto-create conversation for projects without one
+      console.log('Creating new conversation for project:', project_id);
+      
+      const { data: newConversation, error: convError } = await supabase
+        .from('ai_conversations')
+        .insert({
+          sourcing_project_id: project_id,
+          tenant_id: project.tenant_id,
+          initial_prompt: 'Refinement conversation',
+          status: 'active'
+        })
+        .select('id')
+        .single();
+
+      if (convError) {
+        console.error('Failed to create conversation:', convError);
+        throw convError;
+      }
+      
+      conversationId = newConversation.id;
+    }
+
     const currentCriteria = project.search_criteria;
 
     // Build conversation for OpenAI

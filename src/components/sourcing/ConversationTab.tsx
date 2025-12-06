@@ -67,23 +67,22 @@ export function ConversationTab({ projectId, onRefinementComplete }: Conversatio
     );
   }
 
-  if (!hasConversation) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-        <Sparkles className="h-16 w-16 text-muted-foreground mb-4" />
-        <h3 className="text-lg font-semibold mb-2">No Conversation History</h3>
-        <p className="text-sm text-muted-foreground max-w-md">
-          This project was created before the conversation feature was added. 
-          Future projects will include full chat history with Gio.
-        </p>
-      </div>
-    );
-  }
-
   return (
     <div className="flex flex-col h-full bg-surface-primary">
       {/* Messages Container */}
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        {/* Welcome message when no conversation history */}
+        {messages.length === 0 && !refineMutation.isPending && (
+          <div className="flex flex-col items-center justify-center h-full p-8 text-center">
+            <img src={gioAvatar} alt="Gio" className="h-16 w-16 rounded-full mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Chat with Gio</h3>
+            <p className="text-sm text-muted-foreground max-w-md">
+              Need to adjust your search? Tell me what you want to change — 
+              add skills, change locations, update experience requirements, or anything else.
+            </p>
+          </div>
+        )}
+
         {messages.map((message, index) => {
           // Skip system messages in UI
           if (message.role === 'system') return null;
