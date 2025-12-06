@@ -16,7 +16,7 @@ export function sanitizeHtml(html: string): string {
       'ul', 'ol', 'li', 'a', 'span', 'div', 'blockquote', 'pre', 'code', 'hr', 'table',
       'thead', 'tbody', 'tfoot', 'tr', 'th', 'td'
     ],
-    ALLOWED_ATTR: ['href', 'title', 'class', 'target', 'rel', 'colspan', 'rowspan'],
+    ALLOWED_ATTR: ['href', 'title', 'class', 'target', 'rel', 'colspan', 'rowspan', 'data-placeholder', 'contenteditable'],
     ALLOW_DATA_ATTR: false,
     // Critical: Block dangerous tags including script and iframe
     FORBID_TAGS: ['script', 'iframe', 'object', 'embed', 'link', 'style', 'img', 'svg', 'form', 'input'],
@@ -174,8 +174,10 @@ export function sanitizeHtmlForEditor(html: string): string {
     // Remove problematic attributes that can interfere with editors
     const allElements = tempDiv.querySelectorAll('*')
     allElements.forEach(el => {
-      // Remove contenteditable attributes
-      el.removeAttribute('contenteditable')
+      // Remove contenteditable attributes (except on placeholder badges)
+      if (!el.classList.contains('placeholder-badge')) {
+        el.removeAttribute('contenteditable')
+      }
       el.removeAttribute('spellcheck')
       
       // Remove any remaining data attributes that start with problematic prefixes
