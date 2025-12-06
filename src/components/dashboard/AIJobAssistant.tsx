@@ -16,6 +16,7 @@ import gioAvatar from '@/assets/gio-avatar.png'
 import { supabase } from '@/lib/supabaseClient'
 import { useToast } from '@/hooks/use-toast'
 import { validateJobPrompt, getValidationStats, type ValidationItem } from '@/utils/jobPromptValidation'
+import { normalizeLocationForCoresignal, isValidCoresignalLocation } from '@/utils/locationNormalization'
 import { SkillsEditor } from './SkillsEditor'
 import { useJobs } from '@/hooks/useJobs'
 import { useAuth } from '@/contexts/AuthContext'
@@ -347,6 +348,45 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
       console.log('📁 Organization ID:', selectedOrgId)
       console.log('🔗 Job ID (optional):', selectedJobId || 'none')
 
+      // Normalize location for CoreSignal compatibility
+      const rawLocation = editableJobSpec.location || ''
+      let normalizedLocations: string[]
+      
+      // Check if location is already in valid CoreSignal format
+      if (isValidCoresignalLocation(rawLocation)) {
+        normalizedLocations = [rawLocation]
+        console.log('📍 Location already in CoreSignal format:', rawLocation)
+      } else {
+        // Normalize the freeform location
+        normalizedLocations = normalizeLocationForCoresignal(rawLocation)
+        console.log('📍 Normalized location:', rawLocation, '→', normalizedLocations)
+        
+        // If normalization returned empty and we have location_details from AI, try using that
+        if (normalizedLocations.length === 0 && (editableJobSpec as any).location_details) {
+          const details = (editableJobSpec as any).location_details
+          if (details.country_code) {
+            if (details.city && details.state) {
+              normalizedLocations = [`${details.city},${details.state},${details.country_code}`]
+            } else if (details.state) {
+              normalizedLocations = [`${details.state},${details.country_code}`]
+            } else {
+              normalizedLocations = [details.country_code]
+            }
+            console.log('📍 Used location_details for normalization:', normalizedLocations)
+          } else if (details.region && details.is_remote) {
+            // Handle regional remote - expand to country codes
+            const regionCodes = {
+              'LATAM': ['MX', 'CO', 'AR', 'BR', 'CL', 'PE'],
+              'EMEA': ['GB', 'DE', 'FR', 'ES', 'IT', 'NL'],
+              'APAC': ['IN', 'SG', 'AU', 'JP'],
+              'NORTH_AMERICA': ['US', 'CA']
+            }
+            normalizedLocations = regionCodes[details.region as keyof typeof regionCodes] || []
+            console.log('📍 Expanded region to countries:', details.region, '→', normalizedLocations)
+          }
+        }
+      }
+
       const { data: project, error: projectError } = await supabase.functions.invoke('create-sourcing-project', {
         body: {
           name: `${selectedTitle} - ${editableJobSpec.location}`,
@@ -356,7 +396,7 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
           conversationId: projectConversationId || undefined, // Link conversation to project
           search_criteria: {
             skills: editableSkills,
-            locations: [editableJobSpec.location],
+            locations: normalizedLocations,
             title_keywords: [
               selectedTitle,
               ...(editableJobSpec.alt_titles || [])

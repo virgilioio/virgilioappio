@@ -300,6 +300,22 @@ The job_description should be structured HTML like:
 - Job location: IRRELEVANT to response language
 - Skills: Always English
 
+🔍 CRITICAL - LOCATION FORMAT FOR CORESIGNAL COMPATIBILITY:
+Your location output MUST be in a format that can be mapped to CoreSignal's expected structure.
+
+LOCATION OUTPUT RULES:
+1. For specific cities: Use format "City, State/Province, Country" (e.g., "Mexico City, CDMX, Mexico", "San Francisco, California, United States")
+2. For countries only: Use the full country name (e.g., "Mexico", "United States", "Colombia")
+3. For regions with remote: Use "Remote - REGION" format (e.g., "Remote - LATAM", "Remote - EMEA", "Remote - APAC", "Remote - North America")
+4. For pure remote (global): Use "Remote"
+5. NEVER use ambiguous formats like "Mexico City, Mexico" without state - always include state/province when specifying a city
+
+REGION DEFINITIONS FOR LOCATION:
+- LATAM: Mexico, Guatemala, El Salvador, Honduras, Nicaragua, Costa Rica, Panama, Colombia, Venezuela, Ecuador, Peru, Bolivia, Brazil, Paraguay, Uruguay, Argentina, Chile
+- EMEA: UK, Germany, France, Spain, Italy, Netherlands, Poland, UAE, Saudi Arabia, Egypt, South Africa, Kenya
+- APAC: India, China, Japan, Singapore, Australia, South Korea, Indonesia, Thailand, Vietnam, Philippines, Malaysia, New Zealand
+- North America: United States, Canada
+
 Return ONLY valid JSON in this format:
 
 {
@@ -308,7 +324,16 @@ Return ONLY valid JSON in this format:
   "job_description": "Structured HTML with headings and bullet points in detected prompt language",
   "level": "L1 | L2 | L3",
   "department": "Department name in detected prompt language",
-  "location": "City, Country (if inferred or provided)",
+  "location": "City, State, Country OR Country OR Remote - REGION OR Remote",
+  "location_details": {
+    "type": "city | state | country | region | remote",
+    "city": "City name if applicable or null",
+    "state": "State/Province name if applicable or null",
+    "country": "Full country name",
+    "country_code": "Two-letter ISO code (US, MX, CO, AR, BR, etc.)",
+    "region": "LATAM | EMEA | APAC | NORTH_AMERICA if regional, else null",
+    "is_remote": true | false
+  },
   "salary_range": {
     "min": integer,
     "max": integer,
