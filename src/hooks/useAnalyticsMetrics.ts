@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
-import { startOfDay, endOfDay, subDays, startOfMonth, format, eachDayOfInterval } from 'date-fns'
+import { format, eachDayOfInterval } from 'date-fns'
 
 export interface DateRange {
   startDate: Date
@@ -15,7 +15,7 @@ export interface AnalyticsMetrics {
   scheduledInterviews: number
   statusDistribution: { name: string; value: number; color: string }[]
   stageDistribution: { name: string; count: number }[]
-  trendData: { date: string; applications: number; active: number; hires: number }[]
+  trendData: { date: string; applications: number; active: number; hires: number; interviews: number }[]
   isLoading: boolean
   error: Error | null
 }
@@ -42,8 +42,21 @@ export function useAnalyticsMetrics(dateRange: DateRange): AnalyticsMetrics {
       }
 
       const tenantId = memberData.tenant_id
-      const startISO = startOfDay(dateRange.startDate).toISOString()
-      const endISO = endOfDay(dateRange.endDate).toISOString()
+      
+      // Use UTC-explicit dates to avoid timezone issues
+      const startISO = new Date(Date.UTC(
+        dateRange.startDate.getFullYear(),
+        dateRange.startDate.getMonth(),
+        dateRange.startDate.getDate(),
+        0, 0, 0, 0
+      )).toISOString()
+      
+      const endISO = new Date(Date.UTC(
+        dateRange.endDate.getFullYear(),
+        dateRange.endDate.getMonth(),
+        dateRange.endDate.getDate(),
+        23, 59, 59, 999
+      )).toISOString()
 
       // Step 2: Fetch all jobs for this tenant
       const { data: tenantJobs, error: jobsError } = await supabase
@@ -166,31 +179,38 @@ export function useAnalyticsMetrics(dateRange: DateRange): AnalyticsMetrics {
       // Trend data for line chart
       const days = eachDayOfInterval({ start: dateRange.startDate, end: dateRange.endDate })
       const trendData = days.map(day => {
-        const dayStart = startOfDay(day)
-        const dayEnd = endOfDay(day)
+        // Use UTC for consistent day boundaries
+        const dayStartUTC = new Date(Date.UTC(day.getFullYear(), day.getMonth(), day.getDate(), 0, 0, 0, 0))
+        const dayEndUTC = new Date(Date.UTC(day.getFullYear(), day.getMonth(), day.getDate(), 23, 59, 59, 999))
 
         const dayApplications = applicationsInRange.filter(a => {
           const createdAt = new Date(a.created_at)
           const stageInfo = a.job_hiring_stages as any
-          return createdAt >= dayStart && createdAt <= dayEnd && stageInfo?.job_stages?.stage_type === 'application'
+          return createdAt >= dayStartUTC && createdAt <= dayEndUTC && stageInfo?.job_stages?.stage_type === 'application'
         }).length
 
         const dayActive = allAssociations.filter(a => {
           const createdAt = new Date(a.created_at)
-          return a.status === 'active' && createdAt <= dayEnd
+          return a.status === 'active' && createdAt <= dayEndUTC
         }).length
 
         const dayHires = allAssociations.filter(a => {
           if (a.status !== 'hired') return false
           const updatedAt = new Date(a.updated_at)
-          return updatedAt >= dayStart && updatedAt <= dayEnd
+          return updatedAt >= dayStartUTC && updatedAt <= dayEndUTC
+        }).length
+
+        const dayInterviews = (bookings || []).filter(b => {
+          const scheduledStart = new Date(b.scheduled_start)
+          return scheduledStart >= dayStartUTC && scheduledStart <= dayEndUTC
         }).length
 
         return {
           date: format(day, 'MMM d'),
           applications: dayApplications,
           active: dayActive,
-          hires: dayHires
+          hires: dayHires,
+          interviews: dayInterviews
         }
       })
 

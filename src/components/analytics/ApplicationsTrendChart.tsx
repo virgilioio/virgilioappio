@@ -15,6 +15,7 @@ interface TrendData {
   applications: number
   active: number
   hires: number
+  interviews: number
 }
 
 interface ApplicationsTrendChartProps {
@@ -100,6 +101,15 @@ export function ApplicationsTrendChart({ data, isLoading }: ApplicationsTrendCha
                 stroke="hsl(120 100% 30%)"
                 strokeWidth={2}
                 dot={{ fill: 'hsl(120 100% 30%)', r: 3 }}
+                activeDot={{ r: 5 }}
+              />
+              <Line
+                type="monotone"
+                dataKey="interviews"
+                name="Interviews"
+                stroke="hsl(45 100% 50%)"
+                strokeWidth={2}
+                dot={{ fill: 'hsl(45 100% 50%)', r: 3 }}
                 activeDot={{ r: 5 }}
               />
             </LineChart>
