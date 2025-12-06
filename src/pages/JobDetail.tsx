@@ -26,6 +26,7 @@ import { useIsMobile } from '@/hooks/use-mobile'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from '@/hooks/use-toast'
 import { SalaryInsightsCard } from '@/components/jobs/SalaryInsightsCard'
+import { JobAnalyticsDashboard } from '@/components/jobs/JobAnalyticsDashboard'
 import { PipelineOverview } from '@/components/jobs/PipelineOverview'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
@@ -709,38 +710,11 @@ export default function JobDetail() {
               
               
               <TabsContent value="candidates">
-                <div className="space-y-6">
-                  <SalaryInsightsCard 
-                    candidates={allAssociatedCandidates.length ? allAssociatedCandidates : applicationReviewCandidates}
-                    jobCurrency={job.currency || 'USD'}
-                  />
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <Card>
-                      <CardHeader className="pb-2">
-                        <div className="text-sm text-text-secondary">Active Candidates</div>
-                        <div className="text-3xl font-semibold text-text-primary">{activeCount}</div>
-                      </CardHeader>
-                    </Card>
-                    <Card>
-                      <CardHeader className="pb-2">
-                        <div className="text-sm text-text-secondary">Offers</div>
-                        <div className="text-3xl font-semibold text-text-primary">{offerCount}</div>
-                      </CardHeader>
-                    </Card>
-                    <Card>
-                      <CardHeader className="pb-2">
-                        <div className="text-sm text-text-secondary">Hired</div>
-                        <div className="text-3xl font-semibold text-text-primary">{hiredCount}</div>
-                      </CardHeader>
-                    </Card>
-                    <Card>
-                      <CardHeader className="pb-2">
-                        <div className="text-sm text-text-secondary">Rejected</div>
-                        <div className="text-3xl font-semibold text-text-primary">{rejectedCount}</div>
-                      </CardHeader>
-                    </Card>
-                  </div>
-                </div>
+                <JobAnalyticsDashboard 
+                  jobId={id!}
+                  candidates={allAssociatedCandidates.length ? allAssociatedCandidates : applicationReviewCandidates}
+                  jobCurrency={job.currency || 'USD'}
+                />
               </TabsContent>
               
               <TabsContent value="job-setup">
@@ -1069,38 +1043,11 @@ export default function JobDetail() {
               {/* Main content */}
               <div className="flex-1 min-h-0 min-w-0 flex flex-col">
                 <TabsContent value="candidates">
-                  <div className="space-y-6">
-                    <SalaryInsightsCard 
-                      candidates={allAssociatedCandidates.length ? allAssociatedCandidates : applicationReviewCandidates}
-                      jobCurrency={job.currency || 'USD'}
-                    />
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                      <Card>
-                        <CardHeader className="pb-2">
-                          <div className="text-sm text-text-secondary">Active Candidates</div>
-                          <div className="text-3xl font-semibold text-text-primary">{activeCount}</div>
-                        </CardHeader>
-                      </Card>
-                      <Card>
-                        <CardHeader className="pb-2">
-                          <div className="text-sm text-text-secondary">Offers</div>
-                          <div className="text-3xl font-semibold text-text-primary">{offerCount}</div>
-                        </CardHeader>
-                      </Card>
-                      <Card>
-                        <CardHeader className="pb-2">
-                          <div className="text-sm text-text-secondary">Hired</div>
-                          <div className="text-3xl font-semibold text-text-primary">{hiredCount}</div>
-                        </CardHeader>
-                      </Card>
-                      <Card>
-                        <CardHeader className="pb-2">
-                          <div className="text-sm text-text-secondary">Rejected</div>
-                          <div className="text-3xl font-semibold text-text-primary">{rejectedCount}</div>
-                        </CardHeader>
-                      </Card>
-                    </div>
-                  </div>
+                  <JobAnalyticsDashboard 
+                    jobId={id!}
+                    candidates={allAssociatedCandidates.length ? allAssociatedCandidates : applicationReviewCandidates}
+                    jobCurrency={job.currency || 'USD'}
+                  />
                 </TabsContent>
                 
                 {/* All Candidates Tab */}
