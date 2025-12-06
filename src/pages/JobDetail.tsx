@@ -34,6 +34,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { usePipelineActions, PipelineAssociation } from '@/hooks/usePipelineActions'
 import CandidateProfileSheet from '@/components/candidates/CandidateProfileSheet'
 import BulkMoveJobCandidatesToPipelineDialog from '@/components/candidates/BulkMoveJobCandidatesToPipelineDialog'
+import { BulkRejectionDialog } from '@/components/candidates/BulkRejectionDialog'
 import { useJobMatchingCandidates } from '@/hooks/useJobMatchingCandidates'
 import { useJobMatchingCandidatesCount } from '@/hooks/useJobMatchingCandidatesCount'
 import { useRealTimeSkillMatching } from '@/hooks/useRealTimeSkillMatching'
@@ -61,6 +62,7 @@ export default function JobDetail() {
   const [selectedCandidateIds, setSelectedCandidateIds] = useState<string[]>([])
   const [tableSelectionMode, setTableSelectionMode] = useState(false)
   const [pipelineRefresh, setPipelineRefresh] = useState(0)
+  const [showBulkRejectionDialog, setShowBulkRejectionDialog] = useState(false)
 
   // In-place profile sheet state with navigation
   const [profileOpen, setProfileOpen] = useState(false)
@@ -564,19 +566,10 @@ export default function JobDetail() {
     }
   }
 
-  const handleRejectSelected = async () => {
-    if (!id || selectedCandidateIds.length === 0) return
-    try {
-      const list = await fetchAssociationsForJob(id)
-      const targets = list.filter(a => selectedCandidateIds.includes(a.candidate_id) && a.status !== 'rejected' && a.status !== 'hired')
-      await Promise.all(targets.map(a => updateAssociationStatus(a.id, 'rejected')))
-      toast({ title: 'Rejected', description: `${targets.length} candidate(s) rejected.` })
-      setPipelineRefresh((v) => v + 1)
-      setSelectedCandidateIds([])
-    } catch (e) {
-      console.error('Error rejecting candidates:', e)
-      toast({ title: 'Error', description: 'Failed to reject selected candidates', variant: 'destructive' })
-    }
+  const handleBulkRejectionSuccess = () => {
+    setPipelineRefresh((v) => v + 1)
+    setSelectedCandidateIds([])
+    setSelectionMode(false)
   }
 
   const handleAddCandidate = async (candidateData: any) => {
@@ -833,7 +826,7 @@ export default function JobDetail() {
                                   size="sm"
                                   variant="destructive"
                                   disabled={selectedCandidateIds.length === 0}
-                                  onClick={handleRejectSelected}
+                                  onClick={() => setShowBulkRejectionDialog(true)}
                                 >
                                   Reject
                                 </Button>
@@ -1176,7 +1169,7 @@ export default function JobDetail() {
                                     size="sm"
                                     variant="destructive"
                                     disabled={selectedCandidateIds.length === 0}
-                                    onClick={handleRejectSelected}
+                                    onClick={() => setShowBulkRejectionDialog(true)}
                                   >
                                     Reject
                                   </Button>
@@ -1449,6 +1442,14 @@ export default function JobDetail() {
           onStageChanged={() => setPipelineRefresh((v) => v + 1)}
           autoOpenScorecard={autoOpenScorecard}
           onScorecardOpened={() => setAutoOpenScorecard(false)}
+        />
+
+        <BulkRejectionDialog
+          open={showBulkRejectionDialog}
+          onOpenChange={setShowBulkRejectionDialog}
+          candidateIds={selectedCandidateIds}
+          jobId={id!}
+          onSuccess={handleBulkRejectionSuccess}
         />
       </div>
     </div>
