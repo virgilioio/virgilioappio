@@ -39,7 +39,7 @@ export function RejectionDialog({
   onSuccess,
 }: RejectionDialogProps) {
   const [rejectionReasonId, setRejectionReasonId] = useState<string | undefined>();
-  const [sendEmail, setSendEmail] = useState(false);
+  const [sendEmail, setSendEmail] = useState(true);
   const [emailData, setEmailData] = useState<{
     fromEmail: string;
     toEmails: string[];
@@ -68,7 +68,7 @@ export function RejectionDialog({
     
     // Reset state
     setRejectionReasonId(undefined);
-    setSendEmail(false);
+    setSendEmail(true);
     setEmailData(null);
     setScheduleFor(undefined);
   };
@@ -86,8 +86,8 @@ export function RejectionDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col overflow-hidden">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <ThumbsDown className="h-5 w-5 text-destructive" />
             Reject Candidate
@@ -97,8 +97,8 @@ export function RejectionDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 pr-4 -mr-4">
-          <div className="space-y-6 py-2">
+        <ScrollArea className="flex-1 min-h-0 pr-4 -mr-4">
+          <div className="space-y-6 py-2 pr-2">
             {/* Rejection Reason */}
             <div className="space-y-2">
               <Label>Rejection Reason</Label>
