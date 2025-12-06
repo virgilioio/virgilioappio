@@ -7,6 +7,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
+import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { useBookingConfig, getDefaultWeeklySchedule, WeeklySchedule } from '@/hooks/useBookingConfig';
@@ -158,6 +159,14 @@ export function BookingLinkSection() {
     return null;
   }
 
+  const handleToggleActive = () => {
+    if (!hasCalendar && !config.is_active) {
+      toast.error('Connect a calendar first to activate your booking link');
+      return;
+    }
+    updateConfig({ is_active: !config.is_active });
+  };
+
   return (
     <Card data-onboarding-target="booking">
       <CardHeader>
@@ -166,9 +175,16 @@ export function BookingLinkSection() {
             <CardTitle>Booking Link</CardTitle>
             <CardDescription>Share your personalized booking link with candidates</CardDescription>
           </div>
-          <Badge variant={config.is_active ? 'default' : 'secondary'}>
-            {config.is_active ? 'Active' : 'Inactive'}
-          </Badge>
+          <div className="flex items-center gap-3">
+            <Switch
+              checked={config.is_active}
+              onCheckedChange={handleToggleActive}
+              disabled={isUpdating || (!hasCalendar && !config.is_active)}
+            />
+            <Badge variant={config.is_active ? 'default' : 'secondary'}>
+              {config.is_active ? 'Active' : 'Inactive'}
+            </Badge>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-6">

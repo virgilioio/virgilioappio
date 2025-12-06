@@ -155,30 +155,45 @@ export function useCalendarIdentities() {
                 } else {
                   console.log('[Calendar] Webhook setup successful for bidirectional sync');
                 }
-              }
 
-              // Check if booking config exists
-              const { data: bookingConfig } = await supabase
-                .from('booking_configurations')
-                .select('id, is_active')
-                .eq('user_id', user.id)
-                .maybeSingle();
-
-              if (!bookingConfig) {
-                // Trigger lazy creation by invalidating the query
-                queryClient.invalidateQueries({ queryKey: ['booking-config'] });
-                toast.success('Calendar connected! Setting up your booking link...');
-              } else if (!bookingConfig.is_active) {
-                // Activate existing config
-                await supabase
+                // Booking config should now be auto-activated by database trigger
+                // But let's verify and notify the user
+                const { data: bookingConfig, error: bcError } = await supabase
                   .from('booking_configurations')
-                  .update({ is_active: true })
-                  .eq('id', bookingConfig.id);
+                  .select('id, is_active')
+                  .eq('user_id', user.id)
+                  .maybeSingle();
 
-                toast.success('Your booking link is now active! Share it with candidates.');
+                if (bcError) {
+                  console.error('[Calendar] Error checking booking config:', bcError);
+                }
+
+                if (bookingConfig?.is_active) {
+                  toast.success('Your booking link is now active! Share it with candidates.');
+                } else if (!bookingConfig) {
+                  // Trigger lazy creation by invalidating the query
+                  queryClient.invalidateQueries({ queryKey: ['booking-config'] });
+                  toast.success('Calendar connected! Setting up your booking link...');
+                } else {
+                  // Booking config exists but not active - trigger may have failed, try manual activation
+                  console.warn('[Calendar] Booking config not auto-activated, attempting manual activation');
+                  const { error: updateError } = await supabase
+                    .from('booking_configurations')
+                    .update({ is_active: true })
+                    .eq('id', bookingConfig.id);
+                  
+                  if (updateError) {
+                    console.error('[Calendar] Manual activation failed:', updateError);
+                    toast.warning('Calendar connected but booking link activation failed. Please try toggling it manually in settings.');
+                  } else {
+                    queryClient.invalidateQueries({ queryKey: ['booking-config'] });
+                    toast.success('Your booking link is now active! Share it with candidates.');
+                  }
+                }
               }
             } catch (setupError) {
               console.error('[Calendar] Post-connection setup error:', setupError);
+              toast.warning('Calendar connected but some setup steps failed. Please check your booking link settings.');
             }
           }
         }
