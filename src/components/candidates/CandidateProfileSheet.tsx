@@ -643,16 +643,6 @@ const [rejectionDialogOpen, setRejectionDialogOpen] = useState(false)
                                   <ThumbsDown className="h-4 w-4 mr-2" />
                                   Reject
                                 </Button>
-                                {associationStatus === 'rejected' && (
-                                  <Button
-                                    variant="success"
-                                    size="sm"
-                                    onClick={handleReactivate}
-                                  >
-                                    <RotateCcw className="h-4 w-4 mr-2" />
-                                    Reactivate
-                                  </Button>
-                                )}
                                 {associationStatus === 'offer' && (
                                   <Button
                                     variant="outline"
