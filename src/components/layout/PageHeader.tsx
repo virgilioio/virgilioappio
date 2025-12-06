@@ -31,7 +31,7 @@ export function PageHeader({
       className
     )}>
        <div className="flex items-start justify-between gap-6">
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0 flex-1 shrink-0">
           <PageTitle>
             {title}
           </PageTitle>

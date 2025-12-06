@@ -43,13 +43,6 @@ export function JobDetailFloatingSidebar({
   return (
     <div className={cn("w-40 flex-shrink-0 p-4 flex justify-center", className)}>
       <div className="bg-card border border-border rounded-full shadow-lg h-fit py-6 px-3 flex flex-col items-center">
-        {jobTitle && (
-          <div className="mb-4 px-1 text-center">
-            <span className="text-xs font-medium text-foreground line-clamp-2 leading-tight">
-              {jobTitle}
-            </span>
-          </div>
-        )}
         <nav className="space-y-3">
           {tabs.map((tab) => {
             const Icon = tab.icon
