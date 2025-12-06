@@ -573,18 +573,20 @@ const [rejectionDialogOpen, setRejectionDialogOpen] = useState(false)
               <div className="text-text-secondary text-sm">No data available.</div>
             ) : (
                 <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'job' | 'application' | 'resume' | 'overview')}>
+                  {/* Rejection Status Banner - Full width above both columns */}
+                  {associationStatus === 'rejected' && rejectionDetails && (
+                    <div className="mb-6">
+                      <RejectionStatusBanner
+                        rejectedAt={rejectionDetails.rejectedAt}
+                        rejectedByName={rejectionDetails.rejectedByName || undefined}
+                        rejectionReason={rejectionDetails.rejectionReason}
+                        onReactivate={handleReactivate}
+                      />
+                    </div>
+                  )}
                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                    {/* Left column (50%) */}
                    <div className="space-y-6">
-                     {/* Rejection Status Banner */}
-                     {associationStatus === 'rejected' && rejectionDetails && (
-                       <RejectionStatusBanner
-                         rejectedAt={rejectionDetails.rejectedAt}
-                         rejectedByName={rejectionDetails.rejectedByName || undefined}
-                         rejectionReason={rejectionDetails.rejectionReason}
-                         onReactivate={handleReactivate}
-                       />
-                     )}
                      {/* Controls Card */}
                       <Card className="bg-surface-primary border-border">
                         <CardContent className="p-4">
