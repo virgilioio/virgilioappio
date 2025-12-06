@@ -7,20 +7,91 @@ interface JobSpecs {
   title?: string;
   skills?: string[];
   location?: string;
+  location_details?: {
+    type?: 'city' | 'state' | 'country' | 'region' | 'remote';
+    city?: string;
+    state?: string;
+    country?: string;
+    country_code?: string;
+    region?: 'LATAM' | 'EMEA' | 'APAC' | 'NORTH_AMERICA';
+    is_remote?: boolean;
+  };
 }
 
 interface NormalizedSpecs {
   standardized_title?: string;
   standardized_skills?: string[];
   standardized_location?: string;
+  standardized_locations?: string[]; // Array of CoreSignal-compatible location strings
   normalization_metadata: {
     title_mapping?: { original: string; canonical: string; synonyms_used?: string[] };
     skills_mapping?: Array<{ original: string; canonical: string; synonyms_used?: string[] }>;
-    location_mapping?: { original: string; canonical: string; synonyms_used?: string[] };
+    location_mapping?: { original: string; canonical: string; coresignal_locations: string[]; synonyms_used?: string[] };
     ai_variations_used?: boolean;
     fallback_used?: boolean;
   };
 }
+
+// Region to country code mappings for expanding regional locations
+const REGION_TO_COUNTRY_CODES: Record<string, string[]> = {
+  'LATAM': ['MX', 'CO', 'AR', 'BR', 'CL', 'PE', 'EC', 'VE', 'UY', 'PY', 'BO', 'CR', 'PA', 'GT', 'SV', 'HN', 'NI', 'DO'],
+  'EMEA': ['GB', 'DE', 'FR', 'ES', 'IT', 'NL', 'PL', 'BE', 'SE', 'AE', 'SA', 'EG', 'ZA', 'KE'],
+  'APAC': ['IN', 'CN', 'JP', 'SG', 'AU', 'KR', 'ID', 'TH', 'VN', 'PH', 'MY', 'NZ'],
+  'NORTH_AMERICA': ['US', 'CA'],
+};
+
+// City aliases for common variations
+const CITY_ALIASES: Record<string, string> = {
+  'new york': 'New York,New York,US',
+  'nyc': 'New York,New York,US',
+  'new york city': 'New York,New York,US',
+  'los angeles': 'Los Angeles,California,US',
+  'la': 'Los Angeles,California,US',
+  'san francisco': 'San Francisco,California,US',
+  'sf': 'San Francisco,California,US',
+  'bay area': 'San Francisco,California,US',
+  'chicago': 'Chicago,Illinois,US',
+  'boston': 'Boston,Massachusetts,US',
+  'seattle': 'Seattle,Washington,US',
+  'austin': 'Austin,Texas,US',
+  'denver': 'Denver,Colorado,US',
+  'miami': 'Miami,Florida,US',
+  'atlanta': 'Atlanta,Georgia,US',
+  'washington dc': 'Washington,District of Columbia,US',
+  'dc': 'Washington,District of Columbia,US',
+  'mexico city': 'Mexico City,Mexico City,MX',
+  'cdmx': 'Mexico City,Mexico City,MX',
+  'ciudad de mexico': 'Mexico City,Mexico City,MX',
+  'guadalajara': 'Guadalajara,Jalisco,MX',
+  'monterrey': 'Monterrey,Nuevo León,MX',
+  'toronto': 'Toronto,Ontario,CA',
+  'vancouver': 'Vancouver,British Columbia,CA',
+  'montreal': 'Montreal,Quebec,CA',
+  'buenos aires': 'Buenos Aires,Buenos Aires,AR',
+  'bogota': 'Bogotá,Cundinamarca,CO',
+  'bogotá': 'Bogotá,Cundinamarca,CO',
+  'medellin': 'Medellín,Antioquia,CO',
+  'medellín': 'Medellín,Antioquia,CO',
+  'santiago': 'Santiago,Santiago Metropolitan,CL',
+  'sao paulo': 'São Paulo,São Paulo,BR',
+  'são paulo': 'São Paulo,São Paulo,BR',
+  'london': 'London,England,GB',
+  'berlin': 'Berlin,Berlin,DE',
+  'paris': 'Paris,Île-de-France,FR',
+  'madrid': 'Madrid,Madrid,ES',
+  'barcelona': 'Barcelona,Catalonia,ES',
+  'amsterdam': 'Amsterdam,North Holland,NL',
+};
+
+// Country name to code mapping
+const COUNTRY_NAME_TO_CODE: Record<string, string> = {
+  'united states': 'US', 'usa': 'US', 'u.s.': 'US', 'u.s.a.': 'US', 'america': 'US',
+  'canada': 'CA', 'mexico': 'MX', 'méxico': 'MX',
+  'united kingdom': 'GB', 'uk': 'GB', 'england': 'GB',
+  'germany': 'DE', 'france': 'FR', 'spain': 'ES', 'italy': 'IT', 'netherlands': 'NL',
+  'brazil': 'BR', 'brasil': 'BR', 'argentina': 'AR', 'colombia': 'CO', 'chile': 'CL',
+  'peru': 'PE', 'perú': 'PE', 'australia': 'AU', 'india': 'IN', 'singapore': 'SG', 'japan': 'JP',
+};
 
 serve(async (req) => {
   // Handle preflight FIRST, before any other code runs
@@ -78,17 +149,17 @@ serve(async (req) => {
       }
     }
 
-    // Normalize location
-    if (specs.location) {
-      const locationResult = await normalizeLocation(supabaseClient, specs.location);
-      if (locationResult.canonical) {
-        normalized.standardized_location = locationResult.canonical;
-        normalized.normalization_metadata.location_mapping = {
-          original: specs.location,
-          canonical: locationResult.canonical,
-          synonyms_used: locationResult.synonyms_used
-        };
-      }
+    // Normalize location - now returns CoreSignal-compatible locations
+    if (specs.location || specs.location_details) {
+      const locationResult = await normalizeLocationForCoresignal(specs.location || '', specs.location_details);
+      normalized.standardized_location = locationResult.canonical;
+      normalized.standardized_locations = locationResult.coresignal_locations;
+      normalized.normalization_metadata.location_mapping = {
+        original: specs.location || '',
+        canonical: locationResult.canonical,
+        coresignal_locations: locationResult.coresignal_locations,
+        synonyms_used: locationResult.synonyms_used
+      };
     }
 
     // Generate AI variations if needed (for query building later)
@@ -217,58 +288,125 @@ async function normalizeSkill(supabaseClient: any, skill: string) {
   return { original: skill, canonical: skill }; // Keep original if no match
 }
 
-async function normalizeLocation(supabaseClient: any, location: string) {
-  console.log('🌍 Normalizing location:', location);
+// Enhanced location normalization that returns CoreSignal-compatible formats
+async function normalizeLocationForCoresignal(
+  location: string, 
+  locationDetails?: JobSpecs['location_details']
+): Promise<{ canonical: string; coresignal_locations: string[]; synonyms_used?: string[] }> {
+  console.log('🌍 Normalizing location for CoreSignal:', location, locationDetails);
   
-  // Check for remote indicators first
-  const remoteKeywords = ['remote', 'wfh', 'work from home', 'distributed', 'anywhere', 'virtual'];
-  if (remoteKeywords.some(keyword => location.toLowerCase().includes(keyword))) {
-    return { original: location, canonical: 'Remote' };
+  const locationLower = location.toLowerCase().trim();
+  let coresignalLocations: string[] = [];
+  let canonical = location;
+
+  // If we have structured location_details from AI, use that first
+  if (locationDetails) {
+    if (locationDetails.is_remote && locationDetails.region) {
+      // Remote with region - expand to country codes
+      const regionCodes = REGION_TO_COUNTRY_CODES[locationDetails.region];
+      if (regionCodes) {
+        coresignalLocations = regionCodes;
+        canonical = `Remote - ${locationDetails.region}`;
+        console.log('📍 Used location_details region:', locationDetails.region, '→', coresignalLocations);
+        return { canonical, coresignal_locations: coresignalLocations };
+      }
+    } else if (locationDetails.country_code) {
+      // Build CoreSignal format from structured data
+      if (locationDetails.city && locationDetails.state) {
+        coresignalLocations = [`${locationDetails.city},${locationDetails.state},${locationDetails.country_code}`];
+      } else if (locationDetails.state) {
+        coresignalLocations = [`${locationDetails.state},${locationDetails.country_code}`];
+      } else {
+        coresignalLocations = [locationDetails.country_code];
+      }
+      console.log('📍 Built from location_details:', coresignalLocations);
+      return { canonical: location, coresignal_locations: coresignalLocations };
+    }
   }
 
-  // Try exact match
-  const { data: exactMatch } = await supabaseClient
-    .from('standard_locations')
-    .select('canonical_name, synonyms')
-    .eq('canonical_name', location)
-    .single();
-
-  if (exactMatch) {
-    return { original: location, canonical: exactMatch.canonical_name };
+  // Check for "Remote - REGION" pattern
+  const remoteRegionMatch = location.match(/remote\s*[-–—]\s*(\w+)/i);
+  if (remoteRegionMatch) {
+    const region = remoteRegionMatch[1].toUpperCase();
+    const regionCodes = REGION_TO_COUNTRY_CODES[region];
+    if (regionCodes) {
+      console.log('📍 Matched Remote - Region pattern:', region, '→', regionCodes);
+      return { canonical: location, coresignal_locations: regionCodes };
+    }
   }
 
-  // Try synonym match
-  const { data: synonymMatches } = await supabaseClient
-    .from('standard_locations')
-    .select('canonical_name, synonyms')
-    .contains('synonyms', [location.toLowerCase()]);
-
-  if (synonymMatches && synonymMatches.length > 0) {
-    const match = synonymMatches[0];
-    return { 
-      original: location, 
-      canonical: match.canonical_name,
-      synonyms_used: match.synonyms.filter((s: string) => s.toLowerCase().includes(location.toLowerCase()))
-    };
+  // Check for pure "Remote" (global search)
+  if (/^remote$/i.test(locationLower) || /^remote\s+work$/i.test(locationLower)) {
+    console.log('📍 Pure remote - global search');
+    return { canonical: 'Remote', coresignal_locations: [] };
   }
 
-  // Try partial matching
-  const { data: partialMatches } = await supabaseClient
-    .from('standard_locations')
-    .select('canonical_name, synonyms')
-    .or(`canonical_name.ilike.%${location}%,synonyms.cs.{${location.toLowerCase()}}`);
-
-  if (partialMatches && partialMatches.length > 0) {
-    const match = partialMatches[0];
-    return { 
-      original: location, 
-      canonical: match.canonical_name,
-      synonyms_used: ['partial_match']
-    };
+  // Check for region keywords
+  for (const [region, codes] of Object.entries(REGION_TO_COUNTRY_CODES)) {
+    if (locationLower.includes(region.toLowerCase())) {
+      console.log('📍 Matched region keyword:', region, '→', codes);
+      return { canonical: location, coresignal_locations: codes };
+    }
   }
 
-  console.log('⚠️ No standard location found for:', location);
-  return { original: location, canonical: location }; // Keep original if no match
+  // Check city aliases
+  for (const [alias, value] of Object.entries(CITY_ALIASES)) {
+    if (locationLower.includes(alias)) {
+      console.log('📍 Matched city alias:', alias, '→', value);
+      return { canonical: location, coresignal_locations: [value] };
+    }
+  }
+
+  // Try to parse "City, State, Country" or "City, Country" format
+  if (location.includes(',')) {
+    const parts = location.split(',').map(p => p.trim());
+    if (parts.length >= 2) {
+      const lastPart = parts[parts.length - 1].toLowerCase();
+      
+      // Check if last part is a country name we know
+      const countryCode = COUNTRY_NAME_TO_CODE[lastPart];
+      if (countryCode) {
+        if (parts.length === 3) {
+          // City, State, Country
+          coresignalLocations = [`${parts[0]},${parts[1]},${countryCode}`];
+        } else if (parts.length === 2) {
+          // Could be City, Country or State, Country
+          // For major cities, use the city format
+          const cityLower = parts[0].toLowerCase();
+          if (CITY_ALIASES[cityLower]) {
+            coresignalLocations = [CITY_ALIASES[cityLower]];
+          } else {
+            // Assume it's a state/city and just use country code
+            coresignalLocations = [countryCode];
+          }
+        }
+        console.log('📍 Parsed comma-separated location:', parts, '→', coresignalLocations);
+        return { canonical: location, coresignal_locations: coresignalLocations };
+      }
+    }
+  }
+
+  // Check for country names
+  for (const [countryName, code] of Object.entries(COUNTRY_NAME_TO_CODE)) {
+    if (locationLower.includes(countryName)) {
+      console.log('📍 Matched country name:', countryName, '→', code);
+      return { canonical: location, coresignal_locations: [code] };
+    }
+  }
+
+  console.log('⚠️ Could not normalize location to CoreSignal format:', location);
+  return { canonical: location, coresignal_locations: [], synonyms_used: ['no_match'] };
+}
+
+// Legacy function for backward compatibility
+async function normalizeLocation(supabaseClient: any, location: string) {
+  const result = await normalizeLocationForCoresignal(location);
+  return { 
+    original: location, 
+    canonical: result.canonical,
+    coresignal_locations: result.coresignal_locations,
+    synonyms_used: result.synonyms_used
+  };
 }
 
 async function generateAIVariations(specs: JobSpecs) {

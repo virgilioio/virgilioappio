@@ -185,6 +185,35 @@ export const LOCATION_OPTIONS: LocationOption[] = [
   { value: "Valparaíso,Valparaíso,CL", label: "Valparaíso, Chile", city: "Valparaíso", state: "Valparaíso", country: "Chile", countryCode: "CL", type: "city" },
   { value: "CL", label: "Chile", country: "Chile", countryCode: "CL", type: "country" },
 
+  // Brazil
+  { value: "São Paulo,São Paulo,BR", label: "São Paulo, Brazil", city: "São Paulo", state: "São Paulo", country: "Brazil", countryCode: "BR", type: "city" },
+  { value: "Rio de Janeiro,Rio de Janeiro,BR", label: "Rio de Janeiro, Brazil", city: "Rio de Janeiro", state: "Rio de Janeiro", country: "Brazil", countryCode: "BR", type: "city" },
+  { value: "Brasília,Federal District,BR", label: "Brasília, Brazil", city: "Brasília", state: "Federal District", country: "Brazil", countryCode: "BR", type: "city" },
+  { value: "Belo Horizonte,Minas Gerais,BR", label: "Belo Horizonte, Brazil", city: "Belo Horizonte", state: "Minas Gerais", country: "Brazil", countryCode: "BR", type: "city" },
+  { value: "Curitiba,Paraná,BR", label: "Curitiba, Brazil", city: "Curitiba", state: "Paraná", country: "Brazil", countryCode: "BR", type: "city" },
+  { value: "BR", label: "Brazil", country: "Brazil", countryCode: "BR", type: "country" },
+
+  // Peru
+  { value: "Lima,Lima,PE", label: "Lima, Peru", city: "Lima", state: "Lima", country: "Peru", countryCode: "PE", type: "city" },
+  { value: "PE", label: "Peru", country: "Peru", countryCode: "PE", type: "country" },
+
+  // Ecuador
+  { value: "Quito,Pichincha,EC", label: "Quito, Ecuador", city: "Quito", state: "Pichincha", country: "Ecuador", countryCode: "EC", type: "city" },
+  { value: "Guayaquil,Guayas,EC", label: "Guayaquil, Ecuador", city: "Guayaquil", state: "Guayas", country: "Ecuador", countryCode: "EC", type: "city" },
+  { value: "EC", label: "Ecuador", country: "Ecuador", countryCode: "EC", type: "country" },
+
+  // Uruguay
+  { value: "Montevideo,Montevideo,UY", label: "Montevideo, Uruguay", city: "Montevideo", state: "Montevideo", country: "Uruguay", countryCode: "UY", type: "city" },
+  { value: "UY", label: "Uruguay", country: "Uruguay", countryCode: "UY", type: "country" },
+
+  // Costa Rica
+  { value: "San José,San José,CR", label: "San José, Costa Rica", city: "San José", state: "San José", country: "Costa Rica", countryCode: "CR", type: "city" },
+  { value: "CR", label: "Costa Rica", country: "Costa Rica", countryCode: "CR", type: "country" },
+
+  // Panama
+  { value: "Panama City,Panama,PA", label: "Panama City, Panama", city: "Panama City", state: "Panama", country: "Panama", countryCode: "PA", type: "city" },
+  { value: "PA", label: "Panama", country: "Panama", countryCode: "PA", type: "country" },
+
   // Country-only options
   { value: "US", label: "United States", country: "United States", countryCode: "US", type: "country" },
   { value: "CA", label: "Canada", country: "Canada", countryCode: "CA", type: "country" },
