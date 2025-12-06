@@ -401,35 +401,41 @@ const [rejectionDialogOpen, setRejectionDialogOpen] = useState(false)
     }
   }
   
-  const handleRejectionSuccess = async () => {
-    setAssociationStatus('rejected')
-    setRejectionDialogOpen(false)
+  // Refetch association status and rejection details
+  const refetchAssociationStatus = async () => {
+    if (!candidateId || !jobId) return;
     
-    // Refetch rejection details
-    if (candidateId && jobId) {
-      const { data: assoc } = await supabase
-        .from('job_candidate_associations')
-        .select(`
-          rejected_at,
-          rejected_by,
-          rejection_email_sent_at,
-          rejection_email_scheduled_for,
-          rejection_reason:rejection_reasons(id, name, category)
-        `)
-        .eq('job_id', jobId)
-        .eq('candidate_id', candidateId)
-        .maybeSingle()
+    const { data: assoc } = await supabase
+      .from('job_candidate_associations')
+      .select(`
+        id, 
+        status, 
+        current_stage_id,
+        rejected_at,
+        rejected_by,
+        rejection_email_sent_at,
+        rejection_email_scheduled_for,
+        rejection_reason:rejection_reasons(id, name, category)
+      `)
+      .eq('job_id', jobId)
+      .eq('candidate_id', candidateId)
+      .maybeSingle();
+    
+    if (assoc) {
+      setAssociationId(assoc.id);
+      setAssociationStatus((assoc.status as any) ?? null);
+      setCurrentStageId((assoc as any).current_stage_id ?? null);
       
-      if (assoc?.rejected_at) {
-        let rejectedByName = null
+      if (assoc.status === 'rejected' && assoc.rejected_at) {
+        let rejectedByName = null;
         if (assoc.rejected_by) {
           const { data: profile } = await supabase
             .from('profiles')
             .select('first_name, last_name')
             .eq('user_id', assoc.rejected_by)
-            .maybeSingle()
+            .maybeSingle();
           if (profile) {
-            rejectedByName = [profile.first_name, profile.last_name].filter(Boolean).join(' ') || null
+            rejectedByName = [profile.first_name, profile.last_name].filter(Boolean).join(' ') || null;
           }
         }
         setRejectionDetails({
@@ -438,12 +444,17 @@ const [rejectionDialogOpen, setRejectionDialogOpen] = useState(false)
           rejectionReason: assoc.rejection_reason as any,
           rejectionEmailSentAt: assoc.rejection_email_sent_at,
           rejectionEmailScheduledFor: assoc.rejection_email_scheduled_for,
-        })
+        });
+      } else {
+        setRejectionDetails(null);
       }
     }
-    
-    onStageChanged?.()
-  }
+  };
+  
+  const handleRejectionSuccess = async () => {
+    await refetchAssociationStatus();
+    onStageChanged?.();
+  };
   
   const handleReactivate = () => {
     handleSetStatus('active')
@@ -1330,7 +1341,13 @@ const [rejectionDialogOpen, setRejectionDialogOpen] = useState(false)
       {associationId && (
         <RejectionDialog
           open={rejectionDialogOpen}
-          onOpenChange={setRejectionDialogOpen}
+          onOpenChange={(open) => {
+            setRejectionDialogOpen(open);
+            // Refetch association status when dialog closes to catch any changes
+            if (!open && candidateId && jobId) {
+              refetchAssociationStatus();
+            }
+          }}
           associationId={associationId}
           candidateName={candidate?.candidate_name || 'Candidate'}
           candidateEmail={candidate?.email || ''}

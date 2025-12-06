@@ -50,26 +50,33 @@ export function RejectionDialog({
   const rejectCandidate = useRejectCandidate();
 
   const handleSubmit = async () => {
-    await rejectCandidate.mutateAsync({
-      associationId,
-      rejectionReasonId,
-      sendEmail: sendEmail && !!emailData,
-      emailData: sendEmail && emailData ? {
-        ...emailData,
-        candidateId,
-        jobId,
-      } : undefined,
-      scheduleFor,
-    });
+    try {
+      await rejectCandidate.mutateAsync({
+        associationId,
+        rejectionReasonId,
+        sendEmail: sendEmail && !!emailData,
+        emailData: sendEmail && emailData ? {
+          ...emailData,
+          candidateId,
+          jobId,
+        } : undefined,
+        scheduleFor,
+      });
 
-    onSuccess?.();
-    onOpenChange(false);
-    
-    // Reset state
-    setRejectionReasonId(undefined);
-    setSendEmail(true);
-    setEmailData(null);
-    setScheduleFor(undefined);
+      // Success - close dialog and notify parent
+      onSuccess?.();
+      onOpenChange(false);
+      
+      // Reset state
+      setRejectionReasonId(undefined);
+      setSendEmail(true);
+      setEmailData(null);
+      setScheduleFor(undefined);
+    } catch (error) {
+      // Error is already handled by the mutation's onError callback (shows toast)
+      // Don't close dialog on error so user can retry
+      console.error('Rejection failed:', error);
+    }
   };
 
   const handleEmailDataChange = useCallback((data: typeof emailData) => {
