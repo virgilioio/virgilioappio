@@ -582,8 +582,6 @@ const [rejectionDialogOpen, setRejectionDialogOpen] = useState(false)
                          rejectedAt={rejectionDetails.rejectedAt}
                          rejectedByName={rejectionDetails.rejectedByName || undefined}
                          rejectionReason={rejectionDetails.rejectionReason}
-                         rejectionEmailSentAt={rejectionDetails.rejectionEmailSentAt}
-                         rejectionEmailScheduledFor={rejectionDetails.rejectionEmailScheduledFor}
                          onReactivate={handleReactivate}
                        />
                      )}
