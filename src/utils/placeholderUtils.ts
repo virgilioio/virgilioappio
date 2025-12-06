@@ -3,12 +3,16 @@
  * Handles bidirectional conversion between {{placeholder}} text and visual badge HTML
  */
 
-// Convert {{placeholder}} to badge HTML
+// Convert {{placeholder}} to badge HTML (idempotent - safe to call multiple times)
 export function convertPlaceholdersToHtml(text: string): string {
+  // First normalize: strip any existing badges back to plain {{placeholder}}
+  // This makes the function idempotent - calling it multiple times is safe
+  const normalized = convertHtmlToPlaceholders(text);
+  
   // Pattern: {{anything.anything}} or {{anything}}
   const placeholderRegex = /\{\{([^}]+)\}\}/g;
   
-  return text.replace(placeholderRegex, (match, placeholder) => {
+  return normalized.replace(placeholderRegex, (match, placeholder) => {
     return `<span 
       class="placeholder-badge" 
       contenteditable="false" 
