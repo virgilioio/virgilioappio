@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
 import {
@@ -58,6 +58,12 @@ export function AnalyticsTimeFilter({ onDateRangeChange, initialPreset = 'last7d
         return { start: subDays(now, 7), end: new Date() }
     }
   }
+
+  // Sync initial date range on mount
+  useEffect(() => {
+    const range = getDateRangeForPreset(initialPreset)
+    onDateRangeChange(range.start, range.end)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handlePresetChange = (value: TimePreset) => {
     setPreset(value)
