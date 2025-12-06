@@ -43,20 +43,23 @@ export function useAnalyticsMetrics(dateRange: DateRange): AnalyticsMetrics {
 
       const tenantId = memberData.tenant_id
       
-      // Use UTC-explicit dates to avoid timezone issues
-      const startISO = new Date(Date.UTC(
-        dateRange.startDate.getFullYear(),
-        dateRange.startDate.getMonth(),
-        dateRange.startDate.getDate(),
-        0, 0, 0, 0
-      )).toISOString()
+      // Helper functions to get UTC day boundaries from a Date object
+      const startOfDayUTC = (date: Date): string => {
+        const d = new Date(date)
+        d.setUTCHours(0, 0, 0, 0)
+        return d.toISOString()
+      }
       
-      const endISO = new Date(Date.UTC(
-        dateRange.endDate.getFullYear(),
-        dateRange.endDate.getMonth(),
-        dateRange.endDate.getDate(),
-        23, 59, 59, 999
-      )).toISOString()
+      const endOfDayUTC = (date: Date): string => {
+        const d = new Date(date)
+        d.setUTCHours(23, 59, 59, 999)
+        return d.toISOString()
+      }
+      
+      const startISO = startOfDayUTC(dateRange.startDate)
+      const endISO = endOfDayUTC(dateRange.endDate)
+      
+      console.log('[Analytics] Date range:', { startISO, endISO })
 
       // Step 2: Fetch all jobs for this tenant
       const { data: tenantJobs, error: jobsError } = await supabase
