@@ -247,11 +247,11 @@ export const RichTextEditor = forwardRef<RichTextEditorHandle, RichTextEditorPro
     const target = e.target as HTMLDivElement
     let newContent = target.innerHTML
     
-    // Check if content contains placeholders that need processing
-    const hasPlaceholders = /\{\{[^}]+\}\}/.test(newContent) || 
-                           newContent.includes('placeholder-badge')
+    // ONLY process if there are raw {{placeholder}} patterns that need conversion
+    // Don't process just because placeholder-badge elements exist (preserves undo stack)
+    const hasRawPlaceholders = /\{\{[^}]+\}\}/.test(newContent)
     
-    if (hasPlaceholders) {
+    if (hasRawPlaceholders) {
       // Save cursor position BEFORE any DOM manipulation
       cursorPositionRef.current = saveTextCursorPosition(target)
       
