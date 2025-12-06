@@ -22,7 +22,7 @@ export function RejectionStatusBanner({
   if (!rejectedAt) return null;
 
   return (
-    <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 flex items-start gap-3">
+    <div className="rounded-lg border border-destructive/50 bg-destructive/10 p-4 flex items-start gap-3">
       <ThumbsDown className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
       <div className="flex-1 space-y-1">
         <p className="text-sm font-medium text-destructive">Candidate Rejected</p>
@@ -46,7 +46,7 @@ export function RejectionStatusBanner({
           </p>
         )}
       </div>
-      <Button variant="success" size="sm" onClick={onReactivate}>
+      <Button variant="outline" size="sm" onClick={onReactivate}>
         <RotateCcw className="h-4 w-4 mr-2" /> Reactivate
       </Button>
     </div>
