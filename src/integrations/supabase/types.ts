@@ -1757,6 +1757,11 @@ export type Database = {
           job_id: string
           notes: string | null
           pipeline_position: number | null
+          rejected_at: string | null
+          rejected_by: string | null
+          rejection_email_scheduled_for: string | null
+          rejection_email_sent_at: string | null
+          rejection_reason_id: string | null
           status: string | null
           updated_at: string
         }
@@ -1770,6 +1775,11 @@ export type Database = {
           job_id: string
           notes?: string | null
           pipeline_position?: number | null
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejection_email_scheduled_for?: string | null
+          rejection_email_sent_at?: string | null
+          rejection_reason_id?: string | null
           status?: string | null
           updated_at?: string
         }
@@ -1783,6 +1793,11 @@ export type Database = {
           job_id?: string
           notes?: string | null
           pipeline_position?: number | null
+          rejected_at?: string | null
+          rejected_by?: string | null
+          rejection_email_scheduled_for?: string | null
+          rejection_email_sent_at?: string | null
+          rejection_reason_id?: string | null
           status?: string | null
           updated_at?: string
         }
@@ -1806,6 +1821,13 @@ export type Database = {
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_candidate_associations_rejection_reason_id_fkey"
+            columns: ["rejection_reason_id"]
+            isOneToOne: false
+            referencedRelation: "rejection_reasons"
             referencedColumns: ["id"]
           },
         ]
@@ -3316,6 +3338,115 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scheduled_emails: {
+        Row: {
+          association_id: string | null
+          body_html: string
+          candidate_id: string | null
+          created_at: string | null
+          created_by: string | null
+          email_type: string
+          error_message: string | null
+          from_email: string
+          id: string
+          job_id: string | null
+          organization_id: string | null
+          rejection_reason_id: string | null
+          scheduled_for: string
+          sent_at: string | null
+          status: string
+          subject: string
+          tenant_id: string
+          to_emails: string[]
+          updated_at: string | null
+        }
+        Insert: {
+          association_id?: string | null
+          body_html: string
+          candidate_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          email_type?: string
+          error_message?: string | null
+          from_email: string
+          id?: string
+          job_id?: string | null
+          organization_id?: string | null
+          rejection_reason_id?: string | null
+          scheduled_for: string
+          sent_at?: string | null
+          status?: string
+          subject: string
+          tenant_id: string
+          to_emails: string[]
+          updated_at?: string | null
+        }
+        Update: {
+          association_id?: string | null
+          body_html?: string
+          candidate_id?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          email_type?: string
+          error_message?: string | null
+          from_email?: string
+          id?: string
+          job_id?: string | null
+          organization_id?: string | null
+          rejection_reason_id?: string | null
+          scheduled_for?: string
+          sent_at?: string | null
+          status?: string
+          subject?: string
+          tenant_id?: string
+          to_emails?: string[]
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scheduled_emails_association_id_fkey"
+            columns: ["association_id"]
+            isOneToOne: false
+            referencedRelation: "job_candidate_associations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scheduled_emails_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scheduled_emails_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scheduled_emails_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scheduled_emails_rejection_reason_id_fkey"
+            columns: ["rejection_reason_id"]
+            isOneToOne: false
+            referencedRelation: "rejection_reasons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scheduled_emails_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]

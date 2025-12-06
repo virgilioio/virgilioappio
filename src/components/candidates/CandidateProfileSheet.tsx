@@ -47,6 +47,7 @@ import { EmailHistoryList } from './EmailHistoryList'
 import { ActivityFeedList } from './ActivityFeedList'
 import { ScheduleInterviewSheet } from './ScheduleInterviewSheet'
 import { GenerateBookingLinkButton } from '@/components/candidates/GenerateBookingLinkButton'
+import { RejectionDialog } from './RejectionDialog'
 
 interface StageScorecardProps {
   stageInstanceId: string;
@@ -128,6 +129,9 @@ const [scheduleOpen, setScheduleOpen] = useState(false)
 const [scheduleStageId, setScheduleStageId] = useState<string | null>(null)
 const [scheduleStageName, setScheduleStageName] = useState<string>('')
 const [oldBookingId, setOldBookingId] = useState<string | null>(null)
+
+// Rejection Dialog
+const [rejectionDialogOpen, setRejectionDialogOpen] = useState(false)
   // Resume helpers
   const resumeAttachment = attachments.find((a) => a.is_resume)
   const replaceResumeInputRef = useRef<HTMLInputElement>(null)
@@ -349,7 +353,17 @@ const [oldBookingId, setOldBookingId] = useState<string | null>(null)
     }
   }
 
-  const handleReject = () => handleSetStatus('rejected')
+  const handleReject = () => {
+    if (associationId) {
+      setRejectionDialogOpen(true)
+    }
+  }
+  
+  const handleRejectionSuccess = () => {
+    setAssociationStatus('rejected')
+    onStageChanged?.()
+  }
+  
   const handleReactivate = () => handleSetStatus('active')
   const handleHire = () => handleSetStatus('hired')
 
@@ -1226,6 +1240,20 @@ const [oldBookingId, setOldBookingId] = useState<string | null>(null)
         jhsId={currentStageId || undefined}
         associationId={associationId || undefined}
       />
+
+      {/* Rejection Dialog */}
+      {associationId && (
+        <RejectionDialog
+          open={rejectionDialogOpen}
+          onOpenChange={setRejectionDialogOpen}
+          associationId={associationId}
+          candidateName={candidate?.candidate_name || 'Candidate'}
+          candidateEmail={candidate?.email || ''}
+          candidateId={candidateId || undefined}
+          jobId={jobId}
+          onSuccess={handleRejectionSuccess}
+        />
+      )}
       </SheetContent>
     </Sheet>
   </>
