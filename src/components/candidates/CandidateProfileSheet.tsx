@@ -48,6 +48,7 @@ import { ActivityFeedList } from './ActivityFeedList'
 import { ScheduleInterviewSheet } from './ScheduleInterviewSheet'
 import { GenerateBookingLinkButton } from '@/components/candidates/GenerateBookingLinkButton'
 import { RejectionDialog } from './RejectionDialog'
+import { RejectionStatusBanner } from './RejectionStatusBanner'
 
 interface StageScorecardProps {
   stageInstanceId: string;
@@ -103,6 +104,13 @@ export default function CandidateProfileSheet({ open, onOpenChange, candidateId,
   const [associationId, setAssociationId] = useState<string | null>(null)
   const [associationStatus, setAssociationStatus] = useState<'active' | 'rejected' | 'hired' | 'offer' | null>(null)
   const [currentStageId, setCurrentStageId] = useState<string | null>(null)
+  const [rejectionDetails, setRejectionDetails] = useState<{
+    rejectedAt: string | null;
+    rejectedByName: string | null;
+    rejectionReason: { id: string; name: string; category: string } | null;
+    rejectionEmailSentAt: string | null;
+    rejectionEmailScheduledFor: string | null;
+  } | null>(null)
   const [viewingScorecardId, setViewingScorecardId] = useState<string | null>(null)
   const [viewingScorecard, setViewingScorecard] = useState<any>(null)
   const [movingStageId, setMovingStageId] = useState<string | null>(null)
@@ -229,13 +237,47 @@ const [rejectionDialogOpen, setRejectionDialogOpen] = useState(false)
       if (candidateId) {
         const { data: assoc } = await supabase
           .from('job_candidate_associations')
-          .select('id, status, current_stage_id')
+          .select(`
+            id, 
+            status, 
+            current_stage_id,
+            rejected_at,
+            rejected_by,
+            rejection_email_sent_at,
+            rejection_email_scheduled_for,
+            rejection_reason:rejection_reasons(id, name, category)
+          `)
           .eq('job_id', jobId)
           .eq('candidate_id', candidateId)
           .maybeSingle()
         setAssociationId(assoc?.id ?? null)
         setAssociationStatus((assoc?.status as any) ?? null)
         setCurrentStageId((assoc as any)?.current_stage_id ?? null)
+        
+        // Set rejection details if rejected
+        if (assoc?.status === 'rejected' && assoc?.rejected_at) {
+          // Get rejected_by user name
+          let rejectedByName = null
+          if (assoc.rejected_by) {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('first_name, last_name')
+              .eq('user_id', assoc.rejected_by)
+              .maybeSingle()
+            if (profile) {
+              rejectedByName = [profile.first_name, profile.last_name].filter(Boolean).join(' ') || null
+            }
+          }
+          setRejectionDetails({
+            rejectedAt: assoc.rejected_at,
+            rejectedByName,
+            rejectionReason: assoc.rejection_reason as any,
+            rejectionEmailSentAt: assoc.rejection_email_sent_at,
+            rejectionEmailScheduledFor: assoc.rejection_email_scheduled_for,
+          })
+        } else {
+          setRejectionDetails(null)
+        }
       }
     }
     loadRelated()
@@ -359,12 +401,54 @@ const [rejectionDialogOpen, setRejectionDialogOpen] = useState(false)
     }
   }
   
-  const handleRejectionSuccess = () => {
+  const handleRejectionSuccess = async () => {
     setAssociationStatus('rejected')
+    setRejectionDialogOpen(false)
+    
+    // Refetch rejection details
+    if (candidateId && jobId) {
+      const { data: assoc } = await supabase
+        .from('job_candidate_associations')
+        .select(`
+          rejected_at,
+          rejected_by,
+          rejection_email_sent_at,
+          rejection_email_scheduled_for,
+          rejection_reason:rejection_reasons(id, name, category)
+        `)
+        .eq('job_id', jobId)
+        .eq('candidate_id', candidateId)
+        .maybeSingle()
+      
+      if (assoc?.rejected_at) {
+        let rejectedByName = null
+        if (assoc.rejected_by) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('first_name, last_name')
+            .eq('user_id', assoc.rejected_by)
+            .maybeSingle()
+          if (profile) {
+            rejectedByName = [profile.first_name, profile.last_name].filter(Boolean).join(' ') || null
+          }
+        }
+        setRejectionDetails({
+          rejectedAt: assoc.rejected_at,
+          rejectedByName,
+          rejectionReason: assoc.rejection_reason as any,
+          rejectionEmailSentAt: assoc.rejection_email_sent_at,
+          rejectionEmailScheduledFor: assoc.rejection_email_scheduled_for,
+        })
+      }
+    }
+    
     onStageChanged?.()
   }
   
-  const handleReactivate = () => handleSetStatus('active')
+  const handleReactivate = () => {
+    handleSetStatus('active')
+    setRejectionDetails(null)
+  }
   const handleHire = () => handleSetStatus('hired')
 
   const getHeaderBgClass = (type: string) => {
@@ -492,6 +576,17 @@ const [rejectionDialogOpen, setRejectionDialogOpen] = useState(false)
                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                    {/* Left column (50%) */}
                    <div className="space-y-6">
+                     {/* Rejection Status Banner */}
+                     {associationStatus === 'rejected' && rejectionDetails && (
+                       <RejectionStatusBanner
+                         rejectedAt={rejectionDetails.rejectedAt}
+                         rejectedByName={rejectionDetails.rejectedByName || undefined}
+                         rejectionReason={rejectionDetails.rejectionReason}
+                         rejectionEmailSentAt={rejectionDetails.rejectionEmailSentAt}
+                         rejectionEmailScheduledFor={rejectionDetails.rejectionEmailScheduledFor}
+                         onReactivate={handleReactivate}
+                       />
+                     )}
                      {/* Controls Card */}
                       <Card className="bg-surface-primary border-border">
                         <CardContent className="p-4">
