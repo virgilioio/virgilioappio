@@ -2956,6 +2956,63 @@ export type Database = {
         }
         Relationships: []
       }
+      rejection_email_templates: {
+        Row: {
+          body: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          name: string
+          rejection_reason_id: string | null
+          source: string
+          subject: string
+          tenant_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          rejection_reason_id?: string | null
+          source?: string
+          subject: string
+          tenant_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          rejection_reason_id?: string | null
+          source?: string
+          subject?: string
+          tenant_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rejection_email_templates_rejection_reason_id_fkey"
+            columns: ["rejection_reason_id"]
+            isOneToOne: false
+            referencedRelation: "rejection_reasons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rejection_email_templates_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rejection_reasons: {
         Row: {
           category: Database["public"]["Enums"]["rejection_category"]

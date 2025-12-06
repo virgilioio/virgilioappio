@@ -15,6 +15,7 @@ import { EmailTemplateSheet } from './templates/EmailTemplateSheet'
 import { ContractTemplateSheet } from './templates/ContractTemplateSheet'
 import { OfferTemplateFieldsManager } from './OfferTemplateFieldsManager'
 import { RejectionReasonsManager } from './RejectionReasonsManager'
+import { RejectionEmailTemplatesManager } from './RejectionEmailTemplatesManager'
 
 type TemplateType = 'offer-letters' | 'email-templates' | 'contract-templates' | 'rejection-reasons' | 'rejection-templates'
 
@@ -88,12 +89,13 @@ export function OfferTemplatesManager({ context = 'organization' }: OfferTemplat
               {context === 'platform-defaults' ? 'Platform Default Templates' : 'Templates'}
             </CardTitle>
             
-            {templateType !== 'rejection-reasons' && templateType !== 'rejection-templates' && (
+            {templateType !== 'rejection-reasons' && (
               <Button onClick={openCreateSheet}>
                 <Plus className="h-4 w-4 mr-2" />
                 {templateType === 'offer-letters' && 'Create Template'}
                 {templateType === 'email-templates' && 'Create Email'}
                 {templateType === 'contract-templates' && 'Create Contract'}
+                {templateType === 'rejection-templates' && 'Create Rejection Email'}
               </Button>
             )}
           </div>
@@ -125,11 +127,10 @@ export function OfferTemplatesManager({ context = 'organization' }: OfferTemplat
               <span className="hidden sm:inline">Rejection Reasons</span>
               <span className="sm:hidden">Reasons</span>
             </ToggleGroupItem>
-            <ToggleGroupItem value="rejection-templates" aria-label="Rejection Templates" disabled className="opacity-60">
+            <ToggleGroupItem value="rejection-templates" aria-label="Email Rejection Templates">
               <FileX className="h-4 w-4 mr-2" />
-              <span className="hidden sm:inline">Rejection Templates</span>
+              <span className="hidden sm:inline">Email Rejection Templates</span>
               <span className="sm:hidden">Reject</span>
-              <Badge variant="secondary" className="ml-2 text-[10px] px-1.5 py-0">Soon</Badge>
             </ToggleGroupItem>
           </ToggleGroup>
         </CardHeader>
@@ -480,13 +481,7 @@ export function OfferTemplatesManager({ context = 'organization' }: OfferTemplat
           )}
 
           {templateType === 'rejection-templates' && (
-            <div className="text-center py-12">
-              <FileX className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-text-primary mb-2">Coming Soon</h3>
-              <p className="text-text-secondary">
-                Create rejection email templates for consistent and professional candidate communication.
-              </p>
-            </div>
+            <RejectionEmailTemplatesManager context={context} />
           )}
         </CardContent>
       </Card>
