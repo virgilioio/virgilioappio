@@ -13,6 +13,7 @@ import { OfferTemplatesManager } from '@/components/settings/OfferTemplatesManag
 import { JobSettingsManager } from '@/components/settings/JobSettingsManager'
 import { PlatformJobSettingsManager } from '@/components/settings/PlatformJobSettingsManager'
 import { PlatformTab } from '@/components/settings/PlatformTab'
+import { IntegrationsTab } from '@/components/settings/IntegrationsTab'
 import { CustomerManagementTab } from '@/pages/settings/customer-management/CustomerManagementTab'
 import { SaaSSubscription } from '@/pages/settings/saas-customers/SaaSSubscription'
 import { SaaSCustomersList } from '@/pages/settings/saas-customers/SaaSCustomersList'
@@ -118,6 +119,10 @@ export default function Settings() {
               <div className="flex-1">
                 <TabsContent value="profile">
                   <ProfileTab />
+                </TabsContent>
+
+                <TabsContent value="integrations">
+                  <IntegrationsTab />
                 </TabsContent>
                 
                 <TabsContent value="organization">
