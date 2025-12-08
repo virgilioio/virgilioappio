@@ -11,8 +11,6 @@ import { User, Mail, Shield, Save } from 'lucide-react'
 import { AvatarUploader } from './AvatarUploader'
 import { ProfileForm } from './ProfileForm'
 import { PageHeader } from '@/components/layout/PageHeader'
-import { GoogleWorkspaceIntegrationSection } from './GoogleWorkspaceIntegrationSection'
-import { ChromeExtensionTokenCard } from './ChromeExtensionTokenCard'
 import { BookingLinkSection } from './BookingLinkSection'
 
 interface ProfileFormData {
@@ -149,14 +147,6 @@ export function ProfileTab() {
         </CardContent>
       </Card>
 
-      <Separator className="my-8" />
-      
-      <GoogleWorkspaceIntegrationSection />
-      
-      <Separator className="my-8" />
-
-      <ChromeExtensionTokenCard />
-      
       <Separator className="my-8" />
 
       <BookingLinkSection />
