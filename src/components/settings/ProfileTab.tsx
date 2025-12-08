@@ -12,6 +12,7 @@ import { AvatarUploader } from './AvatarUploader'
 import { ProfileForm } from './ProfileForm'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { GoogleWorkspaceIntegrationSection } from './GoogleWorkspaceIntegrationSection'
+import { ChromeExtensionTokenCard } from './ChromeExtensionTokenCard'
 import { BookingLinkSection } from './BookingLinkSection'
 
 interface ProfileFormData {
@@ -151,6 +152,10 @@ export function ProfileTab() {
       <Separator className="my-8" />
       
       <GoogleWorkspaceIntegrationSection />
+      
+      <Separator className="my-8" />
+
+      <ChromeExtensionTokenCard />
       
       <Separator className="my-8" />
 
