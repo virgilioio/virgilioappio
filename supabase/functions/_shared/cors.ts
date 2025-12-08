@@ -59,7 +59,16 @@ export function corsHeadersFor(origin?: string): Record<string, string> {
 export function handlePreflight(req: Request): Response | null {
   if (req.method === 'OPTIONS') {
     const origin = req.headers.get('Origin') ?? req.headers.get('origin') ?? undefined;
-    return new Response('ok', { headers: corsHeadersFor(origin) });
+    
+    // Log Chrome extension preflight for debugging
+    if (origin?.startsWith('chrome-extension://')) {
+      console.log(`🔌 Chrome extension preflight from: ${origin}`);
+    }
+    
+    return new Response(null, { 
+      status: 204,
+      headers: corsHeadersFor(origin) 
+    });
   }
   return null;
 }

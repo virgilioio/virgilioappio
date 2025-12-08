@@ -13,19 +13,19 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.chrome-api-me]
-verify_jwt = true
+verify_jwt = false
 
 [functions.chrome-api-organizations]
-verify_jwt = true
+verify_jwt = false
 
 [functions.chrome-api-jobs]
-verify_jwt = true
+verify_jwt = false
 
 [functions.chrome-api-stages]
-verify_jwt = true
+verify_jwt = false
 
 [functions.chrome-api-candidates]
-verify_jwt = true
+verify_jwt = false
 
 [functions.collect-coresignal-profile]
 verify_jwt = true
