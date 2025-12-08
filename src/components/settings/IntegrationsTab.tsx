@@ -11,11 +11,11 @@ export function IntegrationsTab() {
         subtitle="Connect external services to enhance your workflow"
       />
       
-      <GoogleWorkspaceIntegrationSection />
+      <ChromeExtensionTokenCard />
       
       <Separator className="my-8" />
 
-      <ChromeExtensionTokenCard />
+      <GoogleWorkspaceIntegrationSection />
     </div>
   )
 }
