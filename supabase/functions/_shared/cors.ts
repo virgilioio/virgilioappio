@@ -13,6 +13,11 @@ const ALLOWED_HOSTNAMES = new Set([
 export function isAllowedOrigin(origin?: string): { allowed: boolean; host?: string } {
   if (!origin) return { allowed: false };
   
+  // Allow Chrome extension origins (chrome-extension://...)
+  if (origin.startsWith('chrome-extension://')) {
+    return { allowed: true, host: origin };
+  }
+  
   try {
     const url = new URL(origin);
     const host = url.hostname;
