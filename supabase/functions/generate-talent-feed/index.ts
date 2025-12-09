@@ -21,7 +21,6 @@ interface JobPosting {
     id: string
     name: string
     about: string
-    website_url: string
   }
 }
 
@@ -104,7 +103,7 @@ Deno.serve(async (req) => {
         location,
         job_type,
         jobs!inner (id),
-        tenants!inner (id, name, about, website_url)
+        tenants!inner (id, name, about)
       `)
       .eq('tenant_id', tenant.id)
       .eq('is_active', true)
@@ -119,9 +118,8 @@ Deno.serve(async (req) => {
       })
     }
 
-    console.log('[generate-talent-feed] Found postings:', typedPostings?.length || 0)
-
     const typedPostings = postings as unknown as JobPosting[]
+    console.log('[generate-talent-feed] Found postings:', typedPostings?.length || 0)
 
     // Generate XML feed
     const xmlJobs = typedPostings.map(posting => {
