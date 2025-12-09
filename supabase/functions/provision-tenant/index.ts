@@ -155,7 +155,7 @@ serve(async (req) => {
           organization_id: existingTenantId,  // Parent tenant
           tenant_id: existingTenantId,
           user_type: "recruiter",             // Regular user, not owner
-          member_role: "member",
+          member_role: "recruiter",           // Valid enum value - default role for auto-joined users
           user_status: "active",
         });
 
