@@ -28,6 +28,16 @@ serve(async (req) => {
   try {
     // Authenticate user
     const authHeader = req.headers.get('Authorization');
+    
+    // Debug logging (masked for security)
+    const rawToken = authHeader?.replace('Bearer ', '').trim();
+    console.log('[chrome-api-me] Token received:', {
+      hasHeader: !!authHeader,
+      tokenLength: rawToken?.length ?? 0,
+      startsWithBearer: authHeader?.startsWith('Bearer ') ?? false,
+      firstChars: rawToken?.substring(0, 10) ?? 'N/A'
+    });
+    
     if (!authHeader) {
       return new Response(
         JSON.stringify({ error: 'Authentication required' }),
