@@ -111,6 +111,7 @@ const handler = async (req: Request): Promise<Response> => {
         state: state,
         code_challenge: codeChallenge,
         code_challenge_method: 'S256',
+        include_granted_scopes: 'true',
       }).toString();
     } else {
       throw new Error('Only Gmail provider is currently supported');
