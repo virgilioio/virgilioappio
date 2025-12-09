@@ -25,6 +25,7 @@ export default function ChromeOAuthStart() {
   useEffect(() => {
     const checkSessionAndRedirect = async () => {
       try {
+        // First check if there's any session
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
         if (sessionError) {
@@ -34,19 +35,35 @@ export default function ChromeOAuthStart() {
           return;
         }
 
-        if (session?.access_token) {
-          // User is logged in - redirect to Chrome extension with token
-          const redirectUrl = `${getChromeExtensionRedirectUrl()}#token=${encodeURIComponent(session.access_token)}`;
-          
-          // Use replace to avoid adding to history and ensure clean redirect
-          window.location.replace(redirectUrl);
-          // Keep checking state true to prevent UI flash before redirect
+        if (!session) {
+          // No session - show login prompt
+          setNeedsLogin(true);
+          setIsChecking(false);
           return;
         }
 
-        // No session - show login prompt
-        setNeedsLogin(true);
-        setIsChecking(false);
+        // Session exists - refresh it to get a fresh, valid access token
+        // This is critical: getSession() may return a cached expired token
+        console.log('[ChromeOAuth] Session found, refreshing to get fresh token...');
+        const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+
+        if (refreshError || !refreshData.session?.access_token) {
+          console.error('[ChromeOAuth] Refresh error:', refreshError);
+          // Session expired and can't be refreshed - need to login again
+          setNeedsLogin(true);
+          setIsChecking(false);
+          return;
+        }
+
+        const freshToken = refreshData.session.access_token;
+        console.log('[ChromeOAuth] Got fresh token, length:', freshToken.length);
+
+        // Redirect to Chrome extension with the FRESH token
+        const redirectUrl = `${getChromeExtensionRedirectUrl()}#token=${encodeURIComponent(freshToken)}`;
+        
+        // Use replace to avoid adding to history and ensure clean redirect
+        window.location.replace(redirectUrl);
+        // Keep checking state true to prevent UI flash before redirect
       } catch (err) {
         console.error('[ChromeOAuth] Unexpected error:', err);
         setError('An unexpected error occurred');
