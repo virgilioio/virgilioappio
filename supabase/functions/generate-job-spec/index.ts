@@ -192,7 +192,7 @@ Use this market data to provide SPECIFIC salary recommendations instead of gener
             role: 'system',
             content: `You are a senior hiring strategist for an international recruiting platform with expertise in role interpretation, skill standardization, and GEOGRAPHICAL INTELLIGENCE.
 
-A client has described their hiring need. Your task is to analyze this input and return a structured response that Virgilio's system can use to generate a high-quality job record.
+A client has described their hiring need. Your task is to analyze this input and return a structured response that GoGio's system can use to generate a high-quality job record.
 
 ${hasConversation ? 
   '🗨️ **CRITICAL - CONVERSATION CONTEXT PROVIDED:**\n\nIMPORTANT: The conversation messages are included as separate messages in this chat. You MUST synthesize ALL information from the ENTIRE conversation to create a comprehensive job specification.\n\n⚠️ The user\'s final message may be a simple confirmation like "Yes!" or "Create it!" - synthesize from the FULL conversation.\n\nUse the conversation to understand:\n- The job title and role requirements\n- Required skills and qualifications\n- Salary expectations and budget\n- Location and work arrangement preferences\n- Any other details discussed\n\nNEVER return placeholder values like "Job Title Not Specified" - synthesize concrete information from the conversation.' 

@@ -1,7 +1,7 @@
 
 import { useAuth } from '@/contexts/AuthContext'
 import { useUserProfile } from '@/hooks/useUserProfile'
-import { useIsVirgilioAdmin } from '@/hooks/useIsVirgilioAdmin'
+import { useIsPlatformAdmin } from '@/hooks/useIsPlatformAdmin'
 
 export interface PermissionsState {
   // Job permissions
@@ -63,7 +63,7 @@ export interface PermissionsState {
 export function usePermissions(): PermissionsState {
   const { user, organizationId, userType, memberRole, hasOrganizationContext } = useAuth()
   const { profile } = useUserProfile()
-  const isVirgilioAdmin = useIsVirgilioAdmin()
+  const isGoGioAdmin = useIsPlatformAdmin()
   
   // Simplified user type classification
   const isPlatformAdmin = userType === 'platform_admin'
@@ -76,8 +76,8 @@ export function usePermissions(): PermissionsState {
   const isHiringManager = isMember && memberRole === 'hiring_manager'
   const isInterviewer = isMember && memberRole === 'interviewer'
 
-  // Check if user is a Virgilio (platform organization) recruiter
-  const isVirgilioRecruiter = isRecruiter && hasOrganizationContext
+  // Check if user is a platform (GoGio organization) recruiter
+  const isPlatformRecruiter = isRecruiter && hasOrganizationContext
 
   return {
     // Job permissions
@@ -110,8 +110,8 @@ export function usePermissions(): PermissionsState {
     canDeleteCandidates: isPlatformAdmin || isWorkspaceOwner || isAdmin,
     canManageCandidates: isPlatformAdmin || isWorkspaceOwner || isAdmin || isRecruiter,
     
-    // Navigation permissions - Show candidates for Platform Admins, Virgilio recruiters, Workspace owners, and member recruiters
-    canViewCandidatesNavigation: isPlatformAdmin || isVirgilioRecruiter || isWorkspaceOwner || (isRecruiter && hasOrganizationContext),
+    // Navigation permissions - Show candidates for Platform Admins, platform recruiters, Workspace owners, and member recruiters
+    canViewCandidatesNavigation: isPlatformAdmin || isPlatformRecruiter || isWorkspaceOwner || (isRecruiter && hasOrganizationContext),
     
     // Job assignment permissions - Only admins and recruiters can manage assignments
     canViewJobAssignments: isPlatformAdmin || isWorkspaceOwner || isAdmin || isRecruiter,
@@ -124,8 +124,8 @@ export function usePermissions(): PermissionsState {
     canUploadInvoicePDFs: isPlatformAdmin || isWorkspaceOwner,
     canViewBilling: isPlatformAdmin || isWorkspaceOwner,
 
-    // Customer Management permissions - Only Virgilio platform admins
-    canAccessCustomerManagement: isVirgilioAdmin,
+    // Customer Management permissions - Only GoGio platform admins
+    canAccessCustomerManagement: isGoGioAdmin,
     
     // Role flags
     isWorkspaceOwner,

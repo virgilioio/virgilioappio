@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 import { useAuth } from '@/contexts/AuthContext'
 import { toast } from '@/hooks/use-toast'
-import { useIsVirgilioAdmin } from '@/hooks/useIsVirgilioAdmin'
+import { useIsPlatformAdmin } from '@/hooks/useIsPlatformAdmin'
 import { withAuthRetry, extractErrorMessage } from '@/lib/authUtils'
 import { log } from '@/lib/logger'
 import { useQueryClient } from '@tanstack/react-query'
@@ -70,22 +70,22 @@ export function useOrganizations() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const { user, userType, organizationId } = useAuth()
-  const isVirgilioAdmin = useIsVirgilioAdmin()
+  const isPlatformAdmin = useIsPlatformAdmin()
   const queryClient = useQueryClient()
 
   // Helper function to get user's tenant organization
   const getUserTenantOrganization = async () => {
-    if (userType === 'platform_admin' && isVirgilioAdmin) {
-      // Platform admins use Virgilio as parent
-      const { data: virgilioOrg } = await supabase
+    if (userType === 'platform_admin' && isPlatformAdmin) {
+      // Platform admins use GoGio as parent
+      const { data: goGioOrg } = await supabase
         .from('organizations')
         .select('id')
-        .eq('name', 'Virgilio')
+        .eq('name', 'GoGio')
         .eq('organization_type', 'platform')
         .eq('tenant_type', 'saas')
         .single()
       
-      return virgilioOrg?.id || null
+      return goGioOrg?.id || null
     } else {
       // Workspace owners use their current organization's tenant
       const { data: memberData } = await supabase
