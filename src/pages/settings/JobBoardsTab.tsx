@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Switch } from '@/components/ui/switch'
@@ -6,13 +7,21 @@ import { Input } from '@/components/ui/input'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { FormField } from '@/components/ui/form-field'
 import { useJobBoardIntegration } from '@/hooks/useJobBoardIntegration'
-import { Copy, Info } from 'lucide-react'
+import { Copy, Info, CheckCircle2, XCircle, Loader2, AlertTriangle } from 'lucide-react'
 import { copyToClipboard } from '@/utils/clipboard'
 import { useToast } from '@/hooks/use-toast'
+
+interface FeedTestResult {
+  status: 'success' | 'error'
+  jobCount?: number
+  message?: string
+}
 
 export function JobBoardsTab() {
   const { toast } = useToast()
   const { integration, isLoading, toggleIntegration, isEnabled } = useJobBoardIntegration('talent')
+  const [isTesting, setIsTesting] = useState(false)
+  const [testResult, setTestResult] = useState<FeedTestResult | null>(null)
 
   const handleCopy = (text: string, label: string) => {
     copyToClipboard(text)
@@ -20,6 +29,43 @@ export function JobBoardsTab() {
       title: 'Copied',
       description: `${label} copied to clipboard`
     })
+  }
+
+  const handleTestFeed = async () => {
+    if (!integration?.feed_url) return
+    
+    setIsTesting(true)
+    setTestResult(null)
+    
+    try {
+      const response = await fetch(integration.feed_url)
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        setTestResult({
+          status: 'error',
+          message: errorData.error || `HTTP ${response.status}: ${response.statusText}`
+        })
+        return
+      }
+      
+      const xmlText = await response.text()
+      // Count <job> tags in the XML
+      const jobMatches = xmlText.match(/<job>/g)
+      const jobCount = jobMatches?.length || 0
+      
+      setTestResult({
+        status: 'success',
+        jobCount
+      })
+    } catch (error) {
+      setTestResult({
+        status: 'error',
+        message: error instanceof Error ? error.message : 'Failed to test feed'
+      })
+    } finally {
+      setIsTesting(false)
+    }
   }
 
   return (
@@ -54,12 +100,37 @@ export function JobBoardsTab() {
         
         {isEnabled && integration && (
           <CardContent className="space-y-4">
-            <Alert>
-              <Info className="h-4 w-4" />
-              <AlertDescription>
-                Provide these URLs to your Talent.com account representative to complete the integration:
-              </AlertDescription>
-            </Alert>
+            {/* Test Feed Result */}
+            {testResult && (
+              <Alert variant={testResult.status === 'success' ? 'default' : 'destructive'}>
+                {testResult.status === 'success' ? (
+                  <CheckCircle2 className="h-4 w-4 text-green-600" />
+                ) : (
+                  <XCircle className="h-4 w-4" />
+                )}
+                <AlertDescription>
+                  {testResult.status === 'success' 
+                    ? `Feed working! ${testResult.jobCount} active job${testResult.jobCount !== 1 ? 's' : ''} found.`
+                    : `Feed error: ${testResult.message}`
+                  }
+                  {testResult.status === 'success' && testResult.jobCount === 0 && (
+                    <span className="block mt-1 text-amber-600">
+                      No jobs are published to Talent.com yet. Enable "Publish to Talent.com" on your job postings.
+                    </span>
+                  )}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {/* Warning if no test has been done */}
+            {!testResult && (
+              <Alert>
+                <Info className="h-4 w-4" />
+                <AlertDescription>
+                  Test your feed before sharing with Talent.com to ensure everything is working correctly.
+                </AlertDescription>
+              </Alert>
+            )}
             
             <div className="space-y-1">
               <FormField label="XML Feed URL">
@@ -75,6 +146,18 @@ export function JobBoardsTab() {
                     onClick={() => handleCopy(integration.feed_url || '', 'Feed URL')}
                   >
                     <Copy className="h-4 w-4" />
+                  </Button>
+                  <Button 
+                    variant="secondary" 
+                    size="sm"
+                    onClick={handleTestFeed}
+                    disabled={isTesting}
+                  >
+                    {isTesting ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      'Test Feed'
+                    )}
                   </Button>
                 </div>
               </FormField>

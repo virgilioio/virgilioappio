@@ -35,6 +35,8 @@ Deno.serve(async (req) => {
     const tenantId = url.searchParams.get('tenant_id')
     const companySlug = url.searchParams.get('company_slug')
 
+    console.log('[generate-talent-feed] Request params:', { tenantId, companySlug })
+
     if (!tenantId && !companySlug) {
       return new Response(JSON.stringify({ error: 'Missing tenant_id or company_slug parameter' }), {
         status: 400,
@@ -50,18 +52,20 @@ Deno.serve(async (req) => {
     // Get tenant by ID or slug
     let tenant: any = null
     if (tenantId) {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('tenants')
-        .select('id, name, about, website_url')
+        .select('id, name, about')
         .eq('id', tenantId)
         .single()
+      console.log('[generate-talent-feed] Tenant by ID result:', { data, error })
       tenant = data
     } else if (companySlug) {
-      const { data: careersPage } = await supabase
+      const { data: careersPage, error } = await supabase
         .from('careers_page_settings')
-        .select('tenant_id, tenants!inner(id, name, about, website_url)')
+        .select('tenant_id, tenants!inner(id, name, about)')
         .eq('company_slug', companySlug)
         .single()
+      console.log('[generate-talent-feed] Tenant by slug result:', { careersPage, error })
       tenant = careersPage?.tenants
     }
 
@@ -108,12 +112,14 @@ Deno.serve(async (req) => {
       .order('created_at', { ascending: false })
 
     if (error) {
-      console.error('Error fetching postings:', error)
+      console.error('[generate-talent-feed] Error fetching postings:', error)
       return new Response(JSON.stringify({ error: 'Failed to fetch postings' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       })
     }
+
+    console.log('[generate-talent-feed] Found postings:', typedPostings?.length || 0)
 
     const typedPostings = postings as unknown as JobPosting[]
 
