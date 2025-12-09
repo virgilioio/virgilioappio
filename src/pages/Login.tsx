@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { GoGioLogo } from '@/components/GoGioLogo'
-import dashboardPreview from '@/assets/dashboard-preview.png'
+import authGraphic from '@/assets/auth-graphic.png'
 
 import { GoogleLogo } from '@/components/icons/GoogleLogo'
 import { useAuth } from '@/contexts/AuthContext'
@@ -62,9 +62,10 @@ export default function Login() {
       {/* Left Side - Graphic */}
       <div className="w-full lg:w-1/2 relative overflow-hidden flex items-center justify-center min-h-[50vh] lg:min-h-screen" style={{ backgroundColor: '#d7c5fb' }}>
         <img 
-          src={dashboardPreview} 
-          alt="Dashboard Preview" 
-          className="h-full w-auto object-contain p-8"
+          src={authGraphic} 
+          alt="Find your people" 
+          className="max-h-[90%] max-w-[90%] object-contain"
+          style={{ filter: 'drop-shadow(0 4px 12px rgba(0, 0, 0, 0.08))' }}
         />
       </div>
 
