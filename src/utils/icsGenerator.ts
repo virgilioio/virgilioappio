@@ -1,5 +1,5 @@
 export interface ICSEventData {
-  uid: string; // e.g., "booking-abc123@virgilio.io"
+  uid: string; // e.g., "booking-abc123@gogio.io"
   summary: string; // e.g., "Interview with John Doe"
   description: string;
   location: string; // Zoom link, Google Meet, etc.
@@ -31,7 +31,7 @@ export function generateICS(event: ICSEventData): string {
   const icsContent = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//Virgilio//Interview Scheduler//EN',
+    'PRODID:-//GoGio//Interview Scheduler//EN',
     'CALSCALE:GREGORIAN',
     `METHOD:${event.method}`,
     'BEGIN:VEVENT',
