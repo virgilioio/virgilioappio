@@ -196,7 +196,7 @@ serve(async (req) => {
     const icsContent = [
       'BEGIN:VCALENDAR',
       'VERSION:2.0',
-      'PRODID:-//Virgilio//Interview Scheduler//EN',
+      'PRODID:-//GoGio//Interview Scheduler//EN',
       'CALSCALE:GREGORIAN',
       'METHOD:CANCEL',
       'BEGIN:VEVENT',
@@ -206,7 +206,7 @@ serve(async (req) => {
       `DTEND:${formatDateForICS(new Date(booking.scheduled_end))}`,
       `SUMMARY:${escapeICSText('CANCELLED: ' + interviewTitle)}`,
       `DESCRIPTION:${escapeICSText('This interview has been cancelled.' + (reason ? '\n\nReason: ' + reason : ''))}`,
-      `ORGANIZER;CN=${escapeICSText(interviewerProfile ? `${interviewerProfile.first_name} ${interviewerProfile.last_name}` : 'Interviewer')}:mailto:${interviewerProfile?.email || 'no-reply@virgilio.io'}`,
+      `ORGANIZER;CN=${escapeICSText(interviewerProfile ? `${interviewerProfile.first_name} ${interviewerProfile.last_name}` : 'Interviewer')}:mailto:${interviewerProfile?.email || 'no-reply@app.gogio.io'}`,
       `ATTENDEE;CN=${escapeICSText(booking.candidate_name)};RSVP=TRUE:mailto:${booking.candidate_email}`,
       'STATUS:CANCELLED',
       'SEQUENCE:1',

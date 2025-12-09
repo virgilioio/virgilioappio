@@ -135,7 +135,7 @@ Deno.serve(async (req) => {
     ${state ? `<state><![CDATA[${escapeXml(state)}]]></state>` : ''}
     ${country ? `<country><![CDATA[${escapeXml(country)}]]></country>` : ''}
     <dateposted>${posting.created_at}</dateposted>
-    <url><![CDATA[https://app.virgilio.io/p/${posting.slug}?source=talent]]></url>
+    <url><![CDATA[https://app.gogio.io/p/${posting.slug}?source=talent]]></url>
     <description><![CDATA[${posting.description || ''}]]></description>
     ${posting.job_type ? `<jobtype><![CDATA[${mapJobType(posting.job_type)}]]></jobtype>` : ''}
     ${details.location_type ? `<isremote>${details.location_type === 'remote' ? 'yes' : 'no'}</isremote>` : ''}
@@ -151,8 +151,8 @@ Deno.serve(async (req) => {
 
     const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <source>
-  <publisher>Virgilio ATS</publisher>
-  <publisherurl>https://app.virgilio.io</publisherurl>
+  <publisher>GoGio</publisher>
+  <publisherurl>https://app.gogio.io</publisherurl>
   <lastbuilddate>${new Date().toISOString()}</lastbuilddate>
   ${xmlJobs}
 </source>`

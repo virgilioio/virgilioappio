@@ -4,8 +4,8 @@
  */
 
 const ALLOWED_HOSTNAMES = new Set([
-  'app.virgilio.io',
-  'auth.virgilio.io',
+  'app.gogio.io',
+  'auth.gogio.io',
   'lovable.app',
   'localhost',
 ]);
@@ -45,7 +45,7 @@ export function isAllowedOrigin(origin?: string): { allowed: boolean; host?: str
 
 export function corsHeadersFor(origin?: string): Record<string, string> {
   const { allowed } = isAllowedOrigin(origin);
-  const allow = allowed && origin ? origin : 'https://app.virgilio.io';
+  const allow = allowed && origin ? origin : 'https://app.gogio.io';
   
   return {
     'Access-Control-Allow-Origin': allow,

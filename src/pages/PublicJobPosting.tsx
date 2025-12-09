@@ -85,12 +85,12 @@ export default function PublicJobPosting() {
   const [tenantAbout, setTenantAbout] = useState<string | null>(null)
   
   const { coreFields } = useCoreFields()
-  // Canonical host redirect to app.virgilio.io (skip local dev)
+  // Canonical host redirect to app.gogio.io (skip local dev)
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const { hostname } = window.location
       const isLocal = hostname === 'localhost' || hostname === '127.0.0.1'
-      const targetHost = 'app.virgilio.io'
+      const targetHost = 'app.gogio.io'
       if (!isLocal && hostname !== targetHost) {
         const url = new URL(window.location.href)
         url.host = targetHost
