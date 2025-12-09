@@ -109,15 +109,19 @@ function convertCountryCodesToNames(codes: string[]): string[] {
 function buildCoresignalFilterQuery(criteria: SearchCriteria): any {
   const query: any = {};
   
-  // Skills: Use OR logic as per CoreSignal documentation
+  // Skills: Use OR logic, limit to top 5 to avoid over-filtering
   if (criteria.skills && criteria.skills.length > 0) {
-    query.skill = criteria.skills.map(skill => `(${skill})`).join(' OR ');
+    const topSkills = criteria.skills.slice(0, 5);
+    query.skill = topSkills.map(skill => `(${skill})`).join(' OR ');
+    
+    if (criteria.skills.length > 5) {
+      console.log(`⚠️ Skills limited from ${criteria.skills.length} to 5 for broader results`);
+    }
   }
   
-  // Title Keywords: Use OR logic for experience_title field
-  if (criteria.title_keywords && criteria.title_keywords.length > 0) {
-    query.experience_title = criteria.title_keywords.map(title => `(${title})`).join(' OR ');
-  }
+  // Note: title_keywords removed - experience_title filter is too restrictive
+  // and causes zero results due to exact title matching requirements
+  // Skills are a better filter for finding relevant candidates
   
   // Location: Parse hierarchical format and send to CoreSignal
   if (criteria.locations && criteria.locations.length > 0) {

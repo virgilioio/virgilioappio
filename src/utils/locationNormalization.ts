@@ -34,19 +34,48 @@ const CITY_ALIASES: Record<string, string> = {
   'washington dc': 'Washington,District of Columbia,US',
   'dc': 'Washington,District of Columbia,US',
   
-  // Mexico Cities
+  // Mexico Cities - Extended with Spanish variations
   'mexico city': 'Mexico City,Mexico City,MX',
   'cdmx': 'Mexico City,Mexico City,MX',
   'ciudad de mexico': 'Mexico City,Mexico City,MX',
   'ciudad de méxico': 'Mexico City,Mexico City,MX',
+  'mexico city, cdmx': 'Mexico City,Mexico City,MX',
+  'mexico city, cdmx, mexico': 'Mexico City,Mexico City,MX',
+  'mexico city, cdmx, méxico': 'Mexico City,Mexico City,MX',
+  'ciudad de méxico, cdmx': 'Mexico City,Mexico City,MX',
+  'ciudad de méxico, cdmx, méxico': 'Mexico City,Mexico City,MX',
+  'cdmx, mexico': 'Mexico City,Mexico City,MX',
+  'cdmx, méxico': 'Mexico City,Mexico City,MX',
+  'df': 'Mexico City,Mexico City,MX',
+  'distrito federal': 'Mexico City,Mexico City,MX',
   'guadalajara': 'Guadalajara,Jalisco,MX',
+  'guadalajara, jalisco': 'Guadalajara,Jalisco,MX',
+  'guadalajara, jal': 'Guadalajara,Jalisco,MX',
+  'guadalajara, jalisco, mexico': 'Guadalajara,Jalisco,MX',
+  'guadalajara, jalisco, méxico': 'Guadalajara,Jalisco,MX',
   'monterrey': 'Monterrey,Nuevo León,MX',
+  'monterrey, nuevo leon': 'Monterrey,Nuevo León,MX',
+  'monterrey, nuevo león': 'Monterrey,Nuevo León,MX',
+  'monterrey, nl': 'Monterrey,Nuevo León,MX',
+  'monterrey, nuevo leon, mexico': 'Monterrey,Nuevo León,MX',
+  'monterrey, nuevo león, méxico': 'Monterrey,Nuevo León,MX',
   'tijuana': 'Tijuana,Baja California,MX',
+  'tijuana, baja california': 'Tijuana,Baja California,MX',
+  'tijuana, bc': 'Tijuana,Baja California,MX',
   'cancun': 'Cancún,Quintana Roo,MX',
   'cancún': 'Cancún,Quintana Roo,MX',
+  'cancun, quintana roo': 'Cancún,Quintana Roo,MX',
   'merida': 'Mérida,Yucatán,MX',
   'mérida': 'Mérida,Yucatán,MX',
+  'merida, yucatan': 'Mérida,Yucatán,MX',
+  'mérida, yucatán': 'Mérida,Yucatán,MX',
   'puebla': 'Puebla,Puebla,MX',
+  'puebla, puebla': 'Puebla,Puebla,MX',
+  'queretaro': 'Querétaro,Querétaro,MX',
+  'querétaro': 'Querétaro,Querétaro,MX',
+  'leon': 'León,Guanajuato,MX',
+  'león': 'León,Guanajuato,MX',
+  'leon, guanajuato': 'León,Guanajuato,MX',
   
   // Canada Cities
   'toronto': 'Toronto,Ontario,CA',
@@ -56,16 +85,29 @@ const CITY_ALIASES: Record<string, string> = {
   'calgary': 'Calgary,Alberta,CA',
   'ottawa': 'Ottawa,Ontario,CA',
   
-  // South America Cities
+  // South America Cities - Extended with Spanish/Portuguese variations
   'buenos aires': 'Buenos Aires,Buenos Aires,AR',
+  'buenos aires, argentina': 'Buenos Aires,Buenos Aires,AR',
   'bogota': 'Bogotá,Cundinamarca,CO',
   'bogotá': 'Bogotá,Cundinamarca,CO',
+  'bogota, colombia': 'Bogotá,Cundinamarca,CO',
+  'bogotá, colombia': 'Bogotá,Cundinamarca,CO',
   'medellin': 'Medellín,Antioquia,CO',
   'medellín': 'Medellín,Antioquia,CO',
+  'medellin, colombia': 'Medellín,Antioquia,CO',
+  'medellín, colombia': 'Medellín,Antioquia,CO',
   'santiago': 'Santiago,Santiago Metropolitan,CL',
+  'santiago, chile': 'Santiago,Santiago Metropolitan,CL',
   'sao paulo': 'São Paulo,São Paulo,BR',
   'são paulo': 'São Paulo,São Paulo,BR',
+  'sao paulo, brazil': 'São Paulo,São Paulo,BR',
+  'são paulo, brasil': 'São Paulo,São Paulo,BR',
   'rio de janeiro': 'Rio de Janeiro,Rio de Janeiro,BR',
+  'rio de janeiro, brazil': 'Rio de Janeiro,Rio de Janeiro,BR',
+  'rio de janeiro, brasil': 'Rio de Janeiro,Rio de Janeiro,BR',
+  'lima': 'Lima,Lima,PE',
+  'lima, peru': 'Lima,Lima,PE',
+  'lima, perú': 'Lima,Lima,PE',
   
   // European Cities
   'london': 'London,England,GB',
@@ -74,6 +116,31 @@ const CITY_ALIASES: Record<string, string> = {
   'madrid': 'Madrid,Madrid,ES',
   'barcelona': 'Barcelona,Catalonia,ES',
   'amsterdam': 'Amsterdam,North Holland,NL',
+}
+
+// State/Province abbreviation to full name mapping
+const STATE_ALIASES: Record<string, string> = {
+  // Mexico states
+  'cdmx': 'Mexico City',
+  'df': 'Mexico City',
+  'jal': 'Jalisco',
+  'nl': 'Nuevo León',
+  'bc': 'Baja California',
+  'qro': 'Querétaro',
+  'gto': 'Guanajuato',
+  'pue': 'Puebla',
+  'yuc': 'Yucatán',
+  'qroo': 'Quintana Roo',
+  // US states
+  'ca': 'California',
+  'ny': 'New York',
+  'tx': 'Texas',
+  'fl': 'Florida',
+  'wa': 'Washington',
+  'co': 'Colorado',
+  'il': 'Illinois',
+  'ma': 'Massachusetts',
+  'ga': 'Georgia',
 }
 
 // Country name to code mapping
@@ -141,7 +208,12 @@ export function normalizeLocationForCoresignal(freeformLocation: string): string
     }
   }
 
-  // Check for city aliases first (most specific)
+  // Check for city aliases first (most specific) - check exact match first
+  if (CITY_ALIASES[locationLower]) {
+    return [CITY_ALIASES[locationLower]]
+  }
+  
+  // Then check partial city alias matches
   for (const [alias, value] of Object.entries(CITY_ALIASES)) {
     if (locationLower.includes(alias)) {
       return [value]
@@ -189,12 +261,17 @@ export function normalizeLocationForCoresignal(freeformLocation: string): string
     }
   }
 
-  // If the location contains a comma, try to parse it as "City, Country" format
+  // If the location contains a comma, try to parse it as "City, State, Country" format
   if (location.includes(',')) {
     const parts = location.split(',').map(p => p.trim())
+    
     if (parts.length >= 2) {
       const cityPart = parts[0].toLowerCase()
+      const statePart = parts.length >= 3 ? parts[1].toLowerCase() : ''
       const countryPart = parts[parts.length - 1].toLowerCase()
+      
+      // Expand state abbreviations
+      const expandedState = STATE_ALIASES[statePart] || statePart
       
       // Look for country code
       const countryCode = COUNTRY_NAME_TO_CODE[countryPart] || 
@@ -209,7 +286,21 @@ export function normalizeLocationForCoresignal(freeformLocation: string): string
         if (cityMatch) {
           return [cityMatch.value]
         }
-        // Just return the country code
+        
+        // If we have city and state, try to construct a valid location
+        if (cityPart && expandedState) {
+          // Check if this constructed location exists in LOCATION_OPTIONS
+          const constructedMatch = LOCATION_OPTIONS.find(opt =>
+            opt.countryCode === countryCode &&
+            opt.city?.toLowerCase() === cityPart &&
+            opt.state?.toLowerCase() === expandedState.toLowerCase()
+          )
+          if (constructedMatch) {
+            return [constructedMatch.value]
+          }
+        }
+        
+        // Just return the country code as fallback
         return [countryCode]
       }
     }
