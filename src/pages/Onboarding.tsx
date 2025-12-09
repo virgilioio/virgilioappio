@@ -174,10 +174,12 @@ export default function Onboarding() {
   }
 
   // Pre-flight check: If user already has a workspace, redirect to dashboard
+  // Also attempt auto-join for verified domains by calling provision-tenant early
   useEffect(() => {
-    const checkExistingMembership = async () => {
+    const checkExistingMembershipOrAutoJoin = async () => {
       if (!user || !emailVerified) return;
       
+      // Check if user already has an active membership
       const { data: existingMember } = await supabase
         .from('members')
         .select('tenant_id')
@@ -194,11 +196,67 @@ export default function Onboarding() {
           description: 'Taking you to your dashboard...',
         });
         navigate('/dashboard', { replace: true });
+        return;
+      }
+      
+      // Check if user has a verified domain that could auto-join
+      // Call provision-tenant without a workspace name - it will check for verified domains
+      const emailDomain = user.email?.split('@')[1]?.toLowerCase();
+      const isPublicDomain = ['gmail.com', 'yahoo.com', 'hotmail.com', 'outlook.com', 'icloud.com', 'aol.com', 'protonmail.com', 'mail.com'].includes(emailDomain || '');
+      
+      if (!isPublicDomain && emailDomain) {
+        console.log('[Onboarding] Checking for verified domain auto-join...', { emailDomain });
+        
+        setProvisioningStatus('creating');
+        
+        try {
+          // Call provision-tenant - it will auto-join if domain is verified
+          const { data, error } = await supabase.functions.invoke('provision-tenant', {
+            body: { workspaceName: '' }, // Empty - just trigger domain check
+          });
+          
+          if (error) {
+            console.log('[Onboarding] No auto-join available', error.message);
+            setProvisioningStatus('idle');
+            return; // Show form as fallback
+          }
+          
+          // Check if auto-joined
+          if (data?.status === 'auto_joined') {
+            console.log('[Onboarding] Auto-join successful', data);
+            
+            setProvisioningStatus('configuring');
+            await refreshOrgContext();
+            
+            toast({
+              title: 'Welcome to your team!',
+              description: data?.message || 'You\'ve been automatically added to your team\'s workspace.',
+            });
+            
+            setProvisioningStatus('finalizing');
+            navigate('/dashboard', { replace: true });
+            return;
+          }
+          
+          // If we got here with "ok" status, user was already provisioned
+          if (data?.status === 'ok' && data?.workspaceId) {
+            console.log('[Onboarding] User already provisioned', data);
+            await refreshOrgContext();
+            navigate('/dashboard', { replace: true });
+            return;
+          }
+          
+          // Otherwise, show the form
+          setProvisioningStatus('idle');
+        } catch (err) {
+          console.log('[Onboarding] Auto-join check failed, showing form', err);
+          setProvisioningStatus('idle');
+        }
       }
     };
     
-    checkExistingMembership();
-  }, [user, emailVerified, navigate, toast]);
+    checkExistingMembershipOrAutoJoin();
+  }, [user, emailVerified, navigate, toast, refreshOrgContext]);
 
 
   const handleCancel = async () => {
