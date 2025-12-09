@@ -447,7 +447,7 @@ const handler = async (req: Request): Promise<Response> => {
       .single();
     
     if (bookingConfig?.short_code) {
-      const frontendUrl = Deno.env.get('FRONTEND_URL') || 'https://etrxjxstjfcozdjumfsj.lovable.app';
+      const frontendUrl = Deno.env.get('FRONTEND_URL') || 'https://app.gogio.io';
       
       // Generate contextual booking link if job+candidate context is provided
       if (request.job_id && request.candidate_id && request.jhs_id && request.association_id) {

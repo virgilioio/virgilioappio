@@ -7,7 +7,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Mail, RefreshCw, CheckCircle2 } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from '@/hooks/use-toast'
-import { VirgilioLogo } from '@/components/VirgilioLogo'
+import { GoGioLogo } from '@/components/GoGioLogo'
 
 export default function VerifyEmail() {
   const navigate = useNavigate()
@@ -69,7 +69,7 @@ export default function VerifyEmail() {
     <div className="min-h-screen flex items-center justify-center bg-surface-primary p-4">
       <Card className="w-full max-w-md card-brand">
         <CardHeader className="text-center">
-          <VirgilioLogo size="lg" className="justify-center mb-6" />
+          <GoGioLogo size="lg" className="justify-center mb-6" />
           <div className="mx-auto mb-4 w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center">
             <Mail className="h-8 w-8 text-accent" />
           </div>

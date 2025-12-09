@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { SafeHtml } from '@/components/ui/safe-html'
-import { VirgilioLogo } from '@/components/VirgilioLogo'
+import { GoGioLogo } from '@/components/GoGioLogo'
 import { MapPin, Briefcase, DollarSign, Sparkles, Loader2, ArrowLeft } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
@@ -540,7 +540,7 @@ export default function PublicJobPosting() {
               </Button>
             )}
           </div>
-          <VirgilioLogo className="h-6 w-auto" />
+          <GoGioLogo className="h-6 w-auto" />
         </div>
       </header>
 
@@ -898,7 +898,7 @@ export default function PublicJobPosting() {
       <footer className="border-t border-border bg-surface-primary">
         <div className="max-w-5xl mx-auto px-6 sm:px-lg py-6 flex items-center">
           <span className="text-sm text-muted-foreground mr-3">Powered by</span>
-          <VirgilioLogo className="h-5 w-auto" />
+          <GoGioLogo className="h-5 w-auto" />
         </div>
       </footer>
       

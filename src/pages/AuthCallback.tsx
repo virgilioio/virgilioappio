@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { AlertTriangle, CheckCircle2 } from 'lucide-react'
-import { VirgilioLogo } from '@/components/VirgilioLogo'
+import { GoGioLogo } from '@/components/GoGioLogo'
 import { log } from '@/lib/logger'
 
 export default function AuthCallback() {
@@ -96,7 +96,7 @@ export default function AuthCallback() {
     <div className="min-h-screen flex items-center justify-center bg-surface-primary p-4">
       <Card className="w-full max-w-md card-brand">
         <CardHeader className="text-center">
-          <VirgilioLogo size="lg" className="justify-center mb-6" />
+          <GoGioLogo size="lg" className="justify-center mb-6" />
           {status === 'validating' && (
             <>
               <div className="mx-auto mb-4 w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center">

@@ -30,7 +30,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePermissions } from '@/hooks/usePermissions'
-import { VirgilioLogo } from '@/components/VirgilioLogo'
+import { GoGioLogo } from '@/components/GoGioLogo'
 import { AdminModeIndicator } from '@/components/admin/AdminModeIndicator'
 import { GlobalCreateButton } from '@/components/layout/GlobalCreateButton'
 import { CoresignalCreditIndicator } from '@/components/layout/CoresignalCreditIndicator'
@@ -211,7 +211,7 @@ export function Header() {
         {/* Logo and Desktop Navigation */}
         <div className="flex items-center gap-6">
           <Link to="/dashboard" className="flex items-center gap-sm">
-            <VirgilioLogo className="h-6 w-auto" />
+            <GoGioLogo className="h-6 w-auto" />
           </Link>
           
           {/* Desktop Navigation */}
@@ -326,7 +326,7 @@ export function Header() {
             <SheetContent side="left" className="w-64 shadow-calendly">
               <div className="flex flex-col gap-md">
                 <Link to="/dashboard" className="flex items-center gap-sm" onClick={() => setIsSheetOpen(false)}>
-                  <VirgilioLogo className="h-6 w-auto" />
+                  <GoGioLogo className="h-6 w-auto" />
                 </Link>
                 <NavigationContent />
               </div>

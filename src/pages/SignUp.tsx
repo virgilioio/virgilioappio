@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
-import { VirgilioLogo } from '@/components/VirgilioLogo'
+import { GoGioLogo } from '@/components/GoGioLogo'
 import dashboardPreview from '@/assets/dashboard-preview.png'
 
 import { GoogleLogo } from '@/components/icons/GoogleLogo'
@@ -85,7 +85,7 @@ export default function SignUp() {
         {/* Welcome Text - Full width and centered */}
         <div className="mb-8 text-center">
           <div className="mb-4 flex justify-center">
-            <VirgilioLogo size="xl" />
+            <GoGioLogo size="xl" />
           </div>
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-foreground mb-2" style={{ fontFamily: 'Poppins', letterSpacing: '-0.06em' }}>
             Find your people<span style={{ color: '#d7c5fb' }}>.</span>
@@ -231,7 +231,7 @@ export default function SignUp() {
               <span aria-hidden="true">•</span>
               <Link to="/terms" className="underline underline-offset-2 hover:no-underline">Terms of Service</Link>
             </nav>
-            <p className="mt-2">© {new Date().getFullYear()} Virgilio</p>
+            <p className="mt-2">© {new Date().getFullYear()} GoGio</p>
           </footer>
         </div>
       </div>

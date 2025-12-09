@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from 'sonner'
-import { VirgilioLogo } from '@/components/VirgilioLogo'
+import { GoGioLogo } from '@/components/GoGioLogo'
 import { VerifyEmailPending } from '@/components/VerifyEmailPending'
 import { useAuth } from '@/contexts/AuthContext'
 import onboardingHero from '@/assets/onboarding-hero-new.png'
@@ -135,7 +135,7 @@ export default function AccountSetup() {
       <div className="w-full lg:w-1/2 bg-background flex flex-col justify-center px-6 sm:px-8 lg:px-8 xl:px-12 min-h-[50vh] lg:min-h-screen">
         <div className="mb-8 text-center">
           <div className="mb-4 flex justify-center">
-            <VirgilioLogo size="xl" />
+            <GoGioLogo size="xl" />
           </div>
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-foreground mb-2" style={{ fontFamily: 'Poppins', letterSpacing: '-0.06em' }}>
             Set up your account<span style={{ color: '#d7c5fb' }}>.</span>

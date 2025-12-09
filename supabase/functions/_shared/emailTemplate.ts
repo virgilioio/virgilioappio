@@ -1,5 +1,5 @@
 /**
- * Virgilio Email Template System
+ * GoGio Email Template System
  * Unified branding for all system emails
  */
 
@@ -13,7 +13,7 @@ export interface EmailTemplateOptions {
   footerNote?: string;
 }
 
-const VIRGILIO_COLORS = {
+const GOGIO_COLORS = {
   primary: '#6366f1', // Indigo
   primaryDark: '#4f46e5',
   text: '#1f2937',
@@ -26,7 +26,7 @@ const VIRGILIO_COLORS = {
 export function createEmailTemplate(options: EmailTemplateOptions): string {
   const {
     recipientName,
-    preheaderText = 'Important notification from Virgilio',
+    preheaderText = 'Important notification from GoGio',
     title,
     content,
     ctaText,
@@ -57,31 +57,31 @@ export function createEmailTemplate(options: EmailTemplateOptions): string {
       padding: 0;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
       line-height: 1.6;
-      color: ${VIRGILIO_COLORS.text};
-      background-color: ${VIRGILIO_COLORS.background};
+      color: ${GOGIO_COLORS.text};
+      background-color: ${GOGIO_COLORS.background};
     }
     .email-wrapper {
       width: 100%;
-      background-color: ${VIRGILIO_COLORS.background};
+      background-color: ${GOGIO_COLORS.background};
       padding: 40px 20px;
     }
     .email-container {
       max-width: 600px;
       margin: 0 auto;
-      background-color: ${VIRGILIO_COLORS.white};
+      background-color: ${GOGIO_COLORS.white};
       border-radius: 8px;
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
       overflow: hidden;
     }
     .email-header {
-      background: linear-gradient(135deg, ${VIRGILIO_COLORS.primary} 0%, ${VIRGILIO_COLORS.primaryDark} 100%);
+      background: linear-gradient(135deg, ${GOGIO_COLORS.primary} 0%, ${GOGIO_COLORS.primaryDark} 100%);
       padding: 32px 40px;
       text-align: center;
     }
     .logo {
       font-size: 28px;
       font-weight: 700;
-      color: ${VIRGILIO_COLORS.white};
+      color: ${GOGIO_COLORS.white};
       text-decoration: none;
       letter-spacing: -0.5px;
     }
@@ -91,19 +91,19 @@ export function createEmailTemplate(options: EmailTemplateOptions): string {
     .greeting {
       font-size: 18px;
       font-weight: 600;
-      color: ${VIRGILIO_COLORS.text};
+      color: ${GOGIO_COLORS.text};
       margin: 0 0 24px 0;
     }
     .title {
       font-size: 24px;
       font-weight: 700;
-      color: ${VIRGILIO_COLORS.text};
+      color: ${GOGIO_COLORS.text};
       margin: 0 0 24px 0;
       line-height: 1.3;
     }
     .content {
       font-size: 15px;
-      color: ${VIRGILIO_COLORS.text};
+      color: ${GOGIO_COLORS.text};
       margin: 0 0 24px 0;
       line-height: 1.7;
     }
@@ -124,8 +124,8 @@ export function createEmailTemplate(options: EmailTemplateOptions): string {
     .cta-button {
       display: inline-block;
       padding: 14px 32px;
-      background: linear-gradient(135deg, ${VIRGILIO_COLORS.primary} 0%, ${VIRGILIO_COLORS.primaryDark} 100%);
-      color: ${VIRGILIO_COLORS.white} !important;
+      background: linear-gradient(135deg, ${GOGIO_COLORS.primary} 0%, ${GOGIO_COLORS.primaryDark} 100%);
+      color: ${GOGIO_COLORS.white} !important;
       text-decoration: none;
       border-radius: 6px;
       font-weight: 600;
@@ -138,25 +138,25 @@ export function createEmailTemplate(options: EmailTemplateOptions): string {
     }
     .footer-note {
       font-size: 13px;
-      color: ${VIRGILIO_COLORS.textLight};
+      color: ${GOGIO_COLORS.textLight};
       padding: 20px 40px;
-      background-color: ${VIRGILIO_COLORS.background};
-      border-top: 1px solid ${VIRGILIO_COLORS.border};
+      background-color: ${GOGIO_COLORS.background};
+      border-top: 1px solid ${GOGIO_COLORS.border};
     }
     .email-footer {
       padding: 32px 40px;
       text-align: center;
       font-size: 13px;
-      color: ${VIRGILIO_COLORS.textLight};
-      border-top: 1px solid ${VIRGILIO_COLORS.border};
+      color: ${GOGIO_COLORS.textLight};
+      border-top: 1px solid ${GOGIO_COLORS.border};
     }
     .email-footer a {
-      color: ${VIRGILIO_COLORS.primary};
+      color: ${GOGIO_COLORS.primary};
       text-decoration: none;
     }
     .divider {
       height: 1px;
-      background-color: ${VIRGILIO_COLORS.border};
+      background-color: ${GOGIO_COLORS.border};
       margin: 24px 0;
     }
     @media only screen and (max-width: 600px) {
@@ -185,7 +185,7 @@ export function createEmailTemplate(options: EmailTemplateOptions): string {
     </div>
     <div class="email-container">
       <div class="email-header">
-        <div class="logo">Virgilio</div>
+        <div class="logo">GoGio</div>
       </div>
       <div class="email-body">
         <p class="greeting">Hi ${recipientName},</p>
@@ -206,13 +206,13 @@ export function createEmailTemplate(options: EmailTemplateOptions): string {
       ` : ''}
       <div class="email-footer">
         <p style="margin: 0 0 8px 0;">
-          <strong>Virgilio</strong> - Modern Recruiting Platform
+          <strong>GoGio</strong> - Modern Recruiting Platform
         </p>
         <p style="margin: 0 0 16px 0;">
           Need help? Contact us at <a href="mailto:support@virgilio.tech">support@virgilio.tech</a>
         </p>
         <p style="margin: 0; font-size: 12px;">
-          © ${new Date().getFullYear()} Virgilio. All rights reserved.
+          © ${new Date().getFullYear()} GoGio. All rights reserved.
         </p>
       </div>
     </div>

@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabaseClient'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { VirgilioLogo } from '@/components/VirgilioLogo'
+import { GoGioLogo } from '@/components/GoGioLogo'
 import { PageTitle } from '@/components/ui/page-title'
 import { MapPin, Clock, Loader2 } from 'lucide-react'
 import gioEmptyState from '@/assets/gio-empty-state.png'
@@ -165,7 +165,7 @@ export default function PublicCareersPage() {
                   className={settings.company_website_url ? 'cursor-pointer' : ''}
                   onClick={handleLogoClick}
                 >
-                  <VirgilioLogo size="lg" />
+                  <GoGioLogo size="lg" />
                 </div>
               )}
             </div>
@@ -249,7 +249,7 @@ export default function PublicCareersPage() {
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-center gap-2 text-sm text-text-tertiary">
             <span>Powered by</span>
-            <VirgilioLogo size="sm" />
+            <GoGioLogo size="sm" />
           </div>
         </div>
       </footer>
