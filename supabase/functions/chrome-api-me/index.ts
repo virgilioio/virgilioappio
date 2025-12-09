@@ -35,19 +35,27 @@ serve(async (req) => {
       hasHeader: !!authHeader,
       tokenLength: rawToken?.length ?? 0,
       startsWithBearer: authHeader?.startsWith('Bearer ') ?? false,
-      firstChars: rawToken?.substring(0, 10) ?? 'N/A'
+      firstChars: rawToken?.substring(0, 10) ?? 'N/A',
+      lastChars: rawToken?.substring(rawToken.length - 10) ?? 'N/A'
     });
     
-    if (!authHeader) {
+    if (!authHeader || !rawToken) {
       return new Response(
         JSON.stringify({ error: 'Authentication required' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser(
-      authHeader.replace('Bearer ', '')
-    );
+    // Use rawToken consistently (already trimmed)
+    const { data: { user }, error: authError } = await supabase.auth.getUser(rawToken);
+
+    // Log getUser result for debugging
+    console.log('[chrome-api-me] getUser result:', {
+      hasUser: !!user,
+      userId: user?.id?.substring(0, 8) ?? 'N/A',
+      authError: authError ? (authError.message ?? String(authError)) : null,
+      authErrorCode: (authError as any)?.code ?? null
+    });
 
     if (authError || !user) {
       console.error('❌ Authentication failed:', authError);
