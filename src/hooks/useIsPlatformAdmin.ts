@@ -2,17 +2,17 @@ import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabaseClient'
 import { useQuery } from '@tanstack/react-query'
 
-export function useIsVirgilioAdmin() {
+export function useIsPlatformAdmin() {
   const { user, userType, organizationId } = useAuth()
   
-  const { data: isVirgilioAdmin = false } = useQuery({
-    queryKey: ['is-virgilio-admin', user?.id, organizationId],
+  const { data: isPlatformAdmin = false } = useQuery({
+    queryKey: ['is-platform-admin', user?.id, organizationId],
     queryFn: async () => {
       if (!user || userType !== 'platform_admin' || !organizationId) {
         return false
       }
 
-      // Check if the user's organization is Virgilio (platform SaaS organization)
+      // Check if the user's organization is GoGio (platform SaaS organization)
       const { data: organization } = await supabase
         .from('organizations')
         .select('name, organization_type, tenant_type')
@@ -21,9 +21,9 @@ export function useIsVirgilioAdmin() {
 
       if (!organization) return false
 
-      // Check if this is the Virgilio platform organization
+      // Check if this is the GoGio platform organization
       return (
-        organization.name === 'Virgilio' &&
+        organization.name === 'GoGio' &&
         organization.organization_type === 'platform' &&
         organization.tenant_type === 'saas'
       )
@@ -31,5 +31,5 @@ export function useIsVirgilioAdmin() {
     enabled: !!user && userType === 'platform_admin' && !!organizationId,
   })
 
-  return isVirgilioAdmin
+  return isPlatformAdmin
 }

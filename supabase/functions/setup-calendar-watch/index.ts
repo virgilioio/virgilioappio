@@ -96,7 +96,7 @@ serve(async (req) => {
     }
 
     // Generate unique channel ID
-    const channelId = `virgilio-calendar-${crypto.randomUUID()}`;
+    const channelId = `gogio-calendar-${crypto.randomUUID()}`;
     
     // Webhook URL - this will be our google-calendar-webhook function
     const webhookUrl = `${supabaseUrl}/functions/v1/google-calendar-webhook`;
