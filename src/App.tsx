@@ -46,6 +46,7 @@ import Privacy from './pages/Privacy'
 import Terms from './pages/Terms'
 import AuthCallback from './pages/AuthCallback'
 import MailOAuthCallback from './pages/MailOAuthCallback'
+import ChromeOAuthStart from './pages/ChromeOAuthStart'
 import AccountSetup from './pages/AccountSetup'
 import { SaaSCustomerDetail } from './pages/settings/saas-customers/SaaSCustomerDetail'
 import Analytics from './pages/Analytics'
@@ -74,6 +75,7 @@ function AppContent() {
         <Route path="/careers/:companySlug" element={<PublicCareersPage />} />
         <Route path="/schedule/:shortCode" element={<PublicBookingPage />} />
         <Route path="/schedule/:shortCode/confirmed/:bookingId" element={<BookingConfirmed />} />
+        <Route path="/chrome-oauth/start" element={<ChromeOAuthStart />} />
 
         {/* Onboarding route - requires auth but NOT Layout (to bypass OrgGate) */}
         <Route path="/onboarding" element={<RequireAuth><Onboarding /></RequireAuth>} />

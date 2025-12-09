@@ -1,6 +1,6 @@
 
 import { useState } from 'react'
-import { Navigate, useNavigate, Link } from 'react-router-dom'
+import { Navigate, useNavigate, Link, useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -14,15 +14,20 @@ import { supabase } from '@/lib/supabaseClient'
 export default function Login() {
   const { login, isAuthenticated, isLoading } = useAuth()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false)
 
-  // Redirect authenticated users to dashboard - let RequireAuth handle org context
+  // Get redirect parameter if present (for Chrome OAuth flow, etc.)
+  const redirectTo = searchParams.get('redirect')
+
+  // Redirect authenticated users - use redirect param if valid, otherwise dashboard
   if (isAuthenticated && !isLoading) {
-    return <Navigate to="/dashboard" replace />
+    const destination = redirectTo && redirectTo.startsWith('/') ? redirectTo : '/dashboard'
+    return <Navigate to={destination} replace />
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -35,8 +40,9 @@ export default function Login() {
       if (error) {
         setError(error.message)
       } else {
-        // Navigate to dashboard - RequireAuth will handle org context routing
-        navigate('/dashboard')
+        // Navigate to redirect target or dashboard - RequireAuth will handle org context routing
+        const destination = redirectTo && redirectTo.startsWith('/') ? redirectTo : '/dashboard'
+        navigate(destination)
       }
     } catch (err) {
       setError('An unexpected error occurred')
