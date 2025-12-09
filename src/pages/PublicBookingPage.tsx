@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
-import { VirgilioLogo } from '@/components/VirgilioLogo';
+import { GoGioLogo } from '@/components/GoGioLogo';
 import { InterviewerCard } from '@/components/booking/InterviewerCard';
 import { MonthCalendar } from '@/components/booking/MonthCalendar';
 import { TimeSlotsList } from '@/components/booking/TimeSlotsList';
@@ -179,7 +179,7 @@ export default function PublicBookingPage() {
         <header className="border-b border-border bg-background-elevated">
           <div className="container mx-auto px-4 py-4">
             <Link to="/">
-              <VirgilioLogo />
+              <GoGioLogo />
             </Link>
           </div>
         </header>
@@ -203,7 +203,7 @@ export default function PublicBookingPage() {
         <header className="border-b border-border bg-background-elevated">
           <div className="container mx-auto px-4 py-4">
             <Link to="/">
-              <VirgilioLogo />
+              <GoGioLogo />
             </Link>
           </div>
         </header>
@@ -226,7 +226,7 @@ export default function PublicBookingPage() {
       <header className="sticky top-0 z-50 border-b border-virgilio-border bg-white/95 backdrop-blur-sm">
         <div className="container mx-auto px-4 md:px-6 lg:px-8 py-4">
           <Link to="/">
-            <VirgilioLogo />
+            <GoGioLogo />
           </Link>
         </div>
       </header>

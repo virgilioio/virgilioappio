@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent } from '@/components/ui/card'
-import { VirgilioLogo } from '@/components/VirgilioLogo'
+import { GoGioLogo } from '@/components/GoGioLogo'
 import { supabase } from '@/lib/supabaseClient'
 import { CheckCircle, Eye, EyeOff } from 'lucide-react'
 
@@ -84,7 +84,7 @@ export default function ResetPassword() {
             <div className="flex items-center justify-between h-14 sm:h-16">
               <div className="flex items-center">
                 <div className="hover:scale-105 transition-transform duration-default">
-                  <VirgilioLogo size="sm" />
+                  <GoGioLogo size="sm" />
                 </div>
               </div>
             </div>
@@ -124,7 +124,7 @@ export default function ResetPassword() {
           <div className="flex items-center justify-between h-14 sm:h-16">
             <div className="flex items-center">
               <div className="hover:scale-105 transition-transform duration-default">
-                <VirgilioLogo size="sm" />
+                <GoGioLogo size="sm" />
               </div>
             </div>
           </div>

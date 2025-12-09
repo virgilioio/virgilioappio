@@ -9,7 +9,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Loader2, CheckCircle2, XCircle, Eye, EyeOff } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from '@/hooks/use-toast'
-import { VirgilioLogo } from '@/components/VirgilioLogo'
+import { GoGioLogo } from '@/components/GoGioLogo'
 
 interface InvitationData {
   member_id: string
@@ -301,7 +301,7 @@ export default function AcceptInvite() {
       <div className="min-h-screen flex items-center justify-center bg-surface-primary p-4">
         <Card className="w-full max-w-md card-brand">
           <CardHeader className="text-center">
-            <VirgilioLogo size="lg" className="justify-center mb-6" />
+            <GoGioLogo size="lg" className="justify-center mb-6" />
           </CardHeader>
           <CardContent className="pt-0">
             <div className="flex items-center justify-center space-x-3">
@@ -319,7 +319,7 @@ export default function AcceptInvite() {
       <div className="min-h-screen flex items-center justify-center bg-surface-primary p-4">
         <Card className="w-full max-w-md card-brand">
           <CardHeader className="text-center">
-            <VirgilioLogo size="lg" className="justify-center mb-6" />
+            <GoGioLogo size="lg" className="justify-center mb-6" />
             <div className="mx-auto mb-4 w-12 h-12 bg-destructive/10 rounded-full flex items-center justify-center">
               <XCircle className="h-6 w-6 text-destructive" />
             </div>
@@ -346,7 +346,7 @@ export default function AcceptInvite() {
     <div className="min-h-screen flex items-center justify-center bg-surface-primary p-4">
       <Card className="w-full max-w-md card-brand">
         <CardHeader className="text-center">
-          <VirgilioLogo size="lg" className="justify-center mb-6" />
+          <GoGioLogo size="lg" className="justify-center mb-6" />
           <div className="mx-auto mb-4 w-12 h-12 bg-success/10 rounded-full flex items-center justify-center">
             <CheckCircle2 className="h-6 w-6 text-success" />
           </div>

@@ -7,7 +7,7 @@ import { log } from '@/lib/logger'
 import { extractErrorMessage } from '@/lib/authUtils'
 import { withTimeout, withRetry } from '@/utils/timeout'
 
-const VIRGILIO_ORG_ID = '5ba7b145-f251-4b18-8900-724cb06028ab';
+const GOGIO_ORG_ID = '5ba7b145-f251-4b18-8900-724cb06028ab';
 
 interface OrganizationInfo {
   id: string

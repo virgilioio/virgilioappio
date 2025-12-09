@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { supabase } from '@/lib/supabaseClient'
 import { useToast } from '@/hooks/use-toast'
-import { VirgilioLogo } from '@/components/VirgilioLogo'
+import { GoGioLogo } from '@/components/GoGioLogo'
 import { VerifyEmailPending } from '@/components/VerifyEmailPending'
 import { useAuth } from '@/contexts/AuthContext'
 import { useOrgContext } from '@/contexts/OrgContext'
@@ -299,7 +299,7 @@ export default function Onboarding() {
         {/* Welcome Text - Full width and centered */}
         <div className="mb-8 text-center">
           <div className="mb-4 flex justify-center">
-            <VirgilioLogo size="xl" />
+            <GoGioLogo size="xl" />
           </div>
            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-foreground mb-2" style={{ fontFamily: 'Poppins', letterSpacing: '-0.06em' }}>
              Set up your workspace<span style={{ color: '#d7c5fb' }}>.</span>

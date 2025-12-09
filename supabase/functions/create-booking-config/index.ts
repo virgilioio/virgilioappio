@@ -88,7 +88,7 @@ serve(async (req) => {
           status: 'exists',
           booking_config_id: existing.id,
           short_code: existing.short_code,
-          booking_url: `${req.headers.get('origin') || supabaseUrl.replace('.supabase.co', '.lovable.app')}/schedule/${existing.short_code}`,
+          booking_url: `${req.headers.get('origin') || 'https://app.gogio.io'}/schedule/${existing.short_code}`,
           is_active: existing.is_active
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
@@ -170,7 +170,7 @@ serve(async (req) => {
       is_active: bookingConfig.is_active
     });
 
-    const bookingUrl = `${req.headers.get('origin') || supabaseUrl.replace('.supabase.co', '.lovable.app')}/schedule/${bookingConfig.short_code}`;
+    const bookingUrl = `${req.headers.get('origin') || 'https://app.gogio.io'}/schedule/${bookingConfig.short_code}`;
 
     return new Response(
       JSON.stringify({

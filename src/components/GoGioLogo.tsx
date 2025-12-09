@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 
-interface VirgilioLogoProps {
+interface GoGioLogoProps {
   size?: 'sm' | 'md' | 'lg' | 'xl';
   className?: string;
 }
 
-export function VirgilioLogo({ size = 'md', className = '' }: VirgilioLogoProps) {
-  const [logoUrl, setLogoUrl] = useState('/virgilio-logo.png')
+export function GoGioLogo({ size = 'md', className = '' }: GoGioLogoProps) {
+  const [logoUrl, setLogoUrl] = useState('/gogio-logo.png')
   
   const sizeMap = {
     sm: 24,
@@ -45,11 +45,11 @@ export function VirgilioLogo({ size = 'md', className = '' }: VirgilioLogoProps)
     <div className={`flex items-center ${className}`}>
       <img 
         src={logoUrl} 
-        alt="Virgilio"
+        alt="GoGio"
         height={logoHeight}
         className="h-auto"
         style={{ height: `${logoHeight}px` }}
-        onError={() => setLogoUrl('/virgilio-logo.png')} // Fallback to default on error
+        onError={() => setLogoUrl('/gogio-logo.png')} // Fallback to default on error
       />
     </div>
   );
