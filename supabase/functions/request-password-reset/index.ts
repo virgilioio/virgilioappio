@@ -7,7 +7,7 @@ import { createSecureCorsHeaders, handleSecureCorsPreFlight } from "../_shared/c
 const corsHeaders = createSecureCorsHeaders();
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
-const emailFrom = Deno.env.get("EMAIL_DEFAULT_FROM") || "Virgilio <noreply@app.virgilio.io>";
+const emailFrom = Deno.env.get("EMAIL_DEFAULT_FROM") || "GoGio <noreply@app.gogio.io>";
 
 interface RequestPasswordResetRequest {
   email: string;
@@ -71,10 +71,10 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     // Build the reset URL pointing to the app domain
-    const resetUrl = `https://app.virgilio.io/reset-password?token=${token}`;
+    const resetUrl = `https://app.gogio.io/reset-password?token=${token}`;
     
     // Validate URL construction
-    if (!resetUrl.includes(token) || !resetUrl.startsWith('https://app.virgilio.io')) {
+    if (!resetUrl.includes(token) || !resetUrl.startsWith('https://app.gogio.io')) {
       throw new Error('Invalid reset URL construction');
     }
 
@@ -82,7 +82,7 @@ const handler = async (req: Request): Promise<Response> => {
     const { createEmailTemplate } = await import('../_shared/emailTemplate.ts');
     
     const emailContent = `
-      <p>We received a request to reset the password for your Virgilio account.</p>
+      <p>We received a request to reset the password for your GoGio account.</p>
       <p>Click the button below to create a new password. This link will expire in <strong>30 minutes</strong> for security reasons.</p>
       <div class="divider"></div>
       <p style="font-size: 14px; color: #6b7280; margin-top: 32px;">

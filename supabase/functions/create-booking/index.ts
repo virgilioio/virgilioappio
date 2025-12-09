@@ -224,7 +224,7 @@ serve(async (req) => {
     let googleMeetLink = null;
 
     // Construct candidate profile URL for scorecard submission
-    const frontendUrl = Deno.env.get('FRONTEND_URL') || 'https://app.virgilio.io';
+    const frontendUrl = Deno.env.get('FRONTEND_URL') || 'https://app.gogio.io';
     const candidateProfileUrl = (job_id && candidate_id) 
       ? `${frontendUrl}/jobs/${job_id}?candidate=${candidate_id}`
       : null;
@@ -239,7 +239,7 @@ serve(async (req) => {
       return code;
     };
     const transcriptIngestCode = generateIngestCode();
-    const transcriptIngestEmail = `int_${transcriptIngestCode}@ingest.virgilio.io`;
+    const transcriptIngestEmail = `int_${transcriptIngestCode}@ingest.gogio.io`;
     console.log('[create-booking] Generated transcript ingest email:', transcriptIngestEmail);
 
     if (accessToken && calendarIdentity) {
@@ -257,7 +257,7 @@ serve(async (req) => {
             },
             body: JSON.stringify({
               summary: `Interview: ${candidate_name}`,
-              description: `Interview scheduled via Virgilio\n\nCANDIDATE DETAILS:\nName: ${candidate_name}\nEmail: ${candidate_email}${candidate_phone ? `\nPhone: ${candidate_phone}` : ''}${notes ? `\n\nNOTES:\n${notes}` : ''}${meeting_type_preference === 'custom' && custom_meeting_location ? `\n\nMEETING LOCATION:\n${custom_meeting_location}` : ''}${candidateProfileUrl ? `\n\n📝 SUBMIT SCORECARD:\n${candidateProfileUrl}` : ''}\n\n🎙️ TRANSCRIPT EMAIL:\n${transcriptIngestEmail}\n(Add this to your note-taking app to auto-generate interview notes)`,
+              description: `Interview scheduled via GoGio\n\nCANDIDATE DETAILS:\nName: ${candidate_name}\nEmail: ${candidate_email}${candidate_phone ? `\nPhone: ${candidate_phone}` : ''}${notes ? `\n\nNOTES:\n${notes}` : ''}${meeting_type_preference === 'custom' && custom_meeting_location ? `\n\nMEETING LOCATION:\n${custom_meeting_location}` : ''}${candidateProfileUrl ? `\n\n📝 SUBMIT SCORECARD:\n${candidateProfileUrl}` : ''}\n\n🎙️ TRANSCRIPT EMAIL:\n${transcriptIngestEmail}\n(Add this to your note-taking app to auto-generate interview notes)`,
               start: {
                 dateTime: scheduled_start,
                 timeZone: config.timezone,
@@ -388,7 +388,7 @@ serve(async (req) => {
 
     // Generate unique ICS UID
     const bookingId = crypto.randomUUID();
-    const icsUid = `booking-${bookingId}@virgilio.io`;
+    const icsUid = `booking-${bookingId}@gogio.io`;
 
     // Insert booking with all Phase 4 fields and two-event support
     const { data: booking, error: insertError } = await supabase
@@ -453,7 +453,7 @@ serve(async (req) => {
     const icsContent = [
       'BEGIN:VCALENDAR',
       'VERSION:2.0',
-      'PRODID:-//Virgilio//Interview Scheduler//EN',
+      'PRODID:-//GoGio//Interview Scheduler//EN',
       'CALSCALE:GREGORIAN',
       'METHOD:REQUEST',
       'BEGIN:VEVENT',
@@ -462,7 +462,7 @@ serve(async (req) => {
       `DTSTART:${formatDateForICS(new Date(scheduled_start))}`,
       `DTEND:${formatDateForICS(new Date(scheduled_end))}`,
       `SUMMARY:${escapeICSText(interviewTitle)}`,
-      `DESCRIPTION:${escapeICSText(`Scheduled via Virgilio\n\nCandidate Notes:\n${notes || 'None'}`)}`,
+      `DESCRIPTION:${escapeICSText(`Scheduled via GoGio\n\nCandidate Notes:\n${notes || 'None'}`)}`,
       `LOCATION:${escapeICSText(
         meeting_type_preference === 'google_meet' 
           ? (googleMeetLink || config.meeting_location || '') 

@@ -1,6 +1,6 @@
 # Sentry Error Tracking Setup
 
-**Purpose:** Production error tracking and monitoring for Virgilio.io  
+**Purpose:** Production error tracking and monitoring for GoGio.io  
 **Integration:** @sentry/react + @sentry/vite-plugin  
 **Environment:** Production only (no-op in development)
 

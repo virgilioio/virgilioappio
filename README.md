@@ -76,7 +76,7 @@ This project uses [Resend](https://resend.com) for transactional emails (verific
    - Add the following secrets:
      - `RESEND_API_KEY` - Your Resend API key
      - `SEND_EMAIL_HOOK_SECRET` - A secure random string (for email webhooks)
-     - `EMAIL_DEFAULT_FROM` (optional) - Default: `"Virgilio <noreply@app.virgilio.io>"`
+     - `EMAIL_DEFAULT_FROM` (optional) - Default: `"GoGio <noreply@app.gogio.io>"`
 
 **Note:** All email environment variables are stored as Supabase secrets (not in `.env` files) for security.
 

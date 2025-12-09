@@ -5,7 +5,7 @@ import { Resend } from "https://esm.sh/resend@2.0.0";
 import { createSecureCorsHeaders, handleSecureCorsPreFlight } from "../_shared/cors.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
-const emailFrom = Deno.env.get("EMAIL_DEFAULT_FROM") || "Virgilio <noreply@app.virgilio.io>";
+const emailFrom = Deno.env.get("EMAIL_DEFAULT_FROM") || "GoGio <noreply@app.gogio.io>";
 const corsHeaders = createSecureCorsHeaders();
 
 interface SendInvitationRequest {
@@ -75,7 +75,7 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const organizationName = member.organizations?.name || 'the organization';
-    const inviteUrl = `https://app.virgilio.io/accept-invite/${member.invite_token}`;
+    const inviteUrl = `https://app.gogio.io/accept-invite/${member.invite_token}`;
     const expiryDate = new Date(member.invite_expires_at).toLocaleDateString('en-US', {
       weekday: 'long',
       year: 'numeric',
@@ -87,8 +87,8 @@ const handler = async (req: Request): Promise<Response> => {
     const { createEmailTemplate, formatEmailList } = await import('../_shared/emailTemplate.ts');
 
     const emailContent = `
-      <p>You've been invited by ${inviterName || 'a team member'} to join <strong>${organizationName}</strong> on Virgilio.</p>
-      <p>Virgilio is a modern recruiting platform that helps teams hire better, faster. You'll have access to powerful tools for managing candidates, scheduling interviews, and collaborating with your team.</p>
+      <p>You've been invited by ${inviterName || 'a team member'} to join <strong>${organizationName}</strong> on GoGio.</p>
+      <p>GoGio is a modern recruiting platform that helps teams hire better, faster. You'll have access to powerful tools for managing candidates, scheduling interviews, and collaborating with your team.</p>
       <div class="divider"></div>
       <p><strong>What's next?</strong></p>
       ${formatEmailList([
@@ -101,7 +101,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     const emailHtml = createEmailTemplate({
       recipientName: email.split('@')[0], // Use email prefix as fallback name
-      preheaderText: `Join ${organizationName} on Virgilio`,
+      preheaderText: `Join ${organizationName} on GoGio`,
       title: `Welcome to ${organizationName}!`,
       content: emailContent,
       ctaText: 'Accept Invitation',
@@ -109,11 +109,11 @@ const handler = async (req: Request): Promise<Response> => {
       footerNote: `If you weren't expecting this invitation, you can safely ignore this email. The invitation will expire automatically on ${expiryDate}.`
     });
 
-    // Send the invitation email with Virgilio branding
+    // Send the invitation email with GoGio branding
     const emailResponse = await resend.emails.send({
       from: emailFrom,
       to: [email],
-      subject: `You've been invited to join ${organizationName} on Virgilio`,
+      subject: `You've been invited to join ${organizationName} on GoGio`,
       html: emailHtml,
     });
 

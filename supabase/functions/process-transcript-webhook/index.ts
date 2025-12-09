@@ -9,8 +9,8 @@ const corsHeaders = {
 
 // Extract ingest code from email address
 function extractIngestCode(email: string): string | null {
-  // Format: int_{code}@ingest.virgilio.io
-  const match = email.match(/^int_([a-zA-Z0-9]{8})@ingest\.virgilio\.io$/i);
+  // Format: int_{code}@ingest.gogio.io
+  const match = email.match(/^int_([a-zA-Z0-9]{8})@ingest\.gogio\.io$/i);
   return match ? match[1] : null;
 }
 
