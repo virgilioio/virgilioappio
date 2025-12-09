@@ -18,7 +18,7 @@ serve(async (req) => {
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
   const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-  const frontendUrl = Deno.env.get('FRONTEND_URL') || 'https://app.virgilio.io';
+  const frontendUrl = Deno.env.get('FRONTEND_URL') || 'https://app.gogio.io';
 
   try {
     const { booking_id } = await req.json();
@@ -284,7 +284,7 @@ ${questionsContext ? `\n7. SCORECARD QUESTION RESPONSES:\n(Address each question
 
       try {
         await resend.emails.send({
-          from: 'Virgilio <noreply@app.virgilio.io>',
+          from: 'GoGio <noreply@app.gogio.io>',
           to: [interviewer.email],
           subject: `📝 Interview notes ready: ${booking.candidate?.candidate_name || 'Candidate'}`,
           html: `
@@ -319,7 +319,7 @@ ${questionsContext ? `\n7. SCORECARD QUESTION RESPONSES:\n(Address each question
               </div>
               
               <p style="color: #888; font-size: 14px; margin-top: 30px;">
-                This email was sent by Virgilio's interview management system.
+                This email was sent by GoGio's interview management system.
               </p>
             </div>
           `,
