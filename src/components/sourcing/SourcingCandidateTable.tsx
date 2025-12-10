@@ -813,8 +813,8 @@ export function SourcingCandidateTable({
         open={sheetOpen}
         onOpenChange={setSheetOpen}
         candidateId={selectedCandidateId}
-        coresignalId={selectedApolloId}
-        coresignalData={selectedApolloData}
+        apolloId={selectedApolloId}
+        apolloData={selectedApolloData}
         jobId={jobId}
         context="sourcing"
         hasPrev={hasPrev}

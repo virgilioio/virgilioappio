@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
-import { Sparkles, ExternalLink, AlertCircle, ChevronLeft, ChevronRight, Mail, Phone, Lock, Briefcase, GraduationCap, Wrench, MapPin, Users, UserPlus, Building2, Globe } from 'lucide-react'
+import { Sparkles, ExternalLink, AlertCircle, ChevronLeft, ChevronRight, Mail, Phone, Lock, Briefcase, GraduationCap, Wrench, MapPin, Users, UserPlus, Building2, Globe, CheckCircle2 } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from '@/hooks/use-toast'
 import { useSourcingCreditWarnings } from '@/hooks/useSourcingCreditWarnings'
@@ -15,19 +15,22 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { JobSelectionDialog } from '@/components/sourcing/JobSelectionDialog'
 
-interface CoreSignalPreviewSheetProps {
+interface ApolloPreviewSheetProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   candidateId?: string | null
-  coresignalId?: string | null
-  coresignalData?: {
+  apolloId?: string | null
+  apolloData?: {
     candidate_name: string
     headline?: string
     location?: string
     current_company?: string
     current_role?: string
     linkedin_url?: string
-    coresignal_score?: number
+    apollo_score?: number
+    email?: string
+    email_status?: string
+    phone?: string
     industry?: string
     connections_count?: number
     follower_count?: number
@@ -91,18 +94,18 @@ function UnlockItem({ icon: Icon, text }: { icon: any, text: string }) {
   )
 }
 
-export function CoreSignalPreviewSheet({
+export function ApolloPreviewSheet({
   open,
   onOpenChange,
-  coresignalId,
-  coresignalData,
+  apolloId,
+  apolloData,
   jobId,
   hasPrev,
   hasNext,
   onNavigatePrev,
   onNavigateNext,
   onCandidateCollected,
-}: CoreSignalPreviewSheetProps) {
+}: ApolloPreviewSheetProps) {
   const [isCollecting, setIsCollecting] = useState(false)
   const [collectedCandidateId, setCollectedCandidateId] = useState<string | null>(null)
   const [showJobSelection, setShowJobSelection] = useState(false)
@@ -116,7 +119,7 @@ export function CoreSignalPreviewSheet({
     selectedStageId?: string,
     selectedStageName?: string
   ) => {
-    if (!coresignalId) return
+    if (!apolloId) return
 
     setIsCollecting(true)
     try {
@@ -124,9 +127,9 @@ export function CoreSignalPreviewSheet({
 
       const jobIdToUse = selectedJobId || jobId
       
-      const { data, error } = await supabase.functions.invoke('collect-coresignal-profile', {
+      const { data, error } = await supabase.functions.invoke('enrich-apollo-profile', {
         body: {
-          coresignal_id: parseInt(coresignalId),
+          apollo_id: apolloId,
           job_id: jobIdToUse,
           stage_id: selectedStageId,
           user_id: user?.id,
@@ -153,9 +156,9 @@ export function CoreSignalPreviewSheet({
         })
 
         // Invalidate queries to refresh data
-        queryClient.invalidateQueries({ queryKey: ['coresignal-preview-candidates'] })
+        queryClient.invalidateQueries({ queryKey: ['sourcing-preview-candidates'] })
         queryClient.invalidateQueries({ queryKey: ['candidates'] })
-        queryClient.invalidateQueries({ queryKey: ['coresignal-usage'] })
+        queryClient.invalidateQueries({ queryKey: ['sourcing-credits'] })
 
         // Notify parent to remove from list
         onCandidateCollected?.(data.candidate_id)
@@ -195,6 +198,10 @@ export function CoreSignalPreviewSheet({
     handleCollectProfile()
   }
 
+  // Check if Apollo provides email/phone directly
+  const hasEmail = apolloData?.email && apolloData.email_status === 'verified'
+  const hasPhone = apolloData?.phone
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="right" className="w-[96vw] sm:max-w-none h-full p-0" showOverlay={false}>
@@ -204,14 +211,14 @@ export function CoreSignalPreviewSheet({
               <div className="flex flex-col gap-2">
                 <div className="flex items-center gap-2">
                   <h2 className="font-poppins font-bold tracking-page-title text-text-primary text-4xl">
-                    {coresignalData?.candidate_name || 'Unknown Candidate'}
+                    {apolloData?.candidate_name || 'Unknown Candidate'}
                     <span className="text-purple-period">.</span>
                   </h2>
-                  {coresignalData?.linkedin_url && (
+                  {apolloData?.linkedin_url && (
                     <Button
                       variant="outline"
                       className="h-8 w-8 p-0"
-                      onClick={() => window.open(coresignalData.linkedin_url, '_blank')}
+                      onClick={() => window.open(apolloData.linkedin_url, '_blank')}
                       aria-label="Open LinkedIn profile"
                     >
                       <LinkedInFilled className="h-5 w-5" />
@@ -270,11 +277,11 @@ export function CoreSignalPreviewSheet({
 
                       {/* Secondary Actions */}
                       <div className="flex items-center gap-2">
-                        {coresignalData?.linkedin_url && (
+                        {apolloData?.linkedin_url && (
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => window.open(coresignalData.linkedin_url, '_blank')}
+                            onClick={() => window.open(apolloData.linkedin_url, '_blank')}
                           >
                             <ExternalLink className="h-4 w-4 mr-2" />
                             LinkedIn
@@ -289,7 +296,7 @@ export function CoreSignalPreviewSheet({
                 </Card>
 
                 {/* Match Score Card */}
-                {coresignalData?.coresignal_score !== undefined && (
+                {apolloData?.apollo_score !== undefined && (
                   <Card className="bg-surface-primary border-border">
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
@@ -300,7 +307,7 @@ export function CoreSignalPreviewSheet({
                     <CardContent>
                       <div className="flex items-center gap-3">
                         <div className="text-3xl font-bold text-primary">
-                          {coresignalData.coresignal_score.toFixed(2)}
+                          {apolloData.apollo_score.toFixed(2)}
                         </div>
                         <div className="text-sm text-text-secondary">
                           Based on job requirements and candidate profile
@@ -313,7 +320,7 @@ export function CoreSignalPreviewSheet({
                 {/* Accordion Sections */}
                 <Accordion type="multiple" defaultValue={['contact', 'summary', 'experience', 'professional']} className="space-y-4">
                   {/* Professional Details */}
-                  {(coresignalData?.industry || coresignalData?.connections_count !== undefined || coresignalData?.follower_count !== undefined) && (
+                  {(apolloData?.industry || apolloData?.connections_count !== undefined || apolloData?.follower_count !== undefined) && (
                     <AccordionItem value="professional" className="border-0">
                       <Card className="bg-surface-primary border-border">
                         <AccordionTrigger className="px-6 py-4 hover:no-underline">
@@ -321,32 +328,32 @@ export function CoreSignalPreviewSheet({
                         </AccordionTrigger>
                         <AccordionContent>
                           <CardContent className="space-y-4 pt-0">
-                            {coresignalData?.industry && (
+                            {apolloData?.industry && (
                               <div className="flex items-start gap-2">
                                 <Briefcase className="h-4 w-4 text-text-secondary mt-0.5 flex-shrink-0" />
                                 <div className="flex flex-col">
                                   <span className="text-xs text-text-tertiary">Industry</span>
-                                  <span className="text-sm">{coresignalData.industry}</span>
+                                  <span className="text-sm">{apolloData.industry}</span>
                                 </div>
                               </div>
                             )}
                             
-                            {coresignalData?.connections_count !== undefined && (
+                            {apolloData?.connections_count !== undefined && (
                               <div className="flex items-start gap-2">
                                 <Users className="h-4 w-4 text-text-secondary mt-0.5 flex-shrink-0" />
                                 <div className="flex flex-col">
                                   <span className="text-xs text-text-tertiary">LinkedIn Connections</span>
-                                  <span className="text-sm">{coresignalData.connections_count.toLocaleString()}</span>
+                                  <span className="text-sm">{apolloData.connections_count.toLocaleString()}</span>
                                 </div>
                               </div>
                             )}
                             
-                            {coresignalData?.follower_count !== undefined && (
+                            {apolloData?.follower_count !== undefined && (
                               <div className="flex items-start gap-2">
                                 <UserPlus className="h-4 w-4 text-text-secondary mt-0.5 flex-shrink-0" />
                                 <div className="flex flex-col">
                                   <span className="text-xs text-text-tertiary">LinkedIn Followers</span>
-                                  <span className="text-sm">{coresignalData.follower_count.toLocaleString()}</span>
+                                  <span className="text-sm">{apolloData.follower_count.toLocaleString()}</span>
                                 </div>
                               </div>
                             )}
@@ -365,20 +372,20 @@ export function CoreSignalPreviewSheet({
                       <AccordionContent>
                         <CardContent className="space-y-4 pt-0">
                           {/* Location - Available */}
-                          {coresignalData?.location && (
+                          {apolloData?.location && (
                             <div className="flex items-start gap-2">
                               <MapPin className="h-4 w-4 text-text-secondary mt-0.5 flex-shrink-0" />
-                              <span className="text-sm">{coresignalData.location}</span>
+                              <span className="text-sm">{apolloData.location}</span>
                             </div>
                           )}
 
                           {/* LinkedIn - Available */}
-                          {coresignalData?.linkedin_url && (
+                          {apolloData?.linkedin_url && (
                             <div className="flex items-start justify-between gap-2">
                               <div className="flex items-start gap-2 flex-1 min-w-0">
                                 <LinkedInFilled className="h-4 w-4 text-text-secondary mt-0.5 flex-shrink-0" />
                                 <a
-                                  href={coresignalData.linkedin_url}
+                                  href={apolloData.linkedin_url}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="text-sm text-blue-600 hover:text-blue-700 hover:underline break-all"
@@ -390,11 +397,37 @@ export function CoreSignalPreviewSheet({
                             </div>
                           )}
 
-                          {/* Email - Locked */}
-                          <LockedField icon={Mail} label="Email" />
+                          {/* Email - Show if available from Apollo, otherwise locked */}
+                          {hasEmail ? (
+                            <div className="flex items-start gap-2">
+                              <Mail className="h-4 w-4 text-text-secondary mt-0.5 flex-shrink-0" />
+                              <div className="flex flex-col">
+                                <div className="flex items-center gap-2">
+                                  <a href={`mailto:${apolloData?.email}`} className="text-sm text-blue-600 hover:underline">
+                                    {apolloData?.email}
+                                  </a>
+                                  <Badge variant="secondary" className="text-xs">
+                                    <CheckCircle2 className="h-3 w-3 mr-1 text-green-500" />
+                                    Verified
+                                  </Badge>
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <LockedField icon={Mail} label="Email" />
+                          )}
 
-                          {/* Phone - Locked */}
-                          <LockedField icon={Phone} label="Phone" />
+                          {/* Phone - Show if available from Apollo, otherwise locked */}
+                          {hasPhone ? (
+                            <div className="flex items-start gap-2">
+                              <Phone className="h-4 w-4 text-text-secondary mt-0.5 flex-shrink-0" />
+                              <a href={`tel:${apolloData?.phone}`} className="text-sm text-blue-600 hover:underline">
+                                {apolloData?.phone}
+                              </a>
+                            </div>
+                          ) : (
+                            <LockedField icon={Phone} label="Phone" />
+                          )}
                         </CardContent>
                       </AccordionContent>
                     </Card>
@@ -411,9 +444,9 @@ export function CoreSignalPreviewSheet({
                       </AccordionTrigger>
                       <AccordionContent>
                         <CardContent className="pt-0">
-                          {coresignalData?.headline ? (
+                          {apolloData?.headline ? (
                             <div className="text-sm text-text-primary">
-                              {coresignalData.headline}
+                              {apolloData.headline}
                             </div>
                           ) : (
                             <LockedSection 
@@ -437,32 +470,32 @@ export function CoreSignalPreviewSheet({
                       <AccordionContent>
                         <CardContent className="space-y-4 pt-0">
                           {/* Current Position - Available */}
-                          {(coresignalData?.current_role || coresignalData?.current_company) && (
+                          {(apolloData?.current_role || apolloData?.current_company) && (
                             <div className="border-l-2 border-primary pl-4 py-2">
                               <div className="font-medium text-text-primary">
-                                {coresignalData.current_role || 'Current Position'}
+                                {apolloData.current_role || 'Current Position'}
                               </div>
-                              {coresignalData.current_company && (
+                              {apolloData.current_company && (
                                 <div className="text-sm text-text-secondary mt-1 flex items-center gap-2">
                                   <Building2 className="h-3.5 w-3.5" />
-                                  {coresignalData.current_company}
+                                  {apolloData.current_company}
                                 </div>
                               )}
-                              {coresignalData?.experience_location && (
+                              {apolloData?.experience_location && (
                                 <div className="text-sm text-text-tertiary mt-1 flex items-center gap-2">
                                   <MapPin className="h-3.5 w-3.5" />
-                                  {coresignalData.experience_location}
+                                  {apolloData.experience_location}
                                 </div>
                               )}
-                              {coresignalData?.company_industry && (
+                              {apolloData?.company_industry && (
                                 <div className="text-sm text-text-tertiary mt-1 flex items-center gap-2">
                                   <Briefcase className="h-3.5 w-3.5" />
-                                  {coresignalData.company_industry}
+                                  {apolloData.company_industry}
                                 </div>
                               )}
-                              {(coresignalData?.company_url || coresignalData?.company_website) && (
+                              {(apolloData?.company_url || apolloData?.company_website) && (
                                 <a
-                                  href={coresignalData.company_url || coresignalData.company_website}
+                                  href={apolloData.company_url || apolloData.company_website}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="text-sm text-blue-600 hover:text-blue-700 hover:underline mt-1 flex items-center gap-2"
@@ -536,9 +569,9 @@ export function CoreSignalPreviewSheet({
                       <div className="space-y-2">
                         <div className="font-medium text-warning">Limited Preview Data</div>
                         <div className="text-sm text-text-secondary">
-                          This is a preview from CoreSignal's search results. To view the full profile including 
+                          This is a preview from Apollo's search results. To view the full profile including 
                           complete work experience, education, skills, and contact information, you need to collect the 
-                          full profile (costs 1 CoreSignal credit).
+                          full profile (costs 1 sourcing credit).
                         </div>
                       </div>
                     </div>
@@ -564,7 +597,7 @@ export function CoreSignalPreviewSheet({
                     <UnlockItem icon={Wrench} text="Full skills list" />
                     <div className="pt-4 border-t border-border">
                       <div className="text-xs text-text-tertiary">
-                        Cost: 1 CoreSignal credit
+                        Cost: 1 sourcing credit
                       </div>
                     </div>
                   </CardContent>

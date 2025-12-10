@@ -49,7 +49,7 @@ export function AssignCreditsDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Coins className="h-5 w-5 text-virgilio-purple" />
-            Assign CoreSignal Credits
+            Assign Sourcing Credits
           </DialogTitle>
           <DialogDescription>
             Manually set credit limits for <strong>{tenantName}</strong>
@@ -68,7 +68,7 @@ export function AssignCreditsDialog({
               placeholder="e.g., 100"
             />
             <p className="text-sm text-muted-foreground">
-              Number of CoreSignal searches allowed per billing cycle
+              Number of candidate searches allowed per billing cycle
             </p>
           </div>
 
