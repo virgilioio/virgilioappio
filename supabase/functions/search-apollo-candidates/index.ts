@@ -4,7 +4,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 import { corsHeadersFor, handlePreflight } from "../_shared/cors.ts";
 
 const APOLLO_API_KEY = Deno.env.get('APOLLO_API_KEY');
-const APOLLO_API_URL = 'https://api.apollo.io/api/v1/mixed_people/search';
+// CORRECT Apollo endpoint for searching (api_search, not search)
+const APOLLO_API_URL = 'https://api.apollo.io/api/v1/mixed_people/api_search';
 
 const supabase = createClient(
   Deno.env.get('SUPABASE_URL') ?? '',
@@ -12,13 +13,11 @@ const supabase = createClient(
 );
 
 interface SearchCriteria {
-  skills: string[];
   title_keywords?: string[];
   locations?: string[];
-  salary_min?: number;
-  salary_max?: number;
-  experience_years?: { min?: number; max?: number };
   seniorities?: string[];
+  organization_locations?: string[];
+  // Note: skills are NOT supported by Apollo search - only titles and locations
 }
 
 interface SearchRequest {
@@ -28,28 +27,30 @@ interface SearchRequest {
   organization_id?: string;
 }
 
-interface ApolloCandidate {
+// Apollo search response candidate (obfuscated data)
+interface ApolloSearchCandidate {
   id: string;
   first_name: string;
-  last_name: string;
-  name: string;
-  headline?: string;
+  last_name_obfuscated?: string;  // Obfuscated: "Po***r"
+  last_name?: string;  // Sometimes provided
   title?: string;
-  linkedin_url?: string;
-  email?: string;
-  email_status?: string;
-  phone_numbers?: Array<{ raw_number: string; sanitized_number: string; type: string }>;
-  organization_name?: string;
-  city?: string;
-  state?: string;
-  country?: string;
-  seniority?: string;
-  departments?: string[];
-  employment_history?: Array<{
-    organization_name: string;
-    title: string;
-    current: boolean;
-  }>;
+  last_refreshed_at?: string;
+  has_email: boolean;
+  has_city: boolean;
+  has_state: boolean;
+  has_country: boolean;
+  has_direct_phone?: string;  // "Yes", "No", or "Maybe: please request..."
+  organization?: {
+    name: string;
+    has_industry: boolean;
+    has_phone: boolean;
+    has_city: boolean;
+    has_state: boolean;
+    has_country: boolean;
+    has_zip_code: boolean;
+    has_revenue: boolean;
+    has_employee_count: boolean;
+  };
 }
 
 // Map seniority values to Apollo's expected format
@@ -65,22 +66,6 @@ const SENIORITY_MAPPING: Record<string, string> = {
   'c_suite': 'c_suite',
   'c-suite': 'c_suite'
 };
-
-// Parse location string to Apollo format
-// Input formats: "City,State,Country" or "State,Country" or "Country"
-function parseLocationForApollo(locationValue: string): { city?: string; state?: string; country?: string } {
-  const parts = locationValue.split(',').map(p => p.trim());
-  
-  if (parts.length === 3) {
-    return { city: parts[0], state: parts[1], country: parts[2] };
-  } else if (parts.length === 2) {
-    return { state: parts[0], country: parts[1] };
-  } else if (parts.length === 1) {
-    return { country: parts[0] };
-  }
-  
-  return {};
-}
 
 // Convert country codes to full names for Apollo
 const COUNTRY_CODE_TO_NAME: Record<string, string> = {
@@ -98,189 +83,131 @@ const COUNTRY_CODE_TO_NAME: Record<string, string> = {
   'EG': 'Egypt', 'ZA': 'South Africa', 'KE': 'Kenya', 'NG': 'Nigeria'
 };
 
-// Build Apollo API request body
-function buildApolloRequestBody(criteria: SearchCriteria, page: number = 1, perPage: number = 50): Record<string, any> {
-  const body: Record<string, any> = {
-    page,
-    per_page: perPage,
-    contact_email_status: ['verified'], // Only get verified emails
-  };
+// US State abbreviations to full names
+const US_STATE_ABBR_TO_NAME: Record<string, string> = {
+  'AL': 'Alabama', 'AK': 'Alaska', 'AZ': 'Arizona', 'AR': 'Arkansas', 'CA': 'California',
+  'CO': 'Colorado', 'CT': 'Connecticut', 'DE': 'Delaware', 'FL': 'Florida', 'GA': 'Georgia',
+  'HI': 'Hawaii', 'ID': 'Idaho', 'IL': 'Illinois', 'IN': 'Indiana', 'IA': 'Iowa',
+  'KS': 'Kansas', 'KY': 'Kentucky', 'LA': 'Louisiana', 'ME': 'Maine', 'MD': 'Maryland',
+  'MA': 'Massachusetts', 'MI': 'Michigan', 'MN': 'Minnesota', 'MS': 'Mississippi', 'MO': 'Missouri',
+  'MT': 'Montana', 'NE': 'Nebraska', 'NV': 'Nevada', 'NH': 'New Hampshire', 'NJ': 'New Jersey',
+  'NM': 'New Mexico', 'NY': 'New York', 'NC': 'North Carolina', 'ND': 'North Dakota', 'OH': 'Ohio',
+  'OK': 'Oklahoma', 'OR': 'Oregon', 'PA': 'Pennsylvania', 'RI': 'Rhode Island', 'SC': 'South Carolina',
+  'SD': 'South Dakota', 'TN': 'Tennessee', 'TX': 'Texas', 'UT': 'Utah', 'VT': 'Vermont',
+  'VA': 'Virginia', 'WA': 'Washington', 'WV': 'West Virginia', 'WI': 'Wisconsin', 'WY': 'Wyoming',
+  'DC': 'District of Columbia'
+};
 
-  // Title keywords → person_titles (CURRENT JOB TITLE - Apollo's key advantage!)
-  if (criteria.title_keywords && criteria.title_keywords.length > 0) {
-    body.person_titles = criteria.title_keywords.slice(0, 5);
-    body.include_similar_titles = true; // Allow similar titles for broader results
-    console.log(`🎯 Apollo title filter (CURRENT job): ${body.person_titles.join(', ')}`);
-  }
-
-  // Skills → q_keywords (general keyword search)
-  if (criteria.skills && criteria.skills.length > 0) {
-    body.q_keywords = criteria.skills.slice(0, 5).join(' OR ');
-    console.log(`🔧 Apollo skills keyword: ${body.q_keywords}`);
-  }
-
-  // Locations → person_locations
-  if (criteria.locations && criteria.locations.length > 0) {
-    const apolloLocations: string[] = [];
+/**
+ * Convert our internal location format to Apollo's expected format
+ * Our format: "City,State,CountryCode" (e.g., "San Francisco,California,US")
+ * Apollo format: "State, Country" or "City, Country" (e.g., "California, United States")
+ */
+function formatLocationForApollo(locationValue: string): string | null {
+  const parts = locationValue.split(',').map(p => p.trim());
+  
+  if (parts.length === 3) {
+    // "City,State,Country" → "City, Country" for Apollo
+    const city = parts[0];
+    const countryCode = parts[2];
+    const countryName = COUNTRY_CODE_TO_NAME[countryCode] || countryCode;
+    return `${city}, ${countryName}`;
+  } else if (parts.length === 2) {
+    // "State,Country" → "State, Country"
+    const state = parts[0];
+    const countryCode = parts[1];
+    const countryName = COUNTRY_CODE_TO_NAME[countryCode] || countryCode;
     
+    // Expand US state abbreviations if applicable
+    const expandedState = US_STATE_ABBR_TO_NAME[state.toUpperCase()] || state;
+    return `${expandedState}, ${countryName}`;
+  } else if (parts.length === 1) {
+    // Just country code → country name
+    const countryCode = parts[0];
+    return COUNTRY_CODE_TO_NAME[countryCode] || countryCode;
+  }
+  
+  return null;
+}
+
+/**
+ * Build Apollo API request URL with query parameters
+ * Apollo uses URL query params, not JSON body for api_search
+ */
+function buildApolloSearchUrl(criteria: SearchCriteria, perPage: number = 50): string {
+  const params = new URLSearchParams();
+  
+  // Title keywords → person_titles[] (CURRENT JOB TITLE filter)
+  if (criteria.title_keywords && criteria.title_keywords.length > 0) {
+    // Add multiple title variations for broader results
+    criteria.title_keywords.slice(0, 10).forEach(title => {
+      params.append('person_titles[]', title);
+    });
+    console.log(`🎯 Apollo title filter: ${criteria.title_keywords.join(', ')}`);
+  }
+
+  // Locations → person_locations[]
+  if (criteria.locations && criteria.locations.length > 0) {
     for (const loc of criteria.locations) {
-      const parsed = parseLocationForApollo(loc);
-      
-      if (parsed.city && parsed.country) {
-        const countryName = COUNTRY_CODE_TO_NAME[parsed.country] || parsed.country;
-        apolloLocations.push(`${parsed.city}, ${countryName}`);
-      } else if (parsed.state && parsed.country) {
-        const countryName = COUNTRY_CODE_TO_NAME[parsed.country] || parsed.country;
-        apolloLocations.push(`${parsed.state}, ${countryName}`);
-      } else if (parsed.country) {
-        const countryName = COUNTRY_CODE_TO_NAME[parsed.country] || parsed.country;
-        apolloLocations.push(countryName);
+      const apolloLocation = formatLocationForApollo(loc);
+      if (apolloLocation) {
+        params.append('person_locations[]', apolloLocation);
       }
     }
-    
-    if (apolloLocations.length > 0) {
-      body.person_locations = apolloLocations;
-      console.log(`📍 Apollo locations: ${apolloLocations.join(', ')}`);
-    }
+    console.log(`📍 Apollo locations: ${criteria.locations.join(', ')}`);
   }
 
-  // Seniority filter
+  // Seniority filter → person_seniorities[]
   if (criteria.seniorities && criteria.seniorities.length > 0) {
     const apolloSeniorities = criteria.seniorities
       .map(s => SENIORITY_MAPPING[s.toLowerCase()] || s.toLowerCase())
       .filter(Boolean);
     
-    if (apolloSeniorities.length > 0) {
-      body.person_seniorities = apolloSeniorities;
-      console.log(`📊 Apollo seniority: ${apolloSeniorities.join(', ')}`);
-    }
+    apolloSeniorities.forEach(seniority => {
+      params.append('person_seniorities[]', seniority);
+    });
+    console.log(`📊 Apollo seniority: ${apolloSeniorities.join(', ')}`);
   }
 
-  return body;
+  // Results per page
+  params.append('per_page', String(perPage));
+
+  return `${APOLLO_API_URL}?${params.toString()}`;
 }
 
-// Helper to get tenant_id from organization
-async function getTenantIdFromOrganization(organizationId: string): Promise<string> {
-  const { data: org, error } = await supabase
-    .from('organizations')
-    .select('tenant_id')
-    .eq('id', organizationId)
-    .single();
-  
-  if (error || !org) {
-    throw new Error(`Organization not found: ${organizationId}`);
-  }
-  
-  return org.tenant_id;
-}
-
-// Check credit availability with tier-based limits
-async function checkCreditAvailability(
-  organizationId: string, 
-  type: 'search' | 'collect'
-): Promise<{ available: boolean; remaining: number; usage: any; nextReset: string }> {
-  const tenant_id = await getTenantIdFromOrganization(organizationId);
-  const currentMonth = new Date().toISOString().slice(0, 7) + '-01';
-  
-  const nextMonth = new Date(currentMonth);
-  nextMonth.setMonth(nextMonth.getMonth() + 1);
-  const nextReset = nextMonth.toISOString().slice(0, 10);
-  
-  let { data: usage, error } = await supabase
-    .from('sourcing_credits_usage')
-    .select('*')
-    .eq('tenant_id', tenant_id)
-    .eq('billing_cycle_start', currentMonth)
-    .single();
-  
-  if (error && error.code === 'PGRST116') {
-    const { data: limits, error: limitsError } = await supabase
-      .rpc('get_tenant_credit_limits', { p_tenant_id: tenant_id })
-      .single();
-    
-    if (limitsError) {
-      console.error('Error getting tenant credit limits:', limitsError);
-      throw limitsError;
-    }
-    
-    const { data: newUsage, error: insertError } = await supabase
-      .from('sourcing_credits_usage')
-      .insert({
-        tenant_id: tenant_id,
-        billing_cycle_start: currentMonth,
-        search_credits_limit: limits.search_limit,
-        collect_credits_limit: limits.collect_limit
-      })
-      .select()
-      .single();
-    
-    if (insertError) throw insertError;
-    usage = newUsage;
-  } else if (error) {
-    throw error;
-  }
-  
-  const limit = type === 'search' ? usage.search_credits_limit : usage.collect_credits_limit;
-  const used = type === 'search' ? usage.search_credits_used : usage.collect_credits_used;
-  
-  return {
-    available: used < limit,
-    remaining: limit - used,
-    usage,
-    nextReset
-  };
-}
-
-// Increment credit usage
-async function incrementCreditUsage(
-  organizationId: string,
-  type: 'search' | 'collect'
-): Promise<void> {
-  const tenant_id = await getTenantIdFromOrganization(organizationId);
-  const now = new Date();
-  const billingCycleStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-  
-  const { error } = await supabase.rpc('increment_sourcing_usage', {
-    p_tenant_id: tenant_id,
-    p_billing_cycle_start: billingCycleStart,
-    p_credit_type: type
-  });
-  
-  if (error) {
-    console.error(`Failed to increment ${type} credit usage:`, error);
-    throw error;
-  }
-  
-  console.log(`Successfully incremented ${type} credit for tenant ${tenant_id}`);
-}
-
-// Map Apollo candidate to our format
-function mapApolloCandidate(apolloCandidate: ApolloCandidate): any {
-  const location = [
-    apolloCandidate.city,
-    apolloCandidate.state,
-    apolloCandidate.country
-  ].filter(Boolean).join(', ');
-
-  // Extract primary phone number
-  const phone = apolloCandidate.phone_numbers?.[0]?.sanitized_number || 
-                apolloCandidate.phone_numbers?.[0]?.raw_number || null;
+/**
+ * Map Apollo search result candidate to our preview format
+ * Note: Search results have OBFUSCATED data - full data requires enrichment
+ */
+function mapApolloSearchCandidate(apolloCandidate: ApolloSearchCandidate): any {
+  // Construct display name with obfuscated last name
+  const lastName = apolloCandidate.last_name_obfuscated || apolloCandidate.last_name || '';
+  const displayName = `${apolloCandidate.first_name} ${lastName}`.trim();
 
   return {
     apollo_id: apolloCandidate.id,
-    full_name: apolloCandidate.name || `${apolloCandidate.first_name} ${apolloCandidate.last_name}`.trim(),
-    headline: apolloCandidate.headline || apolloCandidate.title,
-    location: location,
-    country: apolloCandidate.country,
-    profile_url: apolloCandidate.linkedin_url,
-    current_company: apolloCandidate.organization_name,
+    full_name: displayName,
+    first_name: apolloCandidate.first_name,
+    last_name_obfuscated: apolloCandidate.last_name_obfuscated,
+    headline: apolloCandidate.title,
     current_title: apolloCandidate.title,
-    email: apolloCandidate.email,
-    email_status: apolloCandidate.email_status,
-    phone: phone,
-    seniority: apolloCandidate.seniority,
-    experience_count: apolloCandidate.employment_history?.length || 0,
-    _score: 100 // Apollo doesn't provide a relevance score, use 100 as default
+    current_company: apolloCandidate.organization?.name || null,
+    // Availability flags - used to show "Reveal Contact" option
+    has_email: apolloCandidate.has_email || false,
+    has_phone: apolloCandidate.has_direct_phone === 'Yes' || 
+               apolloCandidate.has_direct_phone?.startsWith('Maybe'),
+    has_city: apolloCandidate.has_city || false,
+    has_state: apolloCandidate.has_state || false,
+    has_country: apolloCandidate.has_country || false,
+    // Search results don't include actual contact info - requires enrichment
+    email: null,
+    phone: null,
+    profile_url: null,
+    location: null,
+    // Flag indicating this is preview data only
+    is_preview: true,
+    needs_enrichment: true,
+    _score: 100  // Apollo doesn't provide relevance score
   };
 }
 
@@ -301,7 +228,7 @@ serve(async (req) => {
       throw new Error('APOLLO_API_KEY not configured');
     }
 
-    // Determine organization ID
+    // Determine organization ID (needed for caching, not credits)
     let orgId = organization_id;
     
     if (!orgId && project_id) {
@@ -316,10 +243,6 @@ serve(async (req) => {
       }
       
       orgId = project.organization_id;
-    }
-    
-    if (!orgId) {
-      throw new Error('Organization ID required');
     }
 
     // Check cache if project_id provided
@@ -343,25 +266,25 @@ serve(async (req) => {
           const candidates = (cachedCandidates || []).map(c => ({
             apollo_id: c.apollo_id,
             full_name: c.full_name,
+            first_name: c.first_name,
+            last_name_obfuscated: c.last_name_obfuscated,
             headline: c.headline,
-            location: c.location,
-            country: c.country,
-            profile_url: c.profile_url,
             current_company: c.current_company,
             current_title: c.current_title,
-            experience_count: c.experience_count,
+            has_email: c.has_email,
+            has_phone: c.has_phone,
+            is_preview: true,
+            needs_enrichment: true,
             _score: c.match_score
           }));
-          
-          const creditCheck = await checkCreditAvailability(orgId, 'search');
           
           return new Response(JSON.stringify({
             candidates,
             total_count: project.sourcing_candidate_count || candidates.length,
-            credits_used: 0,
-            credits_remaining: creditCheck.remaining,
+            credits_used: 0,  // Search is FREE
             cached: true,
-            provider: 'apollo'
+            provider: 'apollo',
+            search_is_free: true
           }), {
             status: 200,
             headers: { 'Content-Type': 'application/json', ...cors },
@@ -370,41 +293,25 @@ serve(async (req) => {
       }
     }
 
-    // Check credit availability
-    const creditCheck = await checkCreditAvailability(orgId, 'search');
-    
-    if (!creditCheck.available) {
-      console.warn('❌ Monthly search credit limit reached');
-      return new Response(JSON.stringify({
-        error: 'Monthly credit limit reached',
-        error_code: 'CREDITS_EXHAUSTED',
-        credits_remaining: 0,
-        credits_limit: creditCheck.usage.search_credits_limit,
-        credits_used: creditCheck.usage.search_credits_used,
-        next_reset: creditCheck.nextReset
-      }), {
-        status: 429,
-        headers: { 'Content-Type': 'application/json', ...cors },
-      });
-    }
+    // IMPORTANT: Apollo Search is FREE - no credit check needed!
+    // Credits are only consumed when enriching/revealing contact info
+    console.log('💡 Apollo search is FREE - no credits consumed');
 
-    console.log(`💳 Credits available: ${creditCheck.remaining} search credits remaining`);
-
-    // Build Apollo request
+    // Build Apollo request URL with query params
     const perPage = Math.min(limit, 100); // Apollo max is 100 per page
-    const requestBody = buildApolloRequestBody(criteria, 1, perPage);
+    const searchUrl = buildApolloSearchUrl(criteria, perPage);
 
-    console.log('📡 Apollo API Request:', JSON.stringify(requestBody, null, 2));
+    console.log('📡 Apollo API Request URL:', searchUrl);
 
     // Call Apollo API
-    const apolloResponse = await fetch(APOLLO_API_URL, {
+    const apolloResponse = await fetch(searchUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Cache-Control': 'no-cache',
-        'X-Api-Key': APOLLO_API_KEY
-      },
-      body: JSON.stringify(requestBody)
+        'X-Api-Key': APOLLO_API_KEY,
+        'accept': 'application/json'
+      }
     });
 
     if (!apolloResponse.ok) {
@@ -415,14 +322,11 @@ serve(async (req) => {
 
     const apolloData = await apolloResponse.json();
     
-    console.log(`✅ Apollo returned ${apolloData.people?.length || 0} candidates`);
-
-    // Increment credit usage after successful API call
-    await incrementCreditUsage(orgId, 'search');
+    console.log(`✅ Apollo returned ${apolloData.people?.length || 0} candidates (total: ${apolloData.total_entries || 0})`);
 
     // Map Apollo candidates to our format
-    const candidates = (apolloData.people || []).map(mapApolloCandidate);
-    const totalCount = apolloData.pagination?.total_entries || candidates.length;
+    const candidates = (apolloData.people || []).map(mapApolloSearchCandidate);
+    const totalCount = apolloData.total_entries || candidates.length;
 
     // Store in cache if project_id provided
     if (project_id && candidates.length > 0) {
@@ -432,18 +336,18 @@ serve(async (req) => {
         .delete()
         .eq('sourcing_project_id', project_id);
 
-      // Insert new candidates
+      // Insert new candidates (preview data only)
       const candidatesToInsert = candidates.slice(0, 200).map((c: any) => ({
         sourcing_project_id: project_id,
         apollo_id: c.apollo_id,
         full_name: c.full_name,
+        first_name: c.first_name,
+        last_name_obfuscated: c.last_name_obfuscated,
         headline: c.headline,
-        location: c.location,
-        country: c.country,
-        profile_url: c.profile_url,
         current_company: c.current_company,
         current_title: c.current_title,
-        experience_count: c.experience_count,
+        has_email: c.has_email,
+        has_phone: c.has_phone,
         match_score: c._score
       }));
 
@@ -469,16 +373,14 @@ serve(async (req) => {
         .eq('id', project_id);
     }
 
-    // Get updated credit info
-    const updatedCreditCheck = await checkCreditAvailability(orgId, 'search');
-
     return new Response(JSON.stringify({
       candidates,
       total_count: totalCount,
-      credits_used: 1,
-      credits_remaining: updatedCreditCheck.remaining,
+      credits_used: 0,  // Search is FREE
       cached: false,
-      provider: 'apollo'
+      provider: 'apollo',
+      search_is_free: true,
+      message: 'Search is free. Credits are only used when revealing contact info.'
     }), {
       status: 200,
       headers: { 'Content-Type': 'application/json', ...cors },
