@@ -28,11 +28,11 @@ interface MatchedCandidate {
   candidate_name: string
   current_role?: string
   current_company?: string
-  location?: string  // Full location string
+  location?: string  // Full location string (only available after enrichment)
   location_city?: string
   location_state?: string
   location_country?: string
-  linkedin_url?: string
+  linkedin_url?: string  // Only available after enrichment
   match_score: number
   match_tier: 'excellent' | 'good' | 'fair' | 'minimal'
   skills?: string[]
@@ -52,9 +52,10 @@ interface MatchedCandidate {
   company_website?: string
   company_industry?: string
   experience_location?: string
-  // Apollo availability indicators
+  // Apollo availability indicators (indicate what CAN be revealed after collection)
   has_email?: boolean
   has_phone?: boolean
+  has_location?: boolean  // Indicates location is available after enrichment
 }
 
 interface SourcingCandidateTableProps {
@@ -107,7 +108,7 @@ export function SourcingCandidateTable({
         setSelectedApolloData({
           candidate_name: prevCandidate.candidate_name,
           headline: prevCandidate.headline,
-          location: prevCandidate.location_city ? `${prevCandidate.location_city}, ${prevCandidate.location_country}` : prevCandidate.location_country,
+          location: prevCandidate.location || (prevCandidate.location_city ? `${prevCandidate.location_city}, ${prevCandidate.location_country}` : prevCandidate.location_country),
           current_company: prevCandidate.current_company,
           current_role: prevCandidate.current_role,
           linkedin_url: prevCandidate.linkedin_url,
@@ -120,7 +121,11 @@ export function SourcingCandidateTable({
           company_url: prevCandidate.company_url,
           company_website: prevCandidate.company_website,
           company_industry: prevCandidate.company_industry,
-          experience_location: prevCandidate.experience_location
+          experience_location: prevCandidate.experience_location,
+          // Availability flags
+          has_email: prevCandidate.has_email,
+          has_phone: prevCandidate.has_phone,
+          has_location: prevCandidate.has_location
         })
       }
       
@@ -146,7 +151,7 @@ export function SourcingCandidateTable({
         setSelectedApolloData({
           candidate_name: nextCandidate.candidate_name,
           headline: nextCandidate.headline,
-          location: nextCandidate.location_city ? `${nextCandidate.location_city}, ${nextCandidate.location_country}` : nextCandidate.location_country,
+          location: nextCandidate.location || (nextCandidate.location_city ? `${nextCandidate.location_city}, ${nextCandidate.location_country}` : nextCandidate.location_country),
           current_company: nextCandidate.current_company,
           current_role: nextCandidate.current_role,
           linkedin_url: nextCandidate.linkedin_url,
@@ -159,7 +164,11 @@ export function SourcingCandidateTable({
           company_url: nextCandidate.company_url,
           company_website: nextCandidate.company_website,
           company_industry: nextCandidate.company_industry,
-          experience_location: nextCandidate.experience_location
+          experience_location: nextCandidate.experience_location,
+          // Availability flags
+          has_email: nextCandidate.has_email,
+          has_phone: nextCandidate.has_phone,
+          has_location: nextCandidate.has_location
         })
       }
       
@@ -437,7 +446,7 @@ export function SourcingCandidateTable({
                         setSelectedApolloData({
                           candidate_name: candidate.candidate_name,
                           headline: candidate.headline,
-                          location: candidate.location_city ? `${candidate.location_city}, ${candidate.location_country}` : candidate.location_country,
+                          location: candidate.location || (candidate.location_city ? `${candidate.location_city}, ${candidate.location_country}` : candidate.location_country),
                           current_company: candidate.current_company,
                           current_role: candidate.current_role,
                           linkedin_url: candidate.linkedin_url,
@@ -450,7 +459,11 @@ export function SourcingCandidateTable({
                           company_url: candidate.company_url,
                           company_website: candidate.company_website,
                           company_industry: candidate.company_industry,
-                          experience_location: candidate.experience_location
+                          experience_location: candidate.experience_location,
+                          // Availability flags
+                          has_email: candidate.has_email,
+                          has_phone: candidate.has_phone,
+                          has_location: candidate.has_location
                         })
                         setSheetOpen(true)
                       }
@@ -471,6 +484,7 @@ export function SourcingCandidateTable({
                         <div className="flex flex-col gap-0.5">
                           <div className="flex items-center gap-2">
                             <span className="font-medium text-sm">{candidate.candidate_name}</span>
+                            {/* Only show LinkedIn icon if URL is available (after enrichment) */}
                             {candidate.linkedin_url && (
                               <a 
                                 href={candidate.linkedin_url}
@@ -483,19 +497,25 @@ export function SourcingCandidateTable({
                               </a>
                             )}
                           </div>
-                          {/* Apollo availability indicators */}
+                          {/* Apollo availability indicators - show what CAN be revealed */}
                           {candidate.source === 'apollo' && !candidate.candidate_id && (
                             <div className="flex items-center gap-1.5">
                               {candidate.has_email && (
-                                <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
-                                  <Mail className="h-2.5 w-2.5 text-green-500" />
+                                <span className="flex items-center gap-0.5 text-[10px] text-green-600">
+                                  <Mail className="h-2.5 w-2.5" />
                                   Email
                                 </span>
                               )}
                               {candidate.has_phone && (
-                                <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
-                                  <Phone className="h-2.5 w-2.5 text-green-500" />
+                                <span className="flex items-center gap-0.5 text-[10px] text-green-600">
+                                  <Phone className="h-2.5 w-2.5" />
                                   Phone
+                                </span>
+                              )}
+                              {candidate.has_location && (
+                                <span className="flex items-center gap-0.5 text-[10px] text-green-600">
+                                  <MapPin className="h-2.5 w-2.5" />
+                                  Location
                                 </span>
                               )}
                             </div>
@@ -526,22 +546,29 @@ export function SourcingCandidateTable({
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-1 text-sm">
-                        {(candidate.location || candidate.location_city || candidate.location_country) ? (
-                          <>
-                            <MapPin className="h-3 w-3 text-muted-foreground" />
-                            <span className="truncate">
-                              {/* Use full location string if available, otherwise build from parts */}
-                              {candidate.location || 
-                               (candidate.location_city && candidate.location_country
-                                ? `${candidate.location_city}, ${candidate.location_country}`
-                                : candidate.location_city || candidate.location_country)}
-                            </span>
-                          </>
+                      {/* For Apollo preview candidates, show availability badge if no actual location */}
+                      {candidate.source === 'apollo' && !candidate.candidate_id && !candidate.location && !candidate.location_city ? (
+                        candidate.has_location ? (
+                          <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                            <MapPin className="h-3 w-3 text-green-500" />
+                            <span className="text-xs italic">Available after collect</span>
+                          </div>
                         ) : (
                           <span className="text-muted-foreground">-</span>
-                        )}
-                      </div>
+                        )
+                      ) : (candidate.location || candidate.location_city || candidate.location_country) ? (
+                        <div className="flex items-center gap-1 text-sm">
+                          <MapPin className="h-3 w-3 text-muted-foreground" />
+                          <span className="truncate">
+                            {candidate.location || 
+                             (candidate.location_city && candidate.location_country
+                              ? `${candidate.location_city}, ${candidate.location_country}`
+                              : candidate.location_city || candidate.location_country)}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">-</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       {candidate.source === 'apollo' && candidate.headline ? (
@@ -585,14 +612,14 @@ export function SourcingCandidateTable({
                               handleCollectProfile(candidate.apollo_id!)
                             }}
                             disabled={isCollecting || isCollectDisabled}
-                            title={isCollectDisabled ? 'Monthly collect credit limit reached' : 'Collect full profile (uses 1 credit)'}
+                            title={isCollectDisabled ? 'Monthly collect credit limit reached' : 'Reveal full profile with LinkedIn, email & phone (uses 1 credit)'}
                           >
                             {isCollecting ? (
                               <Loader2 className="h-3 w-3 mr-1 animate-spin" />
                             ) : (
                               <Download className="h-3 w-3 mr-1" />
                             )}
-                            {isCollectDisabled ? 'Credits exhausted' : 'Collect (1 credit)'}
+                            {isCollectDisabled ? 'Credits exhausted' : 'Reveal Profile (1 credit)'}
                           </Button>
                         ) : (
                           <>
@@ -700,7 +727,7 @@ export function SourcingCandidateTable({
                   setSelectedApolloData({
                     candidate_name: candidate.candidate_name,
                     headline: candidate.headline,
-                    location: candidate.location_city ? `${candidate.location_city}, ${candidate.location_country}` : candidate.location_country,
+                    location: candidate.location || (candidate.location_city ? `${candidate.location_city}, ${candidate.location_country}` : candidate.location_country),
                     current_company: candidate.current_company,
                     current_role: candidate.current_role,
                     linkedin_url: candidate.linkedin_url,
@@ -713,7 +740,11 @@ export function SourcingCandidateTable({
                     company_url: candidate.company_url,
                     company_website: candidate.company_website,
                     company_industry: candidate.company_industry,
-                    experience_location: candidate.experience_location
+                    experience_location: candidate.experience_location,
+                    // Availability flags
+                    has_email: candidate.has_email,
+                    has_phone: candidate.has_phone,
+                    has_location: candidate.has_location
                   })
                   setSheetOpen(true)
                 }
