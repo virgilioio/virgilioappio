@@ -142,10 +142,15 @@ serve(async (req) => {
   const cors = corsHeadersFor(origin);
 
   try {
-    const { apollo_ids, job_id, stage_id, user_id }: EnrichRequest = await req.json();
+    const requestBody = await req.json();
+    
+    // Support both singular (apollo_id from frontend) and plural (apollo_ids for batch)
+    const apollo_ids = requestBody.apollo_ids || 
+                       (requestBody.apollo_id ? [requestBody.apollo_id] : []);
+    const { job_id, stage_id, user_id } = requestBody;
 
-    // Support both single ID and array of IDs
-    const idsToEnrich = Array.isArray(apollo_ids) ? apollo_ids : [apollo_ids];
+    // Ensure we have an array
+    const idsToEnrich = Array.isArray(apollo_ids) ? apollo_ids.filter(Boolean) : [apollo_ids].filter(Boolean);
     
     console.log('🚀 Apollo Enrich Request:', { count: idsToEnrich.length, job_id });
 

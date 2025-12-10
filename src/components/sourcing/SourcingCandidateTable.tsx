@@ -28,7 +28,9 @@ interface MatchedCandidate {
   candidate_name: string
   current_role?: string
   current_company?: string
+  location?: string  // Full location string
   location_city?: string
+  location_state?: string
   location_country?: string
   linkedin_url?: string
   match_score: number
@@ -525,13 +527,15 @@ export function SourcingCandidateTable({
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1 text-sm">
-                        {(candidate.location_city || candidate.location_country) ? (
+                        {(candidate.location || candidate.location_city || candidate.location_country) ? (
                           <>
                             <MapPin className="h-3 w-3 text-muted-foreground" />
                             <span className="truncate">
-                              {candidate.location_city && candidate.location_country
+                              {/* Use full location string if available, otherwise build from parts */}
+                              {candidate.location || 
+                               (candidate.location_city && candidate.location_country
                                 ? `${candidate.location_city}, ${candidate.location_country}`
-                                : candidate.location_city || candidate.location_country}
+                                : candidate.location_city || candidate.location_country)}
                             </span>
                           </>
                         ) : (
