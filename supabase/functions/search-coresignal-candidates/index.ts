@@ -119,9 +119,19 @@ function buildCoresignalFilterQuery(criteria: SearchCriteria): any {
     }
   }
   
-  // Note: title_keywords removed - experience_title filter is too restrictive
-  // and causes zero results due to exact title matching requirements
-  // Skills are a better filter for finding relevant candidates
+  // Title Keywords: Use the 'keyword' parameter for broader profile-wide matching
+  // Limited to top 2 titles for focused, relevant results
+  if (criteria.title_keywords && criteria.title_keywords.length > 0) {
+    const topTitles = criteria.title_keywords.slice(0, 2);
+    // Use 'keyword' for general profile text search (more flexible than experience_title)
+    // This searches across headline, summary, and experience sections
+    query.keyword = topTitles.map(title => `(${title})`).join(' OR ');
+    
+    if (criteria.title_keywords.length > 2) {
+      console.log(`⚠️ Title keywords limited from ${criteria.title_keywords.length} to 2 for focused results`);
+    }
+    console.log(`🏷️ Title filter applied: ${query.keyword}`);
+  }
   
   // Location: Parse hierarchical format and send to CoreSignal
   if (criteria.locations && criteria.locations.length > 0) {
