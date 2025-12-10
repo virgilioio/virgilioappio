@@ -174,8 +174,43 @@ const COUNTRY_NAME_TO_CODE: Record<string, string> = {
 }
 
 /**
+ * Format location for Apollo API
+ * Apollo uses simple format: "City, Country" or "State, Country"
+ */
+export function formatLocationForApollo(locationValue: string): string | null {
+  const parts = locationValue.split(',').map(p => p.trim());
+  
+  // Country code to name mapping
+  const COUNTRY_CODE_TO_NAME: Record<string, string> = {
+    'US': 'United States', 'CA': 'Canada', 'GB': 'United Kingdom', 'DE': 'Germany',
+    'FR': 'France', 'ES': 'Spain', 'IT': 'Italy', 'NL': 'Netherlands', 'MX': 'Mexico',
+    'BR': 'Brazil', 'AR': 'Argentina', 'CL': 'Chile', 'CO': 'Colombia', 'PE': 'Peru',
+    'IN': 'India', 'CN': 'China', 'JP': 'Japan', 'SG': 'Singapore', 'AU': 'Australia'
+  };
+  
+  if (parts.length === 3) {
+    // "City,State,Country" → "City, Country"
+    const city = parts[0];
+    const countryCode = parts[2];
+    const countryName = COUNTRY_CODE_TO_NAME[countryCode] || countryCode;
+    return `${city}, ${countryName}`;
+  } else if (parts.length === 2) {
+    // "State,Country" → "State, Country"
+    const state = parts[0];
+    const countryCode = parts[1];
+    const countryName = COUNTRY_CODE_TO_NAME[countryCode] || countryCode;
+    return `${state}, ${countryName}`;
+  } else if (parts.length === 1) {
+    const countryCode = parts[0];
+    return COUNTRY_CODE_TO_NAME[countryCode] || countryCode;
+  }
+  
+  return null;
+}
+
+/**
  * Normalize a free-form location string to sourcing-compatible format(s)
- * Returns an array of location strings in the format expected by Apollo/sourcing APIs
+ * Returns an array of location strings in the format expected by sourcing APIs
  */
 export function normalizeLocationForSourcing(freeformLocation: string): string[] {
   if (!freeformLocation || freeformLocation.trim() === '') {
@@ -233,7 +268,6 @@ export function normalizeLocationForSourcing(freeformLocation: string): string[]
     const labelLower = opt.label.toLowerCase()
     const cityLower = opt.city?.toLowerCase() || ''
     const stateLower = opt.state?.toLowerCase() || ''
-    const countryLower = opt.country.toLowerCase()
     
     return (
       locationLower.includes(cityLower) && cityLower !== '' ||
