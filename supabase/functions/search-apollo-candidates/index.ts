@@ -27,29 +27,33 @@ interface SearchRequest {
   organization_id?: string;
 }
 
-// Apollo search response candidate (obfuscated data)
+// Apollo search response candidate - includes LinkedIn URL per docs
 interface ApolloSearchCandidate {
   id: string;
   first_name: string;
   last_name_obfuscated?: string;  // Obfuscated: "Po***r"
-  last_name?: string;  // Sometimes provided
+  last_name?: string;  // Full last name (for contacts)
+  name?: string;       // Full name
   title?: string;
-  last_refreshed_at?: string;
-  has_email: boolean;
-  has_city: boolean;
-  has_state: boolean;
-  has_country: boolean;
+  headline?: string;
+  linkedin_url?: string;  // ✅ Available in search response!
+  email?: string;         // Available for contacts
+  email_status?: string;
+  photo_url?: string;
+  state?: string;
+  city?: string;
+  country?: string;
+  has_email?: boolean;
+  has_city?: boolean;
+  has_state?: boolean;
+  has_country?: boolean;
   has_direct_phone?: string;  // "Yes", "No", or "Maybe: please request..."
   organization?: {
+    id?: string;
     name: string;
-    has_industry: boolean;
-    has_phone: boolean;
-    has_city: boolean;
-    has_state: boolean;
-    has_country: boolean;
-    has_zip_code: boolean;
-    has_revenue: boolean;
-    has_employee_count: boolean;
+    website_url?: string;
+    linkedin_url?: string;
+    primary_domain?: string;
   };
 }
 
@@ -177,37 +181,51 @@ function buildApolloSearchUrl(criteria: SearchCriteria, perPage: number = 50): s
 
 /**
  * Map Apollo search result candidate to our preview format
- * Note: Search results have OBFUSCATED data - full data requires enrichment
+ * Per Apollo docs: search returns linkedin_url, location fields
  */
 function mapApolloSearchCandidate(apolloCandidate: ApolloSearchCandidate): any {
-  // Construct display name with obfuscated last name
-  const lastName = apolloCandidate.last_name_obfuscated || apolloCandidate.last_name || '';
-  const displayName = `${apolloCandidate.first_name} ${lastName}`.trim();
+  // Construct display name - use full name if available, or construct from parts
+  const lastName = apolloCandidate.last_name || apolloCandidate.last_name_obfuscated || '';
+  const displayName = apolloCandidate.name || `${apolloCandidate.first_name} ${lastName}`.trim();
+
+  // Build location string from available fields
+  const locationParts = [
+    apolloCandidate.city,
+    apolloCandidate.state,
+    apolloCandidate.country
+  ].filter(Boolean);
+  const location = locationParts.length > 0 ? locationParts.join(', ') : null;
 
   return {
     apollo_id: apolloCandidate.id,
     full_name: displayName,
     first_name: apolloCandidate.first_name,
-    last_name_obfuscated: apolloCandidate.last_name_obfuscated,
-    headline: apolloCandidate.title,
+    last_name_obfuscated: apolloCandidate.last_name_obfuscated || apolloCandidate.last_name,
+    headline: apolloCandidate.headline || apolloCandidate.title,
     current_title: apolloCandidate.title,
     current_company: apolloCandidate.organization?.name || null,
+    // ✅ LinkedIn URL is available in search results!
+    profile_url: apolloCandidate.linkedin_url || null,
+    linkedin_url: apolloCandidate.linkedin_url || null,
+    // Location data
+    location: location,
+    city: apolloCandidate.city || null,
+    state: apolloCandidate.state || null,
+    country: apolloCandidate.country || null,
     // Availability flags - used to show "Reveal Contact" option
-    has_email: apolloCandidate.has_email || false,
+    has_email: apolloCandidate.has_email ?? (apolloCandidate.email_status === 'verified'),
     has_phone: apolloCandidate.has_direct_phone === 'Yes' || 
                apolloCandidate.has_direct_phone?.startsWith('Maybe'),
-    has_city: apolloCandidate.has_city || false,
-    has_state: apolloCandidate.has_state || false,
-    has_country: apolloCandidate.has_country || false,
-    // Search results don't include actual contact info - requires enrichment
-    email: null,
-    phone: null,
-    profile_url: null,
-    location: null,
-    // Flag indicating this is preview data only
-    is_preview: true,
-    needs_enrichment: true,
-    _score: 100  // Apollo doesn't provide relevance score
+    // Email may be available for "contacts" (already enriched)
+    email: apolloCandidate.email || null,
+    email_status: apolloCandidate.email_status || null,
+    // Company info
+    company_url: apolloCandidate.organization?.linkedin_url || null,
+    company_website: apolloCandidate.organization?.website_url || null,
+    // Flag indicating this is preview data
+    is_preview: !apolloCandidate.email,  // If has email, it's already enriched
+    needs_enrichment: !apolloCandidate.email,
+    _score: 100
   };
 }
 
@@ -273,6 +291,13 @@ serve(async (req) => {
             current_title: c.current_title,
             has_email: c.has_email,
             has_phone: c.has_phone,
+            // ✅ Include LinkedIn URL and location from cache
+            profile_url: c.profile_url,
+            linkedin_url: c.profile_url,
+            location: c.location,
+            country: c.country,
+            company_url: c.company_url,
+            company_website: c.company_website,
             is_preview: true,
             needs_enrichment: true,
             _score: c.match_score
@@ -336,7 +361,7 @@ serve(async (req) => {
         .delete()
         .eq('sourcing_project_id', project_id);
 
-      // Insert new candidates (preview data only)
+      // Insert new candidates with LinkedIn URLs and location
       const candidatesToInsert = candidates.slice(0, 200).map((c: any) => ({
         sourcing_project_id: project_id,
         apollo_id: c.apollo_id,
@@ -348,7 +373,13 @@ serve(async (req) => {
         current_title: c.current_title,
         has_email: c.has_email,
         has_phone: c.has_phone,
-        match_score: c._score
+        match_score: c._score,
+        // ✅ Store LinkedIn URL and location
+        profile_url: c.profile_url,
+        location: c.location,
+        country: c.country,
+        company_url: c.company_url,
+        company_website: c.company_website
       }));
 
       const { error: insertError } = await supabase
