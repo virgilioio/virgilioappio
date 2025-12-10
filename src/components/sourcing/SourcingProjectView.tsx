@@ -60,7 +60,7 @@ export function SourcingProjectView({ projectId }: SourcingProjectViewProps) {
         if (filters.source === 'local' && candidate.source !== 'local') {
           return false
         }
-        if (filters.source === 'coresignal' && candidate.source !== 'coresignal') {
+        if (filters.source === 'apollo' && candidate.source !== 'apollo') {
           return false
         }
       }

@@ -69,6 +69,9 @@ verify_jwt = false
 [functions.public-submit-application]
 verify_jwt = false
 
+[functions.search-apollo-candidates]
+verify_jwt = true
+
 [functions.search-coresignal-candidates]
 verify_jwt = true
 
