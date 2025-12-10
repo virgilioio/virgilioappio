@@ -161,17 +161,26 @@ export function ApolloPreviewSheet({
 
       if (error) throw error
 
-      if (data?.candidate_id) {
-        setCollectedCandidateId(data.candidate_id)
+      // Extract candidate_id from results array (edge function returns { results: [...] })
+      const collectedResult = data?.results?.[0]
+      const candidateId = collectedResult?.candidate_id
+      const wasAlreadyCollected = collectedResult?.already_collected
+
+      if (candidateId) {
+        setCollectedCandidateId(candidateId)
         
         // Fetch the full candidate data to display in the sheet
         const { data: candidateData, error: fetchError } = await supabase
           .from('candidates')
           .select('id, candidate_name, linkedin_url, email, phone, location_city, location_state, location_country, skills, profile_summary')
-          .eq('id', data.candidate_id)
+          .eq('id', candidateId)
           .single()
 
-        if (!fetchError && candidateData) {
+        if (fetchError) {
+          console.error('Failed to fetch enriched candidate data:', fetchError)
+        }
+
+        if (candidateData) {
           setEnrichedData({
             candidate_id: candidateData.id,
             candidate_name: candidateData.candidate_name,
@@ -187,7 +196,7 @@ export function ApolloPreviewSheet({
         }
         
         // Improved toast message with job and stage names
-        const toastDescription = data.already_collected 
+        const toastDescription = wasAlreadyCollected 
           ? jobIdToUse 
             ? `Profile was already in your database and has been added to ${selectedJobName || 'the job'} (${selectedStageName || 'stage'})`
             : 'Profile was already in your database'
@@ -206,7 +215,7 @@ export function ApolloPreviewSheet({
         queryClient.invalidateQueries({ queryKey: ['sourcing-credits'] })
 
         // Notify parent to remove from list
-        onCandidateCollected?.(data.candidate_id)
+        onCandidateCollected?.(candidateId)
       }
     } catch (error: any) {
       console.error('Failed to collect profile:', error)
