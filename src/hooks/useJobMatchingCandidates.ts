@@ -6,6 +6,7 @@ export interface MatchedCandidate {
   candidate_name: string
   skills?: string[]
   standardized_skills?: string[]
+  location?: string | null  // Full location string
   location_country?: string | null
   location_state?: string | null
   location_city?: string | null
@@ -28,6 +29,9 @@ export interface MatchedCandidate {
   apollo_score?: number
   headline?: string
   candidate_id?: string | null // Null if not collected yet
+  // Apollo availability indicators
+  has_email?: boolean
+  has_phone?: boolean
 }
 
 export interface JobMatchingResult {

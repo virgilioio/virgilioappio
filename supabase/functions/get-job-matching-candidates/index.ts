@@ -462,13 +462,23 @@ serve(async (req) => {
             
             // Add to results
             if (candidateScore.total_score >= minApolloScore) {
+              // Parse city from location string if city not available separately
+              const city = apolloCandidate.city || 
+                           apolloCandidate.location?.split(',')[0]?.trim() || null;
+              
+              // Build display location from available parts
+              const displayLocation = apolloCandidate.location || 
+                [city, apolloCandidate.state, apolloCandidate.country].filter(Boolean).join(', ') || null;
+
               apolloCandidates.push({
                 id: apolloCandidate.apollo_id,
                 candidate_name: apolloCandidate.full_name,
                 skills: jobSkills,
                 standardized_skills: jobSkills,
                 location_country: apolloCandidate.country,
-                location_city: apolloCandidate.city,  // Fixed: use .city not .location
+                location_city: city,
+                location_state: apolloCandidate.state,
+                location: displayLocation,  // Full location string for display
                 linkedin_url: apolloCandidate.linkedin_url || apolloCandidate.profile_url,
                 match_score: candidateScore.total_score,
                 match_tier: getMatchTier(candidateScore.total_score),
