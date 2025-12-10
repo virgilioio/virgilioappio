@@ -70,6 +70,9 @@ interface MatchedCandidate {
   email_status?: string;
   phone?: string;
   candidate_id?: string | null; // Null if not collected yet
+  // Apollo availability indicators (teaser info)
+  has_email?: boolean;
+  has_phone?: boolean;
 }
 
 interface JobMatchingResult {
@@ -465,8 +468,8 @@ serve(async (req) => {
                 skills: jobSkills,
                 standardized_skills: jobSkills,
                 location_country: apolloCandidate.country,
-                location_city: apolloCandidate.location,
-                linkedin_url: apolloCandidate.profile_url,
+                location_city: apolloCandidate.city,  // Fixed: use .city not .location
+                linkedin_url: apolloCandidate.linkedin_url || apolloCandidate.profile_url,
                 match_score: candidateScore.total_score,
                 match_tier: getMatchTier(candidateScore.total_score),
                 profile_summary: apolloCandidate.headline,
@@ -482,6 +485,8 @@ serve(async (req) => {
                 email: apolloCandidate.email,
                 email_status: apolloCandidate.email_status,
                 phone: apolloCandidate.phone,
+                has_email: apolloCandidate.has_email,
+                has_phone: apolloCandidate.has_phone,
                 candidate_id: null // Not collected yet
               });
             }
