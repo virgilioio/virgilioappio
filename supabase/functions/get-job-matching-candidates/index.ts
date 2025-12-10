@@ -302,7 +302,7 @@ serve(async (req) => {
     }
 
     // Get local candidates (independent candidates table) - increased limit for filtering
-    const candidateFields = count_only ? 'id, standardized_skills, skills, profile_summary' : `
+    const candidateFields = count_only ? 'id, standardized_skills, skills, profile_summary, apollo_id' : `
       id,
       candidate_name,
       skills,
@@ -317,7 +317,8 @@ serve(async (req) => {
       years_experience,
       enriched_at,
       company_current,
-      role_current
+      role_current,
+      apollo_id
     `;
 
     // CRITICAL: Filter by tenant_id for tenant isolation
@@ -337,6 +338,17 @@ serve(async (req) => {
     if (localError) {
       console.warn('Error fetching local candidates:', localError);
     }
+
+    // Extract apollo_ids from local candidates for deduplication
+    const localApolloIds = new Set<string>();
+    if (localCandidates) {
+      for (const candidate of localCandidates) {
+        if ((candidate as any).apollo_id) {
+          localApolloIds.add((candidate as any).apollo_id);
+        }
+      }
+    }
+    console.log(`🔗 Found ${localApolloIds.size} local candidates with Apollo IDs for deduplication`);
 
     const matchedCandidates: MatchedCandidate[] = [];
 
@@ -448,7 +460,14 @@ serve(async (req) => {
           creditsUsed = apolloResponse.credits_used || 0;
           
           // Map Apollo candidates to MatchedCandidate format
+          let skippedDuplicates = 0;
           for (const apolloCandidate of apolloResponse.candidates) {
+            // Skip if this Apollo candidate is already in our local database
+            if (apolloCandidate.apollo_id && localApolloIds.has(apolloCandidate.apollo_id)) {
+              skippedDuplicates++;
+              continue;
+            }
+            
             // Calculate match score using enhanced scoring
             const candidateForScoring = {
               skills: jobSkills, // Apollo candidates are pre-filtered by skills
@@ -502,6 +521,9 @@ serve(async (req) => {
             }
           }
           
+          if (skippedDuplicates > 0) {
+            console.log(`🔄 Deduplicated ${skippedDuplicates} Apollo candidates (already in local DB)`);
+          }
           console.log(`📊 Added ${apolloCandidates.length} quality Apollo matches`);
         }
       } catch (error) {
