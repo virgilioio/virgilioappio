@@ -34,11 +34,11 @@ export interface SearchCriteria {
   education_level?: string
 }
 
-export type EnabledSource = 'internal' | 'coresignal' | 'linkedin' | 'seekout'
+export type EnabledSource = 'internal' | 'apollo' | 'linkedin' | 'seekout'
 
 export interface SourcingProjectFilters {
   matchTiers?: ('excellent' | 'good' | 'fair' | 'minimal')[]
   minExperience?: number
   maxExperience?: number
-  source?: 'local' | 'coresignal' | 'all'
+  source?: 'local' | 'apollo' | 'all'
 }

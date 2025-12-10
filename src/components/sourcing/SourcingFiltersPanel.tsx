@@ -350,7 +350,7 @@ export function SourcingFiltersPanel({
           <div className="space-y-2">
             <Label className="text-xs font-medium text-virgilio-muted">Source</Label>
             <div className="space-y-2">
-              {(['all', 'local', 'coresignal'] as const).map(source => (
+              {(['all', 'local', 'apollo'] as const).map(source => (
                 <label key={source} className="flex items-center gap-2.5 cursor-pointer group">
                   <Checkbox 
                     checked={!filters.source || filters.source === source}

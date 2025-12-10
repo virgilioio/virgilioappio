@@ -15,7 +15,7 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 );
 
-// CoreSignal integration enabled - searches external candidates when credits available
+// Apollo.io integration enabled - searches external candidates when credits available
 
 interface JobMatchingRequest {
   job_id?: string;
@@ -55,17 +55,20 @@ interface MatchedCandidate {
   match_score: number;
   match_tier: 'excellent' | 'good' | 'fair' | 'minimal';
   profile_summary?: string;
-  source: 'local' | 'coresignal';
+  source: 'local' | 'apollo';
   years_experience?: number;
   enriched_at?: string;
   current_company?: string;
   current_role?: string;
   score_breakdown?: CandidateScore;
   competitive_advantage?: string[];
-  // CoreSignal-specific fields
-  coresignal_id?: string;
-  coresignal_score?: number;
+  // Apollo-specific fields
+  apollo_id?: string;
+  apollo_score?: number;
   headline?: string;
+  email?: string;
+  email_status?: string;
+  phone?: string;
   candidate_id?: string | null; // Null if not collected yet
 }
 
@@ -74,7 +77,7 @@ interface JobMatchingResult {
   total_count: number;
   breakdown: {
     localCandidates: number;
-    coreSignalCandidates: number;
+    apolloCandidates: number;
     averageMatch: number;
     creditsUsed?: number;
     collectCreditsUsed?: number;
@@ -393,13 +396,13 @@ serve(async (req) => {
       console.log(`📊 Filtered out ${excludedCount} already associated candidates`);
     }
 
-    // CoreSignal integration - search for additional candidates
-    let coresignalCandidates: MatchedCandidate[] = [];
+    // Apollo.io integration - search for additional candidates
+    let apolloCandidates: MatchedCandidate[] = [];
     let creditsUsed = 0;
     
     if (!count_only && organization_id && jobSkills.length > 0) {
       try {
-        console.log(`🔍 Searching CoreSignal for additional candidates with ${jobSkills.length} skills...`);
+        console.log(`🔍 Searching Apollo for additional candidates with ${jobSkills.length} skills...`);
         
         // Build search criteria from job or provided criteria
         // For sourcing projects, prefer criteria.locations over job.location
@@ -416,84 +419,87 @@ serve(async (req) => {
           salary_max: criteria.salary_max || job.salary_max
         };
 
-        // Call search-coresignal-candidates edge function
-        const { data: coresignalResponse, error: coresignalError } = await supabase.functions.invoke(
-          'search-coresignal-candidates',
+        // Call search-apollo-candidates edge function
+        const { data: apolloResponse, error: apolloError } = await supabase.functions.invoke(
+          'search-apollo-candidates',
           {
             body: {
               project_id: sourcing_project_id,
               criteria: searchCriteria,
-              limit: 50,
+              limit: 100, // Apollo supports up to 100 per page
               organization_id
             }
           }
         );
 
-        if (coresignalError) {
+        if (apolloError) {
           // Log error but don't fail the entire request
-          console.warn('⚠️ CoreSignal search error:', coresignalError);
+          console.warn('⚠️ Apollo search error:', apolloError);
           
           // Check if it's a credit exhaustion error
-          if (coresignalError.message?.includes('credit limit')) {
-            console.log('💳 CoreSignal credits exhausted - using local candidates only');
+          if (apolloError.message?.includes('credit limit')) {
+            console.log('💳 Apollo credits exhausted - using local candidates only');
           }
-        } else if (coresignalResponse?.candidates) {
-          console.log(`✅ Found ${coresignalResponse.candidates.length} CoreSignal candidates`);
-          creditsUsed = coresignalResponse.credits_used || 0;
+        } else if (apolloResponse?.candidates) {
+          console.log(`✅ Found ${apolloResponse.candidates.length} Apollo candidates`);
+          creditsUsed = apolloResponse.credits_used || 0;
           
-          // Map CoreSignal candidates to MatchedCandidate format
-          for (const csCandidate of coresignalResponse.candidates) {
+          // Map Apollo candidates to MatchedCandidate format
+          for (const apolloCandidate of apolloResponse.candidates) {
             // Calculate match score using enhanced scoring
             const candidateForScoring = {
-              skills: jobSkills, // CoreSignal candidates are pre-filtered by skills
-              profile_summary: csCandidate.headline || ''
+              skills: jobSkills, // Apollo candidates are pre-filtered by skills
+              profile_summary: apolloCandidate.headline || ''
             };
             
             const candidateScore = calculateEnhancedCandidateScore(candidateForScoring, jobSkills, job);
             
-            // CoreSignal candidates are pre-filtered by API, use lower threshold
-            const minCoreSignalScore = sourcing_project_id ? 25 : 40;
+            // Apollo candidates are pre-filtered by API, use lower threshold
+            const minApolloScore = sourcing_project_id ? 25 : 40;
             
             // Add to results
-            if (candidateScore.total_score >= minCoreSignalScore) {
-            coresignalCandidates.push({
-              id: csCandidate.coresignal_id,
-              candidate_name: csCandidate.full_name,
-              skills: jobSkills,
-              standardized_skills: jobSkills,
-              location_country: csCandidate.country,
-              location_city: csCandidate.location,
-              linkedin_url: csCandidate.profile_url,
-              match_score: candidateScore.total_score,
-              match_tier: getMatchTier(candidateScore.total_score),
-              profile_summary: csCandidate.headline,
-              source: 'coresignal',
-              years_experience: csCandidate.experience_count || 0, // Map CoreSignal experience_count to years_experience
-              current_company: csCandidate.current_company,
-              current_role: csCandidate.current_title,
-              score_breakdown: candidateScore,
-              competitive_advantage: [],
-              coresignal_id: csCandidate.coresignal_id,
-              coresignal_score: csCandidate._score,
-              headline: csCandidate.headline,
-              candidate_id: null // Not collected yet
-            });
+            if (candidateScore.total_score >= minApolloScore) {
+              apolloCandidates.push({
+                id: apolloCandidate.apollo_id,
+                candidate_name: apolloCandidate.full_name,
+                skills: jobSkills,
+                standardized_skills: jobSkills,
+                location_country: apolloCandidate.country,
+                location_city: apolloCandidate.location,
+                linkedin_url: apolloCandidate.profile_url,
+                match_score: candidateScore.total_score,
+                match_tier: getMatchTier(candidateScore.total_score),
+                profile_summary: apolloCandidate.headline,
+                source: 'apollo',
+                years_experience: apolloCandidate.experience_count || 0,
+                current_company: apolloCandidate.current_company,
+                current_role: apolloCandidate.current_title,
+                score_breakdown: candidateScore,
+                competitive_advantage: [],
+                apollo_id: apolloCandidate.apollo_id,
+                apollo_score: apolloCandidate._score,
+                headline: apolloCandidate.headline,
+                email: apolloCandidate.email,
+                email_status: apolloCandidate.email_status,
+                phone: apolloCandidate.phone,
+                candidate_id: null // Not collected yet
+              });
             }
           }
           
-          console.log(`📊 Added ${coresignalCandidates.length} quality CoreSignal matches`);
+          console.log(`📊 Added ${apolloCandidates.length} quality Apollo matches`);
         }
       } catch (error) {
-        console.error('❌ Unexpected error calling CoreSignal:', error);
+        console.error('❌ Unexpected error calling Apollo:', error);
         // Continue with local candidates only
       }
     } else {
-      // Log why CoreSignal was skipped
-      console.warn(`⚠️ CoreSignal search skipped: count_only=${count_only}, has_org_id=${!!organization_id}, skills_count=${jobSkills.length}`);
+      // Log why Apollo was skipped
+      console.warn(`⚠️ Apollo search skipped: count_only=${count_only}, has_org_id=${!!organization_id}, skills_count=${jobSkills.length}`);
     }
 
-    // Merge local and CoreSignal candidates
-    const allCandidates = [...matchedCandidates, ...coresignalCandidates];
+    // Merge local and Apollo candidates
+    const allCandidates = [...matchedCandidates, ...apolloCandidates];
 
     // Automatically apply location filter from job ONLY if:
     // 1. No explicit filters provided
@@ -574,7 +580,7 @@ serve(async (req) => {
       total_count: allCandidates.length,
       breakdown: {
         localCandidates: matchedCandidates.length,
-        coreSignalCandidates: coresignalCandidates.length,
+        apolloCandidates: apolloCandidates.length,
         averageMatch: allCandidates.length > 0 
           ? allCandidates.reduce((sum, c) => sum + c.match_score, 0) / allCandidates.length 
           : 0,
@@ -582,10 +588,10 @@ serve(async (req) => {
       }
     };
 
-    console.log(`✅ Enhanced matching complete: ${limitedCandidates.length} candidates from ${result.breakdown.localCandidates} local + ${result.breakdown.coreSignalCandidates} CoreSignal (avg: ${result.breakdown.averageMatch.toFixed(1)}%)`);
+    console.log(`✅ Enhanced matching complete: ${limitedCandidates.length} candidates from ${result.breakdown.localCandidates} local + ${result.breakdown.apolloCandidates} Apollo (avg: ${result.breakdown.averageMatch.toFixed(1)}%)`);
     console.log(`📊 Quality metrics: ${limitedCandidates.filter(c => c.match_tier === 'excellent').length} excellent, ${limitedCandidates.filter(c => c.match_tier === 'good').length} good matches`);
     if (creditsUsed > 0) {
-      console.log(`💳 CoreSignal credits used: ${creditsUsed}`);
+      console.log(`💳 Apollo credits used: ${creditsUsed}`);
     }
 
     return new Response(JSON.stringify(result), {

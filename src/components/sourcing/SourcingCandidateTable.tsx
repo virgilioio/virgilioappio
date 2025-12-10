@@ -35,10 +35,13 @@ interface MatchedCandidate {
   match_tier: 'excellent' | 'good' | 'fair' | 'minimal'
   skills?: string[]
   years_experience?: number
-  source: 'local' | 'coresignal'
-  coresignal_id?: string
-  coresignal_score?: number
+  source: 'local' | 'apollo'
+  apollo_id?: string
+  apollo_score?: number
   headline?: string
+  email?: string
+  email_status?: string
+  phone?: string
   candidate_id?: string | null
   industry?: string
   connections_count?: number
