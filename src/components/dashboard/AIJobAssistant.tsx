@@ -16,7 +16,7 @@ import gioAvatar from '@/assets/gio-avatar.png'
 import { supabase } from '@/lib/supabaseClient'
 import { useToast } from '@/hooks/use-toast'
 import { validateJobPrompt, getValidationStats, type ValidationItem } from '@/utils/jobPromptValidation'
-import { normalizeLocationForCoresignal, isValidCoresignalLocation } from '@/utils/locationNormalization'
+import { normalizeLocationForSourcing, isValidSourcingLocation } from '@/utils/locationNormalization'
 import { SkillsEditor } from './SkillsEditor'
 import { useJobs } from '@/hooks/useJobs'
 import { useAuth } from '@/contexts/AuthContext'
@@ -64,10 +64,10 @@ interface CandidateMatching {
   breakdown: {
     salaryMatches: number
     locationMatches: number
-    coreSignalCandidates: number
+    apolloCandidates: number
     localCandidates: number
     creditsUsed: number
-    coreSignalError?: string
+    apolloError?: string
     searchStrategy: string
     skillsAnalysis: {
       averageMatch: number
@@ -348,17 +348,17 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
       console.log('📁 Organization ID:', selectedOrgId)
       console.log('🔗 Job ID (optional):', selectedJobId || 'none')
 
-      // Normalize location for CoreSignal compatibility
+      // Normalize location for sourcing compatibility
       const rawLocation = editableJobSpec.location || ''
       let normalizedLocations: string[]
       
-      // Check if location is already in valid CoreSignal format
-      if (isValidCoresignalLocation(rawLocation)) {
+      // Check if location is already in valid sourcing format
+      if (isValidSourcingLocation(rawLocation)) {
         normalizedLocations = [rawLocation]
-        console.log('📍 Location already in CoreSignal format:', rawLocation)
+        console.log('📍 Location already in sourcing format:', rawLocation)
       } else {
         // Normalize the freeform location
-        normalizedLocations = normalizeLocationForCoresignal(rawLocation)
+        normalizedLocations = normalizeLocationForSourcing(rawLocation)
         console.log('📍 Normalized location:', rawLocation, '→', normalizedLocations)
         
         // If normalization returned empty and we have location_details from AI, try using that

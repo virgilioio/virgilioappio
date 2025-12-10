@@ -12,7 +12,7 @@ export const REGION_TO_COUNTRY_CODES: Record<string, string[]> = {
   'ASIA': ['IN', 'CN', 'JP', 'SG', 'KR', 'ID', 'TH', 'VN', 'PH', 'MY'],
 }
 
-// Common city name variations and their canonical CoreSignal format
+// Common city name variations and their canonical sourcing format
 const CITY_ALIASES: Record<string, string> = {
   // US Cities
   'new york': 'New York,New York,US',
@@ -174,10 +174,10 @@ const COUNTRY_NAME_TO_CODE: Record<string, string> = {
 }
 
 /**
- * Normalize a free-form location string to CoreSignal-compatible format(s)
- * Returns an array of location strings in the format expected by CoreSignal
+ * Normalize a free-form location string to sourcing-compatible format(s)
+ * Returns an array of location strings in the format expected by Apollo/sourcing APIs
  */
-export function normalizeLocationForCoresignal(freeformLocation: string): string[] {
+export function normalizeLocationForSourcing(freeformLocation: string): string[] {
   if (!freeformLocation || freeformLocation.trim() === '') {
     return []
   }
@@ -312,9 +312,9 @@ export function normalizeLocationForCoresignal(freeformLocation: string): string
 }
 
 /**
- * Check if a location string is already in valid CoreSignal format
+ * Check if a location string is already in valid sourcing format
  */
-export function isValidCoresignalLocation(location: string): boolean {
+export function isValidSourcingLocation(location: string): boolean {
   if (!location) return false
   
   // Check if it exactly matches a LOCATION_OPTIONS value
@@ -335,7 +335,7 @@ export function isValidCoresignalLocation(location: string): boolean {
 }
 
 /**
- * Get a display label for a CoreSignal location value
+ * Get a display label for a sourcing location value
  */
 export function getLocationDisplayLabel(value: string): string {
   const location = LOCATION_OPTIONS.find(loc => loc.value === value)
@@ -359,13 +359,17 @@ export function normalizeLocationsArray(locations: string[]): string[] {
   const normalized = new Set<string>()
   
   for (const loc of locations) {
-    if (isValidCoresignalLocation(loc)) {
+    if (isValidSourcingLocation(loc)) {
       normalized.add(loc)
     } else {
-      const normalizedLocs = normalizeLocationForCoresignal(loc)
+      const normalizedLocs = normalizeLocationForSourcing(loc)
       normalizedLocs.forEach(l => normalized.add(l))
     }
   }
   
   return Array.from(normalized)
 }
+
+// Backwards compatibility exports
+export const normalizeLocationForCoresignal = normalizeLocationForSourcing
+export const isValidCoresignalLocation = isValidSourcingLocation

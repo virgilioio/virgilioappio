@@ -16,16 +16,16 @@ export interface MatchedCandidate {
   match_score: number
   match_tier: 'excellent' | 'good' | 'fair' | 'minimal'
   profile_summary?: string | null
-  source: 'local' | 'coresignal'
+  source: 'local' | 'apollo'
   years_experience?: number
   enriched_at?: string | null
   current_company?: string
   current_role?: string
   created_at: string
   first_viewed_by?: Record<string, string> | null
-  // CoreSignal-specific fields
-  coresignal_id?: string
-  coresignal_score?: number
+  // Apollo-specific fields
+  apollo_id?: string
+  apollo_score?: number
   headline?: string
   candidate_id?: string | null // Null if not collected yet
 }
@@ -35,7 +35,7 @@ export interface JobMatchingResult {
   total_count: number
   breakdown: {
     localCandidates: number
-    coreSignalCandidates: number
+    apolloCandidates: number
     averageMatch: number
     creditsUsed?: number
     collectCreditsUsed?: number

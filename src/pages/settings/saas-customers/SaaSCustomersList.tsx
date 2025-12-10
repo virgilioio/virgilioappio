@@ -21,7 +21,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { MoreVertical, Search, Users, Briefcase, Activity, Database } from 'lucide-react'
+import { MoreVertical, Search, Users, Briefcase, Activity } from 'lucide-react'
 import { useSaaSCustomers } from '@/hooks/useSaaSCustomers'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { format } from 'date-fns'
@@ -35,49 +35,7 @@ export function SaaSCustomersList() {
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [suspendDialogOpen, setSuspendDialogOpen] = useState(false)
   const [selectedOrg, setSelectedOrg] = useState<{ id: string; name: string } | null>(null)
-  const [isBackfilling, setIsBackfilling] = useState(false)
-  
   const suspendMutation = useSuspendOrganization()
-
-  const handleBackfillCredits = async () => {
-    setIsBackfilling(true)
-    toast({
-      title: "Starting backfill...",
-      description: "This may take a few moments.",
-    })
-
-    try {
-      const { data, error } = await supabase.functions.invoke('backfill-coresignal-limits')
-
-      if (error) {
-        console.error('Backfill error:', error)
-        toast({
-          title: "Backfill failed",
-          description: error.message || "An error occurred during the backfill process.",
-          variant: "destructive",
-        })
-        return
-      }
-
-      if (data.errors && data.errors.length > 0) {
-        console.error('Backfill completed with errors:', data.errors)
-      }
-
-      toast({
-        title: "Backfill completed",
-        description: `Updated ${data.updated_count} of ${data.total_records} records.`,
-      })
-    } catch (err) {
-      console.error('Unexpected error:', err)
-      toast({
-        title: "Backfill failed",
-        description: "An unexpected error occurred.",
-        variant: "destructive",
-      })
-    } finally {
-      setIsBackfilling(false)
-    }
-  }
 
   const filteredCustomers = customers?.filter(customer => {
     const matchesSearch = customer.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -140,14 +98,6 @@ export function SaaSCustomersList() {
               <option value="past_due">Past Due</option>
               <option value="canceled">Canceled</option>
             </select>
-            <Button
-              variant="outline"
-              onClick={handleBackfillCredits}
-              disabled={isBackfilling}
-            >
-              <Database className="h-4 w-4 mr-2" />
-              {isBackfilling ? 'Backfilling...' : 'Backfill Credit Limits'}
-            </Button>
           </div>
         </CardHeader>
         

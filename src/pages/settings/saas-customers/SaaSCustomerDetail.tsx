@@ -62,13 +62,13 @@ export function SaaSCustomerDetail() {
     enabled: !!customer?.tenant_id
   })
 
-  // Fetch current CoreSignal usage
+  // Fetch current sourcing credits usage
   const { data: creditUsage } = useQuery({
-    queryKey: ['coresignal-usage', customer?.tenant_id],
+    queryKey: ['sourcing-credits-usage', customer?.tenant_id],
     queryFn: async () => {
       if (!customer?.tenant_id) return null
       const { data, error } = await supabase
-        .from('coresignal_usage')
+        .from('sourcing_credits_usage')
         .select('*')
         .eq('tenant_id', customer.tenant_id)
         .order('updated_at', { ascending: false })
