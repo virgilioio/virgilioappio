@@ -17,6 +17,9 @@ interface SearchCriteria {
   locations?: string[];
   seniorities?: string[];
   organization_locations?: string[];
+  keywords?: string;  // General keyword search (q_keywords)
+  company_sizes?: string[];  // '1,10', '11,50', etc. (organization_num_employees_ranges)
+  company_domains?: string[];  // Target company domains
   // Note: skills are NOT supported by Apollo search - only titles and locations
 }
 
@@ -150,6 +153,12 @@ function buildApolloSearchUrl(criteria: SearchCriteria, perPage: number = 50): s
     console.log(`🎯 Apollo title filter: ${criteria.title_keywords.join(', ')}`);
   }
 
+  // General keywords → q_keywords (searches across profile)
+  if (criteria.keywords && criteria.keywords.trim()) {
+    params.append('q_keywords', criteria.keywords.trim());
+    console.log(`🔑 Apollo keywords: ${criteria.keywords}`);
+  }
+
   // Locations → person_locations[]
   if (criteria.locations && criteria.locations.length > 0) {
     for (const loc of criteria.locations) {
@@ -171,6 +180,22 @@ function buildApolloSearchUrl(criteria: SearchCriteria, perPage: number = 50): s
       params.append('person_seniorities[]', seniority);
     });
     console.log(`📊 Apollo seniority: ${apolloSeniorities.join(', ')}`);
+  }
+
+  // Company size filter → organization_num_employees_ranges[]
+  if (criteria.company_sizes && criteria.company_sizes.length > 0) {
+    criteria.company_sizes.forEach(size => {
+      params.append('organization_num_employees_ranges[]', size);
+    });
+    console.log(`🏢 Apollo company sizes: ${criteria.company_sizes.join(', ')}`);
+  }
+
+  // Target company domains → q_organization_domains_list[]
+  if (criteria.company_domains && criteria.company_domains.length > 0) {
+    criteria.company_domains.forEach(domain => {
+      params.append('q_organization_domains_list[]', domain);
+    });
+    console.log(`🎯 Apollo target companies: ${criteria.company_domains.join(', ')}`);
   }
 
   // Results per page

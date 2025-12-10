@@ -24,7 +24,7 @@ export interface SourcingProject {
 }
 
 export interface SearchCriteria {
-  skills: string[]
+  skills: string[]  // Note: Skills are NOT used by Apollo - they filter by title instead
   locations?: string[] // Array of location values: "city,state,country" or "state,country" or "country"
   title_keywords?: string[]
   experience_years?: {
@@ -32,6 +32,11 @@ export interface SearchCriteria {
     max?: number
   }
   education_level?: string
+  // Apollo-specific filters
+  seniorities?: string[]  // 'entry', 'senior', 'manager', 'director', 'vp', 'c_suite', 'owner', 'founder', 'partner', 'head', 'intern'
+  keywords?: string  // General keyword search (q_keywords)
+  company_sizes?: string[]  // '1-10', '11-50', '51-200', '201-500', '501-1000', '1001-5000', '5001-10000', '10001+'
+  company_domains?: string[]  // Target company domains for filtering
 }
 
 export type EnabledSource = 'internal' | 'apollo' | 'linkedin' | 'seekout'

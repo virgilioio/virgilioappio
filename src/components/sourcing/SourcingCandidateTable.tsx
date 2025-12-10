@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Eye, Plus, CheckCircle2, Loader2, MapPin, Linkedin, ChevronLeft, ChevronRight, Download } from 'lucide-react'
+import { Eye, Plus, CheckCircle2, Loader2, MapPin, Linkedin, ChevronLeft, ChevronRight, Download, Mail, Phone } from 'lucide-react'
 import { useSourcingCreditWarnings } from '@/hooks/useSourcingCreditWarnings'
 import emptyStateAvatar from '@/assets/empty-state-avatar.png'
 import UniversalCandidateProfileSheet from '@/components/candidates/UniversalCandidateProfileSheet'
@@ -50,6 +50,9 @@ interface MatchedCandidate {
   company_website?: string
   company_industry?: string
   experience_location?: string
+  // Apollo availability indicators
+  has_email?: boolean
+  has_phone?: boolean
 }
 
 interface SourcingCandidateTableProps {
@@ -463,18 +466,37 @@ export function SourcingCandidateTable({
                             {candidate.candidate_name.split(' ').map(n => n[0]).join('').slice(0, 2)}
                           </AvatarFallback>
                         </Avatar>
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-sm">{candidate.candidate_name}</span>
-                          {candidate.linkedin_url && (
-                            <a 
-                              href={candidate.linkedin_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={(e) => e.stopPropagation()}
-                              className="text-blue-600 hover:text-blue-700"
-                            >
-                              <Linkedin className="h-3 w-3" />
-                            </a>
+                        <div className="flex flex-col gap-0.5">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-sm">{candidate.candidate_name}</span>
+                            {candidate.linkedin_url && (
+                              <a 
+                                href={candidate.linkedin_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="text-blue-600 hover:text-blue-700"
+                              >
+                                <Linkedin className="h-3 w-3" />
+                              </a>
+                            )}
+                          </div>
+                          {/* Apollo availability indicators */}
+                          {candidate.source === 'apollo' && !candidate.candidate_id && (
+                            <div className="flex items-center gap-1.5">
+                              {candidate.has_email && (
+                                <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
+                                  <Mail className="h-2.5 w-2.5 text-green-500" />
+                                  Email
+                                </span>
+                              )}
+                              {candidate.has_phone && (
+                                <span className="flex items-center gap-0.5 text-[10px] text-muted-foreground">
+                                  <Phone className="h-2.5 w-2.5 text-green-500" />
+                                  Phone
+                                </span>
+                              )}
+                            </div>
                           )}
                         </div>
                       </div>
@@ -503,10 +525,14 @@ export function SourcingCandidateTable({
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1 text-sm">
-                        {candidate.location_city ? (
+                        {(candidate.location_city || candidate.location_country) ? (
                           <>
                             <MapPin className="h-3 w-3 text-muted-foreground" />
-                            <span className="truncate">{candidate.location_city}, {candidate.location_country}</span>
+                            <span className="truncate">
+                              {candidate.location_city && candidate.location_country
+                                ? `${candidate.location_city}, ${candidate.location_country}`
+                                : candidate.location_city || candidate.location_country}
+                            </span>
                           </>
                         ) : (
                           <span className="text-muted-foreground">-</span>
