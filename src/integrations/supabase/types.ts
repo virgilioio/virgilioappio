@@ -3517,7 +3517,7 @@ export type Database = {
           company_url: string | null
           company_website: string | null
           connections_count: number | null
-          coresignal_id: string
+          coresignal_id: string | null
           coresignal_score: number | null
           country: string | null
           created_at: string | null
@@ -3545,7 +3545,7 @@ export type Database = {
           company_url?: string | null
           company_website?: string | null
           connections_count?: number | null
-          coresignal_id: string
+          coresignal_id?: string | null
           coresignal_score?: number | null
           country?: string | null
           created_at?: string | null
@@ -3573,7 +3573,7 @@ export type Database = {
           company_url?: string | null
           company_website?: string | null
           connections_count?: number | null
-          coresignal_id?: string
+          coresignal_id?: string | null
           coresignal_score?: number | null
           country?: string | null
           created_at?: string | null
