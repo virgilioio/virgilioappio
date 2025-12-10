@@ -1,5 +1,5 @@
 import { CreditCard, TrendingUp, Clock } from 'lucide-react'
-import { useCoresignalUsage } from '@/hooks/useCoresignalUsage'
+import { useSourcingCredits } from '@/hooks/useSourcingCredits'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,8 +14,8 @@ import { Progress } from '@/components/ui/progress'
 import { format } from 'date-fns'
 import { useNavigate } from 'react-router-dom'
 
-export function CoresignalCreditIndicator() {
-  const { data: usage, isLoading } = useCoresignalUsage()
+export function SourcingCreditIndicator() {
+  const { data: usage, isLoading } = useSourcingCredits()
   const navigate = useNavigate()
 
   if (isLoading || !usage) return null
@@ -44,7 +44,7 @@ export function CoresignalCreditIndicator() {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-80">
         <DropdownMenuLabel className="flex items-center justify-between">
-          <span>CoreSignal Credits</span>
+          <span>Sourcing Credits</span>
           <Badge variant="outline">{tierLabels[usage.subscription_tier]}</Badge>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />

@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabaseClient'
 
-export interface CoresignalUsageWithTier {
+export interface SourcingCreditsUsage {
   tenant_id: string
   billing_cycle_start: string
   search_credits_used: number
@@ -18,11 +18,11 @@ export interface CoresignalUsageWithTier {
   updated_at: string
 }
 
-export function useCoresignalUsage() {
+export function useSourcingCredits() {
   const { organizationId } = useAuth()
 
-  return useQuery<CoresignalUsageWithTier | null>({
-    queryKey: ['coresignal-usage', organizationId],
+  return useQuery<SourcingCreditsUsage | null>({
+    queryKey: ['sourcing-credits', organizationId],
     queryFn: async () => {
       if (!organizationId) return null
 

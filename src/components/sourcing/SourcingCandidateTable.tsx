@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Eye, Plus, CheckCircle2, Loader2, MapPin, Linkedin, ChevronLeft, ChevronRight, Download } from 'lucide-react'
-import { useCoresignalCreditWarnings } from '@/hooks/useCoresignalCreditWarnings'
+import { useSourcingCreditWarnings } from '@/hooks/useSourcingCreditWarnings'
 import emptyStateAvatar from '@/assets/empty-state-avatar.png'
 import UniversalCandidateProfileSheet from '@/components/candidates/UniversalCandidateProfileSheet'
 import {
@@ -68,10 +68,10 @@ export function SourcingCandidateTable({
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
   const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null)
-  const [selectedCoresignalId, setSelectedCoresignalId] = useState<string | null>(null)
-  const [selectedCoresignalData, setSelectedCoresignalData] = useState<any>(null)
+  const [selectedApolloId, setSelectedApolloId] = useState<string | null>(null)
+  const [selectedApolloData, setSelectedApolloData] = useState<any>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
-  const { isCollectDisabled } = useCoresignalCreditWarnings()
+  const { isCollectDisabled } = useSourcingCreditWarnings()
   
   // Sortable table with default sort by match_score DESC
   const { sortedData, sortConfig, requestSort } = useSortableTable(
@@ -80,8 +80,8 @@ export function SourcingCandidateTable({
   )
 
   // Track current candidate index for navigation
-  const currentIndex = selectedCoresignalId 
-    ? sortedData.findIndex(c => c.coresignal_id === selectedCoresignalId)
+  const currentIndex = selectedApolloId 
+    ? sortedData.findIndex(c => c.apollo_id === selectedApolloId)
     : sortedData.findIndex(c => c.id === selectedCandidateId)
   
   const hasPrev = currentIndex > 0
@@ -94,19 +94,21 @@ export function SourcingCandidateTable({
       
       if (prevCandidate.candidate_id || prevCandidate.source === 'local') {
         setSelectedCandidateId(prevCandidate.id)
-        setSelectedCoresignalId(null)
-        setSelectedCoresignalData(null)
-      } else if (prevCandidate.source === 'coresignal' && prevCandidate.coresignal_id) {
+        setSelectedApolloId(null)
+        setSelectedApolloData(null)
+      } else if (prevCandidate.source === 'apollo' && prevCandidate.apollo_id) {
         setSelectedCandidateId(null)
-        setSelectedCoresignalId(prevCandidate.coresignal_id)
-        setSelectedCoresignalData({
+        setSelectedApolloId(prevCandidate.apollo_id)
+        setSelectedApolloData({
           candidate_name: prevCandidate.candidate_name,
           headline: prevCandidate.headline,
           location: prevCandidate.location_city ? `${prevCandidate.location_city}, ${prevCandidate.location_country}` : prevCandidate.location_country,
           current_company: prevCandidate.current_company,
           current_role: prevCandidate.current_role,
           linkedin_url: prevCandidate.linkedin_url,
-          coresignal_score: prevCandidate.coresignal_score,
+          apollo_score: prevCandidate.apollo_score,
+          email: prevCandidate.email,
+          phone: prevCandidate.phone,
           industry: prevCandidate.industry,
           connections_count: prevCandidate.connections_count,
           follower_count: prevCandidate.follower_count,
@@ -131,19 +133,21 @@ export function SourcingCandidateTable({
       
       if (nextCandidate.candidate_id || nextCandidate.source === 'local') {
         setSelectedCandidateId(nextCandidate.id)
-        setSelectedCoresignalId(null)
-        setSelectedCoresignalData(null)
-      } else if (nextCandidate.source === 'coresignal' && nextCandidate.coresignal_id) {
+        setSelectedApolloId(null)
+        setSelectedApolloData(null)
+      } else if (nextCandidate.source === 'apollo' && nextCandidate.apollo_id) {
         setSelectedCandidateId(null)
-        setSelectedCoresignalId(nextCandidate.coresignal_id)
-        setSelectedCoresignalData({
+        setSelectedApolloId(nextCandidate.apollo_id)
+        setSelectedApolloData({
           candidate_name: nextCandidate.candidate_name,
           headline: nextCandidate.headline,
           location: nextCandidate.location_city ? `${nextCandidate.location_city}, ${nextCandidate.location_country}` : nextCandidate.location_country,
           current_company: nextCandidate.current_company,
           current_role: nextCandidate.current_role,
           linkedin_url: nextCandidate.linkedin_url,
-          coresignal_score: nextCandidate.coresignal_score,
+          apollo_score: nextCandidate.apollo_score,
+          email: nextCandidate.email,
+          phone: nextCandidate.phone,
           industry: nextCandidate.industry,
           connections_count: nextCandidate.connections_count,
           follower_count: nextCandidate.follower_count,
@@ -186,7 +190,7 @@ export function SourcingCandidateTable({
     checkExisting()
   }, [jobId, candidates])
 
-  const handleCollectProfile = async (coresignalId: string) => {
+  const handleCollectProfile = async (apolloId: string) => {
     if (!jobId) {
       toast({
         title: 'No job linked',
@@ -206,14 +210,14 @@ export function SourcingCandidateTable({
       return
     }
 
-    setCollectingProfiles(prev => new Set(prev).add(coresignalId))
+    setCollectingProfiles(prev => new Set(prev).add(apolloId))
 
     try {
       const { data: { user } } = await supabase.auth.getUser()
 
-      const { data, error } = await supabase.functions.invoke('collect-coresignal-profile', {
+      const { data, error } = await supabase.functions.invoke('enrich-apollo-profile', {
         body: {
-          coresignal_id: coresignalId,
+          apollo_id: apolloId,
           job_id: jobId,
           user_id: user?.id
         }
@@ -243,7 +247,7 @@ export function SourcingCandidateTable({
     } finally {
       setCollectingProfiles(prev => {
         const next = new Set(prev)
-        next.delete(coresignalId)
+        next.delete(apolloId)
         return next
       })
     }
@@ -408,31 +412,33 @@ export function SourcingCandidateTable({
               {paginatedData.map(candidate => {
                 const isAdded = addedCandidates.has(candidate.id)
                 const isLoading = loadingCandidates.has(candidate.id)
-                const isCollecting = candidate.coresignal_id ? collectingProfiles.has(candidate.coresignal_id) : false
+                const isCollecting = candidate.apollo_id ? collectingProfiles.has(candidate.apollo_id) : false
 
                 return (
                   <TableRow 
-                    key={candidate.coresignal_id || candidate.id}
+                    key={candidate.apollo_id || candidate.id}
                     className="cursor-pointer hover:bg-muted/50"
                     onClick={() => {
                       if (candidate.candidate_id || candidate.source === 'local') {
                         // Full profile available
                         setSelectedCandidateId(candidate.id)
-                        setSelectedCoresignalId(null)
-                        setSelectedCoresignalData(null)
+                        setSelectedApolloId(null)
+                        setSelectedApolloData(null)
                         setSheetOpen(true)
-                      } else if (candidate.source === 'coresignal' && candidate.coresignal_id) {
-                        // CoreSignal preview
+                      } else if (candidate.source === 'apollo' && candidate.apollo_id) {
+                        // Apollo preview
                         setSelectedCandidateId(null)
-                        setSelectedCoresignalId(candidate.coresignal_id)
-                        setSelectedCoresignalData({
+                        setSelectedApolloId(candidate.apollo_id)
+                        setSelectedApolloData({
                           candidate_name: candidate.candidate_name,
                           headline: candidate.headline,
                           location: candidate.location_city ? `${candidate.location_city}, ${candidate.location_country}` : candidate.location_country,
                           current_company: candidate.current_company,
                           current_role: candidate.current_role,
                           linkedin_url: candidate.linkedin_url,
-                          coresignal_score: candidate.coresignal_score,
+                          apollo_score: candidate.apollo_score,
+                          email: candidate.email,
+                          phone: candidate.phone,
                           industry: candidate.industry,
                           connections_count: candidate.connections_count,
                           follower_count: candidate.follower_count,
@@ -447,7 +453,7 @@ export function SourcingCandidateTable({
                   >
                     <TableCell>
                       <Badge variant={candidate.source === 'local' ? 'default' : 'secondary'} className="text-xs">
-                        {candidate.source === 'local' ? 'Local' : 'CoreSignal'}
+                        {candidate.source === 'local' ? 'Local' : 'Apollo'}
                       </Badge>
                     </TableCell>
                     <TableCell>
@@ -480,9 +486,9 @@ export function SourcingCandidateTable({
                             {candidate.match_score}%
                           </Badge>
                         )}
-                        {candidate.coresignal_score && (
+                        {candidate.apollo_score && (
                           <Badge variant="outline" className="text-xs">
-                            CS: {candidate.coresignal_score.toFixed(1)}
+                            Score: {candidate.apollo_score.toFixed(1)}
                           </Badge>
                         )}
                       </div>
@@ -508,7 +514,7 @@ export function SourcingCandidateTable({
                       </div>
                     </TableCell>
                     <TableCell>
-                      {candidate.source === 'coresignal' && candidate.headline ? (
+                      {candidate.source === 'apollo' && candidate.headline ? (
                         <div className="text-xs text-muted-foreground truncate max-w-[200px]" title={candidate.headline}>
                           {candidate.headline}
                         </div>
@@ -540,13 +546,13 @@ export function SourcingCandidateTable({
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
-                        {candidate.source === 'coresignal' && !candidate.candidate_id ? (
+                        {candidate.source === 'apollo' && !candidate.candidate_id ? (
                           <Button 
                             size="sm" 
                             variant="outline"
                             onClick={(e) => {
                               e.stopPropagation()
-                              handleCollectProfile(candidate.coresignal_id!)
+                              handleCollectProfile(candidate.apollo_id!)
                             }}
                             disabled={isCollecting || isCollectDisabled}
                             title={isCollectDisabled ? 'Monthly collect credit limit reached' : 'Collect full profile (uses 1 credit)'}
@@ -654,21 +660,23 @@ export function SourcingCandidateTable({
                 if (candidate.candidate_id || candidate.source === 'local') {
                   // Full profile available
                   setSelectedCandidateId(candidate.id)
-                  setSelectedCoresignalId(null)
-                  setSelectedCoresignalData(null)
+                  setSelectedApolloId(null)
+                  setSelectedApolloData(null)
                   setSheetOpen(true)
-                } else if (candidate.source === 'coresignal' && candidate.coresignal_id) {
-                  // CoreSignal preview
+                } else if (candidate.source === 'apollo' && candidate.apollo_id) {
+                  // Apollo preview
                   setSelectedCandidateId(null)
-                  setSelectedCoresignalId(candidate.coresignal_id)
-                  setSelectedCoresignalData({
+                  setSelectedApolloId(candidate.apollo_id)
+                  setSelectedApolloData({
                     candidate_name: candidate.candidate_name,
                     headline: candidate.headline,
                     location: candidate.location_city ? `${candidate.location_city}, ${candidate.location_country}` : candidate.location_country,
                     current_company: candidate.current_company,
                     current_role: candidate.current_role,
                     linkedin_url: candidate.linkedin_url,
-                    coresignal_score: candidate.coresignal_score,
+                    apollo_score: candidate.apollo_score,
+                    email: candidate.email,
+                    phone: candidate.phone,
                     industry: candidate.industry,
                     connections_count: candidate.connections_count,
                     follower_count: candidate.follower_count,
@@ -805,8 +813,8 @@ export function SourcingCandidateTable({
         open={sheetOpen}
         onOpenChange={setSheetOpen}
         candidateId={selectedCandidateId}
-        coresignalId={selectedCoresignalId}
-        coresignalData={selectedCoresignalData}
+        coresignalId={selectedApolloId}
+        coresignalData={selectedApolloData}
         jobId={jobId}
         context="sourcing"
         hasPrev={hasPrev}

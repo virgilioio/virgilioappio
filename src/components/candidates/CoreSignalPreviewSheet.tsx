@@ -7,7 +7,7 @@ import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
 import { Sparkles, ExternalLink, AlertCircle, ChevronLeft, ChevronRight, Mail, Phone, Lock, Briefcase, GraduationCap, Wrench, MapPin, Users, UserPlus, Building2, Globe } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from '@/hooks/use-toast'
-import { useCoresignalCreditWarnings } from '@/hooks/useCoresignalCreditWarnings'
+import { useSourcingCreditWarnings } from '@/hooks/useSourcingCreditWarnings'
 import AddToJobPipelineDialog from './AddToJobPipelineDialog'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { Separator } from '@/components/ui/separator'
@@ -106,7 +106,7 @@ export function CoreSignalPreviewSheet({
   const [isCollecting, setIsCollecting] = useState(false)
   const [collectedCandidateId, setCollectedCandidateId] = useState<string | null>(null)
   const [showJobSelection, setShowJobSelection] = useState(false)
-  const { isCollectDisabled } = useCoresignalCreditWarnings()
+  const { isCollectDisabled } = useSourcingCreditWarnings()
   const queryClient = useQueryClient()
   const navigate = useNavigate()
 

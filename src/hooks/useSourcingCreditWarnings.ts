@@ -1,9 +1,9 @@
 import { useEffect, useRef } from 'react'
 import { useToast } from '@/hooks/use-toast'
-import { useCoresignalUsage } from './useCoresignalUsage'
+import { useSourcingCredits } from './useSourcingCredits'
 
-export function useCoresignalCreditWarnings() {
-  const { data: usage } = useCoresignalUsage()
+export function useSourcingCreditWarnings() {
+  const { data: usage } = useSourcingCredits()
   const { toast } = useToast()
   const shownWarnings = useRef<Set<string>>(new Set())
 
@@ -12,8 +12,6 @@ export function useCoresignalCreditWarnings() {
 
     const searchUsagePercent = usage.search_percentage || 0
     const collectUsagePercent = usage.collect_percentage || 0
-    
-    const currentMonth = new Date().toLocaleDateString('en-US', { month: 'long' })
     
     // Search credit warnings
     if (searchUsagePercent >= 100 && !shownWarnings.current.has('search-100')) {
