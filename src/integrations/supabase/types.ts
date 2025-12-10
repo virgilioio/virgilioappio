@@ -4762,6 +4762,14 @@ export type Database = {
         }
         Returns: undefined
       }
+      increment_sourcing_usage: {
+        Args: {
+          p_billing_cycle_start: string
+          p_credit_type: string
+          p_tenant_id: string
+        }
+        Returns: undefined
+      }
       increment_term_usage: {
         Args: { table_name: string; term_name: string }
         Returns: undefined
