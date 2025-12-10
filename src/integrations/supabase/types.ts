@@ -3529,6 +3529,7 @@ export type Database = {
           follower_count: number | null
           full_name: string
           has_email: boolean | null
+          has_location: boolean | null
           has_phone: boolean | null
           headline: string | null
           id: string
@@ -3557,6 +3558,7 @@ export type Database = {
           follower_count?: number | null
           full_name: string
           has_email?: boolean | null
+          has_location?: boolean | null
           has_phone?: boolean | null
           headline?: string | null
           id?: string
@@ -3585,6 +3587,7 @@ export type Database = {
           follower_count?: number | null
           full_name?: string
           has_email?: boolean | null
+          has_location?: boolean | null
           has_phone?: boolean | null
           headline?: string | null
           id?: string
