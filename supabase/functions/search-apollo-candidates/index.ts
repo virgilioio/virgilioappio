@@ -374,6 +374,34 @@ serve(async (req) => {
     
     console.log(`✅ Apollo returned ${apolloData.people?.length || 0} candidates (total: ${apolloData.total_entries || 0})`);
 
+    // 🔍 DEBUG: Log the raw Apollo response structure to see actual field names
+    if (apolloData.people && apolloData.people.length > 0) {
+      const sample = apolloData.people[0];
+      console.log('📦 SAMPLE RAW APOLLO RESPONSE:', JSON.stringify({
+        id: sample.id,
+        first_name: sample.first_name,
+        last_name: sample.last_name,
+        last_name_obfuscated: sample.last_name_obfuscated,
+        name: sample.name,
+        title: sample.title,
+        headline: sample.headline,
+        // Check all possible LinkedIn URL field names
+        linkedin_url: sample.linkedin_url,
+        linkedinUrl: sample.linkedinUrl,
+        linkedin: sample.linkedin,
+        // Check all possible location field names
+        city: sample.city,
+        state: sample.state,
+        country: sample.country,
+        location: sample.location,
+        present_raw_address: sample.present_raw_address,
+        // Organization nested object
+        organization: sample.organization,
+        // All keys on the object
+        allKeys: Object.keys(sample)
+      }, null, 2));
+    }
+
     // Map Apollo candidates to our format
     const candidates = (apolloData.people || []).map(mapApolloSearchCandidate);
     const totalCount = apolloData.total_entries || candidates.length;
