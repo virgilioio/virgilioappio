@@ -3512,6 +3512,7 @@ export type Database = {
       }
       sourcing_preview_candidates: {
         Row: {
+          apollo_id: string | null
           company_industry: string | null
           company_url: string | null
           company_website: string | null
@@ -3524,17 +3525,22 @@ export type Database = {
           current_title: string | null
           experience_count: number | null
           experience_location: string | null
+          first_name: string | null
           follower_count: number | null
           full_name: string
+          has_email: boolean | null
+          has_phone: boolean | null
           headline: string | null
           id: string
           industry: string | null
+          last_name_obfuscated: string | null
           location: string | null
           match_score: number | null
           profile_url: string | null
           sourcing_project_id: string
         }
         Insert: {
+          apollo_id?: string | null
           company_industry?: string | null
           company_url?: string | null
           company_website?: string | null
@@ -3547,17 +3553,22 @@ export type Database = {
           current_title?: string | null
           experience_count?: number | null
           experience_location?: string | null
+          first_name?: string | null
           follower_count?: number | null
           full_name: string
+          has_email?: boolean | null
+          has_phone?: boolean | null
           headline?: string | null
           id?: string
           industry?: string | null
+          last_name_obfuscated?: string | null
           location?: string | null
           match_score?: number | null
           profile_url?: string | null
           sourcing_project_id: string
         }
         Update: {
+          apollo_id?: string | null
           company_industry?: string | null
           company_url?: string | null
           company_website?: string | null
@@ -3570,11 +3581,15 @@ export type Database = {
           current_title?: string | null
           experience_count?: number | null
           experience_location?: string | null
+          first_name?: string | null
           follower_count?: number | null
           full_name?: string
+          has_email?: boolean | null
+          has_phone?: boolean | null
           headline?: string | null
           id?: string
           industry?: string | null
+          last_name_obfuscated?: string | null
           location?: string | null
           match_score?: number | null
           profile_url?: string | null
@@ -3607,6 +3622,8 @@ export type Database = {
           name: string
           organization_id: string
           search_criteria: Json
+          sourcing_cache_expires_at: string | null
+          sourcing_candidate_count: number | null
           status: string
           total_candidates: number | null
           updated_at: string | null
@@ -3627,6 +3644,8 @@ export type Database = {
           name: string
           organization_id: string
           search_criteria?: Json
+          sourcing_cache_expires_at?: string | null
+          sourcing_candidate_count?: number | null
           status?: string
           total_candidates?: number | null
           updated_at?: string | null
@@ -3647,6 +3666,8 @@ export type Database = {
           name?: string
           organization_id?: string
           search_criteria?: Json
+          sourcing_cache_expires_at?: string | null
+          sourcing_candidate_count?: number | null
           status?: string
           total_candidates?: number | null
           updated_at?: string | null
@@ -4410,86 +4431,6 @@ export type Database = {
       }
     }
     Views: {
-      coresignal_preview_candidates: {
-        Row: {
-          company_industry: string | null
-          company_url: string | null
-          company_website: string | null
-          connections_count: number | null
-          coresignal_id: string | null
-          coresignal_score: number | null
-          country: string | null
-          created_at: string | null
-          current_company: string | null
-          current_title: string | null
-          experience_count: number | null
-          experience_location: string | null
-          follower_count: number | null
-          full_name: string | null
-          headline: string | null
-          id: string | null
-          industry: string | null
-          location: string | null
-          match_score: number | null
-          profile_url: string | null
-          sourcing_project_id: string | null
-        }
-        Insert: {
-          company_industry?: string | null
-          company_url?: string | null
-          company_website?: string | null
-          connections_count?: number | null
-          coresignal_id?: string | null
-          coresignal_score?: number | null
-          country?: string | null
-          created_at?: string | null
-          current_company?: string | null
-          current_title?: string | null
-          experience_count?: number | null
-          experience_location?: string | null
-          follower_count?: number | null
-          full_name?: string | null
-          headline?: string | null
-          id?: string | null
-          industry?: string | null
-          location?: string | null
-          match_score?: number | null
-          profile_url?: string | null
-          sourcing_project_id?: string | null
-        }
-        Update: {
-          company_industry?: string | null
-          company_url?: string | null
-          company_website?: string | null
-          connections_count?: number | null
-          coresignal_id?: string | null
-          coresignal_score?: number | null
-          country?: string | null
-          created_at?: string | null
-          current_company?: string | null
-          current_title?: string | null
-          experience_count?: number | null
-          experience_location?: string | null
-          follower_count?: number | null
-          full_name?: string | null
-          headline?: string | null
-          id?: string | null
-          industry?: string | null
-          location?: string | null
-          match_score?: number | null
-          profile_url?: string | null
-          sourcing_project_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "coresignal_preview_candidates_sourcing_project_id_fkey"
-            columns: ["sourcing_project_id"]
-            isOneToOne: false
-            referencedRelation: "sourcing_projects"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       coresignal_usage: {
         Row: {
           billing_cycle_start: string | null
