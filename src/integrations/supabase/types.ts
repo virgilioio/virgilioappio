@@ -919,11 +919,15 @@ export type Database = {
       }
       candidates: {
         Row: {
+          apollo_collected_at: string | null
+          apollo_id: string | null
           auto_generated_skills: Json | null
           bio: string | null
           candidate_name: string
           company_current: string | null
+          contact_email: string | null
           contact_emails: string[] | null
+          contact_phone: string | null
           contact_phones: string[] | null
           coresignal_collected_at: string | null
           coresignal_connections_count: number | null
@@ -934,6 +938,7 @@ export type Database = {
           created_by: string | null
           deleted_at: string | null
           email: string | null
+          email_status: string | null
           enriched_at: string | null
           enrichment_status: string | null
           external_application_id: string | null
@@ -964,11 +969,15 @@ export type Database = {
           years_experience: number | null
         }
         Insert: {
+          apollo_collected_at?: string | null
+          apollo_id?: string | null
           auto_generated_skills?: Json | null
           bio?: string | null
           candidate_name: string
           company_current?: string | null
+          contact_email?: string | null
           contact_emails?: string[] | null
+          contact_phone?: string | null
           contact_phones?: string[] | null
           coresignal_collected_at?: string | null
           coresignal_connections_count?: number | null
@@ -979,6 +988,7 @@ export type Database = {
           created_by?: string | null
           deleted_at?: string | null
           email?: string | null
+          email_status?: string | null
           enriched_at?: string | null
           enrichment_status?: string | null
           external_application_id?: string | null
@@ -1009,11 +1019,15 @@ export type Database = {
           years_experience?: number | null
         }
         Update: {
+          apollo_collected_at?: string | null
+          apollo_id?: string | null
           auto_generated_skills?: Json | null
           bio?: string | null
           candidate_name?: string
           company_current?: string | null
+          contact_email?: string | null
           contact_emails?: string[] | null
+          contact_phone?: string | null
           contact_phones?: string[] | null
           coresignal_collected_at?: string | null
           coresignal_connections_count?: number | null
@@ -1024,6 +1038,7 @@ export type Database = {
           created_by?: string | null
           deleted_at?: string | null
           email?: string | null
+          email_status?: string | null
           enriched_at?: string | null
           enrichment_status?: string | null
           external_application_id?: string | null
@@ -1198,136 +1213,6 @@ export type Database = {
             columns: ["conversation_id"]
             isOneToOne: false
             referencedRelation: "ai_conversations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      coresignal_preview_candidates: {
-        Row: {
-          company_industry: string | null
-          company_url: string | null
-          company_website: string | null
-          connections_count: number | null
-          coresignal_id: string
-          coresignal_score: number | null
-          country: string | null
-          created_at: string | null
-          current_company: string | null
-          current_title: string | null
-          experience_count: number | null
-          experience_location: string | null
-          follower_count: number | null
-          full_name: string
-          headline: string | null
-          id: string
-          industry: string | null
-          location: string | null
-          match_score: number | null
-          profile_url: string | null
-          sourcing_project_id: string
-        }
-        Insert: {
-          company_industry?: string | null
-          company_url?: string | null
-          company_website?: string | null
-          connections_count?: number | null
-          coresignal_id: string
-          coresignal_score?: number | null
-          country?: string | null
-          created_at?: string | null
-          current_company?: string | null
-          current_title?: string | null
-          experience_count?: number | null
-          experience_location?: string | null
-          follower_count?: number | null
-          full_name: string
-          headline?: string | null
-          id?: string
-          industry?: string | null
-          location?: string | null
-          match_score?: number | null
-          profile_url?: string | null
-          sourcing_project_id: string
-        }
-        Update: {
-          company_industry?: string | null
-          company_url?: string | null
-          company_website?: string | null
-          connections_count?: number | null
-          coresignal_id?: string
-          coresignal_score?: number | null
-          country?: string | null
-          created_at?: string | null
-          current_company?: string | null
-          current_title?: string | null
-          experience_count?: number | null
-          experience_location?: string | null
-          follower_count?: number | null
-          full_name?: string
-          headline?: string | null
-          id?: string
-          industry?: string | null
-          location?: string | null
-          match_score?: number | null
-          profile_url?: string | null
-          sourcing_project_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "coresignal_preview_candidates_sourcing_project_id_fkey"
-            columns: ["sourcing_project_id"]
-            isOneToOne: false
-            referencedRelation: "sourcing_projects"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      coresignal_usage: {
-        Row: {
-          billing_cycle_start: string
-          collect_credits_limit: number
-          collect_credits_used: number
-          created_at: string | null
-          id: string
-          last_collect_at: string | null
-          last_search_at: string | null
-          search_credits_limit: number
-          search_credits_used: number
-          tenant_id: string
-          updated_at: string | null
-        }
-        Insert: {
-          billing_cycle_start: string
-          collect_credits_limit?: number
-          collect_credits_used?: number
-          created_at?: string | null
-          id?: string
-          last_collect_at?: string | null
-          last_search_at?: string | null
-          search_credits_limit?: number
-          search_credits_used?: number
-          tenant_id: string
-          updated_at?: string | null
-        }
-        Update: {
-          billing_cycle_start?: string
-          collect_credits_limit?: number
-          collect_credits_used?: number
-          created_at?: string | null
-          id?: string
-          last_collect_at?: string | null
-          last_search_at?: string | null
-          search_credits_limit?: number
-          search_credits_used?: number
-          tenant_id?: string
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "coresignal_usage_tenant_id_fkey"
-            columns: ["tenant_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -3575,6 +3460,136 @@ export type Database = {
           },
         ]
       }
+      sourcing_credits_usage: {
+        Row: {
+          billing_cycle_start: string
+          collect_credits_limit: number
+          collect_credits_used: number
+          created_at: string | null
+          id: string
+          last_collect_at: string | null
+          last_search_at: string | null
+          search_credits_limit: number
+          search_credits_used: number
+          tenant_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          billing_cycle_start: string
+          collect_credits_limit?: number
+          collect_credits_used?: number
+          created_at?: string | null
+          id?: string
+          last_collect_at?: string | null
+          last_search_at?: string | null
+          search_credits_limit?: number
+          search_credits_used?: number
+          tenant_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          billing_cycle_start?: string
+          collect_credits_limit?: number
+          collect_credits_used?: number
+          created_at?: string | null
+          id?: string
+          last_collect_at?: string | null
+          last_search_at?: string | null
+          search_credits_limit?: number
+          search_credits_used?: number
+          tenant_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coresignal_usage_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sourcing_preview_candidates: {
+        Row: {
+          company_industry: string | null
+          company_url: string | null
+          company_website: string | null
+          connections_count: number | null
+          coresignal_id: string
+          coresignal_score: number | null
+          country: string | null
+          created_at: string | null
+          current_company: string | null
+          current_title: string | null
+          experience_count: number | null
+          experience_location: string | null
+          follower_count: number | null
+          full_name: string
+          headline: string | null
+          id: string
+          industry: string | null
+          location: string | null
+          match_score: number | null
+          profile_url: string | null
+          sourcing_project_id: string
+        }
+        Insert: {
+          company_industry?: string | null
+          company_url?: string | null
+          company_website?: string | null
+          connections_count?: number | null
+          coresignal_id: string
+          coresignal_score?: number | null
+          country?: string | null
+          created_at?: string | null
+          current_company?: string | null
+          current_title?: string | null
+          experience_count?: number | null
+          experience_location?: string | null
+          follower_count?: number | null
+          full_name: string
+          headline?: string | null
+          id?: string
+          industry?: string | null
+          location?: string | null
+          match_score?: number | null
+          profile_url?: string | null
+          sourcing_project_id: string
+        }
+        Update: {
+          company_industry?: string | null
+          company_url?: string | null
+          company_website?: string | null
+          connections_count?: number | null
+          coresignal_id?: string
+          coresignal_score?: number | null
+          country?: string | null
+          created_at?: string | null
+          current_company?: string | null
+          current_title?: string | null
+          experience_count?: number | null
+          experience_location?: string | null
+          follower_count?: number | null
+          full_name?: string
+          headline?: string | null
+          id?: string
+          industry?: string | null
+          location?: string | null
+          match_score?: number | null
+          profile_url?: string | null
+          sourcing_project_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coresignal_preview_candidates_sourcing_project_id_fkey"
+            columns: ["sourcing_project_id"]
+            isOneToOne: false
+            referencedRelation: "sourcing_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sourcing_projects: {
         Row: {
           coresignal_cache_expires_at: string | null
@@ -4395,7 +4410,136 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      coresignal_preview_candidates: {
+        Row: {
+          company_industry: string | null
+          company_url: string | null
+          company_website: string | null
+          connections_count: number | null
+          coresignal_id: string | null
+          coresignal_score: number | null
+          country: string | null
+          created_at: string | null
+          current_company: string | null
+          current_title: string | null
+          experience_count: number | null
+          experience_location: string | null
+          follower_count: number | null
+          full_name: string | null
+          headline: string | null
+          id: string | null
+          industry: string | null
+          location: string | null
+          match_score: number | null
+          profile_url: string | null
+          sourcing_project_id: string | null
+        }
+        Insert: {
+          company_industry?: string | null
+          company_url?: string | null
+          company_website?: string | null
+          connections_count?: number | null
+          coresignal_id?: string | null
+          coresignal_score?: number | null
+          country?: string | null
+          created_at?: string | null
+          current_company?: string | null
+          current_title?: string | null
+          experience_count?: number | null
+          experience_location?: string | null
+          follower_count?: number | null
+          full_name?: string | null
+          headline?: string | null
+          id?: string | null
+          industry?: string | null
+          location?: string | null
+          match_score?: number | null
+          profile_url?: string | null
+          sourcing_project_id?: string | null
+        }
+        Update: {
+          company_industry?: string | null
+          company_url?: string | null
+          company_website?: string | null
+          connections_count?: number | null
+          coresignal_id?: string | null
+          coresignal_score?: number | null
+          country?: string | null
+          created_at?: string | null
+          current_company?: string | null
+          current_title?: string | null
+          experience_count?: number | null
+          experience_location?: string | null
+          follower_count?: number | null
+          full_name?: string | null
+          headline?: string | null
+          id?: string | null
+          industry?: string | null
+          location?: string | null
+          match_score?: number | null
+          profile_url?: string | null
+          sourcing_project_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coresignal_preview_candidates_sourcing_project_id_fkey"
+            columns: ["sourcing_project_id"]
+            isOneToOne: false
+            referencedRelation: "sourcing_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      coresignal_usage: {
+        Row: {
+          billing_cycle_start: string | null
+          collect_credits_limit: number | null
+          collect_credits_used: number | null
+          created_at: string | null
+          id: string | null
+          last_collect_at: string | null
+          last_search_at: string | null
+          search_credits_limit: number | null
+          search_credits_used: number | null
+          tenant_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          billing_cycle_start?: string | null
+          collect_credits_limit?: number | null
+          collect_credits_used?: number | null
+          created_at?: string | null
+          id?: string | null
+          last_collect_at?: string | null
+          last_search_at?: string | null
+          search_credits_limit?: number | null
+          search_credits_used?: number | null
+          tenant_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          billing_cycle_start?: string | null
+          collect_credits_limit?: number | null
+          collect_credits_used?: number | null
+          created_at?: string | null
+          id?: string | null
+          last_collect_at?: string | null
+          last_search_at?: string | null
+          search_credits_limit?: number | null
+          search_credits_used?: number | null
+          tenant_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "coresignal_usage_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       accept_invitation: {
