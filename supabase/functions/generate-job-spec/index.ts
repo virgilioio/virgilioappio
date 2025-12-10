@@ -255,7 +255,14 @@ ROLE INTERPRETATION INTELLIGENCE:
   * "Marketing" could be Marketing Specialist, Digital Marketing Manager, Content Creator, etc.
   * "Tech" could be Software Developer DevOps Engineer, Data Analyst, etc.
 - Consider context clues like company size, industry, seniority level mentioned
-- Generate 2-3 alternative titles that represent different seniority levels or specializations
+
+TITLE GENERATION RULES (CRITICAL - AFFECTS SEARCH QUALITY):
+- Generate exactly 1-2 alternative titles (NOT 3+)
+- Focus on the MOST COMMON variations that recruiters search for
+- Example: For "Account Executive" → ["Sales Executive"] (just one clear alternative)
+- Example: For "Software Engineer" → ["Software Developer"] (just one)
+- Only add a second title if it's significantly different and commonly used
+- Fewer, more precise titles = better search results
 
 ENHANCED ANALYSIS REQUIREMENTS:
 - Understand the context of the role
@@ -320,7 +327,7 @@ Return ONLY valid JSON in this format:
 
 {
   "job_title": "Primary suggested job title in detected prompt language",
-  "alt_titles": ["Alternative title 1", "Alternative title 2", "Alternative title 3"],
+  "alt_titles": ["Most common alternative title", "Second alternative (only if significantly different)"],
   "job_description": "Structured HTML with headings and bullet points in detected prompt language",
   "level": "L1 | L2 | L3",
   "department": "Department name in detected prompt language",
