@@ -1,20 +1,13 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { SourcingProjectFilters, SourcingProject, SearchCriteria } from '@/types/sourcing'
-import { LocationSelector } from '@/components/sourcing/LocationSelector'
-import { X, Plus, Loader2, RefreshCw } from 'lucide-react'
+import { Loader2, RefreshCw } from 'lucide-react'
 import { Separator } from '@/components/ui/separator'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+import { EditableSearchCriteria } from './EditableSearchCriteria'
 
 interface SourcingFiltersPanelProps {
   filters: SourcingProjectFilters
@@ -33,62 +26,27 @@ export function SourcingFiltersPanel({
 }: SourcingFiltersPanelProps) {
   const [isEditingCriteria, setIsEditingCriteria] = useState(false)
   const [editableCriteria, setEditableCriteria] = useState<SearchCriteria>(project.search_criteria)
-  const [newSkill, setNewSkill] = useState('')
-  const [newTitleKeyword, setNewTitleKeyword] = useState('')
 
   // Seed editableCriteria once when entering edit mode
   const handleStartEdit = () => {
-    setEditableCriteria(project.search_criteria) // Seed from canonical data exactly once
+    setEditableCriteria(project.search_criteria)
     setIsEditingCriteria(true)
   }
 
   const handleSaveAndRefresh = async () => {
-    if (editableCriteria.skills.length === 0) return
-    setIsEditingCriteria(false) // Exit edit mode
+    // Apollo uses title_keywords as primary filter, not skills
+    if (!editableCriteria.title_keywords || editableCriteria.title_keywords.length === 0) return
+    setIsEditingCriteria(false)
     await onUpdateSearchCriteria(editableCriteria)
   }
 
   const handleCancelEdit = () => {
-    setEditableCriteria(project.search_criteria) // Re-seed from latest canonical data
+    setEditableCriteria(project.search_criteria)
     setIsEditingCriteria(false)
   }
 
-  const handleAddSkill = () => {
-    if (newSkill.trim() && !editableCriteria.skills.includes(newSkill.trim())) {
-      setEditableCriteria({
-        ...editableCriteria,
-        skills: [...editableCriteria.skills, newSkill.trim()]
-      })
-      setNewSkill('')
-    }
-  }
-
-  const handleRemoveSkill = (skill: string) => {
-    setEditableCriteria({
-      ...editableCriteria,
-      skills: editableCriteria.skills.filter(s => s !== skill)
-    })
-  }
-
-  const handleAddTitleKeyword = () => {
-    if (newTitleKeyword.trim()) {
-      const currentKeywords = editableCriteria.title_keywords || []
-      if (!currentKeywords.includes(newTitleKeyword.trim())) {
-        setEditableCriteria({
-          ...editableCriteria,
-          title_keywords: [...currentKeywords, newTitleKeyword.trim()]
-        })
-        setNewTitleKeyword('')
-      }
-    }
-  }
-
-  const handleRemoveTitleKeyword = (keyword: string) => {
-    setEditableCriteria({
-      ...editableCriteria,
-      title_keywords: (editableCriteria.title_keywords || []).filter(k => k !== keyword)
-    })
-  }
+  // Check if save is disabled (need at least title keywords for Apollo)
+  const isSaveDisabled = isRefreshing || !editableCriteria.title_keywords || editableCriteria.title_keywords.length === 0
 
   return (
     <div className="w-80 h-full border-r border-virgilio-border/50 bg-surface-primary flex flex-col">
@@ -126,7 +84,7 @@ export function SourcingFiltersPanel({
                 <Button 
                   size="sm" 
                   onClick={handleSaveAndRefresh} 
-                  disabled={isRefreshing || editableCriteria.skills.length === 0}
+                  disabled={isSaveDisabled}
                   className="h-8 px-3 text-xs rounded-lg text-white bg-gradient-to-r from-virgilio-purple to-virgilio-purple/90 hover:shadow-md transition-all duration-200"
                 >
                   {isRefreshing ? (
@@ -146,179 +104,67 @@ export function SourcingFiltersPanel({
           </div>
 
           {isEditingCriteria ? (
-            <div className="space-y-4">
-              {/* Skills */}
-              <div className="space-y-2">
-                <Label className="text-xs font-medium text-virgilio-muted">Skills *</Label>
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Add skill..."
-                    value={newSkill}
-                    onChange={(e) => setNewSkill(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault()
-                        handleAddSkill()
-                      }
-                    }}
-                    className="h-9 text-sm flex-1"
-                  />
-                  <Button 
-                    size="sm" 
-                    onClick={handleAddSkill} 
-                    className="h-9 w-9 p-0 rounded-lg text-white bg-gradient-to-r from-virgilio-purple to-virgilio-purple/90 hover:shadow-md transition-all duration-200"
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {editableCriteria.skills.map(skill => (
-                    <Badge key={skill} variant="secondary" className="text-xs pr-1 rounded-md">
-                      {skill}
-                      <button
-                        onClick={() => handleRemoveSkill(skill)}
-                        className="ml-1.5 hover:bg-muted-foreground/20 rounded-sm p-0.5 transition-colors"
-                      >
-                        <X className="h-2.5 w-2.5" />
-                      </button>
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-
-              {/* Job Titles */}
-              <div className="space-y-2">
-                <Label className="text-xs font-medium text-virgilio-muted">Job Titles</Label>
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Add title..."
-                    value={newTitleKeyword}
-                    onChange={(e) => setNewTitleKeyword(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault()
-                        handleAddTitleKeyword()
-                      }
-                    }}
-                    className="h-9 text-sm flex-1"
-                  />
-                  <Button 
-                    size="sm" 
-                    onClick={handleAddTitleKeyword} 
-                    className="h-9 w-9 p-0 rounded-lg text-white bg-gradient-to-r from-virgilio-purple to-virgilio-purple/90 hover:shadow-md transition-all duration-200"
-                  >
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
-                {editableCriteria.title_keywords && editableCriteria.title_keywords.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5">
-                    {editableCriteria.title_keywords.map(keyword => (
-                      <Badge key={keyword} variant="outline" className="text-xs pr-1 rounded-md">
-                        {keyword}
-                        <button
-                          onClick={() => handleRemoveTitleKeyword(keyword)}
-                          className="ml-1.5 hover:bg-muted-foreground/20 rounded-sm p-0.5 transition-colors"
-                        >
-                          <X className="h-2.5 w-2.5" />
-                        </button>
-                      </Badge>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* Locations */}
-              <div className="space-y-2">
-                <Label className="text-xs font-medium text-virgilio-muted">Search Locations</Label>
-                <LocationSelector
-                  selectedLocations={editableCriteria.locations || []}
-                  onLocationsChange={(locations) => setEditableCriteria({ ...editableCriteria, locations })}
-                />
-              </div>
-
-              {/* Experience Range */}
-              <div className="space-y-2">
-                <Label className="text-xs font-medium text-virgilio-muted">Experience Years</Label>
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="number"
-                    placeholder="Min"
-                    value={editableCriteria.experience_years?.min || ''}
-                    onChange={(e) => setEditableCriteria({
-                      ...editableCriteria,
-                      experience_years: {
-                        ...editableCriteria.experience_years,
-                        min: e.target.value ? parseInt(e.target.value) : undefined
-                      }
-                    })}
-                    className="h-9 text-sm w-20"
-                    min={0}
-                    max={30}
-                  />
-                  <span className="text-xs text-virgilio-muted">to</span>
-                  <Input
-                    type="number"
-                    placeholder="Max"
-                    value={editableCriteria.experience_years?.max || ''}
-                    onChange={(e) => setEditableCriteria({
-                      ...editableCriteria,
-                      experience_years: {
-                        ...editableCriteria.experience_years,
-                        max: e.target.value ? parseInt(e.target.value) : undefined
-                      }
-                    })}
-                    className="h-9 text-sm w-20"
-                    min={0}
-                    max={30}
-                  />
-                </div>
-              </div>
-            </div>
+            <EditableSearchCriteria 
+              criteria={editableCriteria} 
+              onChange={setEditableCriteria} 
+            />
           ) : (
             <div className="space-y-3 text-sm">
               {/* Read-only view of criteria */}
-              {project.search_criteria.skills.length > 0 && (
+              {project.search_criteria.title_keywords && project.search_criteria.title_keywords.length > 0 && (
                 <div className="space-y-1.5">
-                  <span className="text-xs font-medium text-virgilio-muted">Skills:</span>
+                  <span className="text-xs font-medium text-virgilio-muted">Job Titles:</span>
                   <div className="flex flex-wrap gap-1.5">
-                    {project.search_criteria.skills.map(skill => (
-                      <Badge key={skill} variant="secondary" className="text-xs rounded-md">{skill}</Badge>
+                    {project.search_criteria.title_keywords.map(title => (
+                      <Badge key={title} variant="secondary" className="text-xs rounded-md">{title}</Badge>
                     ))}
                   </div>
                 </div>
               )}
-              {project.search_criteria.title_keywords && project.search_criteria.title_keywords.length > 0 && (
+              {project.search_criteria.keywords && (
                 <div className="space-y-1.5">
-                  <span className="text-xs font-medium text-virgilio-muted">Titles:</span>
-                  <div className="flex flex-wrap gap-1.5">
-                    {project.search_criteria.title_keywords.map(title => (
-                      <Badge key={title} variant="outline" className="text-xs rounded-md">{title}</Badge>
-                    ))}
-                  </div>
+                  <span className="text-xs font-medium text-virgilio-muted">Keywords:</span>
+                  <Badge variant="outline" className="text-xs rounded-md">{project.search_criteria.keywords}</Badge>
                 </div>
               )}
               {project.search_criteria.locations && project.search_criteria.locations.length > 0 && (
                 <div className="space-y-1.5">
                   <span className="text-xs font-medium text-virgilio-muted">Locations:</span>
                   <div className="flex flex-wrap gap-1.5">
-                    {project.search_criteria.locations.map(loc => {
-                      // Parse location value to display format
-                      const parts = loc.split(',')
-                      let label = loc
-                      if (parts.length === 3) {
-                        label = `${parts[0]}, ${parts[1]}, ${parts[2]}` // City, State, Country
-                      } else if (parts.length === 2) {
-                        label = `${parts[0]}, ${parts[1]}` // State, Country
-                      } else {
-                        label = parts[0] // Just country code
-                      }
-                      return (
-                        <Badge key={loc} variant="outline" className="text-xs rounded-md">
-                          {label}
-                        </Badge>
-                      )
-                    })}
+                    {project.search_criteria.locations.map(loc => (
+                      <Badge key={loc} variant="outline" className="text-xs rounded-md">
+                        {loc}
+                      </Badge>
+                    ))}
                   </div>
+                </div>
+              )}
+              {project.search_criteria.seniorities && project.search_criteria.seniorities.length > 0 && (
+                <div className="space-y-1.5">
+                  <span className="text-xs font-medium text-virgilio-muted">Seniority:</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {project.search_criteria.seniorities.map(level => (
+                      <Badge key={level} variant="outline" className="text-xs rounded-md capitalize">{level.replace('_', ' ')}</Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {project.search_criteria.company_sizes && project.search_criteria.company_sizes.length > 0 && (
+                <div className="space-y-1.5">
+                  <span className="text-xs font-medium text-virgilio-muted">Company Size:</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {project.search_criteria.company_sizes.map(size => (
+                      <Badge key={size} variant="outline" className="text-xs rounded-md">{size}</Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {project.search_criteria.experience_years && (project.search_criteria.experience_years.min || project.search_criteria.experience_years.max) && (
+                <div className="space-y-1.5">
+                  <span className="text-xs font-medium text-virgilio-muted">Experience:</span>
+                  <Badge variant="outline" className="text-xs rounded-md">
+                    {project.search_criteria.experience_years.min || 0} - {project.search_criteria.experience_years.max || 30} years
+                  </Badge>
                 </div>
               )}
             </div>
