@@ -106,6 +106,43 @@ function convertCountryCodesToNames(codes: string[]): string[] {
   return codes.map(code => COUNTRY_CODE_TO_NAME[code] || code);
 }
 
+// Helper to calculate title relevance score for sorting (prioritizes current title matches)
+function calculateTitleRelevanceScore(
+  currentTitle: string | null, 
+  titleKeywords: string[]
+): number {
+  if (!currentTitle || titleKeywords.length === 0) return 0;
+  
+  const normalizedTitle = currentTitle.toLowerCase();
+  
+  for (const keyword of titleKeywords) {
+    const normalizedKeyword = keyword.toLowerCase();
+    
+    // Exact match (highest priority) - e.g., "Account Executive" matches "Account Executive"
+    if (normalizedTitle === normalizedKeyword) {
+      return 100;
+    }
+    
+    // Contains full keyword (high priority) - e.g., "Senior Account Executive" contains "Account Executive"
+    if (normalizedTitle.includes(normalizedKeyword)) {
+      return 80;
+    }
+    
+    // Word-level partial match (medium priority) - e.g., "Sales Executive" matches "Account Executive"
+    const titleWords = normalizedTitle.split(/\s+/);
+    const keywordWords = normalizedKeyword.split(/\s+/);
+    const matchingWords = keywordWords.filter(kw => 
+      titleWords.some(tw => tw.includes(kw) || kw.includes(tw))
+    );
+    
+    if (matchingWords.length > 0) {
+      return 50 + (matchingWords.length / keywordWords.length) * 30;
+    }
+  }
+  
+  return 0; // No match - will appear lower in results
+}
+
 function buildCoresignalFilterQuery(criteria: SearchCriteria): any {
   const query: any = {};
   
@@ -581,7 +618,38 @@ serve(async (req) => {
       creditsUsedInSearch = 1;
     }
 
-    const candidates = allCandidates;
+    // Sort candidates by current title relevance (best matches first)
+    const titleKeywords = criteria.title_keywords?.slice(0, 2) || [];
+    
+    // Add title relevance score to each candidate
+    const candidatesWithRelevance = allCandidates.map(candidate => ({
+      ...candidate,
+      title_relevance_score: calculateTitleRelevanceScore(candidate.current_title, titleKeywords)
+    }));
+    
+    // Sort by title relevance (primary), then CoreSignal score (secondary)
+    candidatesWithRelevance.sort((a, b) => {
+      if (b.title_relevance_score !== a.title_relevance_score) {
+        return b.title_relevance_score - a.title_relevance_score;
+      }
+      return (b._score || 0) - (a._score || 0);
+    });
+    
+    // Log sorting results for transparency
+    if (titleKeywords.length > 0) {
+      const exactMatches = candidatesWithRelevance.filter(c => c.title_relevance_score >= 80).length;
+      const partialMatches = candidatesWithRelevance.filter(c => c.title_relevance_score > 0 && c.title_relevance_score < 80).length;
+      const noMatches = candidatesWithRelevance.filter(c => c.title_relevance_score === 0).length;
+      
+      console.log(`🎯 Title relevance sorting:`, {
+        exactCurrentTitleMatches: exactMatches,
+        partialCurrentTitleMatches: partialMatches,
+        noCurrentTitleMatch: noMatches,
+        searchedTitles: titleKeywords
+      });
+    }
+
+    const candidates = candidatesWithRelevance;
 
     // Store candidates in database for caching
     if (project_id && candidates.length > 0) {
