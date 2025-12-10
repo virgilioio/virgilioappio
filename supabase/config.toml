@@ -27,9 +27,6 @@ verify_jwt = false
 [functions.chrome-api-candidates]
 verify_jwt = false
 
-[functions.collect-coresignal-profile]
-verify_jwt = true
-
 [functions.convert-document-to-pdf]
 verify_jwt = false
 
@@ -70,9 +67,6 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.search-apollo-candidates]
-verify_jwt = true
-
-[functions.search-coresignal-candidates]
 verify_jwt = true
 
 [functions.send-user-email]
