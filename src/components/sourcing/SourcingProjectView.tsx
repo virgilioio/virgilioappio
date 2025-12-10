@@ -148,18 +148,18 @@ export function SourcingProjectView({ projectId }: SourcingProjectViewProps) {
         .update({
           search_criteria: newCriteria as any,
           updated_at: new Date().toISOString(),
-          coresignal_cache_expires_at: null,
-          coresignal_candidate_count: 0,
+          sourcing_cache_expires_at: null,
+          sourcing_candidate_count: 0,
         })
         .eq('id', projectId)
-        .select('id, search_criteria, updated_at, coresignal_cache_expires_at, coresignal_candidate_count')
+        .select('id, search_criteria, updated_at, sourcing_cache_expires_at, sourcing_candidate_count')
         .single()
 
       if (error) throw error
 
       // 3. Reconcile cache with authoritative server result
       queryClient.setQueryData(['sourcing-project', projectId], (old: any) =>
-        old ? { ...old, ...data } : data
+        old ? { ...old, ...(data as object) } : data
       )
 
       // 4. Now refresh dependent data (candidates) after cache is consistent

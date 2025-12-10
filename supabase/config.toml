@@ -69,6 +69,9 @@ verify_jwt = false
 [functions.search-apollo-candidates]
 verify_jwt = true
 
+[functions.enrich-apollo-profile]
+verify_jwt = true
+
 [functions.send-user-email]
 verify_jwt = true
 

@@ -187,7 +187,7 @@ async function checkCreditAvailability(
   const nextReset = nextMonth.toISOString().slice(0, 10);
   
   let { data: usage, error } = await supabase
-    .from('coresignal_usage')
+    .from('sourcing_credits_usage')
     .select('*')
     .eq('tenant_id', tenant_id)
     .eq('billing_cycle_start', currentMonth)
@@ -204,7 +204,7 @@ async function checkCreditAvailability(
     }
     
     const { data: newUsage, error: insertError } = await supabase
-      .from('coresignal_usage')
+      .from('sourcing_credits_usage')
       .insert({
         tenant_id: tenant_id,
         billing_cycle_start: currentMonth,
@@ -240,7 +240,7 @@ async function incrementCreditUsage(
   const now = new Date();
   const billingCycleStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
   
-  const { error } = await supabase.rpc('increment_coresignal_usage', {
+  const { error } = await supabase.rpc('increment_sourcing_usage', {
     p_tenant_id: tenant_id,
     p_billing_cycle_start: billingCycleStart,
     p_credit_type: type
@@ -326,22 +326,22 @@ serve(async (req) => {
     if (project_id) {
       const { data: project } = await supabase
         .from('sourcing_projects')
-        .select('coresignal_cache_expires_at, coresignal_candidate_count')
+        .select('sourcing_cache_expires_at, sourcing_candidate_count')
         .eq('id', project_id)
         .single();
       
-      if (project?.coresignal_cache_expires_at) {
-        const cacheExpiry = new Date(project.coresignal_cache_expires_at);
+      if (project?.sourcing_cache_expires_at) {
+        const cacheExpiry = new Date(project.sourcing_cache_expires_at);
         if (cacheExpiry > new Date()) {
           console.log('✅ Using cached Apollo results');
           
           const { data: cachedCandidates } = await supabase
-            .from('coresignal_preview_candidates')
+            .from('sourcing_preview_candidates')
             .select('*')
             .eq('sourcing_project_id', project_id);
           
           const candidates = (cachedCandidates || []).map(c => ({
-            apollo_id: c.coresignal_id,
+            apollo_id: c.apollo_id,
             full_name: c.full_name,
             headline: c.headline,
             location: c.location,
@@ -350,14 +350,14 @@ serve(async (req) => {
             current_company: c.current_company,
             current_title: c.current_title,
             experience_count: c.experience_count,
-            _score: c.coresignal_score
+            _score: c.match_score
           }));
           
           const creditCheck = await checkCreditAvailability(orgId, 'search');
           
           return new Response(JSON.stringify({
             candidates,
-            total_count: project.coresignal_candidate_count || candidates.length,
+            total_count: project.sourcing_candidate_count || candidates.length,
             credits_used: 0,
             credits_remaining: creditCheck.remaining,
             cached: true,
@@ -428,14 +428,14 @@ serve(async (req) => {
     if (project_id && candidates.length > 0) {
       // Clear old cache
       await supabase
-        .from('coresignal_preview_candidates')
+        .from('sourcing_preview_candidates')
         .delete()
         .eq('sourcing_project_id', project_id);
 
       // Insert new candidates
       const candidatesToInsert = candidates.slice(0, 200).map((c: any) => ({
         sourcing_project_id: project_id,
-        coresignal_id: c.apollo_id,
+        apollo_id: c.apollo_id,
         full_name: c.full_name,
         headline: c.headline,
         location: c.location,
@@ -444,11 +444,11 @@ serve(async (req) => {
         current_company: c.current_company,
         current_title: c.current_title,
         experience_count: c.experience_count,
-        coresignal_score: c._score
+        match_score: c._score
       }));
 
       const { error: insertError } = await supabase
-        .from('coresignal_preview_candidates')
+        .from('sourcing_preview_candidates')
         .insert(candidatesToInsert);
 
       if (insertError) {
@@ -462,8 +462,8 @@ serve(async (req) => {
       await supabase
         .from('sourcing_projects')
         .update({
-          coresignal_cache_expires_at: cacheExpiry.toISOString(),
-          coresignal_candidate_count: totalCount,
+          sourcing_cache_expires_at: cacheExpiry.toISOString(),
+          sourcing_candidate_count: totalCount,
           updated_at: new Date().toISOString()
         })
         .eq('id', project_id);

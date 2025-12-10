@@ -31,7 +31,7 @@ interface SourcingProjectHeaderProps {
     fair: number
     minimal: number
     localCandidates?: number
-    coreSignalCandidates?: number
+    apolloCandidates?: number
     creditsUsed?: number
     collectCreditsUsed?: number
   }
@@ -179,7 +179,7 @@ export function SourcingProjectHeader({
         </div>
 
         {/* Source Breakdown */}
-        {(breakdown.localCandidates !== undefined || breakdown.coreSignalCandidates !== undefined) && (
+        {(breakdown.localCandidates !== undefined || breakdown.apolloCandidates !== undefined) && (
           <>
             <span className="text-muted-foreground">•</span>
             <div className="flex items-center gap-2">
@@ -189,9 +189,9 @@ export function SourcingProjectHeader({
                   {breakdown.localCandidates} Local
                 </Badge>
               )}
-              {breakdown.coreSignalCandidates !== undefined && breakdown.coreSignalCandidates > 0 && (
+              {breakdown.apolloCandidates !== undefined && breakdown.apolloCandidates > 0 && (
                 <Badge variant="secondary" className="text-xs">
-                  {breakdown.coreSignalCandidates} CoreSignal
+                  {breakdown.apolloCandidates} Apollo
                 </Badge>
               )}
             </div>
