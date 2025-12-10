@@ -32,6 +32,10 @@ interface UniversalCandidateProfileSheetProps {
     company_website?: string
     company_industry?: string
     experience_location?: string
+    // Availability flags
+    has_email?: boolean
+    has_phone?: boolean
+    has_location?: boolean
   }
 }
 

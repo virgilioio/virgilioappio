@@ -30,33 +30,33 @@ interface SearchRequest {
   organization_id?: string;
 }
 
-// Apollo search response candidate - includes LinkedIn URL per docs
+// Apollo SEARCH API response - ONLY preview data, NOT full profiles
+// Based on actual API testing: search returns obfuscated names and availability flags ONLY
+// Full data (linkedin_url, email, phone, location values) requires ENRICHMENT
 interface ApolloSearchCandidate {
   id: string;
   first_name: string;
-  last_name_obfuscated?: string;  // Obfuscated: "Po***r"
-  last_name?: string;  // Full last name (for contacts)
-  name?: string;       // Full name
-  title?: string;
-  headline?: string;
-  linkedin_url?: string;  // ✅ Available in search response!
-  email?: string;         // Available for contacts
-  email_status?: string;
-  photo_url?: string;
-  state?: string;
-  city?: string;
-  country?: string;
+  last_name_obfuscated: string;  // Obfuscated: "Hu***n" - ALWAYS obfuscated in search
+  // These fields are NOT returned by search API - only after enrichment:
+  // last_name, name, linkedin_url, email, city, state, country (actual values)
+  title?: string | null;
+  last_refreshed_at?: string;
+  // Availability flags - indicate what CAN be revealed after enrichment
   has_email?: boolean;
   has_city?: boolean;
   has_state?: boolean;
   has_country?: boolean;
-  has_direct_phone?: string;  // "Yes", "No", or "Maybe: please request..."
+  has_direct_phone?: string;  // "Yes" or "No"
   organization?: {
-    id?: string;
     name: string;
-    website_url?: string;
-    linkedin_url?: string;
-    primary_domain?: string;
+    has_industry?: boolean;
+    has_phone?: boolean;
+    has_city?: boolean;
+    has_state?: boolean;
+    has_country?: boolean;
+    has_zip_code?: boolean;
+    has_revenue?: boolean;
+    has_employee_count?: boolean;
   };
 }
 
@@ -205,51 +205,45 @@ function buildApolloSearchUrl(criteria: SearchCriteria, perPage: number = 50): s
 }
 
 /**
- * Map Apollo search result candidate to our preview format
- * Per Apollo docs: search returns linkedin_url, location fields
+ * Map Apollo SEARCH result to our preview format
+ * IMPORTANT: Search API returns ONLY preview data with obfuscated names and availability flags
+ * Full data (linkedin_url, email, phone, location values) is ONLY available after ENRICHMENT
  */
 function mapApolloSearchCandidate(apolloCandidate: ApolloSearchCandidate): any {
-  // Construct display name - use full name if available, or construct from parts
-  const lastName = apolloCandidate.last_name || apolloCandidate.last_name_obfuscated || '';
-  const displayName = apolloCandidate.name || `${apolloCandidate.first_name} ${lastName}`.trim();
+  // Construct display name with obfuscated last name (e.g., "Andrew Hu***n")
+  const displayName = `${apolloCandidate.first_name} ${apolloCandidate.last_name_obfuscated}`.trim();
 
-  // Build location string from available fields
-  const locationParts = [
-    apolloCandidate.city,
-    apolloCandidate.state,
-    apolloCandidate.country
-  ].filter(Boolean);
-  const location = locationParts.length > 0 ? locationParts.join(', ') : null;
+  // Determine location availability (NOT actual values - those come from enrichment)
+  const hasLocation = apolloCandidate.has_city || apolloCandidate.has_state || apolloCandidate.has_country;
 
   return {
     apollo_id: apolloCandidate.id,
     full_name: displayName,
     first_name: apolloCandidate.first_name,
-    last_name_obfuscated: apolloCandidate.last_name_obfuscated || apolloCandidate.last_name,
-    headline: apolloCandidate.headline || apolloCandidate.title,
-    current_title: apolloCandidate.title,
+    last_name_obfuscated: apolloCandidate.last_name_obfuscated,
+    headline: apolloCandidate.title || null,
+    current_title: apolloCandidate.title || null,
     current_company: apolloCandidate.organization?.name || null,
-    // ✅ LinkedIn URL is available in search results!
-    profile_url: apolloCandidate.linkedin_url || null,
-    linkedin_url: apolloCandidate.linkedin_url || null,
-    // Location data
-    location: location,
-    city: apolloCandidate.city || null,
-    state: apolloCandidate.state || null,
-    country: apolloCandidate.country || null,
-    // Availability flags - used to show "Reveal Contact" option
-    has_email: apolloCandidate.has_email ?? (apolloCandidate.email_status === 'verified'),
-    has_phone: apolloCandidate.has_direct_phone === 'Yes' || 
-               apolloCandidate.has_direct_phone?.startsWith('Maybe'),
-    // Email may be available for "contacts" (already enriched)
-    email: apolloCandidate.email || null,
-    email_status: apolloCandidate.email_status || null,
-    // Company info
-    company_url: apolloCandidate.organization?.linkedin_url || null,
-    company_website: apolloCandidate.organization?.website_url || null,
-    // Flag indicating this is preview data
-    is_preview: !apolloCandidate.email,  // If has email, it's already enriched
-    needs_enrichment: !apolloCandidate.email,
+    // ❌ NOT available in search - will be null until enrichment
+    profile_url: null,
+    linkedin_url: null,
+    location: null,
+    city: null,
+    state: null,
+    country: null,
+    email: null,
+    phone: null,
+    email_status: null,
+    // ✅ Availability flags - indicate what CAN be revealed after enrichment
+    has_email: apolloCandidate.has_email ?? false,
+    has_phone: apolloCandidate.has_direct_phone === 'Yes',
+    has_location: hasLocation,
+    // Company availability info
+    company_has_phone: apolloCandidate.organization?.has_phone ?? false,
+    company_has_industry: apolloCandidate.organization?.has_industry ?? false,
+    // Flag indicating this is preview data that needs enrichment
+    is_preview: true,
+    needs_enrichment: true,
     _score: 100
   };
 }
@@ -314,15 +308,16 @@ serve(async (req) => {
             headline: c.headline,
             current_company: c.current_company,
             current_title: c.current_title,
-            has_email: c.has_email,
-            has_phone: c.has_phone,
-            // ✅ Include LinkedIn URL and location from cache
-            profile_url: c.profile_url,
-            linkedin_url: c.profile_url,
-            location: c.location,
-            country: c.country,
-            company_url: c.company_url,
-            company_website: c.company_website,
+            // ✅ Availability flags from cache
+            has_email: c.has_email ?? false,
+            has_phone: c.has_phone ?? false,
+            has_location: c.has_location ?? false,
+            // ❌ These are NULL in search results - only available after enrichment
+            profile_url: null,
+            linkedin_url: null,
+            location: null,
+            email: null,
+            phone: null,
             is_preview: true,
             needs_enrichment: true,
             _score: c.match_score
@@ -414,7 +409,7 @@ serve(async (req) => {
         .delete()
         .eq('sourcing_project_id', project_id);
 
-      // Insert new candidates with LinkedIn URLs and location
+      // Insert new candidates with availability flags (NOT actual values - those come from enrichment)
       const candidatesToInsert = candidates.slice(0, 200).map((c: any) => ({
         sourcing_project_id: project_id,
         apollo_id: c.apollo_id,
@@ -424,15 +419,15 @@ serve(async (req) => {
         headline: c.headline,
         current_company: c.current_company,
         current_title: c.current_title,
-        has_email: c.has_email,
-        has_phone: c.has_phone,
+        // ✅ Store availability flags
+        has_email: c.has_email ?? false,
+        has_phone: c.has_phone ?? false,
+        has_location: c.has_location ?? false,
         match_score: c._score,
-        // ✅ Store LinkedIn URL and location
-        profile_url: c.profile_url,
-        location: c.location,
-        country: c.country,
-        company_url: c.company_url,
-        company_website: c.company_website
+        // ❌ These are null in search results
+        profile_url: null,
+        location: null,
+        country: null
       }));
 
       const { error: insertError } = await supabase

@@ -23,14 +23,14 @@ interface ApolloPreviewSheetProps {
   apolloData?: {
     candidate_name: string
     headline?: string
-    location?: string
+    location?: string  // Only available after enrichment
     current_company?: string
     current_role?: string
-    linkedin_url?: string
+    linkedin_url?: string  // Only available after enrichment
     apollo_score?: number
-    email?: string
+    email?: string  // Only available after enrichment
     email_status?: string
-    phone?: string
+    phone?: string  // Only available after enrichment
     industry?: string
     connections_count?: number
     follower_count?: number
@@ -38,6 +38,10 @@ interface ApolloPreviewSheetProps {
     company_website?: string
     company_industry?: string
     experience_location?: string
+    // Availability flags - indicate what CAN be revealed after enrichment
+    has_email?: boolean
+    has_phone?: boolean
+    has_location?: boolean
   }
   jobId?: string | null
   hasPrev?: boolean
@@ -198,9 +202,14 @@ export function ApolloPreviewSheet({
     handleCollectProfile()
   }
 
-  // Check if Apollo provides email/phone directly
-  const hasEmail = apolloData?.email && apolloData.email_status === 'verified'
-  const hasPhone = apolloData?.phone
+  // Check availability flags (these indicate what CAN be revealed, not what IS available)
+  const hasEmailAvailable = apolloData?.has_email ?? false
+  const hasPhoneAvailable = apolloData?.has_phone ?? false
+  const hasLocationAvailable = apolloData?.has_location ?? false
+  
+  // Check if Apollo already has the data (rare - only if previously enriched)
+  const hasActualEmail = apolloData?.email && apolloData.email_status === 'verified'
+  const hasActualPhone = apolloData?.phone
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -263,14 +272,18 @@ export function ApolloPreviewSheet({
                 <Card className="bg-surface-primary border-border">
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between w-full">
-                      {/* Primary Action */}
+                      {/* Primary Action - Improved messaging */}
                       <Button
                         onClick={handleOpenJobSelection}
                         disabled={isCollecting || isCollectDisabled}
                         className="flex-1"
                       >
                         <Sparkles className="h-4 w-4 mr-2" />
-                        {isCollecting ? 'Collecting...' : isCollectDisabled ? 'Credit Limit Reached' : 'Collect Full Profile (1 credit)'}
+                        {isCollecting 
+                          ? 'Collecting...' 
+                          : isCollectDisabled 
+                            ? 'Credit Limit Reached' 
+                            : 'Reveal Full Profile (1 credit)'}
                       </Button>
 
                       <Separator orientation="vertical" className="h-6 mx-3" />
@@ -371,16 +384,23 @@ export function ApolloPreviewSheet({
                       </AccordionTrigger>
                       <AccordionContent>
                         <CardContent className="space-y-4 pt-0">
-                          {/* Location - Available */}
-                          {apolloData?.location && (
+                          {/* Location - Show if available after enrichment, otherwise show availability */}
+                          {apolloData?.location ? (
                             <div className="flex items-start gap-2">
                               <MapPin className="h-4 w-4 text-text-secondary mt-0.5 flex-shrink-0" />
                               <span className="text-sm">{apolloData.location}</span>
                             </div>
-                          )}
+                          ) : hasLocationAvailable ? (
+                            <div className="flex items-start gap-2">
+                              <MapPin className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                              <div className="flex flex-col">
+                                <span className="text-sm text-text-secondary italic">Location available after collection</span>
+                              </div>
+                            </div>
+                          ) : null}
 
-                          {/* LinkedIn - Available */}
-                          {apolloData?.linkedin_url && (
+                          {/* LinkedIn - Show if available after enrichment, otherwise show as locked */}
+                          {apolloData?.linkedin_url ? (
                             <div className="flex items-start justify-between gap-2">
                               <div className="flex items-start gap-2 flex-1 min-w-0">
                                 <LinkedInFilled className="h-4 w-4 text-text-secondary mt-0.5 flex-shrink-0" />
@@ -395,10 +415,15 @@ export function ApolloPreviewSheet({
                               </div>
                               <ExternalLink className="h-3.5 w-3.5 text-text-tertiary flex-shrink-0 mt-0.5" />
                             </div>
+                          ) : (
+                            <div className="flex items-start gap-2">
+                              <LinkedInFilled className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                              <span className="text-sm text-text-secondary italic">LinkedIn URL available after collection</span>
+                            </div>
                           )}
 
-                          {/* Email - Show if available from Apollo, otherwise locked */}
-                          {hasEmail ? (
+                          {/* Email - Show if available, otherwise show availability indicator or locked */}
+                          {hasActualEmail ? (
                             <div className="flex items-start gap-2">
                               <Mail className="h-4 w-4 text-text-secondary mt-0.5 flex-shrink-0" />
                               <div className="flex flex-col">
@@ -413,17 +438,27 @@ export function ApolloPreviewSheet({
                                 </div>
                               </div>
                             </div>
+                          ) : hasEmailAvailable ? (
+                            <div className="flex items-start gap-2">
+                              <Mail className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                              <span className="text-sm text-text-secondary italic">Email available after collection</span>
+                            </div>
                           ) : (
                             <LockedField icon={Mail} label="Email" />
                           )}
 
-                          {/* Phone - Show if available from Apollo, otherwise locked */}
-                          {hasPhone ? (
+                          {/* Phone - Show if available, otherwise show availability indicator or locked */}
+                          {hasActualPhone ? (
                             <div className="flex items-start gap-2">
                               <Phone className="h-4 w-4 text-text-secondary mt-0.5 flex-shrink-0" />
                               <a href={`tel:${apolloData?.phone}`} className="text-sm text-blue-600 hover:underline">
                                 {apolloData?.phone}
                               </a>
+                            </div>
+                          ) : hasPhoneAvailable ? (
+                            <div className="flex items-start gap-2">
+                              <Phone className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                              <span className="text-sm text-text-secondary italic">Phone available after collection</span>
                             </div>
                           ) : (
                             <LockedField icon={Phone} label="Phone" />
@@ -567,31 +602,39 @@ export function ApolloPreviewSheet({
                     <div className="flex gap-3">
                       <AlertCircle className="h-5 w-5 text-warning flex-shrink-0 mt-0.5" />
                       <div className="space-y-2">
-                        <div className="font-medium text-warning">Limited Preview Data</div>
+                        <div className="font-medium text-warning">Preview Only - Limited Data</div>
                         <div className="text-sm text-text-secondary">
-                          This is a preview from Apollo's search results. To view the full profile including 
-                          complete work experience, education, skills, and contact information, you need to collect the 
-                          full profile (costs 1 sourcing credit).
+                          This is a search preview with obfuscated name. Collecting the full profile (1 credit) 
+                          will reveal the LinkedIn URL, verified email, phone number, full name, and complete 
+                          work history.
                         </div>
                       </div>
                     </div>
                   </CardContent>
                 </Card>
 
-                {/* What You'll Get Card */}
-                <Card className="bg-surface-primary border-border">
+                {/* What You'll Unlock Card */}
+                <Card className="bg-primary/5 border-primary/20">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <Sparkles className="h-4 w-4 text-purple-500" />
-                      Unlock Full Profile
+                      <Sparkles className="h-4 w-4 text-primary" />
+                      What You'll Unlock
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <div className="text-sm text-text-secondary mb-4">
-                      Collecting the full profile will give you access to:
+                      Collecting this profile reveals:
                     </div>
-                    <UnlockItem icon={Mail} text="Email address" />
-                    <UnlockItem icon={Phone} text="Phone number" />
+                    {/* LinkedIn - Most important, highlight it */}
+                    <div className="flex items-center gap-2 p-2 bg-blue-50 rounded-md border border-blue-200">
+                      <div className="flex items-center justify-center h-6 w-6 rounded-full bg-blue-100">
+                        <LinkedInFilled className="h-3.5 w-3.5 text-blue-600" />
+                      </div>
+                      <span className="text-sm font-medium text-blue-700">LinkedIn Profile URL</span>
+                    </div>
+                    {hasEmailAvailable && <UnlockItem icon={Mail} text="Verified email address" />}
+                    {hasPhoneAvailable && <UnlockItem icon={Phone} text="Direct phone number" />}
+                    {hasLocationAvailable && <UnlockItem icon={MapPin} text="Full location details" />}
                     <UnlockItem icon={Briefcase} text="Complete work history" />
                     <UnlockItem icon={GraduationCap} text="Education background" />
                     <UnlockItem icon={Wrench} text="Full skills list" />
