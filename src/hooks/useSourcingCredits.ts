@@ -65,7 +65,7 @@ export function useSourcingCredits() {
 
       // Step 3: Query usage - get most recent record for this tenant
       const { data, error } = await supabase
-        .from('coresignal_usage')
+        .from('sourcing_credits_usage')
         .select('*')
         .eq('tenant_id', tenantId)
         .order('updated_at', { ascending: false })
@@ -89,7 +89,7 @@ export function useSourcingCredits() {
         }
 
         const { data: newRecord, error: insertError } = await supabase
-          .from('coresignal_usage')
+          .from('sourcing_credits_usage')
           .insert({
             tenant_id: tenantId,
             billing_cycle_start: billingCycleStart.toISOString(),
