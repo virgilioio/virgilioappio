@@ -33,7 +33,7 @@ import { usePermissions } from '@/hooks/usePermissions'
 import { GoGioLogo } from '@/components/GoGioLogo'
 import { AdminModeIndicator } from '@/components/admin/AdminModeIndicator'
 import { GlobalCreateButton } from '@/components/layout/GlobalCreateButton'
-import { CoresignalCreditIndicator } from '@/components/layout/CoresignalCreditIndicator'
+import { SourcingCreditIndicator } from '@/components/layout/SourcingCreditIndicator'
 
 import { cn } from '@/lib/utils'
 import { useMembers } from '@/hooks/useMembers'
@@ -247,8 +247,8 @@ export function Header() {
           {/* Global Create Button */}
           <GlobalCreateButton />
           
-          {/* CoreSignal Credit Indicator */}
-          <CoresignalCreditIndicator />
+          {/* Sourcing Credit Indicator */}
+          <SourcingCreditIndicator />
           
           {/* Workspace Switcher */}
           {isPlatformAdmin && uniqueOrgs.length > 1 && (

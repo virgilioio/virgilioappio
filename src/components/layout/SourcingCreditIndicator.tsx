@@ -8,11 +8,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
-import { useCoresignalUsage } from '@/hooks/useCoresignalUsage'
+import { useSourcingCredits } from '@/hooks/useSourcingCredits'
 import { cn } from '@/lib/utils'
 
-export function CoresignalCreditIndicator() {
-  const { data: usage, isLoading } = useCoresignalUsage()
+export function SourcingCreditIndicator() {
+  const { data: usage, isLoading } = useSourcingCredits()
 
   if (isLoading || !usage) return null
 
@@ -42,7 +42,7 @@ export function CoresignalCreditIndicator() {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-72 shadow-calendly border-virgilio-border">
         <DropdownMenuLabel className="font-poppins font-semibold text-virgilio-text">
-          CoreSignal Credits ({currentMonth})
+          Sourcing Credits ({currentMonth})
         </DropdownMenuLabel>
         <DropdownMenuSeparator className="bg-virgilio-border" />
         

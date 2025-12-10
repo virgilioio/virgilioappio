@@ -21,7 +21,7 @@ import { SkillsEditor } from './SkillsEditor'
 import { useJobs } from '@/hooks/useJobs'
 import { useAuth } from '@/contexts/AuthContext'
 import { SafeHtml } from '@/components/ui/safe-html'
-import { useCoresignalCreditWarnings } from '@/hooks/useCoresignalCreditWarnings'
+import { useSourcingCreditWarnings } from '@/hooks/useSourcingCreditWarnings'
 import { useChildOrganizationsForJobCreation } from '@/hooks/useChildOrganizationsForJobCreation'
 import { SearchableSelect } from '@/components/ui/searchable-select'
 import { useChatWithGio } from '@/hooks/useChatWithGio'
@@ -124,7 +124,7 @@ export function AIJobAssistant({ onProjectCreated }: AIJobAssistantProps = {}) {
   const { jobs } = useJobs()
   const navigate = useNavigate()
   const { user, organizationId, userType } = useAuth()
-  const { isSearchDisabled } = useCoresignalCreditWarnings()
+  const { isSearchDisabled } = useSourcingCreditWarnings()
   const { data: childOrgs, isLoading: isLoadingOrgs, refetch: refetchOrgs } = useChildOrganizationsForJobCreation()
   const { createOrganization, isLoading: isCreatingOrg } = useOrganizations()
   

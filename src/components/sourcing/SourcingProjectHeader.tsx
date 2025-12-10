@@ -4,7 +4,7 @@ import {
   Edit2, MoreHorizontal, RefreshCw, Archive, Trash2, 
   MapPin, DollarSign, Target, Award, Coins, Loader2, Globe, Lock 
 } from 'lucide-react'
-import { useCoresignalUsage } from '@/hooks/useCoresignalUsage'
+import { useSourcingCredits } from '@/hooks/useSourcingCredits'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -53,7 +53,7 @@ export function SourcingProjectHeader({
 }: SourcingProjectHeaderProps) {
   const [isEditingName, setIsEditingName] = useState(false)
   const [editedName, setEditedName] = useState(project.name)
-  const { data: usage } = useCoresignalUsage()
+  const { data: usage } = useSourcingCredits()
 
   const handleSaveName = () => {
     if (editedName.trim()) {
