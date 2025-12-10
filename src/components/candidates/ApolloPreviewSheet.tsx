@@ -124,6 +124,7 @@ export function ApolloPreviewSheet({
 }: ApolloPreviewSheetProps) {
   const [isCollecting, setIsCollecting] = useState(false)
   const [collectedCandidateId, setCollectedCandidateId] = useState<string | null>(null)
+  const [collectedJobId, setCollectedJobId] = useState<string | null>(null)
   const [showJobSelection, setShowJobSelection] = useState(false)
   const [enrichedData, setEnrichedData] = useState<EnrichedCandidateData | null>(null)
   const { isCollectDisabled } = useSourcingCreditWarnings()
@@ -134,6 +135,7 @@ export function ApolloPreviewSheet({
   useEffect(() => {
     setEnrichedData(null)
     setCollectedCandidateId(null)
+    setCollectedJobId(null)
   }, [apolloId])
 
   const handleCollectProfile = async (
@@ -193,6 +195,9 @@ export function ApolloPreviewSheet({
             skills: candidateData.skills || undefined,
             profile_summary: candidateData.profile_summary || undefined,
           })
+          
+          // Store the job ID for context-aware navigation
+          setCollectedJobId(jobIdToUse || null)
         }
         
         // Improved toast message with job and stage names
@@ -356,10 +361,16 @@ export function ApolloPreviewSheet({
                         </div>
                         <Button
                           variant="default"
-                          onClick={() => navigate(`/candidates/${enrichedData.candidate_id}`)}
+                          onClick={() => {
+                            if (collectedJobId) {
+                              navigate(`/jobs/${collectedJobId}/candidates/${enrichedData.candidate_id}`)
+                            } else {
+                              navigate(`/candidates/${enrichedData.candidate_id}`)
+                            }
+                          }}
                         >
                           <ExternalLink className="h-4 w-4 mr-2" />
-                          View Full Profile
+                          {collectedJobId ? 'View in Job Pipeline' : 'View Full Profile'}
                         </Button>
                       </div>
                     ) : (
