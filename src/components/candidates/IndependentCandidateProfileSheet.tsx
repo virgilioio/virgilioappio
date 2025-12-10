@@ -315,10 +315,6 @@ export function IndependentCandidateProfileSheet({
                               </AccordionTrigger>
                               <AccordionContent>
                                 <CardContent className="space-y-4 pt-0">
-                                  {!candidate?.email && !candidate?.phone && !candidate?.linkedin_url ? (
-                                    <div className="text-sm text-text-secondary">No contact information available</div>
-                                  ) : (
-                                    <>
                                       {candidate?.email && (
                                         <div className="flex items-start justify-between gap-2">
                                           <div className="flex items-start gap-2 flex-1 min-w-0">
@@ -341,17 +337,24 @@ export function IndependentCandidateProfileSheet({
                                         </div>
                                       )}
 
-                                      {candidate?.phone && (
-                                        <div className="flex items-start justify-between gap-2">
-                                          <div className="flex items-start gap-2 flex-1 min-w-0">
-                                            <Phone className="h-4 w-4 text-text-secondary mt-0.5 flex-shrink-0" />
+                                      {/* Phone - Always show */}
+                                      <div className="flex items-start justify-between gap-2">
+                                        <div className="flex items-start gap-2 flex-1 min-w-0">
+                                          <Phone className="h-4 w-4 text-text-secondary mt-0.5 flex-shrink-0" />
+                                          {candidate?.phone ? (
                                             <a
                                               href={`tel:${candidate.phone}`}
                                               className="text-sm text-blue-600 hover:text-blue-700 hover:underline break-all"
                                             >
                                               {candidate.phone}
                                             </a>
-                                          </div>
+                                          ) : (
+                                            <span className="text-sm text-text-tertiary italic">
+                                              Phone not available
+                                            </span>
+                                          )}
+                                        </div>
+                                        {candidate?.phone && (
                                           <Button
                                             variant="ghost"
                                             size="sm"
@@ -360,8 +363,8 @@ export function IndependentCandidateProfileSheet({
                                           >
                                             <Copy className="h-3.5 w-3.5" />
                                           </Button>
-                                        </div>
-                                      )}
+                                        )}
+                                      </div>
 
                                       {candidate?.linkedin_url && (
                                         <div className="flex items-start justify-between gap-2">
@@ -379,8 +382,6 @@ export function IndependentCandidateProfileSheet({
                                           <ExternalLink className="h-3.5 w-3.5 text-text-tertiary flex-shrink-0 mt-0.5" />
                                         </div>
                                       )}
-                                    </>
-                                  )}
                                 </CardContent>
                               </AccordionContent>
                             </Card>
