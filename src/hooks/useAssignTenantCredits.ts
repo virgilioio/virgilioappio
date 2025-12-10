@@ -33,7 +33,7 @@ export function useAssignTenantCredits() {
       })
 
       // Invalidate relevant queries
-      queryClient.invalidateQueries({ queryKey: ['coresignal-usage', variables.tenantId] })
+      queryClient.invalidateQueries({ queryKey: ['sourcing-credits', variables.tenantId] })
       queryClient.invalidateQueries({ queryKey: ['saas-customer', variables.tenantId] })
     },
     onError: (error: any) => {
