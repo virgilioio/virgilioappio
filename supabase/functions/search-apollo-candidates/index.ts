@@ -17,7 +17,7 @@ interface SearchCriteria {
   locations?: string[];
   seniorities?: string[];
   organization_locations?: string[];
-  keywords?: string;  // General keyword search (q_keywords)
+  keywords?: string[];  // General keyword search (q_keywords) - joined with spaces
   company_sizes?: string[];  // '1,10', '11,50', etc. (organization_num_employees_ranges)
   company_domains?: string[];  // Target company domains
   // Note: skills are NOT supported by Apollo search - only titles and locations
@@ -153,10 +153,11 @@ function buildApolloSearchUrl(criteria: SearchCriteria, perPage: number = 50): s
     console.log(`🎯 Apollo title filter: ${criteria.title_keywords.join(', ')}`);
   }
 
-  // General keywords → q_keywords (searches across profile)
-  if (criteria.keywords && criteria.keywords.trim()) {
-    params.append('q_keywords', criteria.keywords.trim());
-    console.log(`🔑 Apollo keywords: ${criteria.keywords}`);
+  // General keywords → q_keywords (searches across profile) - join array with spaces
+  if (criteria.keywords && criteria.keywords.length > 0) {
+    const keywordsString = criteria.keywords.join(' ');
+    params.append('q_keywords', keywordsString);
+    console.log(`🔑 Apollo keywords: ${keywordsString}`);
   }
 
   // Locations → person_locations[]
