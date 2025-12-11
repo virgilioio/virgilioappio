@@ -298,6 +298,10 @@ serve(async (req) => {
 
     // Call Apollo bulk_match API to enrich profiles
     // Apollo bulk_match accepts an array of ID objects
+    // Include reveal_phone_number to get phone data via webhook
+    const webhookUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/apollo-phone-webhook`;
+    console.log(`📞 Phone webhook URL: ${webhookUrl}`);
+    
     const apolloResponse = await fetch(APOLLO_BULK_MATCH_URL, {
       method: 'POST',
       headers: {
@@ -306,7 +310,9 @@ serve(async (req) => {
         'X-Api-Key': APOLLO_API_KEY
       },
       body: JSON.stringify({
-        details: idsToProcess.map(id => ({ id }))
+        details: idsToProcess.map(id => ({ id })),
+        reveal_phone_number: true,
+        webhook_url: webhookUrl
       })
     });
 
