@@ -781,10 +781,16 @@ export function ApolloPreviewSheet({
                             variant="outline"
                             size="sm"
                             className="mt-2 border-green-300 text-green-700 hover:bg-green-100"
-                            onClick={() => navigate(`/candidates/${enrichedData.candidate_id}`)}
+                            onClick={() => {
+                              if (collectedJobId) {
+                                navigate(`/jobs/${collectedJobId}/pipeline?candidate=${enrichedData.candidate_id}`)
+                              } else {
+                                navigate(`/candidates/${enrichedData.candidate_id}`)
+                              }
+                            }}
                           >
                             <ExternalLink className="h-4 w-4 mr-2" />
-                            View Full Profile
+                            View Full Profile {collectedJobId ? 'in Job Pipeline' : ''}
                           </Button>
                         </div>
                       </div>
