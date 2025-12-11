@@ -57,6 +57,7 @@ export function EditableSearchCriteria({
   onChange
 }: EditableSearchCriteriaProps) {
   const [newTitleKeyword, setNewTitleKeyword] = useState('')
+  const [newKeyword, setNewKeyword] = useState('')
 
   const handleAddTitleKeyword = () => {
     if (newTitleKeyword.trim()) {
@@ -192,15 +193,65 @@ export function EditableSearchCriteria({
             </Tooltip>
           </TooltipProvider>
         </div>
-        <Input
-          placeholder='e.g., "React TypeScript AWS startup"'
-          value={criteria.keywords || ''}
-          onChange={(e) => onChange({
-            ...criteria,
-            keywords: e.target.value || undefined
-          })}
-          className="flex-1"
-        />
+        <div className="flex gap-2">
+          <Input
+            placeholder='e.g., "React", "TypeScript", "AWS"'
+            value={newKeyword}
+            onChange={(e) => setNewKeyword(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                if (newKeyword.trim()) {
+                  const currentKeywords = criteria.keywords || []
+                  if (!currentKeywords.includes(newKeyword.trim())) {
+                    onChange({
+                      ...criteria,
+                      keywords: [...currentKeywords, newKeyword.trim()]
+                    })
+                    setNewKeyword('')
+                  }
+                }
+              }
+            }}
+            className="flex-1"
+          />
+          <Button 
+            size="sm" 
+            variant="virgilio" 
+            onClick={() => {
+              if (newKeyword.trim()) {
+                const currentKeywords = criteria.keywords || []
+                if (!currentKeywords.includes(newKeyword.trim())) {
+                  onChange({
+                    ...criteria,
+                    keywords: [...currentKeywords, newKeyword.trim()]
+                  })
+                  setNewKeyword('')
+                }
+              }
+            }}
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
+        </div>
+        {criteria.keywords && criteria.keywords.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {criteria.keywords.map(keyword => (
+              <Badge key={keyword} variant="secondary" className="gap-1">
+                {keyword}
+                <button
+                  onClick={() => onChange({
+                    ...criteria,
+                    keywords: (criteria.keywords || []).filter(k => k !== keyword)
+                  })}
+                  className="ml-1 hover:bg-destructive/10 rounded-sm"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Locations - Using LocationSelector */}
