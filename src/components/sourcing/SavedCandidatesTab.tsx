@@ -6,7 +6,6 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import UniversalCandidateProfileSheet from '@/components/candidates/UniversalCandidateProfileSheet'
 import { 
   Loader2, 
-  UserCheck, 
   Mail, 
   Phone, 
   Linkedin, 
@@ -15,6 +14,7 @@ import {
   Briefcase,
   ExternalLink
 } from 'lucide-react'
+import gioFaceEmpty from '@/assets/gio-face-empty.png'
 import { format } from 'date-fns'
 
 interface SavedCandidatesTabProps {
@@ -69,9 +69,11 @@ export function SavedCandidatesTab({ projectId }: SavedCandidatesTabProps) {
   if (savedCandidates.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-center p-8">
-        <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
-          <UserCheck className="h-8 w-8 text-muted-foreground" />
-        </div>
+        <img 
+          src={gioFaceEmpty} 
+          alt="No saved candidates" 
+          className="w-24 h-24 mb-4"
+        />
         <h3 className="text-lg font-semibold text-foreground mb-2">
           No candidates collected yet
         </h3>
