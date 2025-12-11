@@ -125,3 +125,6 @@ verify_jwt = true
 
 [functions.send-scheduled-emails]
 verify_jwt = false
+
+[functions.apollo-phone-webhook]
+verify_jwt = false
