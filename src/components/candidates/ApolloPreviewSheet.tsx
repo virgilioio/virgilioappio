@@ -1,19 +1,34 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Sheet, SheetContent, SheetHeader } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { LinkedInFilled } from '@/components/icons/LinkedInFilled'
-import { Sparkles, ExternalLink, AlertCircle, ChevronLeft, ChevronRight, Mail, Phone, Lock, Briefcase, GraduationCap, Wrench, MapPin, Users, UserPlus, Building2, Globe, CheckCircle2 } from 'lucide-react'
+import { 
+  Sparkles, ExternalLink, AlertCircle, ChevronLeft, ChevronRight, 
+  Mail, Phone, Lock, Briefcase, GraduationCap, Wrench, MapPin, 
+  Users, UserPlus, Building2, Globe, CheckCircle2, TrendingUp,
+  Target, Zap, Eye, Check
+} from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from '@/hooks/use-toast'
 import { useSourcingCreditWarnings } from '@/hooks/useSourcingCreditWarnings'
-import AddToJobPipelineDialog from './AddToJobPipelineDialog'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { Separator } from '@/components/ui/separator'
 import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { JobSelectionDialog } from '@/components/sourcing/JobSelectionDialog'
+import { 
+  calculateFitScore, 
+  generateGioTake, 
+  getFitScoreLabel, 
+  getFitScoreColor,
+  getSignalBarColor,
+  type FitScore,
+  type GioTake
+} from '@/lib/candidateFitScoring'
+import type { SearchCriteria } from '@/types/sourcing'
+import { cn } from '@/lib/utils'
 
 interface ApolloPreviewSheetProps {
   open: boolean
@@ -48,6 +63,7 @@ interface ApolloPreviewSheetProps {
   onNavigatePrev?: () => void
   onNavigateNext?: () => void
   onCandidateCollected?: (candidateId: string) => void
+  searchCriteria?: SearchCriteria
 }
 
 interface EnrichedCandidateData {
@@ -63,49 +79,131 @@ interface EnrichedCandidateData {
   profile_summary?: string
 }
 
-// Helper component for locked fields (with icon)
-function LockedField({ icon: Icon, label }: { icon: any, label: string }) {
-  return (
-    <div className="relative">
-      <div className="flex items-start gap-2 opacity-40 blur-[2px] select-none pointer-events-none">
-        <Icon className="h-4 w-4 text-text-secondary mt-0.5 flex-shrink-0" />
-        <span className="text-sm">████████████</span>
-      </div>
-      <div className="absolute inset-0 flex items-center justify-center">
-        <div className="flex items-center gap-1 text-xs text-text-tertiary bg-surface-primary/80 px-2 py-1 rounded">
-          <Lock className="h-3 w-3" />
-          <span>Locked</span>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// Helper component for locked sections (without specific icon)
-function LockedSection({ message }: { message: string }) {
-  return (
-    <div className="relative py-8">
-      <div className="opacity-30 blur-sm select-none pointer-events-none space-y-2">
-        <div className="h-4 bg-border rounded w-3/4"></div>
-        <div className="h-4 bg-border rounded w-full"></div>
-        <div className="h-4 bg-border rounded w-2/3"></div>
-      </div>
-      <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
-        <Lock className="h-5 w-5 text-text-tertiary" />
-        <span className="text-xs text-text-tertiary text-center">{message}</span>
-      </div>
-    </div>
-  )
-}
-
-// Helper component for unlock benefits list
-function UnlockItem({ icon: Icon, text }: { icon: any, text: string }) {
+// Signal bar component for fit indicators
+function SignalBar({ 
+  label, 
+  tier, 
+  icon: Icon 
+}: { 
+  label: string
+  tier: 'low' | 'medium' | 'high'
+  icon: React.ElementType
+}) {
+  const tierLabels = { low: 'Low', medium: 'Medium', high: 'High' }
+  const tierColors = {
+    low: 'bg-red-100 text-red-700 border-red-200',
+    medium: 'bg-amber-100 text-amber-700 border-amber-200',
+    high: 'bg-green-100 text-green-700 border-green-200'
+  }
+  
   return (
     <div className="flex items-center gap-2">
-      <div className="flex items-center justify-center h-6 w-6 rounded-full bg-primary/10">
-        <Icon className="h-3 w-3 text-primary" />
+      <Icon className="h-4 w-4 text-text-secondary" />
+      <span className="text-sm text-text-secondary">{label}</span>
+      <Badge variant="outline" className={cn("text-xs", tierColors[tier])}>
+        {tierLabels[tier]}
+      </Badge>
+    </div>
+  )
+}
+
+// Circular score display
+function FitScoreCircle({ score, label }: { score: number; label: string }) {
+  const circumference = 2 * Math.PI * 36
+  const strokeDashoffset = circumference - (score / 100) * circumference
+  
+  const getScoreGradient = (s: number) => {
+    if (s >= 70) return 'url(#scoreGradientHigh)'
+    if (s >= 50) return 'url(#scoreGradientMedium)'
+    return 'url(#scoreGradientLow)'
+  }
+
+  return (
+    <div className="flex flex-col items-center">
+      <div className="relative w-24 h-24">
+        <svg className="w-24 h-24 -rotate-90">
+          <defs>
+            <linearGradient id="scoreGradientHigh" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#22c55e" />
+              <stop offset="100%" stopColor="#10b981" />
+            </linearGradient>
+            <linearGradient id="scoreGradientMedium" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#6F3FF5" />
+              <stop offset="100%" stopColor="#9B7BF7" />
+            </linearGradient>
+            <linearGradient id="scoreGradientLow" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#f59e0b" />
+              <stop offset="100%" stopColor="#d97706" />
+            </linearGradient>
+          </defs>
+          <circle
+            cx="48"
+            cy="48"
+            r="36"
+            stroke="currentColor"
+            strokeWidth="8"
+            fill="transparent"
+            className="text-border"
+          />
+          <circle
+            cx="48"
+            cy="48"
+            r="36"
+            stroke={getScoreGradient(score)}
+            strokeWidth="8"
+            fill="transparent"
+            strokeDasharray={circumference}
+            strokeDashoffset={strokeDashoffset}
+            strokeLinecap="round"
+            className="transition-all duration-500"
+          />
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <span className="text-2xl font-bold text-text-primary">{score}</span>
+        </div>
       </div>
-      <span className="text-sm text-text-primary">{text}</span>
+      <span className={cn("text-sm font-medium mt-1", getFitScoreColor(score))}>
+        {label}
+      </span>
+    </div>
+  )
+}
+
+// Unlock benefit item
+function UnlockBenefit({ icon: Icon, text, available }: { icon: React.ElementType; text: string; available?: boolean }) {
+  return (
+    <div className="flex items-center gap-2">
+      <div className={cn(
+        "flex items-center justify-center h-5 w-5 rounded-full",
+        available ? "bg-green-100" : "bg-primary/10"
+      )}>
+        {available ? (
+          <Check className="h-3 w-3 text-green-600" />
+        ) : (
+          <Icon className="h-3 w-3 text-primary" />
+        )}
+      </div>
+      <span className={cn("text-sm", available ? "text-green-700" : "text-text-secondary")}>
+        {text}
+      </span>
+    </div>
+  )
+}
+
+// Info row component
+function InfoRow({ icon: Icon, label, value, className }: { 
+  icon: React.ElementType
+  label: string
+  value: string | React.ReactNode
+  className?: string 
+}) {
+  return (
+    <div className={cn("flex items-start gap-3", className)}>
+      <Icon className="h-4 w-4 text-text-tertiary mt-0.5 flex-shrink-0" />
+      <div className="flex flex-col min-w-0">
+        <span className="text-xs text-text-tertiary">{label}</span>
+        <span className="text-sm text-text-primary break-words">{value}</span>
+      </div>
     </div>
   )
 }
@@ -121,6 +219,7 @@ export function ApolloPreviewSheet({
   onNavigatePrev,
   onNavigateNext,
   onCandidateCollected,
+  searchCriteria,
 }: ApolloPreviewSheetProps) {
   const [isCollecting, setIsCollecting] = useState(false)
   const [collectedCandidateId, setCollectedCandidateId] = useState<string | null>(null)
@@ -131,12 +230,27 @@ export function ApolloPreviewSheet({
   const queryClient = useQueryClient()
   const navigate = useNavigate()
 
-  // Reset enriched data when apolloId changes (navigating to different candidate)
+  // Reset state when apolloId changes
   useEffect(() => {
     setEnrichedData(null)
     setCollectedCandidateId(null)
     setCollectedJobId(null)
   }, [apolloId])
+
+  // Calculate fit score and Gio's take
+  const fitScore: FitScore = useMemo(() => {
+    if (!apolloData) {
+      return { overall: 50, roleAlignment: 'medium', skillsMatch: 'medium', locationMatch: 'medium', confidence: 0 }
+    }
+    return calculateFitScore(apolloData, searchCriteria)
+  }, [apolloData, searchCriteria])
+
+  const gioTake: GioTake = useMemo(() => {
+    if (!apolloData) {
+      return { summary: 'No candidate data available.', strengths: [], concerns: [] }
+    }
+    return generateGioTake(apolloData, searchCriteria, fitScore)
+  }, [apolloData, searchCriteria, fitScore])
 
   const handleCollectProfile = async (
     selectedJobId?: string, 
@@ -149,7 +263,6 @@ export function ApolloPreviewSheet({
     setIsCollecting(true)
     try {
       const { data: { user } } = await supabase.auth.getUser()
-
       const jobIdToUse = selectedJobId || jobId
       
       const { data, error } = await supabase.functions.invoke('enrich-apollo-profile', {
@@ -163,7 +276,6 @@ export function ApolloPreviewSheet({
 
       if (error) throw error
 
-      // Extract candidate_id from results array (edge function returns { results: [...] })
       const collectedResult = data?.results?.[0]
       const candidateId = collectedResult?.candidate_id
       const wasAlreadyCollected = collectedResult?.already_collected
@@ -171,16 +283,11 @@ export function ApolloPreviewSheet({
       if (candidateId) {
         setCollectedCandidateId(candidateId)
         
-        // Fetch the full candidate data to display in the sheet
-        const { data: candidateData, error: fetchError } = await supabase
+        const { data: candidateData } = await supabase
           .from('candidates')
           .select('id, candidate_name, linkedin_url, email, phone, location_city, location_state, location_country, skills, profile_summary')
           .eq('id', candidateId)
           .single()
-
-        if (fetchError) {
-          console.error('Failed to fetch enriched candidate data:', fetchError)
-        }
 
         if (candidateData) {
           setEnrichedData({
@@ -195,15 +302,12 @@ export function ApolloPreviewSheet({
             skills: candidateData.skills || undefined,
             profile_summary: candidateData.profile_summary || undefined,
           })
-          
-          // Store the job ID for context-aware navigation
           setCollectedJobId(jobIdToUse || null)
         }
         
-        // Improved toast message with job and stage names
         const toastDescription = wasAlreadyCollected 
           ? jobIdToUse 
-            ? `Profile was already in your database and has been added to ${selectedJobName || 'the job'} (${selectedStageName || 'stage'})`
+            ? `Profile was already in your database and has been added to ${selectedJobName || 'the job'}`
             : 'Profile was already in your database'
           : jobIdToUse
             ? `Successfully added to ${selectedJobName || 'job'} at stage "${selectedStageName || 'Unknown'}"`
@@ -214,17 +318,13 @@ export function ApolloPreviewSheet({
           description: toastDescription,
         })
 
-        // Invalidate queries to refresh data
         queryClient.invalidateQueries({ queryKey: ['sourcing-preview-candidates'] })
         queryClient.invalidateQueries({ queryKey: ['candidates'] })
         queryClient.invalidateQueries({ queryKey: ['sourcing-credits'] })
 
-        // Notify parent to remove from list
         onCandidateCollected?.(candidateId)
       }
     } catch (error: any) {
-      console.error('Failed to collect profile:', error)
-      
       toast({
         title: 'Collection Failed',
         description: error.message || 'Failed to collect full profile',
@@ -235,23 +335,9 @@ export function ApolloPreviewSheet({
     }
   }
 
-  const handleOpenJobSelection = () => {
-    setShowJobSelection(true)
-  }
-
-  const handleJobSelected = (
-    jobId: string, 
-    jobName: string, 
-    stageId?: string, 
-    stageName?: string
-  ) => {
+  const handleJobSelected = (jobId: string, jobName: string, stageId?: string, stageName?: string) => {
     setShowJobSelection(false)
     handleCollectProfile(jobId, jobName, stageId, stageName)
-  }
-
-  const handleSkipJobSelection = () => {
-    setShowJobSelection(false)
-    handleCollectProfile()
   }
 
   const handleNavigatePrev = () => {
@@ -266,137 +352,240 @@ export function ApolloPreviewSheet({
     onNavigateNext?.()
   }
 
-  // Check availability flags (these indicate what CAN be revealed, not what IS available)
+  // Derived state
   const hasEmailAvailable = apolloData?.has_email ?? false
   const hasPhoneAvailable = apolloData?.has_phone ?? false
-  const hasLocationAvailable = apolloData?.has_location ?? false
-  
-  // Check if Apollo already has the data (rare - only if previously enriched)
-  const hasActualEmail = apolloData?.email && apolloData.email_status === 'verified'
-  const hasActualPhone = apolloData?.phone
-
-  // Derived state for display
   const isCollected = !!enrichedData
   const displayName = enrichedData?.candidate_name || apolloData?.candidate_name || 'Unknown Candidate'
   
-  // Build full location string from enriched data
   const enrichedLocation = enrichedData 
     ? [enrichedData.location_city, enrichedData.location_state, enrichedData.location_country]
-        .filter(Boolean)
-        .join(', ')
+        .filter(Boolean).join(', ')
     : null
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-[96vw] sm:max-w-none h-full p-0" showOverlay={false}>
-        <div className="flex h-full flex-col relative">
-          <SheetHeader className="p-6 border-b">
-            <div className="flex items-center justify-between">
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2">
-                  <h2 className="font-poppins font-bold tracking-page-title text-text-primary text-4xl">
-                    {displayName}
-                    <span className="text-purple-period">.</span>
-                  </h2>
-                  {(enrichedData?.linkedin_url || apolloData?.linkedin_url) && (
-                    <Button
-                      variant="outline"
-                      className="h-8 w-8 p-0"
-                      onClick={() => window.open(enrichedData?.linkedin_url || apolloData?.linkedin_url, '_blank')}
-                      aria-label="Open LinkedIn profile"
-                    >
-                      <LinkedInFilled className="h-5 w-5" />
-                    </Button>
+    <>
+      <Sheet open={open} onOpenChange={onOpenChange}>
+        <SheetContent side="right" className="w-[96vw] sm:max-w-2xl h-full p-0" showOverlay={false}>
+          <div className="flex h-full flex-col">
+            {/* Header */}
+            <SheetHeader className="p-6 border-b bg-surface-primary">
+              <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-2 min-w-0 flex-1">
+                  <div className="flex items-center gap-3">
+                    <h2 className="font-poppins font-bold tracking-tight text-text-primary text-2xl truncate">
+                      {displayName}
+                      <span className="text-purple-period">.</span>
+                    </h2>
+                    {(enrichedData?.linkedin_url || apolloData?.linkedin_url) && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 w-8 p-0 flex-shrink-0"
+                        onClick={() => window.open(enrichedData?.linkedin_url || apolloData?.linkedin_url, '_blank')}
+                      >
+                        <LinkedInFilled className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                  {isCollected ? (
+                    <Badge variant="outline" className="w-fit border-green-500 text-green-600 bg-green-50">
+                      <CheckCircle2 className="h-3 w-3 mr-1" />
+                      Collected
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="w-fit border-amber-400 text-amber-600 bg-amber-50">
+                      <Eye className="h-3 w-3 mr-1" />
+                      Preview
+                    </Badge>
                   )}
                 </div>
-                {isCollected ? (
-                  <Badge variant="outline" className="w-fit border-green-500 text-green-600 bg-green-50">
-                    <CheckCircle2 className="h-3 w-3 mr-1" />
-                    Collected - Full Data Available
-                  </Badge>
-                ) : (
-                  <Badge variant="outline" className="w-fit border-warning text-warning">
-                    <AlertCircle className="h-3 w-3 mr-1" />
-                    Preview Only - Limited Data
-                  </Badge>
-                )}
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleNavigatePrev}
+                    disabled={!hasPrev}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleNavigateNext}
+                    disabled={!hasNext}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
-              <div className="flex items-center gap-sm">
-                <Button
-                  variant="ghost"
-                  className="gap-sm text-text-secondary hover:text-text-primary"
-                  onClick={handleNavigatePrev}
-                  disabled={!hasPrev}
-                  title="Previous candidate"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                  Previous
-                </Button>
-                <Button
-                  variant="ghost"
-                  className="gap-sm text-text-secondary hover:text-text-primary"
-                  onClick={handleNavigateNext}
-                  disabled={!hasNext}
-                  title="Next candidate"
-                >
-                  Next
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-          </SheetHeader>
+            </SheetHeader>
 
-          <div className="flex-1 overflow-y-auto p-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Left Column */}
-              <div className="space-y-6">
-                {/* Controls Card */}
-                <Card className="bg-surface-primary border-border">
-                  <CardContent className="p-4">
-                    {isCollected ? (
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-3 flex-1 bg-green-50 p-3 rounded-md border border-green-200">
-                          <CheckCircle2 className="h-5 w-5 text-green-500 flex-shrink-0" />
-                          <span className="text-green-700 font-medium">Profile Collected!</span>
-                        </div>
-                        <Button
-                          variant="default"
-                          onClick={() => {
-                            if (collectedJobId) {
-                              navigate(`/jobs/${collectedJobId}/candidates/${enrichedData.candidate_id}`)
-                            } else {
-                              navigate(`/candidates/${enrichedData.candidate_id}`)
-                            }
-                          }}
-                        >
-                          <ExternalLink className="h-4 w-4 mr-2" />
-                          {collectedJobId ? 'View in Job Pipeline' : 'View Full Profile'}
-                        </Button>
+            {/* Scrollable Content */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              
+              {/* Fit Snapshot Card */}
+              {!isCollected && (
+                <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="flex items-center gap-2 text-base">
+                      <Sparkles className="h-4 w-4 text-primary" />
+                      Fit Snapshot
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex items-start gap-6">
+                      {/* Score Circle */}
+                      <FitScoreCircle 
+                        score={fitScore.overall} 
+                        label={getFitScoreLabel(fitScore.overall)} 
+                      />
+                      
+                      {/* Signal Bars */}
+                      <div className="flex-1 space-y-2.5">
+                        <SignalBar 
+                          label="Role alignment" 
+                          tier={fitScore.roleAlignment} 
+                          icon={Target} 
+                        />
+                        <SignalBar 
+                          label="Skills match" 
+                          tier={fitScore.skillsMatch} 
+                          icon={Wrench} 
+                        />
+                        <SignalBar 
+                          label="Location" 
+                          tier={fitScore.locationMatch} 
+                          icon={MapPin} 
+                        />
                       </div>
-                    ) : (
-                      <div className="flex items-center justify-between w-full">
-                        {/* Primary Action - Improved messaging */}
-                        <Button
-                          onClick={handleOpenJobSelection}
-                          disabled={isCollecting || isCollectDisabled}
-                          className="flex-1"
-                        >
-                          <Sparkles className="h-4 w-4 mr-2" />
-                          {isCollecting 
-                            ? 'Collecting...' 
-                            : isCollectDisabled 
-                              ? 'Credit Limit Reached' 
-                              : 'Reveal Full Profile (1 credit)'}
-                        </Button>
+                    </div>
 
-                        <Separator orientation="vertical" className="h-6 mx-3" />
+                    {/* Gio's Take */}
+                    <div className="pt-3 border-t border-border/50">
+                      <div className="flex items-start gap-2">
+                        <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <Zap className="h-3.5 w-3.5 text-primary" />
+                        </div>
+                        <div className="space-y-1.5">
+                          <span className="text-xs font-medium text-primary">Gio's Take</span>
+                          <p className="text-sm text-text-secondary leading-relaxed">
+                            {gioTake.summary}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
-                        {/* Secondary Actions */}
-                        <div className="flex items-center gap-2">
+              {/* What We Know So Far */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">
+                    {isCollected ? 'Profile Details' : 'What We Know So Far'}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {(apolloData?.current_role || enrichedData) && (
+                      <InfoRow 
+                        icon={Briefcase} 
+                        label="Current Role" 
+                        value={apolloData?.current_role || 'Not specified'} 
+                      />
+                    )}
+                    {(apolloData?.current_company || enrichedData) && (
+                      <InfoRow 
+                        icon={Building2} 
+                        label="Company" 
+                        value={apolloData?.current_company || 'Not specified'} 
+                      />
+                    )}
+                    {(apolloData?.location || enrichedLocation) && (
+                      <InfoRow 
+                        icon={MapPin} 
+                        label="Location" 
+                        value={enrichedLocation || apolloData?.location || 'Not specified'} 
+                      />
+                    )}
+                    {apolloData?.industry && (
+                      <InfoRow 
+                        icon={TrendingUp} 
+                        label="Industry" 
+                        value={apolloData.industry} 
+                      />
+                    )}
+                    {apolloData?.connections_count !== undefined && (
+                      <InfoRow 
+                        icon={Users} 
+                        label="LinkedIn Connections" 
+                        value={apolloData.connections_count.toLocaleString()} 
+                      />
+                    )}
+                    {apolloData?.company_industry && (
+                      <InfoRow 
+                        icon={Globe} 
+                        label="Company Industry" 
+                        value={apolloData.company_industry} 
+                      />
+                    )}
+                  </div>
+
+                  {/* Headline */}
+                  {apolloData?.headline && (
+                    <div className="mt-4 pt-4 border-t">
+                      <p className="text-sm text-text-secondary italic">
+                        "{apolloData.headline}"
+                      </p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Unlock CTA - Only show when not collected */}
+              {!isCollected && (
+                <Card className="border-dashed border-primary/30 bg-primary/5">
+                  <CardContent className="p-5">
+                    <div className="flex items-start gap-4">
+                      <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <Sparkles className="h-5 w-5 text-primary" />
+                      </div>
+                      <div className="flex-1 space-y-3">
+                        <div>
+                          <h4 className="font-semibold text-text-primary">
+                            Unlock full profile with 1 credit
+                          </h4>
+                          <p className="text-sm text-text-secondary mt-1">
+                            Get verified contact info and complete work history
+                          </p>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-2">
+                          <UnlockBenefit icon={Mail} text="Verified email" available={hasEmailAvailable} />
+                          <UnlockBenefit icon={Phone} text="Phone number" available={hasPhoneAvailable} />
+                          <UnlockBenefit icon={Briefcase} text="Full work history" />
+                          <UnlockBenefit icon={GraduationCap} text="Education details" />
+                          <UnlockBenefit icon={Wrench} text="Complete skills" />
+                          <UnlockBenefit icon={Sparkles} text="AI career summary" />
+                        </div>
+
+                        <div className="flex items-center gap-3 pt-2">
+                          <Button
+                            onClick={() => setShowJobSelection(true)}
+                            disabled={isCollecting || isCollectDisabled}
+                            className="flex-1"
+                          >
+                            <Sparkles className="h-4 w-4 mr-2" />
+                            {isCollecting 
+                              ? 'Collecting...' 
+                              : isCollectDisabled 
+                                ? 'Credit Limit Reached' 
+                                : 'Reveal Full Profile (1 credit)'}
+                          </Button>
                           {apolloData?.linkedin_url && (
                             <Button
                               variant="outline"
-                              size="sm"
                               onClick={() => window.open(apolloData.linkedin_url, '_blank')}
                             >
                               <ExternalLink className="h-4 w-4 mr-2" />
@@ -405,462 +594,233 @@ export function ApolloPreviewSheet({
                           )}
                         </div>
                       </div>
-                    )}
+                    </div>
                   </CardContent>
                 </Card>
+              )}
 
-                {/* Match Score Card */}
-                {apolloData?.apollo_score !== undefined && (
-                  <Card className="bg-surface-primary border-border">
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Sparkles className="h-4 w-4 text-purple-500" />
-                        Match Score
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
+              {/* Collected State CTA */}
+              {isCollected && (
+                <Card className="border-green-200 bg-green-50/50">
+                  <CardContent className="p-5">
+                    <div className="flex items-center justify-between gap-4">
                       <div className="flex items-center gap-3">
-                        <div className="text-3xl font-bold text-primary">
-                          {apolloData.apollo_score.toFixed(2)}
+                        <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
+                          <CheckCircle2 className="h-5 w-5 text-green-600" />
                         </div>
-                        <div className="text-sm text-text-secondary">
-                          Based on job requirements and candidate profile
+                        <div>
+                          <h4 className="font-semibold text-green-800">Profile Collected</h4>
+                          <p className="text-sm text-green-600">Full details now available</p>
                         </div>
                       </div>
-                    </CardContent>
-                  </Card>
-                )}
+                      <Button
+                        onClick={() => {
+                          if (collectedJobId) {
+                            navigate(`/jobs/${collectedJobId}/candidates/${enrichedData?.candidate_id}`)
+                          } else {
+                            navigate(`/candidates/${enrichedData?.candidate_id}`)
+                          }
+                        }}
+                      >
+                        <ExternalLink className="h-4 w-4 mr-2" />
+                        {collectedJobId ? 'View in Pipeline' : 'View Profile'}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
-                {/* Accordion Sections */}
-                <Accordion type="multiple" defaultValue={['contact', 'summary', 'experience', 'professional']} className="space-y-4">
-                  {/* Professional Details */}
-                  {(apolloData?.industry || apolloData?.connections_count !== undefined || apolloData?.follower_count !== undefined) && (
-                    <AccordionItem value="professional" className="border-0">
-                      <Card className="bg-surface-primary border-border">
-                        <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                          <CardTitle>Professional Details</CardTitle>
-                        </AccordionTrigger>
-                        <AccordionContent>
-                          <CardContent className="space-y-4 pt-0">
-                            {apolloData?.industry && (
-                              <div className="flex items-start gap-2">
-                                <Briefcase className="h-4 w-4 text-text-secondary mt-0.5 flex-shrink-0" />
-                                <div className="flex flex-col">
-                                  <span className="text-xs text-text-tertiary">Industry</span>
-                                  <span className="text-sm">{apolloData.industry}</span>
-                                </div>
-                              </div>
-                            )}
-                            
-                            {apolloData?.connections_count !== undefined && (
-                              <div className="flex items-start gap-2">
-                                <Users className="h-4 w-4 text-text-secondary mt-0.5 flex-shrink-0" />
-                                <div className="flex flex-col">
-                                  <span className="text-xs text-text-tertiary">LinkedIn Connections</span>
-                                  <span className="text-sm">{apolloData.connections_count.toLocaleString()}</span>
-                                </div>
-                              </div>
-                            )}
-                            
-                            {apolloData?.follower_count !== undefined && (
-                              <div className="flex items-start gap-2">
-                                <UserPlus className="h-4 w-4 text-text-secondary mt-0.5 flex-shrink-0" />
-                                <div className="flex flex-col">
-                                  <span className="text-xs text-text-tertiary">LinkedIn Followers</span>
-                                  <span className="text-sm">{apolloData.follower_count.toLocaleString()}</span>
-                                </div>
-                              </div>
-                            )}
-                          </CardContent>
-                        </AccordionContent>
-                      </Card>
-                    </AccordionItem>
-                  )}
-
-                  {/* Contact Information */}
-                  <AccordionItem value="contact" className="border-0">
-                    <Card className="bg-surface-primary border-border">
-                      <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                        <CardTitle>Contact Information</CardTitle>
-                      </AccordionTrigger>
-                      <AccordionContent>
-                        <CardContent className="space-y-4 pt-0">
-                          {/* Location - Show enriched data if collected */}
-                          {isCollected && enrichedLocation ? (
-                            <div className="flex items-start gap-2">
-                              <MapPin className="h-4 w-4 text-text-secondary mt-0.5 flex-shrink-0" />
-                              <span className="text-sm">{enrichedLocation}</span>
-                            </div>
-                          ) : apolloData?.location ? (
-                            <div className="flex items-start gap-2">
-                              <MapPin className="h-4 w-4 text-text-secondary mt-0.5 flex-shrink-0" />
-                              <span className="text-sm">{apolloData.location}</span>
-                            </div>
-                          ) : hasLocationAvailable ? (
-                            <div className="flex items-start gap-2">
-                              <MapPin className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                              <div className="flex flex-col">
-                                <span className="text-sm text-text-secondary italic">Location available after collection</span>
-                              </div>
-                            </div>
-                          ) : null}
-
-                          {/* LinkedIn - Show enriched data if collected */}
-                          {isCollected && enrichedData?.linkedin_url ? (
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="flex items-start gap-2 flex-1 min-w-0">
-                                <LinkedInFilled className="h-4 w-4 text-text-secondary mt-0.5 flex-shrink-0" />
-                                <a
-                                  href={enrichedData.linkedin_url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-sm text-blue-600 hover:text-blue-700 hover:underline break-all"
-                                >
-                                  {enrichedData.linkedin_url}
-                                </a>
-                              </div>
-                              <ExternalLink className="h-3.5 w-3.5 text-text-tertiary flex-shrink-0 mt-0.5" />
-                            </div>
-                          ) : apolloData?.linkedin_url ? (
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="flex items-start gap-2 flex-1 min-w-0">
-                                <LinkedInFilled className="h-4 w-4 text-text-secondary mt-0.5 flex-shrink-0" />
-                                <a
-                                  href={apolloData.linkedin_url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-sm text-blue-600 hover:text-blue-700 hover:underline break-all"
-                                >
-                                  LinkedIn Profile
-                                </a>
-                              </div>
-                              <ExternalLink className="h-3.5 w-3.5 text-text-tertiary flex-shrink-0 mt-0.5" />
-                            </div>
-                          ) : (
-                            <div className="flex items-start gap-2">
-                              <LinkedInFilled className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                              <span className="text-sm text-text-secondary italic">LinkedIn URL available after collection</span>
+              {/* Accordion Sections */}
+              <Accordion 
+                type="multiple" 
+                defaultValue={isCollected ? ['contact', 'experience', 'skills'] : ['experience']} 
+                className="space-y-3"
+              >
+                {/* Contact Information */}
+                <AccordionItem value="contact" className="border rounded-lg bg-surface-primary">
+                  <AccordionTrigger className="px-4 py-3 hover:no-underline">
+                    <div className="flex items-center gap-2">
+                      <Mail className="h-4 w-4 text-text-secondary" />
+                      <span className="font-medium">Contact Information</span>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="px-4 pb-4 space-y-3">
+                      {isCollected ? (
+                        <>
+                          {enrichedData?.email && (
+                            <div className="flex items-center gap-2">
+                              <Mail className="h-4 w-4 text-text-secondary" />
+                              <a href={`mailto:${enrichedData.email}`} className="text-sm text-blue-600 hover:underline">
+                                {enrichedData.email}
+                              </a>
+                              <Badge variant="secondary" className="text-xs">
+                                <CheckCircle2 className="h-3 w-3 mr-1 text-green-500" />
+                                Verified
+                              </Badge>
                             </div>
                           )}
-
-                          {/* Email - Show enriched data if collected */}
-                          {isCollected && enrichedData?.email ? (
-                            <div className="flex items-start gap-2">
-                              <Mail className="h-4 w-4 text-text-secondary mt-0.5 flex-shrink-0" />
-                              <div className="flex flex-col">
-                                <div className="flex items-center gap-2">
-                                  <a href={`mailto:${enrichedData.email}`} className="text-sm text-blue-600 hover:underline">
-                                    {enrichedData.email}
-                                  </a>
-                                  <Badge variant="secondary" className="text-xs">
-                                    <CheckCircle2 className="h-3 w-3 mr-1 text-green-500" />
-                                    Verified
-                                  </Badge>
-                                </div>
-                              </div>
-                            </div>
-                          ) : hasActualEmail ? (
-                            <div className="flex items-start gap-2">
-                              <Mail className="h-4 w-4 text-text-secondary mt-0.5 flex-shrink-0" />
-                              <div className="flex flex-col">
-                                <div className="flex items-center gap-2">
-                                  <a href={`mailto:${apolloData?.email}`} className="text-sm text-blue-600 hover:underline">
-                                    {apolloData?.email}
-                                  </a>
-                                  <Badge variant="secondary" className="text-xs">
-                                    <CheckCircle2 className="h-3 w-3 mr-1 text-green-500" />
-                                    Verified
-                                  </Badge>
-                                </div>
-                              </div>
-                            </div>
-                          ) : hasEmailAvailable ? (
-                            <div className="flex items-start gap-2">
-                              <Mail className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                              <span className="text-sm text-text-secondary italic">Email available after collection</span>
-                            </div>
-                          ) : (
-                            <LockedField icon={Mail} label="Email" />
-                          )}
-
-                          {/* Phone - Show enriched data if collected */}
-                          {isCollected && enrichedData?.phone ? (
-                            <div className="flex items-start gap-2">
-                              <Phone className="h-4 w-4 text-text-secondary mt-0.5 flex-shrink-0" />
+                          {enrichedData?.phone && (
+                            <div className="flex items-center gap-2">
+                              <Phone className="h-4 w-4 text-text-secondary" />
                               <a href={`tel:${enrichedData.phone}`} className="text-sm text-blue-600 hover:underline">
                                 {enrichedData.phone}
                               </a>
                             </div>
-                          ) : hasActualPhone ? (
-                            <div className="flex items-start gap-2">
-                              <Phone className="h-4 w-4 text-text-secondary mt-0.5 flex-shrink-0" />
-                              <a href={`tel:${apolloData?.phone}`} className="text-sm text-blue-600 hover:underline">
-                                {apolloData?.phone}
+                          )}
+                          {enrichedData?.linkedin_url && (
+                            <div className="flex items-center gap-2">
+                              <LinkedInFilled className="h-4 w-4 text-text-secondary" />
+                              <a 
+                                href={enrichedData.linkedin_url} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="text-sm text-blue-600 hover:underline truncate"
+                              >
+                                {enrichedData.linkedin_url}
                               </a>
                             </div>
-                          ) : hasPhoneAvailable ? (
-                            <div className="flex items-start gap-2">
-                              <Phone className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                              <span className="text-sm text-text-secondary italic">Phone available after collection</span>
-                            </div>
-                          ) : (
-                            <LockedField icon={Phone} label="Phone" />
                           )}
-                        </CardContent>
-                      </AccordionContent>
-                    </Card>
-                  </AccordionItem>
-
-                  {/* Profile Summary */}
-                  <AccordionItem value="summary" className="border-0">
-                    <Card className="bg-surface-primary border-border">
-                      <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                        <div className="flex items-center justify-between w-full pr-4">
-                          <CardTitle>Profile Summary</CardTitle>
-                          <Sparkles className="h-4 w-4 text-purple-500 flex-shrink-0" />
-                        </div>
-                      </AccordionTrigger>
-                      <AccordionContent>
-                        <CardContent className="pt-0">
-                          {isCollected && enrichedData?.profile_summary ? (
-                            <div className="text-sm text-text-primary">
-                              {enrichedData.profile_summary}
-                            </div>
-                          ) : apolloData?.headline ? (
-                            <div className="text-sm text-text-primary">
-                              {apolloData.headline}
-                            </div>
-                          ) : (
-                            <LockedSection 
-                              message="Full profile summary available after collection"
-                            />
-                          )}
-                        </CardContent>
-                      </AccordionContent>
-                    </Card>
-                  </AccordionItem>
-
-                  {/* Work Experience */}
-                  <AccordionItem value="experience" className="border-0">
-                    <Card className="bg-surface-primary border-border">
-                      <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                        <CardTitle className="flex items-center gap-2">
-                          <Briefcase className="h-4 w-4" />
-                          Work Experience
-                        </CardTitle>
-                      </AccordionTrigger>
-                      <AccordionContent>
-                        <CardContent className="space-y-4 pt-0">
-                          {/* Current Position - Available */}
-                          {(apolloData?.current_role || apolloData?.current_company) && (
-                            <div className="border-l-2 border-primary pl-4 py-2">
-                              <div className="font-medium text-text-primary">
-                                {apolloData.current_role || 'Current Position'}
-                              </div>
-                              {apolloData.current_company && (
-                                <div className="text-sm text-text-secondary mt-1 flex items-center gap-2">
-                                  <Building2 className="h-3.5 w-3.5" />
-                                  {apolloData.current_company}
-                                </div>
-                              )}
-                              {apolloData?.experience_location && (
-                                <div className="text-sm text-text-tertiary mt-1 flex items-center gap-2">
-                                  <MapPin className="h-3.5 w-3.5" />
-                                  {apolloData.experience_location}
-                                </div>
-                              )}
-                              {apolloData?.company_industry && (
-                                <div className="text-sm text-text-tertiary mt-1 flex items-center gap-2">
-                                  <Briefcase className="h-3.5 w-3.5" />
-                                  {apolloData.company_industry}
-                                </div>
-                              )}
-                              {(apolloData?.company_url || apolloData?.company_website) && (
-                                <a
-                                  href={apolloData.company_url || apolloData.company_website}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-sm text-blue-600 hover:text-blue-700 hover:underline mt-1 flex items-center gap-2"
-                                >
-                                  <Globe className="h-3.5 w-3.5" />
-                                  Company Website
-                                </a>
-                              )}
-                              <Badge variant="secondary" className="mt-2 text-xs">
-                                Current
-                              </Badge>
-                            </div>
-                          )}
-
-                          {/* Additional Experience - Show message based on collected state */}
-                          {isCollected ? (
-                            <div className="text-sm text-text-secondary text-center py-4">
-                              View full work history on the candidate profile page
-                            </div>
-                          ) : (
-                            <LockedSection 
-                              message="Complete work history available after collection"
-                            />
-                          )}
-                        </CardContent>
-                      </AccordionContent>
-                    </Card>
-                  </AccordionItem>
-
-                  {/* Education */}
-                  <AccordionItem value="education" className="border-0">
-                    <Card className="bg-surface-primary border-border">
-                      <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                        <CardTitle className="flex items-center gap-2">
-                          <GraduationCap className="h-4 w-4" />
-                          Education
-                        </CardTitle>
-                      </AccordionTrigger>
-                      <AccordionContent>
-                        <CardContent className="pt-0">
-                          {isCollected ? (
-                            <div className="text-sm text-text-secondary text-center py-4">
-                              View education history on the candidate profile page
-                            </div>
-                          ) : (
-                            <LockedSection 
-                              message="Education history available after collection"
-                            />
-                          )}
-                        </CardContent>
-                      </AccordionContent>
-                    </Card>
-                  </AccordionItem>
-
-                  {/* Skills */}
-                  <AccordionItem value="skills" className="border-0">
-                    <Card className="bg-surface-primary border-border">
-                      <AccordionTrigger className="px-6 py-4 hover:no-underline">
-                        <CardTitle className="flex items-center gap-2">
-                          <Wrench className="h-4 w-4" />
-                          Skills
-                        </CardTitle>
-                      </AccordionTrigger>
-                      <AccordionContent>
-                        <CardContent className="pt-0">
-                          {isCollected && enrichedData?.skills && enrichedData.skills.length > 0 ? (
-                            <div className="flex flex-wrap gap-2">
-                              {enrichedData.skills.map((skill, index) => (
-                                <Badge key={index} variant="secondary" className="text-xs">
-                                  {skill}
-                                </Badge>
-                              ))}
-                            </div>
-                          ) : (
-                            <LockedSection 
-                              message="Complete skills list available after collection"
-                            />
-                          )}
-                        </CardContent>
-                      </AccordionContent>
-                    </Card>
-                  </AccordionItem>
-                </Accordion>
-              </div>
-
-              {/* Right Column */}
-              <div className="space-y-6">
-                {/* Success Notice (when collected) */}
-                {isCollected ? (
-                  <Card className="bg-green-50 border-green-200">
-                    <CardContent className="pt-6">
-                      <div className="flex gap-3">
-                        <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
-                        <div className="space-y-2">
-                          <div className="font-medium text-green-700">Profile Collected Successfully</div>
-                          <div className="text-sm text-green-600">
-                            Full contact information and profile data is now available. 
-                            Click "View Full Profile" to see complete work history, education, and more.
+                        </>
+                      ) : (
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-2 text-text-tertiary">
+                            <Lock className="h-4 w-4" />
+                            <span className="text-sm">Contact details available after collection</span>
                           </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="mt-2 border-green-300 text-green-700 hover:bg-green-100"
-                            onClick={() => {
-                              if (collectedJobId) {
-                                navigate(`/jobs/${collectedJobId}/pipeline?candidate=${enrichedData.candidate_id}`)
-                              } else {
-                                navigate(`/candidates/${enrichedData.candidate_id}`)
-                              }
-                            }}
-                          >
-                            <ExternalLink className="h-4 w-4 mr-2" />
-                            View Full Profile {collectedJobId ? 'in Job Pipeline' : ''}
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <>
-                    {/* Information Notice */}
-                    <Card className="bg-warning/10 border-warning">
-                      <CardContent className="pt-6">
-                        <div className="flex gap-3">
-                          <AlertCircle className="h-5 w-5 text-warning flex-shrink-0 mt-0.5" />
-                          <div className="space-y-2">
-                            <div className="font-medium text-warning">Preview Only - Limited Data</div>
-                            <div className="text-sm text-text-secondary">
-                              This is a search preview with obfuscated name. Collecting the full profile (1 credit) 
-                              will reveal the LinkedIn URL, verified email, phone number, full name, and complete 
-                              work history.
+                          {hasEmailAvailable && (
+                            <div className="flex items-center gap-2">
+                              <Mail className="h-4 w-4 text-green-500" />
+                              <span className="text-sm text-green-600">Email available</span>
                             </div>
-                          </div>
+                          )}
+                          {hasPhoneAvailable && (
+                            <div className="flex items-center gap-2">
+                              <Phone className="h-4 w-4 text-green-500" />
+                              <span className="text-sm text-green-600">Phone available</span>
+                            </div>
+                          )}
                         </div>
-                      </CardContent>
-                    </Card>
+                      )}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
 
-                    {/* What You'll Unlock Card */}
-                    <Card className="bg-primary/5 border-primary/20">
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                          <Sparkles className="h-4 w-4 text-primary" />
-                          What You'll Unlock
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-3">
-                        <div className="text-sm text-text-secondary mb-4">
-                          Collecting this profile reveals:
-                        </div>
-                        {/* LinkedIn - Most important, highlight it */}
-                        <div className="flex items-center gap-2 p-2 bg-blue-50 rounded-md border border-blue-200">
-                          <div className="flex items-center justify-center h-6 w-6 rounded-full bg-blue-100">
-                            <LinkedInFilled className="h-3.5 w-3.5 text-blue-600" />
+                {/* Work Experience */}
+                <AccordionItem value="experience" className="border rounded-lg bg-surface-primary">
+                  <AccordionTrigger className="px-4 py-3 hover:no-underline">
+                    <div className="flex items-center gap-2">
+                      <Briefcase className="h-4 w-4 text-text-secondary" />
+                      <span className="font-medium">Work Experience</span>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="px-4 pb-4 space-y-4">
+                      {/* Current Position - Always visible */}
+                      {(apolloData?.current_role || apolloData?.current_company) && (
+                        <div className="border-l-2 border-primary pl-4 py-2">
+                          <div className="font-medium text-text-primary">
+                            {apolloData?.current_role || 'Current Position'}
                           </div>
-                          <span className="text-sm font-medium text-blue-700">LinkedIn Profile URL</span>
+                          {apolloData?.current_company && (
+                            <div className="flex items-center gap-2 mt-1 text-sm text-text-secondary">
+                              <Building2 className="h-3.5 w-3.5" />
+                              {apolloData.current_company}
+                            </div>
+                          )}
+                          {apolloData?.experience_location && (
+                            <div className="flex items-center gap-2 mt-1 text-sm text-text-tertiary">
+                              <MapPin className="h-3.5 w-3.5" />
+                              {apolloData.experience_location}
+                            </div>
+                          )}
+                          <Badge variant="secondary" className="mt-2 text-xs">Current</Badge>
                         </div>
-                        {hasEmailAvailable && <UnlockItem icon={Mail} text="Verified email address" />}
-                        {hasPhoneAvailable && <UnlockItem icon={Phone} text="Direct phone number" />}
-                        {hasLocationAvailable && <UnlockItem icon={MapPin} text="Full location details" />}
-                        <UnlockItem icon={Briefcase} text="Complete work history" />
-                        <UnlockItem icon={GraduationCap} text="Education background" />
-                        <UnlockItem icon={Wrench} text="Full skills list" />
-                        <div className="pt-4 border-t border-border">
-                          <div className="text-xs text-text-tertiary">
-                            Cost: 1 sourcing credit
-                          </div>
+                      )}
+
+                      {!isCollected && (
+                        <div className="flex items-center gap-2 text-text-tertiary pt-2 border-t">
+                          <Lock className="h-4 w-4" />
+                          <span className="text-sm">Full work history available after collection</span>
                         </div>
-                      </CardContent>
-                    </Card>
-                  </>
-                )}
-              </div>
+                      )}
+
+                      {isCollected && (
+                        <p className="text-sm text-text-secondary text-center pt-2 border-t">
+                          View complete work history on the full profile page
+                        </p>
+                      )}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+
+                {/* Skills */}
+                <AccordionItem value="skills" className="border rounded-lg bg-surface-primary">
+                  <AccordionTrigger className="px-4 py-3 hover:no-underline">
+                    <div className="flex items-center gap-2">
+                      <Wrench className="h-4 w-4 text-text-secondary" />
+                      <span className="font-medium">Skills</span>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="px-4 pb-4">
+                      {isCollected && enrichedData?.skills && enrichedData.skills.length > 0 ? (
+                        <div className="flex flex-wrap gap-2">
+                          {enrichedData.skills.map((skill, index) => (
+                            <Badge key={index} variant="secondary" className="text-xs">
+                              {skill}
+                            </Badge>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 text-text-tertiary">
+                          <Lock className="h-4 w-4" />
+                          <span className="text-sm">Skills list available after collection</span>
+                        </div>
+                      )}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+
+                {/* Education */}
+                <AccordionItem value="education" className="border rounded-lg bg-surface-primary">
+                  <AccordionTrigger className="px-4 py-3 hover:no-underline">
+                    <div className="flex items-center gap-2">
+                      <GraduationCap className="h-4 w-4 text-text-secondary" />
+                      <span className="font-medium">Education</span>
+                    </div>
+                  </AccordionTrigger>
+                  <AccordionContent>
+                    <div className="px-4 pb-4">
+                      {isCollected ? (
+                        <p className="text-sm text-text-secondary text-center">
+                          View education on the full profile page
+                        </p>
+                      ) : (
+                        <div className="flex items-center gap-2 text-text-tertiary">
+                          <Lock className="h-4 w-4" />
+                          <span className="text-sm">Education history available after collection</span>
+                        </div>
+                      )}
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
             </div>
           </div>
-        </div>
-      </SheetContent>
+        </SheetContent>
+      </Sheet>
 
+      {/* Job Selection Dialog */}
       <JobSelectionDialog
         open={showJobSelection}
         onOpenChange={setShowJobSelection}
         onJobSelected={handleJobSelected}
-        onSkip={handleSkipJobSelection}
+        onSkip={() => {
+          setShowJobSelection(false)
+          handleCollectProfile()
+        }}
       />
-    </Sheet>
+    </>
   )
 }

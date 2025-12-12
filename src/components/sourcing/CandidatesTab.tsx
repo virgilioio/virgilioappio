@@ -57,6 +57,7 @@ export function CandidatesTab({
           candidates={candidates}
           isLoading={isLoading}
           jobId={project.job_id}
+          searchCriteria={project.search_criteria}
         />
       </div>
     </div>
