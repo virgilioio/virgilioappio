@@ -100,7 +100,7 @@ export function ChromeExtensionTokenCard() {
           </div>
 
           {/* Primary Install Button */}
-          <Button onClick={handleInstall} className="w-full gap-2">
+          <Button onClick={handleInstall} className="gap-2">
             <ExternalLink className="h-4 w-4" />
             Install from Chrome Web Store
           </Button>
