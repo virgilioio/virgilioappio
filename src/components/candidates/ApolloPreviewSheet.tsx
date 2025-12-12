@@ -1146,6 +1146,7 @@ export function ApolloPreviewSheet({
         open={showJobSelection}
         onOpenChange={setShowJobSelection}
         onJobSelected={handleJobSelected}
+        onSkip={() => setShowJobSelection(false)}
       />
     </>
   )
