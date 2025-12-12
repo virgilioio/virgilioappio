@@ -369,6 +369,7 @@ export function ApolloPreviewSheet({
         queryClient.invalidateQueries({ queryKey: ['sourcing-preview-candidates'] })
         queryClient.invalidateQueries({ queryKey: ['candidates'] })
         queryClient.invalidateQueries({ queryKey: ['sourcing-credits'] })
+        queryClient.invalidateQueries({ queryKey: ['saved-candidates'] })
 
         onCandidateCollected?.(candidateId)
       }
@@ -663,10 +664,10 @@ export function ApolloPreviewSheet({
                       </div>
                       <Button
                         onClick={() => {
-                          if (collectedJobId) {
-                            navigate(`/jobs/${collectedJobId}/candidates/${enrichedData?.candidate_id}`)
-                          } else {
-                            navigate(`/candidates/${enrichedData?.candidate_id}`)
+                          if (collectedJobId && enrichedData?.candidate_id) {
+                            navigate(`/jobs/${collectedJobId}?candidate=${enrichedData.candidate_id}`)
+                          } else if (enrichedData?.candidate_id) {
+                            navigate(`/candidates/${enrichedData.candidate_id}`)
                           }
                         }}
                       >
