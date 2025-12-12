@@ -353,16 +353,16 @@ export function ApolloPreviewSheet({
   }, [apolloData, searchCriteria, fitScore])
 
   const enrichedGioTake = useMemo(() => {
-    return generateEnrichedGioTake(careerSnapshot, jobComparison, fitScore.overall)
-  }, [careerSnapshot, jobComparison, fitScore.overall])
+    return generateEnrichedGioTake(careerSnapshot, jobComparison, fitScore.overall, fitScore.confidence)
+  }, [careerSnapshot, jobComparison, fitScore.overall, fitScore.confidence])
 
   const scoreExplanation = useMemo(() => {
-    return generateScoreExplanation(careerSnapshot, jobComparison)
-  }, [careerSnapshot, jobComparison])
+    return generateScoreExplanation(careerSnapshot, jobComparison, fitScore.confidence)
+  }, [careerSnapshot, jobComparison, fitScore.confidence])
 
   const recommendation = useMemo(() => {
-    return getRecommendation(fitScore.overall)
-  }, [fitScore.overall])
+    return getRecommendation(fitScore.overall, fitScore.confidence)
+  }, [fitScore.overall, fitScore.confidence])
 
   const handleCollectProfile = async (
     selectedJobId?: string, 
@@ -488,21 +488,24 @@ export function ApolloPreviewSheet({
         .filter(Boolean).join(', ')
     : null
 
-  // Dynamic CTA text based on score
+  // Dynamic CTA text based on score and confidence
   const getCtaText = () => {
-    if (fitScore.overall >= 75) {
+    if (fitScore.confidence < 40) {
+      return 'Limited preview data — unlock to see full profile and make an informed decision.'
+    } else if (fitScore.overall >= 65) {
       return 'Strong match — unlocking will reveal full contact info and work history.'
-    } else if (fitScore.overall >= 55) {
+    } else if (fitScore.overall >= 45) {
       return 'Decent match — review details above before spending a credit.'
     } else {
-      return 'Lower confidence match — consider reviewing carefully before unlocking.'
+      return 'Lower match score — consider reviewing carefully before unlocking.'
     }
   }
 
-  const recommendationBadgeColors = {
+  const recommendationBadgeColors: Record<string, string> = {
     worth_unlocking: 'bg-green-100 text-green-700 border-green-200',
     borderline: 'bg-amber-100 text-amber-700 border-amber-200',
-    probably_skip: 'bg-red-100 text-red-600 border-red-200'
+    probably_skip: 'bg-red-100 text-red-600 border-red-200',
+    low_data: 'bg-slate-100 text-slate-600 border-slate-200'
   }
 
   return (

@@ -1,6 +1,11 @@
 /**
  * Inference helpers for Apollo preview data
  * Generate meaningful signals from minimal preview data (title + company [+ headline])
+ * 
+ * Redesigned for sparse data reality:
+ * - Neutral defaults when data is missing
+ * - Confidence-aware recommendations
+ * - No penalties for missing information
  */
 
 export type InferredSeniority = 'Junior' | 'Mid-level' | 'Senior' | 'Lead' | 'Director+' | 'Unknown'
@@ -239,7 +244,7 @@ export function inferCareerSnapshotFromPreview(args: {
   const yearsRangeLabel = getYearsRange(seniority)
   const idealRoleExamples = generateIdealRoles(functionLabel, seniority, industryLabel)
   
-  // Generate caveats
+  // Generate caveats - kept minimal and neutral
   const caveats: string[] = []
   
   if (!candidateTitle) {
@@ -309,15 +314,15 @@ export function compareCandidateToJob(args: {
   } else if (!jobTitle) {
     titleMatchLabel = 'Unknown'
   } else {
-    titleMatchLabel = 'Weak'
-    notes.push('Candidate title not available')
+    titleMatchLabel = 'Unknown'
+    notes.push('Candidate title not available in preview')
   }
   
-  // Location match
+  // Location match - Unknown is truly neutral, not weak
   let locationMatchLabel: JobComparisonSummary['locationMatchLabel'] = 'Unknown'
   if (!candidateLocation) {
     locationMatchLabel = 'Unknown'
-    notes.push('Location not provided in preview — verify on LinkedIn if critical')
+    notes.push('Location not provided — verify on LinkedIn if critical')
   } else if (jobLocation) {
     const normalizedJobLoc = normalize(jobLocation)
     const normalizedCandidateLoc = normalize(candidateLocation)
@@ -399,16 +404,54 @@ export function compareCandidateToJob(args: {
   }
 }
 
-// Helper to get recommendation based on score
-export type GioRecommendation = 'worth_unlocking' | 'borderline' | 'probably_skip'
+// Recommendation type with new 'low_data' option
+export type GioRecommendationType = 'worth_unlocking' | 'borderline' | 'probably_skip' | 'low_data'
 
-export function getRecommendation(score: number): { label: string; type: GioRecommendation } {
-  if (score >= 75) {
-    return { label: 'Worth unlocking', type: 'worth_unlocking' }
-  } else if (score >= 55) {
-    return { label: 'Borderline', type: 'borderline' }
+export interface GioRecommendation {
+  label: string
+  type: GioRecommendationType
+  description?: string
+}
+
+/**
+ * Get recommendation based on score AND confidence
+ * Never show "probably skip" when confidence is low
+ * 
+ * New thresholds:
+ * - ≥65 with confidence ≥40% → worth_unlocking
+ * - 45-64 → borderline
+ * - <45 → probably_skip (only if confidence ≥40%)
+ * - confidence <40% → low_data (never probably_skip)
+ */
+export function getRecommendation(score: number, confidence: number = 100): GioRecommendation {
+  // Low confidence = never confidently recommend skipping
+  if (confidence < 40) {
+    return { 
+      label: 'Low data', 
+      type: 'low_data',
+      description: 'Not enough preview data to make a confident recommendation.'
+    }
+  }
+  
+  // High confidence recommendations
+  if (score >= 65) {
+    return { 
+      label: 'Worth unlocking', 
+      type: 'worth_unlocking',
+      description: 'Strong match based on available data.'
+    }
+  } else if (score >= 45) {
+    return { 
+      label: 'Borderline', 
+      type: 'borderline',
+      description: 'Some alignment detected. Review details before deciding.'
+    }
   } else {
-    return { label: 'Probably skip', type: 'probably_skip' }
+    return { 
+      label: 'Probably skip', 
+      type: 'probably_skip',
+      description: 'Lower match score based on available signals.'
+    }
   }
 }
 
@@ -416,17 +459,23 @@ export function getRecommendation(score: number): { label: string; type: GioReco
 export function generateEnrichedGioTake(
   snapshot: CareerSnapshotInference,
   comparison: JobComparisonSummary,
-  score: number
+  score: number,
+  confidence: number = 100
 ): string {
   const parts: string[] = []
+  
+  // Low confidence intro
+  if (confidence < 40) {
+    parts.push('Limited preview data available.')
+  }
   
   // Seniority + function
   if (snapshot.seniority !== 'Unknown' && snapshot.functionLabel !== 'Other') {
     parts.push(`Looks like a ${snapshot.seniority.toLowerCase()} ${snapshot.functionLabel.toLowerCase()} professional`)
     if (snapshot.yearsRangeLabel !== 'Unknown') {
-      parts[0] += `, likely ${snapshot.yearsRangeLabel} experience`
+      parts[parts.length - 1] += `, likely ${snapshot.yearsRangeLabel} experience`
     }
-    parts[0] += '.'
+    parts[parts.length - 1] += '.'
   } else if (snapshot.seniority !== 'Unknown') {
     parts.push(`Appears to be ${snapshot.seniority.toLowerCase()}-level.`)
   }
@@ -436,25 +485,30 @@ export function generateEnrichedGioTake(
     parts.push(`Background in ${snapshot.industryLabel}.`)
   }
   
-  // Match assessment
-  if (score >= 75) {
+  // Match assessment - adjusted for new thresholds
+  if (score >= 65) {
     if (comparison.titleMatchLabel === 'Strong') {
       parts.push('Strong title match — worth a closer look.')
     } else {
       parts.push('Good alignment overall.')
     }
-  } else if (score >= 55) {
+  } else if (score >= 45) {
     if (comparison.titleMatchLabel === 'Strong' || comparison.titleMatchLabel === 'Medium') {
       parts.push('Decent fit on paper.')
     }
     if (comparison.locationMatchLabel === 'Unknown') {
-      parts.push('Check location before unlocking.')
+      parts.push('Check location if that\'s critical.')
     }
-  } else {
+  } else if (confidence >= 40) {
     if (comparison.titleMatchLabel === 'Weak') {
       parts.push('Title may not align closely.')
     }
-    parts.push('Review carefully before spending a credit.')
+    parts.push('Lower match based on available signals.')
+  }
+  
+  // For low confidence, add encouraging note
+  if (confidence < 40 && score >= 45) {
+    parts.push('Title and company look promising despite limited data.')
   }
   
   return parts.join(' ')
@@ -463,7 +517,8 @@ export function generateEnrichedGioTake(
 // Generate "Why this score" explanation bullets
 export function generateScoreExplanation(
   snapshot: CareerSnapshotInference,
-  comparison: JobComparisonSummary
+  comparison: JobComparisonSummary,
+  confidence: number = 100
 ): string[] {
   const bullets: string[] = []
   
@@ -475,25 +530,30 @@ export function generateScoreExplanation(
   } else if (comparison.titleMatchLabel === 'Weak') {
     bullets.push('Title: May not match target role')
   } else {
-    bullets.push('Title: Unable to assess from preview')
+    bullets.push('Title: Limited data to assess')
   }
   
   // Skills/Function
   if (snapshot.functionLabel !== 'Other') {
-    bullets.push(`Function: ${snapshot.functionLabel} background`)
+    bullets.push(`Function: ${snapshot.functionLabel} background inferred`)
   } else {
-    bullets.push('Skills: Limited signal in preview data')
+    bullets.push('Skills: Using neutral default (no data)')
   }
   
   // Location
   if (comparison.locationMatchLabel === 'Strong') {
     bullets.push('Location: Matches job requirements')
   } else if (comparison.locationMatchLabel === 'Unknown') {
-    bullets.push('Location: Unknown from Apollo — not confirmed')
+    bullets.push('Location: Not available — neutral score applied')
   } else if (comparison.locationMatchLabel === 'Medium') {
     bullets.push('Location: Same region, may differ on city')
   } else {
     bullets.push('Location: May not match requirements')
+  }
+  
+  // Confidence note if low
+  if (confidence < 40) {
+    bullets.push('⚠️ Low confidence: Limited preview signals available')
   }
   
   return bullets

@@ -1,6 +1,12 @@
 /**
  * Client-side candidate fit scoring utilities
- * These calculate match scores based on available preview data vs job/sourcing criteria
+ * Redesigned for sparse Apollo preview data (only title + company typically available)
+ * 
+ * Key principles:
+ * - Role dominates scoring (60%) since title+company are only reliable signals
+ * - Missing data = neutral (50), not penalty
+ * - Confidence tracks data availability separately from score
+ * - Low confidence prevents "probably skip" recommendations
  */
 
 import type { SearchCriteria } from '@/types/sourcing'
@@ -22,7 +28,7 @@ export interface FitScore {
   roleAlignment: 'low' | 'medium' | 'high'
   skillsMatch: 'low' | 'medium' | 'high'
   locationMatch: 'low' | 'medium' | 'high'
-  confidence: number // 0-100, how much data we have to make this assessment
+  confidence: number // 0-100, based on data availability
   dataRichness: number // 0-100, how complete is the candidate's profile
 }
 
@@ -51,6 +57,20 @@ const PROFESSIONAL_KEYWORDS = [
   'sales', 'business', 'finance', 'hr', 'recruiting', 'talent'
 ]
 
+// Title-based skill archetypes for inference when skills aren't available
+const TITLE_SKILL_ARCHETYPES: Record<string, string[]> = {
+  sales: ['enterprise sales', 'saas sales', 'negotiation', 'crm', 'pipeline management', 'quota attainment'],
+  ae: ['account management', 'sales', 'negotiation', 'crm', 'closing'],
+  sdr: ['outbound sales', 'cold calling', 'prospecting', 'lead generation', 'email campaigns'],
+  bdr: ['business development', 'prospecting', 'lead qualification', 'outreach'],
+  engineer: ['software development', 'coding', 'architecture', 'debugging', 'system design'],
+  developer: ['programming', 'software', 'coding', 'web development'],
+  product: ['product management', 'roadmap', 'user research', 'agile', 'stakeholder management'],
+  marketing: ['digital marketing', 'campaigns', 'analytics', 'brand', 'content'],
+  data: ['analytics', 'sql', 'data analysis', 'visualization', 'insights'],
+  customer: ['customer success', 'account management', 'retention', 'onboarding', 'support']
+}
+
 /**
  * Normalize a string for comparison (lowercase, trim, remove special chars)
  */
@@ -71,7 +91,7 @@ function hasOverlap(a: string, b: string): boolean {
  * Detect seniority level from job title
  */
 function detectSeniority(title: string | undefined): { level: string; score: number } {
-  if (!title) return { level: 'unknown', score: 0 }
+  if (!title) return { level: 'unknown', score: 50 } // Neutral when unknown
   
   const normalizedTitle = normalize(title)
   
@@ -81,28 +101,28 @@ function detectSeniority(title: string | undefined): { level: string; score: num
         const scores: Record<string, number> = {
           executive: 100,
           director: 85,
-          senior: 70,
-          mid: 50,
-          junior: 30
+          senior: 75,
+          mid: 60,
+          junior: 45
         }
-        return { level, score: scores[level] || 50 }
+        return { level, score: scores[level] || 60 }
       }
     }
   }
   
-  return { level: 'mid', score: 50 } // Default to mid-level
+  return { level: 'mid', score: 60 } // Default to mid-level with neutral-positive score
 }
 
 /**
  * Calculate headline keyword density (professional relevance)
  */
 function calculateHeadlineQuality(headline: string | undefined): number {
-  if (!headline) return 0
+  if (!headline) return 50 // Neutral when missing, not penalty
   
   const normalizedHeadline = normalize(headline)
   const words = normalizedHeadline.split(/\s+/)
   
-  if (words.length === 0) return 0
+  if (words.length === 0) return 50
   
   let matchCount = 0
   for (const keyword of PROFESSIONAL_KEYWORDS) {
@@ -112,55 +132,104 @@ function calculateHeadlineQuality(headline: string | undefined): number {
   }
   
   // Score based on keyword density (max ~5 keywords for full score)
-  return Math.min(100, (matchCount / 5) * 100)
+  // Range from 50 (no keywords) to 100 (5+ keywords)
+  return Math.min(100, 50 + (matchCount / 5) * 50)
 }
 
 /**
  * Calculate data richness score - how complete is the profile
+ * Used for confidence calculation, NOT as a penalty
  */
 function calculateDataRichness(candidate: CandidatePreviewData): number {
   let score = 0
   const weights = {
     candidate_name: 10,
-    current_role: 25,
+    current_role: 30,  // Title is most important signal
+    current_company: 25, // Company is second most important
     headline: 20,
-    current_company: 15,
-    location: 15,
-    industry: 10,
-    has_email: 3,
-    has_phone: 2
+    location: 10,
+    industry: 5
   }
   
   if (candidate.candidate_name && candidate.candidate_name.length > 3) score += weights.candidate_name
   if (candidate.current_role && candidate.current_role.length > 2) score += weights.current_role
-  if (candidate.headline && candidate.headline.length > 10) score += weights.headline
   if (candidate.current_company && candidate.current_company.length > 1) score += weights.current_company
+  if (candidate.headline && candidate.headline.length > 10) score += weights.headline
   if (candidate.location && candidate.location.length > 2) score += weights.location
   if (candidate.industry) score += weights.industry
-  if (candidate.has_email) score += weights.has_email
-  if (candidate.has_phone) score += weights.has_phone
   
   return Math.min(100, score)
 }
 
 /**
+ * Calculate confidence based on available preview signals
+ * Each signal contributes to confidence - this determines how reliable our score is
+ */
+function calculateConfidence(candidate: CandidatePreviewData): number {
+  let confidence = 0
+  
+  // Title and company are the primary signals (33% each)
+  if (candidate.current_role && candidate.current_role.length > 2) confidence += 33
+  if (candidate.current_company && candidate.current_company.length > 1) confidence += 33
+  
+  // Headline provides additional context
+  if (candidate.headline && candidate.headline.length > 10) confidence += 20
+  
+  // Location helps with fit assessment
+  if (candidate.location && candidate.location.length > 2) confidence += 14
+  
+  return Math.min(100, confidence)
+}
+
+/**
+ * Infer skills from title when actual skills aren't available
+ */
+function inferSkillsFromTitle(title: string | undefined): string[] {
+  if (!title) return []
+  const normalizedTitle = normalize(title)
+  
+  for (const [keyword, skills] of Object.entries(TITLE_SKILL_ARCHETYPES)) {
+    if (normalizedTitle.includes(keyword)) {
+      return skills
+    }
+  }
+  
+  return []
+}
+
+/**
  * Calculate role alignment score (0-100)
+ * Now enhanced to give stronger scores for good title matches
  */
 function calculateRoleScore(
   currentRole: string | undefined,
+  headline: string | undefined,
+  currentCompany: string | undefined,
   titleKeywords: string[] | undefined
 ): number {
+  // No role = neutral, not penalty
   if (!currentRole) {
-    return 25 // Low score if no role data
+    return 50
   }
   
+  const normalizedRole = normalize(currentRole)
+  const seniority = detectSeniority(currentRole)
+  
+  // No criteria - use seniority and role quality as proxy
   if (!titleKeywords || titleKeywords.length === 0) {
-    // No criteria - use seniority as a proxy for quality
-    const seniority = detectSeniority(currentRole)
-    return Math.max(40, seniority.score) // Minimum 40 to show we have data
+    // Base score from seniority (45-85 range)
+    let score = Math.max(45, Math.min(85, seniority.score))
+    
+    // Bonus for having a company (professional signal)
+    if (currentCompany) score += 5
+    
+    // Bonus for headline quality
+    const headlineQuality = calculateHeadlineQuality(headline)
+    if (headlineQuality > 60) score += 5
+    
+    return Math.min(100, score)
   }
 
-  const normalizedRole = normalize(currentRole)
   let matchCount = 0
   let partialCount = 0
 
@@ -174,17 +243,28 @@ function calculateRoleScore(
   }
 
   const totalKeywords = titleKeywords.length
-  const baseScore = ((matchCount * 100) + (partialCount * 60)) / totalKeywords
   
-  // Add seniority bonus (up to 15 points)
-  const seniority = detectSeniority(currentRole)
-  const seniorityBonus = Math.min(15, seniority.score * 0.15)
+  // Calculate base score - boosted for matches
+  // Full match = 100, partial = 65
+  const baseScore = totalKeywords > 0 
+    ? ((matchCount * 100) + (partialCount * 65)) / totalKeywords
+    : 50
+
+  // Add seniority bonus (up to 10 points)
+  const seniorityBonus = Math.min(10, (seniority.score - 50) * 0.2)
   
-  return Math.min(100, Math.round(baseScore + seniorityBonus))
+  // Company bonus (up to 5 points)
+  const companyBonus = currentCompany ? 5 : 0
+  
+  // Ensure strong matches get high scores (60-95 range typically)
+  const finalScore = Math.max(35, Math.min(95, baseScore + seniorityBonus + companyBonus))
+  
+  return Math.round(finalScore)
 }
 
 /**
- * Calculate skills match score from headline (0-100)
+ * Calculate skills match score from headline and title inference (0-100)
+ * Uses neutral defaults when data is missing
  */
 function calculateSkillsScore(
   headline: string | undefined,
@@ -194,16 +274,23 @@ function calculateSkillsScore(
 ): number {
   const textToSearch = normalize(`${headline || ''} ${currentRole || ''}`)
   
+  // No text = neutral, not penalty
   if (!textToSearch || textToSearch.length < 5) {
-    return 20 // Very low if no text to analyze
+    return 50
   }
 
   const searchTerms = [...(skills || []), ...(keywords || [])]
   
+  // No criteria - infer skills from title and return neutral-positive
   if (searchTerms.length === 0) {
-    // No criteria - use headline quality as proxy
-    const headlineQuality = calculateHeadlineQuality(headline)
-    return Math.max(35, Math.min(75, 35 + headlineQuality * 0.4)) // Range 35-75
+    const inferredSkills = inferSkillsFromTitle(currentRole)
+    if (inferredSkills.length > 0) {
+      // Have inferred skills = slightly positive (55-70)
+      const headlineQuality = calculateHeadlineQuality(headline)
+      return Math.min(70, 55 + headlineQuality * 0.15)
+    }
+    // No inference possible = neutral
+    return 50
   }
 
   let matchCount = 0
@@ -220,40 +307,55 @@ function calculateSkillsScore(
     }
   }
 
-  const baseScore = (matchCount / searchTerms.length) * 100
+  // Base score from matches
+  const matchRatio = matchCount / searchTerms.length
   
-  // Add headline quality bonus (up to 10 points)
-  const headlineQuality = calculateHeadlineQuality(headline)
-  const qualityBonus = Math.min(10, headlineQuality * 0.1)
+  if (matchRatio === 0) {
+    // No matches found - check for inferred skills from title
+    const inferredSkills = inferSkillsFromTitle(currentRole)
+    if (inferredSkills.length > 0) {
+      // Check if inferred skills overlap with search terms
+      const inferredMatch = searchTerms.some(s => 
+        inferredSkills.some(is => normalize(is).includes(normalize(s)) || normalize(s).includes(normalize(is)))
+      )
+      if (inferredMatch) return 60 // Inferred match = slight positive
+    }
+    return 50 // No match = neutral, not penalty
+  }
   
-  return Math.min(100, Math.round(baseScore + qualityBonus))
+  // Scale: 0% = 50, 100% = 100
+  const baseScore = 50 + (matchRatio * 50)
+  
+  return Math.min(100, Math.round(baseScore))
 }
 
 /**
  * Calculate location match score (0-100)
+ * Unknown location = 50 (neutral), not penalty
  */
 function calculateLocationScore(
   candidateLocation: string | undefined,
   searchLocations: string[] | undefined
 ): number {
+  // No location requirement = neutral-positive (having any location is good)
   if (!searchLocations || searchLocations.length === 0) {
-    // No location requirement
-    return candidateLocation ? 85 : 60 // Bonus for having location data
+    return candidateLocation ? 70 : 50
   }
 
+  // Unknown location = neutral (50), NOT penalty
   if (!candidateLocation) {
-    return 30 // Unknown location when we have requirements
+    return 50
   }
 
   const normalizedCandidateLocation = normalize(candidateLocation)
   
+  // Check for exact/close match
   for (const loc of searchLocations) {
     const normalizedLoc = normalize(loc)
-    // Check for any meaningful overlap
     if (normalizedCandidateLocation.includes(normalizedLoc) || 
         normalizedLoc.includes(normalizedCandidateLocation) ||
         hasOverlap(normalizedCandidateLocation, normalizedLoc)) {
-      return 100
+      return 100 // Exact match
     }
   }
 
@@ -264,11 +366,12 @@ function calculateLocationScore(
     if (candidateCountry && locCountry && (
       candidateCountry.includes(locCountry) || locCountry.includes(candidateCountry)
     )) {
-      return 65 // Country match but not city
+      return 70 // Country match but not city
     }
   }
 
-  return 20 // No location match
+  // Clear mismatch (we have both locations but they don't match)
+  return 25
 }
 
 /**
@@ -276,22 +379,29 @@ function calculateLocationScore(
  */
 function scoreToTier(score: number): 'low' | 'medium' | 'high' {
   if (score >= 65) return 'high'
-  if (score >= 40) return 'medium'
+  if (score >= 45) return 'medium'
   return 'low'
 }
 
 /**
  * Calculate overall fit score for a candidate
+ * New formula: Role 60%, Skills 15%, Location 10%, with richness multiplier (not penalty)
  */
 export function calculateFitScore(
   candidate: CandidatePreviewData,
   criteria: SearchCriteria | undefined
 ): FitScore {
-  // Calculate data richness first
+  // Calculate data richness and confidence
   const dataRichness = calculateDataRichness(candidate)
+  const confidence = calculateConfidence(candidate)
   
-  // Calculate individual scores
-  const roleScore = calculateRoleScore(candidate.current_role, criteria?.title_keywords)
+  // Calculate individual scores with new logic
+  const roleScore = calculateRoleScore(
+    candidate.current_role, 
+    candidate.headline,
+    candidate.current_company,
+    criteria?.title_keywords
+  )
   const skillsScore = calculateSkillsScore(
     candidate.headline, 
     candidate.current_role,
@@ -300,37 +410,27 @@ export function calculateFitScore(
   )
   const locationScore = calculateLocationScore(candidate.location, criteria?.locations)
 
-  // Weighted average: Role 40%, Skills 35%, Location 25%
+  // New weighted average: Role 60%, Skills 15%, Location 10%
+  // Remaining 15% is implicit baseline (handled by neutral defaults)
   let overall = Math.round(
-    (roleScore * 0.4) + (skillsScore * 0.35) + (locationScore * 0.25)
+    (roleScore * 0.60) + (skillsScore * 0.15) + (locationScore * 0.10) + 
+    (50 * 0.15) // Baseline contribution
   )
   
-  // Apply data richness modifier (±10 points based on profile completeness)
-  const richnessModifier = ((dataRichness - 50) / 50) * 10
-  overall = Math.max(10, Math.min(95, Math.round(overall + richnessModifier)))
-
-  // Calculate confidence based on available data AND criteria
-  let confidence = 0
-  if (candidate.current_role) confidence += 25
-  if (candidate.headline) confidence += 20
-  if (candidate.location) confidence += 15
-  if (candidate.current_company) confidence += 15
-  if (candidate.industry) confidence += 10
+  // Apply data richness MULTIPLIER (not penalty)
+  // High richness = up to +5%, low richness = no change (1.0x)
+  const richnessMultiplier = dataRichness >= 60 ? 1.05 : 1.0
+  overall = Math.round(overall * richnessMultiplier)
   
-  // Boost confidence if we have criteria to match against
-  const hasCriteria = criteria && (
-    (criteria.title_keywords?.length ?? 0) > 0 ||
-    (criteria.skills?.length ?? 0) > 0 ||
-    (criteria.locations?.length ?? 0) > 0
-  )
-  if (hasCriteria) confidence += 15
+  // Clamp to reasonable range
+  overall = Math.max(25, Math.min(95, overall))
 
   return {
     overall,
     roleAlignment: scoreToTier(roleScore),
     skillsMatch: scoreToTier(skillsScore),
     locationMatch: scoreToTier(locationScore),
-    confidence: Math.min(100, confidence),
+    confidence,
     dataRichness
   }
 }
@@ -360,8 +460,6 @@ export function generateGioTake(
     } else if (fitScore.roleAlignment === 'low' && criteria?.title_keywords?.length) {
       concerns.push(`Role may not align with target titles`)
     }
-  } else {
-    concerns.push('Current role unknown')
   }
 
   // Analyze company
@@ -369,33 +467,26 @@ export function generateGioTake(
     strengths.push(`Working at ${candidate.current_company}`)
   }
 
-  // Analyze location
+  // Analyze location - use neutral language for unknown
   if (fitScore.locationMatch === 'high' && candidate.location) {
     strengths.push(`Based in ${candidate.location}`)
-  } else if (fitScore.locationMatch === 'low' && criteria?.locations?.length) {
-    if (candidate.location) {
-      concerns.push(`Location (${candidate.location}) may not match`)
-    } else {
-      concerns.push('Location not confirmed')
-    }
+  } else if (!candidate.location && criteria?.locations?.length) {
+    // Unknown location - neutral, not concern
+    concerns.push('Location not confirmed in preview')
+  } else if (fitScore.locationMatch === 'low' && candidate.location) {
+    concerns.push(`Location (${candidate.location}) may not match`)
   }
 
   // Analyze skills from headline
   if (candidate.headline && fitScore.skillsMatch === 'high') {
-    const headlineQuality = calculateHeadlineQuality(candidate.headline)
-    if (headlineQuality > 50) {
-      // Extract key terms that might be skills
-      const matchedSkills = (criteria?.skills || []).filter(s => 
-        normalize(candidate.headline || '').includes(normalize(s))
-      ).slice(0, 3)
-      if (matchedSkills.length > 0) {
-        strengths.push(`Profile highlights: ${matchedSkills.join(', ')}`)
-      } else {
-        strengths.push('Strong professional background')
-      }
+    const matchedSkills = (criteria?.skills || []).filter(s => 
+      normalize(candidate.headline || '').includes(normalize(s))
+    ).slice(0, 3)
+    if (matchedSkills.length > 0) {
+      strengths.push(`Profile highlights: ${matchedSkills.join(', ')}`)
+    } else {
+      strengths.push('Strong professional background')
     }
-  } else if (fitScore.skillsMatch === 'low' && criteria?.skills?.length) {
-    concerns.push('Key skills not evident in profile')
   }
 
   // Industry context
@@ -403,25 +494,21 @@ export function generateGioTake(
     strengths.push(`${candidate.industry} background`)
   }
 
-  // Data richness concern
-  if (fitScore.dataRichness < 40) {
-    concerns.push('Limited profile information available')
-  }
-
-  // Generate summary based on overall score and data quality
+  // Generate summary based on score AND confidence
   let summary = ''
   
   if (fitScore.confidence < 40) {
-    // Low confidence - emphasize uncertainty
-    summary = `Limited data to assess fit. ${candidate.current_role ? `Currently ${candidate.current_role}` : 'Role unknown'}${candidate.current_company ? ` at ${candidate.current_company}` : ''}.`
-  } else if (fitScore.overall >= 70) {
+    // Low confidence - acknowledge uncertainty without being negative
+    summary = `Limited preview data available. ${candidate.current_role ? `Currently ${candidate.current_role}` : ''}${candidate.current_company ? ` at ${candidate.current_company}` : ''}.`
+    if (fitScore.overall >= 55) {
+      summary += ' Title and company look promising.'
+    }
+  } else if (fitScore.overall >= 65) {
     summary = `Strong potential match. ${candidate.current_role ? `Currently serving as ${candidate.current_role}` : 'Experienced professional'}${candidate.current_company ? ` at ${candidate.current_company}` : ''}.`
-  } else if (fitScore.overall >= 50) {
+  } else if (fitScore.overall >= 45) {
     summary = `Worth reviewing. ${candidate.current_role || 'Professional'}${candidate.current_company ? ` at ${candidate.current_company}` : ''} with some alignment to your criteria.`
-  } else if (fitScore.overall >= 35) {
-    summary = `Partial match. ${concerns.length > 0 ? concerns[0] + '.' : 'Review profile for potential fit.'}`
   } else {
-    summary = `Limited match. ${concerns.length > 0 ? concerns[0] + '.' : 'May not align with current search criteria.'}`
+    summary = `Lower match score. ${concerns.length > 0 ? concerns[0] + '.' : 'Review profile for potential fit.'}`
   }
 
   // Add location to summary if relevant and not already mentioned
@@ -440,21 +527,21 @@ export function generateGioTake(
  * Get display label for fit score
  */
 export function getFitScoreLabel(score: number): string {
-  if (score >= 80) return 'Excellent fit'
+  if (score >= 75) return 'Excellent fit'
   if (score >= 65) return 'Strong fit'
   if (score >= 50) return 'Good fit'
-  if (score >= 35) return 'Fair fit'
-  return 'Low fit'
+  if (score >= 40) return 'Fair fit'
+  return 'Lower fit'
 }
 
 /**
  * Get color class for fit score
  */
 export function getFitScoreColor(score: number): string {
-  if (score >= 80) return 'text-green-600'
+  if (score >= 75) return 'text-green-600'
   if (score >= 65) return 'text-emerald-600'
   if (score >= 50) return 'text-blue-600'
-  if (score >= 35) return 'text-amber-600'
+  if (score >= 40) return 'text-amber-600'
   return 'text-orange-600'
 }
 
@@ -473,7 +560,7 @@ export function getSignalBarColor(tier: 'low' | 'medium' | 'high'): string {
  * Get confidence level label
  */
 export function getConfidenceLabel(confidence: number): string {
-  if (confidence >= 70) return 'High confidence'
-  if (confidence >= 45) return 'Moderate confidence'
+  if (confidence >= 60) return 'High confidence'
+  if (confidence >= 40) return 'Medium confidence'
   return 'Low confidence'
 }
