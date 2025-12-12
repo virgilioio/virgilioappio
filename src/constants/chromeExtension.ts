@@ -7,7 +7,7 @@
 
 // TODO: Move to environment variable via import.meta.env.VITE_CHROME_EXTENSION_ID
 // For now, hardcode the extension ID from Chrome Web Store / dev manifest
-export const CHROME_EXTENSION_ID = "okkkglbelakkhphmbgabailjbmkpjfka";
+export const CHROME_EXTENSION_ID = "nhkooggcjgdckjlpbogeanhohjkndhcj";
 
 /**
  * Returns the Chrome extension OAuth callback URL

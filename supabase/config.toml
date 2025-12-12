@@ -27,6 +27,9 @@ verify_jwt = false
 [functions.chrome-api-candidates]
 verify_jwt = false
 
+[functions.chrome-api-resume]
+verify_jwt = false
+
 [functions.convert-document-to-pdf]
 verify_jwt = false
 
