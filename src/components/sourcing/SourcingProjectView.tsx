@@ -1,9 +1,10 @@
 import { useState, useMemo } from 'react'
-import { Loader2, Sparkles, Users, UserCheck } from 'lucide-react'
+import { Loader2, Sparkles, Users, UserCheck, Archive } from 'lucide-react'
 import { SourcingProjectHeader } from './SourcingProjectHeader'
 import { CandidatesTab } from './CandidatesTab'
 import { ConversationTab } from './ConversationTab'
 import { SavedCandidatesTab } from './SavedCandidatesTab'
+import { ArchivedCandidatesTab } from './ArchivedCandidatesTab'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { useSourcingProject } from '@/hooks/useSourcingProject'
@@ -33,6 +34,12 @@ export function SourcingProjectView({ projectId }: SourcingProjectViewProps) {
   const { data: savedCandidates = [] } = useSavedCandidates({
     projectId,
     enabled: !!projectId
+  })
+  
+  const { data: archivedCandidates = [] } = useSavedCandidates({
+    projectId,
+    enabled: !!projectId,
+    status: 'archived'
   })
   
   const [filters, setFilters] = useState<SourcingProjectFilters>({
@@ -257,7 +264,7 @@ export function SourcingProjectView({ projectId }: SourcingProjectViewProps) {
       >
         <div className="border-b bg-background">
           <div className="container mx-auto px-4">
-            <TabsList className="grid w-full max-w-xl grid-cols-3">
+            <TabsList className="grid w-full max-w-2xl grid-cols-4">
               <TabsTrigger value="conversation" className="gap-2">
                 <Sparkles className="h-4 w-4" />
                 Chat with Gio
@@ -277,6 +284,15 @@ export function SourcingProjectView({ projectId }: SourcingProjectViewProps) {
                 {savedCandidates.length > 0 && (
                   <Badge variant="secondary" className="ml-1">
                     {savedCandidates.length}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="archived" className="gap-2">
+                <Archive className="h-4 w-4" />
+                Archived
+                {archivedCandidates.length > 0 && (
+                  <Badge variant="outline" className="ml-1">
+                    {archivedCandidates.length}
                   </Badge>
                 )}
               </TabsTrigger>
@@ -305,6 +321,10 @@ export function SourcingProjectView({ projectId }: SourcingProjectViewProps) {
         
         <TabsContent value="saved" className="flex-1 overflow-hidden m-0">
           <SavedCandidatesTab projectId={projectId} />
+        </TabsContent>
+        
+        <TabsContent value="archived" className="flex-1 overflow-hidden m-0">
+          <ArchivedCandidatesTab projectId={projectId} />
         </TabsContent>
       </Tabs>
     </div>
