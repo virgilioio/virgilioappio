@@ -240,7 +240,7 @@ export function ApolloPreviewSheet({
   // Calculate fit score and Gio's take
   const fitScore: FitScore = useMemo(() => {
     if (!apolloData) {
-      return { overall: 50, roleAlignment: 'medium', skillsMatch: 'medium', locationMatch: 'medium', confidence: 0 }
+      return { overall: 50, roleAlignment: 'medium', skillsMatch: 'medium', locationMatch: 'medium', confidence: 0, dataRichness: 0 }
     }
     return calculateFitScore(apolloData, searchCriteria)
   }, [apolloData, searchCriteria])
