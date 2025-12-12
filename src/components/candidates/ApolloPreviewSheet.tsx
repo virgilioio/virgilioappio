@@ -226,6 +226,7 @@ export function ApolloPreviewSheet({
   const [collectedJobId, setCollectedJobId] = useState<string | null>(null)
   const [showJobSelection, setShowJobSelection] = useState(false)
   const [enrichedData, setEnrichedData] = useState<EnrichedCandidateData | null>(null)
+  const [phoneCheckStatus, setPhoneCheckStatus] = useState<'idle' | 'checking' | 'done'>('idle')
   const { isCollectDisabled } = useSourcingCreditWarnings()
   const queryClient = useQueryClient()
   const navigate = useNavigate()
@@ -235,7 +236,54 @@ export function ApolloPreviewSheet({
     setEnrichedData(null)
     setCollectedCandidateId(null)
     setCollectedJobId(null)
+    setPhoneCheckStatus('idle')
   }, [apolloId])
+
+  // Poll for phone number after collection if has_phone was indicated but not received
+  useEffect(() => {
+    if (!enrichedData?.candidate_id || enrichedData?.phone || !apolloData?.has_phone) {
+      return
+    }
+
+    // Phone was indicated but not received - start polling
+    setPhoneCheckStatus('checking')
+    let attempts = 0
+    const maxAttempts = 4
+    const intervals = [2000, 3000, 5000, 8000] // 2s, 3s, 5s, 8s
+
+    const pollForPhone = async () => {
+      if (attempts >= maxAttempts) {
+        setPhoneCheckStatus('done')
+        return
+      }
+
+      const delay = intervals[attempts] || 5000
+      attempts++
+
+      await new Promise(resolve => setTimeout(resolve, delay))
+
+      try {
+        const { data: candidateData } = await supabase
+          .from('candidates')
+          .select('phone')
+          .eq('id', enrichedData.candidate_id)
+          .single()
+
+        if (candidateData?.phone) {
+          setEnrichedData(prev => prev ? { ...prev, phone: candidateData.phone } : prev)
+          setPhoneCheckStatus('done')
+          return
+        }
+
+        // Continue polling if no phone yet
+        pollForPhone()
+      } catch {
+        setPhoneCheckStatus('done')
+      }
+    }
+
+    pollForPhone()
+  }, [enrichedData?.candidate_id, enrichedData?.phone, apolloData?.has_phone])
 
   // Calculate fit score and Gio's take
   const fitScore: FitScore = useMemo(() => {
@@ -660,14 +708,24 @@ export function ApolloPreviewSheet({
                               </Badge>
                             </div>
                           )}
-                          {enrichedData?.phone && (
-                            <div className="flex items-center gap-2">
-                              <Phone className="h-4 w-4 text-text-secondary" />
+                          {/* Phone number with loading state */}
+                          <div className="flex items-center gap-2">
+                            <Phone className="h-4 w-4 text-text-secondary" />
+                            {enrichedData?.phone ? (
                               <a href={`tel:${enrichedData.phone}`} className="text-sm text-blue-600 hover:underline">
                                 {enrichedData.phone}
                               </a>
-                            </div>
-                          )}
+                            ) : phoneCheckStatus === 'checking' ? (
+                              <span className="text-sm text-amber-600 flex items-center gap-1.5">
+                                <span className="h-1.5 w-1.5 bg-amber-500 rounded-full animate-pulse" />
+                                Checking for phone...
+                              </span>
+                            ) : apolloData?.has_phone ? (
+                              <span className="text-sm text-text-tertiary">Phone pending - try refreshing</span>
+                            ) : (
+                              <span className="text-sm text-text-tertiary">Phone not available</span>
+                            )}
+                          </div>
                           {enrichedData?.linkedin_url && (
                             <div className="flex items-center gap-2">
                               <LinkedInFilled className="h-4 w-4 text-text-secondary" />
