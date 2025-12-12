@@ -33,9 +33,10 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { usePipelineActions, PipelineAssociation } from '@/hooks/usePipelineActions'
 import CandidateProfileSheet from '@/components/candidates/CandidateProfileSheet'
+import UniversalCandidateProfileSheet from '@/components/candidates/UniversalCandidateProfileSheet'
 import BulkMoveJobCandidatesToPipelineDialog from '@/components/candidates/BulkMoveJobCandidatesToPipelineDialog'
 import { BulkRejectionDialog } from '@/components/candidates/BulkRejectionDialog'
-import { useJobMatchingCandidates } from '@/hooks/useJobMatchingCandidates'
+import { useJobMatchingCandidates, MatchedCandidate } from '@/hooks/useJobMatchingCandidates'
 import { useJobMatchingCandidatesCount } from '@/hooks/useJobMatchingCandidatesCount'
 import { useRealTimeSkillMatching } from '@/hooks/useRealTimeSkillMatching'
 
@@ -67,9 +68,13 @@ export default function JobDetail() {
   // In-place profile sheet state with navigation
   const [profileOpen, setProfileOpen] = useState(false)
   const [profileCandidateId, setProfileCandidateId] = useState<string | null>(null)
-  const [profileContext, setProfileContext] = useState<'application' | 'pipeline' | null>(null)
+  const [profileContext, setProfileContext] = useState<'application' | 'pipeline' | 'suggested' | null>(null)
   const [profileCandidateList, setProfileCandidateList] = useState<any[]>([])
   const [profileCurrentIndex, setProfileCurrentIndex] = useState(0)
+  
+  // Apollo candidate state for suggested tab
+  const [selectedApolloId, setSelectedApolloId] = useState<string | null>(null)
+  const [selectedApolloData, setSelectedApolloData] = useState<any>(null)
   
   // Auto-open scorecard from URL parameter (for AI note-taker notifications)
   const [autoOpenScorecard, setAutoOpenScorecard] = useState(false)
@@ -91,13 +96,16 @@ export default function JobDetail() {
     return searchParams.get('candidate')
   }
 
-  const openProfileInPlace = (candidateId: string, context: 'application' | 'pipeline' = 'application', candidateList: any[] = []) => {
-    const index = candidateList.findIndex((c: any) => c.id === candidateId)
+  const openProfileInPlace = (candidateId: string, context: 'application' | 'pipeline' | 'suggested' = 'application', candidateList: any[] = []) => {
+    const index = candidateList.findIndex((c: any) => c.id === candidateId || c.candidate_id === candidateId)
     setProfileCandidateId(candidateId)
     setProfileContext(context)
     setProfileCandidateList(candidateList)
     setProfileCurrentIndex(index >= 0 ? index : 0)
     setProfileOpen(true)
+    // Clear Apollo state when opening non-Apollo profiles
+    setSelectedApolloId(null)
+    setSelectedApolloData(null)
     
     // Update URL
     updateCandidateUrl(candidateId)
@@ -107,13 +115,32 @@ export default function JobDetail() {
   const handleNavigatePrev = () => {
     if (profileCurrentIndex > 0) {
       const newIndex = profileCurrentIndex - 1
-      const newCandidateId = profileCandidateList[newIndex]?.id
-      if (newCandidateId) {
+      const candidate = profileCandidateList[newIndex]
+      if (candidate) {
         setProfileCurrentIndex(newIndex)
-        setProfileCandidateId(newCandidateId)
         
-        // Update URL
-        updateCandidateUrl(newCandidateId)
+        // Handle Apollo vs local candidates for suggested context
+        if (profileContext === 'suggested' && candidate.source === 'apollo' && !candidate.candidate_id) {
+          setSelectedApolloId(candidate.apollo_id || candidate.id)
+          setSelectedApolloData({
+            candidate_name: candidate.candidate_name,
+            headline: candidate.headline,
+            current_company: candidate.current_company,
+            current_role: candidate.current_role,
+            location: candidate.location,
+            linkedin_url: candidate.linkedin_url,
+            has_email: candidate.has_email,
+            has_phone: candidate.has_phone,
+            apollo_score: candidate.apollo_score
+          })
+          setProfileCandidateId(null)
+        } else {
+          setSelectedApolloId(null)
+          setSelectedApolloData(null)
+          setProfileCandidateId(candidate.candidate_id || candidate.id)
+        }
+        
+        updateCandidateUrl(candidate.id)
       }
     }
   }
@@ -121,13 +148,32 @@ export default function JobDetail() {
   const handleNavigateNext = () => {
     if (profileCurrentIndex < profileCandidateList.length - 1) {
       const newIndex = profileCurrentIndex + 1
-      const newCandidateId = profileCandidateList[newIndex]?.id
-      if (newCandidateId) {
+      const candidate = profileCandidateList[newIndex]
+      if (candidate) {
         setProfileCurrentIndex(newIndex)
-        setProfileCandidateId(newCandidateId)
         
-        // Update URL
-        updateCandidateUrl(newCandidateId)
+        // Handle Apollo vs local candidates for suggested context
+        if (profileContext === 'suggested' && candidate.source === 'apollo' && !candidate.candidate_id) {
+          setSelectedApolloId(candidate.apollo_id || candidate.id)
+          setSelectedApolloData({
+            candidate_name: candidate.candidate_name,
+            headline: candidate.headline,
+            current_company: candidate.current_company,
+            current_role: candidate.current_role,
+            location: candidate.location,
+            linkedin_url: candidate.linkedin_url,
+            has_email: candidate.has_email,
+            has_phone: candidate.has_phone,
+            apollo_score: candidate.apollo_score
+          })
+          setProfileCandidateId(null)
+        } else {
+          setSelectedApolloId(null)
+          setSelectedApolloData(null)
+          setProfileCandidateId(candidate.candidate_id || candidate.id)
+        }
+        
+        updateCandidateUrl(candidate.id)
       }
     }
   }
@@ -152,7 +198,39 @@ export default function JobDetail() {
   const openOffersProfile = (candidateId: string) => openProfileInPlace(candidateId, 'pipeline', offersCandidates)
   const openHiredProfile = (candidateId: string) => openProfileInPlace(candidateId, 'pipeline', hiredCandidates)
   const openRejectedProfile = (candidateId: string) => openProfileInPlace(candidateId, 'pipeline', rejectedCandidates)
-  const openSuggestedProfile = (candidateId: string) => openProfileInPlace(candidateId, 'pipeline', matchingCandidates)
+  // Handle opening suggested/matched candidate profiles (may be Apollo or local)
+  const openSuggestedProfile = (candidateId: string) => {
+    const candidate = matchingCandidates.find((c: MatchedCandidate) => c.id === candidateId)
+    
+    if (candidate?.source === 'apollo' && !candidate?.candidate_id) {
+      // Uncollected Apollo candidate - show Apollo preview sheet
+      setSelectedApolloId(candidate.apollo_id || candidate.id)
+      setSelectedApolloData({
+        candidate_name: candidate.candidate_name,
+        headline: candidate.headline,
+        current_company: candidate.current_company,
+        current_role: candidate.current_role,
+        location: candidate.location,
+        linkedin_url: candidate.linkedin_url,
+        has_email: candidate.has_email,
+        has_phone: candidate.has_phone,
+        apollo_score: candidate.apollo_score
+      })
+      setProfileCandidateId(null) // No real candidate ID yet
+      setProfileContext('suggested')
+      setProfileCandidateList(matchingCandidates)
+      const index = matchingCandidates.findIndex((c: MatchedCandidate) => c.id === candidateId)
+      setProfileCurrentIndex(index >= 0 ? index : 0)
+      setProfileOpen(true)
+      updateCandidateUrl(candidateId)
+    } else {
+      // Local or collected candidate - use regular candidate profile
+      setSelectedApolloId(null)
+      setSelectedApolloData(null)
+      const realCandidateId = candidate?.candidate_id || candidateId
+      openProfileInPlace(realCandidateId, 'suggested', matchingCandidates)
+    }
+  }
 
   // Inner tabs for Pipeline section
   const [pipelineSectionTab, setPipelineSectionTab] = useState<'suggested' | 'application' | 'recruiting' | 'offers' | 'hired' | 'rejected'>('recruiting')
@@ -1423,26 +1501,55 @@ export default function JobDetail() {
           </DialogContent>
         </Dialog>
 
-        <CandidateProfileSheet
-          open={profileOpen}
-          onOpenChange={(open) => {
-            setProfileOpen(open)
-            if (!open) {
-              // Clear URL when sheet closes
-              updateCandidateUrl(null)
-              setAutoOpenScorecard(false)
-            }
-          }}
-          candidateId={profileCandidateId}
-          jobId={id!}
-          hasPrev={hasPrev}
-          hasNext={hasNext}
-          onNavigatePrev={handleNavigatePrev}
-          onNavigateNext={handleNavigateNext}
-          onStageChanged={() => setPipelineRefresh((v) => v + 1)}
-          autoOpenScorecard={autoOpenScorecard}
-          onScorecardOpened={() => setAutoOpenScorecard(false)}
-        />
+        {/* Profile Sheet - Use UniversalCandidateProfileSheet for suggested context (handles Apollo vs local) */}
+        {profileContext === 'suggested' ? (
+          <UniversalCandidateProfileSheet
+            open={profileOpen}
+            onOpenChange={(open) => {
+              setProfileOpen(open)
+              if (!open) {
+                updateCandidateUrl(null)
+                setSelectedApolloId(null)
+                setSelectedApolloData(null)
+              }
+            }}
+            candidateId={profileCandidateId}
+            apolloId={selectedApolloId}
+            apolloData={selectedApolloData}
+            jobId={id!}
+            context="sourcing"
+            hasPrev={hasPrev}
+            hasNext={hasNext}
+            onNavigatePrev={handleNavigatePrev}
+            onNavigateNext={handleNavigateNext}
+            onStageChanged={() => setPipelineRefresh((v) => v + 1)}
+            searchCriteria={{
+              title_keywords: job?.standardized_title ? [job.standardized_title] : [],
+              skills: job?.skills || job?.standardized_skills || [],
+              locations: job?.standardized_location ? [job.standardized_location] : []
+            }}
+          />
+        ) : (
+          <CandidateProfileSheet
+            open={profileOpen}
+            onOpenChange={(open) => {
+              setProfileOpen(open)
+              if (!open) {
+                updateCandidateUrl(null)
+                setAutoOpenScorecard(false)
+              }
+            }}
+            candidateId={profileCandidateId}
+            jobId={id!}
+            hasPrev={hasPrev}
+            hasNext={hasNext}
+            onNavigatePrev={handleNavigatePrev}
+            onNavigateNext={handleNavigateNext}
+            onStageChanged={() => setPipelineRefresh((v) => v + 1)}
+            autoOpenScorecard={autoOpenScorecard}
+            onScorecardOpened={() => setAutoOpenScorecard(false)}
+          />
+        )}
 
         <BulkRejectionDialog
           open={showBulkRejectionDialog}
