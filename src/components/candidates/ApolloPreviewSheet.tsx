@@ -8,7 +8,7 @@ import {
   Sparkles, ExternalLink, AlertCircle, ChevronLeft, ChevronRight, 
   Mail, Phone, Lock, Briefcase, GraduationCap, Wrench, MapPin, 
   Users, UserPlus, Building2, Globe, CheckCircle2, TrendingUp,
-  Target, Zap, Eye, Check
+  Target, Zap, Eye, Check, Star, XCircle, Info, Clock, Award
 } from 'lucide-react'
 import { supabase } from '@/lib/supabaseClient'
 import { toast } from '@/hooks/use-toast'
@@ -23,10 +23,19 @@ import {
   generateGioTake, 
   getFitScoreLabel, 
   getFitScoreColor,
-  getSignalBarColor,
   type FitScore,
   type GioTake
 } from '@/lib/candidateFitScoring'
+import {
+  inferCareerSnapshotFromPreview,
+  compareCandidateToJob,
+  getRecommendation,
+  generateEnrichedGioTake,
+  generateScoreExplanation,
+  type CareerSnapshotInference,
+  type JobComparisonSummary
+} from '@/features/sourcing/apollo/previewInference'
+import { useCandidatePreviewStatus } from '@/hooks/useCandidatePreviewStatus'
 import type { SearchCriteria } from '@/types/sourcing'
 import { cn } from '@/lib/utils'
 
@@ -58,12 +67,14 @@ interface ApolloPreviewSheetProps {
     has_location?: boolean
   }
   jobId?: string | null
+  projectId?: string | null
   hasPrev?: boolean
   hasNext?: boolean
   onNavigatePrev?: () => void
   onNavigateNext?: () => void
   onCandidateCollected?: (candidateId: string) => void
   searchCriteria?: SearchCriteria
+  jobTitle?: string | null
 }
 
 interface EnrichedCandidateData {
@@ -208,18 +219,36 @@ function InfoRow({ icon: Icon, label, value, className }: {
   )
 }
 
+// Match label component
+function MatchLabel({ match }: { match: 'Strong' | 'Medium' | 'Weak' | 'Unknown' }) {
+  const config = {
+    Strong: { color: 'text-green-600', bg: 'bg-green-100' },
+    Medium: { color: 'text-amber-600', bg: 'bg-amber-100' },
+    Weak: { color: 'text-red-500', bg: 'bg-red-100' },
+    Unknown: { color: 'text-text-tertiary', bg: 'bg-muted' }
+  }
+  
+  return (
+    <span className={cn("text-xs font-medium px-2 py-0.5 rounded", config[match].bg, config[match].color)}>
+      {match}
+    </span>
+  )
+}
+
 export function ApolloPreviewSheet({
   open,
   onOpenChange,
   apolloId,
   apolloData,
   jobId,
+  projectId,
   hasPrev,
   hasNext,
   onNavigatePrev,
   onNavigateNext,
   onCandidateCollected,
   searchCriteria,
+  jobTitle,
 }: ApolloPreviewSheetProps) {
   const [isCollecting, setIsCollecting] = useState(false)
   const [collectedCandidateId, setCollectedCandidateId] = useState<string | null>(null)
@@ -228,6 +257,7 @@ export function ApolloPreviewSheet({
   const [enrichedData, setEnrichedData] = useState<EnrichedCandidateData | null>(null)
   const [phoneCheckStatus, setPhoneCheckStatus] = useState<'idle' | 'checking' | 'done'>('idle')
   const { isCollectDisabled } = useSourcingCreditWarnings()
+  const { shortlistCandidate, markNotAFit, isUpdating, currentApolloId } = useCandidatePreviewStatus()
   const queryClient = useQueryClient()
   const navigate = useNavigate()
 
@@ -245,11 +275,10 @@ export function ApolloPreviewSheet({
       return
     }
 
-    // Phone was indicated but not received - start polling
     setPhoneCheckStatus('checking')
     let attempts = 0
     const maxAttempts = 4
-    const intervals = [2000, 3000, 5000, 8000] // 2s, 3s, 5s, 8s
+    const intervals = [2000, 3000, 5000, 8000]
 
     const pollForPhone = async () => {
       if (attempts >= maxAttempts) {
@@ -275,7 +304,6 @@ export function ApolloPreviewSheet({
           return
         }
 
-        // Continue polling if no phone yet
         pollForPhone()
       } catch {
         setPhoneCheckStatus('done')
@@ -285,7 +313,7 @@ export function ApolloPreviewSheet({
     pollForPhone()
   }, [enrichedData?.candidate_id, enrichedData?.phone, apolloData?.has_phone])
 
-  // Calculate fit score and Gio's take
+  // Calculate fit score
   const fitScore: FitScore = useMemo(() => {
     if (!apolloData) {
       return { overall: 50, roleAlignment: 'medium', skillsMatch: 'medium', locationMatch: 'medium', confidence: 0, dataRichness: 0 }
@@ -293,12 +321,48 @@ export function ApolloPreviewSheet({
     return calculateFitScore(apolloData, searchCriteria)
   }, [apolloData, searchCriteria])
 
+  // Calculate career snapshot inference
+  const careerSnapshot: CareerSnapshotInference = useMemo(() => {
+    return inferCareerSnapshotFromPreview({
+      candidateTitle: apolloData?.current_role,
+      companyName: apolloData?.current_company,
+      headline: apolloData?.headline,
+      apolloIndustry: apolloData?.industry || apolloData?.company_industry
+    })
+  }, [apolloData])
+
+  // Calculate job comparison
+  const jobComparison: JobComparisonSummary = useMemo(() => {
+    return compareCandidateToJob({
+      jobTitle: jobTitle || searchCriteria?.title_keywords?.[0],
+      jobSeniority: searchCriteria?.seniorities?.[0],
+      jobLocation: searchCriteria?.locations?.[0],
+      jobIndustry: careerSnapshot.industryLabel !== 'Unknown' ? careerSnapshot.industryLabel : undefined,
+      candidate: careerSnapshot,
+      candidateTitle: apolloData?.current_role,
+      candidateLocation: apolloData?.location
+    })
+  }, [apolloData, searchCriteria, careerSnapshot, jobTitle])
+
+  // Generate Gio's take and recommendation
   const gioTake: GioTake = useMemo(() => {
     if (!apolloData) {
       return { summary: 'No candidate data available.', strengths: [], concerns: [] }
     }
     return generateGioTake(apolloData, searchCriteria, fitScore)
   }, [apolloData, searchCriteria, fitScore])
+
+  const enrichedGioTake = useMemo(() => {
+    return generateEnrichedGioTake(careerSnapshot, jobComparison, fitScore.overall)
+  }, [careerSnapshot, jobComparison, fitScore.overall])
+
+  const scoreExplanation = useMemo(() => {
+    return generateScoreExplanation(careerSnapshot, jobComparison)
+  }, [careerSnapshot, jobComparison])
+
+  const recommendation = useMemo(() => {
+    return getRecommendation(fitScore.overall)
+  }, [fitScore.overall])
 
   const handleCollectProfile = async (
     selectedJobId?: string, 
@@ -384,9 +448,9 @@ export function ApolloPreviewSheet({
     }
   }
 
-  const handleJobSelected = (jobId: string, jobName: string, stageId?: string, stageName?: string) => {
+  const handleJobSelected = (jId: string, jobName: string, stageId?: string, stageName?: string) => {
     setShowJobSelection(false)
-    handleCollectProfile(jobId, jobName, stageId, stageName)
+    handleCollectProfile(jId, jobName, stageId, stageName)
   }
 
   const handleNavigatePrev = () => {
@@ -401,6 +465,18 @@ export function ApolloPreviewSheet({
     onNavigateNext?.()
   }
 
+  const handleShortlist = () => {
+    if (apolloId && projectId) {
+      shortlistCandidate(apolloId, projectId)
+    }
+  }
+
+  const handleNotAFit = () => {
+    if (apolloId && projectId) {
+      markNotAFit(apolloId, projectId)
+    }
+  }
+
   // Derived state
   const hasEmailAvailable = apolloData?.has_email ?? false
   const hasPhoneAvailable = apolloData?.has_phone ?? false
@@ -411,6 +487,23 @@ export function ApolloPreviewSheet({
     ? [enrichedData.location_city, enrichedData.location_state, enrichedData.location_country]
         .filter(Boolean).join(', ')
     : null
+
+  // Dynamic CTA text based on score
+  const getCtaText = () => {
+    if (fitScore.overall >= 75) {
+      return 'Strong match — unlocking will reveal full contact info and work history.'
+    } else if (fitScore.overall >= 55) {
+      return 'Decent match — review details above before spending a credit.'
+    } else {
+      return 'Lower confidence match — consider reviewing carefully before unlocking.'
+    }
+  }
+
+  const recommendationBadgeColors = {
+    worth_unlocking: 'bg-green-100 text-green-700 border-green-200',
+    borderline: 'bg-amber-100 text-amber-700 border-amber-200',
+    probably_skip: 'bg-red-100 text-red-600 border-red-200'
+  }
 
   return (
     <>
@@ -471,16 +564,24 @@ export function ApolloPreviewSheet({
             </SheetHeader>
 
             {/* Scrollable Content */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+            <div className="flex-1 overflow-y-auto p-6 space-y-5">
               
               {/* Fit Snapshot Card */}
               {!isCollected && (
                 <Card className="border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
                   <CardHeader className="pb-3">
-                    <CardTitle className="flex items-center gap-2 text-base">
-                      <Sparkles className="h-4 w-4 text-primary" />
-                      Fit Snapshot
-                    </CardTitle>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="flex items-center gap-2 text-base">
+                        <Sparkles className="h-4 w-4 text-primary" />
+                        Fit Snapshot
+                      </CardTitle>
+                      <Badge 
+                        variant="outline" 
+                        className={cn("text-xs", recommendationBadgeColors[recommendation.type])}
+                      >
+                        {recommendation.label}
+                      </Badge>
+                    </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="flex items-start gap-6">
@@ -510,6 +611,21 @@ export function ApolloPreviewSheet({
                       </div>
                     </div>
 
+                    {/* Why this score? */}
+                    <div className="pt-3 border-t border-border/50">
+                      <p className="text-xs font-medium text-text-tertiary mb-2">
+                        Why {fitScore.overall}/100?
+                      </p>
+                      <ul className="space-y-1">
+                        {scoreExplanation.map((bullet, idx) => (
+                          <li key={idx} className="text-xs text-text-secondary flex items-start gap-2">
+                            <span className="text-text-tertiary">•</span>
+                            {bullet}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
                     {/* Gio's Take */}
                     <div className="pt-3 border-t border-border/50">
                       <div className="flex items-start gap-2">
@@ -519,11 +635,125 @@ export function ApolloPreviewSheet({
                         <div className="space-y-1.5">
                           <span className="text-xs font-medium text-primary">Gio's Take</span>
                           <p className="text-sm text-text-secondary leading-relaxed">
-                            {gioTake.summary}
+                            {enrichedGioTake}
                           </p>
                         </div>
                       </div>
                     </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Career Snapshot Card */}
+              {!isCollected && (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="flex items-center gap-2 text-base">
+                        <Award className="h-4 w-4 text-text-secondary" />
+                        Career Snapshot
+                      </CardTitle>
+                      <Badge variant="outline" className="text-xs text-text-tertiary border-dashed">
+                        <Info className="h-3 w-3 mr-1" />
+                        Inferred
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <span className="text-xs text-text-tertiary">Seniority</span>
+                        <div className="mt-1">
+                          <Badge variant="secondary" className="text-xs">
+                            {careerSnapshot.seniority}
+                          </Badge>
+                        </div>
+                      </div>
+                      <div>
+                        <span className="text-xs text-text-tertiary">Likely Experience</span>
+                        <div className="flex items-center gap-1 mt-1">
+                          <Clock className="h-3 w-3 text-text-tertiary" />
+                          <span className="text-sm text-text-primary">{careerSnapshot.yearsRangeLabel}</span>
+                        </div>
+                      </div>
+                      <div>
+                        <span className="text-xs text-text-tertiary">Function</span>
+                        <p className="text-sm text-text-primary mt-1">{careerSnapshot.functionLabel}</p>
+                      </div>
+                      <div>
+                        <span className="text-xs text-text-tertiary">Industry</span>
+                        <p className="text-sm text-text-primary mt-1">{careerSnapshot.industryLabel}</p>
+                      </div>
+                      {careerSnapshot.companyStageLabel !== 'Unknown' && (
+                        <div className="col-span-2">
+                          <span className="text-xs text-text-tertiary">Company Stage</span>
+                          <p className="text-sm text-text-primary mt-1">{careerSnapshot.companyStageLabel}</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {careerSnapshot.idealRoleExamples.length > 0 && (
+                      <div className="mt-4 pt-3 border-t">
+                        <span className="text-xs text-text-tertiary">Ideal for roles like</span>
+                        <div className="flex flex-wrap gap-1.5 mt-2">
+                          {careerSnapshot.idealRoleExamples.map((role, idx) => (
+                            <Badge key={idx} variant="outline" className="text-xs">
+                              {role}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {careerSnapshot.caveats.length > 0 && (
+                      <p className="text-xs text-text-tertiary mt-3 italic">
+                        {careerSnapshot.caveats[0]}
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Compared to Job Card */}
+              {!isCollected && (jobTitle || searchCriteria?.title_keywords?.[0]) && (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">
+                      Compared to "{jobTitle || searchCriteria?.title_keywords?.[0]}"
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-text-secondary">Title</span>
+                        <MatchLabel match={jobComparison.titleMatchLabel} />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-text-secondary">Location</span>
+                        <MatchLabel match={jobComparison.locationMatchLabel} />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-text-secondary">Industry</span>
+                        <MatchLabel match={jobComparison.industryMatchLabel} />
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-text-secondary">Seniority</span>
+                        <MatchLabel match={jobComparison.seniorityMatchLabel} />
+                      </div>
+                    </div>
+
+                    {jobComparison.notes.length > 0 && (
+                      <div className="mt-3 pt-3 border-t">
+                        <ul className="space-y-1">
+                          {jobComparison.notes.slice(0, 3).map((note, idx) => (
+                            <li key={idx} className="text-xs text-text-tertiary flex items-start gap-2">
+                              <span>•</span>
+                              {note}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               )}
@@ -565,20 +795,6 @@ export function ApolloPreviewSheet({
                         value={apolloData.industry} 
                       />
                     )}
-                    {apolloData?.connections_count !== undefined && (
-                      <InfoRow 
-                        icon={Users} 
-                        label="LinkedIn Connections" 
-                        value={apolloData.connections_count.toLocaleString()} 
-                      />
-                    )}
-                    {apolloData?.company_industry && (
-                      <InfoRow 
-                        icon={Globe} 
-                        label="Company Industry" 
-                        value={apolloData.company_industry} 
-                      />
-                    )}
                   </div>
 
                   {/* Headline */}
@@ -586,6 +802,38 @@ export function ApolloPreviewSheet({
                     <div className="mt-4 pt-4 border-t">
                       <p className="text-sm text-text-secondary italic">
                         "{apolloData.headline}"
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Inferred insights for preview */}
+                  {!isCollected && apolloData?.current_role && (
+                    <div className="mt-4 pt-4 border-t">
+                      <p className="text-xs font-medium text-text-tertiary mb-2">
+                        Based on this role and company, Gio infers:
+                      </p>
+                      <ul className="space-y-1">
+                        {careerSnapshot.seniority !== 'Unknown' && (
+                          <li className="text-xs text-text-secondary flex items-start gap-2">
+                            <span className="text-text-tertiary">•</span>
+                            Likely {careerSnapshot.seniority.toLowerCase()}-level {careerSnapshot.functionLabel.toLowerCase()} professional
+                          </li>
+                        )}
+                        {careerSnapshot.yearsRangeLabel !== 'Unknown' && (
+                          <li className="text-xs text-text-secondary flex items-start gap-2">
+                            <span className="text-text-tertiary">•</span>
+                            Estimated {careerSnapshot.yearsRangeLabel} of experience
+                          </li>
+                        )}
+                        {careerSnapshot.industryLabel !== 'Unknown' && (
+                          <li className="text-xs text-text-secondary flex items-start gap-2">
+                            <span className="text-text-tertiary">•</span>
+                            Background in {careerSnapshot.industryLabel}
+                          </li>
+                        )}
+                      </ul>
+                      <p className="text-xs text-text-tertiary italic mt-2">
+                        Inference · May be approximate
                       </p>
                     </div>
                   )}
@@ -606,7 +854,7 @@ export function ApolloPreviewSheet({
                             Unlock full profile with 1 credit
                           </h4>
                           <p className="text-sm text-text-secondary mt-1">
-                            Get verified contact info and complete work history
+                            {getCtaText()}
                           </p>
                         </div>
                         
@@ -646,6 +894,30 @@ export function ApolloPreviewSheet({
                     </div>
                   </CardContent>
                 </Card>
+              )}
+
+              {/* Non-credit actions: Shortlist & Not a Fit */}
+              {!isCollected && projectId && (
+                <div className="flex items-center gap-3">
+                  <Button
+                    variant="outline"
+                    className="flex-1"
+                    onClick={handleShortlist}
+                    disabled={isUpdating && currentApolloId === apolloId}
+                  >
+                    <Star className="h-4 w-4 mr-2" />
+                    Shortlist
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="flex-1 text-text-tertiary hover:text-red-600 hover:border-red-200"
+                    onClick={handleNotAFit}
+                    disabled={isUpdating && currentApolloId === apolloId}
+                  >
+                    <XCircle className="h-4 w-4 mr-2" />
+                    Not a fit
+                  </Button>
+                </div>
               )}
 
               {/* Collected State CTA */}
@@ -709,7 +981,6 @@ export function ApolloPreviewSheet({
                               </Badge>
                             </div>
                           )}
-                          {/* Phone number with loading state */}
                           <div className="flex items-center gap-2">
                             <Phone className="h-4 w-4 text-text-secondary" />
                             {enrichedData?.phone ? (
@@ -775,7 +1046,6 @@ export function ApolloPreviewSheet({
                   </AccordionTrigger>
                   <AccordionContent>
                     <div className="px-4 pb-4 space-y-4">
-                      {/* Current Position - Always visible */}
                       {(apolloData?.current_role || apolloData?.current_company) && (
                         <div className="border-l-2 border-primary pl-4 py-2">
                           <div className="font-medium text-text-primary">
@@ -853,18 +1123,19 @@ export function ApolloPreviewSheet({
                     <div className="px-4 pb-4">
                       {isCollected ? (
                         <p className="text-sm text-text-secondary text-center">
-                          View education on the full profile page
+                          View education details on the full profile page
                         </p>
                       ) : (
                         <div className="flex items-center gap-2 text-text-tertiary">
                           <Lock className="h-4 w-4" />
-                          <span className="text-sm">Education history available after collection</span>
+                          <span className="text-sm">Education details available after collection</span>
                         </div>
                       )}
                     </div>
                   </AccordionContent>
                 </AccordionItem>
               </Accordion>
+
             </div>
           </div>
         </SheetContent>
@@ -875,10 +1146,6 @@ export function ApolloPreviewSheet({
         open={showJobSelection}
         onOpenChange={setShowJobSelection}
         onJobSelected={handleJobSelected}
-        onSkip={() => {
-          setShowJobSelection(false)
-          handleCollectProfile()
-        }}
       />
     </>
   )
