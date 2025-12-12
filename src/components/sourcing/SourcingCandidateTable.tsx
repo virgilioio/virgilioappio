@@ -373,7 +373,7 @@ export function SourcingCandidateTable({
             <TableHeader>
               <TableRow>
                 <TableHead className="w-[80px]">Source</TableHead>
-                <TableHead className="w-[220px]">
+                <TableHead className="w-[280px]">
                   <SortableHeader 
                     sortKey="candidate_name" 
                     currentSort={sortConfig} 
@@ -382,16 +382,7 @@ export function SourcingCandidateTable({
                     Name
                   </SortableHeader>
                 </TableHead>
-                <TableHead className="w-[140px]">
-                  <SortableHeader 
-                    sortKey="match_score" 
-                    currentSort={sortConfig} 
-                    onSort={requestSort}
-                  >
-                    Matching Score
-                  </SortableHeader>
-                </TableHead>
-                <TableHead className="w-[200px]">
+                <TableHead className="w-[280px]">
                   <SortableHeader 
                     sortKey="current_role" 
                     currentSort={sortConfig} 
@@ -400,26 +391,8 @@ export function SourcingCandidateTable({
                     Current Role
                   </SortableHeader>
                 </TableHead>
-                <TableHead className="w-[150px]">
-                  <SortableHeader 
-                    sortKey="location_country" 
-                    currentSort={sortConfig} 
-                    onSort={requestSort}
-                  >
-                    Location
-                  </SortableHeader>
-                </TableHead>
-                <TableHead>Skills</TableHead>
-                <TableHead className="w-[100px]">
-                  <SortableHeader 
-                    sortKey="years_experience" 
-                    currentSort={sortConfig} 
-                    onSort={requestSort}
-                  >
-                    Experience
-                  </SortableHeader>
-                </TableHead>
-                <TableHead className="text-right w-[200px]">Actions</TableHead>
+                <TableHead>Headline / Skills</TableHead>
+                <TableHead className="text-right w-[220px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -524,20 +497,6 @@ export function SourcingCandidateTable({
                       </div>
                     </TableCell>
                     <TableCell>
-                      <div className="flex flex-col gap-1">
-                        {candidate.match_score > 0 && (
-                          <Badge className={cn("text-xs font-semibold", getMatchBadgeColor(candidate.match_tier))}>
-                            {candidate.match_score}%
-                          </Badge>
-                        )}
-                        {candidate.apollo_score && (
-                          <Badge variant="outline" className="text-xs">
-                            Score: {candidate.apollo_score.toFixed(1)}
-                          </Badge>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
                       <div className="text-sm">
                         <div className="font-medium truncate">{candidate.current_role || '-'}</div>
                         {candidate.current_company && (
@@ -546,33 +505,8 @@ export function SourcingCandidateTable({
                       </div>
                     </TableCell>
                     <TableCell>
-                      {/* For Apollo preview candidates, show availability badge if no actual location */}
-                      {candidate.source === 'apollo' && !candidate.candidate_id && !candidate.location && !candidate.location_city ? (
-                        candidate.has_location ? (
-                          <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                            <MapPin className="h-3 w-3 text-green-500" />
-                            <span className="text-xs italic">Available after collect</span>
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground">-</span>
-                        )
-                      ) : (candidate.location || candidate.location_city || candidate.location_country) ? (
-                        <div className="flex items-center gap-1 text-sm">
-                          <MapPin className="h-3 w-3 text-muted-foreground" />
-                          <span className="truncate">
-                            {candidate.location || 
-                             (candidate.location_city && candidate.location_country
-                              ? `${candidate.location_city}, ${candidate.location_country}`
-                              : candidate.location_city || candidate.location_country)}
-                          </span>
-                        </div>
-                      ) : (
-                        <span className="text-muted-foreground">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
                       {candidate.source === 'apollo' && candidate.headline ? (
-                        <div className="text-xs text-muted-foreground truncate max-w-[200px]" title={candidate.headline}>
+                        <div className="text-xs text-muted-foreground truncate max-w-[250px]" title={candidate.headline}>
                           {candidate.headline}
                         </div>
                       ) : (
@@ -595,11 +529,6 @@ export function SourcingCandidateTable({
                           )}
                         </div>
                       )}
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-sm">
-                        {candidate.years_experience ? `${candidate.years_experience} yrs` : '-'}
-                      </span>
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>

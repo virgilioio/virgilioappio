@@ -110,7 +110,7 @@ export function SourcingFiltersPanel({
             />
           ) : (
             <div className="space-y-3 text-sm">
-              {/* Read-only view of criteria */}
+              {/* Read-only view of criteria - consistent with EditableSearchCriteria */}
               {project.search_criteria.title_keywords && project.search_criteria.title_keywords.length > 0 && (
                 <div className="space-y-1.5">
                   <span className="text-xs font-medium text-virgilio-muted">Job Titles:</span>
@@ -124,7 +124,14 @@ export function SourcingFiltersPanel({
               {project.search_criteria.keywords && (
                 <div className="space-y-1.5">
                   <span className="text-xs font-medium text-virgilio-muted">Keywords:</span>
-                  <Badge variant="outline" className="text-xs rounded-md">{project.search_criteria.keywords}</Badge>
+                  <div className="flex flex-wrap gap-1.5">
+                    {Array.isArray(project.search_criteria.keywords) 
+                      ? project.search_criteria.keywords.map(kw => (
+                          <Badge key={kw} variant="outline" className="text-xs rounded-md">{kw}</Badge>
+                        ))
+                      : <Badge variant="outline" className="text-xs rounded-md">{project.search_criteria.keywords}</Badge>
+                    }
+                  </div>
                 </div>
               )}
               {project.search_criteria.locations && project.search_criteria.locations.length > 0 && (
@@ -159,6 +166,16 @@ export function SourcingFiltersPanel({
                   </div>
                 </div>
               )}
+              {project.search_criteria.company_domains && project.search_criteria.company_domains.length > 0 && (
+                <div className="space-y-1.5">
+                  <span className="text-xs font-medium text-virgilio-muted">Target Companies:</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {project.search_criteria.company_domains.map(domain => (
+                      <Badge key={domain} variant="outline" className="text-xs rounded-md">{domain}</Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
               {project.search_criteria.experience_years && (project.search_criteria.experience_years.min || project.search_criteria.experience_years.max) && (
                 <div className="space-y-1.5">
                   <span className="text-xs font-medium text-virgilio-muted">Experience:</span>
@@ -184,12 +201,47 @@ export function SourcingFiltersPanel({
                 matchTiers: [],
                 minExperience: 0,
                 maxExperience: 30,
-                source: 'all'
+                source: 'all',
+                hasEmail: undefined,
+                hasPhone: undefined
               })}
               className="h-8 px-3 text-xs rounded-lg transition-all duration-200 hover:bg-virgilio-purple/10 hover:text-virgilio-text hover:shadow-sm"
             >
               Reset
             </Button>
+          </div>
+
+          {/* Contact Availability Filter */}
+          <div className="space-y-2">
+            <Label className="text-xs font-medium text-virgilio-muted">Contact Info Available</Label>
+            <div className="space-y-2">
+              <label className="flex items-center gap-2.5 cursor-pointer group">
+                <Checkbox 
+                  checked={filters.hasEmail === true}
+                  onCheckedChange={(checked) => {
+                    onFiltersChange({
+                      ...filters,
+                      hasEmail: checked ? true : undefined
+                    })
+                  }}
+                  className="transition-all duration-200"
+                />
+                <span className="text-sm text-virgilio-text group-hover:text-virgilio-purple transition-colors">Has Email</span>
+              </label>
+              <label className="flex items-center gap-2.5 cursor-pointer group">
+                <Checkbox 
+                  checked={filters.hasPhone === true}
+                  onCheckedChange={(checked) => {
+                    onFiltersChange({
+                      ...filters,
+                      hasPhone: checked ? true : undefined
+                    })
+                  }}
+                  className="transition-all duration-200"
+                />
+                <span className="text-sm text-virgilio-text group-hover:text-virgilio-purple transition-colors">Has Phone</span>
+              </label>
+            </div>
           </div>
 
           {/* Source Filter */}
@@ -211,60 +263,6 @@ export function SourcingFiltersPanel({
                   <span className="text-sm capitalize text-virgilio-text group-hover:text-virgilio-purple transition-colors">{source}</span>
                 </label>
               ))}
-            </div>
-          </div>
-
-          {/* Match Tier */}
-          <div className="space-y-2">
-            <Label className="text-xs font-medium text-virgilio-muted">Match Tier</Label>
-            <div className="space-y-2">
-              {(['excellent', 'good', 'fair', 'minimal'] as const).map(tier => (
-                <label key={tier} className="flex items-center gap-2.5 cursor-pointer group">
-                  <Checkbox 
-                    checked={filters.matchTiers?.includes(tier)}
-                    onCheckedChange={(checked) => {
-                      onFiltersChange({
-                        ...filters,
-                        matchTiers: checked 
-                          ? [...(filters.matchTiers || []), tier]
-                          : (filters.matchTiers || []).filter(t => t !== tier)
-                      })
-                    }}
-                    className="transition-all duration-200"
-                  />
-                  <span className="text-sm capitalize text-virgilio-text group-hover:text-virgilio-purple transition-colors">{tier}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          {/* Experience Range */}
-          <div className="space-y-2">
-            <Label className="text-xs font-medium text-virgilio-muted">Experience (years)</Label>
-            <div className="flex items-center gap-2">
-              <div className="flex-1">
-                <Input 
-                  type="number"
-                  placeholder="Min"
-                  value={filters.minExperience || 0}
-                  onChange={(e) => onFiltersChange({ ...filters, minExperience: parseInt(e.target.value) || 0 })}
-                  className="h-9 text-sm"
-                  min={0}
-                  max={30}
-                />
-              </div>
-              <span className="text-xs text-virgilio-muted">to</span>
-              <div className="flex-1">
-                <Input 
-                  type="number"
-                  placeholder="Max"
-                  value={filters.maxExperience || 30}
-                  onChange={(e) => onFiltersChange({ ...filters, maxExperience: parseInt(e.target.value) || 30 })}
-                  className="h-9 text-sm"
-                  min={0}
-                  max={50}
-                />
-              </div>
             </div>
           </div>
         </div>

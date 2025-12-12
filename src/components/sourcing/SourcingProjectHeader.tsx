@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { formatDistanceToNow } from 'date-fns'
 import { 
   Edit2, MoreHorizontal, RefreshCw, Archive, Trash2, 
-  MapPin, DollarSign, Target, Award, Coins, Loader2, Globe, Lock 
+  MapPin, Coins, Globe, Lock 
 } from 'lucide-react'
 import { useSourcingCredits } from '@/hooks/useSourcingCredits'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -158,30 +158,24 @@ export function SourcingProjectHeader({
         </DropdownMenu>
       </div>
 
-      {/* Match Breakdown & Stats */}
+      {/* Search Location Context & Stats */}
       <div className="flex flex-wrap items-center gap-4">
-        {/* Match Quality */}
-        <div className="flex items-center gap-2">
-          <Award className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm font-medium text-muted-foreground">Matches:</span>
-          <Badge className="bg-green-500/20 text-green-700 border-green-500/30 hover:bg-green-500/30">
-            {breakdown.excellent} Excellent
-          </Badge>
-          <Badge className="bg-blue-500/20 text-blue-700 border-blue-500/30 hover:bg-blue-500/30">
-            {breakdown.good} Good
-          </Badge>
-          <Badge className="bg-yellow-500/20 text-yellow-700 border-yellow-500/30 hover:bg-yellow-500/30">
-            {breakdown.fair} Fair
-          </Badge>
-          <Badge variant="secondary">
-            {breakdown.minimal} Minimal
-          </Badge>
-        </div>
+        {/* Search Location */}
+        {project.search_criteria?.locations && project.search_criteria.locations.length > 0 && (
+          <div className="flex items-center gap-2">
+            <MapPin className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm font-medium text-muted-foreground">
+              Search Results in {project.search_criteria.locations.join(', ')}
+            </span>
+          </div>
+        )}
 
         {/* Source Breakdown */}
         {(breakdown.localCandidates !== undefined || breakdown.apolloCandidates !== undefined) && (
           <>
-            <span className="text-muted-foreground">•</span>
+            {project.search_criteria?.locations && project.search_criteria.locations.length > 0 && (
+              <span className="text-muted-foreground">•</span>
+            )}
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium text-muted-foreground">Sources:</span>
               {breakdown.localCandidates !== undefined && (
