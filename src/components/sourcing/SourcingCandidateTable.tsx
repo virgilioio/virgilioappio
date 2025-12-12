@@ -62,12 +62,14 @@ interface SourcingCandidateTableProps {
   candidates: MatchedCandidate[]
   isLoading: boolean
   jobId?: string | null
+  searchCriteria?: import('@/types/sourcing').SearchCriteria
 }
 
 export function SourcingCandidateTable({ 
   candidates, 
   isLoading,
-  jobId
+  jobId,
+  searchCriteria
 }: SourcingCandidateTableProps) {
   const navigate = useNavigate()
   const { toast } = useToast()
@@ -811,6 +813,7 @@ export function SourcingCandidateTable({
         hasNext={hasNext}
         onNavigatePrev={handleNavigatePrev}
         onNavigateNext={handleNavigateNext}
+        searchCriteria={searchCriteria}
       />
     </div>
   )

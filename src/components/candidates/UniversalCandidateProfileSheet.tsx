@@ -1,6 +1,7 @@
 import CandidateProfileSheet from './CandidateProfileSheet'
 import { IndependentCandidateProfileSheet } from './IndependentCandidateProfileSheet'
 import { ApolloPreviewSheet } from './ApolloPreviewSheet'
+import type { SearchCriteria } from '@/types/sourcing'
 
 interface UniversalCandidateProfileSheetProps {
   open: boolean
@@ -37,6 +38,7 @@ interface UniversalCandidateProfileSheetProps {
     has_phone?: boolean
     has_location?: boolean
   }
+  searchCriteria?: SearchCriteria
 }
 
 export default function UniversalCandidateProfileSheet(props: UniversalCandidateProfileSheetProps) {
