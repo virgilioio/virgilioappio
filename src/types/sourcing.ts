@@ -46,4 +46,6 @@ export interface SourcingProjectFilters {
   minExperience?: number
   maxExperience?: number
   source?: 'local' | 'apollo' | 'all'
+  hasEmail?: boolean
+  hasPhone?: boolean
 }

@@ -40,6 +40,10 @@ export interface MatchedCandidate {
   company_website?: string
   company_industry?: string
   experience_location?: string
+  // Apollo availability indicators (indicate what CAN be revealed after collection)
+  has_email?: boolean
+  has_phone?: boolean
+  has_location?: boolean
 }
 
 export interface SourcingProjectMatchingResult {

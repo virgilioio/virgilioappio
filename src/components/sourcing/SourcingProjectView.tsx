@@ -71,6 +71,16 @@ export function SourcingProjectView({ projectId }: SourcingProjectViewProps) {
           return false
         }
       }
+
+      // Email availability filter
+      if (filters.hasEmail === true && !candidate.has_email) {
+        return false
+      }
+
+      // Phone availability filter
+      if (filters.hasPhone === true && !candidate.has_phone) {
+        return false
+      }
       
       return true
     })
