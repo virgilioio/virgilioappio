@@ -144,11 +144,10 @@ serve(async (req) => {
       );
     }
 
-    // Generate unique file path
+    // Generate simple file path: {candidate_id}/{timestamp}-{random}.pdf
     const randomId = crypto.randomUUID().split('-')[0];
     const timestamp = Date.now();
-    const sanitizedFilename = filename.replace(/[^a-zA-Z0-9._-]/g, '_');
-    const storagePath = `tenants/${tenantId}/candidates/${candidate_id}/${timestamp}-${randomId}.pdf`;
+    const storagePath = `${candidate_id}/${timestamp}-${randomId}.pdf`;
 
     console.log(`📁 Uploading to: ${storagePath}`);
 
