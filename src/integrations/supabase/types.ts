@@ -3513,6 +3513,7 @@ export type Database = {
       sourcing_preview_candidates: {
         Row: {
           apollo_id: string | null
+          archived_at: string | null
           company_industry: string | null
           company_url: string | null
           company_website: string | null
@@ -3539,9 +3540,11 @@ export type Database = {
           match_score: number | null
           profile_url: string | null
           sourcing_project_id: string
+          status: string
         }
         Insert: {
           apollo_id?: string | null
+          archived_at?: string | null
           company_industry?: string | null
           company_url?: string | null
           company_website?: string | null
@@ -3568,9 +3571,11 @@ export type Database = {
           match_score?: number | null
           profile_url?: string | null
           sourcing_project_id: string
+          status?: string
         }
         Update: {
           apollo_id?: string | null
+          archived_at?: string | null
           company_industry?: string | null
           company_url?: string | null
           company_website?: string | null
@@ -3597,6 +3602,7 @@ export type Database = {
           match_score?: number | null
           profile_url?: string | null
           sourcing_project_id?: string
+          status?: string
         }
         Relationships: [
           {

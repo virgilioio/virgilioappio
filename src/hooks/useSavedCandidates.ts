@@ -13,6 +13,7 @@ export interface SavedCandidate {
   company_current?: string | null
   role_current?: string | null
   apollo_collected_at: string
+  apollo_id?: string | null
   job_associations: Array<{
     job_id: string
     job_title: string
@@ -23,19 +24,21 @@ export interface SavedCandidate {
 interface UseSavedCandidatesOptions {
   projectId: string | null
   enabled?: boolean
+  status?: 'active' | 'archived'
 }
 
-export function useSavedCandidates({ projectId, enabled = true }: UseSavedCandidatesOptions) {
+export function useSavedCandidates({ projectId, enabled = true, status = 'active' }: UseSavedCandidatesOptions) {
   return useQuery({
-    queryKey: ['saved-candidates', projectId],
+    queryKey: [status === 'active' ? 'saved-candidates' : 'archived-candidates', projectId],
     queryFn: async (): Promise<SavedCandidate[]> => {
       if (!projectId) return []
 
-      // Step 1: Get all apollo_ids from the sourcing project's preview candidates
+      // Step 1: Get all apollo_ids from the sourcing project's preview candidates filtered by status
       const { data: previewCandidates, error: previewError } = await supabase
         .from('sourcing_preview_candidates')
         .select('apollo_id')
         .eq('sourcing_project_id', projectId)
+        .eq('status', status)
         .not('apollo_id', 'is', null)
 
       if (previewError) {
@@ -145,6 +148,7 @@ export function useSavedCandidates({ projectId, enabled = true }: UseSavedCandid
         company_current: candidate.company_current,
         role_current: candidate.role_current,
         apollo_collected_at: candidate.apollo_collected_at!,
+        apollo_id: candidate.apollo_id,
         job_associations: associationMap.get(candidate.id) || []
       }))
     },

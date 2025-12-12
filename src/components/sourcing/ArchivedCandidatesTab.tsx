@@ -13,28 +13,28 @@ import {
   MapPin, 
   Building2, 
   Briefcase,
-  ExternalLink,
-  Archive
+  RotateCcw
 } from 'lucide-react'
 import gioFaceEmpty from '@/assets/gio-face-empty.png'
 import { format } from 'date-fns'
 
-interface SavedCandidatesTabProps {
+interface ArchivedCandidatesTabProps {
   projectId: string
 }
 
-export function SavedCandidatesTab({ projectId }: SavedCandidatesTabProps) {
-  const { data: savedCandidates = [], isLoading } = useSavedCandidates({ 
+export function ArchivedCandidatesTab({ projectId }: ArchivedCandidatesTabProps) {
+  const { data: archivedCandidates = [], isLoading } = useSavedCandidates({ 
     projectId, 
-    enabled: !!projectId 
+    enabled: !!projectId,
+    status: 'archived'
   })
   
-  const { archiveCandidate, isArchiving } = useArchiveSavedCandidate()
+  const { restoreCandidate, isRestoring } = useArchiveSavedCandidate()
   
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
   const [sheetOpen, setSheetOpen] = useState(false)
 
-  const selectedCandidate = selectedIndex !== null ? savedCandidates[selectedIndex] : null
+  const selectedCandidate = selectedIndex !== null ? archivedCandidates[selectedIndex] : null
 
   const handleCandidateClick = (index: number) => {
     setSelectedIndex(index)
@@ -48,14 +48,14 @@ export function SavedCandidatesTab({ projectId }: SavedCandidatesTabProps) {
   }
 
   const handleNavigateNext = () => {
-    if (selectedIndex !== null && selectedIndex < savedCandidates.length - 1) {
+    if (selectedIndex !== null && selectedIndex < archivedCandidates.length - 1) {
       setSelectedIndex(selectedIndex + 1)
     }
   }
 
-  const handleArchive = (e: React.MouseEvent, candidate: SavedCandidate) => {
+  const handleRestore = (e: React.MouseEvent, candidate: SavedCandidate) => {
     e.stopPropagation()
-    archiveCandidate({ apolloId: candidate.apollo_id!, projectId })
+    restoreCandidate({ apolloId: candidate.apollo_id!, projectId })
   }
 
   const formatLocation = (candidate: SavedCandidate) => {
@@ -75,20 +75,20 @@ export function SavedCandidatesTab({ projectId }: SavedCandidatesTabProps) {
     )
   }
 
-  if (savedCandidates.length === 0) {
+  if (archivedCandidates.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-center p-8">
         <img 
           src={gioFaceEmpty} 
-          alt="No saved candidates" 
+          alt="No archived candidates" 
           className="w-24 h-24 mb-4"
         />
         <h3 className="text-lg font-semibold text-foreground mb-2">
-          No candidates collected yet
+          No archived candidates
         </h3>
         <p className="text-muted-foreground max-w-md">
-          Candidates you reveal from the search results will appear here. 
-          Go to the Candidates tab and click "Reveal Full Profile" to collect candidates.
+          Candidates you archive from the Saved tab will appear here.
+          You can restore them anytime.
         </p>
       </div>
     )
@@ -99,10 +99,10 @@ export function SavedCandidatesTab({ projectId }: SavedCandidatesTabProps) {
       <ScrollArea className="h-full">
         <div className="container mx-auto p-4">
           <div className="space-y-2">
-            {savedCandidates.map((candidate, index) => (
+            {archivedCandidates.map((candidate, index) => (
               <div
                 key={candidate.id}
-                className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-accent/50 cursor-pointer transition-colors"
+                className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-accent/50 cursor-pointer transition-colors opacity-75"
                 onClick={() => handleCandidateClick(index)}
               >
                 <div className="flex-1 min-w-0">
@@ -184,21 +184,18 @@ export function SavedCandidatesTab({ projectId }: SavedCandidatesTabProps) {
                 </div>
 
                 {/* Right Side - Date & Action */}
-                <div className="flex items-center gap-2 ml-4 flex-shrink-0">
+                <div className="flex items-center gap-4 ml-4 flex-shrink-0">
                   <span className="text-xs text-muted-foreground whitespace-nowrap">
                     {format(new Date(candidate.apollo_collected_at), 'MMM d, yyyy')}
                   </span>
                   <Button 
                     variant="ghost" 
                     size="sm"
-                    onClick={(e) => handleArchive(e, candidate)}
-                    disabled={isArchiving}
-                    title="Archive candidate"
+                    onClick={(e) => handleRestore(e, candidate)}
+                    disabled={isRestoring}
+                    title="Restore candidate"
                   >
-                    <Archive className="h-4 w-4" />
-                  </Button>
-                  <Button variant="ghost" size="sm">
-                    <ExternalLink className="h-4 w-4" />
+                    <RotateCcw className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
@@ -215,7 +212,7 @@ export function SavedCandidatesTab({ projectId }: SavedCandidatesTabProps) {
         jobId={selectedCandidate?.job_associations[0]?.job_id || null}
         context={selectedCandidate?.job_associations.length ? 'job' : 'independent'}
         hasPrev={selectedIndex !== null && selectedIndex > 0}
-        hasNext={selectedIndex !== null && selectedIndex < savedCandidates.length - 1}
+        hasNext={selectedIndex !== null && selectedIndex < archivedCandidates.length - 1}
         onNavigatePrev={handleNavigatePrev}
         onNavigateNext={handleNavigateNext}
       />
