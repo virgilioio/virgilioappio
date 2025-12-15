@@ -38,6 +38,7 @@ import {
 import { useCandidatePreviewStatus } from '@/hooks/useCandidatePreviewStatus'
 import type { SearchCriteria } from '@/types/sourcing'
 import { cn } from '@/lib/utils'
+import gioFaceYellow from '@/assets/gio-face-yellow.png'
 
 interface ApolloPreviewSheetProps {
   open: boolean
@@ -632,8 +633,8 @@ export function ApolloPreviewSheet({
                     {/* Gio's Take */}
                     <div className="pt-3 border-t border-border/50">
                       <div className="flex items-start gap-2">
-                        <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                          <Zap className="h-3.5 w-3.5 text-primary" />
+                        <div className="h-6 w-6 rounded-full overflow-hidden flex-shrink-0 mt-0.5">
+                          <img src={gioFaceYellow} alt="Gio" className="h-full w-full object-cover" />
                         </div>
                         <div className="space-y-1.5">
                           <span className="text-xs font-medium text-primary">Gio's Take</span>
