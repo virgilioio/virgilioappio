@@ -8,6 +8,13 @@ export interface DateRange {
   endDate: Date
 }
 
+export interface AnalyticsFilters {
+  dateRange: DateRange
+  recruiterIds?: string[]
+  jobIds?: string[]
+  organizationIds?: string[]
+}
+
 export interface AnalyticsMetrics {
   applications: number
   activeCandidates: number
@@ -20,11 +27,20 @@ export interface AnalyticsMetrics {
   error: Error | null
 }
 
-export function useAnalyticsMetrics(dateRange: DateRange): AnalyticsMetrics {
+export function useAnalyticsMetrics(filters: AnalyticsFilters): AnalyticsMetrics {
+  const { dateRange, recruiterIds, jobIds, organizationIds } = filters
   const { user } = useAuth()
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['analytics-metrics', user?.id, dateRange.startDate.toISOString(), dateRange.endDate.toISOString()],
+    queryKey: [
+      'analytics-metrics', 
+      user?.id, 
+      dateRange.startDate.toISOString(), 
+      dateRange.endDate.toISOString(),
+      recruiterIds?.join(',') || '',
+      jobIds?.join(',') || '',
+      organizationIds?.join(',') || ''
+    ],
     queryFn: async () => {
       if (!user) throw new Error('No user')
 
@@ -61,16 +77,31 @@ export function useAnalyticsMetrics(dateRange: DateRange): AnalyticsMetrics {
       
       console.log('[Analytics] Date range:', { startISO, endISO })
 
-      // Step 2: Fetch all jobs for this tenant
-      const { data: tenantJobs, error: jobsError } = await supabase
+      // Step 2: Fetch jobs for this tenant (with optional organization filter)
+      let jobsQuery = supabase
         .from('jobs')
         .select('id')
         .eq('tenant_id', tenantId)
 
-      if (jobsError) throw jobsError
-      const jobIds = tenantJobs?.map(j => j.id) || []
+      // Apply organization filter if specified
+      if (organizationIds && organizationIds.length > 0) {
+        jobsQuery = jobsQuery.in('organization_id', organizationIds)
+      }
 
-      if (jobIds.length === 0) {
+      const { data: tenantJobs, error: jobsError } = await jobsQuery
+
+      if (jobsError) throw jobsError
+      
+      // Determine final job IDs: use jobIds filter if provided, otherwise all tenant jobs
+      let finalJobIds = tenantJobs?.map(j => j.id) || []
+      
+      // If specific jobs are selected, intersect with tenant jobs (for security)
+      if (jobIds && jobIds.length > 0) {
+        const tenantJobSet = new Set(finalJobIds)
+        finalJobIds = jobIds.filter(id => tenantJobSet.has(id))
+      }
+
+      if (finalJobIds.length === 0) {
         return {
           applications: 0,
           activeCandidates: 0,
@@ -83,7 +114,7 @@ export function useAnalyticsMetrics(dateRange: DateRange): AnalyticsMetrics {
       }
 
       // Step 3: Fetch job_candidate_associations for these jobs
-      const { data: associations, error: assocError } = await supabase
+      let associationsQuery = supabase
         .from('job_candidate_associations')
         .select(`
           id,
@@ -91,6 +122,7 @@ export function useAnalyticsMetrics(dateRange: DateRange): AnalyticsMetrics {
           created_at,
           updated_at,
           current_stage_id,
+          added_by,
           job_hiring_stages!inner(
             id,
             custom_stage_name,
@@ -101,18 +133,32 @@ export function useAnalyticsMetrics(dateRange: DateRange): AnalyticsMetrics {
             )
           )
         `)
-        .in('job_id', jobIds)
+        .in('job_id', finalJobIds)
+
+      // Apply recruiter filter to associations (who added the candidate)
+      if (recruiterIds && recruiterIds.length > 0) {
+        associationsQuery = associationsQuery.in('added_by', recruiterIds)
+      }
+
+      const { data: associations, error: assocError } = await associationsQuery
 
       if (assocError) throw assocError
 
       // Step 4: Fetch scheduled bookings for tenant jobs
-      const { data: bookings, error: bookingsError } = await supabase
+      let bookingsQuery = supabase
         .from('scheduled_bookings')
-        .select('id, status, scheduled_start, job_id')
-        .in('job_id', jobIds)
+        .select('id, status, scheduled_start, job_id, booked_by')
+        .in('job_id', finalJobIds)
         .gte('scheduled_start', startISO)
         .lte('scheduled_start', endISO)
         .not('status', 'eq', 'cancelled')
+
+      // Apply recruiter filter to bookings (who scheduled the interview)
+      if (recruiterIds && recruiterIds.length > 0) {
+        bookingsQuery = bookingsQuery.in('booked_by', recruiterIds)
+      }
+
+      const { data: bookings, error: bookingsError } = await bookingsQuery
 
       if (bookingsError) throw bookingsError
 
