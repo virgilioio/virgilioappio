@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { usePermissions } from '@/hooks/usePermissions'
 import { useToast } from '@/hooks/use-toast'
 import { useAnalyticsMetrics, DateRange } from '@/hooks/useAnalyticsMetrics'
 import { AnalyticsTimeFilter } from '@/components/analytics/AnalyticsTimeFilter'
+import { AnalyticsFiltersBar, AnalyticsFilters } from '@/components/analytics/AnalyticsFiltersBar'
 import { ApplicationsTrendChart } from '@/components/analytics/ApplicationsTrendChart'
 import { CandidateStatusPieChart } from '@/components/analytics/CandidateStatusPieChart'
 import { StageDistributionChart } from '@/components/analytics/StageDistributionChart'
@@ -34,11 +35,24 @@ export default function Analytics() {
     endDate: new Date()
   })
 
-  const metrics = useAnalyticsMetrics(dateRange)
+  const [advancedFilters, setAdvancedFilters] = useState<AnalyticsFilters>({
+    recruiterIds: [],
+    jobIds: [],
+    organizationIds: []
+  })
+
+  const metrics = useAnalyticsMetrics({
+    dateRange,
+    ...advancedFilters
+  })
 
   const handleDateRangeChange = (startDate: Date, endDate: Date) => {
     setDateRange({ startDate, endDate })
   }
+
+  const handleFiltersChange = useCallback((filters: AnalyticsFilters) => {
+    setAdvancedFilters(filters)
+  }, [])
 
   // Don't render until we verify platform admin status
   if (isPlatformAdmin === undefined) {
@@ -103,6 +117,9 @@ export default function Analytics() {
         </div>
         <AnalyticsTimeFilter onDateRangeChange={handleDateRangeChange} />
       </div>
+
+      {/* Advanced Filters */}
+      <AnalyticsFiltersBar onFiltersChange={handleFiltersChange} />
 
       {/* Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
