@@ -1150,7 +1150,10 @@ export function ApolloPreviewSheet({
         open={showJobSelection}
         onOpenChange={setShowJobSelection}
         onJobSelected={handleJobSelected}
-        onSkip={() => setShowJobSelection(false)}
+        onSkip={() => {
+          setShowJobSelection(false)
+          handleCollectProfile() // Collect without job - adds to universal candidate list
+        }}
       />
     </>
   )
