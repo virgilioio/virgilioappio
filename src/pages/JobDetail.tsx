@@ -388,7 +388,16 @@ export default function JobDetail() {
   const rejectedCount = useMemo(() => associations.filter(a => a.status === 'rejected').length, [associations])
   const activeCount = useMemo(() => associations.filter(a => a.status !== 'rejected').length, [associations])
   const totalCandidates = useMemo(() => associations.length, [associations])
-  const recruitingCount = useMemo(() => Math.max(0, activeCount - offerCount), [activeCount, offerCount])
+  const recruitingCount = useMemo(() => 
+    associations.filter(a => 
+      a.status !== 'rejected' && 
+      a.status !== 'hired' && 
+      a.status !== 'offer' &&
+      a.current_stage_id &&
+      stageMap[a.current_stage_id]?.type !== 'offer'
+    ).length, 
+    [associations, stageMap]
+  )
   const applicationCount = useMemo(() => (applicationReviewCandidates?.length ?? 0), [applicationReviewCandidates])
   // Real-time skill matching for suggested count (using existing job from query below)  
   const { matchingData: skillMatchingData } = useRealTimeSkillMatching({
