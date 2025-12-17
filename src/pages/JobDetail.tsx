@@ -1238,11 +1238,19 @@ export default function JobDetail() {
                                     setPipelineRefresh((v) => v + 1)
                                   }}
                                 />
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="gap-2"
+                                  onClick={() => setShowBulkEmailDialog(true)}
+                                >
+                                  <Mail className="h-4 w-4" />
+                                  Email
+                                </Button>
                                 <Button 
                                   size="sm" 
                                   variant="outline" 
                                   className="gap-2"
-                                  disabled={selectedCandidateIds.length === 0}
                                   onClick={async () => {
                                     setSelectedCandidateIds([])
                                     setSelectionMode(false)
