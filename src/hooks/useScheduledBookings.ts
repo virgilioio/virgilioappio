@@ -8,6 +8,7 @@ export type BookingStatus = 'upcoming' | 'past'
 
 export interface ScheduledBooking {
   id: string
+  tenant_id: string
   interviewer_id: string
   candidate_id: string | null
   candidate_email: string
@@ -57,6 +58,7 @@ export interface ScheduledBooking {
 
 interface BookingFromDB {
   id: string
+  tenant_id: string
   interviewer_id: string
   candidate_id: string | null
   candidate_email: string
@@ -100,6 +102,16 @@ export function useScheduledBookings(status?: BookingStatus, permissions?: Permi
     queryFn: async () => {
       if (!user) return []
 
+      // CRITICAL: Get user's tenant_id for multi-tenancy isolation
+      const { data: memberData } = await supabase
+        .from('members')
+        .select('tenant_id')
+        .eq('user_id', user.id)
+        .eq('user_status', 'active')
+        .single()
+
+      const userTenantId = memberData?.tenant_id
+
       // Step 1: Get user's accessible job IDs (for recruiters/hiring managers)
       let accessibleJobIds: string[] = []
       
@@ -132,14 +144,15 @@ export function useScheduledBookings(status?: BookingStatus, permissions?: Permi
           job_hiring_stages(id, job_stages(stage_name))
         `)
 
-      // Apply role-based visibility filters
-      if (permissions?.isPlatformAdmin) {
-        // Platform admins see all bookings - no filter
-      } else if (permissions?.isWorkspaceOwner || permissions?.isAdmin) {
-        // Workspace owners and admins see all bookings in their organization
-        if (organizationId) {
-          query = query.eq('organization_id', organizationId)
-        }
+      // CRITICAL: ALWAYS filter by tenant_id first to prevent cross-tenant data leakage
+      // This applies to ALL users including platform admins
+      if (userTenantId) {
+        query = query.eq('tenant_id', userTenantId)
+      }
+
+      // Apply additional role-based visibility filters within the tenant
+      if (permissions?.isPlatformAdmin || permissions?.isWorkspaceOwner || permissions?.isAdmin) {
+        // Admins see all bookings within their tenant (tenant filter already applied above)
       } else if ((permissions?.isRecruiter || permissions?.isHiringManager) && accessibleJobIds.length > 0) {
         // Recruiters/hiring managers see bookings where they're interviewer OR for their jobs
         query = query.or(`interviewer_id.eq.${user.id},job_id.in.(${accessibleJobIds.join(',')})`)

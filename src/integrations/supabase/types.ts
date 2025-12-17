@@ -3110,6 +3110,7 @@ export type Database = {
           status: string
           sync_errors: Json | null
           sync_source: string | null
+          tenant_id: string
           transcript_ingest_code: string | null
           transcript_ingest_email: string | null
           transcript_metadata: Json | null
@@ -3156,6 +3157,7 @@ export type Database = {
           status?: string
           sync_errors?: Json | null
           sync_source?: string | null
+          tenant_id: string
           transcript_ingest_code?: string | null
           transcript_ingest_email?: string | null
           transcript_metadata?: Json | null
@@ -3202,6 +3204,7 @@ export type Database = {
           status?: string
           sync_errors?: Json | null
           sync_source?: string | null
+          tenant_id?: string
           transcript_ingest_code?: string | null
           transcript_ingest_email?: string | null
           transcript_metadata?: Json | null
@@ -3258,6 +3261,13 @@ export type Database = {
             columns: ["organization_id"]
             isOneToOne: false
             referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scheduled_bookings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
         ]
