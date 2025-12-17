@@ -9,12 +9,14 @@ import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
 import type { ScoreRating, ScorecardRow } from "@/hooks/useScorecards";
-import { ThumbsDown, ThumbsUp, Star, Octagon, Loader2, Sparkles, Lightbulb, Trash2 } from "lucide-react";
+import { ThumbsDown, ThumbsUp, Star, Octagon, Loader2, Sparkles, Lightbulb, Trash2, FileText } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import type { InterviewQuestion, SelectOption } from "@/hooks/useScorecardsConfiguration";
 import { markdownToHtml } from "@/utils/markdown";
 import gioIcon from "@/assets/gio-icon.png";
 import { RecommendedNextStepsDialog } from "./RecommendedNextStepsDialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { PDFResumeViewer } from "@/components/candidates/PDFResumeViewer";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -90,10 +92,72 @@ export function ScorecardSheet({
   const [showNextStepsDialog, setShowNextStepsDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [resumeUrl, setResumeUrl] = useState<string | null>(null);
+  const [loadingResume, setLoadingResume] = useState(true);
 
   const isReadOnly = useMemo(() => !editMode, [editMode]);
   const isAiDraft = existing?.is_ai_draft === true;
   const aiSuggestedRating = existing?.ai_suggested_rating;
+
+  // Load resume when sheet opens
+  useEffect(() => {
+    if (!open || !associationId) {
+      setResumeUrl(null);
+      setLoadingResume(true);
+      return;
+    }
+
+    const loadResume = async () => {
+      setLoadingResume(true);
+      try {
+        // Get candidate_id from association
+        const { data: association } = await supabase
+          .from('job_candidate_associations')
+          .select('candidate_id')
+          .eq('id', associationId)
+          .single();
+
+        if (!association) {
+          setLoadingResume(false);
+          return;
+        }
+
+        // Get primary resume attachment
+        const { data: resumeAttachment } = await supabase
+          .from('candidate_attachments')
+          .select('file_url, converted_pdf_url, conversion_status')
+          .eq('candidate_id', association.candidate_id)
+          .eq('is_resume', true)
+          .maybeSingle();
+
+        if (!resumeAttachment) {
+          setLoadingResume(false);
+          return;
+        }
+
+        // Prefer converted PDF if available
+        const fileUrl = resumeAttachment.conversion_status === 'completed' && resumeAttachment.converted_pdf_url
+          ? resumeAttachment.converted_pdf_url
+          : resumeAttachment.file_url;
+
+        if (fileUrl) {
+          const { data } = await supabase.storage
+            .from('candidate-attachments')
+            .createSignedUrl(fileUrl, 3600);
+
+          if (data?.signedUrl) {
+            setResumeUrl(data.signedUrl);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading resume:', error);
+      } finally {
+        setLoadingResume(false);
+      }
+    };
+
+    loadResume();
+  }, [open, associationId]);
 
   useEffect(() => {
     if (open && stageInstanceId) {
@@ -439,7 +503,7 @@ export function ScorecardSheet({
   return (
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent side="right" className="w-[80vw] sm:w-[80vw] max-w-[1080px] sm:max-w-[1080px] p-0">
+        <SheetContent side="right" className="w-[95vw] sm:w-[95vw] max-w-[1400px] sm:max-w-[1400px] p-0">
           <div className="flex h-full flex-col">
             <SheetHeader className="p-6 border-b">
               <div className="flex items-center justify-between">
@@ -481,124 +545,163 @@ export function ScorecardSheet({
               </div>
             </SheetHeader>
 
-            <div className="flex-1 overflow-y-auto p-6 space-y-6">
-              {/* AI Suggested Rating Banner */}
-              {isAiDraft && aiSuggestedRating && (
-                <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <Sparkles className="h-5 w-5 text-primary" />
-                    <div>
-                      <p className="text-sm font-medium">AI Suggested Rating: {aiSuggestedRating}</p>
-                      <p className="text-xs text-muted-foreground">Based on interview transcript analysis</p>
-                    </div>
+            <div className="flex-1 overflow-hidden flex">
+              {/* Left Panel - Resume with Tabs */}
+              <div className="w-[40%] border-r border-virgilio-border flex flex-col">
+                <Tabs defaultValue="resume" className="flex flex-col h-full">
+                  <div className="p-4 border-b border-virgilio-border shrink-0">
+                    <TabsList>
+                      <TabsTrigger value="resume">Resume</TabsTrigger>
+                      <TabsTrigger value="interview-details" disabled className="gap-2">
+                        Interview Details
+                        <Badge variant="outline" className="text-xs">Soon</Badge>
+                      </TabsTrigger>
+                    </TabsList>
                   </div>
-                  {!isReadOnly && aiRatingToScoreRating[aiSuggestedRating] !== rating && (
-                    <Button size="sm" variant="outline" onClick={handleAcceptAiSuggestion}>
-                      Apply Suggestion
-                    </Button>
-                  )}
-                </div>
-              )}
-
-              <div className="space-y-2">
-                <div className="text-sm font-medium">Overall rating</div>
-                <RadioGroup
-                  className="grid grid-cols-4 gap-3"
-                  value={rating}
-                  onValueChange={(v) => setRating(v as ScoreRating)}
-                  disabled={isReadOnly}
-                >
-                  {ratingOptions.map((opt) => {
-                    const active = rating === opt.value;
-                    const base =
-                      opt.value === "definitely_no"
-                        ? `text-white ${active ? "ring-2" : ""}`
-                        : opt.value === "no"
-                        ? `text-white ${active ? "ring-2" : ""}`
-                        : opt.value === "strong_yes"
-                        ? `text-white ${active ? "ring-2" : ""}`
-                        : `text-white ${active ? "ring-2" : ""}`;
-                    
-                    const colorStyles =
-                      opt.value === "definitely_no"
-                        ? { backgroundColor: '#FA5252', borderColor: '#FA5252', ringColor: active ? '#FA5252' : undefined }
-                        : opt.value === "no"
-                        ? { backgroundColor: '#FA8F8F', borderColor: '#FA8F8F', ringColor: active ? '#FA8F8F' : undefined }
-                        : opt.value === "strong_yes"
-                        ? { backgroundColor: '#6F3FF5', borderColor: '#6F3FF5', ringColor: active ? '#6F3FF5' : undefined }
-                        : { backgroundColor: '#9B7BF7', borderColor: '#9B7BF7', ringColor: active ? '#9B7BF7' : undefined };
-
-                    return (
-                      <Label
-                        key={opt.value}
-                        htmlFor={`rating-${opt.value}`}
-                        className={`
-                          flex flex-col items-center justify-center gap-1 p-3 rounded-lg border-2 cursor-pointer
-                          transition-all duration-200
-                          ${base}
-                        `}
-                        style={colorStyles}
-                      >
-                        <RadioGroupItem value={opt.value} id={`rating-${opt.value}`} className="sr-only" />
-                        <div className="flex items-center gap-1">
-                          {opt.value === "definitely_no" && <ThumbsDown className="h-4 w-4" />}
-                          {opt.value === "no" && <Octagon className="h-4 w-4" />}
-                          {opt.value === "yes" && <ThumbsUp className="h-4 w-4" />}
-                          {opt.value === "strong_yes" && <Star className="h-4 w-4" />}
-                          <span className="text-sm font-medium">{opt.label}</span>
-                        </div>
-                      </Label>
-                    );
-                  })}
-                </RadioGroup>
+                  
+                  <TabsContent value="resume" className="flex-1 overflow-hidden m-0 p-4">
+                    {loadingResume ? (
+                      <div className="flex items-center justify-center h-full">
+                        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                      </div>
+                    ) : resumeUrl ? (
+                      <PDFResumeViewer url={resumeUrl} height={65} />
+                    ) : (
+                      <div className="flex flex-col items-center justify-center h-full text-center p-6">
+                        <FileText className="h-12 w-12 text-muted-foreground mb-4" />
+                        <p className="text-sm text-muted-foreground">No resume available</p>
+                      </div>
+                    )}
+                  </TabsContent>
+                  
+                  <TabsContent value="interview-details" className="flex-1 overflow-hidden m-0 p-4">
+                    <div className="flex flex-col items-center justify-center h-full text-center p-6">
+                      <p className="text-sm text-muted-foreground">Interview details coming soon</p>
+                    </div>
+                  </TabsContent>
+                </Tabs>
               </div>
 
-              {!loadingQuestions && questions.length > 0 && (
-                <div className="space-y-6 border-t border-virgilio-border pt-6">
-                  <h3 className="text-base font-semibold text-virgilio-text">Interview Questions</h3>
-                  {questions.map(renderQuestion)}
-                </div>
-              )}
-
-              <div className="space-y-2 border-t border-virgilio-border pt-6">
-                <div className="mb-2">
-                  <Label htmlFor="overview" className="text-base font-semibold">
-                    Key Takeaways
-                  </Label>
-                  <p className="text-sm text-virgilio-muted mt-1">
-                    Provide comprehensive notes about your interview with this candidate
-                  </p>
-                </div>
-                
-                <RichTextEditor
-                  value={overview}
-                  onChange={setOverview}
-                  placeholder="Share your key takeaways and observations..."
-                />
-                
-                {!isReadOnly && (
-                  <div className="flex justify-end">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handlePolishNotes}
-                      disabled={isPolishing || !overview.trim()}
-                      className="gap-2"
-                    >
-                      {isPolishing ? (
-                        <>
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Polishing...
-                        </>
-                      ) : (
-                        <>
-                          <img src={gioIcon} alt="Gio" className="h-4 w-4" />
-                          Polish Notes
-                        </>
-                      )}
-                    </Button>
+              {/* Right Panel - Scorecard Form */}
+              <div className="w-[60%] overflow-y-auto p-6 space-y-6">
+                {/* AI Suggested Rating Banner */}
+                {isAiDraft && aiSuggestedRating && (
+                  <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Sparkles className="h-5 w-5 text-primary" />
+                      <div>
+                        <p className="text-sm font-medium">AI Suggested Rating: {aiSuggestedRating}</p>
+                        <p className="text-xs text-muted-foreground">Based on interview transcript analysis</p>
+                      </div>
+                    </div>
+                    {!isReadOnly && aiRatingToScoreRating[aiSuggestedRating] !== rating && (
+                      <Button size="sm" variant="outline" onClick={handleAcceptAiSuggestion}>
+                        Apply Suggestion
+                      </Button>
+                    )}
                   </div>
                 )}
+
+                <div className="space-y-2">
+                  <div className="text-sm font-medium">Overall rating</div>
+                  <RadioGroup
+                    className="grid grid-cols-4 gap-3"
+                    value={rating}
+                    onValueChange={(v) => setRating(v as ScoreRating)}
+                    disabled={isReadOnly}
+                  >
+                    {ratingOptions.map((opt) => {
+                      const active = rating === opt.value;
+                      const base =
+                        opt.value === "definitely_no"
+                          ? `text-white ${active ? "ring-2" : ""}`
+                          : opt.value === "no"
+                          ? `text-white ${active ? "ring-2" : ""}`
+                          : opt.value === "strong_yes"
+                          ? `text-white ${active ? "ring-2" : ""}`
+                          : `text-white ${active ? "ring-2" : ""}`;
+                      
+                      const colorStyles =
+                        opt.value === "definitely_no"
+                          ? { backgroundColor: '#FA5252', borderColor: '#FA5252', ringColor: active ? '#FA5252' : undefined }
+                          : opt.value === "no"
+                          ? { backgroundColor: '#FA8F8F', borderColor: '#FA8F8F', ringColor: active ? '#FA8F8F' : undefined }
+                          : opt.value === "strong_yes"
+                          ? { backgroundColor: '#6F3FF5', borderColor: '#6F3FF5', ringColor: active ? '#6F3FF5' : undefined }
+                          : { backgroundColor: '#9B7BF7', borderColor: '#9B7BF7', ringColor: active ? '#9B7BF7' : undefined };
+
+                      return (
+                        <Label
+                          key={opt.value}
+                          htmlFor={`rating-${opt.value}`}
+                          className={`
+                            flex flex-col items-center justify-center gap-1 p-3 rounded-lg border-2 cursor-pointer
+                            transition-all duration-200
+                            ${base}
+                          `}
+                          style={colorStyles}
+                        >
+                          <RadioGroupItem value={opt.value} id={`rating-${opt.value}`} className="sr-only" />
+                          <div className="flex items-center gap-1">
+                            {opt.value === "definitely_no" && <ThumbsDown className="h-4 w-4" />}
+                            {opt.value === "no" && <Octagon className="h-4 w-4" />}
+                            {opt.value === "yes" && <ThumbsUp className="h-4 w-4" />}
+                            {opt.value === "strong_yes" && <Star className="h-4 w-4" />}
+                            <span className="text-sm font-medium">{opt.label}</span>
+                          </div>
+                        </Label>
+                      );
+                    })}
+                  </RadioGroup>
+                </div>
+
+                {!loadingQuestions && questions.length > 0 && (
+                  <div className="space-y-6 border-t border-virgilio-border pt-6">
+                    <h3 className="text-base font-semibold text-virgilio-text">Interview Questions</h3>
+                    {questions.map(renderQuestion)}
+                  </div>
+                )}
+
+                <div className="space-y-2 border-t border-virgilio-border pt-6">
+                  <div className="mb-2">
+                    <Label htmlFor="overview" className="text-base font-semibold">
+                      Key Takeaways
+                    </Label>
+                    <p className="text-sm text-virgilio-muted mt-1">
+                      Provide comprehensive notes about your interview with this candidate
+                    </p>
+                  </div>
+                  
+                  <RichTextEditor
+                    value={overview}
+                    onChange={setOverview}
+                    placeholder="Share your key takeaways and observations..."
+                  />
+                  
+                  {!isReadOnly && (
+                    <div className="flex justify-end">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handlePolishNotes}
+                        disabled={isPolishing || !overview.trim()}
+                        className="gap-2"
+                      >
+                        {isPolishing ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Polishing...
+                          </>
+                        ) : (
+                          <>
+                            <img src={gioIcon} alt="Gio" className="h-4 w-4" />
+                            Polish Notes
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
