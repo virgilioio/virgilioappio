@@ -168,10 +168,20 @@ export function SourcingFiltersPanel({
               )}
               {project.search_criteria.company_domains && project.search_criteria.company_domains.length > 0 && (
                 <div className="space-y-1.5">
-                  <span className="text-xs font-medium text-virgilio-muted">Target Companies:</span>
+                  <span className="text-xs font-medium text-virgilio-muted">Company Domains:</span>
                   <div className="flex flex-wrap gap-1.5">
                     {project.search_criteria.company_domains.map(domain => (
                       <Badge key={domain} variant="outline" className="text-xs rounded-md">{domain}</Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {project.search_criteria.company_names && project.search_criteria.company_names.length > 0 && (
+                <div className="space-y-1.5">
+                  <span className="text-xs font-medium text-virgilio-muted">Target Companies:</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {project.search_criteria.company_names.map(name => (
+                      <Badge key={name} variant="outline" className="text-xs rounded-md">{name}</Badge>
                     ))}
                   </div>
                 </div>
