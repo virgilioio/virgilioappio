@@ -58,6 +58,7 @@ export function EditableSearchCriteria({
 }: EditableSearchCriteriaProps) {
   const [newTitleKeyword, setNewTitleKeyword] = useState('')
   const [newKeyword, setNewKeyword] = useState('')
+  const [newCompanyName, setNewCompanyName] = useState('')
 
   const handleAddTitleKeyword = () => {
     if (newTitleKeyword.trim()) {
@@ -318,6 +319,82 @@ export function EditableSearchCriteria({
                 {getCompanySizeLabel(size)}
                 <button
                   onClick={() => handleRemoveCompanySize(size)}
+                  className="ml-1 hover:bg-destructive/10 rounded-sm"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Target Companies */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <Label className="text-sm font-medium">Target Companies (Optional)</Label>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent side="right" className="max-w-xs">
+                <p className="text-xs">Search for candidates currently working at specific companies by name.</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+        <div className="flex gap-2">
+          <Input
+            placeholder='e.g., "Google", "Meta", "Stripe"'
+            value={newCompanyName}
+            onChange={(e) => setNewCompanyName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                if (newCompanyName.trim()) {
+                  const currentNames = criteria.company_names || []
+                  if (!currentNames.includes(newCompanyName.trim())) {
+                    onChange({
+                      ...criteria,
+                      company_names: [...currentNames, newCompanyName.trim()]
+                    })
+                    setNewCompanyName('')
+                  }
+                }
+              }
+            }}
+            className="flex-1"
+          />
+          <Button 
+            size="sm" 
+            variant="virgilio" 
+            onClick={() => {
+              if (newCompanyName.trim()) {
+                const currentNames = criteria.company_names || []
+                if (!currentNames.includes(newCompanyName.trim())) {
+                  onChange({
+                    ...criteria,
+                    company_names: [...currentNames, newCompanyName.trim()]
+                  })
+                  setNewCompanyName('')
+                }
+              }
+            }}
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
+        </div>
+        {criteria.company_names && criteria.company_names.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {criteria.company_names.map(name => (
+              <Badge key={name} variant="outline" className="gap-1">
+                {name}
+                <button
+                  onClick={() => onChange({
+                    ...criteria,
+                    company_names: (criteria.company_names || []).filter(n => n !== name)
+                  })}
                   className="ml-1 hover:bg-destructive/10 rounded-sm"
                 >
                   <X className="h-3 w-3" />
