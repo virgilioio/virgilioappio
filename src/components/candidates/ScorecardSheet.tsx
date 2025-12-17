@@ -547,7 +547,7 @@ export function ScorecardSheet({
 
             <div className="flex-1 overflow-hidden flex">
               {/* Left Panel - Resume with Tabs */}
-              <div className="w-[40%] border-r border-virgilio-border flex flex-col">
+              <div className="w-[60%] border-r border-virgilio-border flex flex-col">
                 <Tabs defaultValue="resume" className="flex flex-col h-full">
                   <div className="p-4 border-b border-virgilio-border shrink-0">
                     <TabsList>
@@ -583,7 +583,7 @@ export function ScorecardSheet({
               </div>
 
               {/* Right Panel - Scorecard Form */}
-              <div className="w-[60%] overflow-y-auto p-6 space-y-6">
+              <div className="w-[40%] overflow-y-auto p-6 space-y-6">
                 {/* AI Suggested Rating Banner */}
                 {isAiDraft && aiSuggestedRating && (
                   <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg flex items-center justify-between">
