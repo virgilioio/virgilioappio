@@ -19,7 +19,7 @@ import { JobFormSheet } from '@/components/jobs/JobFormSheet'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { ArrowLeft, Archive, LayoutGrid, List, UserPlus, Sparkles } from 'lucide-react'
+import { ArrowLeft, Archive, LayoutGrid, List, UserPlus, Sparkles, Mail } from 'lucide-react'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { useIsMobile } from '@/hooks/use-mobile'
@@ -36,6 +36,7 @@ import CandidateProfileSheet from '@/components/candidates/CandidateProfileSheet
 import UniversalCandidateProfileSheet from '@/components/candidates/UniversalCandidateProfileSheet'
 import BulkMoveJobCandidatesToPipelineDialog from '@/components/candidates/BulkMoveJobCandidatesToPipelineDialog'
 import { BulkRejectionDialog } from '@/components/candidates/BulkRejectionDialog'
+import { BulkEmailDialog } from '@/components/candidates/BulkEmailDialog'
 import { useJobMatchingCandidates, MatchedCandidate } from '@/hooks/useJobMatchingCandidates'
 import { useJobMatchingCandidatesCount } from '@/hooks/useJobMatchingCandidatesCount'
 import { useRealTimeSkillMatching } from '@/hooks/useRealTimeSkillMatching'
@@ -64,6 +65,7 @@ export default function JobDetail() {
   const [tableSelectionMode, setTableSelectionMode] = useState(false)
   const [pipelineRefresh, setPipelineRefresh] = useState(0)
   const [showBulkRejectionDialog, setShowBulkRejectionDialog] = useState(false)
+  const [showBulkEmailDialog, setShowBulkEmailDialog] = useState(false)
 
   // In-place profile sheet state with navigation
   const [profileOpen, setProfileOpen] = useState(false)
@@ -909,14 +911,25 @@ export default function JobDetail() {
                           {pipelineSectionTab === 'recruiting' ? (
                             <>
                               {selectionMode && (
-                                <Button
-                                  size="sm"
-                                  variant="destructive"
-                                  disabled={selectedCandidateIds.length === 0}
-                                  onClick={() => setShowBulkRejectionDialog(true)}
-                                >
-                                  Reject
-                                </Button>
+                                <>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    disabled={selectedCandidateIds.length === 0}
+                                    onClick={() => setShowBulkEmailDialog(true)}
+                                  >
+                                    <Mail className="h-4 w-4 mr-2" />
+                                    Email
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="destructive"
+                                    disabled={selectedCandidateIds.length === 0}
+                                    onClick={() => setShowBulkRejectionDialog(true)}
+                                  >
+                                    Reject
+                                  </Button>
+                                </>
                               )}
                               <Button
                                 size="sm"
@@ -1566,6 +1579,17 @@ export default function JobDetail() {
           candidateIds={selectedCandidateIds}
           jobId={id!}
           onSuccess={handleBulkRejectionSuccess}
+        />
+
+        <BulkEmailDialog
+          open={showBulkEmailDialog}
+          onOpenChange={setShowBulkEmailDialog}
+          candidateIds={selectedCandidateIds}
+          jobId={id!}
+          onSuccess={() => {
+            setSelectedCandidateIds([])
+            setSelectionMode(false)
+          }}
         />
       </div>
     </div>
